@@ -1,0 +1,35 @@
+{
+  "phase": "supporting-route",
+  "states": [
+    {
+      "scenario": "second-buffer",
+      "heading": "Your buffer may be tight",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nYour buffer may be tight\n\nThe Blue window ends by class time, but may leave less time to get inside. Check the trip times.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:31 PM\nWindow extends past class · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾",
+      "buttons": [
+        "Clear",
+        "Red · #3092:05 PM–2:31 PMWindow extends past class · View trip ›",
+        "WalkAbout 2:25 PMEstimate past class time · View trip ›"
+      ],
+      "supportingRouteActions": 0
+    },
+    {
+      "scenario": "second-catch",
+      "heading": "Check the shuttle connection",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nCheck the shuttle connection\n\nBlue: The bus could reach pickup before you. This window assumes you catch it.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:31 PM\nWindow extends past class · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾",
+      "buttons": [
+        "Clear",
+        "Red · #3092:05 PM–2:31 PMWindow extends past class · View trip ›",
+        "WalkAbout 2:25 PMEstimate past class time · View trip ›"
+      ],
+      "supportingRouteActions": 0
+    }
+  ],
+  "checks": [
+    "two mismatched supporting-route cases at 360/390/430/1280px"
+  ],
+  "errors": [],
+  "supportingFailures": [
+    "second-buffer: heading describes Blue, but no Blue window/trip action is rendered in the deadline panel",
+    "second-catch: heading describes Blue, but no Blue window/trip action is rendered in the deadline panel"
+  ]
+}

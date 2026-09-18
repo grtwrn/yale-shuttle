@@ -1,0 +1,72 @@
+{
+  "head": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "indexUnchanged": true,
+  "scope": [
+    "services/shuttle-v2/scripts/crash-recovery-check.mjs",
+    "services/shuttle-v2/web/src/CrashRecovery.tsx",
+    "services/shuttle-v2/web/src/main.tsx"
+  ],
+  "sourceHashes": {
+    "services/shuttle-v2/scripts/crash-recovery-check.mjs": "d747f120fac4c5d1a8e794efc690e08e6c321127de69468cc6ae959043674c42",
+    "services/shuttle-v2/web/src/CrashRecovery.tsx": "26436a5f436f845a237b5c8eb2fbd95b471aa8b717fe24392e84ee7a7750211f",
+    "services/shuttle-v2/web/src/main.tsx": "b4d73637dee16ed6819d6ed8ff3a5a6cdd052c6316bd8c0820cd33577929c6f4"
+  },
+  "builtSource": {
+    "CrashRecovery.tsx": "rider-CxadgW4T.js.map",
+    "main.tsx": "rider-CxadgW4T.js.map"
+  },
+  "reports": {
+    "release/mobile/crash-recovery.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": [
+        "Ordinary reload recovers from a transient render failure and preserves stored preferences, identity and tab draft",
+        "Persistent synthetic storage failure survives ordinary reload; explicit reset clears local storage once and preserves the existing session-storage scope",
+        "Blocked storage clear still reloads; mobile touch reset and keyboard reload/reset exercised",
+        "A blocked localStorage getter also still permits reset-triggered reload",
+        "A surviving external focus target is not stolen by crash recovery",
+        "Recovery heading receives focus; reload is first tab action; reset and technical details disclose independently; 44px controls and long-stack reflow pass"
+      ]
+    },
+    "release/desktop/crash-recovery.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": [
+        "Ordinary reload recovers from a transient render failure and preserves stored preferences, identity and tab draft",
+        "Persistent synthetic storage failure survives ordinary reload; explicit reset clears local storage once and preserves the existing session-storage scope",
+        "Blocked storage clear still reloads; mobile touch reset and keyboard reload/reset exercised",
+        "A blocked localStorage getter also still permits reset-triggered reload",
+        "A surviving external focus target is not stolen by crash recovery",
+        "Recovery heading receives focus; reload is first tab action; reset and technical details disclose independently; 44px controls and long-stack reflow pass"
+      ]
+    },
+    "verified/feed/empty-service.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": [
+        "Pending and failed first load are distinct in Trip/Map; no false empty-service claim; destination actions and reflow available",
+        "Fresh empty response says reporting, then failed polling replaces zero counts/off-service labels with unavailable; cached notice qualified; successful empty recovery clears warning",
+        "All-hidden keeps basemap with one message; keyboard Show all recovers; selected-idle recovery works by keyboard/touch, retains manual route choices, returns focus to persistent 44px mode control and survives tab changes",
+        "Ordinary polls preserve recovery focus; empty-fleet and newly running selection remove it with guarded mode focus; external focus and outgoing navigation are preserved, including after Map remount",
+        "Fresh off-route reports are described as filtered, with an on-route chip explanation; recovery retains both reported buses and their off-route warning without fabricated forecasts",
+        "Missing/stale ETA, malformed payload and failed polls beyond45sec retain routes without a false no-bus claim; fresh recovery restores arrivals",
+        "Unavailable walk-only plan keeps schedule and walking context without inferred service-off labels; recovery retains both #307/#309 pickup slots and keyboard dialog",
+        "Off-hours successful empty feed retains maps/schedules and is not called a feed failure"
+      ]
+    },
+    "offline-second/offline-shell.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": [
+        "An open page loses live status after network failure; expired estimates are unavailable while routes remain",
+        "Cached app shell opens offline; Trip/Map explain unavailable status without stale bus counts; no API response exists in Cache Storage",
+        "Restored network automatically restores live routes/counts and clears interruption copy"
+      ]
+    }
+  },
+  "screenshots": {
+    "count": 278,
+    "bytes": 13483581
+  },
+  "unchangedEntryBehavior": "Error capture, review routing, PWA registration and pull-to-refresh are exact baseline; only fallback content/import replaced"
+}

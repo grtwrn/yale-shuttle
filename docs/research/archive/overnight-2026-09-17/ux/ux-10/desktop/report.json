@@ -1,0 +1,25 @@
+{
+  "source": "Built SPA, local intercepted fixtures, no production traffic",
+  "checks": [
+    "Tab/Shift+Tab reach saved buttons; Enter plans correct destination and focuses To summary",
+    "Tab reaches recent destination; Space selects it without activating adjacent Save/Remove",
+    "Enter/blur trim and persist names without changing coordinates; Escape cancels; blank names restore; Done retains focus; reload persists rename",
+    "Enter/Space delete the intended saved entry; focus moves to the next input, then the first recent place",
+    "Touch/click delete while editing does not persist the partial rename and keeps useful focus",
+    "Save recent focuses saved destination; existing coordinates deduplicate; recent remove/clear restore focus across final rows",
+    "Removal does not steal focus from another control selected in the same DOM task",
+    "360/390/430/640/1280px and 200% CSS zoom have no page overflow; list targets >=44px; rename input 16px",
+    "Blocked storage writes leave delete and save usable for this visit",
+    "Failed initial feed and unavailable GPS do not block saved selection; denied storage access yields an intact empty trip form"
+  ],
+  "errors": [],
+  "sizes": [
+    360,
+    390,
+    430,
+    1280,
+    640
+  ],
+  "passed": true,
+  "closed": true
+}

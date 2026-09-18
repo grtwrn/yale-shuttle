@@ -1,0 +1,19 @@
+{
+  "productionHistoryExactlyMatchesFixture": true,
+  "researchTrips": 75,
+  "researchDates": 9,
+  "defaultHistoryTrips": 24,
+  "defaultHistoryDates": 4,
+  "stand11": {
+    "n": 230,
+    "q10": 99.08780000000002,
+    "median": 333.29449999999997,
+    "q90": 620.3349,
+    "max": 895.09,
+    "iqrFences": [
+      -394.04162499999995,
+      1043.849375
+    ],
+    "outsideFences": 0
+  }
+}

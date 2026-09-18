@@ -1,0 +1,7 @@
+{
+  "source": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/TransitMap.tsx",
+  "sourceHash": "e2e535591ac4e643ae385a5a0a5c613b2d0f08a64a103537468c9d9b820ad9b2",
+  "bodyHash": "41e3acc41062f263e88a4d2183ccffb2e7994486c7dcd19ba2be670445c83494",
+  "bodyUnchanged": true,
+  "limits": "Exact current numerical memo with existing identity projection; telemetry suppressed and return tracing added. No React/browser test."
+}

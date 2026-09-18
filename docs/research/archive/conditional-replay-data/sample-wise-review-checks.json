@@ -1,0 +1,27 @@
+{
+  "sourceSha256": "bae054b635d925b8254170a22323dc0b05fc5d245d469bd62a13da24ba45be88",
+  "departNowNotMathematicalFloor": {
+    "originalArrival": 2200,
+    "leaveNowArrival": 2449.8575270698566,
+    "currentRestRemoved": 500
+  },
+  "movingAlternateBridge": {
+    "leadBridge": null,
+    "alternateBridge": {
+      "stop": 0,
+      "depT": 0
+    },
+    "arrivalWithLeadBridge": 940.0303942250972,
+    "arrivalWithOwnBridge": 1100
+  },
+  "passMass": {
+    "zeroCount": 64,
+    "samples": 256,
+    "expected": 64,
+    "note": "Paths straddle the lower lap support boundary; same zero atom survives both distribution branches"
+  },
+  "unsupportedFirstLap": {
+    "arrival": 201.09791588036498,
+    "allH1Unchanged": true
+  }
+}

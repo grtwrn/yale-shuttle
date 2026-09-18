@@ -1,0 +1,4 @@
+{
+  "needle": "const arrival = journeyArrival(board, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs);",
+  "replacement": "const firstDestination = visits.filter(a => norm(a.busName) === norm(hereBus.bus_name) && a.stopId === o.alightStopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];\n        const forecastBoard = board ?? live.filter(a => norm(a.busName) === norm(hereBus.bus_name) && firstDestination && a.stopsAhead < firstDestination.stopsAhead).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];\n        const arrival = journeyArrival(forecastBoard, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs);"
+}

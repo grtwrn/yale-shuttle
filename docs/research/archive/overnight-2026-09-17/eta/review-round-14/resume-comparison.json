@@ -1,0 +1,16 @@
+{
+  "current": {
+    "polls": 100,
+    "exactPolls": 100,
+    "differences": [],
+    "minuteStateDigests": 8,
+    "checkpoint6000Bytes": 548055
+  },
+  "canonical": {
+    "polls": 100,
+    "exactPolls": 100,
+    "differences": [],
+    "minuteStateDigests": 8,
+    "checkpoint6000Bytes": 548045
+  }
+}

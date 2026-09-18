@@ -1,0 +1,5658 @@
+[
+  {
+    "id": 44874,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 30.412693565134646,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 30.412693565134646,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 30.412693565134646,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 44948,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.277102998122302,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.277102998122302,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.277102998122302,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45102,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.561120951948396,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.561120951948396,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.561120951948396,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45074,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.99443311641167,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.99443311641167,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.99443311641167,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45185,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 19,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.977986795851848,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 19,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.977986795851848,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 19,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.977986795851848,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45288,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.259872565406624,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.259872565406624,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.259872565406624,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45286,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.784334025280941,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.784334025280941,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.784334025280941,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45413,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.938955626858046,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.938955626858046,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.938955626858046,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45527,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 48,
+        "up60": 1,
+        "down1": 0,
+        "maxUp": 60.37249265868945,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 48,
+        "up60": 1,
+        "down1": 0,
+        "maxUp": 60.37249265868945,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 48,
+        "up60": 1,
+        "down1": 0,
+        "maxUp": 60.37249265868945,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45545,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 47,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.757693336544662,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 47,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.757693336544662,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 47,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.757693336544662,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45643,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.0087790885251025,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.0087790885251025,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.0087790885251025,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45762,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.310145871387363,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.245570058108001,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.279008672962902,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45756,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.698488445258249,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.698488445258249,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.698488445258249,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45876,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.847075877771857,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.831120406168168,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.845088979936861,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45997,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.366028474091308,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.26920917528048,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.280095101567213,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 45996,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.948365212451904,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.935317721699278,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.987849917796382,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46117,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 39.21601769079649,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 35.24926115186565,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 35.40290083587479,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46235,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.386575426233321,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.241700941835177,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.253588194697045,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46367,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 42,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 18.920213837898984,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 42,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.13038878875875,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 42,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.016841344601175,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46476,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 45,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.761988382108257,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 45,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.330651040542193,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 45,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.304570954394194,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46496,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 45,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.205161527823122,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 45,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.215906701950189,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 45,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.096435431967734,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46566,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.218514496339083,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.635432933012339,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.7505184536613,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46677,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 39,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 43.18238893423273,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 39,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 41.17358687573358,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 39,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 40.711985458306856,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46687,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.690609273627274,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.630994375373461,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.621317652994662,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46772,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.520620063805268,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.354570314426951,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.086846362424694,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46851,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 47,
+        "up60": 3,
+        "down1": 0,
+        "maxUp": 96.3019663624703,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 47,
+        "up60": 3,
+        "down1": 0,
+        "maxUp": 91.42965803439608,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 47,
+        "up60": 2,
+        "down1": 0,
+        "maxUp": 88.92100546955157,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46865,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 48,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 40.99322621906964,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 48,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 36.49417143097662,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 48,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 35.93312422512366,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 46954,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.986094702890796,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.175065380448075,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.155245556778937,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47054,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 32.03885148441975,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 29.20232358229839,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 28.86616513069123,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47086,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.602701660860816,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.581516720006448,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.576204098489029,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47173,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.61160144262783,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.505251493915694,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.491140765255807,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47289,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 59,
+        "up60": 3,
+        "down1": 0,
+        "maxUp": 90.83434788451336,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 59,
+        "up60": 2,
+        "down1": 0,
+        "maxUp": 87.74681845920605,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 59,
+        "up60": 2,
+        "down1": 0,
+        "maxUp": 89.56508246571667,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47277,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.787628595824913,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.855532350646854,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.87033211061032,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47364,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.384761388989773,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.393762661865537,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.279755302618241,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47462,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 44,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.116089146870763,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 44,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.09166107254191,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 44,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.098196076437944,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47451,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.0386153664966855,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.7154766189572115,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.8996703021294365,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47569,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.454920257100468,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.502029457182289,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.506573017304618,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47664,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 44,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 54.40370315465594,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 44,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 29.58707319009352,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 44,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 27.266019048020212,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47701,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 18.526623404713632,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 17.73088977058123,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 17.567097386825424,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47850,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.27922293321555,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.2774336838694467,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.313711845298343,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 47891,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 15.106607236096295,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.81730222552514,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.772071249448857,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48062,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.589206600241994,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.415395309622568,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.411045812202303,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48059,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.093346549609194,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.093346549609194,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.093346549609194,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48243,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.538479670356935,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.538479670356935,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.538479670356935,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48205,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.4231671120855935,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.3490475259074515,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.3326556137616308,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48370,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 35.14705496828179,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 29.881770010652303,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 28.91038387249415,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48414,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.037685220780645,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.05764845638646,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.028453798360488,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48550,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 59,
+        "up60": 2,
+        "down1": 0,
+        "maxUp": 70.34055572723105,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 59,
+        "up60": 2,
+        "down1": 0,
+        "maxUp": 68.64138139919464,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 59,
+        "up60": 3,
+        "down1": 0,
+        "maxUp": 70.9084680006614,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48568,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.470312266129042,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.525173783156333,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.587801897630811,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48738,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 28.84127445825544,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 28.84127445825544,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 28.84127445825544,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48760,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.775116227870512,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.782128024095584,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.791427992067383,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48783,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 18.938037183218484,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 18.938037183218484,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 18.938037183218484,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48950,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.945920278768881,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.952022440994597,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.939750774044057,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 48922,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 5,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.111880655213497,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 5,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.0540896757156588,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 5,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.0360851863944163,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 49153,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.696702688798496,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.619512385877897,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.610177525050972,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 49151,
+    "stop": 11,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.640728818405421,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.640728818405421,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.640728818405421,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 49315,
+    "stop": 121,
+    "day": "2026-09-14",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.180068216068207,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.8609584207100056,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.792201835777064,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 50789,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.937133013678107,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.937133013678107,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.937133013678107,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 50993,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 42,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 33.012728667930276,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 42,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 33.012728667930276,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 42,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 33.012728667930276,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 50987,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.510759153601612,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.510759153601612,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.510759153601612,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 51246,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 30.58122690827662,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 30.58122690827662,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 30.58122690827662,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 51242,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 32,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.131523954273348,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 32,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.131523954273348,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 32,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.131523954273348,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 51469,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.873944636445572,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.873944636445572,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.873944636445572,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 51476,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.254729988741985,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.254729988741985,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.254729988741985,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 51699,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.20290283058688,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.042289794340377,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.060308707130645,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 51708,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 5,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.071039902263749,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 5,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.071039902263749,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 5,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.071039902263749,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 51936,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.600043985576292,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.531805883593279,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.545144499567755,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 51941,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.000977080106679,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.383565568520936,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.425640242275733,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 52168,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.386979320717046,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.382368229063673,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.356895753623462,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 52170,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.413033814256892,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.262812538240496,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.279458347719412,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 52395,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.563940769054625,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.4492627640731826,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.448643680885425,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 52421,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.474551501733913,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.620058319641771,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.663212890051568,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 52625,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 29.784796721654914,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 24.691046783115667,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 24.89202743983259,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 52633,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.889215351871883,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.840537035892453,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.847785234243133,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 52834,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.033707072071365,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.106276021459962,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.121346625554452,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 52858,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.622645933009892,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.639545757350277,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.631643436960076,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53030,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.609011601078237,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.700240724206992,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.684875972936993,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53023,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.320606774186274,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.322826579244804,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.310806201508228,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53240,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 46,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.682695666843642,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 46,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.703090863337025,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 46,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.69747752069543,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53243,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.526942030172222,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.435842622354244,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.423598814597767,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53429,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.344926320748868,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.255403331451589,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.25071704553443,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53422,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.11145361955289,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.968960958204718,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.987884084094219,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53614,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.662191795651665,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.604774833655824,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.592343747873883,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53627,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.445546395201546,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.515556209240941,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.60259079094763,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53802,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.176144927745156,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.206298327304978,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.198896489436322,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 53837,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.574589867187655,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.105355547139027,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.022012185441554,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54010,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.759610778728472,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.602944803923748,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.574237985388578,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54002,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.70286969313726,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.457661358157779,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.419380867481422,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54190,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.668441622190358,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.773372128797291,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.889150660401128,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54189,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.658930529872862,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.579960271791009,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.555726881460771,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54384,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 35,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.980344871324633,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 35,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.93561308238327,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 35,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.961134903902916,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54377,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.133080950707495,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.262730019537628,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.260934565419348,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54541,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 16,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.486248965401842,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 16,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.595144945192828,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 16,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.429796219022819,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54579,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.141905652708374,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.181728353206324,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.323258451101822,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54777,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.407739582153454,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.362201501919799,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.384632942484643,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54785,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.313540879366144,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.474102800188348,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.575012904091182,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54977,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.244363993714728,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.208827393280643,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 4.351567413833607,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 54991,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.78699315464111,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.004599224065217,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.97659748175316,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 55163,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.688410792024115,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.70737164229638,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.700034005024918,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 55191,
+    "stop": 11,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.789027946478285,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.738609090037414,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.70101404885392,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 55332,
+    "stop": 121,
+    "day": "2026-09-15",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.9995061639908158,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.8445252974612458,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.789127887263703,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 56840,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.475594649362165,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.475594649362165,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.475594649362165,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 56968,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.636006038266714,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.636006038266714,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.636006038266714,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 56958,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 4,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.04630530623922,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 4,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.04630530623922,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 4,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.04630530623922,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57100,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.73416386195538,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.73416386195538,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.73416386195538,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57204,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.295272798845303,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.295272798845303,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.295272798845303,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57226,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.69812635609054,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.69812635609054,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.69812635609054,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57347,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 46,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 42.421314161459065,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 46,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 42.421314161459065,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 46,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 42.421314161459065,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57454,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.521796053290586,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.521796053290586,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 23,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.521796053290586,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57463,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.547734575030148,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.547734575030148,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.547734575030148,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57581,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.9063569061918315,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.9063569061918315,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.9063569061918315,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57679,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.063058592537232,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.108019689325317,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.12181201006132,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57806,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.415669252755038,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.442337887758242,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.446467799418485,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57789,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.146729521062298,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.146729521062298,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.146729521062298,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57965,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.978687768119187,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.773504847009235,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.784086083258131,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 57990,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.978178726097042,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.9125759733471455,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 3,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.947969263606467,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58061,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.250019859760414,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.222850092280737,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.235869330520586,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58224,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.785552504041675,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.785552504041675,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.785552504041675,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58235,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 22.084358475037163,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.449389555888274,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.480203491041436,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58332,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.886140455436987,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.759851691857477,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.757077857260981,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58510,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 36.12947397678988,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 32.914354897162866,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 32.75669022497959,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58505,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 30,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.139905623075038,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 30,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.002275022309334,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 30,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.00338119141287,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58600,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.365483744046116,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.235879832367573,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.2431804790466,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58726,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.635073669164797,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.554739926230525,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.570567854510102,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58717,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.05867097953336,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.05867097953336,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.05867097953336,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58844,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.63259668076671,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.566198504688145,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.561223967390248,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58917,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 0.887458683131797,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 0.819816131770267,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 0.8144812088941649,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 58956,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.682092088816603,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.560731382736094,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.584272825373432,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59056,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.564438305881879,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.621256405284669,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.609295156035955,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59161,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.476349104074586,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.373791688824383,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.387938107209607,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59154,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.283981393904781,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.326795599421388,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.340467774378425,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59251,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.202411896932745,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.06536093159849,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.059864516015523,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59355,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.465418658784415,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.465418658784415,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 34,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.465418658784415,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59364,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.787263466990112,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.789735955946412,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.833335718836793,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59475,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.389282675356014,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.258738460435893,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 22,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.356837964580393,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59578,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.043438745700882,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.921887288394828,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.9047371413875,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59602,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.02005640339766,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.05844332818171,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.050887044494345,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59688,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.695539408225955,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.600398822768284,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 40,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.58977657237017,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59806,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 21,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.247538911647325,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 21,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.240302212364213,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 21,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.245911852751249,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59805,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.360110548330965,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.214605374895598,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.18556712816968,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 59969,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 19.574429378932678,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 18.416008114258915,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 18.170791497088516,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60059,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.757145294745499,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.747002026631549,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 11,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.7477723576379,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60158,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 16,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.21714547905566,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 16,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.253274449472656,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 16,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.237720738871644,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60263,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.288342364205164,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.2280498499855526,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.288507237146803,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60271,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.046858410462619,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.906935858983388,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 15,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.946461250135883,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60375,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.445674264879472,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.518301259503346,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.51216551071002,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60509,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.616939094343877,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.549862153938136,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.526679044943023,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60521,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.504537810739208,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.385890276392587,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 8,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.407044629263794,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60596,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.326167028654822,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.599871107845843,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 31,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.223530177274938,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60699,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.4076639303038405,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.0289758500243806,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.996087065887309,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60735,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.34616847456499,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.475750157181722,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.488590263160006,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60836,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 55,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 48.733665338469905,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 55,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 48.203328745032536,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 55,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 46.669829014973516,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60924,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.703371043143079,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.780140056477478,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 12,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 2.7395615664569846,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 60943,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.386266431484785,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.241598863188756,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.222341870759493,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61067,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.58133657971058,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.6821819337531,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 27,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.661773933734537,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61157,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.5800126430690966,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.4258729765804787,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.4048071263821953,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61186,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.8330638857993335,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.93695127964736,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 18,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.89833375022971,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61306,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 21,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.186208287513409,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 21,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.343019468859779,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 21,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.397713627408848,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61422,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.513647170896093,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.60048141214645,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.600435433288794,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61460,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 15.850186541520088,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 15.506541613714063,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 9,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 15.440071351251675,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61538,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.395202751930356,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.623213297190432,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 41,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.353258348560644,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61658,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.51105371995692,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.834924417340062,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.76196424981785,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61688,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 17.25292477475716,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.646806665075616,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 16.514828864827905,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61854,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 21.65893611993431,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.43132214378079,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 20.179081349699118,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61872,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.260963767240014,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.3061535753858493,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 1.1964216315176373,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 61907,
+    "stop": 11,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.171972356274921,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.01659377054213,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.048983031745792,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 62056,
+    "stop": 121,
+    "day": "2026-09-16",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 0,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 0.0,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 0,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 0.0,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 0,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 0.0,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 63403,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 26.927144446654097,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 26.927144446654097,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 26.927144446654097,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 63523,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.8551248240003133,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.8551248240003133,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 2,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.8551248240003133,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 63611,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.961101734546673,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.961101734546673,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 13.961101734546673,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 63633,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.179313036201677,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.179313036201677,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 1,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.179313036201677,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 63723,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.308951975579703,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.308951975579703,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.308951975579703,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 63846,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.742452998442104,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.742452998442104,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 37,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.742452998442104,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 63838,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.440868557641295,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.440868557641295,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 25,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.440868557641295,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 63970,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 35,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.216873075479612,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 35,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.216873075479612,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 35,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.216873075479612,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64109,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.968781837221286,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.968781837221286,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 38,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.968781837221286,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64082,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.130920482792533,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.130920482792533,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.130920482792533,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64206,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 19,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.178987413703055,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 19,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.178987413703055,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 19,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.178987413703055,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64318,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.427377337511473,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.427377337511473,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 3.427377337511473,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64337,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 4,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.560556257860952,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 4,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.4086819952657095,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 4,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.425993453831296,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64472,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.264327881208601,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.08509468936333,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.134904567868006,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64594,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 51,
+        "up60": 1,
+        "down1": 0,
+        "maxUp": 79.0852901990342,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 51,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 43.461269016470624,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 51,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 46.42981100334487,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64603,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.095543807025479,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.15113551698255,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 17,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.181959980314105,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64725,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.335926377822091,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.664172557269751,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.7234369198641275,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64854,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 39,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 28.071115387878763,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 39,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 25.16143517674095,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 39,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 25.645615804342242,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64843,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.795573298045042,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.729289011896839,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 10,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 6.720826218615372,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 64980,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.731885880985487,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.771434210803136,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 36,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.68624123720599,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65119,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 43,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.765107042149225,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 43,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.707277592672654,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 43,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.728337070157295,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65096,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.834118546621255,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.878498931237687,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.775531789911952,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65347,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 31.927187776412552,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 28.12646641095671,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 27.97783207859453,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65379,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 32,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.91700937653826,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 32,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.90261847721581,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 32,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 12.879568035394414,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65500,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.320431251618857,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.320431251618857,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 14,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.320431251618857,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65621,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.143206976803867,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.058726327750264,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 33,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.053307966431362,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65720,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.308451170580042,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.308451170580042,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 28,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 8.308451170580042,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65825,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.263343480505512,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.140002119397877,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 20,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.121011450514118,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65852,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.053292790794501,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.053292790794501,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 6,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.053292790794501,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 65927,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.328715239812482,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.328715239812482,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 13,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 9.328715239812482,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 66035,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.224991699114696,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.224991699114696,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 11.224991699114696,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 66057,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.192877412793962,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.084505521934034,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 29,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 14.078114706036104,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 66158,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.626833416242164,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.626833416242164,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 26,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 7.626833416242164,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 66282,
+    "stop": 121,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.999466922024908,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.96505790570933,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 24,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 10.977980786263629,
+        "maxDown": 0.0
+      }
+    }
+  },
+  {
+    "id": 66278,
+    "stop": 11,
+    "day": "2026-09-17",
+    "counts": {
+      "landmark_lap_elapsed_clock": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.916063026653802,
+        "maxDown": 0.0
+      },
+      "plus_two_history_phase": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.916063026653802,
+        "maxDown": 0.0
+      },
+      "plus_recursive_role": {
+        "pairs": 7,
+        "up60": 0,
+        "down1": 0,
+        "maxUp": 5.916063026653802,
+        "maxDown": 0.0
+      }
+    }
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "phase": "before",
+  "desktop": false,
+  "requests": [
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    }
+  ],
+  "checks": [
+    "lazy loading, standing context, keyboard disclosures, hollow history / filled forecast, short and long trips, 360/390/430/1280/640 CSS-pixel reflow"
+  ],
+  "errors": [],
+  "states": [
+    {
+      "scenario": "standing",
+      "text": "Past trips to this stop\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nRemaining wait + travel\n0 min\n23 min\n45 min\n\n8 recorded trips across 2 dates. Each dot is one completed journey. Darker, thicker dots are more recent.\n\nRecent-weighted median: 11 min\n\nRecent trips count more; weight halves every 2 days.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\n\nComparison captured Sep 17, 2:00 PM\n\nRefresh comparison"
+    }
+  ],
+  "refreshFocusWhilePending": {
+    "tag": "BODY",
+    "text": "About 10 min ⓘLikely 1–25 minRed arrival×About 10 minLikely arrival window: 1–25 minUse the early end of the estimated window when deciding when to reach your stop.Waiting at Winchester / Mansfield. The window may stay wide until the shuttle leaves.Shuttle#307Stops to pickup4Following shuttle · #309About 20 min laterThe following arrival is estimated in about 30 min from now. Both arrival estimates can change.Past trips to this stopLoading recorded trips…Forecast for this shuttle ▾Model estimate for this shuttleModel estimate for this shuttlePredicted pickup times for this shuttle. Taller stacks show times the forecast considers more likely.2:02 PM2:03 PM2:03 PM2:04 PM2:04 PM2:05 PM2:05 PM2:06 PM2:06 PM2:07 PM2:07 PM2:08 PM2:08 PM2:09 PM2:09 PM2:10 PM2:10 PM2:11 PM2:11 PM2:12 PM2:12 PM2:13 PM2:13 PM2:14 PM2:14 PM2:15 PM2:15 PM2:16 PM2:16 PM2:17 PM2:17 PM2:18 PM2:18 PM2:19 PM2:19 PM2:20 PM2:20 PM2:21 PM2:21 PM2:22 PM2:22 PM2:23 PM2:23 PM2:24 PM2:24 PM2:25 PM2:25 PM2:26 PM2:26 PM2:27 PM2:02 PM2:15 PM2:27 PM│ Estimate 2:10 PMPredicted pickup times for this shuttle. Taller stacks show times the forecast considers more likely."
+  }
+}

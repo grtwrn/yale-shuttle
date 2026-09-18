@@ -1,0 +1,46 @@
+{
+  "head": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "base": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "candidateDiff": false,
+  "cleanWorktreeAndIndex": true,
+  "builderFilesUnchanged": 30,
+  "byteIdenticalReproductions": [
+    "shell-current.generated.mts",
+    "pickup-census.jsonl",
+    "summary.json",
+    "boundaries.json",
+    "built-source-provenance.json"
+  ],
+  "historicalDecisions": 4688,
+  "relationCounts": {
+    "same-visit": 2490,
+    "raw-current": 1456,
+    "different-bus": 742
+  },
+  "connectedOutcomesRetained": 1400,
+  "worstOldRegressionRetainedSec": 442.82701916224846,
+  "sourceModules": 81,
+  "assetHashes": 20,
+  "browserRuns": [
+    {
+      "name": "browser-contract",
+      "states": 8,
+      "resourcesClosed": true
+    },
+    {
+      "name": "browser-extra-mobile",
+      "states": 8,
+      "resourcesClosed": true
+    },
+    {
+      "name": "browser-extra-desktop",
+      "states": 8,
+      "resourcesClosed": true
+    }
+  ],
+  "reviewScreenshotsAdded": 0,
+  "combinedScreenshots": {
+    "count": 196,
+    "bytes": 8857836
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "head": "77c32b80256215eb36516e7bb68c9d7664c7697e",
+  "base": "8de0eed1c6a869606272824fd3dcac753ce32836",
+  "exactPriorDiff": true,
+  "inputHashChecks": 13,
+  "mergedPresentationHashDifferences": [
+    "services/shuttle-v2/web/src/TransitMap.tsx"
+  ],
+  "shellArithmeticExact": true,
+  "reexecutedDecisionsPerArm": 4688,
+  "missingCases": 68,
+  "missingBusPolls": 34,
+  "classification": {
+    "(1, False)": 30,
+    "(29, True)": 14,
+    "(29, False)": 24
+  },
+  "connectedLegUses": 13598,
+  "connectedOutcomes": 1400,
+  "changedOutcomes": 30,
+  "restoredDestinationQuantilesExact": true,
+  "changedMAE": [
+    880.8808492743099,
+    396.8725333468484
+  ],
+  "largestRetainedRegression": {
+    "source": 63523,
+    "target": 63632,
+    "at": 1789644066335,
+    "changed": true,
+    "e0": -339.0629809391146,
+    "e1": 781.8900001013631
+  },
+  "builderArtifactsUnchanged": true,
+  "scope": "Research-only; no independent cold-restart determinism, fresh holdout, or population calibration claim."
+}

@@ -1,0 +1,16 @@
+{
+  "createdAtUTC": "2026-09-18T02:39:07.832128+00:00",
+  "objective": "Select bounded episode-clock trace cases independently of new neighbor candidates; prepare next round, no model change.",
+  "selection": "Top five sources per regulator by mean absolute archived RELEASE-ON arrival error across saved warmed first-occurrence checkpoints and both target endpoints. Include every phase/checkpoint; no duration or model-disagreement filtering. Retain previously audited sources and reference their existing evidence instead of repeating experiments.",
+  "comparator": "Archived final-development-score candidate field is the deployed Winchester release-ON arm (PR281 validation). It is not the old release-OFF baseline and not the new cycle-1 neighbor arm. Reuse for case selection only; a proposed change still needs current40af3c0 replay.",
+  "chronology": "Previously inspected Sep16\u201317 through13:14 ET. No fresh holdout claim. Existing source/chain/warm exclusions remain visible in source counts.",
+  "clockContract": "Saved since is the route tracker broad rest clock; pinnedAt is the stored physical pin. Their difference is not automatically error. First publication requires actual watcher receipt, never reconstructed raw-frame metadata.",
+  "next": "Trace selected new cases through observed approach/rest/pin/movement/confirmation and connected endpoint leg IDs. Audit second occurrences separately; no time subtraction or tracker change without complete current-code replay.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/final-development-score.json": "8780f3808af9f9a701f3a1082e0219baed8228df5d0c85797bb15b172c8131c3",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/final-meta.json": "6595956725c297d73a0cb4e5c9990e0fcfe18a25d70dfdd8535455122ad0f9aa",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/rest-origin-review.json": "4f18a0730dceb250037c2d7da5f6cefeb75399038a9e120d695307b256086f88",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/outcomes.db": "daf4702f128f47f010b6a2235e54196e0aacc5cc5b3db790cc8cdbc951a69b5e",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/select_clock_cases.py": "c34f2e7a4f07ec56a8107ae1e6c4a5a6aa94fc73801d47d3fce671889cb6daab"
+  }
+}

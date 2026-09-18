@@ -1,0 +1,63 @@
+{
+  "mode": "before",
+  "checks": [],
+  "snapshots": {
+    "feedback": "- text: Feedback\n- textbox \"Anything on your mind — bugs, ideas, confusing bits…\": \"Fixture feedback: please make the pickup sign easier to find.\"\n- text: How urgent?\n- button \"🔴 Urgent\"\n- button \"Normal\"\n- button \"💡 Nice to have\"\n- text: 📎 Attach screenshot or paste one\n- button \"Cancel\"\n- button \"Send\"",
+    "priorityHeights": [
+      {
+        "text": "🔴 Urgent",
+        "height": 36,
+        "pressed": null
+      },
+      {
+        "text": "Normal",
+        "height": 36,
+        "pressed": null
+      },
+      {
+        "text": "💡 Nice to have",
+        "height": 36,
+        "pressed": null
+      }
+    ],
+    "afterPrioritiesFocus": {
+      "tag": "BUTTON",
+      "text": "Cancel"
+    },
+    "feedbackErrorVisible": false,
+    "reply": "- textbox \"Add anything that helps…\": \"Fixture follow-up: I waited beside the signed stop.\"\n- text: 📎 Add screenshot or paste one\n- button \"Cancel\"\n- button \"Send\"",
+    "afterReplyFocus": {
+      "tag": "BUTTON",
+      "text": "Cancel"
+    },
+    "replyFailure": "- textbox \"Add anything that helps…\": \"Fixture follow-up: I waited beside the signed stop.\"\n- text: 📎 Add screenshot or paste one\n- button \"Cancel\"\n- button \"Send\"\n- text: Too many changes at once — give it a moment"
+  },
+  "requests": [
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/report",
+      "method": "POST"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports/901/update",
+      "method": "POST"
+    }
+  ],
+  "errors": [],
+  "completed": true
+}

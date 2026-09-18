@@ -1,0 +1,195 @@
+{
+  "scope": "Research/report files only; no controller state or publication marker",
+  "files": [
+    {
+      "path": "cycle-1/COMPARATOR_PLAN.json",
+      "bytes": 2200,
+      "sha256": "e459e8f640e88a9c48fa57c4ac764d9709f7e2eaf0cbd54e20be74cfa0565e0b"
+    },
+    {
+      "path": "cycle-1/PLAN.json",
+      "bytes": 4455,
+      "sha256": "9d9fd574d2e0c5ca9e9941326412497586d72871a73de0e178690a43f1be0fa9"
+    },
+    {
+      "path": "cycle-1/RESULTS.md",
+      "bytes": 11518,
+      "sha256": "55af1fa41903e491db2b650f78ac2a5da593e37281d1aa9ac832d5658ae37d88"
+    },
+    {
+      "path": "cycle-1/REVIEW_REQUEST.md",
+      "bytes": 2204,
+      "sha256": "6527eaaa29909c20bf032361bf6057f3a0eec7ca5de48b79aba1e8651d329233"
+    },
+    {
+      "path": "cycle-1/SCORES.md",
+      "bytes": 5644,
+      "sha256": "64340129b294121af3d96f4b3acd6b56d29a39910ce459da017b096fbbc2dfe5"
+    },
+    {
+      "path": "cycle-1/audit_regressions.py",
+      "bytes": 4527,
+      "sha256": "d25186e8d96ecbac641f443db5536c336b391198195219fb51963e06ca25b3d6"
+    },
+    {
+      "path": "cycle-1/cohort.json",
+      "bytes": 123096,
+      "sha256": "b6b77b1cbdd7d7e783af92e743fe8496e15c68c31d70bf1389aed0dc2c6bdcbe"
+    },
+    {
+      "path": "cycle-1/comparator.json",
+      "bytes": 313147,
+      "sha256": "d1fa71765b776f08b9e68e200127e354d4e5a4d9c2ee155c2f373319fb877e0b"
+    },
+    {
+      "path": "cycle-1/comparator.log",
+      "bytes": 468,
+      "sha256": "d7e51093f54183bf5096079045e19abd55d665509b9a9d2399319a9164da3bcc"
+    },
+    {
+      "path": "cycle-1/contract-tests.log",
+      "bytes": 104,
+      "sha256": "5d1376255ab3932190bf8756191ce6ec06d9169d12766072f88a48578c1e5cca"
+    },
+    {
+      "path": "cycle-1/export_comparator.mts",
+      "bytes": 4654,
+      "sha256": "bc70e32da46a913f5321418fd63b7a7ec980b33f4de8495b380098d6884fe8cb"
+    },
+    {
+      "path": "cycle-1/extract_landmarks.py",
+      "bytes": 20213,
+      "sha256": "3f3d533d5e111f51a823122fb5d153065336fef486bb3369f4e74f331d500572"
+    },
+    {
+      "path": "cycle-1/extraction-audit.json",
+      "bytes": 11935,
+      "sha256": "b02c067b8402d37da199ac00644f3bda864d019a128f8b48832a39caf134fa3d"
+    },
+    {
+      "path": "cycle-1/extraction.log",
+      "bytes": 605,
+      "sha256": "6568842ed05ed8582c87816b40588fa3144a98450b6a5a6f3481a986c206ebc7"
+    },
+    {
+      "path": "cycle-1/fit.log",
+      "bytes": 396,
+      "sha256": "4d83159d4e998dc6c4e9f7bfbaf6e4c30d894ead53e455f8e828a25b54135f51"
+    },
+    {
+      "path": "cycle-1/fit_landmarks.py",
+      "bytes": 7932,
+      "sha256": "63ab2f9405171d0f57938e7e41f6fdc4620359c4bee8231723358d2149bc8e1a"
+    },
+    {
+      "path": "cycle-1/fits.json",
+      "bytes": 43320,
+      "sha256": "f687e901cfab90c4be82e8747ce4c4f8293e799af410618f49bbf00f0675000f"
+    },
+    {
+      "path": "cycle-1/ineligible-landmarks.json",
+      "bytes": 63703,
+      "sha256": "c6d89951fd679b31574c235ed07c02d4a0e90cf2f9498ef131310ac1d3137c0e"
+    },
+    {
+      "path": "cycle-1/landmarks.jsonl",
+      "bytes": 15472940,
+      "sha256": "162ebbbe356ff91b10e8219ac52a85338a62d976d3362329114fc5ecd39b06e8"
+    },
+    {
+      "path": "cycle-1/predictions.jsonl",
+      "bytes": 1730183,
+      "sha256": "9774b55bf148dd8fd69dc8c26dc9a13ffed735aaa13aed81cd11029c950ce048"
+    },
+    {
+      "path": "cycle-1/regression-audit.log",
+      "bytes": 1658,
+      "sha256": "220b880455673c60c41bd0196f51f33e3b061c89133279ec57efd1cb388a6248"
+    },
+    {
+      "path": "cycle-1/regression-observed-frames.jsonl",
+      "bytes": 227822,
+      "sha256": "1fae1923404e98af163137bf678271d870d6713e2b851e865d7d0bab3eb6082a"
+    },
+    {
+      "path": "cycle-1/regression-record-audit.before-clock-label-fix.json",
+      "bytes": 41994,
+      "sha256": "2e5722aac3f42c0de75d45bba30b3dc1103d7dde7ec0dabebc9324109e7af372"
+    },
+    {
+      "path": "cycle-1/regression-record-audit.json",
+      "bytes": 42995,
+      "sha256": "fcfa3b43b3a356708e4b1a7b07c732a628c0b1edac3f29809ef065471c99411c"
+    },
+    {
+      "path": "cycle-1/score.log",
+      "bytes": 2120,
+      "sha256": "2e5030a1558cae3d4213d4a4c8a8de7e0cc0c39de2ddc64e93f5e8da3b76bd13"
+    },
+    {
+      "path": "cycle-1/score_landmarks.py",
+      "bytes": 5519,
+      "sha256": "0622725d6df4430f6631c11b0f1759021b173f043d026a847b42a0f9f7882384"
+    },
+    {
+      "path": "cycle-1/scores.json",
+      "bytes": 233070,
+      "sha256": "3d5df018c0dc667396863193437ea5238ea28dd8c8761091dc192ae171012b0d"
+    },
+    {
+      "path": "cycle-1/test_landmark_contract.py",
+      "bytes": 3138,
+      "sha256": "a21d9b18d5e590b3a05cd368961153bafa7cb906b677b443c54c90e61fe6d948"
+    },
+    {
+      "path": "cycle-1/top-regressions.json",
+      "bytes": 162177,
+      "sha256": "980e9ce68a605557dc701281c9a652a56ed171a01c5e87b6a61c265ec597b719"
+    },
+    {
+      "path": "cycle-1/typecheck.log",
+      "bytes": 69,
+      "sha256": "3555ad204936a136770b6f8c1dd8933af3ae05ad9907ed8e7dbcf3cda0f113ed"
+    },
+    {
+      "path": "cycle-2/PLAN.json",
+      "bytes": 2344,
+      "sha256": "9b39ea04c791b6de82c9359937eab422d89899a0db1756d37e28661abfffc120"
+    },
+    {
+      "path": "cycle-2/RESULTS.md",
+      "bytes": 3849,
+      "sha256": "5e0c1a602d00c9bbad88af2f70c79b8f03770cf539bb2bd01c5ddfecd9bc4f57"
+    },
+    {
+      "path": "cycle-2/case-manifest.json",
+      "bytes": 266225,
+      "sha256": "1d67f491ebd01d2617dd99dd3c40bab6638ef75e5bcbc0325477748c3cc34198"
+    },
+    {
+      "path": "cycle-2/connected-time-decomposition.json",
+      "bytes": 31929,
+      "sha256": "ee7f9733d06774cabfd661a209a0cc320a0d09a3b106d47a7e695ef9bf13d944"
+    },
+    {
+      "path": "cycle-2/decompose_selected.py",
+      "bytes": 2561,
+      "sha256": "dc95231d5699bdfb95d3d6b7a382370a524ce419f60a648564ece93d486bb7cf"
+    },
+    {
+      "path": "cycle-2/decomposition.log",
+      "bytes": 2139,
+      "sha256": "d39b24a3ed326b96bd6e963c528f3488ce001f06380a77822cb958b4c892ec5d"
+    },
+    {
+      "path": "cycle-2/select_clock_cases.py",
+      "bytes": 5109,
+      "sha256": "c34f2e7a4f07ec56a8107ae1e6c4a5a6aa94fc73801d47d3fce671889cb6daab"
+    },
+    {
+      "path": "cycle-2/selection.log",
+      "bytes": 6522,
+      "sha256": "09c2b30c5b7a56e892cda8b7e730c3d1a0bb26d9790f38757b3ea69f25b18d47"
+    }
+  ]
+}

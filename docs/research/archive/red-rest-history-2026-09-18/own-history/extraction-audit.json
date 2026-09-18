@@ -1,0 +1,138 @@
+{
+  "cohortVisits": 285,
+  "trainVisits": 160,
+  "cohortByDay": {
+    "2026-09-03": 24,
+    "2026-09-04": 30,
+    "2026-09-08": 27,
+    "2026-09-09": 21,
+    "2026-09-10": 31,
+    "2026-09-11": 27,
+    "2026-09-14": 28,
+    "2026-09-15": 21,
+    "2026-09-16": 33,
+    "2026-09-17": 31,
+    "2026-09-18": 12
+  },
+  "featureNames": [
+    "previous_winchester",
+    "previous_winchester_missing",
+    "previous_union",
+    "previous_union_missing",
+    "cedar117",
+    "cedar117_missing",
+    "cedar13",
+    "cedar13_missing",
+    "lap_rest_sum",
+    "lap_coverage",
+    "last_rest_age",
+    "partial_duration",
+    "no_lap_last_rest"
+  ],
+  "arms": [
+    "lap_elapsed_clock",
+    "plus_own_union_age",
+    "plus_previous_winchester_hold",
+    "plus_previous_union_hold",
+    "plus_cedar_holds",
+    "plus_current_lap_rest",
+    "plus_all_own_history"
+  ],
+  "cols": {
+    "lap_elapsed_clock": [],
+    "plus_own_union_age": [],
+    "plus_previous_winchester_hold": [
+      0,
+      1
+    ],
+    "plus_previous_union_hold": [
+      2,
+      3
+    ],
+    "plus_cedar_holds": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "plus_current_lap_rest": [
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "plus_all_own_history": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ]
+  },
+  "referenceLap": 3231.6625,
+  "referenceUnionAge": 1402.2305000000001,
+  "changedVsPrimary": {
+    "primary": [],
+    "earlier120": [],
+    "maxgap600": [
+      48783
+    ]
+  },
+  "sourceHash": "2bec0ed3de36b9c956993b344c5c0cf0cdfa3dc24ce82c524f9e56ed574da970",
+  "source65237Used": [
+    {
+      "id": 65720,
+      "regime": "primary",
+      "history": {
+        "id": 65237,
+        "stop": 11,
+        "anchor": 1789656325854,
+        "departedAt": 1789656360839,
+        "knownAt": 1789656480839,
+        "duration": null,
+        "reason": "audited_truncated_duration_clock_retained",
+        "clockUsable": true,
+        "outcome": "stopped"
+      }
+    },
+    {
+      "id": 65720,
+      "regime": "earlier120",
+      "history": {
+        "id": 65237,
+        "stop": 11,
+        "anchor": 1789656325854,
+        "departedAt": 1789656360839,
+        "knownAt": 1789656480839,
+        "duration": null,
+        "reason": "audited_truncated_duration_clock_retained",
+        "clockUsable": true,
+        "outcome": "stopped"
+      }
+    },
+    {
+      "id": 65720,
+      "regime": "maxgap600",
+      "history": {
+        "id": 65237,
+        "stop": 11,
+        "anchor": 1789656325854,
+        "departedAt": 1789656360839,
+        "knownAt": 1789656970892.0,
+        "duration": null,
+        "reason": "audited_truncated_duration_clock_retained",
+        "clockUsable": true,
+        "outcome": "stopped"
+      }
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "head": "77c32b80256215eb36516e7bb68c9d7664c7697e",
+  "sourceHashes": {
+    "services/shuttle-v2/web/src/journeyArrival.ts": "1ddc72deef4a2be85c6286d357a80b15d537273904377cd78ec6bb15508c0a5f",
+    "services/shuttle-v2/web/src/TransitMap.tsx": "a7ec970d4d7d3cc1d7416f9b246e5f0dc73a6bc2e5d2ef38a33a654b7ec54818",
+    "services/shuttle-v2/web/src/atStopJourney.test.ts": "395be66c52a75689d6a33f69b244151e2f9b311f3be9bd0f23e4a3e74730e60a",
+    "docs/server-side-eta.md": "79eea46fc520db3cff8abdec1efbbf6d5d5cf82c360a94f0c51faa97155c6d43"
+  },
+  "originalCycle6HashesPreserved": 46,
+  "exactPrototypeDecisions": 4688,
+  "pairedConnectedOutcomes": 1400,
+  "restoredOutcomes": 30,
+  "retainedWorstRegression": {
+    "session": "63523:4:0",
+    "at": 1789644066335,
+    "sourceId": 63523,
+    "targetVisit": 63632,
+    "bus": "316",
+    "actualConnectedSec": 936.1583949181681,
+    "changed": true,
+    "baseline": {
+      "totalSec": 597.0954139790535,
+      "errorSec": -339.0629809391146,
+      "journeyAvailable": false,
+      "widthSec": null,
+      "earlyMiss": false,
+      "lateMiss": false
+    },
+    "ordered": {
+      "totalSec": 1718.0483950195312,
+      "errorSec": 781.8900001013631,
+      "journeyAvailable": true,
+      "widthSec": 1034.0,
+      "earlyMiss": true,
+      "lateMiss": false
+    },
+    "absErrorIncreaseSec": 442.82701916224846
+  },
+  "changedScores": {
+    "baseline": {
+      "n": 30,
+      "sources": 8,
+      "mae": 880.8808492743099,
+      "medianAbsError": 664.6435330499874,
+      "p90AbsError": 1944.2079809391146,
+      "maxAbsError": 2150.98308516086,
+      "meanSignedError": -880.8808492743099,
+      "journeyAvailable": 0,
+      "earlyMiss": 0,
+      "lateMiss": 0,
+      "meanWidthSec": null
+    },
+    "ordered": {
+      "n": 30,
+      "sources": 8,
+      "mae": 396.8725333468484,
+      "medianAbsError": 284.66550005068154,
+      "p90AbsError": 828.858,
+      "maxAbsError": 851.2549998986369,
+      "meanSignedError": 105.12166670045437,
+      "journeyAvailable": 30,
+      "earlyMiss": 7,
+      "lateMiss": 6,
+      "meanWidthSec": 886.4333333333333
+    }
+  },
+  "stability": {
+    "baseline": {
+      "absoluteArrivalJumpsOver60": 117,
+      "up": 74,
+      "down": 43,
+      "maxMagnitudeSec": 3666.08608516086,
+      "topChoiceChurn": 42
+    },
+    "ordered": {
+      "absoluteArrivalJumpsOver60": 83,
+      "up": 56,
+      "down": 27,
+      "maxMagnitudeSec": 3666.08608516086,
+      "topChoiceChurn": 42
+    },
+    "fallthrough": {
+      "absoluteArrivalJumpsOver60": 78,
+      "up": 58,
+      "down": 20,
+      "maxMagnitudeSec": 2217.992,
+      "topChoiceChurn": 42
+    }
+  },
+  "walkingCases": 5,
+  "deadlineStates": 3,
+  "screenshotFilesBothTeams": 141,
+  "screenshotBytesBothTeams": 5889904,
+  "limits": "Existing connected outcomes independently audited in round6; this checks identity/forecast transfer, not a new raw-GPS/DB audit or holdout. No full suite/staging/production claim.",
+  "_publication": {
+    "originalSource": "overnight-2026-09-17/eta/cycle-7/evidence.json",
+    "originalSha256": "0aee873b2af48539d2f111787a65388cc2f333cfc504035009094f3b2294d23e",
+    "omittedArrays": [
+      {
+        "path": "stability.baseline.jumps",
+        "items": 117,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "stability.ordered.jumps",
+        "items": 83,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "stability.fallthrough.jumps",
+        "items": 78,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

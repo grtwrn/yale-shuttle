@@ -1,0 +1,15 @@
+{
+  "source": "https://yale-shuttle.fly.dev",
+  "errors": [],
+  "checks": [
+    "390px and 320px layouts",
+    "buffer changes destination target",
+    "deadline survives reload",
+    "trip details, pickup gap and Escape focus still work",
+    "passed deadline rejected",
+    "empty time remains editable",
+    "failed feed suppresses shuttle recommendation",
+    "clear returns to normal planner"
+  ],
+  "comparison": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach LEPH / 60 College by 12:39 PM · 10 min before class.\n\nYour arrival is at risk\n\nNo available option fits your buffer with enough information. Check the times below.\n\nEstimated arrival at destination\n\nBlue Day · #38\n12:30 PM–12:41 PM\nMay use your buffer · View trip ›\nWalk\nAbout 12:42 PM\nMay use your buffer · View trip ›\nHow to read these times ▾"
+}

@@ -1,0 +1,17 @@
+{
+  "createdAtUTC": "2026-09-18T03:01:39.030012+00:00",
+  "comparatorCommit": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "purpose": "Current-code release-ON trace and exact retrospective outcome decomposition for the already-frozen ten selected sources. No candidate fit or change.",
+  "replay": "Continuous recorded GPS/reconstructed collector clocks; no future outcomes in forecasts; pre-Sep14 marginal tables and pre-Sep10 release fit as in archived development replay. Include 11/48/4 and both target occurrences. Warm >=600 seconds. Parity check full ServerEta at fixed cadence.",
+  "outcomes": "Exact connected legs/visits; arrived_at endpoint label. First plus one full connected lap for second. Persist all missing-chain and missing-forecast reasons. Timing decomposition labels are retrospective only.",
+  "interpretation": "Selected worst cases are a localization diagnostic, not unbiased aggregate evaluation or fresh holdout. Compare forecasts to archived release-ON for existing saved checkpoints. Do not subtract medians as if additive components. Within-leg holds and between-leg residence are distinct recorded intervals, neither is pure drive.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/case-manifest.json": "1d67f491ebd01d2617dd99dd3c40bab6638ef75e5bcbc0325477748c3cc34198",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/raw-frames.jsonl": "2f65e30e8986a7cada4f5527adb77444748367d62bf68e508c17edd0ba25bcb6",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/outcomes.db": "daf4702f128f47f010b6a2235e54196e0aacc5cc5b3db790cc8cdbc951a69b5e",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/baseline-patch.json": "f7adb4932de11f6fdcd92fd950baefe1a7561b8b8617143526fd96b61ae8478d",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/params.json": "ab2e69d08bf7d09a969f3a3645663bf47a66ed1b5a318b633cd015d5af81e328",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-pre-sep10.json": "be2350420f438d609e12d18b458de5da06578a2533df757efcbbade17b9c4fc8",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/payload.json": "a9654f864661923f97b4c240defaf62b2a6cbafec7805f920bb9a925f4fd38d6"
+  }
+}

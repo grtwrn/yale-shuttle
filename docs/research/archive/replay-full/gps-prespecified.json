@@ -1,0 +1,154 @@
+[
+  {
+    "at": "2026-09-11T09:34:14.690Z",
+    "route": 9,
+    "board": 26,
+    "alight": 127,
+    "before": {
+      "bus": "325",
+      "eta": 1648.3040448156132
+    },
+    "after": {
+      "bus": "325",
+      "eta": 2399.230276769104
+    },
+    "why": "bus 325: pickup hop 12, return hop 19, destination hop 20",
+    "supportsOrder": true,
+    "gpsPickup": "2026-09-11T09:52:34.844000+00:00",
+    "gpsPickupAgain": "2026-09-11T10:11:35.011000+00:00",
+    "gpsDestination": "2026-09-11T10:14:45.012000+00:00"
+  },
+  {
+    "at": "2026-09-11T12:00:10.407Z",
+    "route": 9,
+    "board": 26,
+    "alight": 127,
+    "before": {
+      "bus": "325",
+      "eta": 192.02909094774122
+    },
+    "after": {
+      "bus": "325",
+      "eta": 888.661395182271
+    },
+    "why": "bus 325: pickup hop 1, return hop 8, destination hop 9",
+    "supportsOrder": true,
+    "gpsPickup": "2026-09-11T12:03:20.437000+00:00",
+    "gpsPickupAgain": "2026-09-11T12:12:20.558000+00:00",
+    "gpsDestination": "2026-09-11T12:16:00.577000+00:00"
+  },
+  {
+    "at": "2026-09-11T15:00:10.177Z",
+    "route": 9,
+    "board": 26,
+    "alight": 25,
+    "before": {
+      "bus": "325",
+      "eta": 476.6687677240645
+    },
+    "after": {
+      "bus": "301",
+      "eta": 954.2419365826465
+    },
+    "why": "bus 325: pickup hop 4, return hop 21, destination hop 22",
+    "supportsOrder": true,
+    "gpsPickup": "2026-09-11T15:06:11.746000+00:00",
+    "gpsPickupAgain": "2026-09-11T15:58:35.501000+00:00",
+    "gpsDestination": "2026-09-11T15:59:51.641000+00:00"
+  },
+  {
+    "at": "2026-09-11T18:00:06.956Z",
+    "route": 9,
+    "board": 26,
+    "alight": 25,
+    "before": {
+      "bus": "325",
+      "eta": 583.5056504536251
+    },
+    "after": {
+      "bus": "301",
+      "eta": 621.6687422719338
+    },
+    "why": "bus 325: pickup hop 5, return hop 22, destination hop 23",
+    "supportsOrder": true,
+    "gpsPickup": "2026-09-11T18:06:17.031000+00:00",
+    "gpsPickupAgain": "2026-09-11T18:57:14.387000+00:00",
+    "gpsDestination": "2026-09-11T18:58:34.403000+00:00"
+  },
+  {
+    "at": "2026-09-11T09:31:24.667Z",
+    "route": 10,
+    "board": 25,
+    "alight": 26,
+    "before": {
+      "bus": "329",
+      "eta": 1419.921409402083
+    },
+    "after": {
+      "bus": "329",
+      "eta": 1989.7538371259197
+    },
+    "why": "bus 329: pickup hop 6, return hop 12, destination hop 13",
+    "supportsOrder": true,
+    "gpsPickup": "2026-09-11T09:51:14.843000+00:00",
+    "gpsPickupAgain": "2026-09-11T10:00:14.913000+00:00",
+    "gpsDestination": "2026-09-11T10:01:54.919000+00:00"
+  },
+  {
+    "at": "2026-09-11T12:00:10.407Z",
+    "route": 10,
+    "board": 127,
+    "alight": 26,
+    "before": {
+      "bus": "329",
+      "eta": 654.5357555869164
+    },
+    "after": {
+      "bus": "332",
+      "eta": 1248.8484499534143
+    },
+    "why": "bus 329: pickup hop 6, return hop 12, destination hop 13",
+    "supportsOrder": true,
+    "gpsPickup": "2026-09-11T12:12:10.555000+00:00",
+    "gpsPickupAgain": "2026-09-11T12:51:10.896000+00:00",
+    "gpsDestination": "2026-09-11T12:55:37.364000+00:00"
+  },
+  {
+    "at": "2026-09-11T15:00:10.177Z",
+    "route": 10,
+    "board": 127,
+    "alight": 26,
+    "before": {
+      "bus": "329",
+      "eta": 717.7030686366577
+    },
+    "after": {
+      "bus": "332",
+      "eta": 1372.3923073928709
+    },
+    "why": "bus 329: pickup hop 5, return hop 11, destination hop 12",
+    "supportsOrder": true,
+    "gpsPickup": "2026-09-11T15:08:54.590000+00:00",
+    "gpsPickupAgain": "2026-09-11T15:51:35.407000+00:00",
+    "gpsDestination": "2026-09-11T15:56:41.569000+00:00"
+  },
+  {
+    "at": "2026-09-11T18:00:06.956Z",
+    "route": 10,
+    "board": 127,
+    "alight": 26,
+    "before": {
+      "bus": "329",
+      "eta": 661.3523681548894
+    },
+    "after": {
+      "bus": "332",
+      "eta": 1239.3135314201418
+    },
+    "why": "bus 329: pickup hop 6, return hop 12, destination hop 13",
+    "supportsOrder": true,
+    "gpsPickup": "2026-09-11T18:11:37.323000+00:00",
+    "gpsPickupAgain": "2026-09-11T18:50:34.329000+00:00",
+    "gpsDestination": "2026-09-11T19:05:54.492000+00:00"
+  }
+]

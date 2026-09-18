@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "Default permission copy is truthful; focus reaches same bell before request; delayed granted resolution after leaving Map preserves Issues focus.",
+    "Armed stop/lead persists through actual reload; transient chooser does not, and reload never requests permission.",
+    "Already-eligible stale, missing, failed and empty-fleet inputs do not fire; fresh recovery fires once for first occurrence #307 and persists that identity.",
+    "Arrival threshold disarms automatically without losing focus on the same bell.",
+    "Storage-write failure still permits in-page arm/disarm/cancel with correct bell focus; IDs are unique."
+  ],
+  "errors": [],
+  "requests": 13,
+  "completed": true,
+  "resourcesClosed": true
+}

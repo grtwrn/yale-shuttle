@@ -1,0 +1,34 @@
+{
+  "n": 4688,
+  "baselineExact": 4688,
+  "arms": {
+    "baseline": {
+      "available": 4620,
+      "gained": 0,
+      "lost": 0,
+      "changed": 0,
+      "busChanged": 0,
+      "orderChanged": 0,
+      "journeyBusDifferent": 742
+    },
+    "ordered": {
+      "available": 4650,
+      "gained": 30,
+      "lost": 0,
+      "changed": 30,
+      "busChanged": 0,
+      "orderChanged": 0,
+      "journeyBusDifferent": 742
+    },
+    "fallthrough": {
+      "available": 4688,
+      "gained": 68,
+      "lost": 0,
+      "changed": 68,
+      "busChanged": 38,
+      "orderChanged": 16,
+      "journeyBusDifferent": 742
+    }
+  },
+  "scope": "Artifact-only numerical shell counterfactual; stable plans preserved, frozen observed wires, no tracker or forecast-row change. Actual rendered candidate not validated."
+}

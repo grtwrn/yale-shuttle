@@ -1,0 +1,14 @@
+{
+  "outcome": "research",
+  "summary": "Found the cause of restart-dependent forecasts: movement-kernel caching depends on the first caller. An artifact-only correction restored exact parity across 78 polls and 10,592 arrival rows; broader outcome validation remains necessary. Also verified 487 recorded bus samples without resolving the 38 pickup uncertainties. Evidence and handoff saved in eta/cycle-13. Application files and HEAD remain unchanged.",
+  "next_task": "Review cycle-13/REVIEW_REQUEST.md, then coordinate a bounded all-route, connected-outcome evaluation of the fixed cache diagnostic. Preserve both occurrences, legitimate regressions and the recorded tail changes.",
+  "tests": [
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-13/audit_receipts.py — passed; 487 samples audited.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-13/verify_receipts.py — passed after correcting a report-counter error; 130 exact database matches and all prior outcomes preserved.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-13/cache/run.sh — passed; both arms completed warm and fresh-process replay.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-13/cache/score.py — passed after correcting quantile shape/order handling; earlier results preserved.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-13/cache/verify.py — passed; exact diagnostic restart parity, both occurrences and eight pre-existing negative lower bounds retained.",
+    "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-13/cache/tail_probe.mts — passed; largest interval change traced to the existing mixture threshold.",
+    "git diff --check; git diff --exit-code; git diff --cached --exit-code; git status --porcelain — passed; checkout and index clean."
+  ]
+}

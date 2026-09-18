@@ -1,0 +1,12 @@
+{
+  "head": "373505d5076f21a08de69d9587be9b2a55956642",
+  "base": "373505d5076f21a08de69d9587be9b2a55956642",
+  "sources": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "0d58d8d24f693b35f579cb2773d28933ae27002b86b54ebd95f567cdfac3aa88",
+    "services/shuttle-v2/scripts/empty-service-check.mjs": "ff92d71672caf980147d5becfdec7b70b6e034a7c06171378c7b263a1c8bed4e"
+  },
+  "numerical_options_sha256": "105a01ac51b521b5029ef37b850ea47650023a96076adbe881ccab89c59a1e1c",
+  "map_filter_sha256": "9b43ea91e840e7b6d6d38857f10ff2b474c1fba663e68f2dcfce656e8ed178e8",
+  "poll_only_adds_presentation_flag": true,
+  "index_empty": true
+}

@@ -1,0 +1,50 @@
+{
+  "verdict": "research_only",
+  "summary": "Independently reproduced the cache defect and diagnostic restart parity across 78 polls and 10,592 arrival rows. Receipt evidence leaves all 38 pickup cases unresolved. Warm forecast tails still change materially; no production approval. Review saved in eta/independent-review-round-12.md. Checkout and builder evidence preserved.",
+  "head_sha": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "base_sha": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "next_task": "Controller should scope complete Red and all-route connected-outcome evaluation of the fixed diagnostic, preserving causal calibration, both occurrences, legitimate regressions and negative bounds. Test tails, rider decisions, forward tracking, bus-order permutations and multiple fresh-process restarts.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-12/verify_receipts.py",
+      "exit_code": 0,
+      "result": "Verified 487 samples, 130 surrounding database matches, input hashes and retained outcomes; zero exact decision captures."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-12/cache/run.sh",
+      "exit_code": 0,
+      "result": "Both arms completed warm and fresh-process replay; all four outputs reproduce byte-for-byte."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-12/independent_compare.py",
+      "exit_code": 0,
+      "result": "Independent occurrence joins confirm 1,817 changed current-code rows versus zero diagnostic restart changes; all 58 builder files preserved."
+    },
+    {
+      "command": "node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-12/kernel-audit.mjs",
+      "exit_code": 0,
+      "result": "396 buckets demonstrate current order dependence; 1,188 diagnostic formula/order checks and eight boundary checks pass."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-12/fullstate.sh",
+      "exit_code": 0,
+      "result": "Complete per-vehicle model entries, seenAt and wires match across 78 polls with prepopulated versus empty kernel caches."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-12/receipt-timing-audit.py",
+      "exit_code": 1,
+      "result": "Initial reviewer fixture confused the prior standing position with the immediately preceding fix; failure preserved."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-12/receipt-timing-audit.py",
+      "exit_code": 0,
+      "result": "Corrected fixture verifies nine source clocks and retained pin: excursion was 95.42 m from the standing position, 65.28 m from the preceding fix."
+    },
+    {
+      "command": "git rev-parse HEAD && git diff --check && git diff --exit-code 8aa67bd7f3883598f9458d825d97a52cbc004e0f HEAD && git diff --exit-code && git diff --cached --exit-code && git status --porcelain",
+      "exit_code": 0,
+      "result": "Exact head/base confirmed; candidate diff, checkout and index remain clean."
+    }
+  ]
+}

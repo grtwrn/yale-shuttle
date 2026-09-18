@@ -1,0 +1,14 @@
+{
+  "outcome": "research",
+  "summary": "Found a pickup smoothing defect that carries future-lap estimates into already-arrived stop rows. Saved reproducible decision evidence and review notes in cycle-4. Application code and HEAD remain unchanged.",
+  "next_task": "Independently review cycle-4/RESULTS.md, then repair smoothing occurrence identity while preserving both upcoming arrivals. Use continuous-prefix replay until the documented fresh-process checkpoint divergence is resolved.",
+  "tests": [
+    "Locked capture_fleet.mts: passed; 11,081 polls, 160,496 wire rows, 6,025 exact prior forecast/distribution matches.",
+    "Locked decision_replay.mts: passed after correcting a floating-point assertion; 4,688 decisions across 40 persistent sessions.",
+    "Locked Vite build: passed. Locked browser_parity.mjs: passed; 156 actual-shell comparisons across two complete sessions.",
+    "outcome_audit.py, pooling_audit.py and verify_decisions.py: passed; 1,420 connected outcome labels, 3,268 explicit unmatched cases and 101 positive-ETA zero-hop rows.",
+    "Locked observe_pooling.mts: 423 same-process parity checks; 19 raw zero-arrival rows became positive after pooling.",
+    "verify_fresh_fixture.mts: diagnosed nonparity—1,828 numeric rows differed, maximum 3,768 seconds. This is not a passing checkpoint comparison.",
+    "git diff --check, worktree/index checks and HEAD verification: passed; clean at cff3b2a6b7ad6cdd2f899bb4d564a4c03dae2d37."
+  ]
+}

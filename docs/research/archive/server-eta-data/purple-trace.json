@@ -1,0 +1,707 @@
+{
+ "generatedAt": "2026-09-16T17:15:28.240Z",
+ "config": {
+  "SERVER_ETA": true,
+  "captureFiles": [
+   "/home/gwarren/projects/yale-shuttle-watcher/server-eta-data/history-positions.jsonl"
+  ],
+  "REPLAY_DB": "/home/gwarren/projects/yale-shuttle-watcher/server-eta-data/history.db",
+  "CLIENT_ROOT": "/home/gwarren/projects/yale-shuttle-watcher/server-eta-2026-09-16/services/shuttle-v2",
+  "PAYLOAD_PATCH": "/home/gwarren/projects/yale-shuttle-watcher/server-eta-data/history-patch.json",
+  "POP": "none",
+  "EVERY_MS": 600000,
+  "MAX_WAIT_MS": 2700000,
+  "SAMPLE_MS": 5000,
+  "CANARY_MS": 15000,
+  "CALIB_LAG_MS": 0,
+  "FROM": null,
+  "TO": null,
+  "DETECTOR_FROM": "2026-09-10T08:36:11.903Z"
+ },
+ "tree": {
+  "root": "/home/gwarren/projects/yale-shuttle-watcher/server-eta-2026-09-16/services/shuttle-v2",
+  "head": "505462e",
+  "dirty": false,
+  "branch": "feat/server-eta-live",
+  "store": "eta",
+  "nextRule": "identity (#74)"
+ },
+ "data": {
+  "positions": 177895,
+  "polls": 13873,
+  "start": "2026-09-10T08:36:11.903Z",
+  "end": "2026-09-11T03:59:55.900Z"
+ },
+ "population": {
+  "focus": [
+   "Purple"
+  ],
+  "holdout": [],
+  "chain": null,
+  "riders": 1,
+  "bySource": {
+   "uniform": 0,
+   "targeted": 0,
+   "chain": 0,
+   "named": 1
+  },
+  "skipped": {}
+ },
+ "summary": {
+  "all": {
+   "waits": 1,
+   "arrived": 1,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 0,
+   "scored": 1,
+   "medianWaitMin": 1.6,
+   "p90WaitMin": 1.6,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 0,
+    "earlyOver60Pct": 0,
+    "lateOver60Pct": 0
+   },
+   "interval": {
+    "n": 1,
+    "insidePct": 100,
+    "earlyPct": 0,
+    "latePct": 0,
+    "medianWidthSec": 1643
+   },
+   "pctJump180": 100,
+   "pctJump300": 0,
+   "pctReversal60": 100,
+   "pctStrand": 100,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 100,
+   "pctPinChanged": 0,
+   "pctPinRight": 100,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 0,
+   "drops": 0,
+   "dropsDeclined": 0,
+   "dropsRepriced": 0,
+   "worstDrift": {
+    "p50": 235,
+    "p90": 235,
+    "max": 235
+   }
+  },
+  "byRoute": {
+   "Purple": {
+    "waits": 1,
+    "arrived": 1,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 1,
+    "medianWaitMin": 1.6,
+    "p90WaitMin": 1.6,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 0,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 0
+    },
+    "interval": {
+     "n": 1,
+     "insidePct": 100,
+     "earlyPct": 0,
+     "latePct": 0,
+     "medianWidthSec": 1643
+    },
+    "pctJump180": 100,
+    "pctJump300": 0,
+    "pctReversal60": 100,
+    "pctStrand": 100,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 100,
+    "pctPinChanged": 0,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 235,
+     "p90": 235,
+     "max": 235
+    }
+   }
+  },
+  "worstStops": [],
+  "worstWaits": [
+   {
+    "id": "Purple|24|2026-09-10T13:30:00.000Z",
+    "label": "Purple",
+    "stopId": 24,
+    "worstDriftSec": 235,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:03 About 7 min\nLikely 1–27 min | 13:31:13 About 5 min\nLikely <1–27 min | 13:31:23 About 5 min\nLikely <1–28 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:31:33 About <1 min\nLikely <1–73 min"
+   }
+  ]
+ },
+ "summaryCanaryCadence": {
+  "all": {
+   "waits": 1,
+   "arrived": 1,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 0,
+   "scored": 1,
+   "medianWaitMin": 1.6,
+   "p90WaitMin": 1.6,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 0,
+    "earlyOver60Pct": 0,
+    "lateOver60Pct": 0
+   },
+   "interval": {
+    "n": 1,
+    "insidePct": 100,
+    "earlyPct": 0,
+    "latePct": 0,
+    "medianWidthSec": 1643
+   },
+   "pctJump180": 100,
+   "pctJump300": 0,
+   "pctReversal60": 100,
+   "pctStrand": 0,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 100,
+   "pctPinChanged": 0,
+   "pctPinRight": 100,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 0,
+   "drops": 0,
+   "dropsDeclined": 0,
+   "dropsRepriced": 0,
+   "worstDrift": {
+    "p50": 225,
+    "p90": 225,
+    "max": 225
+   }
+  },
+  "byRoute": {
+   "Purple": {
+    "waits": 1,
+    "arrived": 1,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 1,
+    "medianWaitMin": 1.6,
+    "p90WaitMin": 1.6,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 0,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 0
+    },
+    "interval": {
+     "n": 1,
+     "insidePct": 100,
+     "earlyPct": 0,
+     "latePct": 0,
+     "medianWidthSec": 1643
+    },
+    "pctJump180": 100,
+    "pctJump300": 0,
+    "pctReversal60": 100,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 100,
+    "pctPinChanged": 0,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 225,
+     "p90": 225,
+     "max": 225
+    }
+   }
+  },
+  "worstStops": [],
+  "worstWaits": [
+   {
+    "id": "Purple|24|2026-09-10T13:30:00.000Z",
+    "label": "Purple",
+    "stopId": 24,
+    "worstDriftSec": 225,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:18 About 5 min\nLikely <1–27 min | 13:31:33 About <1 min\nLikely <1–73 min"
+   }
+  ]
+ },
+ "focus": {
+  "all": {
+   "waits": 1,
+   "arrived": 1,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 0,
+   "scored": 1,
+   "medianWaitMin": 1.6,
+   "p90WaitMin": 1.6,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 0,
+    "earlyOver60Pct": 0,
+    "lateOver60Pct": 0
+   },
+   "interval": {
+    "n": 1,
+    "insidePct": 100,
+    "earlyPct": 0,
+    "latePct": 0,
+    "medianWidthSec": 1643
+   },
+   "pctJump180": 100,
+   "pctJump300": 0,
+   "pctReversal60": 100,
+   "pctStrand": 100,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 100,
+   "pctPinChanged": 0,
+   "pctPinRight": 100,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 0,
+   "drops": 0,
+   "dropsDeclined": 0,
+   "dropsRepriced": 0,
+   "worstDrift": {
+    "p50": 235,
+    "p90": 235,
+    "max": 235
+   }
+  },
+  "byRoute": {
+   "Purple": {
+    "waits": 1,
+    "arrived": 1,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 1,
+    "medianWaitMin": 1.6,
+    "p90WaitMin": 1.6,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 0,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 0
+    },
+    "interval": {
+     "n": 1,
+     "insidePct": 100,
+     "earlyPct": 0,
+     "latePct": 0,
+     "medianWidthSec": 1643
+    },
+    "pctJump180": 100,
+    "pctJump300": 0,
+    "pctReversal60": 100,
+    "pctStrand": 100,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 100,
+    "pctPinChanged": 0,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 235,
+     "p90": 235,
+     "max": 235
+    }
+   }
+  },
+  "worstStops": [],
+  "worstWaits": [
+   {
+    "id": "Purple|24|2026-09-10T13:30:00.000Z",
+    "label": "Purple",
+    "stopId": 24,
+    "worstDriftSec": 235,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:03 About 7 min\nLikely 1–27 min | 13:31:13 About 5 min\nLikely <1–27 min | 13:31:23 About 5 min\nLikely <1–28 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:31:33 About <1 min\nLikely <1–73 min"
+   }
+  ]
+ },
+ "holdout": {
+  "all": {
+   "waits": 0,
+   "arrived": 0,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 0,
+   "scored": 0,
+   "medianWaitMin": null,
+   "p90WaitMin": null,
+   "firstSight": {
+    "medianAbsSec": null,
+    "p90AbsSec": null,
+    "earlyOver60Pct": null,
+    "lateOver60Pct": null
+   },
+   "interval": {
+    "n": 0,
+    "insidePct": null,
+    "earlyPct": null,
+    "latePct": null,
+    "medianWidthSec": null
+   },
+   "pctJump180": 0,
+   "pctJump300": 0,
+   "pctReversal60": 0,
+   "pctStrand": 0,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 0,
+   "pctPinChanged": 0,
+   "pctPinRight": null,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 0,
+   "drops": 0,
+   "dropsDeclined": 0,
+   "dropsRepriced": 0,
+   "worstDrift": {
+    "p50": null,
+    "p90": null,
+    "max": null
+   }
+  },
+  "byRoute": {},
+  "worstStops": [],
+  "worstWaits": []
+ },
+ "chain": null,
+ "bySource": {
+  "uniform": {
+   "all": {
+    "waits": 0,
+    "arrived": 0,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 0,
+    "medianWaitMin": null,
+    "p90WaitMin": null,
+    "firstSight": {
+     "medianAbsSec": null,
+     "p90AbsSec": null,
+     "earlyOver60Pct": null,
+     "lateOver60Pct": null
+    },
+    "interval": {
+     "n": 0,
+     "insidePct": null,
+     "earlyPct": null,
+     "latePct": null,
+     "medianWidthSec": null
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": null,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": null,
+     "p90": null,
+     "max": null
+    }
+   },
+   "byRoute": {},
+   "worstStops": [],
+   "worstWaits": []
+  },
+  "targeted": {
+   "all": {
+    "waits": 0,
+    "arrived": 0,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 0,
+    "medianWaitMin": null,
+    "p90WaitMin": null,
+    "firstSight": {
+     "medianAbsSec": null,
+     "p90AbsSec": null,
+     "earlyOver60Pct": null,
+     "lateOver60Pct": null
+    },
+    "interval": {
+     "n": 0,
+     "insidePct": null,
+     "earlyPct": null,
+     "latePct": null,
+     "medianWidthSec": null
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": null,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": null,
+     "p90": null,
+     "max": null
+    }
+   },
+   "byRoute": {},
+   "worstStops": [],
+   "worstWaits": []
+  },
+  "chain": {
+   "all": {
+    "waits": 0,
+    "arrived": 0,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 0,
+    "medianWaitMin": null,
+    "p90WaitMin": null,
+    "firstSight": {
+     "medianAbsSec": null,
+     "p90AbsSec": null,
+     "earlyOver60Pct": null,
+     "lateOver60Pct": null
+    },
+    "interval": {
+     "n": 0,
+     "insidePct": null,
+     "earlyPct": null,
+     "latePct": null,
+     "medianWidthSec": null
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": null,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": null,
+     "p90": null,
+     "max": null
+    }
+   },
+   "byRoute": {},
+   "worstStops": [],
+   "worstWaits": []
+  }
+ },
+ "named": [
+  {
+   "id": "Purple|24|2026-09-10T13:30:00.000Z",
+   "label": "Purple",
+   "boardStopId": 24,
+   "alightStopId": 72,
+   "t0": 1789047000000,
+   "source": "named",
+   "outcome": "arrived",
+   "busAtStopOnArrival": null,
+   "arrivedAt": 1789047093438,
+   "arrivedBus": "#321",
+   "detectorArrivedAt": 1789047113327,
+   "waitSec": 93,
+   "ticks": 19,
+   "readings": 12,
+   "firstSight": {
+    "atMs": 1789047003345,
+    "raw": "About 5 min\nLikely <1–28 min",
+    "lo": 0,
+    "hi": 1680
+   },
+   "firstSightMissSec": 0,
+   "firstSightInterval": {
+    "lo": 0,
+    "hi": 1643,
+    "where": 0
+   },
+   "transitions": [
+    {
+     "kind": "drift",
+     "atMs": 1789047063401,
+     "dtSec": 5,
+     "from": "About 5 min\nLikely <1–26 min",
+     "to": "About 7 min\nLikely 1–27 min",
+     "event": "unknown",
+     "eventful": false,
+     "liveBuses": null,
+     "pinnedBus": null,
+     "driftSec": 65,
+     "reversal": true,
+     "notable": true,
+     "catastrophic": false,
+     "pinAnnouncedChange": false,
+     "leader": true,
+     "fromSlot": 0,
+     "toSlot": 0,
+     "fromEtaSec": 300,
+     "toEtaSec": 420,
+     "busFrom": "321",
+     "busTo": "321"
+    },
+    {
+     "kind": "drift",
+     "atMs": 1789047073324,
+     "dtSec": 10,
+     "from": "About 7 min\nLikely 1–27 min",
+     "to": "About 5 min\nLikely <1–27 min",
+     "event": "unknown",
+     "eventful": false,
+     "liveBuses": null,
+     "pinnedBus": null,
+     "driftSec": -50,
+     "reversal": false,
+     "notable": false,
+     "catastrophic": false,
+     "pinAnnouncedChange": false,
+     "leader": true,
+     "fromSlot": 0,
+     "toSlot": 0,
+     "fromEtaSec": 420,
+     "toEtaSec": 300,
+     "busFrom": "321",
+     "busTo": "321"
+    },
+    {
+     "kind": "drift",
+     "atMs": 1789047088329,
+     "dtSec": 5,
+     "from": "About 5 min\nLikely <1–28 min",
+     "to": "About <1 min\nLikely <1–1 min",
+     "event": "unknown",
+     "eventful": false,
+     "liveBuses": null,
+     "pinnedBus": null,
+     "driftSec": -235,
+     "reversal": false,
+     "notable": false,
+     "catastrophic": true,
+     "pinAnnouncedChange": false,
+     "leader": true,
+     "fromSlot": 0,
+     "toSlot": 0,
+     "fromEtaSec": 300,
+     "toEtaSec": 0,
+     "busFrom": "321",
+     "busTo": "321"
+    }
+   ],
+   "reversals": 1,
+   "notableReversals": 1,
+   "catastrophic": 1,
+   "worstDriftSec": 235,
+   "worst": {
+    "kind": "drift",
+    "atMs": 1789047088329,
+    "dtSec": 5,
+    "from": "About 5 min\nLikely <1–28 min",
+    "to": "About <1 min\nLikely <1–1 min",
+    "event": "unknown",
+    "eventful": false,
+    "liveBuses": null,
+    "pinnedBus": null,
+    "driftSec": -235,
+    "reversal": false,
+    "notable": false,
+    "catastrophic": true,
+    "pinAnnouncedChange": false,
+    "leader": true,
+    "fromSlot": 0,
+    "toSlot": 0,
+    "fromEtaSec": 300,
+    "toEtaSec": 0,
+    "busFrom": "321",
+    "busTo": "321"
+   },
+   "pins": [
+    "321"
+   ],
+   "pinChanged": false,
+   "pinCorrect": true,
+   "vanished": 0,
+   "returned": false,
+   "lapRepriced": false,
+   "strand": true,
+   "unattributedStrand": false,
+   "overshoot": true,
+   "neverShown": false,
+   "droppedApproaching": 0,
+   "droppedDeclined": 0,
+   "droppedRepriced": 0,
+   "droppedDetail": null,
+   "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:03 About 7 min\nLikely 1–27 min | 13:31:13 About 5 min\nLikely <1–27 min | 13:31:23 About 5 min\nLikely <1–28 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:31:33 About <1 min\nLikely <1–73 min",
+   "canary": {
+    "readings": 6,
+    "worstDriftSec": 225,
+    "catastrophic": 1,
+    "reversals": 0,
+    "strand": false,
+    "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:18 About 5 min\nLikely <1–27 min | 13:31:33 About <1 min\nLikely <1–73 min",
+    "droppedApproaching": 0,
+    "droppedDeclined": 0,
+    "droppedRepriced": 0
+   }
+  }
+ ]
+}

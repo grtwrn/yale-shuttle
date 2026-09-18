@@ -1,0 +1,19 @@
+{
+  "source": "Actual built SPA, fixed clock and intercepted local fixtures",
+  "baseline": false,
+  "checks": [
+    "Location permission denied: explicit current-location request settles; typed From selects correct coordinates and clears stale error/spinner",
+    "Weather removal restores selected To summary without changing either endpoint, location case 1",
+    "Location unavailable: explicit current-location request settles; typed From selects correct coordinates and clears stale error/spinner",
+    "Weather removal restores selected To summary without changing either endpoint, location case 2",
+    "Location request timed out: explicit current-location request settles; typed From selects correct coordinates and clears stale error/spinner",
+    "Weather removal restores selected To summary without changing either endpoint, location case 3",
+    "Ordinary weather refresh preserves strip focus and horizontal scroll",
+    "Leaving and reopening Trip does not steal focus from navigation"
+  ],
+  "errors": [],
+  "snapshots": {},
+  "geometry": [],
+  "passed": true,
+  "closed": true
+}

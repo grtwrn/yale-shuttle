@@ -1,0 +1,14 @@
+{
+  "outcome": "research",
+  "summary": "Completed the causal neighbor screen across 535 holds. Gains were too small or inconsistent, with worse tails, to justify an ETA change. Saved reproducible evidence, review request and checkpoint; prepared ten cases for the next clock audit. Application files and HEAD remain unchanged.",
+  "next_task": "Independently review cycle-1/RESULTS.md, then continue cycle-2’s selected cases. Trace Union 63523/57990 versus 57454/61538 through current tracking, downstream travel and future Winchester waits. Reuse completed audits and verify both target occurrences before proposing a fix.",
+  "tests": [
+    "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/extract_landmarks.py — passed 200 temporal-censor checks and 1,070 weight checks.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock env OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/fit_landmarks.py — 12 fits completed; 4,332 forecasts.",
+    "From services/shuttle-v2: flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/export_comparator.mts — 722 current-code component forecasts.",
+    "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/test_landmark_contract.py — 6 tests passed.",
+    "From services/shuttle-v2: flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock npm run typecheck — backend and frontend passed.",
+    "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/decompose_selected.py — 20 connected-time identities passed.",
+    "git status --porcelain — clean; frozen input hashes unchanged. Full tests, Vite build and staging were not run."
+  ]
+}

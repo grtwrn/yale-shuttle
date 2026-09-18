@@ -1,0 +1,132 @@
+--- a/services/shuttle-v2/web/src/TransitMap.tsx
++++ b/services/shuttle-v2/web/src/TransitMap.tsx
+@@ -40,6 +40,7 @@
+ import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
+ import { ArriveBy } from "./ArriveBy";
+ import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
++import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
+ import { tripBusIdentity } from "./tripBusIdentity";
+ import { TripBoardingActions } from "./TripBoardingActions";
+ import {
+@@ -2183,16 +2184,16 @@
+     // For future-mode (user picked a date >60s out) we can't refresh
+     // against live buses — keep the memoized numbers.
+     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
+-    if (isFutureMode) return stableOptions;
++    if (isFutureMode) return stableOptions.map(o => ({ ...o, livePickupSelection: undefined }));
+     return stableOptions.map((o) => {
+       if (o.mode !== "shuttle") {
+         // A live origin moves with the rider for both alternatives.
+         const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
+-        if (!from || !toLL) return o;
++        if (!from || !toLL) return { ...o, livePickupSelection: undefined };
+         const totalSec = walkSecFromMeters(haversineMeters(from, toLL));
+-        return { ...o, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
++        return { ...o, livePickupSelection: undefined, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
+       }
+-      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, etaUnavailable: true, journeyArrival: undefined };
++      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, livePickupSelection: undefined, etaUnavailable: true, journeyArrival: undefined };
+       // Re-derive wait from current arrivals. Simpler than it used to
+       // be — a large pinned.eta *by itself* doesn't mean "just
+       // passed" (it could just mean the bus is on the far side of
+@@ -2256,6 +2257,7 @@
+         return {
+           ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+           rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
++          livePickupSelection: rawPickupSelection(hereBus.bus_name, o.boardStopId, nowMs),
+           journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
+           busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
+         };
+@@ -2263,14 +2265,14 @@
+ 
+       if (live.length === 0) {
+         // No future arrival and no bus parked at the stop — truly unreachable.
+-        return { ...o, journeyArrival: undefined, departed: true };
++        return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
+       }
+       // Which arrival to follow — pinned-bus loyalty, its catchability
+       // bounds, the report-#49 dominance switch, and the departed verdict
+       // all live in pickLiveArrival (planner.ts), where they are unit
+       // tested. `live` is non-empty here, so the pick exists.
+       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
+-      if (!picked) return { ...o, journeyArrival: undefined, departed: true };
++      if (!picked) return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
+       const { match, boardable, departed, missedBus } = picked;
+       // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
+       // the one the rider can see coming, which must not vanish while it is
+@@ -2292,6 +2294,7 @@
+       return {
+         ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+         rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - waitSec - o.walkFromSec) : o.rideSec,
++        livePickupSelection: forecastPickupSelection(picked, nowMs),
+         journeyArrival: arrival, busName: match.busName, departed, missedBus,
+         // The floor rides with the pin: one row of one estimator pass, so the
+         // range's low end cannot be built from a different bus's drive.
+--- a/services/shuttle-v2/web/src/planner.ts
++++ b/services/shuttle-v2/web/src/planner.ts
+@@ -15,6 +15,7 @@
+ import type { PublishedWindow } from "./schedule";
+ import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
+ import type { JourneyArrival } from './journeyArrival';
++import type { LivePickupSelection } from './livePickupSelection';
+ 
+ export type TripOption = {
+   mode: "shuttle" | "walk";
+@@ -64,6 +65,8 @@
+   computedAtMs?: number;
+   /** Destination arrival for the catchable bus, including the final walk. */
+   journeyArrival?: JourneyArrival;
++  /** Existing countdown and selected boarding evidence, independent of destination availability. */
++  livePickupSelection?: LivePickupSelection;
+   etaUnavailable?: boolean;
+ };
+ 
+--- /dev/null
++++ b/services/shuttle-v2/web/src/livePickupSelection.ts
+@@ -0,0 +1,46 @@
++import type { UpcomingArrival } from './arrivals';
++import type { LiveArrivalPick } from './planner';
++
++/** Evidence within one live selection, not a durable physical visit ID. */
++export type PickupEvidence =
++  | { source: 'forecast'; busName: string; stopId: number; stopsAhead: number;
++      etaSec: number; lowSec: number; highSec: number }
++  | { source: 'raw-at-stop'; busName: string; stopId: number };
++
++export type LivePickupSelection = {
++  /** Client computation time; transport freshness is checked by the caller. */
++  selectedAtMs: number;
++  countdown: PickupEvidence;
++  boarding: PickupEvidence;
++  relation: 'same-visit' | 'different-bus' | 'same-bus-later-visit' | 'raw-current';
++};
++
++type PickupRow = Pick<UpcomingArrival, 'busName' | 'stopId' | 'stopsAhead' | 'eta' | 'low' | 'high'>;
++const normalize = (name: string) => name.replace(/^#/, '');
++
++function forecast(row: PickupRow): Extract<PickupEvidence, { source: 'forecast' }> {
++  return { source: 'forecast', busName: normalize(row.busName), stopId: row.stopId,
++    stopsAhead: row.stopsAhead, etaSec: row.eta, lowSec: row.low, highSec: row.high };
++}
++
++/** Project the exact current selector result. Never choose or re-price a bus.
++ * Both rows belong to one boarding stop in the same route/forecast snapshot.
++ * The selector orders a later same-bus pickup after the countdown occurrence.
++ * Relative stopsAhead must not be persisted or compared across polls as an ID. */
++export function forecastPickupSelection(
++  picked: LiveArrivalPick<PickupRow> | null, selectedAtMs: number,
++): LivePickupSelection | undefined {
++  if (!picked || picked.departed) return undefined;
++  const countdown = forecast(picked.match), boarding = forecast(picked.boardable);
++  const relation = countdown.busName !== boarding.busName ? 'different-bus'
++    : countdown.stopId === boarding.stopId && countdown.stopsAhead === boarding.stopsAhead
++      ? 'same-visit' : 'same-bus-later-visit';
++  return { selectedAtMs, countdown, boarding, relation };
++}
++
++/** Preserve the raw override's chosen vehicle without borrowing a next-lap row.
++ * This is existing sensor/selection evidence, not a guarantee of catchability. */
++export function rawPickupSelection(busName: string, stopId: number, selectedAtMs: number): LivePickupSelection {
++  const raw: PickupEvidence = { source: 'raw-at-stop', busName: normalize(busName), stopId };
++  return { selectedAtMs, countdown: raw, boarding: raw, relation: 'raw-current' };
++}

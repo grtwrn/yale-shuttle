@@ -1,0 +1,14 @@
+{
+  "source": "https://yale-shuttle.fly.dev",
+  "errors": [],
+  "checks": [
+    "390px and 320px layouts",
+    "buffer changes destination target",
+    "destination distribution has 50 server outcomes, deadline and walking markers",
+    "mini-map shows one compact arrival window per route without width cutoffs"
+  ],
+  "comparison": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach LEPH / 60 College by 10:37 AM · 10 min before class.\n\nRed may fit your buffer\n\nThe estimated window fits your target if you catch the bus at Division / Prospect. Check the pickup and walking times.\n\nEstimated arrival at destination\n\nRed · #309\n10:14 AM–10:22 AM\nWindow fits buffer · View trip ›\nWalk\nAbout 10:40 AM\nMay use your buffer · View trip ›\nSee possible arrival times ▾\nHow to read these times ▾",
+  "route": "Red",
+  "pickupDetails": "Red arrival\n×\n\nAt your stop\n\nShuttle\n#309\nStops to pickup\n0\nFollowing shuttle · #300\nAbout 31 min later\n\nThe following arrival is estimated in about 31 min from now. Both arrival estimates can change.\n\nPast trips to this stop\n\nPast trips cannot be matched to this shuttle’s current position yet.\n\nRecent recorded arrivals at this stop\nSep 17, 9:46 AM · #316\nSep 17, 9:33 AM · #300\nSep 17, 9:00 AM · #309\nAbout these records ▾\n\nComparison captured Sep 17, 10:02 AM\n\nRefresh comparison",
+  "historyQueries": []
+}

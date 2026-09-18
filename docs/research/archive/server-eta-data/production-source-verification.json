@@ -1,0 +1,176 @@
+[
+  {
+    "at": "2026-09-16T17:59:50.602Z",
+    "requestMs": 333,
+    "build": "34525a638847",
+    "collectorLagMs": 234,
+    "engine": {
+      "restored": 0,
+      "forecastAt": 1789581590296,
+      "checkpointAt": 1789581565302,
+      "beliefs": 17,
+      "steps": 6,
+      "failures": 0,
+      "lastStepMs": 210,
+      "rows": 652
+    },
+    "wireAgeMs": 307,
+    "forecastBuses": 17,
+    "routes": [
+      "Red",
+      "Blue Day",
+      "Brown",
+      "Pink",
+      "Purple",
+      "Orange Day",
+      "Green",
+      "Gold"
+    ],
+    "rows": 652
+  },
+  {
+    "at": "2026-09-16T17:59:55.720Z",
+    "requestMs": 113,
+    "build": "34525a638847",
+    "collectorLagMs": 518,
+    "engine": {
+      "restored": 0,
+      "forecastAt": 1789581595142,
+      "checkpointAt": 1789581565302,
+      "beliefs": 17,
+      "steps": 7,
+      "failures": 0,
+      "lastStepMs": 135,
+      "rows": 651
+    },
+    "wireAgeMs": 578,
+    "forecastBuses": 17,
+    "routes": [
+      "Blue Day",
+      "Brown",
+      "Pink",
+      "Purple",
+      "Orange Day",
+      "Red",
+      "Green",
+      "Gold"
+    ],
+    "rows": 651
+  },
+  {
+    "at": "2026-09-16T18:00:01.068Z",
+    "requestMs": 347,
+    "build": "34525a638847",
+    "collectorLagMs": 567,
+    "engine": {
+      "restored": 0,
+      "forecastAt": 1789581600225,
+      "checkpointAt": 1789581600225,
+      "beliefs": 17,
+      "steps": 8,
+      "failures": 0,
+      "lastStepMs": 101,
+      "rows": 648
+    },
+    "wireAgeMs": 843,
+    "forecastBuses": 17,
+    "routes": [
+      "Blue Day",
+      "Brown",
+      "Pink",
+      "Purple",
+      "Orange Day",
+      "Red",
+      "Green",
+      "Gold"
+    ],
+    "rows": 648
+  },
+  {
+    "at": "2026-09-16T18:00:06.193Z",
+    "requestMs": 123,
+    "build": "34525a638847",
+    "collectorLagMs": 896,
+    "engine": {
+      "restored": 0,
+      "forecastAt": 1789581605242,
+      "checkpointAt": 1789581600225,
+      "beliefs": 17,
+      "steps": 9,
+      "failures": 0,
+      "lastStepMs": 110,
+      "rows": 649
+    },
+    "wireAgeMs": 951,
+    "forecastBuses": 17,
+    "routes": [
+      "Blue Day",
+      "Brown",
+      "Pink",
+      "Purple",
+      "Orange Day",
+      "Red",
+      "Green",
+      "Gold"
+    ],
+    "rows": 649
+  },
+  {
+    "at": "2026-09-16T18:00:11.318Z",
+    "requestMs": 123,
+    "build": "34525a638847",
+    "collectorLagMs": 1132,
+    "engine": {
+      "restored": 0,
+      "forecastAt": 1789581610156,
+      "checkpointAt": 1789581600225,
+      "beliefs": 17,
+      "steps": 10,
+      "failures": 0,
+      "lastStepMs": 163,
+      "rows": 651
+    },
+    "wireAgeMs": 1162,
+    "forecastBuses": 17,
+    "routes": [
+      "Red",
+      "Brown",
+      "Pink",
+      "Purple",
+      "Blue Day",
+      "Orange Day",
+      "Green",
+      "Gold"
+    ],
+    "rows": 651
+  },
+  {
+    "at": "2026-09-16T18:00:16.441Z",
+    "requestMs": 122,
+    "build": "34525a638847",
+    "collectorLagMs": 1251,
+    "engine": {
+      "restored": 0,
+      "forecastAt": 1789581615139,
+      "checkpointAt": 1789581600225,
+      "beliefs": 17,
+      "steps": 11,
+      "failures": 0,
+      "lastStepMs": 190,
+      "rows": 652
+    },
+    "wireAgeMs": 1302,
+    "forecastBuses": 17,
+    "routes": [
+      "Blue Day",
+      "Brown",
+      "Pink",
+      "Purple",
+      "Orange Day",
+      "Red",
+      "Green",
+      "Gold"
+    ],
+    "rows": 652
+  }
+]

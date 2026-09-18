@@ -1,0 +1,93 @@
+{
+  "artifactHashes": 24,
+  "pairedVisits": 1212,
+  "topFiveComparisons": 12,
+  "regressionAudits": [
+    {
+      "id": 48370,
+      "holdSec": 120.077,
+      "anchorToPinSec": 25.009,
+      "rawPolls": 0,
+      "maxRawGapSec": null,
+      "changedCoordinateAfterDepartureSec": null
+    },
+    {
+      "id": 65621,
+      "holdSec": 508.689,
+      "anchorToPinSec": 15.028,
+      "rawPolls": 126,
+      "maxRawGapSec": 21.259,
+      "changedCoordinateAfterDepartureSec": 4.705
+    },
+    {
+      "id": 66057,
+      "holdSec": 440.019,
+      "anchorToPinSec": 20.074,
+      "rawPolls": 117,
+      "maxRawGapSec": 5.264,
+      "changedCoordinateAfterDepartureSec": 5.029
+    },
+    {
+      "id": 58505,
+      "holdSec": 465.063,
+      "anchorToPinSec": 20.068,
+      "rawPolls": 121,
+      "maxRawGapSec": 5.903,
+      "changedCoordinateAfterDepartureSec": 5.004
+    },
+    {
+      "id": 61688,
+      "holdSec": 155.078,
+      "anchorToPinSec": 14.931,
+      "rawPolls": 58,
+      "maxRawGapSec": 5.113,
+      "changedCoordinateAfterDepartureSec": 4.953
+    },
+    {
+      "id": 58917,
+      "holdSec": 150.053,
+      "anchorToPinSec": 74.917,
+      "rawPolls": 68,
+      "maxRawGapSec": 5.251,
+      "changedCoordinateAfterDepartureSec": 5.017
+    },
+    {
+      "id": 62056,
+      "holdSec": 15.002,
+      "anchorToPinSec": 60.006,
+      "rawPolls": 39,
+      "maxRawGapSec": 5.26,
+      "changedCoordinateAfterDepartureSec": 5.06
+    },
+    {
+      "id": 55332,
+      "holdSec": 100.063,
+      "anchorToPinSec": 79.884,
+      "rawPolls": 0,
+      "maxRawGapSec": null,
+      "changedCoordinateAfterDepartureSec": null
+    },
+    {
+      "id": 49315,
+      "holdSec": 94.817,
+      "anchorToPinSec": 45.202,
+      "rawPolls": 0,
+      "maxRawGapSec": null,
+      "changedCoordinateAfterDepartureSec": null
+    },
+    {
+      "id": 54541,
+      "holdSec": 244.99,
+      "anchorToPinSec": 50.001,
+      "rawPolls": 0,
+      "maxRawGapSec": null,
+      "changedCoordinateAfterDepartureSec": null
+    }
+  ],
+  "rawCovered": 6,
+  "archiveFrames": 12654,
+  "archiveRoutes": {
+    "3": 36516
+  },
+  "inventoryHashes": 9
+}

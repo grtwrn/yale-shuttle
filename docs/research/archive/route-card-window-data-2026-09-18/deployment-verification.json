@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-09-18T15:34:32.220899+00:00",
+  "health": {
+    "ok": true,
+    "pollStalenessMs": 4663,
+    "collectorLagMs": 4592,
+    "knownBuses": 17,
+    "serverEta": {
+      "restored": 17,
+      "forecastAt": 1789745667396,
+      "checkpointAt": 1789745657377,
+      "beliefs": 17,
+      "steps": 10,
+      "failures": 0,
+      "lastStepMs": 126,
+      "rows": 668
+    },
+    "pollSkipped": 0,
+    "droppedObservations": 0,
+    "build": "95a21c54a3c4"
+  },
+  "riderBundle": "/assets/rider-DZknF_I2.js",
+  "newArrivalLabelServed": true,
+  "pr": "https://github.com/grtwrn/yale-shuttle/pull/295",
+  "reviewedHead": "9d92b802a3ebb4841381a8a78e0f15bb0309422b",
+  "merge": "95a21c54a3c4f3f3f2c4ad3b24c61d9b8d84f31d",
+  "tests": 2807,
+  "deploymentRun": "https://github.com/grtwrn/yale-shuttle/actions/runs/35362915796",
+  "deploymentConclusion": "success"
+}

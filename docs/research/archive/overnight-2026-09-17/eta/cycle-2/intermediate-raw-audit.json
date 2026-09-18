@@ -1,0 +1,205 @@
+{
+  "scope": "Ten selected intermediate visits; actual recorded coordinates only, no first-published collector-clock claim.",
+  "cases": [
+    {
+      "sourceId": 57454,
+      "visitId": 57552,
+      "stopId": 115,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 131,
+      "maxObservedGapSec": 5.299,
+      "anchorToPinSec": 320.381,
+      "arrivalToDepartureSec": 214.765,
+      "longestIdenticalCoordinateRunSec": 105.102,
+      "identicalRun": {
+        "start": 1789562341637,
+        "end": 1789562446739,
+        "count": 22
+      },
+      "coordinateChangeAfterDepartureSec": 4.892,
+      "coordinateChangeMetres": 31.480741717151034,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 57454,
+      "visitId": 57601,
+      "stopId": 75,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 90,
+      "maxObservedGapSec": 5.306,
+      "anchorToPinSec": 0.0,
+      "arrivalToDepartureSec": 335.1,
+      "longestIdenticalCoordinateRunSec": 125.106,
+      "identicalRun": {
+        "start": 1789562831806,
+        "end": 1789562956912,
+        "count": 26
+      },
+      "coordinateChangeAfterDepartureSec": 5.037,
+      "coordinateChangeMetres": 31.987434822687202,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 63523,
+      "visitId": 63554,
+      "stopId": 115,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 50,
+      "maxObservedGapSec": 5.12,
+      "anchorToPinSec": 55.033,
+      "arrivalToDepartureSec": 79.986,
+      "longestIdenticalCoordinateRunSec": 65.004,
+      "identicalRun": {
+        "start": 1789644221351,
+        "end": 1789644286355,
+        "count": 14
+      },
+      "coordinateChangeAfterDepartureSec": 4.999,
+      "coordinateChangeMetres": 32.82496366435713,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 63523,
+      "visitId": 63569,
+      "stopId": 75,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 37,
+      "maxObservedGapSec": 5.19,
+      "anchorToPinSec": 0.0,
+      "arrivalToDepartureSec": 60.154,
+      "longestIdenticalCoordinateRunSec": 60.154,
+      "identicalRun": {
+        "start": 1789644361368,
+        "end": 1789644421522,
+        "count": 13
+      },
+      "coordinateChangeAfterDepartureSec": 4.851,
+      "coordinateChangeMetres": 33.63388626849399,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 57990,
+      "visitId": 58014,
+      "stopId": 115,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 45,
+      "maxObservedGapSec": 5.352,
+      "anchorToPinSec": 75.027,
+      "arrivalToDepartureSec": 14.942,
+      "longestIdenticalCoordinateRunSec": 14.942,
+      "identicalRun": {
+        "start": 1789565992149,
+        "end": 1789566007091,
+        "count": 4
+      },
+      "coordinateChangeAfterDepartureSec": 5.012,
+      "coordinateChangeMetres": 30.58375847326659,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 57990,
+      "visitId": 58039,
+      "stopId": 75,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 30,
+      "maxObservedGapSec": 5.19,
+      "anchorToPinSec": 0.0,
+      "arrivalToDepartureSec": 30.059,
+      "longestIdenticalCoordinateRunSec": 19.997,
+      "identicalRun": {
+        "start": 1789566167162,
+        "end": 1789566187159,
+        "count": 5
+      },
+      "coordinateChangeAfterDepartureSec": 4.976,
+      "coordinateChangeMetres": 34.84729584083635,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 61538,
+      "visitId": 61602,
+      "stopId": 115,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 92,
+      "maxObservedGapSec": 5.243,
+      "anchorToPinSec": 125.039,
+      "arrivalToDepartureSec": 220.094,
+      "longestIdenticalCoordinateRunSec": 114.99,
+      "identicalRun": {
+        "start": 1789593499829,
+        "end": 1789593614819,
+        "count": 24
+      },
+      "coordinateChangeAfterDepartureSec": 4.861,
+      "coordinateChangeMetres": 32.1413719440223,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 61538,
+      "visitId": 61667,
+      "stopId": 75,
+      "outcome": "stopped",
+      "how": "far",
+      "rows": 68,
+      "maxObservedGapSec": 5.303,
+      "anchorToPinSec": 0.0,
+      "arrivalToDepartureSec": 219.799,
+      "longestIdenticalCoordinateRunSec": 65.013,
+      "identicalRun": {
+        "start": 1789594119889,
+        "end": 1789594184902,
+        "count": 14
+      },
+      "coordinateChangeAfterDepartureSec": 4.983,
+      "coordinateChangeMetres": 31.66831940663061,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 58510,
+      "visitId": 58544,
+      "stopId": 115,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 46,
+      "maxObservedGapSec": 5.237,
+      "anchorToPinSec": 70.0,
+      "arrivalToDepartureSec": 19.993,
+      "longestIdenticalCoordinateRunSec": 19.993,
+      "identicalRun": {
+        "start": 1789569448352,
+        "end": 1789569468345,
+        "count": 5
+      },
+      "coordinateChangeAfterDepartureSec": 4.98,
+      "coordinateChangeMetres": 31.6572069675317,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    },
+    {
+      "sourceId": 58510,
+      "visitId": 58561,
+      "stopId": 75,
+      "outcome": "stopped",
+      "how": "clock",
+      "rows": 31,
+      "maxObservedGapSec": 6.249,
+      "anchorToPinSec": 0.0,
+      "arrivalToDepartureSec": 35.056,
+      "longestIdenticalCoordinateRunSec": 35.056,
+      "identicalRun": {
+        "start": 1789569598336,
+        "end": 1789569633392,
+        "count": 8
+      },
+      "coordinateChangeAfterDepartureSec": 5.089,
+      "coordinateChangeMetres": 34.76743925687981,
+      "interpretation": "Repeated GPS is deadband-censored movement, not proof of doors open or exact physical stand. No new measurement-error evidence or exclusion."
+    }
+  ]
+}

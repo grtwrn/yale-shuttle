@@ -1,0 +1,468 @@
+{
+  "pairedAll": {
+    "baseline": {
+      "n": 1400,
+      "sources": 10,
+      "mae": 316.0512746760462,
+      "medianAbsError": 252.10500000000002,
+      "p90AbsError": 750.5939998986369,
+      "maxAbsError": 2150.98308516086,
+      "meanSignedError": -112.34637179949952,
+      "journeyAvailable": 1346,
+      "earlyMiss": 77,
+      "lateMiss": 394,
+      "meanWidthSec": 681.3610698365527
+    },
+    "ordered": {
+      "n": 1400,
+      "sources": 10,
+      "mae": 305.679667906172,
+      "medianAbsError": 248.60400005068152,
+      "p90AbsError": 738.6649998986368,
+      "maxAbsError": 870.2539998986367,
+      "meanSignedError": -91.21774645718314,
+      "journeyAvailable": 1376,
+      "earlyMiss": 84,
+      "lateMiss": 400,
+      "meanWidthSec": 685.8321220930233
+    }
+  },
+  "pairedChanged": {
+    "baseline": {
+      "n": 30,
+      "sources": 8,
+      "mae": 880.8808492743099,
+      "medianAbsError": 664.6435330499874,
+      "p90AbsError": 1944.2079809391146,
+      "maxAbsError": 2150.98308516086,
+      "meanSignedError": -880.8808492743099,
+      "journeyAvailable": 0,
+      "earlyMiss": 0,
+      "lateMiss": 0,
+      "meanWidthSec": null
+    },
+    "ordered": {
+      "n": 30,
+      "sources": 8,
+      "mae": 396.8725333468484,
+      "medianAbsError": 284.66550005068154,
+      "p90AbsError": 828.858,
+      "maxAbsError": 851.2549998986369,
+      "meanSignedError": 105.12166670045437,
+      "journeyAvailable": 30,
+      "earlyMiss": 7,
+      "lateMiss": 6,
+      "meanWidthSec": 886.4333333333333
+    }
+  },
+  "bySource": {
+    "57454": {
+      "baseline": {
+        "n": 2,
+        "sources": 1,
+        "mae": 1980.399533049987,
+        "medianAbsError": 1980.399533049987,
+        "p90AbsError": 2150.98308516086,
+        "maxAbsError": 2150.98308516086,
+        "meanSignedError": -1980.399533049987,
+        "journeyAvailable": 0,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": null
+      },
+      "ordered": {
+        "n": 2,
+        "sources": 1,
+        "mae": 727.8954999493183,
+        "medianAbsError": 727.8954999493183,
+        "p90AbsError": 811.8629998986366,
+        "maxAbsError": 811.8629998986366,
+        "meanSignedError": -727.8954999493183,
+        "journeyAvailable": 2,
+        "earlyMiss": 0,
+        "lateMiss": 2,
+        "meanWidthSec": 835.5
+      }
+    },
+    "57990": {
+      "baseline": {
+        "n": 6,
+        "sources": 1,
+        "mae": 679.6225330499873,
+        "medianAbsError": 679.5960330499872,
+        "p90AbsError": 815.2540851608602,
+        "maxAbsError": 815.2540851608602,
+        "meanSignedError": -679.6225330499873,
+        "journeyAvailable": 0,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": null
+      },
+      "ordered": {
+        "n": 6,
+        "sources": 1,
+        "mae": 429.3815000506816,
+        "medianAbsError": 428.90100005068166,
+        "p90AbsError": 584.8009999999999,
+        "maxAbsError": 584.8009999999999,
+        "meanSignedError": 429.3815000506816,
+        "journeyAvailable": 6,
+        "earlyMiss": 3,
+        "lateMiss": 0,
+        "meanWidthSec": 739.6666666666666
+      }
+    },
+    "58510": {
+      "baseline": {
+        "n": 4,
+        "sources": 1,
+        "mae": 1206.1085330499873,
+        "medianAbsError": 1206.1085330499873,
+        "p90AbsError": 1356.76708516086,
+        "maxAbsError": 1356.76708516086,
+        "meanSignedError": -1206.1085330499873,
+        "journeyAvailable": 0,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": null
+      },
+      "ordered": {
+        "n": 4,
+        "sources": 1,
+        "mae": 191.1455000506815,
+        "medianAbsError": 190.89550005068145,
+        "p90AbsError": 293.288,
+        "maxAbsError": 293.288,
+        "meanSignedError": 191.1455000506815,
+        "journeyAvailable": 4,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": 998.25
+      }
+    },
+    "58717": {
+      "baseline": {
+        "n": 4,
+        "sources": 1,
+        "mae": 224.11998172295483,
+        "medianAbsError": 224.1199817229548,
+        "p90AbsError": 291.7845300815123,
+        "maxAbsError": 291.7845300815123,
+        "meanSignedError": -224.11998172295483,
+        "journeyAvailable": 0,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": null
+      },
+      "ordered": {
+        "n": 4,
+        "sources": 1,
+        "mae": 134.6295,
+        "medianAbsError": 134.38250000000002,
+        "p90AbsError": 165.89099999999996,
+        "maxAbsError": 165.89099999999996,
+        "meanSignedError": 134.6295,
+        "journeyAvailable": 4,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": 768.0
+      }
+    },
+    "61538": {
+      "baseline": {
+        "n": 4,
+        "sources": 1,
+        "mae": 2044.8245330499872,
+        "medianAbsError": 2044.8245330499872,
+        "p90AbsError": 2150.45708516086,
+        "maxAbsError": 2150.45708516086,
+        "meanSignedError": -2044.8245330499872,
+        "journeyAvailable": 0,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": null
+      },
+      "ordered": {
+        "n": 4,
+        "sources": 1,
+        "mae": 669.0704999493184,
+        "medianAbsError": 668.8204999493184,
+        "p90AbsError": 851.2549998986369,
+        "maxAbsError": 851.2549998986369,
+        "meanSignedError": -669.0704999493184,
+        "journeyAvailable": 4,
+        "earlyMiss": 0,
+        "lateMiss": 4,
+        "meanWidthSec": 978.5
+      }
+    },
+    "61907": {
+      "baseline": {
+        "n": 2,
+        "sources": 1,
+        "mae": 136.39748172295484,
+        "medianAbsError": 136.39748172295484,
+        "p90AbsError": 166.52953008151223,
+        "maxAbsError": 166.52953008151223,
+        "meanSignedError": -136.39748172295484,
+        "journeyAvailable": 0,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": null
+      },
+      "ordered": {
+        "n": 2,
+        "sources": 1,
+        "mae": 201.602,
+        "medianAbsError": 201.602,
+        "p90AbsError": 267.146,
+        "maxAbsError": 267.146,
+        "meanSignedError": 201.602,
+        "journeyAvailable": 2,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": 726.0
+      }
+    },
+    "63523": {
+      "baseline": {
+        "n": 4,
+        "sources": 1,
+        "mae": 559.6300330499873,
+        "medianAbsError": 559.6300330499873,
+        "p90AbsError": 780.1970851608602,
+        "maxAbsError": 780.1970851608602,
+        "meanSignedError": -559.6300330499873,
+        "journeyAvailable": 0,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": null
+      },
+      "ordered": {
+        "n": 4,
+        "sources": 1,
+        "mae": 805.3740000506815,
+        "medianAbsError": 805.3740000506815,
+        "p90AbsError": 829.837,
+        "maxAbsError": 829.837,
+        "meanSignedError": 805.3740000506815,
+        "journeyAvailable": 4,
+        "earlyMiss": 4,
+        "lateMiss": 0,
+        "meanWidthSec": 1060.75
+      }
+    },
+    "65347": {
+      "baseline": {
+        "n": 4,
+        "sources": 1,
+        "mae": 494.09098172295484,
+        "medianAbsError": 494.0909817229549,
+        "p90AbsError": 526.7095300815122,
+        "maxAbsError": 526.7095300815122,
+        "meanSignedError": -494.09098172295484,
+        "journeyAvailable": 0,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": null
+      },
+      "ordered": {
+        "n": 4,
+        "sources": 1,
+        "mae": 67.5035,
+        "medianAbsError": 68.00350000000003,
+        "p90AbsError": 127.149,
+        "maxAbsError": 127.149,
+        "meanSignedError": -54.591500000000025,
+        "journeyAvailable": 4,
+        "earlyMiss": 0,
+        "lateMiss": 0,
+        "meanWidthSec": 952.5
+      }
+    }
+  },
+  "largestRegressions": [
+    {
+      "session": "63523:4:0",
+      "at": 1789644066335,
+      "sourceId": 63523,
+      "targetVisit": 63632,
+      "bus": "316",
+      "actualConnectedSec": 936.1583949181681,
+      "changed": true,
+      "baseline": {
+        "totalSec": 597.0954139790535,
+        "errorSec": -339.0629809391146,
+        "journeyAvailable": false,
+        "widthSec": null,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "ordered": {
+        "totalSec": 1718.0483950195312,
+        "errorSec": 781.8900001013631,
+        "journeyAvailable": true,
+        "widthSec": 1034.0,
+        "earlyMiss": true,
+        "lateMiss": false
+      },
+      "absErrorIncreaseSec": 442.82701916224846
+    },
+    {
+      "session": "63523:4:0",
+      "at": 1789644061356,
+      "sourceId": 63523,
+      "targetVisit": 63632,
+      "bus": "316",
+      "actualConnectedSec": 941.1373949181682,
+      "changed": true,
+      "baseline": {
+        "totalSec": 597.0954139790535,
+        "errorSec": -344.04198093911464,
+        "journeyAvailable": false,
+        "widthSec": null,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "ordered": {
+        "totalSec": 1722.0483950195312,
+        "errorSec": 780.911000101363,
+        "journeyAvailable": true,
+        "widthSec": 1013.0,
+        "earlyMiss": true,
+        "lateMiss": false
+      },
+      "absErrorIncreaseSec": 436.8690191622484
+    },
+    {
+      "session": "61907:4:0",
+      "at": 1789596040291,
+      "sourceId": 61907,
+      "targetVisit": 61959,
+      "bus": "309",
+      "actualConnectedSec": 449.854,
+      "changed": true,
+      "baseline": {
+        "totalSec": 283.32446991848775,
+        "errorSec": -166.52953008151223,
+        "journeyAvailable": false,
+        "widthSec": null,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "ordered": {
+        "totalSec": 717,
+        "errorSec": 267.146,
+        "journeyAvailable": true,
+        "widthSec": 783.0,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "absErrorIncreaseSec": 100.61646991848778
+    },
+    {
+      "session": "63523:48:0",
+      "at": 1789644066335,
+      "sourceId": 63523,
+      "targetVisit": 63753,
+      "bus": "316",
+      "actualConnectedSec": 1655.163,
+      "changed": true,
+      "baseline": {
+        "totalSec": 879.9449148391399,
+        "errorSec": -775.2180851608601,
+        "journeyAvailable": false,
+        "widthSec": null,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "ordered": {
+        "totalSec": 2485,
+        "errorSec": 829.837,
+        "journeyAvailable": true,
+        "widthSec": 1097.0,
+        "earlyMiss": true,
+        "lateMiss": false
+      },
+      "absErrorIncreaseSec": 54.61891483913985
+    },
+    {
+      "session": "63523:48:0",
+      "at": 1789644061356,
+      "sourceId": 63523,
+      "targetVisit": 63753,
+      "bus": "316",
+      "actualConnectedSec": 1660.142,
+      "changed": true,
+      "baseline": {
+        "totalSec": 879.9449148391399,
+        "errorSec": -780.1970851608602,
+        "journeyAvailable": false,
+        "widthSec": null,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "ordered": {
+        "totalSec": 2489,
+        "errorSec": 828.858,
+        "journeyAvailable": true,
+        "widthSec": 1099.0,
+        "earlyMiss": true,
+        "lateMiss": false
+      },
+      "absErrorIncreaseSec": 48.660914839139764
+    }
+  ],
+  "fallthroughAttribution": {
+    "same current approach, independently connected": 30,
+    "current source already departed; no current boarding outcome": 14,
+    "different bus; do not reuse focal outcome": 24
+  },
+  "stability": {
+    "baseline": {
+      "absoluteArrivalJumpsOver60": 117,
+      "up": 74,
+      "down": 43,
+      "maxMagnitudeSec": 3666.08608516086,
+      "topChoiceChurn": 42
+    },
+    "ordered": {
+      "absoluteArrivalJumpsOver60": 83,
+      "up": 56,
+      "down": 27,
+      "maxMagnitudeSec": 3666.08608516086,
+      "topChoiceChurn": 42
+    },
+    "fallthrough": {
+      "absoluteArrivalJumpsOver60": 78,
+      "up": 58,
+      "down": 20,
+      "maxMagnitudeSec": 2217.992,
+      "topChoiceChurn": 42
+    }
+  },
+  "limits": "Exploratory shell arithmetic only. Errors are predicted minus observed destination arrival: negative means shuttle later than prediction. No baseline full distribution on restored rows, so changed-case width/tails are descriptive only, not paired coverage or proper-score improvements. Walking modeled; selected two-date history, not fresh holdout.",
+  "_publication": {
+    "originalSource": "overnight-2026-09-17/eta/review-round-6/counterfactual-scores.json",
+    "originalSha256": "2e127b1114963be852c6a30a5b2a59aaa80f0e82a2c3fd6b606bb2d1718da18c",
+    "omittedArrays": [
+      {
+        "path": "stability.baseline.jumps",
+        "items": 117,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "stability.ordered.jumps",
+        "items": 83,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "stability.fallthrough.jumps",
+        "items": 78,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

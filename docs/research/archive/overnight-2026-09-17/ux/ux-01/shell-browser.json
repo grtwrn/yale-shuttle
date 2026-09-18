@@ -1,0 +1,68 @@
+{
+  "source": "Built SPA; checked-in network fixture; empty fleet; all requests intercepted",
+  "checks": [
+    "future/no live window and long destination in real SPA at 360/390/430/1280px",
+    "640 CSS-pixel reflow equivalent to 1280px desktop at 200% zoom",
+    "Now and Plan for later keyboard actions",
+    "departure datetime is 16px; all touched controls >=44px",
+    "future trip draft restored after reload",
+    "invalid deadline remains authoritative in full shell"
+  ],
+  "controls": [
+    {
+      "name": "Departure time",
+      "x": 105.65625,
+      "y": 251.640625,
+      "width": 410.328125,
+      "height": 44
+    },
+    {
+      "name": "Now",
+      "x": 525.984375,
+      "y": 251.640625,
+      "width": 58.015625,
+      "height": 44
+    },
+    {
+      "name": "Plan for later…",
+      "x": 460.625,
+      "y": 251.640625,
+      "width": 123.375,
+      "height": 44
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/weather"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-reports"
+    },
+    {
+      "method": "GET",
+      "path": "/api/buses"
+    },
+    {
+      "method": "GET",
+      "path": "/api/weather"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-reports"
+    },
+    {
+      "method": "GET",
+      "path": "/api/buses"
+    }
+  ],
+  "initialText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Winchester / Mansfield\n⇅\nTO\n🏁 Laboratory of Epidemiology and Public Health / 60 College Street\n☆\nLEAVE\nNow\nPlanning for Thu, Sep 17, 3:00 PM · Estimated from service hours and typical wait and travel times. Check live arrivals near departure.\nArrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 3:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nCheck live shuttle arrivals closer to departure. Compare walking below.\n\nEstimated arrival at destination\n\nRed\nNo live window\nLive window available closer to departure. · View trip ›\nWalk\nAbout 3:37 PM\nEstimate past class time · View trip ›\nHow to read these times ▾\nOVERVIEW — TOP 3 OF 4 ROUTES\n▴\n🚌 (R) ~4 min\n (B) ~6 min\n (B) ~9 min\n🏁 (R) 3:11p\n (B) 3:19p\n (B) 3:15p\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\nBlue Day\nBrown\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\n11 min\n🚌 7 min\n›\n🚶 1 min\n3:00p – 3:11p\n›\n⏳ wait 4 min for next shuttle\nBlue Day\n19 min\n🚶 1 min\n›\n🚌 12 min\n›\n🚶 1 min\n3:00p – 3:19p\n›\n⏳ wait 5 min for next shuttle\nBrown\n25 min\n🚶 2 min\n›\n🚌 6 min\n›\n🚶 9 min\n3:00p – 3:25p\n›\n⏳ wait 7 min for next shuttle\n🚶 Walk\n37 min\n3:00p – 3:37p\n›\nShow 1 more route\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+  "futurePanel": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 3:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nCheck live shuttle arrivals closer to departure. Compare walking below.\n\nEstimated arrival at destination\n\nRed\nNo live window\nLive window available closer to departure. · View trip ›\nWalk\nAbout 3:37 PM\nEstimate past class time · View trip ›\nHow to read these times ▾",
+  "departureTabsToNow": 7,
+  "focusAfterNow": {
+    "tag": "BUTTON",
+    "text": "Plan for later…"
+  }
+}

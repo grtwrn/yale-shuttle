@@ -1,0 +1,11 @@
+{
+  "outcome": "candidate",
+  "summary": "Preserve walking caution alongside trip bus identity\nResolved and staged the import conflict, preserving both teams’ changes. Combined checks pass; HEAD remains unchanged. Evidence and handoff saved in eta/cycle-9.",
+  "next_task": "Controller completes the resolved pending merge, then requests independent rereview using cycle-9/REVIEW_REQUEST.md and proposal.patch. Full-suite, staging and publication gates remain controller-owned.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-9/verify.sh — passed: 221 tests, both typechecks, Vite build, 4,688 exact decisions, 223 browser comparisons, walking-caution boundaries and mobile/desktop boarding checks.",
+    "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-9/risk-logic.mts — passed eight paired regression cases.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-9/verify_evidence.py — passed: combined-source provenance, 1,400 connected outcomes, retained 443-second regression and 147 preserved artifacts.",
+    "git diff --check && git diff --cached --check && git diff --exit-code && git ls-files --unmerged — passed; no unresolved conflicts or unstaged changes."
+  ]
+}

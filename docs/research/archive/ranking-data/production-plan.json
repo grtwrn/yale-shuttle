@@ -1,0 +1,135 @@
+{
+  "plans": [
+    {
+      "totalSec": 768.5308901163172,
+      "confidenceLowSec": 412.87244518530844,
+      "confidenceHighSec": 1124.189335047326,
+      "legs": [
+        {
+          "mode": "ride",
+          "routeId": 3,
+          "boardStopId": 48,
+          "alightStopId": 4,
+          "busName": "#300",
+          "waitSec": 267.3154743902441,
+          "rideSec": 452.73710959589886,
+          "confidenceLowSec": 364.3941390551342,
+          "confidenceHighSec": 1075.7110289171517
+        },
+        {
+          "mode": "walk",
+          "fromStopId": 4,
+          "toStopId": null,
+          "meters": 53.32613674319163,
+          "seconds": 48.47830613017421
+        }
+      ],
+      "badge": "fastest"
+    },
+    {
+      "totalSec": 953.6222268579002,
+      "confidenceLowSec": 604.2446099935162,
+      "confidenceHighSec": 1302.9998437222841,
+      "legs": [
+        {
+          "mode": "ride",
+          "routeId": 3,
+          "boardStopId": 48,
+          "alightStopId": 113,
+          "busName": "#300",
+          "waitSec": 267.3154743902441,
+          "rideSec": 329.9953164924506,
+          "confidenceLowSec": 247.9331740183108,
+          "confidenceHighSec": 946.6884077470786
+        },
+        {
+          "mode": "walk",
+          "fromStopId": 113,
+          "toStopId": null,
+          "meters": 391.942579572726,
+          "seconds": 356.3114359752054
+        }
+      ],
+      "badge": null
+    },
+    {
+      "totalSec": 1014.9754422383397,
+      "confidenceLowSec": 673.3985416457838,
+      "confidenceHighSec": 1356.5523428308957,
+      "legs": [
+        {
+          "mode": "ride",
+          "routeId": 3,
+          "boardStopId": 48,
+          "alightStopId": 104,
+          "busName": "#300",
+          "waitSec": 267.3154743902441,
+          "rideSec": 96.82802380952378,
+          "confidenceLowSec": 22.566597607211918,
+          "confidenceHighSec": 705.720398792324
+        },
+        {
+          "mode": "walk",
+          "fromStopId": 104,
+          "toStopId": null,
+          "meters": 715.915138442429,
+          "seconds": 650.8319440385718
+        }
+      ],
+      "badge": null
+    },
+    {
+      "totalSec": 1021.8788442284334,
+      "confidenceLowSec": 1021.8788442284334,
+      "confidenceHighSec": 1021.8788442284334,
+      "legs": [
+        {
+          "mode": "walk",
+          "fromStopId": null,
+          "toStopId": null,
+          "meters": 1124.066728651277,
+          "seconds": 1021.8788442284334
+        }
+      ],
+      "badge": null
+    }
+  ],
+  "potentialRoutes": [
+    {
+      "routeId": 4,
+      "boardStopId": 100,
+      "alightStopId": 106,
+      "nextActiveAt": null
+    },
+    {
+      "routeId": 16,
+      "boardStopId": 163,
+      "alightStopId": 164,
+      "nextActiveAt": null
+    },
+    {
+      "routeId": 14,
+      "boardStopId": 132,
+      "alightStopId": 141,
+      "nextActiveAt": null
+    },
+    {
+      "routeId": 18,
+      "boardStopId": 132,
+      "alightStopId": 137,
+      "nextActiveAt": null
+    },
+    {
+      "routeId": 13,
+      "boardStopId": 97,
+      "alightStopId": 106,
+      "nextActiveAt": null
+    },
+    {
+      "routeId": 17,
+      "boardStopId": 167,
+      "alightStopId": 157,
+      "nextActiveAt": null
+    }
+  ]
+}

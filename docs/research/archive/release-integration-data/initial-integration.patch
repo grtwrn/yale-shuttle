@@ -1,0 +1,161 @@
+diff --git a/services/shuttle-v2/web/src/eta/arrival.ts b/services/shuttle-v2/web/src/eta/arrival.ts
+index 99abd92..c2fc70a 100644
+--- a/services/shuttle-v2/web/src/eta/arrival.ts
++++ b/services/shuttle-v2/web/src/eta/arrival.ts
+@@ -34,7 +34,8 @@
+  * the moment the lead situation is no longer standing at that stop.
+  */
+ 
+-import { quantile, residual, residualMedian, type Dist } from "./dist";
++import { cdf, quantile, residual, residualMedian, type Dist } from "./dist";
++import { releaseDist, releaseExperiment, type ReleasePin } from './release';
+ import { lapAt, lapFactor } from "./lap";
+ import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
+ import { applyHorizonBias, applyRouteScale, routeScale, widenBand } from "./params";
+@@ -437,7 +438,7 @@ interface Chain {
+  * legs, the same tables, the same permutations, one term short — and it is
+  * why the drive floor is not a second walk over the hops.
+  */
+-function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null, skipRest = false): Chain {
++function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null, skipRest = false, release?: { index: number; dist: Dist; elapsed: number }): Chain {
+   const samples = new Float64Array(K);
+   let measured = false;
+   let standingAt = -1;
+@@ -462,7 +463,10 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
+     // Term indices past the ring's own (2N + ...) so the residual draws are independent of the chain's.
+     if (!hop.includesStand) {
+       restsNow = true;
+-      if (!skipRest) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
++      if (!skipRest) {
++        if (release?.index === j) addResidual(samples, release.dist, release.elapsed, 6 * tables.hops.length + j);
++        else addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
++      }
+     }
+     addTerm(samples, hop.drive, 2 * j + 1);
+     measured = hop.measured || tables.stops[j]!.measured;
+@@ -510,6 +514,7 @@ function chainAt(c: Chain, pre: ChainPrefix, h: number, out: Float64Array, lap:
+ function sampleFutureLaps(
+   c: Chain, tables: RouteTables, stops: readonly number[], ages: LapAges,
+   own: { stop: number; depT: number } | null,
++  now = 0,
+ ): void {
+   const N = tables.hops.length;
+   const departed = new Map<number, Float64Array>();
+@@ -533,7 +538,15 @@ function sampleFutureLaps(
+       const lap = previous ? current[k]! - previous[k]! : lapAt(ages[stops[s]!], current[k]!);
+       const f = lapFactor(model.lap, lap);
+       const stand = marginal[k]!;
+-      dep[k] = current[k]! + (hop.includesStand ? 0 : stand * f);
++      let hold = stand * f;
++      if (!hop.includesStand && releaseExperiment().future) {
++        const d = releaseDist(stops[s]!, now + current[k]! * 1000, lap ?? undefined);
++        if (d) {
++          const zero = cdf(model.stand, 0), u = STRATA[permFor(2 * s)[k]!]!;
++          hold = u <= zero ? 0 : quantile(d, (u - zero) / (1 - zero));
++        }
++      }
++      dep[k] = current[k]! + (hop.includesStand ? 0 : hold);
+       next[k] = dep[k]! + drive[k]!;
+     }
+     departed.set(s, dep);
+@@ -655,6 +668,7 @@ export function priceRoute(
+   /** Seconds since this bus last departed each stop (`buses[].lap`); the lap correction is off without it. */
+   lapAges?: LapAges | undefined,
+   includeDistribution = false,
++  releasePin?: ReleasePin,
+ ): StopArrival[] {
+   const sits = situations(belief, ring);
+   if (sits.length === 0) return [];
+@@ -662,19 +676,28 @@ export function priceRoute(
+   const r = standingSec(belief, now);
+   const pre = chainPrefix(tables);
+   const restStop = belief.rested ? belief.restStop : -1;
++  const releaseConfig = ring.routeId === '3' ? releaseExperiment() : { current: false, future: false, unclamp: false };
++  let currentRelease: { index: number; dist: Dist; elapsed: number } | undefined;
++  if (releaseConfig.current && releasePin && restStop >= 0 && stops[restStop] === releasePin.stopId) {
++    const age = lapAges?.[releasePin.stopId], elapsed = (now - releasePin.since) / 1000;
++    if (elapsed >= 0 && age !== undefined) {
++      const d = releaseDist(releasePin.stopId, releasePin.since, age - elapsed);
++      if (d) currentRelease = { index: restStop, dist: d, elapsed };
++    }
++  }
+   // The lead chain is found first WITHOUT the lap correction, because the
+   // correction is a walk forward from the lead's own leg; then every chain is
+   // built again with it. `startChain` is scalar work, so the second pass costs
+   // nothing measurable, and with no lap fit or no served ages the second pass
+   // IS the first — `lapCorrection` returns null and every draw is unchanged.
+   const pick = (cs: Chain[]) => cs.find((c) => c.sit.leg === belief.lead) ?? cs[0]!;
+-  const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null));
++  const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null, false, currentRelease));
+   const lead0 = pick(plain);
+   const lap = lapAges && tables.stops.some((st) => st.lap)
+     ? lapCorrection(tables, pre, stops, lapAges, lead0.leg, lead0.standingAt, lead0.sit.frac, r,
+       ownDeparture(belief, stops, lapAges, lead0.standingAt, r, now))
+     : null;
+-  const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap)) : plain;
++  const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap, false, currentRelease)) : plain;
+   const lead = pick(chains);
+   // The drive floor's chain (`departNow` on every row): the lead's own chain
+   // with the rest in progress ended this second. Built only when there IS one
+@@ -685,9 +708,9 @@ export function priceRoute(
+     : null;
+   if (sampledFutureLap && ring.routeId === "3" && lapAges && tables.stops.some(st => st.lap)) {
+     for (const c of chains) sampleFutureLaps(c, tables, stops, lapAges,
+-      ownDeparture(belief, stops, lapAges, c.standingAt, r, now));
++      ownDeparture(belief, stops, lapAges, c.standingAt, r, now), now);
+     if (leadNow) sampleFutureLaps(leadNow, tables, stops, lapAges,
+-      ownDeparture(belief, stops, lapAges, leadNow.standingAt, r, now));
++      ownDeparture(belief, stops, lapAges, leadNow.standingAt, r, now), now);
+   }
+   const out: StopArrival[] = [];
+   const clockSince = clockOrigin(belief);
+@@ -811,7 +834,7 @@ export function priceRoute(
+     let distribution = includeDistribution
+       ? mixedQuantiles(fullMix ? all : parts, DISTRIBUTION_QUANTILES) : undefined;
+     const key = chainKey(cur, o);
+-    if (floors && clampAt >= 0) {
++    if (floors && clampAt >= 0 && !(releaseConfig.unclamp && currentRelease?.index === clampAt)) {
+       const prev = floors.map.get(key);
+       const held = prev !== undefined && prev.standingAt === clampAt && prev.since === clockSince ? prev : undefined;
+       const cleared = standMass >= LEAD_SWITCH_MASS;
+diff --git a/services/shuttle-v2/web/src/eta/index.ts b/services/shuttle-v2/web/src/eta/index.ts
+index dc466fe..7a551c5 100644
+--- a/services/shuttle-v2/web/src/eta/index.ts
++++ b/services/shuttle-v2/web/src/eta/index.ts
+@@ -33,6 +33,7 @@ import { priceRoute, type Floors, type StopArrival } from "./arrival";
+ import { stepBelief, type Belief, type FilterBus } from "./filter";
+ import { ringFor, setRingProfile, type Ring } from "./ring";
+ import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
++import type { ReleasePin } from './release';
+ 
+ /**
+  * The displayed quantile. 0.5 = the median.
+@@ -49,7 +50,7 @@ export const DISPLAY_TAU = 0.5;
+  * Keyed by `anchorKeyFor(routeLabel, busName)` (liveAnchor.ts) — the bus
+  * NAME, never `bus_id`, which TransLoc reissues per service block.
+  */
+-export interface ModelEntry { belief?: Belief | undefined; floors?: Floors | undefined }
++export interface ModelEntry { belief?: Belief | undefined; floors?: Floors | undefined; releasePin?: ReleasePin | undefined }
+ export type AnchorStore = Map<string, ModelEntry>;
+ 
+ /**
+@@ -160,12 +161,18 @@ export function arrivalsForBus(
+   const tables = tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute);
+   const belief = beliefFor(store, key, bus, ring, ring.stops, now);
+   let floors: Floors | undefined;
++  let releasePin: ReleasePin | undefined;
+   if (store) {
+     const e = entryFor(store, key);
++    if (bus.at_stop_id !== undefined && bus.at_stop_id !== null && bus.at_stop_since) {
++      const since = new Date(bus.at_stop_since.endsWith('Z') ? bus.at_stop_since : bus.at_stop_since + 'Z').getTime();
++      if (Number.isFinite(since) && since <= now) e.releasePin = { stopId: Number(bus.at_stop_id), since };
++    }
++    releasePin = e.releasePin;
+     if (!e.floors) e.floors = { map: new Map() };
+     floors = e.floors;
+   }
+-  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, lapAgesOf(bus), includeDistribution);
++  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, lapAgesOf(bus), includeDistribution, releasePin);
+ }
+ 
+ // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only

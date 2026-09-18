@@ -1,0 +1,31 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {chromium} from '/home/gwarren/yale-shuttle/services/shuttle-v2/node_modules/playwright-core/index.mjs';
+import {seedTestId} from '/home/gwarren/yale-shuttle/services/shuttle-v2/scripts/testId.mjs';
+const base='https://yale-shuttle.fly.dev';
+const health=await (await fetch(base+'/healthz')).json();
+assert.equal(health.build,'5f1fcb2bfa73');
+const out='/home/gwarren/projects/yale-shuttle-watcher/red-eta-data';
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
+const result={health,errors:[]};
+try {
+ const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,permissions:['geolocation'],geolocation:{latitude:41.324769,longitude:-72.923522},serviceWorkers:'block'});
+ await seedTestId(ctx); const page=await ctx.newPage();page.setDefaultTimeout(20000);
+ page.on('pageerror',e=>result.errors.push(e.message));
+ await page.route('**/api/geocode**',route=>route.fulfill({json:{results:[{display_name:'LEPH / 60 College',lat:41.303735,lon:-72.932155,type:'university',class:'yale'}]}}));
+ await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByPlaceholder('Where do you want to go?').fill('LEPH / 60 College');
+ await page.getByText('LEPH / 60 College',{exact:true}).first().click();
+ const eta=page.getByRole('button',{name:/^Red arrival details:/});await eta.waitFor();
+ result.card=await eta.innerText();await eta.click();
+ const dialog=page.getByRole('dialog');await dialog.waitFor();result.dialog=await dialog.innerText();
+ assert.match(result.dialog,/Likely arrival window:/);assert.match(result.dialog,/Estimated gap/);
+ await page.screenshot({path:out+'/production-details.png'});
+ await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+ assert(await eta.evaluate(e=>e===document.activeElement));
+ const card=page.getByRole('button',{name:'View Red trip details',exact:true});await card.focus();await page.keyboard.press('Enter');
+ await page.getByRole('button',{name:/All routes/}).waitFor();
+ assert.equal(result.errors.length,0);
+ result.checks=['new production build','real live feed','tap shows window and gap','Escape returns focus','trip card keyboard activation','no page errors'];
+ console.log(JSON.stringify(result));
+}finally{await fs.writeFile(out+'/production-verification.json',JSON.stringify(result,null,2));await browser.close();}

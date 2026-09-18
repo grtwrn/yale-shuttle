@@ -1,0 +1,98 @@
+[
+  {
+    "receivedAt": 1789654205259,
+    "at": 1789654204248,
+    "servedAt": 1789654204248,
+    "rest": null,
+    "inferredSince": null,
+    "feed": [
+      {
+        "stationarySince": "2026-09-17T14:10:04.237"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1789654207320,
+    "at": 1789654204248,
+    "servedAt": 1789654207263,
+    "rest": null,
+    "inferredSince": null,
+    "feed": [
+      {
+        "stationarySince": "2026-09-17T14:10:04.237"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1789654209374,
+    "at": 1789654204248,
+    "servedAt": 1789654208594,
+    "rest": null,
+    "inferredSince": null,
+    "feed": [
+      {
+        "stationarySince": "2026-09-17T14:10:04.237"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1789654211442,
+    "at": 1789654209407,
+    "servedAt": 1789654211271,
+    "rest": null,
+    "inferredSince": null,
+    "feed": [
+      {
+        "stationarySince": "2026-09-17T14:10:04.237"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1789654213499,
+    "at": 1789654209407,
+    "servedAt": 1789654212796,
+    "rest": null,
+    "inferredSince": null,
+    "feed": [
+      {
+        "stationarySince": "2026-09-17T14:10:04.237"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1789654215560,
+    "at": 1789654214255,
+    "servedAt": 1789654215506,
+    "rest": null,
+    "inferredSince": null,
+    "feed": [
+      {
+        "stationarySince": "2026-09-17T14:10:04.237"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1789654217621,
+    "at": 1789654214255,
+    "servedAt": 1789654217566,
+    "rest": null,
+    "inferredSince": null,
+    "feed": [
+      {
+        "stationarySince": "2026-09-17T14:10:04.237"
+      }
+    ]
+  },
+  {
+    "receivedAt": 1789654219678,
+    "at": 1789654219240,
+    "servedAt": 1789654219240,
+    "rest": null,
+    "inferredSince": null,
+    "feed": [
+      {
+        "stationarySince": "2026-09-17T14:10:19.237"
+      }
+    ]
+  }
+]

@@ -1,0 +1,4349 @@
+{
+  "largeBandRows": 5021,
+  "byRoute": {
+    "10": 516,
+    "8": 301,
+    "9": 1362,
+    "3": 710,
+    "2": 654,
+    "19": 136,
+    "1": 693,
+    "15": 649
+  },
+  "postArrivalLabeled": 0,
+  "connectedNonnegative": 1832,
+  "unknownTruth": 3189,
+  "selectedAudits": [
+    {
+      "forecast": {
+        "at": 1789570379118,
+        "poll": 2738,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58671,
+        "targetId": 58789,
+        "legIds": [
+          54296,
+          54307,
+          54386,
+          54394,
+          54400
+        ],
+        "truthSec": 880.193,
+        "current": [
+          4,
+          3,
+          5,
+          1
+        ],
+        "canonical": [
+          475,
+          -202,
+          5796,
+          6
+        ],
+        "maxBandDelta": 5791,
+        "reason": "connected"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58671,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 25,
+          "stop_index": 13,
+          "anchored_at": 1789570354088,
+          "pinned_at": 1789570379118,
+          "arrived_at": 1789570384225,
+          "departed_at": 1789570414109,
+          "outcome": "stopped",
+          "how": "clock"
+        },
+        "target": {
+          "id": 58789,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 25,
+          "stop_index": 18,
+          "anchored_at": 1789571239239,
+          "pinned_at": 1789571254306,
+          "arrived_at": 1789571259311,
+          "departed_at": 1789571274299,
+          "outcome": "stopped",
+          "how": "far"
+        }
+      },
+      "legs": [
+        {
+          "id": 54296,
+          "route_id": 9,
+          "bus_name": "#122",
+          "from_index": 13,
+          "to_index": 14,
+          "hops": 1,
+          "departed_at": 1789570414109,
+          "arrived_at": 1789570474114,
+          "reached": 1
+        },
+        {
+          "id": 54307,
+          "route_id": 9,
+          "bus_name": "#122",
+          "from_index": 14,
+          "to_index": 15,
+          "hops": 1,
+          "departed_at": 1789570519106,
+          "arrived_at": 1789570564250,
+          "reached": 1
+        },
+        {
+          "id": 54386,
+          "route_id": 9,
+          "bus_name": "#122",
+          "from_index": 15,
+          "to_index": 16,
+          "hops": 1,
+          "departed_at": 1789571084200,
+          "arrived_at": 1789571169246,
+          "reached": 1
+        },
+        {
+          "id": 54394,
+          "route_id": 9,
+          "bus_name": "#122",
+          "from_index": 16,
+          "to_index": 17,
+          "hops": 1,
+          "departed_at": 1789571174260,
+          "arrived_at": 1789571224245,
+          "reached": 1
+        },
+        {
+          "id": 54400,
+          "route_id": 9,
+          "bus_name": "#122",
+          "from_index": 17,
+          "to_index": 18,
+          "hops": 1,
+          "departed_at": 1789571224245,
+          "arrived_at": 1789571259311,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789570364122,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.258091,
+          "lon": -72.987392,
+          "last_stop_id": 26
+        },
+        {
+          "collected_at": 1789570369157,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.258354,
+          "lon": -72.987673,
+          "last_stop_id": 26
+        },
+        {
+          "collected_at": 1789570374175,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.258377,
+          "lon": -72.988102,
+          "last_stop_id": 26
+        },
+        {
+          "collected_at": 1789570379118,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.258228,
+          "lon": -72.988469,
+          "last_stop_id": 26
+        },
+        {
+          "collected_at": 1789570384225,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.258058,
+          "lon": -72.988768,
+          "last_stop_id": 26
+        },
+        {
+          "collected_at": 1789570389106,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.258058,
+          "lon": -72.988768,
+          "last_stop_id": 26
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789559223404,
+        "poll": 508,
+        "route": 10,
+        "bus": "330",
+        "targetIndex": 11,
+        "targetStop": 24,
+        "occurrence": 0,
+        "sourceId": 57081,
+        "targetId": 57120,
+        "legIds": [
+          52775,
+          52785
+        ],
+        "truthSec": 155.74,
+        "current": [
+          4151,
+          18,
+          5473,
+          16
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5473,
+        "reason": "connected"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 57081,
+          "bus_name": "#330",
+          "route_id": 10,
+          "stop_id": 22,
+          "stop_index": 9,
+          "anchored_at": 1789558988381,
+          "pinned_at": 1789559018406,
+          "arrived_at": 1789559028402,
+          "departed_at": 1789559063410,
+          "outcome": "stopped",
+          "how": "far"
+        },
+        "target": {
+          "id": 57120,
+          "bus_name": "#330",
+          "route_id": 10,
+          "stop_id": 24,
+          "stop_index": 11,
+          "anchored_at": 1789559374164,
+          "pinned_at": 1789559374164,
+          "arrived_at": 1789559379144,
+          "departed_at": 1789559379144,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [
+        {
+          "id": 52775,
+          "route_id": 10,
+          "bus_name": "#330",
+          "from_index": 9,
+          "to_index": 10,
+          "hops": 1,
+          "departed_at": 1789559063410,
+          "arrived_at": 1789559314205,
+          "reached": 1
+        },
+        {
+          "id": 52785,
+          "route_id": 10,
+          "bus_name": "#330",
+          "from_index": 10,
+          "to_index": 11,
+          "hops": 1,
+          "departed_at": 1789559339145,
+          "arrived_at": 1789559379144,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789559208474,
+          "route_id": 10,
+          "bus_name": "#330",
+          "lat": 41.253841,
+          "lon": -72.995956,
+          "last_stop_id": 22
+        },
+        {
+          "collected_at": 1789559213441,
+          "route_id": 10,
+          "bus_name": "#330",
+          "lat": 41.253841,
+          "lon": -72.995956,
+          "last_stop_id": 22
+        },
+        {
+          "collected_at": 1789559218418,
+          "route_id": 10,
+          "bus_name": "#330",
+          "lat": 41.254028,
+          "lon": -72.995663,
+          "last_stop_id": 22
+        },
+        {
+          "collected_at": 1789559223404,
+          "route_id": 10,
+          "bus_name": "#330",
+          "lat": 41.254282,
+          "lon": -72.995497,
+          "last_stop_id": 22
+        },
+        {
+          "collected_at": 1789559228434,
+          "route_id": 10,
+          "bus_name": "#330",
+          "lat": 41.254557,
+          "lon": -72.995539,
+          "last_stop_id": 22
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789572624446,
+        "poll": 3187,
+        "route": 9,
+        "bus": "325",
+        "targetIndex": 11,
+        "targetStop": 127,
+        "occurrence": 0,
+        "sourceId": 58934,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          4179,
+          3384,
+          5470,
+          24
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5470,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58934,
+          "bus_name": "#325",
+          "route_id": 9,
+          "stop_id": 127,
+          "stop_index": 11,
+          "anchored_at": 1789572294396,
+          "pinned_at": 1789572604544,
+          "arrived_at": 1789572614463,
+          "departed_at": 1789572619532,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789572609538,
+          "route_id": 9,
+          "bus_name": "#325",
+          "lat": 41.271424,
+          "lon": -72.963814,
+          "last_stop_id": 81
+        },
+        {
+          "collected_at": 1789572614463,
+          "route_id": 9,
+          "bus_name": "#325",
+          "lat": 41.271147,
+          "lon": -72.963775,
+          "last_stop_id": 81
+        },
+        {
+          "collected_at": 1789572619532,
+          "route_id": 9,
+          "bus_name": "#325",
+          "lat": 41.271147,
+          "lon": -72.963775,
+          "last_stop_id": 81
+        },
+        {
+          "collected_at": 1789572624446,
+          "route_id": 9,
+          "bus_name": "#325",
+          "lat": 41.27125,
+          "lon": -72.963374,
+          "last_stop_id": 81
+        },
+        {
+          "collected_at": 1789572629475,
+          "route_id": 9,
+          "bus_name": "#325",
+          "lat": 41.271369,
+          "lon": -72.963036,
+          "last_stop_id": 81
+        },
+        {
+          "collected_at": 1789572634554,
+          "route_id": 9,
+          "bus_name": "#325",
+          "lat": 41.271604,
+          "lon": -72.96282,
+          "last_stop_id": 81
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789568617448,
+        "poll": 2386,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58417,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          4082,
+          3277,
+          5393,
+          24
+        ],
+        "maxBandDelta": 5393,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58417,
+          "bus_name": "#127",
+          "route_id": 9,
+          "stop_id": 25,
+          "stop_index": 18,
+          "anchored_at": 1789568592429,
+          "pinned_at": 1789568607420,
+          "arrived_at": 1789568607420,
+          "departed_at": 1789568622507,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789568607420,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.25807,
+          "lon": -72.988748,
+          "last_stop_id": 24
+        },
+        {
+          "collected_at": 1789568612487,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.25807,
+          "lon": -72.988748,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568617448,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.25807,
+          "lon": -72.988748,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568622507,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.25807,
+          "lon": -72.988748,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568627427,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.258104,
+          "lon": -72.988368,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568632427,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.258289,
+          "lon": -72.988043,
+          "last_stop_id": 25
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789568622507,
+        "poll": 2387,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58417,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          4111,
+          3277,
+          5393,
+          24
+        ],
+        "maxBandDelta": 5393,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58417,
+          "bus_name": "#127",
+          "route_id": 9,
+          "stop_id": 25,
+          "stop_index": 18,
+          "anchored_at": 1789568592429,
+          "pinned_at": 1789568607420,
+          "arrived_at": 1789568607420,
+          "departed_at": 1789568622507,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789568612487,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.25807,
+          "lon": -72.988748,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568617448,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.25807,
+          "lon": -72.988748,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568622507,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.25807,
+          "lon": -72.988748,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568627427,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.258104,
+          "lon": -72.988368,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568632427,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.258289,
+          "lon": -72.988043,
+          "last_stop_id": 25
+        },
+        {
+          "collected_at": 1789568637425,
+          "route_id": 9,
+          "bus_name": "#127",
+          "lat": 41.258318,
+          "lon": -72.987686,
+          "last_stop_id": 25
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789565081992,
+        "poll": 1679,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 1,
+        "targetStop": 84,
+        "occurrence": 0,
+        "sourceId": 57937,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          3,
+          1,
+          5365,
+          1
+        ],
+        "maxBandDelta": 5365,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 57937,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 84,
+          "stop_index": 1,
+          "anchored_at": 1789565071980,
+          "pinned_at": 1789565071980,
+          "arrived_at": 1789565077025,
+          "departed_at": 1789565552028,
+          "outcome": "stopped",
+          "how": "next"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789565067120,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.31729,
+          "lon": -72.915318,
+          "last_stop_id": 87
+        },
+        {
+          "collected_at": 1789565071980,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.317583,
+          "lon": -72.915089,
+          "last_stop_id": 87
+        },
+        {
+          "collected_at": 1789565077025,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.317848,
+          "lon": -72.914862,
+          "last_stop_id": 78
+        },
+        {
+          "collected_at": 1789565081992,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.317848,
+          "lon": -72.914862,
+          "last_stop_id": 78
+        },
+        {
+          "collected_at": 1789565087087,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.317848,
+          "lon": -72.914862,
+          "last_stop_id": 78
+        },
+        {
+          "collected_at": 1789565091998,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.317848,
+          "lon": -72.914862,
+          "last_stop_id": 78
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789572966114,
+        "poll": 3255,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 7,
+        "targetStop": 133,
+        "occurrence": 0,
+        "sourceId": 58968,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          4082,
+          3297,
+          5360,
+          24
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5360,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58968,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 133,
+          "stop_index": 7,
+          "anchored_at": 1789572916096,
+          "pinned_at": 1789572921094,
+          "arrived_at": 1789572926094,
+          "departed_at": 1789572931107,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789572951260,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572956115,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572961246,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572966114,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572971104,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572976141,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789572971104,
+        "poll": 3256,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 7,
+        "targetStop": 133,
+        "occurrence": 0,
+        "sourceId": 58968,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          4082,
+          3297,
+          5360,
+          24
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5360,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58968,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 133,
+          "stop_index": 7,
+          "anchored_at": 1789572916096,
+          "pinned_at": 1789572921094,
+          "arrived_at": 1789572926094,
+          "departed_at": 1789572931107,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789572956115,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572961246,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572966114,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572971104,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572976141,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572981130,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789572976141,
+        "poll": 3257,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 7,
+        "targetStop": 133,
+        "occurrence": 0,
+        "sourceId": 58968,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          4082,
+          3297,
+          5360,
+          24
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5360,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58968,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 133,
+          "stop_index": 7,
+          "anchored_at": 1789572916096,
+          "pinned_at": 1789572921094,
+          "arrived_at": 1789572926094,
+          "departed_at": 1789572931107,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789572961246,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572966114,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572971104,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572976141,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572981130,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572986105,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572991116,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789572981130,
+        "poll": 3258,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 7,
+        "targetStop": 133,
+        "occurrence": 0,
+        "sourceId": 58968,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          4082,
+          3297,
+          5360,
+          24
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5360,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58968,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 133,
+          "stop_index": 7,
+          "anchored_at": 1789572916096,
+          "pinned_at": 1789572921094,
+          "arrived_at": 1789572926094,
+          "departed_at": 1789572931107,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789572971104,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572976141,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572981130,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572986105,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572991116,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789572986105,
+        "poll": 3259,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 7,
+        "targetStop": 133,
+        "occurrence": 0,
+        "sourceId": 58968,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          4082,
+          3297,
+          5360,
+          24
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5360,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58968,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 133,
+          "stop_index": 7,
+          "anchored_at": 1789572916096,
+          "pinned_at": 1789572921094,
+          "arrived_at": 1789572926094,
+          "departed_at": 1789572931107,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789572976141,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572981130,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572986105,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572991116,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572996158,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789572991116,
+        "poll": 3260,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 7,
+        "targetStop": 133,
+        "occurrence": 0,
+        "sourceId": 58968,
+        "targetId": null,
+        "legIds": [],
+        "truthSec": null,
+        "current": [
+          4082,
+          3297,
+          5360,
+          24
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5360,
+        "reason": "source-target-identity-unresolved"
+      },
+      "selectedBy": [
+        "large-band"
+      ],
+      "records": {
+        "source": {
+          "id": 58968,
+          "bus_name": "#122",
+          "route_id": 9,
+          "stop_id": 133,
+          "stop_index": 7,
+          "anchored_at": 1789572916096,
+          "pinned_at": 1789572921094,
+          "arrived_at": 1789572926094,
+          "departed_at": 1789572931107,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [],
+      "rawWindow": [
+        {
+          "collected_at": 1789572976141,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572981130,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572986105,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572991116,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789572996158,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        },
+        {
+          "collected_at": 1789573001278,
+          "route_id": 9,
+          "bus_name": "#122",
+          "lat": 41.319878,
+          "lon": -72.918833,
+          "last_stop_id": 144
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789563181810,
+        "poll": 1299,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 4,
+        "targetStop": 156,
+        "occurrence": 0,
+        "sourceId": 57627,
+        "targetId": 57634,
+        "legIds": [
+          53281
+        ],
+        "truthSec": 44.997,
+        "current": [
+          94,
+          -4,
+          222,
+          2
+        ],
+        "canonical": [
+          163,
+          -11,
+          382,
+          2
+        ],
+        "maxBandDelta": 160,
+        "reason": "connected",
+        "errorIncrease": 69.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 57627,
+          "bus_name": "#304",
+          "route_id": 15,
+          "stop_id": 155,
+          "stop_index": 3,
+          "anchored_at": 1789563161859,
+          "pinned_at": 1789563166848,
+          "arrived_at": 1789563166848,
+          "departed_at": 1789563201785,
+          "outcome": "stopped",
+          "how": "next"
+        },
+        "target": {
+          "id": 57634,
+          "bus_name": "#304",
+          "route_id": 15,
+          "stop_id": 156,
+          "stop_index": 4,
+          "anchored_at": 1789563226807,
+          "pinned_at": 1789563226807,
+          "arrived_at": 1789563226807,
+          "departed_at": 1789563231821,
+          "outcome": "passed",
+          "how": "clock"
+        }
+      },
+      "legs": [
+        {
+          "id": 53281,
+          "route_id": 15,
+          "bus_name": "#304",
+          "from_index": 3,
+          "to_index": 4,
+          "hops": 1,
+          "departed_at": 1789563201785,
+          "arrived_at": 1789563226807,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789563166848,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.310352,
+          "lon": -72.934737,
+          "last_stop_id": 154
+        },
+        {
+          "collected_at": 1789563171795,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.310352,
+          "lon": -72.934737,
+          "last_stop_id": 154
+        },
+        {
+          "collected_at": 1789563176798,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.310352,
+          "lon": -72.934737,
+          "last_stop_id": 154
+        },
+        {
+          "collected_at": 1789563181810,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.310352,
+          "lon": -72.934737,
+          "last_stop_id": 154
+        },
+        {
+          "collected_at": 1789563186962,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.310352,
+          "lon": -72.934737,
+          "last_stop_id": 154
+        },
+        {
+          "collected_at": 1789563191881,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.310352,
+          "lon": -72.934737,
+          "last_stop_id": 154
+        },
+        {
+          "collected_at": 1789563196782,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.310352,
+          "lon": -72.934737,
+          "last_stop_id": 154
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789567082259,
+        "poll": 2079,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 3,
+        "targetStop": 155,
+        "occurrence": 0,
+        "sourceId": 58203,
+        "targetId": 58297,
+        "legIds": [
+          53843,
+          53903,
+          53926
+        ],
+        "truthSec": 780.071,
+        "current": [
+          895,
+          480,
+          1420,
+          3
+        ],
+        "canonical": [
+          959,
+          507,
+          1474,
+          3
+        ],
+        "maxBandDelta": 64,
+        "reason": "connected",
+        "errorIncrease": 64.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 58203,
+          "bus_name": "#304",
+          "route_id": 15,
+          "stop_id": 10,
+          "stop_index": 0,
+          "anchored_at": 1789566572180,
+          "pinned_at": 1789566772190,
+          "arrived_at": 1789566772190,
+          "departed_at": 1789567237342,
+          "outcome": "stopped",
+          "how": "clock"
+        },
+        "target": {
+          "id": 58297,
+          "bus_name": "#304",
+          "route_id": 15,
+          "stop_id": 155,
+          "stop_index": 3,
+          "anchored_at": 1789567847332,
+          "pinned_at": 1789567862330,
+          "arrived_at": 1789567862330,
+          "departed_at": 1789567867491,
+          "outcome": "passed",
+          "how": "next"
+        }
+      },
+      "legs": [
+        {
+          "id": 53843,
+          "route_id": 15,
+          "bus_name": "#304",
+          "from_index": 0,
+          "to_index": 1,
+          "hops": 1,
+          "departed_at": 1789567237342,
+          "arrived_at": 1789567317281,
+          "reached": 1
+        },
+        {
+          "id": 53903,
+          "route_id": 15,
+          "bus_name": "#304",
+          "from_index": 1,
+          "to_index": 2,
+          "hops": 1,
+          "departed_at": 1789567377289,
+          "arrived_at": 1789567647327,
+          "reached": 1
+        },
+        {
+          "id": 53926,
+          "route_id": 15,
+          "bus_name": "#304",
+          "from_index": 2,
+          "to_index": 3,
+          "hops": 1,
+          "departed_at": 1789567662337,
+          "arrived_at": 1789567862330,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789567067358,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567072230,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567077254,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567082259,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567087233,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567092271,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567097242,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789564741980,
+        "poll": 1611,
+        "route": 3,
+        "bus": "309",
+        "targetIndex": 12,
+        "targetStop": 147,
+        "occurrence": 0,
+        "sourceId": 57831,
+        "targetId": 58167,
+        "legIds": [
+          53478,
+          53490,
+          53503,
+          53526,
+          53540,
+          53545,
+          53561,
+          53573,
+          53587,
+          53595,
+          53622,
+          53641,
+          53663,
+          53670,
+          53690,
+          53710,
+          53725,
+          53735,
+          53743,
+          53764,
+          53777,
+          53786,
+          53797
+        ],
+        "truthSec": 2240.275,
+        "current": [
+          2477,
+          2220,
+          2809,
+          23
+        ],
+        "canonical": [
+          2540,
+          2252,
+          2888,
+          23
+        ],
+        "maxBandDelta": 79,
+        "reason": "connected",
+        "errorIncrease": 63.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 57831,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 104,
+          "stop_index": 18,
+          "anchored_at": 1789564671999,
+          "pinned_at": 1789564696965,
+          "arrived_at": 1789564702012,
+          "departed_at": 1789564791955,
+          "outcome": "stopped",
+          "how": "far"
+        },
+        "target": {
+          "id": 58167,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 147,
+          "stop_index": 12,
+          "anchored_at": 1789566972228,
+          "pinned_at": 1789566977235,
+          "arrived_at": 1789566982255,
+          "departed_at": 1789566987233,
+          "outcome": "passed",
+          "how": "far"
+        }
+      },
+      "legs": [
+        {
+          "id": 53478,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 18,
+          "to_index": 19,
+          "hops": 1,
+          "departed_at": 1789564791955,
+          "arrived_at": 1789564826993,
+          "reached": 1
+        },
+        {
+          "id": 53490,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 19,
+          "to_index": 20,
+          "hops": 1,
+          "departed_at": 1789564841955,
+          "arrived_at": 1789564912002,
+          "reached": 1
+        },
+        {
+          "id": 53503,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 20,
+          "to_index": 21,
+          "hops": 1,
+          "departed_at": 1789564942020,
+          "arrived_at": 1789565017002,
+          "reached": 1
+        },
+        {
+          "id": 53526,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789565062028,
+          "arrived_at": 1789565166993,
+          "reached": 1
+        },
+        {
+          "id": 53540,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789565177106,
+          "arrived_at": 1789565262001,
+          "reached": 1
+        },
+        {
+          "id": 53545,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 23,
+          "to_index": 24,
+          "hops": 1,
+          "departed_at": 1789565267090,
+          "arrived_at": 1789565277114,
+          "reached": 1
+        },
+        {
+          "id": 53561,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 24,
+          "to_index": 25,
+          "hops": 1,
+          "departed_at": 1789565327051,
+          "arrived_at": 1789565417029,
+          "reached": 1
+        },
+        {
+          "id": 53573,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 25,
+          "to_index": 26,
+          "hops": 1,
+          "departed_at": 1789565462038,
+          "arrived_at": 1789565497034,
+          "reached": 1
+        },
+        {
+          "id": 53587,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 26,
+          "to_index": 27,
+          "hops": 1,
+          "departed_at": 1789565562042,
+          "arrived_at": 1789565592035,
+          "reached": 1
+        },
+        {
+          "id": 53595,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 27,
+          "to_index": 28,
+          "hops": 1,
+          "departed_at": 1789565602045,
+          "arrived_at": 1789565637086,
+          "reached": 1
+        },
+        {
+          "id": 53622,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 28,
+          "to_index": 0,
+          "hops": 1,
+          "departed_at": 1789565652043,
+          "arrived_at": 1789565802228,
+          "reached": 1
+        },
+        {
+          "id": 53641,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 0,
+          "to_index": 1,
+          "hops": 1,
+          "departed_at": 1789565847088,
+          "arrived_at": 1789565992149,
+          "reached": 1
+        },
+        {
+          "id": 53663,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 1,
+          "to_index": 2,
+          "hops": 1,
+          "departed_at": 1789566007091,
+          "arrived_at": 1789566122207,
+          "reached": 1
+        },
+        {
+          "id": 53670,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 2,
+          "to_index": 3,
+          "hops": 1,
+          "departed_at": 1789566142118,
+          "arrived_at": 1789566157100,
+          "reached": 1
+        },
+        {
+          "id": 53690,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 3,
+          "to_index": 4,
+          "hops": 1,
+          "departed_at": 1789566187159,
+          "arrived_at": 1789566327260,
+          "reached": 1
+        },
+        {
+          "id": 53710,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 4,
+          "to_index": 5,
+          "hops": 1,
+          "departed_at": 1789566412160,
+          "arrived_at": 1789566447188,
+          "reached": 1
+        },
+        {
+          "id": 53725,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 5,
+          "to_index": 6,
+          "hops": 1,
+          "departed_at": 1789566457191,
+          "arrived_at": 1789566522177,
+          "reached": 1
+        },
+        {
+          "id": 53735,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 6,
+          "to_index": 7,
+          "hops": 1,
+          "departed_at": 1789566547252,
+          "arrived_at": 1789566607184,
+          "reached": 1
+        },
+        {
+          "id": 53743,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 7,
+          "to_index": 8,
+          "hops": 1,
+          "departed_at": 1789566637187,
+          "arrived_at": 1789566662193,
+          "reached": 1
+        },
+        {
+          "id": 53764,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 8,
+          "to_index": 9,
+          "hops": 1,
+          "departed_at": 1789566717213,
+          "arrived_at": 1789566747189,
+          "reached": 1
+        },
+        {
+          "id": 53777,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 9,
+          "to_index": 10,
+          "hops": 1,
+          "departed_at": 1789566752187,
+          "arrived_at": 1789566842237,
+          "reached": 1
+        },
+        {
+          "id": 53786,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 10,
+          "to_index": 11,
+          "hops": 1,
+          "departed_at": 1789566857305,
+          "arrived_at": 1789566922213,
+          "reached": 1
+        },
+        {
+          "id": 53797,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 11,
+          "to_index": 12,
+          "hops": 1,
+          "departed_at": 1789566942242,
+          "arrived_at": 1789566982255,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789564731971,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564737106,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564741980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564746963,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564751980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789577580422,
+        "poll": 4169,
+        "route": 2,
+        "bus": "51",
+        "targetIndex": 30,
+        "targetStop": 101,
+        "occurrence": 0,
+        "sourceId": 59535,
+        "targetId": 59711,
+        "legIds": [
+          55106,
+          55194,
+          55202,
+          55206,
+          55226,
+          55237,
+          55250,
+          55262,
+          55265
+        ],
+        "truthSec": 1511.387,
+        "current": [
+          1453,
+          927,
+          2138,
+          10
+        ],
+        "canonical": [
+          1390,
+          934,
+          2057,
+          9
+        ],
+        "maxBandDelta": 81,
+        "reason": "connected",
+        "errorIncrease": 63.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 59535,
+          "bus_name": "#51",
+          "route_id": 2,
+          "stop_id": 43,
+          "stop_index": 21,
+          "anchored_at": 1789577550405,
+          "pinned_at": 1789577560351,
+          "arrived_at": 1789577560351,
+          "departed_at": 1789577615340,
+          "outcome": "stopped",
+          "how": "next"
+        },
+        "target": {
+          "id": 59711,
+          "bus_name": "#51",
+          "route_id": 2,
+          "stop_id": 101,
+          "stop_index": 30,
+          "anchored_at": 1789579081801,
+          "pinned_at": 1789579081801,
+          "arrived_at": 1789579091809,
+          "departed_at": 1789579161762,
+          "outcome": "stopped",
+          "how": "far"
+        }
+      },
+      "legs": [
+        {
+          "id": 55106,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789577615340,
+          "arrived_at": 1789577650349,
+          "reached": 1
+        },
+        {
+          "id": 55194,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789578275590,
+          "arrived_at": 1789578420951,
+          "reached": 1
+        },
+        {
+          "id": 55202,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 23,
+          "to_index": 24,
+          "hops": 1,
+          "departed_at": 1789578500954,
+          "arrived_at": 1789578531010,
+          "reached": 1
+        },
+        {
+          "id": 55206,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 24,
+          "to_index": 25,
+          "hops": 1,
+          "departed_at": 1789578541042,
+          "arrived_at": 1789578581323,
+          "reached": 1
+        },
+        {
+          "id": 55226,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 25,
+          "to_index": 26,
+          "hops": 1,
+          "departed_at": 1789578631326,
+          "arrived_at": 1789578696427,
+          "reached": 1
+        },
+        {
+          "id": 55237,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 26,
+          "to_index": 27,
+          "hops": 1,
+          "departed_at": 1789578736393,
+          "arrived_at": 1789578831479,
+          "reached": 1
+        },
+        {
+          "id": 55250,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 27,
+          "to_index": 28,
+          "hops": 1,
+          "departed_at": 1789578886538,
+          "arrived_at": 1789578926553,
+          "reached": 1
+        },
+        {
+          "id": 55262,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 28,
+          "to_index": 29,
+          "hops": 1,
+          "departed_at": 1789578996770,
+          "arrived_at": 1789579071737,
+          "reached": 1
+        },
+        {
+          "id": 55265,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 29,
+          "to_index": 30,
+          "hops": 1,
+          "departed_at": 1789579076720,
+          "arrived_at": 1789579091809,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789577570324,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577575324,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577580422,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577585382,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        },
+        {
+          "collected_at": 1789577590336,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        },
+        {
+          "collected_at": 1789577595389,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789577580422,
+        "poll": 4169,
+        "route": 2,
+        "bus": "51",
+        "targetIndex": 29,
+        "targetStop": 34,
+        "occurrence": 0,
+        "sourceId": 59535,
+        "targetId": 59700,
+        "legIds": [
+          55106,
+          55194,
+          55202,
+          55206,
+          55226,
+          55237,
+          55250,
+          55262
+        ],
+        "truthSec": 1491.315,
+        "current": [
+          1420,
+          911,
+          2120,
+          9
+        ],
+        "canonical": [
+          1357,
+          915,
+          2040,
+          8
+        ],
+        "maxBandDelta": 80,
+        "reason": "connected",
+        "errorIncrease": 63.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 59535,
+          "bus_name": "#51",
+          "route_id": 2,
+          "stop_id": 43,
+          "stop_index": 21,
+          "anchored_at": 1789577550405,
+          "pinned_at": 1789577560351,
+          "arrived_at": 1789577560351,
+          "departed_at": 1789577615340,
+          "outcome": "stopped",
+          "how": "next"
+        },
+        "target": {
+          "id": 59700,
+          "bus_name": "#51",
+          "route_id": 2,
+          "stop_id": 34,
+          "stop_index": 29,
+          "anchored_at": 1789579016723,
+          "pinned_at": 1789579056781,
+          "arrived_at": 1789579071737,
+          "departed_at": 1789579076720,
+          "outcome": "passed",
+          "how": "next"
+        }
+      },
+      "legs": [
+        {
+          "id": 55106,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789577615340,
+          "arrived_at": 1789577650349,
+          "reached": 1
+        },
+        {
+          "id": 55194,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789578275590,
+          "arrived_at": 1789578420951,
+          "reached": 1
+        },
+        {
+          "id": 55202,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 23,
+          "to_index": 24,
+          "hops": 1,
+          "departed_at": 1789578500954,
+          "arrived_at": 1789578531010,
+          "reached": 1
+        },
+        {
+          "id": 55206,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 24,
+          "to_index": 25,
+          "hops": 1,
+          "departed_at": 1789578541042,
+          "arrived_at": 1789578581323,
+          "reached": 1
+        },
+        {
+          "id": 55226,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 25,
+          "to_index": 26,
+          "hops": 1,
+          "departed_at": 1789578631326,
+          "arrived_at": 1789578696427,
+          "reached": 1
+        },
+        {
+          "id": 55237,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 26,
+          "to_index": 27,
+          "hops": 1,
+          "departed_at": 1789578736393,
+          "arrived_at": 1789578831479,
+          "reached": 1
+        },
+        {
+          "id": 55250,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 27,
+          "to_index": 28,
+          "hops": 1,
+          "departed_at": 1789578886538,
+          "arrived_at": 1789578926553,
+          "reached": 1
+        },
+        {
+          "id": 55262,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 28,
+          "to_index": 29,
+          "hops": 1,
+          "departed_at": 1789578996770,
+          "arrived_at": 1789579071737,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789577570324,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577575324,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577580422,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577585382,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        },
+        {
+          "collected_at": 1789577590336,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        },
+        {
+          "collected_at": 1789577595389,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789564741980,
+        "poll": 1611,
+        "route": 3,
+        "bus": "309",
+        "targetIndex": 13,
+        "targetStop": 27,
+        "occurrence": 0,
+        "sourceId": 57831,
+        "targetId": 58194,
+        "legIds": [
+          53478,
+          53490,
+          53503,
+          53526,
+          53540,
+          53545,
+          53561,
+          53573,
+          53587,
+          53595,
+          53622,
+          53641,
+          53663,
+          53670,
+          53690,
+          53710,
+          53725,
+          53735,
+          53743,
+          53764,
+          53777,
+          53786,
+          53797,
+          53820
+        ],
+        "truthSec": 2410.368,
+        "current": [
+          2596,
+          2329,
+          2941,
+          24
+        ],
+        "canonical": [
+          2657,
+          2369,
+          3017,
+          24
+        ],
+        "maxBandDelta": 76,
+        "reason": "connected",
+        "errorIncrease": 61.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 57831,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 104,
+          "stop_index": 18,
+          "anchored_at": 1789564671999,
+          "pinned_at": 1789564696965,
+          "arrived_at": 1789564702012,
+          "departed_at": 1789564791955,
+          "outcome": "stopped",
+          "how": "far"
+        },
+        "target": {
+          "id": 58194,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 27,
+          "stop_index": 13,
+          "anchored_at": 1789567097242,
+          "pinned_at": 1789567147369,
+          "arrived_at": 1789567152348,
+          "departed_at": 1789567197290,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      },
+      "legs": [
+        {
+          "id": 53478,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 18,
+          "to_index": 19,
+          "hops": 1,
+          "departed_at": 1789564791955,
+          "arrived_at": 1789564826993,
+          "reached": 1
+        },
+        {
+          "id": 53490,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 19,
+          "to_index": 20,
+          "hops": 1,
+          "departed_at": 1789564841955,
+          "arrived_at": 1789564912002,
+          "reached": 1
+        },
+        {
+          "id": 53503,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 20,
+          "to_index": 21,
+          "hops": 1,
+          "departed_at": 1789564942020,
+          "arrived_at": 1789565017002,
+          "reached": 1
+        },
+        {
+          "id": 53526,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789565062028,
+          "arrived_at": 1789565166993,
+          "reached": 1
+        },
+        {
+          "id": 53540,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789565177106,
+          "arrived_at": 1789565262001,
+          "reached": 1
+        },
+        {
+          "id": 53545,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 23,
+          "to_index": 24,
+          "hops": 1,
+          "departed_at": 1789565267090,
+          "arrived_at": 1789565277114,
+          "reached": 1
+        },
+        {
+          "id": 53561,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 24,
+          "to_index": 25,
+          "hops": 1,
+          "departed_at": 1789565327051,
+          "arrived_at": 1789565417029,
+          "reached": 1
+        },
+        {
+          "id": 53573,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 25,
+          "to_index": 26,
+          "hops": 1,
+          "departed_at": 1789565462038,
+          "arrived_at": 1789565497034,
+          "reached": 1
+        },
+        {
+          "id": 53587,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 26,
+          "to_index": 27,
+          "hops": 1,
+          "departed_at": 1789565562042,
+          "arrived_at": 1789565592035,
+          "reached": 1
+        },
+        {
+          "id": 53595,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 27,
+          "to_index": 28,
+          "hops": 1,
+          "departed_at": 1789565602045,
+          "arrived_at": 1789565637086,
+          "reached": 1
+        },
+        {
+          "id": 53622,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 28,
+          "to_index": 0,
+          "hops": 1,
+          "departed_at": 1789565652043,
+          "arrived_at": 1789565802228,
+          "reached": 1
+        },
+        {
+          "id": 53641,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 0,
+          "to_index": 1,
+          "hops": 1,
+          "departed_at": 1789565847088,
+          "arrived_at": 1789565992149,
+          "reached": 1
+        },
+        {
+          "id": 53663,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 1,
+          "to_index": 2,
+          "hops": 1,
+          "departed_at": 1789566007091,
+          "arrived_at": 1789566122207,
+          "reached": 1
+        },
+        {
+          "id": 53670,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 2,
+          "to_index": 3,
+          "hops": 1,
+          "departed_at": 1789566142118,
+          "arrived_at": 1789566157100,
+          "reached": 1
+        },
+        {
+          "id": 53690,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 3,
+          "to_index": 4,
+          "hops": 1,
+          "departed_at": 1789566187159,
+          "arrived_at": 1789566327260,
+          "reached": 1
+        },
+        {
+          "id": 53710,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 4,
+          "to_index": 5,
+          "hops": 1,
+          "departed_at": 1789566412160,
+          "arrived_at": 1789566447188,
+          "reached": 1
+        },
+        {
+          "id": 53725,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 5,
+          "to_index": 6,
+          "hops": 1,
+          "departed_at": 1789566457191,
+          "arrived_at": 1789566522177,
+          "reached": 1
+        },
+        {
+          "id": 53735,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 6,
+          "to_index": 7,
+          "hops": 1,
+          "departed_at": 1789566547252,
+          "arrived_at": 1789566607184,
+          "reached": 1
+        },
+        {
+          "id": 53743,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 7,
+          "to_index": 8,
+          "hops": 1,
+          "departed_at": 1789566637187,
+          "arrived_at": 1789566662193,
+          "reached": 1
+        },
+        {
+          "id": 53764,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 8,
+          "to_index": 9,
+          "hops": 1,
+          "departed_at": 1789566717213,
+          "arrived_at": 1789566747189,
+          "reached": 1
+        },
+        {
+          "id": 53777,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 9,
+          "to_index": 10,
+          "hops": 1,
+          "departed_at": 1789566752187,
+          "arrived_at": 1789566842237,
+          "reached": 1
+        },
+        {
+          "id": 53786,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 10,
+          "to_index": 11,
+          "hops": 1,
+          "departed_at": 1789566857305,
+          "arrived_at": 1789566922213,
+          "reached": 1
+        },
+        {
+          "id": 53797,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 11,
+          "to_index": 12,
+          "hops": 1,
+          "departed_at": 1789566942242,
+          "arrived_at": 1789566982255,
+          "reached": 1
+        },
+        {
+          "id": 53820,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 12,
+          "to_index": 13,
+          "hops": 1,
+          "departed_at": 1789566987233,
+          "arrived_at": 1789567152348,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789564731971,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564737106,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564741980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564746963,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564751980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789564741980,
+        "poll": 1611,
+        "route": 3,
+        "bus": "309",
+        "targetIndex": 11,
+        "targetStop": 3,
+        "occurrence": 0,
+        "sourceId": 57831,
+        "targetId": 58159,
+        "legIds": [
+          53478,
+          53490,
+          53503,
+          53526,
+          53540,
+          53545,
+          53561,
+          53573,
+          53587,
+          53595,
+          53622,
+          53641,
+          53663,
+          53670,
+          53690,
+          53710,
+          53725,
+          53735,
+          53743,
+          53764,
+          53777,
+          53786
+        ],
+        "truthSec": 2180.233,
+        "current": [
+          2409,
+          2151,
+          2738,
+          22
+        ],
+        "canonical": [
+          2469,
+          2183,
+          2817,
+          22
+        ],
+        "maxBandDelta": 79,
+        "reason": "connected",
+        "errorIncrease": 60.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 57831,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 104,
+          "stop_index": 18,
+          "anchored_at": 1789564671999,
+          "pinned_at": 1789564696965,
+          "arrived_at": 1789564702012,
+          "departed_at": 1789564791955,
+          "outcome": "stopped",
+          "how": "far"
+        },
+        "target": {
+          "id": 58159,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 3,
+          "stop_index": 11,
+          "anchored_at": 1789566897239,
+          "pinned_at": 1789566912209,
+          "arrived_at": 1789566922213,
+          "departed_at": 1789566942242,
+          "outcome": "stopped",
+          "how": "next"
+        }
+      },
+      "legs": [
+        {
+          "id": 53478,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 18,
+          "to_index": 19,
+          "hops": 1,
+          "departed_at": 1789564791955,
+          "arrived_at": 1789564826993,
+          "reached": 1
+        },
+        {
+          "id": 53490,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 19,
+          "to_index": 20,
+          "hops": 1,
+          "departed_at": 1789564841955,
+          "arrived_at": 1789564912002,
+          "reached": 1
+        },
+        {
+          "id": 53503,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 20,
+          "to_index": 21,
+          "hops": 1,
+          "departed_at": 1789564942020,
+          "arrived_at": 1789565017002,
+          "reached": 1
+        },
+        {
+          "id": 53526,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789565062028,
+          "arrived_at": 1789565166993,
+          "reached": 1
+        },
+        {
+          "id": 53540,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789565177106,
+          "arrived_at": 1789565262001,
+          "reached": 1
+        },
+        {
+          "id": 53545,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 23,
+          "to_index": 24,
+          "hops": 1,
+          "departed_at": 1789565267090,
+          "arrived_at": 1789565277114,
+          "reached": 1
+        },
+        {
+          "id": 53561,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 24,
+          "to_index": 25,
+          "hops": 1,
+          "departed_at": 1789565327051,
+          "arrived_at": 1789565417029,
+          "reached": 1
+        },
+        {
+          "id": 53573,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 25,
+          "to_index": 26,
+          "hops": 1,
+          "departed_at": 1789565462038,
+          "arrived_at": 1789565497034,
+          "reached": 1
+        },
+        {
+          "id": 53587,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 26,
+          "to_index": 27,
+          "hops": 1,
+          "departed_at": 1789565562042,
+          "arrived_at": 1789565592035,
+          "reached": 1
+        },
+        {
+          "id": 53595,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 27,
+          "to_index": 28,
+          "hops": 1,
+          "departed_at": 1789565602045,
+          "arrived_at": 1789565637086,
+          "reached": 1
+        },
+        {
+          "id": 53622,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 28,
+          "to_index": 0,
+          "hops": 1,
+          "departed_at": 1789565652043,
+          "arrived_at": 1789565802228,
+          "reached": 1
+        },
+        {
+          "id": 53641,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 0,
+          "to_index": 1,
+          "hops": 1,
+          "departed_at": 1789565847088,
+          "arrived_at": 1789565992149,
+          "reached": 1
+        },
+        {
+          "id": 53663,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 1,
+          "to_index": 2,
+          "hops": 1,
+          "departed_at": 1789566007091,
+          "arrived_at": 1789566122207,
+          "reached": 1
+        },
+        {
+          "id": 53670,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 2,
+          "to_index": 3,
+          "hops": 1,
+          "departed_at": 1789566142118,
+          "arrived_at": 1789566157100,
+          "reached": 1
+        },
+        {
+          "id": 53690,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 3,
+          "to_index": 4,
+          "hops": 1,
+          "departed_at": 1789566187159,
+          "arrived_at": 1789566327260,
+          "reached": 1
+        },
+        {
+          "id": 53710,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 4,
+          "to_index": 5,
+          "hops": 1,
+          "departed_at": 1789566412160,
+          "arrived_at": 1789566447188,
+          "reached": 1
+        },
+        {
+          "id": 53725,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 5,
+          "to_index": 6,
+          "hops": 1,
+          "departed_at": 1789566457191,
+          "arrived_at": 1789566522177,
+          "reached": 1
+        },
+        {
+          "id": 53735,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 6,
+          "to_index": 7,
+          "hops": 1,
+          "departed_at": 1789566547252,
+          "arrived_at": 1789566607184,
+          "reached": 1
+        },
+        {
+          "id": 53743,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 7,
+          "to_index": 8,
+          "hops": 1,
+          "departed_at": 1789566637187,
+          "arrived_at": 1789566662193,
+          "reached": 1
+        },
+        {
+          "id": 53764,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 8,
+          "to_index": 9,
+          "hops": 1,
+          "departed_at": 1789566717213,
+          "arrived_at": 1789566747189,
+          "reached": 1
+        },
+        {
+          "id": 53777,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 9,
+          "to_index": 10,
+          "hops": 1,
+          "departed_at": 1789566752187,
+          "arrived_at": 1789566842237,
+          "reached": 1
+        },
+        {
+          "id": 53786,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 10,
+          "to_index": 11,
+          "hops": 1,
+          "departed_at": 1789566857305,
+          "arrived_at": 1789566922213,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789564731971,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564737106,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564741980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564746963,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564751980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789564741980,
+        "poll": 1611,
+        "route": 3,
+        "bus": "309",
+        "targetIndex": 1,
+        "targetStop": 115,
+        "occurrence": 0,
+        "sourceId": 57831,
+        "targetId": 58014,
+        "legIds": [
+          53478,
+          53490,
+          53503,
+          53526,
+          53540,
+          53545,
+          53561,
+          53573,
+          53587,
+          53595,
+          53622,
+          53641
+        ],
+        "truthSec": 1250.169,
+        "current": [
+          1336,
+          1088,
+          1614,
+          12
+        ],
+        "canonical": [
+          1396,
+          1137,
+          1689,
+          12
+        ],
+        "maxBandDelta": 75,
+        "reason": "connected",
+        "errorIncrease": 60.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 57831,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 104,
+          "stop_index": 18,
+          "anchored_at": 1789564671999,
+          "pinned_at": 1789564696965,
+          "arrived_at": 1789564702012,
+          "departed_at": 1789564791955,
+          "outcome": "stopped",
+          "how": "far"
+        },
+        "target": {
+          "id": 58014,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 115,
+          "stop_index": 1,
+          "anchored_at": 1789565902076,
+          "pinned_at": 1789565977103,
+          "arrived_at": 1789565992149,
+          "departed_at": 1789566007091,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      },
+      "legs": [
+        {
+          "id": 53478,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 18,
+          "to_index": 19,
+          "hops": 1,
+          "departed_at": 1789564791955,
+          "arrived_at": 1789564826993,
+          "reached": 1
+        },
+        {
+          "id": 53490,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 19,
+          "to_index": 20,
+          "hops": 1,
+          "departed_at": 1789564841955,
+          "arrived_at": 1789564912002,
+          "reached": 1
+        },
+        {
+          "id": 53503,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 20,
+          "to_index": 21,
+          "hops": 1,
+          "departed_at": 1789564942020,
+          "arrived_at": 1789565017002,
+          "reached": 1
+        },
+        {
+          "id": 53526,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789565062028,
+          "arrived_at": 1789565166993,
+          "reached": 1
+        },
+        {
+          "id": 53540,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789565177106,
+          "arrived_at": 1789565262001,
+          "reached": 1
+        },
+        {
+          "id": 53545,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 23,
+          "to_index": 24,
+          "hops": 1,
+          "departed_at": 1789565267090,
+          "arrived_at": 1789565277114,
+          "reached": 1
+        },
+        {
+          "id": 53561,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 24,
+          "to_index": 25,
+          "hops": 1,
+          "departed_at": 1789565327051,
+          "arrived_at": 1789565417029,
+          "reached": 1
+        },
+        {
+          "id": 53573,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 25,
+          "to_index": 26,
+          "hops": 1,
+          "departed_at": 1789565462038,
+          "arrived_at": 1789565497034,
+          "reached": 1
+        },
+        {
+          "id": 53587,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 26,
+          "to_index": 27,
+          "hops": 1,
+          "departed_at": 1789565562042,
+          "arrived_at": 1789565592035,
+          "reached": 1
+        },
+        {
+          "id": 53595,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 27,
+          "to_index": 28,
+          "hops": 1,
+          "departed_at": 1789565602045,
+          "arrived_at": 1789565637086,
+          "reached": 1
+        },
+        {
+          "id": 53622,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 28,
+          "to_index": 0,
+          "hops": 1,
+          "departed_at": 1789565652043,
+          "arrived_at": 1789565802228,
+          "reached": 1
+        },
+        {
+          "id": 53641,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 0,
+          "to_index": 1,
+          "hops": 1,
+          "departed_at": 1789565847088,
+          "arrived_at": 1789565992149,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789564731971,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564737106,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564741980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564746963,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564751980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789567082259,
+        "poll": 2079,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 58203,
+        "targetId": 58220,
+        "legIds": [
+          53843
+        ],
+        "truthSec": 235.022,
+        "current": [
+          399,
+          -2,
+          1023,
+          1
+        ],
+        "canonical": [
+          457,
+          16,
+          1082,
+          1
+        ],
+        "maxBandDelta": 59,
+        "reason": "connected",
+        "errorIncrease": 58.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 58203,
+          "bus_name": "#304",
+          "route_id": 15,
+          "stop_id": 10,
+          "stop_index": 0,
+          "anchored_at": 1789566572180,
+          "pinned_at": 1789566772190,
+          "arrived_at": 1789566772190,
+          "departed_at": 1789567237342,
+          "outcome": "stopped",
+          "how": "clock"
+        },
+        "target": {
+          "id": 58220,
+          "bus_name": "#304",
+          "route_id": 15,
+          "stop_id": 153,
+          "stop_index": 1,
+          "anchored_at": 1789567272273,
+          "pinned_at": 1789567312286,
+          "arrived_at": 1789567317281,
+          "departed_at": 1789567377289,
+          "outcome": "stopped",
+          "how": "far"
+        }
+      },
+      "legs": [
+        {
+          "id": 53843,
+          "route_id": 15,
+          "bus_name": "#304",
+          "from_index": 0,
+          "to_index": 1,
+          "hops": 1,
+          "departed_at": 1789567237342,
+          "arrived_at": 1789567317281,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789567067358,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567072230,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567077254,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567082259,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567087233,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567092271,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        },
+        {
+          "collected_at": 1789567097242,
+          "route_id": 15,
+          "bus_name": "#304",
+          "lat": 41.30313,
+          "lon": -72.934199,
+          "last_stop_id": 121
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789577580422,
+        "poll": 4169,
+        "route": 2,
+        "bus": "51",
+        "targetIndex": 31,
+        "targetStop": 134,
+        "occurrence": 0,
+        "sourceId": 59535,
+        "targetId": 59717,
+        "legIds": [
+          55106,
+          55194,
+          55202,
+          55206,
+          55226,
+          55237,
+          55250,
+          55262,
+          55265,
+          55281
+        ],
+        "truthSec": 1626.513,
+        "current": [
+          1581,
+          1028,
+          2256,
+          11
+        ],
+        "canonical": [
+          1523,
+          1029,
+          2199,
+          10
+        ],
+        "maxBandDelta": 58,
+        "reason": "connected",
+        "errorIncrease": 58.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 59535,
+          "bus_name": "#51",
+          "route_id": 2,
+          "stop_id": 43,
+          "stop_index": 21,
+          "anchored_at": 1789577550405,
+          "pinned_at": 1789577560351,
+          "arrived_at": 1789577560351,
+          "departed_at": 1789577615340,
+          "outcome": "stopped",
+          "how": "next"
+        },
+        "target": {
+          "id": 59717,
+          "bus_name": "#51",
+          "route_id": 2,
+          "stop_id": 134,
+          "stop_index": 31,
+          "anchored_at": 1789579186807,
+          "pinned_at": 1789579196776,
+          "arrived_at": 1789579206935,
+          "departed_at": 1789579206935,
+          "outcome": "passed",
+          "how": "next"
+        }
+      },
+      "legs": [
+        {
+          "id": 55106,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789577615340,
+          "arrived_at": 1789577650349,
+          "reached": 1
+        },
+        {
+          "id": 55194,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789578275590,
+          "arrived_at": 1789578420951,
+          "reached": 1
+        },
+        {
+          "id": 55202,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 23,
+          "to_index": 24,
+          "hops": 1,
+          "departed_at": 1789578500954,
+          "arrived_at": 1789578531010,
+          "reached": 1
+        },
+        {
+          "id": 55206,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 24,
+          "to_index": 25,
+          "hops": 1,
+          "departed_at": 1789578541042,
+          "arrived_at": 1789578581323,
+          "reached": 1
+        },
+        {
+          "id": 55226,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 25,
+          "to_index": 26,
+          "hops": 1,
+          "departed_at": 1789578631326,
+          "arrived_at": 1789578696427,
+          "reached": 1
+        },
+        {
+          "id": 55237,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 26,
+          "to_index": 27,
+          "hops": 1,
+          "departed_at": 1789578736393,
+          "arrived_at": 1789578831479,
+          "reached": 1
+        },
+        {
+          "id": 55250,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 27,
+          "to_index": 28,
+          "hops": 1,
+          "departed_at": 1789578886538,
+          "arrived_at": 1789578926553,
+          "reached": 1
+        },
+        {
+          "id": 55262,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 28,
+          "to_index": 29,
+          "hops": 1,
+          "departed_at": 1789578996770,
+          "arrived_at": 1789579071737,
+          "reached": 1
+        },
+        {
+          "id": 55265,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 29,
+          "to_index": 30,
+          "hops": 1,
+          "departed_at": 1789579076720,
+          "arrived_at": 1789579091809,
+          "reached": 1
+        },
+        {
+          "id": 55281,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 30,
+          "to_index": 31,
+          "hops": 1,
+          "departed_at": 1789579161762,
+          "arrived_at": 1789579206935,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789577570324,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577575324,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577580422,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577585382,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        },
+        {
+          "collected_at": 1789577590336,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        },
+        {
+          "collected_at": 1789577595389,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789577580422,
+        "poll": 4169,
+        "route": 2,
+        "bus": "51",
+        "targetIndex": 23,
+        "targetStop": 2,
+        "occurrence": 0,
+        "sourceId": 59535,
+        "targetId": 59638,
+        "legIds": [
+          55106,
+          55194
+        ],
+        "truthSec": 840.529,
+        "current": [
+          698,
+          185,
+          1419,
+          3
+        ],
+        "canonical": [
+          640,
+          190,
+          1347,
+          2
+        ],
+        "maxBandDelta": 72,
+        "reason": "connected",
+        "errorIncrease": 58.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 59535,
+          "bus_name": "#51",
+          "route_id": 2,
+          "stop_id": 43,
+          "stop_index": 21,
+          "anchored_at": 1789577550405,
+          "pinned_at": 1789577560351,
+          "arrived_at": 1789577560351,
+          "departed_at": 1789577615340,
+          "outcome": "stopped",
+          "how": "next"
+        },
+        "target": {
+          "id": 59638,
+          "bus_name": "#51",
+          "route_id": 2,
+          "stop_id": 2,
+          "stop_index": 23,
+          "anchored_at": 1789578350963,
+          "pinned_at": 1789578420951,
+          "arrived_at": 1789578420951,
+          "departed_at": 1789578500954,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      },
+      "legs": [
+        {
+          "id": 55106,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789577615340,
+          "arrived_at": 1789577650349,
+          "reached": 1
+        },
+        {
+          "id": 55194,
+          "route_id": 2,
+          "bus_name": "#51",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789578275590,
+          "arrived_at": 1789578420951,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789577570324,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577575324,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577580422,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 72
+        },
+        {
+          "collected_at": 1789577585382,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        },
+        {
+          "collected_at": 1789577590336,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        },
+        {
+          "collected_at": 1789577595389,
+          "route_id": 2,
+          "bus_name": "#51",
+          "lat": 41.302017,
+          "lon": -72.933105,
+          "last_stop_id": 43
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    },
+    {
+      "forecast": {
+        "at": 1789564741980,
+        "poll": 1611,
+        "route": 3,
+        "bus": "309",
+        "targetIndex": 14,
+        "targetStop": 11,
+        "occurrence": 0,
+        "sourceId": 57831,
+        "targetId": 58224,
+        "legIds": [
+          53478,
+          53490,
+          53503,
+          53526,
+          53540,
+          53545,
+          53561,
+          53573,
+          53587,
+          53595,
+          53622,
+          53641,
+          53663,
+          53670,
+          53690,
+          53710,
+          53725,
+          53735,
+          53743,
+          53764,
+          53777,
+          53786,
+          53797,
+          53820,
+          53836
+        ],
+        "truthSec": 2505.541,
+        "current": [
+          2743,
+          2452,
+          3115,
+          25
+        ],
+        "canonical": [
+          2800,
+          2492,
+          3181,
+          25
+        ],
+        "maxBandDelta": 66,
+        "reason": "connected",
+        "errorIncrease": 57.0
+      },
+      "selectedBy": [
+        "point-regression"
+      ],
+      "records": {
+        "source": {
+          "id": 57831,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 104,
+          "stop_index": 18,
+          "anchored_at": 1789564671999,
+          "pinned_at": 1789564696965,
+          "arrived_at": 1789564702012,
+          "departed_at": 1789564791955,
+          "outcome": "stopped",
+          "how": "far"
+        },
+        "target": {
+          "id": 58224,
+          "bus_name": "#309",
+          "route_id": 3,
+          "stop_id": 11,
+          "stop_index": 14,
+          "anchored_at": 1789567227272,
+          "pinned_at": 1789567242326,
+          "arrived_at": 1789567247521,
+          "departed_at": 1789567392398,
+          "outcome": "stopped",
+          "how": "next"
+        }
+      },
+      "legs": [
+        {
+          "id": 53478,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 18,
+          "to_index": 19,
+          "hops": 1,
+          "departed_at": 1789564791955,
+          "arrived_at": 1789564826993,
+          "reached": 1
+        },
+        {
+          "id": 53490,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 19,
+          "to_index": 20,
+          "hops": 1,
+          "departed_at": 1789564841955,
+          "arrived_at": 1789564912002,
+          "reached": 1
+        },
+        {
+          "id": 53503,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 20,
+          "to_index": 21,
+          "hops": 1,
+          "departed_at": 1789564942020,
+          "arrived_at": 1789565017002,
+          "reached": 1
+        },
+        {
+          "id": 53526,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 21,
+          "to_index": 22,
+          "hops": 1,
+          "departed_at": 1789565062028,
+          "arrived_at": 1789565166993,
+          "reached": 1
+        },
+        {
+          "id": 53540,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 22,
+          "to_index": 23,
+          "hops": 1,
+          "departed_at": 1789565177106,
+          "arrived_at": 1789565262001,
+          "reached": 1
+        },
+        {
+          "id": 53545,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 23,
+          "to_index": 24,
+          "hops": 1,
+          "departed_at": 1789565267090,
+          "arrived_at": 1789565277114,
+          "reached": 1
+        },
+        {
+          "id": 53561,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 24,
+          "to_index": 25,
+          "hops": 1,
+          "departed_at": 1789565327051,
+          "arrived_at": 1789565417029,
+          "reached": 1
+        },
+        {
+          "id": 53573,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 25,
+          "to_index": 26,
+          "hops": 1,
+          "departed_at": 1789565462038,
+          "arrived_at": 1789565497034,
+          "reached": 1
+        },
+        {
+          "id": 53587,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 26,
+          "to_index": 27,
+          "hops": 1,
+          "departed_at": 1789565562042,
+          "arrived_at": 1789565592035,
+          "reached": 1
+        },
+        {
+          "id": 53595,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 27,
+          "to_index": 28,
+          "hops": 1,
+          "departed_at": 1789565602045,
+          "arrived_at": 1789565637086,
+          "reached": 1
+        },
+        {
+          "id": 53622,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 28,
+          "to_index": 0,
+          "hops": 1,
+          "departed_at": 1789565652043,
+          "arrived_at": 1789565802228,
+          "reached": 1
+        },
+        {
+          "id": 53641,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 0,
+          "to_index": 1,
+          "hops": 1,
+          "departed_at": 1789565847088,
+          "arrived_at": 1789565992149,
+          "reached": 1
+        },
+        {
+          "id": 53663,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 1,
+          "to_index": 2,
+          "hops": 1,
+          "departed_at": 1789566007091,
+          "arrived_at": 1789566122207,
+          "reached": 1
+        },
+        {
+          "id": 53670,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 2,
+          "to_index": 3,
+          "hops": 1,
+          "departed_at": 1789566142118,
+          "arrived_at": 1789566157100,
+          "reached": 1
+        },
+        {
+          "id": 53690,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 3,
+          "to_index": 4,
+          "hops": 1,
+          "departed_at": 1789566187159,
+          "arrived_at": 1789566327260,
+          "reached": 1
+        },
+        {
+          "id": 53710,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 4,
+          "to_index": 5,
+          "hops": 1,
+          "departed_at": 1789566412160,
+          "arrived_at": 1789566447188,
+          "reached": 1
+        },
+        {
+          "id": 53725,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 5,
+          "to_index": 6,
+          "hops": 1,
+          "departed_at": 1789566457191,
+          "arrived_at": 1789566522177,
+          "reached": 1
+        },
+        {
+          "id": 53735,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 6,
+          "to_index": 7,
+          "hops": 1,
+          "departed_at": 1789566547252,
+          "arrived_at": 1789566607184,
+          "reached": 1
+        },
+        {
+          "id": 53743,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 7,
+          "to_index": 8,
+          "hops": 1,
+          "departed_at": 1789566637187,
+          "arrived_at": 1789566662193,
+          "reached": 1
+        },
+        {
+          "id": 53764,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 8,
+          "to_index": 9,
+          "hops": 1,
+          "departed_at": 1789566717213,
+          "arrived_at": 1789566747189,
+          "reached": 1
+        },
+        {
+          "id": 53777,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 9,
+          "to_index": 10,
+          "hops": 1,
+          "departed_at": 1789566752187,
+          "arrived_at": 1789566842237,
+          "reached": 1
+        },
+        {
+          "id": 53786,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 10,
+          "to_index": 11,
+          "hops": 1,
+          "departed_at": 1789566857305,
+          "arrived_at": 1789566922213,
+          "reached": 1
+        },
+        {
+          "id": 53797,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 11,
+          "to_index": 12,
+          "hops": 1,
+          "departed_at": 1789566942242,
+          "arrived_at": 1789566982255,
+          "reached": 1
+        },
+        {
+          "id": 53820,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 12,
+          "to_index": 13,
+          "hops": 1,
+          "departed_at": 1789566987233,
+          "arrived_at": 1789567152348,
+          "reached": 1
+        },
+        {
+          "id": 53836,
+          "route_id": 3,
+          "bus_name": "#309",
+          "from_index": 13,
+          "to_index": 14,
+          "hops": 1,
+          "departed_at": 1789567197290,
+          "arrived_at": 1789567247521,
+          "reached": 1
+        }
+      ],
+      "rawWindow": [
+        {
+          "collected_at": 1789564731971,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564737106,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564741980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564746963,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        },
+        {
+          "collected_at": 1789564751980,
+          "route_id": 3,
+          "bus_name": "#309",
+          "lat": 41.321144,
+          "lon": -72.923387,
+          "last_stop_id": 104
+        }
+      ],
+      "labelDecision": "Retained unchanged. This is an audit of recorded clocks/coordinates, not positive proof of a measurement error or boardability."
+    }
+  ],
+  "exclusions": []
+}

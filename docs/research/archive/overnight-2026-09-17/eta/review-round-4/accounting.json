@@ -1,0 +1,13 @@
+{
+  "unmatched": {
+    "modeled boarding is not current occurrence": 128,
+    "different boarding stop needs separate chain": 1892,
+    "outside selected current source visit": 144,
+    "different bus needs separate chain": 1104
+  },
+  "unavailableJourney": {
+    "raw-at-stop branch found no modeled zero-time boarding row": 180,
+    "destination median precedes pickup median or required access walk": 37
+  },
+  "countdownJourneyDifferent": 676
+}

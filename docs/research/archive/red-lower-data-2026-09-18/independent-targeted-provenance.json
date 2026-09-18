@@ -1,0 +1,12 @@
+{
+  "targeted": {
+    "baselineTracking": "507222c61957e1ba3269d41f813c573503d62c210e2660270ac14b99160bfb97",
+    "candidateTracking": "507222c61957e1ba3269d41f813c573503d62c210e2660270ac14b99160bfb97"
+  },
+  "targeted-today": {
+    "baselineTracking": "3c080546d4bbc90b187c5831cfe67a98e8d720fbce23df8d3c57bd9dd81e3243",
+    "candidateTracking": "3c080546d4bbc90b187c5831cfe67a98e8d720fbce23df8d3c57bd9dd81e3243"
+  },
+  "web/src/eta/arrival.ts": "36b0be2b5412d2e074da1b5b706ca108ec2a5ad7c5eb4921aa39a3ae86c4c708",
+  "web/src/eta/releasePickupBand.test.ts": "c4c47182321edabb1e843fc97c391fb8375602698d2c461530b68ecde7b53450"
+}

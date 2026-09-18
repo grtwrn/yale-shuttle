@@ -1,0 +1,14 @@
+# Independent review request: corrected lagged-rest outcome attribution
+
+Research only; no application diff or publication request. Compare exact unchanged HEAD/base `98e535b99649e74ca599d2e33bcfdc46df83d30d`.
+
+Read RESULTS.md, PLAN.json, score.py and verify_alignment.py. Original cycle15/review14 files stay untouched; entry.json captures their hashes. Review these specific questions:
+
+1. Does each new alignment require the unique wire-derived physical origin, active rest at that origin, exact unique historical pin, and connected reached path into the latest historical source? Verify source/target/leg identities independently from the read-only database. Reconstructed rest clocks establish replay attribution, not original publication times.
+2. Do all 11 prior current-stop failures resolve to their proved earlier visit, with negative time retained in post-arrival-transitions.jsonl? Do all eight following failures resolve to the first return? `alignment-verification.json` links the reviewer's untouched cases. No blanket zero-row removal is permitted.
+3. Check all affected nonzero-hop rows using actual cumulative wire distance from the proved prior origin; both repeated physical positions and both occurrences must survive. `label-changes.jsonl` retains every before/after record: 5,335 unchanged targets gain the proper source chain, 216 become resolvable, eight change target, and 11 become explicit transitions. Other prior rows remain exact. No prior scored row becomes silently unavailable.
+4. Review remaining 57 current / 58 canonical scored zero-hop identities. The builder deliberately leaves them provisional: 29/30 different tracked-rest positions, 28/28 no exact pin. `remaining-zero-hop-inventory.json` preserves evidence. A zero ETA does not prove the historical visit or justify deleting bad forecasts. Inclusive aggregate accuracy remains provisional and shows negligible mixed changes regardless.
+5. Validate all 5,021 raw large changes and 25 prior top regressions are retained. The largest genuine point regression is still 69 seconds; no trimming/capping/model change. Previously audited Red/38-pickup/442.827-second evidence remains unchanged outside this slice.
+6. Audit report claims against actual logs. Final verification has independent raw-wire/SQL/cumulative-hop checks; unchanged rider records are rechecked structurally without rerunning the planner. The first uncached verifier was intentionally interrupted, exit143; its source/log and correction note persist. Only its cached complete rerun can be counted as passing.
+
+Use own reviewer outputs; do not overwrite this directory. No full prefix replay or application tests/build are needed for this measurement-only correction unless a concrete finding requires them. After independent acceptance, the next bounded continuation is frozen6000:9000 using cycle15's arm-matched bundles/checkpoints. The cache diagnostic remains research only.

@@ -1,0 +1,34 @@
+{
+  "createdAt": "2026-09-18T07:38:16.331796+00:00",
+  "head": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "scope": "Executable ETA half of the reviewed pickup contract. Artifact-only source overlay, no app mutation and no release; UX consumer remains separate coordinated work.",
+  "files": [
+    "livePickupSelection.ts",
+    "planner.ts optional type",
+    "TransitMap.tsx selection projections and lifecycle clearing"
+  ],
+  "invariants": [
+    "All prior option values, traces, ranking states and both occurrences exact after stripping additive metadata",
+    "Metadata uses actual selected rows, never the one-option trace scanner",
+    "Raw current evidence remains raw even with no compatible forecast",
+    "Clear on stale/departed/walk/future/no-selection",
+    "No estimator changes or new accuracy claim"
+  ],
+  "verification": [
+    "Paired current versus overlay shell census on original and missing-target arms",
+    "Typed helper boundaries including folded route and stale/future lifecycle",
+    "Backend and virtual frontend TypeScript compile; isolated Vite build with source manifest",
+    "Mobile and desktop actual built SPA eight-state metadata lifecycle, preserving existing DOM behavior"
+  ],
+  "inputHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/TransitMap.tsx": "ce774d4a7252175dc5d5db9f995e006115743e05bbe66e3d643e4fa4b3718981",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/planner.ts": "c6e48d8592052d44f66b4b39d1e222e31315af698f4ff58fb6febe7ff5f0cda9",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/arrivals.ts": "8afede0e161484877cb17d78a20d17bb91212fa2ae3d6de0261d615b67fc166a",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-10/CONTRACT.md": "cf82b184ac9291a2160b6dee335ded89402893cbfd2e470bd303fc22595237c1",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-10/pickup-census.jsonl": "a5f5f9da677fde151fd0c712912ef890ac8e86200083c78009276caeaabdbbf6",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-10/shell-current.generated.mts": "a1028bb2f6a12c0ab9274ea575bcfc07961a75bd2fce15912c4e08aad685e74a",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/ordered-decisions.jsonl": "9db99d19530efecc6c7a972b7b7c1428050c3d41dfd335083ee52704b7dc3b97",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/paired-outcomes.json": "4838c1be68431b90c48775b2cf3a8208ca914660262f798eeb4592aed5ff6e32",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/fleet-wire.jsonl.gz": "e849fec488e5d4326b2e091ba2b65db9cbc438ad41ec704d78634606d3289dc2"
+  }
+}

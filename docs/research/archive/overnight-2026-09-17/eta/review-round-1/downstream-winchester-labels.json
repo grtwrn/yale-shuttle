@@ -1,0 +1,47 @@
+[
+  {
+    "unionSourceId": 57454,
+    "winchesterVisitId": 57789,
+    "winchesterPinnedHoldSec": 180.041,
+    "winchesterAnchorToPinSec": 19.823,
+    "sourceDepartureToWinchesterPinSec": 2410.675,
+    "divisionTargetVisitId": 57815,
+    "scope": "Retrospective outcome accounting, never an input to earlier forecasts."
+  },
+  {
+    "unionSourceId": 63523,
+    "winchesterVisitId": 63723,
+    "winchesterPinnedHoldSec": 375.042,
+    "winchesterAnchorToPinSec": 14.99,
+    "sourceDepartureToWinchesterPinSec": 1155.104,
+    "divisionTargetVisitId": 63753,
+    "scope": "Retrospective outcome accounting, never an input to earlier forecasts."
+  },
+  {
+    "unionSourceId": 57990,
+    "winchesterVisitId": 58224,
+    "winchesterPinnedHoldSec": 150.072,
+    "winchesterAnchorToPinSec": 15.054,
+    "sourceDepartureToWinchesterPinSec": 1395.238,
+    "divisionTargetVisitId": 58260,
+    "scope": "Retrospective outcome accounting, never an input to earlier forecasts."
+  },
+  {
+    "unionSourceId": 61538,
+    "winchesterVisitId": 61854,
+    "winchesterPinnedHoldSec": 100.014,
+    "winchesterAnchorToPinSec": 9.968,
+    "sourceDepartureToWinchesterPinSec": 2225.191,
+    "divisionTargetVisitId": 61866,
+    "scope": "Retrospective outcome accounting, never an input to earlier forecasts."
+  },
+  {
+    "unionSourceId": 58510,
+    "winchesterVisitId": 58717,
+    "winchesterPinnedHoldSec": 170.095,
+    "winchesterAnchorToPinSec": 15.003,
+    "sourceDepartureToWinchesterPinSec": 1350.775,
+    "divisionTargetVisitId": 58745,
+    "scope": "Retrospective outcome accounting, never an input to earlier forecasts."
+  }
+]

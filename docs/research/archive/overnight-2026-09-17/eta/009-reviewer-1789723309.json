@@ -1,0 +1,37 @@
+{
+  "verdict": "research_only",
+  "summary": "Independently reproduced Red outcomes and export checks. Accuracy changes remain negligible and mixed. Found mutable-state capture in the builder fixture; a separate immutable reviewer test confirms 60/60 diagnostic restart matches. Review saved in independent-review-round-13.md. HEAD and builder artifacts remain unchanged.",
+  "head_sha": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "base_sha": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "next_task": "Adopt immutable poll-time snapshots and supersede the original state-proof claim. Then evaluate the fixed diagnostic on the saved full-fleet export, preserving causal calibration, repaired repeated-stop positions, both occurrences, tails and rider decisions. Do not repeat completed Red replay or extraction.",
+  "blocking_findings": [
+    "Artifact gate: cycle-14/fixture.mts:10 retains mutable ModelEntry references, making saved per-poll states contain final state. Correct capture before reusing this gate. Reviewer immutable snapshots independently pass, but the original state-proof artifact remains invalid."
+  ],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-13/run-independent.sh",
+      "exit_code": 0,
+      "result": "150,020 forecasts per arm; exact baseline parity; connected outcomes, tail audits and 197,354 exported rows verified."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-13/immutable/run-fixture.sh",
+      "exit_code": 0,
+      "result": "Fresh immutable-capture builds and three restart processes per arm completed."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-13/immutable/compare_fixture.py",
+      "exit_code": 0,
+      "result": "Diagnostic state/wire parity 60/60; current 0/60. Both order-reversal runs match."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-13/independent_audit.py",
+      "exit_code": 0,
+      "result": "Twelve byte-identical outputs, 3,309 raw-forecast/database truth checks, retained tails and immutable-state provenance verified."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-13/final_integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base and clean checkout/index; all 90 builder files and seven frozen inputs unchanged."
+    }
+  ]
+}

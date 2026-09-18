@@ -1,0 +1,790 @@
+[
+  {
+    "at": "2026-09-17T14:48:03.068Z",
+    "bus": {
+      "observed_at": 1789656481434,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.316195,
+      "lon": -72.925671,
+      "heading": 268,
+      "last_stop_id": 3,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:48:01.434",
+      "last_moved_at": "2026-09-17T14:48:01.434",
+      "lap": {
+        "11": 2793,
+        "121": 977
+      }
+    },
+    "windows": [],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:48:13.069Z",
+    "bus": {
+      "observed_at": 1789656491228,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.316185,
+      "lon": -72.926434,
+      "heading": 273,
+      "last_stop_id": 3,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:48:01.434",
+      "last_moved_at": "2026-09-17T14:48:11.228",
+      "lap": {
+        "11": 2804,
+        "121": 988
+      }
+    },
+    "windows": [],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:48:23.071Z",
+    "bus": {
+      "observed_at": 1789656501219,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.31677,
+      "lon": -72.926724,
+      "heading": 341,
+      "last_stop_id": 3,
+      "stationary": true,
+      "at_stop_id": 147,
+      "at_stop_since": "2026-09-17T14:48:01.434",
+      "stationary_since": "2026-09-17T14:48:01.434",
+      "last_moved_at": "2026-09-17T14:48:21.219",
+      "lap": {
+        "11": 2814,
+        "121": 998
+      }
+    },
+    "windows": [],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:48:33.072Z",
+    "bus": {
+      "observed_at": 1789656511317,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.317707,
+      "lon": -72.927128,
+      "heading": 340,
+      "last_stop_id": 147,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:48:31.317",
+      "last_moved_at": "2026-09-17T14:48:31.317",
+      "lap": {
+        "11": 2823,
+        "121": 1007
+      }
+    },
+    "windows": [],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:48:43.072Z",
+    "bus": {
+      "observed_at": 1789656521210,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.31792,
+      "lon": -72.927406,
+      "heading": 315,
+      "last_stop_id": 147,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:48:31.317",
+      "last_moved_at": "2026-09-17T14:48:41.210",
+      "lap": {
+        "11": 2834,
+        "121": 1018
+      }
+    },
+    "windows": [],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:48:53.075Z",
+    "bus": {
+      "observed_at": 1789656531319,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.317826,
+      "lon": -72.927792,
+      "heading": 252,
+      "last_stop_id": 147,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:48:31.317",
+      "last_moved_at": "2026-09-17T14:48:46.238",
+      "lap": {
+        "11": 2843,
+        "121": 1027
+      }
+    },
+    "windows": [],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:49:03.075Z",
+    "bus": {
+      "observed_at": 1789656541270,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.318295,
+      "lon": -72.928369,
+      "heading": 344,
+      "last_stop_id": 147,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:48:31.317",
+      "last_moved_at": "2026-09-17T14:49:01.270",
+      "lap": {
+        "11": 2854,
+        "121": 1038
+      }
+    },
+    "windows": [],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:49:13.076Z",
+    "bus": {
+      "observed_at": 1789656551346,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.319173,
+      "lon": -72.928746,
+      "heading": 341,
+      "last_stop_id": 147,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:49:06.229",
+      "last_moved_at": "2026-09-17T14:49:11.346",
+      "lap": {
+        "11": 2863,
+        "121": 1047
+      }
+    },
+    "windows": [],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:49:33.088Z",
+    "bus": {
+      "observed_at": 1789656566475,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.32038,
+      "lon": -72.929281,
+      "heading": 341,
+      "last_stop_id": 147,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:49:16.228",
+      "last_moved_at": "2026-09-17T14:49:26.475",
+      "lap": {
+        "11": 2880,
+        "121": 1064
+      }
+    },
+    "windows": [
+      "Likely 3\u201318 min",
+      "Likely 3\u201318 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:49:43.090Z",
+    "bus": {
+      "observed_at": 1789656576203,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.320925,
+      "lon": -72.929535,
+      "heading": 338,
+      "last_stop_id": 147,
+      "stationary": true,
+      "at_stop_id": 27,
+      "at_stop_since": "2026-09-17T14:49:31.369",
+      "stationary_since": "2026-09-17T14:49:31.369",
+      "last_moved_at": "2026-09-17T14:49:36.203",
+      "lap": {
+        "11": 2890,
+        "121": 1074
+      }
+    },
+    "windows": [
+      "Likely 2\u201319 min",
+      "Likely 2\u201319 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:49:53.092Z",
+    "bus": {
+      "observed_at": 1789656586367,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "heading": 346,
+      "last_stop_id": 147,
+      "stationary": true,
+      "at_stop_id": 27,
+      "at_stop_since": "2026-09-17T14:49:31.369",
+      "stationary_since": "2026-09-17T14:49:31.369",
+      "last_moved_at": "2026-09-17T14:49:46.367",
+      "lap": {
+        "11": 2899,
+        "121": 1083
+      }
+    },
+    "windows": [
+      "Likely 2\u201319 min",
+      "Likely 2\u201319 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:50:03.092Z",
+    "bus": {
+      "observed_at": 1789656596281,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "heading": 346,
+      "last_stop_id": 147,
+      "stationary": true,
+      "at_stop_id": 27,
+      "at_stop_since": "2026-09-17T14:49:31.369",
+      "stationary_since": "2026-09-17T14:49:31.369",
+      "last_moved_at": "2026-09-17T14:49:46.367",
+      "lap": {
+        "11": 2910,
+        "121": 1094
+      }
+    },
+    "windows": [
+      "Likely 1\u201319 min",
+      "Likely 1\u201319 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:50:13.092Z",
+    "bus": {
+      "observed_at": 1789656606329,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "heading": 346,
+      "last_stop_id": 147,
+      "stationary": true,
+      "at_stop_id": 27,
+      "at_stop_since": "2026-09-17T14:49:31.369",
+      "stationary_since": "2026-09-17T14:49:31.369",
+      "last_moved_at": "2026-09-17T14:49:46.367",
+      "lap": {
+        "11": 2920,
+        "121": 1104
+      }
+    },
+    "windows": [
+      "Likely 1\u201319 min",
+      "Likely 1\u201319 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:50:23.095Z",
+    "bus": {
+      "observed_at": 1789656616220,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.321506,
+      "lon": -72.929398,
+      "heading": 30,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 27,
+      "at_stop_since": "2026-09-17T14:49:31.369",
+      "stationary_since": "2026-09-17T14:49:31.369",
+      "last_moved_at": "2026-09-17T14:50:16.220",
+      "lap": {
+        "11": 2929,
+        "121": 1113
+      }
+    },
+    "windows": [
+      "Likely 1\u201318 min",
+      "Likely 1\u201318 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:50:33.095Z",
+    "bus": {
+      "observed_at": 1789656628060,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.322151,
+      "lon": -72.92882,
+      "heading": 14,
+      "last_stop_id": 27,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:49:31.369",
+      "last_moved_at": "2026-09-17T14:50:28.060",
+      "lap": {
+        "11": 2939,
+        "121": 1123
+      }
+    },
+    "windows": [
+      "Likely 1\u201318 min",
+      "Likely 1\u201318 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:50:43.095Z",
+    "bus": {
+      "observed_at": 1789656637744,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.323015,
+      "lon": -72.928562,
+      "heading": 13,
+      "last_stop_id": 27,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:50:32.754",
+      "last_moved_at": "2026-09-17T14:50:37.744",
+      "lap": {
+        "11": 2949,
+        "121": 1133
+      }
+    },
+    "windows": [
+      "Likely <1\u201317 min",
+      "Likely <1\u201317 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:50:53.097Z",
+    "bus": {
+      "observed_at": 1789656647747,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.323913,
+      "lon": -72.928235,
+      "heading": 15,
+      "last_stop_id": 27,
+      "stationary": false,
+      "stationary_since": "2026-09-17T14:50:47.747",
+      "last_moved_at": "2026-09-17T14:50:47.747",
+      "lap": {
+        "11": 2959,
+        "121": 1143
+      }
+    },
+    "windows": [
+      "Likely <1\u201317 min",
+      "Likely <1\u201317 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:51:03.097Z",
+    "bus": {
+      "observed_at": 1789656657917,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324228,
+      "lon": -72.92814,
+      "heading": 12,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:50:52.856",
+      "lap": {
+        "11": 2969,
+        "121": 1153
+      }
+    },
+    "windows": [
+      "Likely <1\u201316 min",
+      "Likely <1\u201316 min"
+    ],
+    "wait": [
+      "Red 0:29/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:51:13.097Z",
+    "bus": {
+      "observed_at": 1789656667748,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "heading": 343,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:07.748",
+      "lap": {
+        "11": 2979,
+        "121": 1163
+      }
+    },
+    "windows": [
+      "Likely <1\u201316 min",
+      "Likely <1\u201316 min"
+    ],
+    "wait": []
+  },
+  {
+    "at": "2026-09-17T14:51:23.099Z",
+    "bus": {
+      "observed_at": 1789656677846,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "heading": 343,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:07.748",
+      "lap": {
+        "11": 2989,
+        "121": 1173
+      }
+    },
+    "windows": [
+      "Likely <1\u201316 min",
+      "Likely <1\u201316 min"
+    ],
+    "wait": [
+      "Red 0:29/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:51:33.099Z",
+    "bus": {
+      "observed_at": 1789656687958,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "heading": 343,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:07.748",
+      "lap": {
+        "11": 2999,
+        "121": 1183
+      }
+    },
+    "windows": [
+      "Likely <1\u201316 min",
+      "Likely <1\u201316 min"
+    ],
+    "wait": [
+      "Red 0:39/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:51:43.099Z",
+    "bus": {
+      "observed_at": 1789656697822,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324769,
+      "lon": -72.928284,
+      "heading": 353,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:32.886",
+      "lap": {
+        "11": 3009,
+        "121": 1193
+      }
+    },
+    "windows": [
+      "Likely <1\u201315 min",
+      "Likely <1\u201315 min"
+    ],
+    "wait": [
+      "Red 0:49/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:51:53.101Z",
+    "bus": {
+      "observed_at": 1789656707954,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:42.828",
+      "lap": {
+        "11": 3019,
+        "121": 1203
+      }
+    },
+    "windows": [
+      "Likely <1\u201315 min",
+      "Likely <1\u201315 min"
+    ],
+    "wait": [
+      "Red 0:59/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:52:03.101Z",
+    "bus": {
+      "observed_at": 1789656717992,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:42.828",
+      "lap": {
+        "11": 3029,
+        "121": 1213
+      }
+    },
+    "windows": [
+      "Likely <1\u201313 min",
+      "Likely <1\u201313 min"
+    ],
+    "wait": [
+      "Red 1:09/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:52:13.101Z",
+    "bus": {
+      "observed_at": 1789656727808,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:42.828",
+      "lap": {
+        "11": 3039,
+        "121": 1223
+      }
+    },
+    "windows": [
+      "Likely <1\u201313 min",
+      "Likely <1\u201313 min"
+    ],
+    "wait": [
+      "Red 1:19/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:52:23.101Z",
+    "bus": {
+      "observed_at": 1789656737827,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:42.828",
+      "lap": {
+        "11": 3049,
+        "121": 1233
+      }
+    },
+    "windows": [
+      "Likely <1\u201312 min",
+      "Likely <1\u201312 min"
+    ],
+    "wait": [
+      "Red 1:29/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:52:33.106Z",
+    "bus": {
+      "observed_at": 1789656747991,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:42.828",
+      "lap": {
+        "11": 3059,
+        "121": 1243
+      }
+    },
+    "windows": [
+      "Likely <1\u201312 min",
+      "Likely <1\u201312 min"
+    ],
+    "wait": [
+      "Red 1:39/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:52:43.106Z",
+    "bus": {
+      "observed_at": 1789656757841,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:42.828",
+      "lap": {
+        "11": 3069,
+        "121": 1253
+      }
+    },
+    "windows": [
+      "Likely <1\u201312 min",
+      "Likely <1\u201312 min"
+    ],
+    "wait": [
+      "Red 1:49/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:52:53.109Z",
+    "bus": {
+      "observed_at": 1789656767811,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:42.828",
+      "lap": {
+        "11": 3079,
+        "121": 1263
+      }
+    },
+    "windows": [
+      "Likely <1\u201312 min",
+      "Likely <1\u201312 min"
+    ],
+    "wait": [
+      "Red 1:59/~5m"
+    ]
+  },
+  {
+    "at": "2026-09-17T14:53:03.112Z",
+    "bus": {
+      "observed_at": 1789656777940,
+      "bus_id": 66491,
+      "bus_name": "#309",
+      "route_id": 3,
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "stationary": true,
+      "at_stop_id": 11,
+      "at_stop_since": "2026-09-17T14:50:52.856",
+      "stationary_since": "2026-09-17T14:50:52.856",
+      "last_moved_at": "2026-09-17T14:51:42.828",
+      "lap": {
+        "11": 3089,
+        "121": 1273
+      }
+    },
+    "windows": [
+      "Likely <1\u201312 min",
+      "Likely <1\u201312 min"
+    ],
+    "wait": [
+      "Red 2:09/~5m"
+    ]
+  }
+]

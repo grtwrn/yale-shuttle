@@ -1,0 +1,22 @@
+{
+  "createdAt": "2026-09-18T09:02:24.142627+00:00",
+  "base": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "task": "Fixed canonical cache diagnostic: complete Red connected outcome evaluation, plus available all-route fixture inventory and bounded order/restart checks if time permits. Artifact-only.",
+  "arms": [
+    "current production code",
+    "same one-line canonical-tenth movement-kernel diagnostic from cycle13"
+  ],
+  "calibration": "Same preSep14 marginals, preSep10 fit, causal fit refresh at 1789665240913 from prior recorded completed outcomes; release ON both arms. No new fitting.",
+  "replay": "Separate processes for each arm; identical original bus order and all 16253 frames. Reset per >60sec observation gap, preserve global cache as live process does. Target-scoped estimator with periodic full-server parity; same raw inputs and predeclared chronology.",
+  "metrics": "Exact paired keys and differential availability; current connected first and second outcomes, early/late misses, MAE/p90/WIS/width, >60sec absolute-arrival jumps, largest regressions and prior legitimate cases. Track lead/rest changes separately. Preserve all negative bounds raw.",
+  "limits": "Already inspected September16\u201317; no fresh holdout. No rider ranking or all-route validation claim unless performed; no release supported without remaining gates. Historical collector clock metadata reconstructed, not original receipt.",
+  "inputHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/raw-complete-frames.jsonl": "ad1d5d8343a90b3aecfd9d18cbee826f9c8c5e68ee23c4d325aca60a91c4d0a0",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/outcomes-complete.db": "fe8f6efd8ba7a1d0eb472307eca02f3a76f7c1a3ecdcc9972f37cda520605283",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-pre-sep10.json": "be2350420f438d609e12d18b458de5da06578a2533df757efcbbade17b9c4fc8",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-development.json": "d78e229e6f98cc98385cec11fd4fac4ebd625a92028cae240169d0f81a2af7a3",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/params.json": "ab2e69d08bf7d09a969f3a3645663bf47a66ed1b5a318b633cd015d5af81e328",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/baseline-patch.json": "f7adb4932de11f6fdcd92fd950baefe1a7561b8b8617143526fd96b61ae8478d",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/payload.json": "a9654f864661923f97b4c240defaf62b2a6cbafec7805f920bb9a925f4fd38d6"
+  }
+}

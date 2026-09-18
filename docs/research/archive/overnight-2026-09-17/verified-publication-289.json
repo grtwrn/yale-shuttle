@@ -1,0 +1,25 @@
+{
+  "at": "2026-09-18T07:08:38.582001+00:00",
+  "team": "eta",
+  "pr": 289,
+  "merge": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "health": {
+    "ok": true,
+    "pollStalenessMs": 2806,
+    "collectorLagMs": null,
+    "knownBuses": 0,
+    "serverEta": {
+      "restored": 0,
+      "forecastAt": null,
+      "checkpointAt": 1789715301980,
+      "beliefs": 0,
+      "steps": 1,
+      "failures": 0,
+      "lastStepMs": 2,
+      "rows": 0
+    },
+    "pollSkipped": 0,
+    "droppedObservations": 0,
+    "build": "d5a392f533e8"
+  }
+}

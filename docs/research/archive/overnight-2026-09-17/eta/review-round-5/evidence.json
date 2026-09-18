@@ -1,0 +1,52 @@
+{
+  "head": "b574a1c800654544685a8d9f1097ad3484ac13fc",
+  "base": "6220b860a69f5567557926f41de59ed1af72d2f8",
+  "inputHashes": 15,
+  "generatedBaselineFiles": 3,
+  "wire": {
+    "frames": 1172,
+    "rows": 160496,
+    "changed": 454,
+    "zero": 1734,
+    "basePairs": 61142,
+    "candidatePairs": 61142,
+    "fixed": 101
+  },
+  "fixedStops": {
+    "11": 90,
+    "146": 11
+  },
+  "allSelectedEndpointRowsUnchanged": 11234,
+  "fullExactForecasts": 150020,
+  "selectedExactCheckpoints": 177,
+  "selectedExactJumps": 3124,
+  "decisions": 4688,
+  "availability": {
+    "(True, True)": 4471,
+    "(False, False)": 68,
+    "(False, True)": 149
+  },
+  "countdownJourneyMismatch": {
+    "base": 676,
+    "candidate": 742
+  },
+  "exactOutcomePairs": 1382,
+  "unchangedExistingJourneys": 1240,
+  "candidateOutcomes": 1400,
+  "verifiedCandidateLegUses": 12874,
+  "pairedMAE": [
+    316.19665706977133,
+    319.0557304967183
+  ],
+  "largestErrorIncrease": [
+    228.50646991848777,
+    [
+      "65347:4:0",
+      1789657152981,
+      65347,
+      65406,
+      "309"
+    ]
+  ],
+  "scope": "Selected reused historical Red data and hypothetical walking; no prospective or calibrated accuracy claim."
+}

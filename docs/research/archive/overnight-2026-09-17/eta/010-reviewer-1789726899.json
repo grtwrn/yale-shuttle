@@ -1,0 +1,42 @@
+{
+  "verdict": "research_only",
+  "summary": "Replay outputs and restart continuations reproduce, but occurrence-label errors remain. Review saved in eta/independent-review-round-14.md. Checkout and original evidence are unchanged.",
+  "head_sha": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "base_sha": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "next_task": "Correct historical-source versus priced-visit alignment and rescore saved forecasts, preserving transitions, ambiguities and regressions. Independently review the corrected labels, then resume frozen arms from poll 6000 to 9000.",
+  "blocking_findings": [
+    "[P2] cycle-15/score.py:104–110 applies current-stop handling only when the latest historical source equals the target. When the detector advances while the estimator retains its prior rest, this assigns current and following forecasts to later laps. Independently proved 11 paired current-stop errors across five routes and eight following-occurrence errors. Poll 220, Orange #53, assigns a zero-hop forecast for visit 56897 (arrival 75.006 seconds earlier) to visit 57352 (3,127.679 seconds later). Aggregate arrival scores remain provisional until corrected."
+  ],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-14/run.sh",
+      "exit_code": 0,
+      "result": "Both 100-poll continuations, saved-wire scoring, database checks, 2,036 planner decisions and 4,925 connected rider outcomes per arm reproduce."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-14/check-build.sh",
+      "exit_code": 0,
+      "result": "Fresh research bundles built; original 125 retargeted records reproduced."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-14/independent_audit.py",
+      "exit_code": 0,
+      "result": "Verified source provenance, exact planner extraction and reproduced forecast, decision and rider records."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-14/audit_lagged_origin.py",
+      "exit_code": 1,
+      "result": "Semantic gate fails on 11 established current-stop forecasts assigned future-lap outcomes."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-14/audit_following.py",
+      "exit_code": 0,
+      "result": "Confirmed eight following-occurrence labels shifted one lap too far."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-14/final_integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base and clean checkout verified; 905 tracked files, 140 builder files and eight inputs unchanged. No reviewer screenshots or remaining processes."
+    }
+  ]
+}

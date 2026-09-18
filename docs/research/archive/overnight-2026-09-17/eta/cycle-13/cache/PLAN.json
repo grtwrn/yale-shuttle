@@ -1,0 +1,18 @@
+{
+  "createdAt": "2026-09-18T08:37:29.666974+00:00",
+  "base": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "question": "Does first-caller movement-kernel caching explain the already-recorded fresh-process checkpoint discrepancy?",
+  "sourceFinding": "moveKernel caches by rounded tenth of mean but computes with the unrounded first input. A later caller in the same bucket receives the first caller's distribution.",
+  "arms": [
+    "current exact production",
+    "diagnostic only: compute kernel using the same rounded tenth used by its cache key"
+  ],
+  "evaluation": "Same current-code continuous 2178-poll prefix and 78-poll saved window, serialize warm state then resume in a genuinely fresh node process. Compare complete wires, distributions, occurrence availability and tracking beliefs. Also same-process restoration. No model fit or accuracy claim; reused historical diagnostic only.",
+  "limits": "Canonical quantization changes the numerical tracking transition; cannot release without separately authorized scope, all-route paired connected outcomes, tails, both occurrences and independent review. Artifact-only; no app source change.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/filter.ts": "084f9568d50b9091289585eef9df72b98d4a6e7f19c12b2a7f45ba88a3afda01",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-4/regression-frames.json": "3601aa9e1c5545aeb878348d074fdeabc0cd5abea91ff02611a5d53f43ce13ac",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-4/calibration-payload.json": "24dbea4480e14e1c4168fe4c64f9f8cbbf3571d88959331dd833982f98895c6a",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/raw-frames.jsonl": "2f65e30e8986a7cada4f5527adb77444748367d62bf68e508c17edd0ba25bcb6"
+  }
+}

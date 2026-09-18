@@ -1,0 +1,132 @@
+{
+  "createdAt": "2026-09-18T16:59:31.435892+00:00",
+  "task": "One bounded own-bus rest-history component screen at Red Winchester; no app/prod/watch mutation.",
+  "cohort": "Reuse exactly285 focal visits/160 training/113 Sep14\u201317 and12 Sep18. Baseline forecast landmarks0,60,180,300,480 among still-continuing visits. All valid short/long waits retained. No newer outcomes until root freezes extension.",
+  "trainingCutoff": "2026-09-14T04:00:00Z",
+  "training": "Single event-history likelihood per hold,15sec bins, outcome known before cutoff; fixed L2=4, no intercept penalty, no tuning/calibration. Right-censor training exposure through1800s; prediction tail continues.",
+  "arms": [
+    "lap_elapsed_clock",
+    "plus_own_union_age",
+    "plus_previous_winchester_hold",
+    "plus_previous_union_hold",
+    "plus_cedar_holds",
+    "plus_current_lap_rest",
+    "plus_all_own_history"
+  ],
+  "comparators": "Every history arm extends the existing own-Union-age11-feature model; also retain9-feature lap/clock model and unchanged runtime component. Models fit independently on same160 visits. Preserve actual runtime fallback for unsupported lap in operational comparisons.",
+  "featureFamilies": {
+    "previous_winchester_hold": [
+      "log1p(previous recorded stand_sec/60)",
+      "duration missing"
+    ],
+    "previous_union_hold": [
+      "log1p(previous recorded stand_sec/60)",
+      "duration missing"
+    ],
+    "cedar_holds": [
+      "separate latest117 and13 log1p(recorded stand_sec/60)",
+      "separate duration missing"
+    ],
+    "current_lap_rest": [
+      "log1p(sum confirmed recorded stand_sec at117/13/121 after prior Winchester departure /60)",
+      "number of covered intermediate designated stops /3",
+      "time since most recent known stopped visit at these stops at PIN /3600",
+      "missing/partial-duration flag",
+      "no-lap/last-rest flag"
+    ]
+  },
+  "history": "Own bus_name, route3, canonical stop occurrence, sameETday, within90min of focal pin. Use latest completed prior event, not latest stopped-only event: a pass with measured zero/short duration remains zero/short. Exclude gap/unresolved history from quantitative inputs as missing; do not skip a more recent known invalid-duration event to choose an older convenient one. Reset eligibility after already-known other-route anchor+15sec. History frozen atpin; no part of current target hold enters inputs.",
+  "currentLap": "Start at latest known prior modern Winchester departure on same day with known intervening Union event; include only intermediate117,13,121 events strictly after source departure. Exclude source Winchester hold before lap start. Missing stop records remain missing coverage, not zero rest. Sum is observed recorded standing, not exact physically summed stationary GPS time.",
+  "availabilityContracts": {
+    "primary": "max(departed_at+120s,departed_at+confirm_sec+15s,first_moved_at+confirm_sec), a conservative publication proxy, not exact receipt or guaranteed upper bound under long GPS gaps",
+    "sensitivity": "max(departed_at+120s,first_moved_at+confirm_sec), earlier research120sec proxy. Fit sensitivity only if frozen history feature values differ; otherwise report identical extraction."
+  },
+  "knownCorruption": "Prior65237 duration is missing; keep its independently verified final departure clock available. Do not discard focal later visit or backfill an older duration.",
+  "interactions": "None: the small sample does not justify a new compensation interaction search. Negative history effects would be descriptive predictive compensation, not a proved driver policy or bathroom break.",
+  "topology": [
+    {
+      "id": 11,
+      "name": "344 Winchester",
+      "lat": 41.324661,
+      "lon": -72.928677,
+      "updated_at": 1788547478497,
+      "index": 14
+    },
+    {
+      "id": 117,
+      "name": "Gilbert / Cedar",
+      "lat": 41.301613,
+      "lon": -72.933459,
+      "updated_at": 1788547478497,
+      "index": 26
+    },
+    {
+      "id": 13,
+      "name": "Amistad / Cedar",
+      "lat": 41.300236,
+      "lon": -72.932021,
+      "updated_at": 1788547478497,
+      "index": 27
+    },
+    {
+      "id": 14,
+      "name": "Amistad / Church St South",
+      "lat": 41.300531,
+      "lon": -72.929866,
+      "updated_at": 1788547478497,
+      "index": 28
+    },
+    {
+      "id": 121,
+      "name": "Union Station (N)",
+      "lat": 41.297857,
+      "lon": -72.926763,
+      "updated_at": 1788547478497,
+      "index": 0
+    }
+  ],
+  "redSequence": [
+    121,
+    115,
+    45,
+    75,
+    30,
+    31,
+    41,
+    126,
+    36,
+    128,
+    120,
+    3,
+    147,
+    27,
+    11,
+    146,
+    49,
+    48,
+    104,
+    113,
+    4,
+    42,
+    98,
+    38,
+    39,
+    72,
+    117,
+    13,
+    14
+  ],
+  "cedarScope": "Only117 Gilbert/Cedar and13 Amistad/Cedar are onRed.14 Amistad/Church St South is adjacent context, not silently included as Cedar. Other Cedar IDs8/10/43/149 are notRed.",
+  "evaluation": "Old dates are reused development; Sep18 previously inspected chronological follow-up. Report fixed-age equal-visit scores plus visit-balanced sampled-landmark totals, perdate, supported/fallback cohorts, WIS80/width/early andlate misses/severity/pinball/MAE, individual regressions and distinct affected visits. No calibrated live probabilities or safe minimum.",
+  "runtimeScope": "Exact existing component baseline from union-survival, frozen preSep14 fit/tables; live state mixture,30s arrival pooling, journey endpoints and both target occurrences require later fullreplay.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/union-survival/PLAN.json": "183afcd863d035155515b77c2fcd0a2c037b6c1c666590859e3221114d0efb48",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/union-survival/predictions.jsonl": "883322b0dc84f845eed9c51b9c9baa7eca00c0ebc9bc712bee65dbfb1e9e6446",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/union-survival/fits.json": "ede9106a66edb5ef2a558e9fb7439015c78193ec3af158ab1807351a7b691285",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/union-survival/runtime-comparator.json": "911b05f5320d26cf5b730c7e0ac3c08f1e9eeb54bf05f14882509443b9ebf8ec",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/recordings-followup.json": "5e19538a3fd4c7c3cae3d0cd201bdec959ac3e4887142dcd5f7c8930f0ce8fad",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/legacy-followup.json": "3b352c00ff6e773160fa5499f19a187b2582de3f752d32ab9772d5de3d39fb77",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/outcomes-complete.db": "fe8f6efd8ba7a1d0eb472307eca02f3a76f7c1a3ecdcc9972f37cda520605283",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/src/collector/departure.ts": "e403c2376d1344701d156e40e9707784ebc5a9f691a29496f7e797dc720c2fcd"
+  }
+}

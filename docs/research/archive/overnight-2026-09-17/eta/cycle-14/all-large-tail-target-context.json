@@ -1,0 +1,252 @@
+[
+  {
+    "forecast": {
+      "at": 1789596500179,
+      "bus": "#309",
+      "target": 4,
+      "hops": 1,
+      "current": {
+        "eta": 5.266439148637129,
+        "low": 3.112399257819832,
+        "high": 8.092774158039616
+      },
+      "canonical": {
+        "eta": 5.266702871544337,
+        "low": 3.1123994137017843,
+        "high": 3761.302095284889
+      },
+      "maxBandDelta": 3753.2093211268498
+    },
+    "nearbyTargetVisits": [
+      {
+        "id": 61959,
+        "bus_name": "#309",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789596490145,
+        "anchored_at": 1789596455182,
+        "pinned_at": 1789596490145,
+        "departed_at": 1789596495240,
+        "outcome": "passed",
+        "how": "clock",
+        "closest_m": 55.399390037526636,
+        "arrivalRelativeSec": -10.034
+      }
+    ],
+    "interpretation": "Nearby visits are descriptive anchors, not automatically relabeled forecast outcomes; current/second occurrence and exact chain required."
+  },
+  {
+    "forecast": {
+      "at": 1789670426971,
+      "bus": "#300",
+      "target": 4,
+      "hops": 1,
+      "current": {
+        "eta": 8.532182473477947,
+        "low": 5.012771070635303,
+        "high": 13.03406819632209
+      },
+      "canonical": {
+        "eta": 8.416647664896601,
+        "low": 4.944892828707375,
+        "high": 3755.5546981038833
+      },
+      "maxBandDelta": 3742.520629907561
+    },
+    "nearbyTargetVisits": [
+      {
+        "id": 67028,
+        "bus_name": "#300",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789670411894,
+        "anchored_at": 1789670401941,
+        "pinned_at": 1789670411894,
+        "departed_at": 1789670436889,
+        "outcome": "stopped",
+        "how": "far",
+        "closest_m": 73.70808959626481,
+        "arrivalRelativeSec": -15.077
+      },
+      {
+        "id": 67495,
+        "bus_name": "#300",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789674086000,
+        "anchored_at": 1789674031037,
+        "pinned_at": 1789674086000,
+        "departed_at": 1789674121112,
+        "outcome": "stopped",
+        "how": "far",
+        "closest_m": 44.24228134693912,
+        "arrivalRelativeSec": 3659.029
+      },
+      {
+        "id": 67929,
+        "bus_name": "#300",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789677491555,
+        "anchored_at": 1789677471495,
+        "pinned_at": 1789677491555,
+        "departed_at": 1789677536524,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 58.544291968367816,
+        "arrivalRelativeSec": 7064.584
+      }
+    ],
+    "interpretation": "Nearby visits are descriptive anchors, not automatically relabeled forecast outcomes; current/second occurrence and exact chain required."
+  },
+  {
+    "forecast": {
+      "at": 1789596500179,
+      "bus": "#309",
+      "target": 4,
+      "hops": 30,
+      "current": {
+        "eta": 3753.12956613353,
+        "low": 3233.925334392109,
+        "high": 4181.123293318533
+      },
+      "canonical": {
+        "eta": 3753.1297383293104,
+        "low": 3233.925334777269,
+        "high": 7482.36806684028
+      },
+      "maxBandDelta": 3301.2447735217474
+    },
+    "nearbyTargetVisits": [
+      {
+        "id": 61959,
+        "bus_name": "#309",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789596490145,
+        "anchored_at": 1789596455182,
+        "pinned_at": 1789596490145,
+        "departed_at": 1789596495240,
+        "outcome": "passed",
+        "how": "clock",
+        "closest_m": 55.399390037526636,
+        "arrivalRelativeSec": -10.034
+      }
+    ],
+    "interpretation": "Nearby visits are descriptive anchors, not automatically relabeled forecast outcomes; current/second occurrence and exact chain required."
+  },
+  {
+    "forecast": {
+      "at": 1789670426971,
+      "bus": "#300",
+      "target": 4,
+      "hops": 30,
+      "current": {
+        "eta": 3756.561195280803,
+        "low": 3237.8261457484214,
+        "high": 4175.654449790265
+      },
+      "canonical": {
+        "eta": 3756.5465909623053,
+        "low": 3237.65842932572,
+        "high": 7465.052495167555
+      },
+      "maxBandDelta": 3289.39804537729
+    },
+    "nearbyTargetVisits": [
+      {
+        "id": 67028,
+        "bus_name": "#300",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789670411894,
+        "anchored_at": 1789670401941,
+        "pinned_at": 1789670411894,
+        "departed_at": 1789670436889,
+        "outcome": "stopped",
+        "how": "far",
+        "closest_m": 73.70808959626481,
+        "arrivalRelativeSec": -15.077
+      },
+      {
+        "id": 67495,
+        "bus_name": "#300",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789674086000,
+        "anchored_at": 1789674031037,
+        "pinned_at": 1789674086000,
+        "departed_at": 1789674121112,
+        "outcome": "stopped",
+        "how": "far",
+        "closest_m": 44.24228134693912,
+        "arrivalRelativeSec": 3659.029
+      },
+      {
+        "id": 67929,
+        "bus_name": "#300",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789677491555,
+        "anchored_at": 1789677471495,
+        "pinned_at": 1789677491555,
+        "departed_at": 1789677536524,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 58.544291968367816,
+        "arrivalRelativeSec": 7064.584
+      }
+    ],
+    "interpretation": "Nearby visits are descriptive anchors, not automatically relabeled forecast outcomes; current/second occurrence and exact chain required."
+  },
+  {
+    "forecast": {
+      "at": 1789660280391,
+      "bus": "#316",
+      "target": 4,
+      "hops": 30,
+      "current": {
+        "eta": 3816.6613822091476,
+        "low": 3274.679878069933,
+        "high": 7793.528596866775
+      },
+      "canonical": {
+        "eta": 3817.6689498110836,
+        "low": 3274.679921419507,
+        "high": 7860.147041224619
+      },
+      "maxBandDelta": 66.61844435784406
+    },
+    "nearbyTargetVisits": [
+      {
+        "id": 65773,
+        "bus_name": "#316",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789660295329,
+        "anchored_at": 1789660245335,
+        "pinned_at": 1789660275368,
+        "departed_at": 1789660310509,
+        "outcome": "stopped",
+        "how": "far",
+        "closest_m": 17.140181669907328,
+        "arrivalRelativeSec": 14.938
+      },
+      {
+        "id": 66228,
+        "bus_name": "#316",
+        "stop_id": 4,
+        "stop_index": 20,
+        "arrived_at": 1789663955695,
+        "anchored_at": 1789663930890,
+        "pinned_at": 1789663955695,
+        "departed_at": 1789664015673,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 49.91531552525795,
+        "arrivalRelativeSec": 3675.304
+      }
+    ],
+    "interpretation": "Nearby visits are descriptive anchors, not automatically relabeled forecast outcomes; current/second occurrence and exact chain required."
+  }
+]

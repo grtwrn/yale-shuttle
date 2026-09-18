@@ -1,0 +1,35 @@
+{
+  "verdict": "approve",
+  "summary": "Recovery is clearer and keyboard accessible; reset consequences match actual behavior. Independently passed 103 tests, both typechecks, build and five browser checks. No blocking findings. Review saved in ux/independent-review-round-14.md; checkout and index unchanged.",
+  "head_sha": "da51fcb0af70f554ef0b141aa07d4a390f3c7de0",
+  "base_sha": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "next_task": "Controller release gates, then repair the separately reproduced baseline map zoom teardown defect using ux-09/NEXT_MAP.md.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09/verified flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/verify.sh",
+      "exit_code": 0,
+      "result": "46 tests, backend/frontend typechecks, Vite build, mobile/desktop recovery and built-SPA feed checks passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09/integration.sh",
+      "exit_code": 1,
+      "result": "44 integration tests passed; supplemental reviewer fixture then failed on an incorrect text selector. Failure preserved; corrected selector passed below. No candidate change."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09/additional.sh",
+      "exit_code": 0,
+      "result": "13 transport tests, real-trip recovery/reset/header-refresh checks and actual service-worker offline recovery passed. All browser/server resources closed."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09/verify-integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base, unchanged checkout/index, source/bundle parity, preserved builder evidence and screenshot budget verified."
+    },
+    {
+      "command": "git diff --check 98e535b99649e74ca599d2e33bcfdc46df83d30d..HEAD",
+      "exit_code": 0,
+      "result": "Passed."
+    }
+  ]
+}

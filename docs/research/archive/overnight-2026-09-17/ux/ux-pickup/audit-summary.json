@@ -1,0 +1,18 @@
+{
+  "pairedDecisions": 9376,
+  "pairedRankings": 9376,
+  "pairedTraces": 9376,
+  "oldProductionMatches": 4688,
+  "metadataMatches": 9376,
+  "inputFramesUnchanged": 4688,
+  "historical": {
+    "same-visit": 2490,
+    "raw-current": 1456,
+    "different-bus": 742
+  },
+  "missingDestination": {
+    "same-visit": 2490,
+    "raw-current": 1456,
+    "different-bus": 742
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "buckets": 396,
+  "currentOrderDependent": 396,
+  "canonicalChecks": 1188,
+  "clampedBoundaries": 8,
+  "scope": "Exact current source extraction, isolated caches, canonical replacement only; numerical unit check, not route outcomes."
+}

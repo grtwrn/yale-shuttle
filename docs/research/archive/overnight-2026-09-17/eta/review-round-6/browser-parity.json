@@ -1,0 +1,155 @@
+{
+  "sessions": [
+    {
+      "id": "57454:48:0",
+      "frames": 119,
+      "firstText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) <1–2 min\n🏁 (R) 9:04a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAbout 1 min ⓘ\nLikely <1–2 min\n40 min\n🚌 39 min\n9:04a\n›\n🚶 Walk\n45 min\n9:09a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "lastText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) 17–26 min\n🏁 (R) 9:34a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\n🚶 Walk\n45 min\n9:19a\n›\nRed\nAbout 21 min ⓘ\nLikely 17–26 min\n61 min\n🚌 39 min\n9:34a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "missingStates": [
+        {
+          "at": 1789561481036,
+          "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) At stop\n🏁 (R) 8:39a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAt your stop ⓘ\nNext about 32 min\n14 min\n🚌 14 min\n8:39a\n›\n🚶 Walk\n45 min\n9:10a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+          "option": {
+            "mode": "shuttle",
+            "routeLabel": "Red",
+            "boardStopId": 121,
+            "alightStopId": 48,
+            "busName": "309",
+            "walkToSec": 0,
+            "walkFromSec": 0,
+            "waitSec": 0,
+            "rideSec": 879.9449148391399,
+            "plannedRideSec": 879.9449148391399,
+            "totalSec": 879.9449148391399,
+            "busEtaSec": 0,
+            "busLowSec": 0,
+            "busHighSec": 0,
+            "computedAtMs": 1789561481036,
+            "departed": false
+          }
+        },
+        {
+          "at": 1789561846275,
+          "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) At stop\n🏁 (R) 8:45a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAt your stop ⓘ\nNext about 85 min\n14 min\n🚌 14 min\n8:45a\n›\n🚶 Walk\n45 min\n9:16a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+          "option": {
+            "mode": "shuttle",
+            "routeLabel": "Red",
+            "boardStopId": 121,
+            "alightStopId": 48,
+            "busName": "309",
+            "walkToSec": 0,
+            "walkFromSec": 0,
+            "waitSec": 0,
+            "rideSec": 879.9449148391399,
+            "plannedRideSec": 879.9449148391399,
+            "totalSec": 879.9449148391399,
+            "busEtaSec": 0,
+            "busLowSec": 0,
+            "busHighSec": 0,
+            "computedAtMs": 1789561846275,
+            "departed": false
+          }
+        },
+        {
+          "at": 1789561851214,
+          "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) At stop\n🏁 (R) 8:45a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAt your stop ⓘ\nNext about 85 min\n14 min\n🚌 14 min\n8:45a\n›\n🚶 Walk\n45 min\n9:16a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+          "option": {
+            "mode": "shuttle",
+            "routeLabel": "Red",
+            "boardStopId": 121,
+            "alightStopId": 48,
+            "busName": "309",
+            "walkToSec": 0,
+            "walkFromSec": 0,
+            "waitSec": 0,
+            "rideSec": 879.9449148391399,
+            "plannedRideSec": 879.9449148391399,
+            "totalSec": 879.9449148391399,
+            "busEtaSec": 0,
+            "busLowSec": 0,
+            "busHighSec": 0,
+            "computedAtMs": 1789561851214,
+            "departed": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "58224:48:0",
+      "frames": 78,
+      "firstText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) <1–4 min\n🏁 (R) 10:09a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAbout 1 min ⓘ\nLikely <1–4 min\n10 min\n🚌 8 min\n10:09a\n›\n🚶 Walk\n6 min\n10:06a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "lastText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) 18–28 min\n🏁 (R) 10:36a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\n🚶 Walk\n6 min\n10:12a\n›\nRed\nAbout 22 min ⓘ\nLikely 18–28 min\n30 min\n🚌 7 min\n10:36a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "missingStates": [
+        {
+          "at": 1789567302279,
+          "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) At stop\n🏁 (R) 10:03a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAt your stop ⓘ\nNext about 89 min\n1 min\n🚌 1 min\n10:03a\n›\n🚶 Walk\n6 min\n10:08a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+          "option": {
+            "mode": "shuttle",
+            "routeLabel": "Red",
+            "boardStopId": 11,
+            "alightStopId": 48,
+            "busName": "309",
+            "walkToSec": 0,
+            "walkFromSec": 0,
+            "waitSec": 0,
+            "rideSec": 103.67656663560257,
+            "plannedRideSec": 103.67656663560257,
+            "totalSec": 103.67656663560257,
+            "busEtaSec": 0,
+            "busLowSec": 0,
+            "busHighSec": 0,
+            "computedAtMs": 1789567302279,
+            "departed": false
+          }
+        },
+        {
+          "at": 1789567307286,
+          "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) At stop\n🏁 (R) 10:03a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAt your stop ⓘ\nNext about 89 min\n1 min\n🚌 1 min\n10:03a\n›\n🚶 Walk\n6 min\n10:08a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+          "option": {
+            "mode": "shuttle",
+            "routeLabel": "Red",
+            "boardStopId": 11,
+            "alightStopId": 48,
+            "busName": "309",
+            "walkToSec": 0,
+            "walkFromSec": 0,
+            "waitSec": 0,
+            "rideSec": 103.67656663560257,
+            "plannedRideSec": 103.67656663560257,
+            "totalSec": 103.67656663560257,
+            "busEtaSec": 0,
+            "busLowSec": 0,
+            "busHighSec": 0,
+            "computedAtMs": 1789567307286,
+            "departed": false
+          }
+        },
+        {
+          "at": 1789567322346,
+          "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) At stop\n🏁 (R) 10:03a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAt your stop ⓘ\nNext about 89 min\n1 min\n🚌 1 min\n10:03a\n›\n🚶 Walk\n6 min\n10:08a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+          "option": {
+            "mode": "shuttle",
+            "routeLabel": "Red",
+            "boardStopId": 11,
+            "alightStopId": 48,
+            "busName": "309",
+            "walkToSec": 0,
+            "walkFromSec": 0,
+            "waitSec": 0,
+            "rideSec": 103.67656663560257,
+            "plannedRideSec": 103.67656663560257,
+            "totalSec": 103.67656663560257,
+            "busEtaSec": 0,
+            "busLowSec": 0,
+            "busHighSec": 0,
+            "computedAtMs": 1789567322346,
+            "departed": false
+          }
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "checks": 197,
+  "scope": "Actual built React shell numerical hook parity, stationary explicit origins; no screen reader or physical phone claim."
+}

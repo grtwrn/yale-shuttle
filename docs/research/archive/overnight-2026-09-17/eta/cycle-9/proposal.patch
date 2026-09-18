@@ -1,0 +1,367 @@
+diff --git a/docs/red-current-release.md b/docs/red-current-release.md
+index df6d0d6..1eca39e 100644
+--- a/docs/red-current-release.md
++++ b/docs/red-current-release.md
+@@ -40,8 +40,14 @@ its complete arrival forecasts did not consistently improve.
+   and the plotted distribution use the same pooling. Marginal fallbacks at
+   Winchester also receive this stabilization when an accepted fit exists.
+   Pooling ends as soon as the tracked rest ends, rather than using the first
+-  movement as a departure oracle. A gap over 15 seconds or a new route lap
+-  bypasses old pooling memory. Checkpoints persist that memory with the belief.
++  movement as a departure oracle. Already-arrived (zero-hop) rows remain zero.
++  A gap over 15 seconds, an increased hop count, or a change between the first
++  and second future traversal bypasses old pooling memory. This matters when
++  a standing hypothesis changes occurrence zero from a future lap to the
++  current arrival, and occurrence one from two future laps to one. Ordinary
++  forward hop progress within a traversal retains smoothing. Ambiguous rows
++  use the new forecast and seed fresh memory; no ETA cap is imposed.
++  Checkpoints persist that memory with the belief.
+ - The wire payload carries the small fit with dwell statistics. It is also
+   included in the shared runtime module's Docker dependency closure. Fit cost
+   and fit count are included in collector calibration logs.
+diff --git a/docs/server-side-eta.md b/docs/server-side-eta.md
+index d5df5e9..f9e0b40 100644
+--- a/docs/server-side-eta.md
++++ b/docs/server-side-eta.md
+@@ -54,6 +54,18 @@ recommendations state that the shuttle *may* fit the buffer and keep the catch
+ assumption beside that conclusion. Dot fractions are not validated on-time
+ probabilities.
+ 
++When raw GPS reports a shuttle at pickup but the estimator still forecasts
++its approach, the trip can use that existing pickup row to join the same bus's
++first forward destination. The raw boarding/dwell gate and pickup countdown
++remain separate: no zero-time forecast row is invented. A pickup after the
++first destination cannot borrow a later lap, and repeated-pickup checks still
++reject a journey through the wrong stop occurrence. Missing destinations stay
++unavailable; nonzero walks retain the connection-risk warning even when the
++forecast pickup lower bound exceeds the walk. Raw at-stop context cannot use an
++approaching forecast as evidence that the driver will wait. This restores
++destination windows for some at-stop states without changing the served ETA
++rows, distributions, ranking rules or bus selection.
++
+ Opening either disclosure requests
+ `/api/journey-history?route=Red&bus=308&stop=48&eta=360&limit=100`. The bus/ETA identify the
+ selected forward occurrence in the existing warm server snapshot; requests do
+diff --git a/services/shuttle-v2/web/src/TransitMap.tsx b/services/shuttle-v2/web/src/TransitMap.tsx
+index 8f120c5..3247234 100644
+--- a/services/shuttle-v2/web/src/TransitMap.tsx
++++ b/services/shuttle-v2/web/src/TransitMap.tsx
+@@ -39,7 +39,7 @@ import { waitLegText } from "./etaBand";
+ import { ArrivalDetails } from "./ArrivalDetails";
+ import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
+ import { ArriveBy } from "./ArriveBy";
+-import { journeyArrival } from "./journeyArrival";
++import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
+ import { tripBusIdentity } from "./tripBusIdentity";
+ import { TripBoardingActions } from "./TripBoardingActions";
+ import {
+@@ -2249,7 +2249,8 @@ const TripPlanner: FC<{
+         // they arrive, so fall through to the normal math.
+         const waitSec = 0;
+         const board = live.find(a => norm(a.busName) === norm(hereBus.bus_name) && a.stopsAhead === 0 && a.eta === 0);
+-        const arrival = journeyArrival(board, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs);
++        const forecastBoard = atStopJourneyBoard(visits, o.routeLabel, hereBus.bus_name, o.boardStopId, o.alightStopId);
++        const arrival = journeyArrival(forecastBoard, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs, 'at-stop');
+         const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
+           : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
+         return {
+diff --git a/services/shuttle-v2/web/src/atStopJourney.test.ts b/services/shuttle-v2/web/src/atStopJourney.test.ts
+new file mode 100644
+index 0000000..e3d3046
+--- /dev/null
++++ b/services/shuttle-v2/web/src/atStopJourney.test.ts
+@@ -0,0 +1,101 @@
++import { describe, expect, it } from 'vitest';
++import type { UpcomingArrival } from './arrivals';
++import { atStopJourneyBoard, journeyArrival } from './journeyArrival';
++import { boardingVisitAllowed, type TripOption } from './planner';
++import { compareDeadline } from './arriveBy';
++
++const now = 1_000_000;
++const row = (stopId: number, stopsAhead: number, eta: number, patch: Partial<UpcomingArrival> = {}): UpcomingArrival => ({
++  stopId, stopsAhead, eta, low: eta / 2, high: eta * 2, busName: '307', routeLabel: 'Red', color: 'red',
++  departNow: eta, lowFloor: 0, estimated: false, distribution: [eta / 2, eta, eta * 2], ...patch,
++});
++const visits = [row(10, 1, 10), row(20, 6, 500), row(10, 30, 3000), row(20, 35, 3500)];
++const board = (rows = visits, bus = '#307') => atStopJourneyBoard(rows, 'Red', bus, 10, 20);
++const arrival = (rows = visits, walk = 0) => journeyArrival(board(rows), rows, 20, walk, 30, now, 'at-stop');
++
++describe('raw at-stop journey uses an existing ordered forecast', () => {
++  it('restores the first destination plus final walk, preserving both pickup and destination occurrences', () => {
++    const before = structuredClone(visits);
++    expect(board()).toBe(visits[0]);
++    expect(arrival()).toMatchObject({ busName: '307', pointMs: now + 530_000,
++      distributionMs: [now + 280_000, now + 530_000, now + 1030_000] });
++    expect(visits).toEqual(before);
++  });
++  it('keeps an already-arrived pickup instead of substituting its next lap', () => {
++    const here = row(10, 0, 0);
++    expect(board([...visits, here])).toBe(here);
++    expect(arrival([...visits.slice(1), here], 1)?.catchRisk).toBe(true);
++  });
++  it('matches normalized raw bus identity and route regardless of wire order', () => {
++    const mixed = [...visits, row(20, 0, 0, { busName: '309' }),
++      row(20, 0, 0, { routeLabel: 'Blue Day' })].reverse();
++    for (const name of ['#307', '307']) expect(board(mixed, name)).toBe(visits[0]);
++    expect(arrival(mixed)).toEqual(arrival());
++  });
++  it('does not borrow the next destination lap when the first destination is before pickup', () => {
++    const outgoing = [visits[1]!, visits[2]!, visits[3]!];
++    expect(board(outgoing)).toBeUndefined();
++    expect(arrival(outgoing)).toBeUndefined();
++  });
++  it('retains missing data instead of manufacturing a board-now row', () => {
++    for (const rows of [[], [visits[0]!], [visits[1]!],
++      [visits[0]!, row(20, 6, 500, { busName: '309' })],
++      [visits[0]!, row(20, 6, 500, { routeLabel: 'Blue Day' })]]) {
++      expect(arrival(rows)).toBeUndefined();
++    }
++  });
++  it('preserves the folded-route boarding gate and refuses to skip a repeated pickup', () => {
++    const folded = [row(10, 1, 10), row(10, 5, 300), row(20, 8, 500)];
++    expect(boardingVisitAllowed('#307', 10, 20, folded)).toBe(false);
++    expect(arrival(folded)).toBeUndefined();
++    const laterVisit = folded.slice(1);
++    expect(boardingVisitAllowed('#307', 10, 20, laterVisit)).toBe(true);
++    expect(board(laterVisit)).toBe(folded[1]);
++    expect(arrival(laterVisit)?.pointMs).toBe(now + 530_000);
++  });
++  it.each([0, 100, 150, 151])('keeps raw at-stop caution for a %s-second walk despite a positive pickup lower bound', walk => {
++    const rows = [row(10, 1, 200, { low: 150, high: 300 }), ...visits.slice(1)];
++    const before = structuredClone(rows);
++    const rawAtStop = arrival(rows, walk)!;
++    const approaching = journeyArrival(board(rows), rows, 20, walk, 30, now)!;
++    expect(rawAtStop.catchRisk).toBe(walk > 0);
++    expect(approaching.catchRisk).toBe(walk > 150);
++    // Pickup context changes only connection caution, not the destination window.
++    expect(rawAtStop).toEqual({ ...approaching, catchRisk: walk > 0 });
++    expect(rows).toEqual(before);
++  });
++  it('rejects impossible destination timing', () => {
++    expect(arrival(visits, 501)).toBeUndefined();
++    for (const patch of [{ eta: 1 }, { high: NaN }, { low: 1000, high: 900 }]) {
++      expect(arrival([visits[0]!, row(20, 6, 500, patch)])).toBeUndefined();
++    }
++  });
++});
++
++describe('restored journey class-deadline availability', () => {
++  const option: TripOption = { mode: 'shuttle', routeLabel: 'Red', color: 'red', boardStopId: 10,
++    alightStopId: 20, busName: '307', walkToSec: 0, walkFromSec: 30, waitSec: 0,
++    rideSec: 500, totalSec: 530, directWalkSec: 1500 };
++  const compare = (classSec: number, journey = arrival(), patch: Partial<TripOption> = {}) =>
++    compareDeadline([{ ...option, journeyArrival: journey, ...patch }], now + classSec * 1000, 5, now, now, false);
++  it('moves unavailable timing to fits, tight buffer or late using the full destination window', () => {
++    expect(compare(1400).shuttle?.status).toBe('fits');
++    expect(compare(1100).shuttle?.status).toBe('buffer');
++    expect(compare(1000).shuttle?.status).toBe('late');
++    expect(compare(1400, arrival(), { journeyArrival: undefined }).shuttle?.status).toBe('unknown');
++  });
++  it('does not recommend a risky walking connection or stale/missing timing', () => {
++    expect(compare(1400, arrival(visits, 6)).recommendation).toBeUndefined();
++    expect(compare(1400, arrival(), { etaUnavailable: true }).shuttle?.status).toBe('unknown');
++    expect(compareDeadline([{ ...option, journeyArrival: arrival() }], now + 1400_000, 5,
++      now, now - 45_000, false).shuttle?.status).toBe('unknown');
++  });
++  it.each([100, 150])('keeps class connection caution for a %s-second walk below or at the pickup lower bound', walk => {
++    const rows = [row(10, 1, 200, { low: 150, high: 300 }), ...visits.slice(1)];
++    const result = compare(1400, arrival(rows, walk), { walkToSec: walk });
++    expect(result.shuttle?.status).toBe('fits');
++    expect(result.shuttle?.caution).toContain('assumes you catch it');
++    expect(result.recommendation).toBeUndefined();
++    expect(compare(1400, arrival(rows, 0)).recommendation?.option.mode).toBe('shuttle');
++  });
++});
+diff --git a/services/shuttle-v2/web/src/eta/index.ts b/services/shuttle-v2/web/src/eta/index.ts
+index 9cf0c22..488814b 100644
+--- a/services/shuttle-v2/web/src/eta/index.ts
++++ b/services/shuttle-v2/web/src/eta/index.ts
+@@ -138,6 +138,34 @@ export function beliefFor(
+ 
+ export interface ModelArrival extends StopArrival { busName: string }
+ 
++/** Pool only rows whose stop, occurrence and future traversal still agree.
++ * Occurrence zero can switch from a future lap to an already-arrived stop.
++ * Hops 1..N and N+1..2N describe different future traversals. Crossing that
++ * boundary is ambiguous without an unwrapped target identity: use the new
++ * forecast directly. Ordinary forward hop progress retains stabilization.
++ */
++export function poolReleaseArrivals(
++  memory: NonNullable<ModelEntry['releaseSmoothing']>, rows: StopArrival[], now: number, active: boolean, stopCount: number,
++): void {
++  for (const row of rows) {
++    const rowKey = row.stopId * 2 + row.occurrence, old = memory.get(rowKey);
++    const dt = old ? (now - old.at) / 1000 : Infinity;
++    if (active && old && dt >= 0 && dt <= 15 && row.stopsAhead > 0
++      && row.stopsAhead <= old.row.stopsAhead
++      && Math.ceil(row.stopsAhead / stopCount) === Math.ceil(old.row.stopsAhead / stopCount)) {
++      const weight = 1 - Math.exp(-dt / 30);
++      const mix = (before: number, current: number) => Math.max(0, (before - dt) * (1 - weight) + current * weight);
++      row.eta = mix(old.row.eta, row.eta);
++      row.low = Math.min(row.eta, mix(old.row.low, row.low));
++      row.high = Math.max(row.eta, mix(old.row.high, row.high));
++      if (row.distribution && old.row.distribution?.length === row.distribution.length) {
++        row.distribution = row.distribution.map((v, i) => mix(old.row.distribution![i]!, v));
++      }
++    }
++    memory.set(rowKey, { at: now, row: { ...row } });
++  }
++}
++
+ /**
+  * Price every target stop for one bus. `dwellsByRoute` is every route's
+  * dwell table (the payload's `dwells`), from which the all-routes stand
+@@ -187,21 +215,7 @@ export function arrivalsForBus(
+     const entry = entryFor(store, key);
+     const memory = entry.releaseSmoothing ??= new Map();
+     const active = releasePin && belief.rested && ring.stops[belief.restStop] === releasePin.stopId && tables.stops[belief.restStop]?.release?.stopId === releasePin.stopId;
+-    for (const row of rows) {
+-      const rowKey = row.stopId * 2 + row.occurrence, old = memory.get(rowKey);
+-      const dt = old ? (now - old.at) / 1000 : Infinity;
+-      if (active && old && dt >= 0 && dt <= 15 && row.stopsAhead <= old.row.stopsAhead) {
+-        const weight = 1 - Math.exp(-dt / 30);
+-        const mix = (before: number, current: number) => Math.max(0, (before - dt) * (1 - weight) + current * weight);
+-        row.eta = mix(old.row.eta, row.eta);
+-        row.low = Math.min(row.eta, mix(old.row.low, row.low));
+-        row.high = Math.max(row.eta, mix(old.row.high, row.high));
+-        if (row.distribution && old.row.distribution?.length === row.distribution.length) {
+-          row.distribution = row.distribution.map((v, i) => mix(old.row.distribution![i]!, v));
+-        }
+-      }
+-      memory.set(rowKey, { at: now, row: { ...row } });
+-    }
++    poolReleaseArrivals(memory, rows, now, Boolean(active), ring.N);
+   }
+   return rows;
+ }
+diff --git a/services/shuttle-v2/web/src/eta/releaseSmoothing.test.ts b/services/shuttle-v2/web/src/eta/releaseSmoothing.test.ts
+new file mode 100644
+index 0000000..3151cd5
+--- /dev/null
++++ b/services/shuttle-v2/web/src/eta/releaseSmoothing.test.ts
+@@ -0,0 +1,73 @@
++import { describe, expect, it } from 'vitest';
++import { poolReleaseArrivals as pool, type ModelEntry } from './index';
++import type { StopArrival } from './arrival';
++
++const row = (stopId: number, occurrence: number, stopsAhead: number, eta: number): StopArrival => ({
++  stopId, occurrence, stopsAhead, eta, low: eta * 0.8, high: eta * 1.2,
++  distribution: Array.from({ length: 50 }, (_, i) => eta * (0.8 + i * 0.4 / 49)),
++  departNow: eta, lowFloor: eta * 0.8, leadMass: 1, estimated: false, standingAt: -1,
++});
++const memory = (): NonNullable<ModelEntry['releaseSmoothing']> => new Map();
++const poolReleaseArrivals = (m: ReturnType<typeof memory>, rows: StopArrival[], at: number, active: boolean) => pool(m, rows, at, active, 29);
++
++describe('release smoothing occurrence identity', () => {
++  it.each([11, 146])('preserves current arrival and following lap at stop %s through repeated hypothesis flips', stop => {
++    const m = memory();
++    const moving = () => [row(stop, 0, 29, 3000), row(stop, 1, 58, 5000)];
++    const standing = () => [row(stop, 0, 0, 0), row(stop, 1, 29, 3100)];
++    poolReleaseArrivals(m, moving(), 0, true);
++    for (let t = 5000; t <= 25000; t += 10000) {
++      const arrived = standing(), expected = structuredClone(arrived);
++      poolReleaseArrivals(m, arrived, t, true);
++      expect(arrived).toEqual(expected);
++      const future = moving(), expectedFuture = structuredClone(future);
++      poolReleaseArrivals(m, future, t + 5000, true);
++      expect(future).toEqual(expectedFuture);
++    }
++  });
++
++  it('keeps an already-arrived row exact even with legacy contaminated checkpoint memory', () => {
++    const m = memory();
++    m.set(22, { at: 0, row: row(11, 0, 0, 1804) });
++    const arrived = row(11, 0, 0, 0);
++    poolReleaseArrivals(m, [arrived], 5000, true);
++    expect(arrived).toEqual(row(11, 0, 0, 0));
++  });
++
++  it('allows a new later estimate across a traversal boundary, then resumes smoothing both occurrences', () => {
++    const m = memory();
++    poolReleaseArrivals(m, [row(48, 0, 29, 100), row(48, 1, 58, 2000)], 0, true);
++    const changed = [row(48, 0, 0, 0), row(48, 1, 29, 3000)];
++    poolReleaseArrivals(m, changed, 5000, true);
++    expect(changed.map(r => r.eta)).toEqual([0, 3000]);
++    const later = [row(48, 0, 3, 600), row(48, 1, 29, 3600)];
++    poolReleaseArrivals(m, later, 10000, true);
++    expect(later[0]!.eta).toBe(600);
++    for (const [i, r] of later.entries()) {
++      expect(r.eta).toBeGreaterThan(changed[i]!.eta);
++      if (i === 1) expect(r.eta).toBeLessThan(3600);
++      expect(r.low).toBeLessThanOrEqual(r.eta);
++      expect(r.high).toBeGreaterThanOrEqual(r.eta);
++      expect(r.distribution).toEqual([...r.distribution!].sort((a, b) => a - b));
++    }
++  });
++
++  it('keeps ordinary forward progress smoothed on both future traversals', () => {
++    const m = memory();
++    poolReleaseArrivals(m, [row(48, 0, 4, 100), row(48, 1, 33, 2000)], 0, true);
++    const later = [row(48, 0, 3, 400), row(48, 1, 32, 3000)];
++    poolReleaseArrivals(m, later, 5000, true);
++    expect(later[0]!.eta).toBeGreaterThan(100);
++    expect(later[0]!.eta).toBeLessThan(400);
++    expect(later[1]!.eta).toBeGreaterThan(2000);
++    expect(later[1]!.eta).toBeLessThan(3000);
++  });
++
++  it.each([[-1, true], [16000, true], [5000, false]])('bypasses stale/reversed/inactive memory (%s, %s)', (at, active) => {
++    const m = memory();
++    poolReleaseArrivals(m, [row(48, 0, 3, 100)], 0, true);
++    const fresh = row(48, 0, 3, 500);
++    poolReleaseArrivals(m, [fresh], at as number, active as boolean);
++    expect(fresh).toEqual(row(48, 0, 3, 500));
++  });
++});
+diff --git a/services/shuttle-v2/web/src/journeyArrival.ts b/services/shuttle-v2/web/src/journeyArrival.ts
+index 12988cf..4a36f5e 100644
+--- a/services/shuttle-v2/web/src/journeyArrival.ts
++++ b/services/shuttle-v2/web/src/journeyArrival.ts
+@@ -1,5 +1,26 @@
+ import type { UpcomingArrival } from './arrivals';
+ 
++/** Join a raw at-stop observation to an existing forecast visit. GPS can report
++ * the curb while the estimator still has an approaching pickup. Only accept a
++ * pickup before this bus's FIRST destination; a later lap cannot price the
++ * board-now journey. The caller retains its raw boarding/dwell gate and pickup
++ * countdown, and journeyArrival still checks folded-route visit order. */
++export function atStopJourneyBoard(
++  visits: readonly UpcomingArrival[],
++  routeLabel: string,
++  busName: string,
++  boardStopId: number,
++  alightStopId: number,
++): UpcomingArrival | undefined {
++  const norm = (name: string) => name.replace(/^#/, '');
++  const sameBus = visits.filter(a => a.routeLabel === routeLabel && norm(a.busName) === norm(busName))
++    .sort((a, b) => a.stopsAhead - b.stopsAhead);
++  const arrived = sameBus.find(a => a.stopId === boardStopId && a.stopsAhead === 0 && a.eta === 0);
++  if (arrived) return arrived;
++  const firstDestination = sameBus.find(a => a.stopId === alightStopId);
++  return firstDestination && sameBus.find(a => a.stopId === boardStopId && a.stopsAhead < firstDestination.stopsAhead);
++}
++
+ export interface JourneyArrival {
+   busName: string;
+   distributionMs?: number[] | undefined;
+@@ -21,6 +42,7 @@ export function journeyArrival(
+   walkToSec: number,
+   walkFromSec: number,
+   now: number,
++  pickupState: 'forecast' | 'at-stop' = 'forecast',
+ ): JourneyArrival | undefined {
+   if (!board || ![walkToSec, walkFromSec, board.eta, board.low, now].every(Number.isFinite)
+     || walkToSec < 0 || walkFromSec < 0) return undefined;
+@@ -37,9 +59,9 @@ export function journeyArrival(
+     pointMs: now + (destination.eta + walkFromSec) * 1000,
+     lowMs: now + (destination.low + walkFromSec) * 1000,
+     highMs: now + (Math.max(destination.eta, destination.high) + walkFromSec) * 1000,
+-    // Do not count on a driver waiting. A bus already at pickup is only a
+-    // confident connection when the rider is there too (walkToSec === 0).
+-    catchRisk: walkToSec > Math.max(0, board.low),
++    // Raw GPS may already place the bus at pickup while its forecast is still
++    // approaching. That forecast does not establish that the driver will wait.
++    catchRisk: walkToSec > (pickupState === 'at-stop' ? 0 : Math.max(0, board.low)),
+     estimated: destination.estimated || board.estimated,
+   };
+ }

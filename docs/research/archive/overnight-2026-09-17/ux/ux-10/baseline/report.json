@@ -1,0 +1,28 @@
+{
+  "errors": [],
+  "checks": [
+    "Saved and recent destination selection absent from keyboard tab order",
+    "Enter on saved delete leaves both entries",
+    "Escape then blur incorrectly persists edited text"
+  ],
+  "saved": {
+    "tag": "DIV",
+    "tabIndex": -1,
+    "role": null
+  },
+  "recent": {
+    "tag": "DIV",
+    "tabIndex": -1
+  },
+  "escapeSaved": "Uncommitted name",
+  "afterKeyboardDelete": 2,
+  "deleteBox": {
+    "x": 304.75,
+    "y": 230.640625,
+    "width": 60.25,
+    "height": 21
+  },
+  "inputFont": "12px",
+  "passed": true,
+  "closed": true
+}

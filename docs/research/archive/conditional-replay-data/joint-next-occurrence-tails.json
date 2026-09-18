@@ -1,0 +1,1456 @@
+{
+  "method": "Exploratory diagnostics accompanying the fixed-checkpoint second-lap audit.\nThese static commitments are not a rider simulation: no updated decisions,\nwalking feasibility, capacity, notifications, or guaranteed door-open times.\n",
+  "tailMisses": {
+    "newEarly": {
+      "checkpoints": 4,
+      "targets": 2,
+      "sourceVisits": 1,
+      "rows": [
+        {
+          "sourceId": 58224,
+          "nextTargetId": 58745,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 0,
+          "truthSec": 3516.874,
+          "baseline": {
+            "eta": 4114.605995685928,
+            "low": 3483.8681871648905,
+            "high": 4791.218495595102
+          },
+          "candidate": {
+            "eta": 4086.293002660137,
+            "low": 3565.833817230311,
+            "high": 4536.167285359214
+          },
+          "targetDwellSec": 94.913
+        },
+        {
+          "sourceId": 58224,
+          "nextTargetId": 58745,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 5,
+          "truthSec": 3506.983,
+          "baseline": {
+            "eta": 4114.605995685928,
+            "low": 3432.660054481624,
+            "high": 4825.731570864884
+          },
+          "candidate": {
+            "eta": 4086.293002660137,
+            "low": 3525.562637841531,
+            "high": 4560.1134442002885
+          },
+          "targetDwellSec": 94.913
+        },
+        {
+          "sourceId": 58224,
+          "nextTargetId": 58780,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "passed",
+          "phase": "departure",
+          "checkpointSec": 0,
+          "truthSec": 3826.845,
+          "baseline": {
+            "eta": 4482.852264392111,
+            "low": 3809.2886733445175,
+            "high": 5225.168726245086
+          },
+          "candidate": {
+            "eta": 4447.686300358653,
+            "low": 3945.339005767605,
+            "high": 4946.656875925496
+          },
+          "targetDwellSec": 5.002
+        },
+        {
+          "sourceId": 58224,
+          "nextTargetId": 58780,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "passed",
+          "phase": "departure",
+          "checkpointSec": 5,
+          "truthSec": 3816.954,
+          "baseline": {
+            "eta": 4482.852264392111,
+            "low": 3752.6318012787806,
+            "high": 5188.849392766992
+          },
+          "candidate": {
+            "eta": 4447.686300358653,
+            "low": 3872.0231461521416,
+            "high": 4951.114712561763
+          },
+          "targetDwellSec": 5.002
+        }
+      ]
+    },
+    "newLate": {
+      "checkpoints": 16,
+      "targets": 2,
+      "sourceVisits": 1,
+      "rows": [
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57815,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "standing",
+          "checkpointSec": 0,
+          "truthSec": 4667.775,
+          "baseline": {
+            "eta": 4234.459601441602,
+            "low": 3624.934668892134,
+            "high": 4924.9745138973085
+          },
+          "candidate": {
+            "eta": 4189.348358968627,
+            "low": 3683.0236124962294,
+            "high": 4598.111121682403
+          },
+          "targetDwellSec": 129.966
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57815,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "standing",
+          "checkpointSec": 60,
+          "truthSec": 4607.732,
+          "baseline": {
+            "eta": 4180.530009981772,
+            "low": 3566.3806059197323,
+            "high": 4827.118012729281
+          },
+          "candidate": {
+            "eta": 4113.016910166794,
+            "low": 3646.6122489578083,
+            "high": 4549.953494195729
+          },
+          "targetDwellSec": 129.966
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57815,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "standing",
+          "checkpointSec": 180,
+          "truthSec": 4487.752,
+          "baseline": {
+            "eta": 4012.6520773478605,
+            "low": 3428.9588947172097,
+            "high": 4670.568610718363
+          },
+          "candidate": {
+            "eta": 3983.3723797783987,
+            "low": 3521.6693788559905,
+            "high": 4422.875913127318
+          },
+          "targetDwellSec": 129.966
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57815,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 0,
+          "truthSec": 4437.676,
+          "baseline": {
+            "eta": 4012.6520773478605,
+            "low": 3423.085018258281,
+            "high": 4655.126857031367
+          },
+          "candidate": {
+            "eta": 3983.3723797783987,
+            "low": 3514.1583296932085,
+            "high": 4412.653865654206
+          },
+          "targetDwellSec": 129.966
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57815,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 5,
+          "truthSec": 4432.569,
+          "baseline": {
+            "eta": 4012.6520773478605,
+            "low": 3395.3035037775,
+            "high": 4653.258315735077
+          },
+          "candidate": {
+            "eta": 3983.3723797783987,
+            "low": 3513.7256976041444,
+            "high": 4412.346554142573
+          },
+          "targetDwellSec": 129.966
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57815,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 15,
+          "truthSec": 4417.649,
+          "baseline": {
+            "eta": 4012.6520773478605,
+            "low": 3426.3355517367054,
+            "high": 4657.456647285894
+          },
+          "candidate": {
+            "eta": 3966.358195173306,
+            "low": 3489.2360958603404,
+            "high": 4404.43114674073
+          },
+          "targetDwellSec": 129.966
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57815,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 30,
+          "truthSec": 4402.741,
+          "baseline": {
+            "eta": 3921.893224666601,
+            "low": 3295.115579844988,
+            "high": 4560.281906576057
+          },
+          "candidate": {
+            "eta": 3836.024428715111,
+            "low": 3311.3075254212736,
+            "high": 4250.380983230299
+          },
+          "targetDwellSec": 129.966
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57815,
+          "sourceStop": 11,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 60,
+          "truthSec": 4376.122,
+          "baseline": {
+            "eta": 3961.1807866219606,
+            "low": 3254.221555540934,
+            "high": 4626.391839248075
+          },
+          "candidate": {
+            "eta": 3910.2345780462674,
+            "low": 3274.9621455989572,
+            "high": 4331.281539459971
+          },
+          "targetDwellSec": 129.966
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57852,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "stopped",
+          "phase": "standing",
+          "checkpointSec": 0,
+          "truthSec": 5067.813,
+          "baseline": {
+            "eta": 4593.090069984129,
+            "low": 3939.90618021332,
+            "high": 5325.493919871576
+          },
+          "candidate": {
+            "eta": 4530.434553452349,
+            "low": 3998.5505824315387,
+            "high": 5018.54234632185
+          },
+          "targetDwellSec": 30.018
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57852,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "stopped",
+          "phase": "standing",
+          "checkpointSec": 60,
+          "truthSec": 5007.77,
+          "baseline": {
+            "eta": 4534.782055936527,
+            "low": 3889.2089101238853,
+            "high": 5269.723368271951
+          },
+          "candidate": {
+            "eta": 4471.900657692138,
+            "low": 3949.736037933235,
+            "high": 4967.200877554297
+          },
+          "targetDwellSec": 30.018
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57852,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "stopped",
+          "phase": "standing",
+          "checkpointSec": 180,
+          "truthSec": 4887.79,
+          "baseline": {
+            "eta": 4389.174852295273,
+            "low": 3814.6706213159296,
+            "high": 5118.592907921831
+          },
+          "candidate": {
+            "eta": 4334.43801403931,
+            "low": 3855.030173248384,
+            "high": 4820.774962588111
+          },
+          "targetDwellSec": 30.018
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57852,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 0,
+          "truthSec": 4837.714,
+          "baseline": {
+            "eta": 4389.174852295273,
+            "low": 3815.415334753433,
+            "high": 5111.5004020028755
+          },
+          "candidate": {
+            "eta": 4334.43801403931,
+            "low": 3847.3640269138114,
+            "high": 4809.046309727936
+          },
+          "targetDwellSec": 30.018
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57852,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 5,
+          "truthSec": 4832.607,
+          "baseline": {
+            "eta": 4389.174852295273,
+            "low": 3816.1698342254113,
+            "high": 5111.475082448603
+          },
+          "candidate": {
+            "eta": 4334.43801403931,
+            "low": 3843.304237780815,
+            "high": 4810.6168554615915
+          },
+          "targetDwellSec": 30.018
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57852,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 15,
+          "truthSec": 4817.687,
+          "baseline": {
+            "eta": 4389.174852295273,
+            "low": 3757.242538314582,
+            "high": 5117.520800637482
+          },
+          "candidate": {
+            "eta": 4329.957486903476,
+            "low": 3835.4851082160376,
+            "high": 4817.322757167405
+          },
+          "targetDwellSec": 30.018
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57852,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 30,
+          "truthSec": 4802.779,
+          "baseline": {
+            "eta": 4288.797244375418,
+            "low": 3628.0921271927155,
+            "high": 4989.567626576825
+          },
+          "candidate": {
+            "eta": 4209.208900639601,
+            "low": 3660.928116428894,
+            "high": 4677.708552095061
+          },
+          "targetDwellSec": 30.018
+        },
+        {
+          "sourceId": 57226,
+          "nextTargetId": 57852,
+          "sourceStop": 11,
+          "target": 4,
+          "targetOutcome": "stopped",
+          "phase": "departure",
+          "checkpointSec": 60,
+          "truthSec": 4776.16,
+          "baseline": {
+            "eta": 4329.727584285486,
+            "low": 3555.8200881384155,
+            "high": 5063.436211014205
+          },
+          "candidate": {
+            "eta": 4257.3272992690445,
+            "low": 3612.42503577182,
+            "high": 4735.028628435098
+          },
+          "targetDwellSec": 30.018
+        }
+      ]
+    }
+  },
+  "policy": [
+    {
+      "key": [
+        11,
+        4,
+        "approach",
+        -120,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 10,
+      "candidateAfterDeparture": 8,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        4,
+        "approach",
+        -120,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "approach",
+        -60,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 10,
+      "candidateAfterDeparture": 8,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        4,
+        "approach",
+        -60,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        0,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 12,
+      "candidateAfterDeparture": 12,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        0,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        5,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 12,
+      "candidateAfterDeparture": 12,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        5,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        15,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 12,
+      "candidateAfterDeparture": 10,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        15,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        30,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 12,
+      "candidateAfterDeparture": 10,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        30,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        60,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 12,
+      "candidateAfterDeparture": 11,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        60,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        0,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 9,
+      "candidateAfterDeparture": 6,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 3
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        0,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        60,
+        "eta_minus_120s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 4,
+      "candidateAfterDeparture": 4,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        60,
+        "low_minus_60s"
+      ],
+      "n": 15,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        180,
+        "eta_minus_120s"
+      ],
+      "n": 11,
+      "baselineAfterDeparture": 7,
+      "candidateAfterDeparture": 6,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        180,
+        "low_minus_60s"
+      ],
+      "n": 11,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        300,
+        "eta_minus_120s"
+      ],
+      "n": 8,
+      "baselineAfterDeparture": 7,
+      "candidateAfterDeparture": 5,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        300,
+        "low_minus_60s"
+      ],
+      "n": 8,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        420,
+        "eta_minus_120s"
+      ],
+      "n": 8,
+      "baselineAfterDeparture": 8,
+      "candidateAfterDeparture": 7,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        420,
+        "low_minus_60s"
+      ],
+      "n": 8,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        600,
+        "eta_minus_120s"
+      ],
+      "n": 1,
+      "baselineAfterDeparture": 1,
+      "candidateAfterDeparture": 1,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        600,
+        "low_minus_60s"
+      ],
+      "n": 1,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "approach",
+        -120,
+        "eta_minus_120s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 12,
+      "candidateAfterDeparture": 9,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 3
+    },
+    {
+      "key": [
+        11,
+        48,
+        "approach",
+        -120,
+        "low_minus_60s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "approach",
+        -60,
+        "eta_minus_120s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 10,
+      "candidateAfterDeparture": 9,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        11,
+        48,
+        "approach",
+        -60,
+        "low_minus_60s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        0,
+        "eta_minus_120s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 17,
+      "candidateAfterDeparture": 16,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        0,
+        "low_minus_60s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 1,
+      "candidateAfterDeparture": 1,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        5,
+        "eta_minus_120s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 17,
+      "candidateAfterDeparture": 15,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        5,
+        "low_minus_60s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 1,
+      "candidateAfterDeparture": 1,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        15,
+        "eta_minus_120s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 14,
+      "candidateAfterDeparture": 9,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 5
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        15,
+        "low_minus_60s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 1,
+      "candidateAfterDeparture": 1,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        30,
+        "eta_minus_120s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 14,
+      "candidateAfterDeparture": 7,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 7
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        30,
+        "low_minus_60s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 1,
+      "candidateAfterDeparture": 1,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        60,
+        "eta_minus_120s"
+      ],
+      "n": 21,
+      "baselineAfterDeparture": 12,
+      "candidateAfterDeparture": 6,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 6
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        60,
+        "low_minus_60s"
+      ],
+      "n": 21,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        0,
+        "eta_minus_120s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 10,
+      "candidateAfterDeparture": 8,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        0,
+        "low_minus_60s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        60,
+        "eta_minus_120s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 8,
+      "candidateAfterDeparture": 6,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        60,
+        "low_minus_60s"
+      ],
+      "n": 22,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        180,
+        "eta_minus_120s"
+      ],
+      "n": 14,
+      "baselineAfterDeparture": 5,
+      "candidateAfterDeparture": 2,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 3
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        180,
+        "low_minus_60s"
+      ],
+      "n": 14,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        300,
+        "eta_minus_120s"
+      ],
+      "n": 11,
+      "baselineAfterDeparture": 7,
+      "candidateAfterDeparture": 4,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 3
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        300,
+        "low_minus_60s"
+      ],
+      "n": 11,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        420,
+        "eta_minus_120s"
+      ],
+      "n": 10,
+      "baselineAfterDeparture": 8,
+      "candidateAfterDeparture": 6,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        420,
+        "low_minus_60s"
+      ],
+      "n": 10,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        0,
+        "eta_minus_120s"
+      ],
+      "n": 5,
+      "baselineAfterDeparture": 4,
+      "candidateAfterDeparture": 3,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        0,
+        "low_minus_60s"
+      ],
+      "n": 5,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        5,
+        "eta_minus_120s"
+      ],
+      "n": 7,
+      "baselineAfterDeparture": 5,
+      "candidateAfterDeparture": 3,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 2
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        5,
+        "low_minus_60s"
+      ],
+      "n": 7,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        15,
+        "eta_minus_120s"
+      ],
+      "n": 12,
+      "baselineAfterDeparture": 8,
+      "candidateAfterDeparture": 7,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        15,
+        "low_minus_60s"
+      ],
+      "n": 12,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        30,
+        "eta_minus_120s"
+      ],
+      "n": 13,
+      "baselineAfterDeparture": 8,
+      "candidateAfterDeparture": 7,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        30,
+        "low_minus_60s"
+      ],
+      "n": 13,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        60,
+        "eta_minus_120s"
+      ],
+      "n": 12,
+      "baselineAfterDeparture": 7,
+      "candidateAfterDeparture": 6,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 1
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        60,
+        "low_minus_60s"
+      ],
+      "n": 12,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        121,
+        48,
+        "standing",
+        300,
+        "eta_minus_120s"
+      ],
+      "n": 1,
+      "baselineAfterDeparture": 1,
+      "candidateAfterDeparture": 1,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    },
+    {
+      "key": [
+        121,
+        48,
+        "standing",
+        300,
+        "low_minus_60s"
+      ],
+      "n": 1,
+      "baselineAfterDeparture": 0,
+      "candidateAfterDeparture": 0,
+      "newlyAfterDeparture": 0,
+      "newlyBeforeDeparture": 0
+    }
+  ],
+  "newlyAfterDeparture": [],
+  "pointJumps": {
+    "48": {
+      "baseline": {
+        "pairs": 7936,
+        "targets": 25,
+        "up60": 7,
+        "up180": 0,
+        "down60": 50,
+        "down180": 1,
+        "targetsUp60": 6,
+        "maxUpSec": 95.69573703945522,
+        "lowUp60": 32,
+        "highDown60": 90
+      },
+      "candidate": {
+        "pairs": 7936,
+        "targets": 25,
+        "up60": 7,
+        "up180": 0,
+        "down60": 46,
+        "down180": 1,
+        "targetsUp60": 5,
+        "maxUpSec": 95.92967974777169,
+        "lowUp60": 48,
+        "highDown60": 81
+      }
+    },
+    "4": {
+      "baseline": {
+        "pairs": 8131,
+        "targets": 24,
+        "up60": 9,
+        "up180": 0,
+        "down60": 44,
+        "down180": 0,
+        "targetsUp60": 7,
+        "maxUpSec": 125.66230232365749,
+        "lowUp60": 40,
+        "highDown60": 81
+      },
+      "candidate": {
+        "pairs": 8131,
+        "targets": 24,
+        "up60": 6,
+        "up180": 0,
+        "down60": 39,
+        "down180": 0,
+        "targetsUp60": 3,
+        "maxUpSec": 125.66230232365749,
+        "lowUp60": 43,
+        "highDown60": 97
+      }
+    }
+  },
+  "newUp60": [
+    {
+      "bus": "309",
+      "target": 4,
+      "nextTargetId": 58780,
+      "at": 1789567327355,
+      "deltaSec": 5.009,
+      "baseline": {
+        "eta": 5.14111900544593,
+        "low": 19.508584759851132,
+        "high": 9.454952722643597
+      },
+      "candidate": {
+        "eta": 92.50781537390593,
+        "low": 91.1376310526666,
+        "high": 104.48905611755798
+      }
+    },
+    {
+      "bus": "309",
+      "target": 48,
+      "nextTargetId": 58745,
+      "at": 1789567327355,
+      "deltaSec": 5.009,
+      "baseline": {
+        "eta": 12.069189270704541,
+        "low": 33.40774909897753,
+        "high": 35.99439647072903
+      },
+      "candidate": {
+        "eta": 85.09218844960013,
+        "low": 64.51027958317353,
+        "high": 109.03240442862896
+      }
+    },
+    {
+      "bus": "309",
+      "target": 48,
+      "nextTargetId": 58745,
+      "at": 1789567312286,
+      "deltaSec": 5.0,
+      "baseline": {
+        "eta": -30.310828662887616,
+        "low": -5.946409947216125,
+        "high": -20.71912735353453
+      },
+      "candidate": {
+        "eta": 68.6398829215741,
+        "low": 36.85062072037363,
+        "high": 99.7867070205566
+      }
+    },
+    {
+      "bus": "309",
+      "target": 4,
+      "nextTargetId": 58780,
+      "at": 1789567312286,
+      "deltaSec": 5.0,
+      "baseline": {
+        "eta": -32.229045572495124,
+        "low": 5.543721746147639,
+        "high": -30.914706837594167
+      },
+      "candidate": {
+        "eta": 66.63505041309418,
+        "low": 63.16076398486439,
+        "high": 54.700525910996475
+      }
+    },
+    {
+      "bus": "308",
+      "target": 48,
+      "nextTargetId": 59826,
+      "at": 1789576310895,
+      "deltaSec": 5.057,
+      "baseline": {
+        "eta": 53.14468843292728,
+        "low": 57.758612190679045,
+        "high": 23.236428502934572
+      },
+      "candidate": {
+        "eta": 65.76489955664896,
+        "low": 119.86983398384585,
+        "high": 85.1807691850265
+      }
+    }
+  ],
+  "policyCohort": {
+    "rows": 890,
+    "targetVisits": 37,
+    "dates": 2
+  }
+}

@@ -1,0 +1,654 @@
+{
+  "inputHashes": {
+    "conditional-hold-prepare.py": "d8c74ac4bb408aaee68f701c63d0f9e16b841491375cb08fae70c166915d07c4",
+    "conditional-hold-input.json": "ce0a66ba090e7e98836a281c96f1454c4c510b1e760c510917dc5ed439a4db1d",
+    "conditional-hold-screen.mts": "80f1a930d39149ba95006fbba3f86da88565ef7db14aa4e53e215ac6692f1d3f",
+    "conditional-hold-screen.json": "41df6871928082e1c525dee4467cff8d02f8ad767788d98fd26067fdf79f75f3",
+    "prior-model-0914.json": "5ab977c3e405ea9c03233c92d749008d4cdb865899faa13a4266e6d84cfd4a04"
+  },
+  "cutoffMs": 1789358400000,
+  "stops": [
+    {
+      "stop": 11,
+      "baselineN": 168,
+      "pinnedPassN": 8,
+      "candidatePriorN": 160,
+      "normalizedN": 139,
+      "baselineQuantilesExact": true,
+      "latestBaselineDepartureMs": 1789162342879,
+      "legacyPivotSec": 3035,
+      "modernEligiblePriorLapMedianSec": 3217.486,
+      "modernEligiblePriorFactorMedian": 0.8276215454626867,
+      "modernPriorHoldMedianSec": 337.63,
+      "normalizedShapeMedianSec": 429.7736069749707,
+      "auditedPredictionRecords": 892,
+      "byDateDifferences": {
+        "2026-09-14": {
+          "0": {
+            "matched_marginal_control": {
+              "maeSec": -4.113,
+              "widthSec": -39.254,
+              "WIS": -3.415
+            },
+            "normalized_lap_shape": {
+              "maeSec": -39.161,
+              "widthSec": -107.049,
+              "WIS": -15.16
+            },
+            "conditional_additive": {
+              "maeSec": -46.716,
+              "widthSec": -122.769,
+              "WIS": -16.236
+            }
+          },
+          "60": {
+            "matched_marginal_control": {
+              "maeSec": 4.21,
+              "widthSec": -9.838,
+              "WIS": 1.136
+            },
+            "normalized_lap_shape": {
+              "maeSec": -34.482,
+              "widthSec": -83.259,
+              "WIS": -13.295
+            },
+            "conditional_additive": {
+              "maeSec": -40.349,
+              "widthSec": -123.133,
+              "WIS": -14.157
+            }
+          },
+          "180": {
+            "matched_marginal_control": {
+              "maeSec": 0.481,
+              "widthSec": -2.087,
+              "WIS": 0.021
+            },
+            "normalized_lap_shape": {
+              "maeSec": -3.399,
+              "widthSec": -61.084,
+              "WIS": -3.511
+            },
+            "conditional_additive": {
+              "maeSec": -10.744,
+              "widthSec": -88.894,
+              "WIS": -6.632
+            }
+          },
+          "300": {
+            "matched_marginal_control": {
+              "maeSec": -0.698,
+              "widthSec": -6.649,
+              "WIS": -0.456
+            },
+            "normalized_lap_shape": {
+              "maeSec": -3.739,
+              "widthSec": -66.752,
+              "WIS": -4.605
+            },
+            "conditional_additive": {
+              "maeSec": -6.819,
+              "widthSec": -59.808,
+              "WIS": -3.664
+            }
+          },
+          "420": {
+            "matched_marginal_control": {
+              "maeSec": 1.714,
+              "widthSec": -2.425,
+              "WIS": 0.079
+            },
+            "normalized_lap_shape": {
+              "maeSec": -0.128,
+              "widthSec": -79.698,
+              "WIS": -5.008
+            },
+            "conditional_additive": {
+              "maeSec": -2.119,
+              "widthSec": -63.596,
+              "WIS": -4.43
+            }
+          },
+          "600": {
+            "matched_marginal_control": {
+              "maeSec": -0.725,
+              "widthSec": 2.75,
+              "WIS": -0.244
+            },
+            "normalized_lap_shape": {
+              "maeSec": 7.687,
+              "widthSec": -95.668,
+              "WIS": -4.33
+            },
+            "conditional_additive": {
+              "maeSec": 8.059,
+              "widthSec": -86.95,
+              "WIS": -3.566
+            }
+          }
+        },
+        "2026-09-15": {
+          "0": {
+            "matched_marginal_control": {
+              "maeSec": -2.703,
+              "widthSec": -36.683,
+              "WIS": -3.347
+            },
+            "normalized_lap_shape": {
+              "maeSec": -17.327,
+              "widthSec": -100.035,
+              "WIS": -12.445
+            },
+            "conditional_additive": {
+              "maeSec": -17.402,
+              "widthSec": -82.346,
+              "WIS": -8.786
+            }
+          },
+          "60": {
+            "matched_marginal_control": {
+              "maeSec": 1.112,
+              "widthSec": -8.064,
+              "WIS": -0.167
+            },
+            "normalized_lap_shape": {
+              "maeSec": -11.551,
+              "widthSec": -72.963,
+              "WIS": -8.715
+            },
+            "conditional_additive": {
+              "maeSec": -8.874,
+              "widthSec": -71.68,
+              "WIS": -1.416
+            }
+          },
+          "180": {
+            "matched_marginal_control": {
+              "maeSec": 0.809,
+              "widthSec": -2.043,
+              "WIS": 0.126
+            },
+            "normalized_lap_shape": {
+              "maeSec": -3.863,
+              "widthSec": -57.005,
+              "WIS": -5.277
+            },
+            "conditional_additive": {
+              "maeSec": -12.964,
+              "widthSec": -76.532,
+              "WIS": -4.535
+            }
+          },
+          "300": {
+            "matched_marginal_control": {
+              "maeSec": 1.061,
+              "widthSec": -6.399,
+              "WIS": -0.073
+            },
+            "normalized_lap_shape": {
+              "maeSec": -1.219,
+              "widthSec": -65.836,
+              "WIS": -4.795
+            },
+            "conditional_additive": {
+              "maeSec": -4.036,
+              "widthSec": -47.56,
+              "WIS": -3.374
+            }
+          },
+          "420": {
+            "matched_marginal_control": {
+              "maeSec": -1.516,
+              "widthSec": -1.23,
+              "WIS": -0.587
+            },
+            "normalized_lap_shape": {
+              "maeSec": -2.785,
+              "widthSec": -69.354,
+              "WIS": -5.552
+            },
+            "conditional_additive": {
+              "maeSec": -0.531,
+              "widthSec": -44.381,
+              "WIS": -3.136
+            }
+          },
+          "600": {
+            "matched_marginal_control": {
+              "maeSec": -0.238,
+              "widthSec": 2.858,
+              "WIS": -0.198
+            },
+            "normalized_lap_shape": {
+              "maeSec": -17.087,
+              "widthSec": -48.334,
+              "WIS": -10.007
+            },
+            "conditional_additive": {
+              "maeSec": -12.586,
+              "widthSec": -31.117,
+              "WIS": -7.301
+            }
+          }
+        },
+        "2026-09-16": {
+          "0": {
+            "matched_marginal_control": {
+              "maeSec": 1.728,
+              "widthSec": -25.164,
+              "WIS": -1.102
+            },
+            "normalized_lap_shape": {
+              "maeSec": 18.311,
+              "widthSec": -68.623,
+              "WIS": 6.46
+            },
+            "conditional_additive": {
+              "maeSec": 39.022,
+              "widthSec": -48.376,
+              "WIS": 29.267
+            }
+          },
+          "60": {
+            "matched_marginal_control": {
+              "maeSec": -1.983,
+              "widthSec": -5.028,
+              "WIS": -0.996
+            },
+            "normalized_lap_shape": {
+              "maeSec": 13.645,
+              "widthSec": -48.679,
+              "WIS": 6.96
+            },
+            "conditional_additive": {
+              "maeSec": 32.16,
+              "widthSec": -42.372,
+              "WIS": 31.131
+            }
+          },
+          "180": {
+            "matched_marginal_control": {
+              "maeSec": 0.063,
+              "widthSec": -0.534,
+              "WIS": 0.333
+            },
+            "normalized_lap_shape": {
+              "maeSec": -2.872,
+              "widthSec": -24.102,
+              "WIS": -2.99
+            },
+            "conditional_additive": {
+              "maeSec": 0.959,
+              "widthSec": 5.492,
+              "WIS": 3.373
+            }
+          },
+          "300": {
+            "matched_marginal_control": {
+              "maeSec": 1.959,
+              "widthSec": -3.11,
+              "WIS": 0.446
+            },
+            "normalized_lap_shape": {
+              "maeSec": -1.031,
+              "widthSec": -27.977,
+              "WIS": -2.209
+            },
+            "conditional_additive": {
+              "maeSec": -10.762,
+              "widthSec": -23.349,
+              "WIS": -5.144
+            }
+          },
+          "420": {
+            "matched_marginal_control": {
+              "maeSec": -1.786,
+              "widthSec": -0.551,
+              "WIS": -0.632
+            },
+            "normalized_lap_shape": {
+              "maeSec": -2.614,
+              "widthSec": -30.082,
+              "WIS": -2.877
+            },
+            "conditional_additive": {
+              "maeSec": -1.593,
+              "widthSec": -19.457,
+              "WIS": -1.828
+            }
+          },
+          "600": {}
+        }
+      }
+    },
+    {
+      "stop": 121,
+      "baselineN": 180,
+      "pinnedPassN": 7,
+      "candidatePriorN": 173,
+      "normalizedN": 154,
+      "baselineQuantilesExact": true,
+      "latestBaselineDepartureMs": 1789163977984,
+      "legacyPivotSec": 2825,
+      "modernEligiblePriorLapMedianSec": 3159.401,
+      "modernEligiblePriorFactorMedian": 0.6569912758593062,
+      "modernPriorHoldMedianSec": 410.449,
+      "normalizedShapeMedianSec": 634.6195782149096,
+      "auditedPredictionRecords": 972,
+      "byDateDifferences": {
+        "2026-09-14": {
+          "0": {
+            "matched_marginal_control": {
+              "maeSec": -8.064,
+              "widthSec": -19.17,
+              "WIS": -5.908
+            },
+            "normalized_lap_shape": {
+              "maeSec": -86.593,
+              "widthSec": -27.356,
+              "WIS": -49.155
+            },
+            "conditional_additive": {
+              "maeSec": -77.195,
+              "widthSec": -85.507,
+              "WIS": -44.756
+            }
+          },
+          "60": {
+            "matched_marginal_control": {
+              "maeSec": -2.344,
+              "widthSec": 4.884,
+              "WIS": -0.883
+            },
+            "normalized_lap_shape": {
+              "maeSec": -85.555,
+              "widthSec": 6.064,
+              "WIS": -44.221
+            },
+            "conditional_additive": {
+              "maeSec": -73.033,
+              "widthSec": -33.522,
+              "WIS": -38.479
+            }
+          },
+          "180": {
+            "matched_marginal_control": {
+              "maeSec": -2.368,
+              "widthSec": -1.055,
+              "WIS": -1.22
+            },
+            "normalized_lap_shape": {
+              "maeSec": -104.934,
+              "widthSec": 14.407,
+              "WIS": -51.282
+            },
+            "conditional_additive": {
+              "maeSec": -88.151,
+              "widthSec": 0.721,
+              "WIS": -43.392
+            }
+          },
+          "300": {
+            "matched_marginal_control": {
+              "maeSec": -0.81,
+              "widthSec": -1.815,
+              "WIS": -0.358
+            },
+            "normalized_lap_shape": {
+              "maeSec": -83.94,
+              "widthSec": 3.793,
+              "WIS": -38.662
+            },
+            "conditional_additive": {
+              "maeSec": -58.758,
+              "widthSec": 21.064,
+              "WIS": -26.288
+            }
+          },
+          "420": {
+            "matched_marginal_control": {
+              "maeSec": 0.943,
+              "widthSec": -2.954,
+              "WIS": 0.519
+            },
+            "normalized_lap_shape": {
+              "maeSec": -63.088,
+              "widthSec": -1.031,
+              "WIS": -27.507
+            },
+            "conditional_additive": {
+              "maeSec": -40.422,
+              "widthSec": 5.702,
+              "WIS": -15.332
+            }
+          },
+          "600": {
+            "matched_marginal_control": {
+              "maeSec": -0.029,
+              "widthSec": -6.544,
+              "WIS": 0.565
+            },
+            "normalized_lap_shape": {
+              "maeSec": -2.459,
+              "widthSec": -40.689,
+              "WIS": -0.019
+            },
+            "conditional_additive": {
+              "maeSec": 0.473,
+              "widthSec": -54.719,
+              "WIS": 5.99
+            }
+          }
+        },
+        "2026-09-15": {
+          "0": {
+            "matched_marginal_control": {
+              "maeSec": -5.25,
+              "widthSec": -17.83,
+              "WIS": -3.71
+            },
+            "normalized_lap_shape": {
+              "maeSec": -54.325,
+              "widthSec": -25.445,
+              "WIS": -24.316
+            },
+            "conditional_additive": {
+              "maeSec": -54.549,
+              "widthSec": -58.596,
+              "WIS": -22.616
+            }
+          },
+          "60": {
+            "matched_marginal_control": {
+              "maeSec": -1.605,
+              "widthSec": 8.666,
+              "WIS": -0.418
+            },
+            "normalized_lap_shape": {
+              "maeSec": -55.288,
+              "widthSec": 11.286,
+              "WIS": -23.49
+            },
+            "conditional_additive": {
+              "maeSec": -46.535,
+              "widthSec": -2.529,
+              "WIS": -14.412
+            }
+          },
+          "180": {
+            "matched_marginal_control": {
+              "maeSec": -1.19,
+              "widthSec": -0.376,
+              "WIS": -0.325
+            },
+            "normalized_lap_shape": {
+              "maeSec": -43.604,
+              "widthSec": 11.033,
+              "WIS": -14.962
+            },
+            "conditional_additive": {
+              "maeSec": -33.957,
+              "widthSec": 49.434,
+              "WIS": -8.692
+            }
+          },
+          "300": {
+            "matched_marginal_control": {
+              "maeSec": 0.373,
+              "widthSec": -1.489,
+              "WIS": 0.084
+            },
+            "normalized_lap_shape": {
+              "maeSec": -60.971,
+              "widthSec": 2.207,
+              "WIS": -22.858
+            },
+            "conditional_additive": {
+              "maeSec": -58.85,
+              "widthSec": 48.296,
+              "WIS": -19.695
+            }
+          },
+          "420": {
+            "matched_marginal_control": {
+              "maeSec": 0.016,
+              "widthSec": -3.81,
+              "WIS": 0.012
+            },
+            "normalized_lap_shape": {
+              "maeSec": -0.514,
+              "widthSec": -9.277,
+              "WIS": -1.962
+            },
+            "conditional_additive": {
+              "maeSec": -4.507,
+              "widthSec": 24.14,
+              "WIS": -2.183
+            }
+          },
+          "600": {
+            "matched_marginal_control": {
+              "maeSec": -0.054,
+              "widthSec": -6.913,
+              "WIS": -0.479
+            },
+            "normalized_lap_shape": {
+              "maeSec": -0.09,
+              "widthSec": -58.755,
+              "WIS": -3.947
+            },
+            "conditional_additive": {
+              "maeSec": 1.64,
+              "widthSec": -39.358,
+              "WIS": -1.872
+            }
+          }
+        },
+        "2026-09-16": {
+          "0": {
+            "matched_marginal_control": {
+              "maeSec": -7.195,
+              "widthSec": -14.302,
+              "WIS": -4.054
+            },
+            "normalized_lap_shape": {
+              "maeSec": -49.86,
+              "widthSec": -20.41,
+              "WIS": -24.745
+            },
+            "conditional_additive": {
+              "maeSec": -61.264,
+              "widthSec": -33.95,
+              "WIS": -31.084
+            }
+          },
+          "60": {
+            "matched_marginal_control": {
+              "maeSec": -2.144,
+              "widthSec": 3.797,
+              "WIS": -0.567
+            },
+            "normalized_lap_shape": {
+              "maeSec": -44.37,
+              "widthSec": 6.909,
+              "WIS": -21.933
+            },
+            "conditional_additive": {
+              "maeSec": -40.636,
+              "widthSec": 11.576,
+              "WIS": -20.377
+            }
+          },
+          "180": {
+            "matched_marginal_control": {
+              "maeSec": -2.124,
+              "widthSec": -2.201,
+              "WIS": -0.898
+            },
+            "normalized_lap_shape": {
+              "maeSec": -41.392,
+              "widthSec": 9.005,
+              "WIS": -19.945
+            },
+            "conditional_additive": {
+              "maeSec": -34.581,
+              "widthSec": 43.819,
+              "WIS": -14.781
+            }
+          },
+          "300": {
+            "matched_marginal_control": {
+              "maeSec": -2.025,
+              "widthSec": -3.537,
+              "WIS": -1.074
+            },
+            "normalized_lap_shape": {
+              "maeSec": -14.689,
+              "widthSec": 1.667,
+              "WIS": -6.767
+            },
+            "conditional_additive": {
+              "maeSec": -14.781,
+              "widthSec": 44.276,
+              "WIS": -3.957
+            }
+          },
+          "420": {
+            "matched_marginal_control": {
+              "maeSec": -0.125,
+              "widthSec": -2.497,
+              "WIS": -0.208
+            },
+            "normalized_lap_shape": {
+              "maeSec": -0.943,
+              "widthSec": 15.66,
+              "WIS": 0.73
+            },
+            "conditional_additive": {
+              "maeSec": -0.369,
+              "widthSec": -2.779,
+              "WIS": -0.308
+            }
+          },
+          "600": {
+            "matched_marginal_control": {
+              "maeSec": 2.498,
+              "widthSec": -7.922,
+              "WIS": 0.305
+            },
+            "normalized_lap_shape": {
+              "maeSec": -15.403,
+              "widthSec": -48.21,
+              "WIS": -8.348
+            },
+            "conditional_additive": {
+              "maeSec": 0.45,
+              "widthSec": -49.103,
+              "WIS": -3.124
+            }
+          }
+        }
+      }
+    }
+  ]
+}

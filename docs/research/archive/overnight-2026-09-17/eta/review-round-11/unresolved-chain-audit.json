@@ -1,0 +1,124 @@
+{
+  "groups": [
+    {
+      "focalSourceId": 61907,
+      "alternativeBus": "308",
+      "predecessorVisitId": 61903,
+      "cases": 4,
+      "trace": [
+        {
+          "legId": 57381,
+          "visitId": 61919,
+          "stop": 75
+        },
+        {
+          "legId": 57410,
+          "visitId": 61945,
+          "stop": 30
+        },
+        {
+          "legId": 57419,
+          "visitId": 61954,
+          "stop": 31
+        },
+        {
+          "legId": 57438,
+          "visitId": 61973,
+          "stop": 41
+        },
+        {
+          "legId": 57448,
+          "visitId": 61979,
+          "stop": 126
+        },
+        {
+          "legId": 57452,
+          "visitId": 61986,
+          "stop": 36
+        },
+        {
+          "legId": 57462,
+          "visitId": 61991,
+          "stop": 128
+        },
+        {
+          "legId": 57472,
+          "visitId": 62004,
+          "stop": 120
+        },
+        {
+          "legId": 57491,
+          "visitId": 62174,
+          "stop": 3
+        },
+        {
+          "reason": "missing intermediate departure",
+          "visit": {
+            "id": 62174,
+            "bus_id": 66453,
+            "bus_name": "#308",
+            "anchor_bus_id": 66453,
+            "route_id": 3,
+            "stop_id": 3,
+            "stop_index": 11,
+            "anchored_at": 1789596970233,
+            "pinned_at": 1789596985223,
+            "arrived_at": 1789597000255,
+            "departed_at": null,
+            "stand_sec": null,
+            "inside_sec": 30.052,
+            "outcome": "unresolved",
+            "how": null,
+            "confidence": null,
+            "first_step_m": null,
+            "steps": 0,
+            "far_m": null,
+            "confirm_sec": null,
+            "rest_polls": 3,
+            "shuffles": 0,
+            "first_moved_at": null,
+            "last_at_rest_at": 1789597015275,
+            "closest_m": 9.388186133028068,
+            "dow": 3,
+            "hour": 18
+          }
+        }
+      ]
+    },
+    {
+      "focalSourceId": 65347,
+      "alternativeBus": "300",
+      "predecessorVisitId": 65379,
+      "cases": 2,
+      "trace": [
+        {
+          "reason": "missing or ambiguous exact arrival visit",
+          "leg": {
+            "id": 60621,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "route_id": 3,
+            "from_stop_id": 121,
+            "from_index": 0,
+            "to_stop_id": 115,
+            "to_index": 1,
+            "hops": 1,
+            "departed_at": 1789657297877,
+            "arrived_at": 1789657457878,
+            "to_pinned_at": 1789657457878,
+            "leg_sec": 160.001,
+            "hold_sec": 49.982,
+            "drive_sec": 110.019,
+            "holds": 1,
+            "reached": 1,
+            "dow": 4,
+            "hour": 11
+          },
+          "matches": [],
+          "nearbyForDiagnosisOnly": []
+        }
+      ]
+    }
+  ],
+  "decision": "All six remain unresolved; nearby records are not substituted. No measurement-error exclusion or database repair is established."
+}

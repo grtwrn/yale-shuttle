@@ -1,0 +1,276 @@
+{
+  "results": {
+    "current": {
+      "reverse": {
+        "counts": {
+          "frames": 40,
+          "wireMatches": 40,
+          "stateMatches": 40,
+          "lostRows": 0,
+          "gainedRows": 0,
+          "pairedRows": 23397,
+          "changedRows": 0,
+          "changedQuantiles": 0
+        },
+        "largestChanges": []
+      },
+      "restart10": {
+        "counts": {
+          "frames": 30,
+          "wireMatches": 0,
+          "stateMatches": 0,
+          "lostRows": 91,
+          "gainedRows": 91,
+          "pairedRows": 17356,
+          "changedRows": 1280,
+          "changedQuantiles": 7128
+        },
+        "largestChanges": [
+          {
+            "i": 11,
+            "key": [
+              "Blue Day",
+              "40",
+              39,
+              32
+            ],
+            "maxBandDelta": 84
+          },
+          {
+            "i": 35,
+            "key": [
+              "Orange Day",
+              "53",
+              52,
+              33
+            ],
+            "maxBandDelta": 58
+          },
+          {
+            "i": 23,
+            "key": [
+              "Green",
+              "126",
+              88,
+              24
+            ],
+            "maxBandDelta": 51
+          },
+          {
+            "i": 36,
+            "key": [
+              "Green",
+              "126",
+              92,
+              25
+            ],
+            "maxBandDelta": 50
+          },
+          {
+            "i": 37,
+            "key": [
+              "Red",
+              "306",
+              31,
+              30
+            ],
+            "maxBandDelta": 44
+          }
+        ]
+      },
+      "restart20": {
+        "counts": {
+          "frames": 20,
+          "wireMatches": 0,
+          "stateMatches": 0,
+          "lostRows": 0,
+          "gainedRows": 0,
+          "pairedRows": 11720,
+          "changedRows": 642,
+          "changedQuantiles": 4063
+        },
+        "largestChanges": [
+          {
+            "i": 37,
+            "key": [
+              "Blue Day",
+              "40",
+              72,
+              32
+            ],
+            "maxBandDelta": 21
+          },
+          {
+            "i": 35,
+            "key": [
+              "Blue Day",
+              "40",
+              129,
+              52
+            ],
+            "maxBandDelta": 18
+          },
+          {
+            "i": 36,
+            "key": [
+              "Blue Day",
+              "40",
+              129,
+              52
+            ],
+            "maxBandDelta": 18
+          },
+          {
+            "i": 33,
+            "key": [
+              "Pink",
+              "124",
+              109,
+              31
+            ],
+            "maxBandDelta": 17
+          },
+          {
+            "i": 35,
+            "key": [
+              "Blue Day",
+              "40",
+              138,
+              56
+            ],
+            "maxBandDelta": 17
+          }
+        ]
+      },
+      "restart30": {
+        "counts": {
+          "frames": 10,
+          "wireMatches": 0,
+          "stateMatches": 0,
+          "lostRows": 32,
+          "gainedRows": 32,
+          "pairedRows": 5867,
+          "changedRows": 371,
+          "changedQuantiles": 1894
+        },
+        "largestChanges": [
+          {
+            "i": 35,
+            "key": [
+              "Orange Day",
+              "53",
+              52,
+              33
+            ],
+            "maxBandDelta": 81
+          },
+          {
+            "i": 36,
+            "key": [
+              "Green",
+              "301",
+              144,
+              39
+            ],
+            "maxBandDelta": 53
+          },
+          {
+            "i": 36,
+            "key": [
+              "Green",
+              "126",
+              25,
+              29
+            ],
+            "maxBandDelta": 32
+          },
+          {
+            "i": 36,
+            "key": [
+              "Green",
+              "126",
+              26,
+              28
+            ],
+            "maxBandDelta": 23
+          },
+          {
+            "i": 36,
+            "key": [
+              "Green",
+              "126",
+              127,
+              27
+            ],
+            "maxBandDelta": 21
+          }
+        ]
+      }
+    },
+    "canonical": {
+      "reverse": {
+        "counts": {
+          "frames": 40,
+          "wireMatches": 40,
+          "stateMatches": 40,
+          "lostRows": 0,
+          "gainedRows": 0,
+          "pairedRows": 23397,
+          "changedRows": 0,
+          "changedQuantiles": 0
+        },
+        "largestChanges": []
+      },
+      "restart10": {
+        "counts": {
+          "frames": 30,
+          "wireMatches": 30,
+          "stateMatches": 30,
+          "lostRows": 0,
+          "gainedRows": 0,
+          "pairedRows": 17447,
+          "changedRows": 0,
+          "changedQuantiles": 0
+        },
+        "largestChanges": []
+      },
+      "restart20": {
+        "counts": {
+          "frames": 20,
+          "wireMatches": 20,
+          "stateMatches": 20,
+          "lostRows": 0,
+          "gainedRows": 0,
+          "pairedRows": 11720,
+          "changedRows": 0,
+          "changedQuantiles": 0
+        },
+        "largestChanges": []
+      },
+      "restart30": {
+        "counts": {
+          "frames": 10,
+          "wireMatches": 10,
+          "stateMatches": 10,
+          "lostRows": 0,
+          "gainedRows": 0,
+          "pairedRows": 5899,
+          "changedRows": 0,
+          "changedQuantiles": 0
+        },
+        "largestChanges": []
+      }
+    }
+  },
+  "armCombinedRowsByRoute": {
+    "Red": 7654,
+    "Blue Day": 14252,
+    "Orange Day": 5156,
+    "Pink": 5120,
+    "Green": 8814,
+    "Purple": 2678,
+    "Brown": 1360,
+    "Gold": 1760
+  },
+  "comparison": "Physical route/bus/stop/hops join. Complete ModelEntry maps/typed arrays preserved and sorted; seenAt sorted. Raw wire ordering is not a physical identity change."
+}

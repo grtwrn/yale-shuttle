@@ -1,0 +1,128 @@
+{
+  "method": "Descriptive Red same-stop encounters, excluding reserved afternoon.\nOverlap is a detector proxy for physical co-location, not doors or dispatch.\n",
+  "cutoff": 1789665240913,
+  "summary": [
+    {
+      "stop": 11,
+      "encounters": 4,
+      "bothStopped": 4,
+      "overtakes": 0,
+      "medianOverlapSec": 57.562,
+      "medianDepartureGapSec": 635.0625
+    },
+    {
+      "stop": 121,
+      "encounters": 4,
+      "bothStopped": 3,
+      "overtakes": 1,
+      "medianOverlapSec": 64.932,
+      "medianDepartureGapSec": 457.5855
+    }
+  ],
+  "events": [
+    {
+      "stop": 121,
+      "earlierId": 622,
+      "laterId": 580,
+      "earlierBus": "#316",
+      "laterBus": "#310",
+      "metAt": 1788520145609,
+      "overlapSec": 15.009,
+      "earlierLeavesSecAfterMeet": 370.055,
+      "laterLeavesSecAfterMeet": 15.009,
+      "signedDepartureGapSec": -355.046,
+      "bothStopped": false
+    },
+    {
+      "stop": 121,
+      "earlierId": 25316,
+      "laterId": 25385,
+      "earlierBus": "#119",
+      "laterBus": "#310",
+      "metAt": 1788980687237,
+      "overlapSec": 54.964,
+      "earlierLeavesSecAfterMeet": 54.964,
+      "laterLeavesSecAfterMeet": 615.089,
+      "signedDepartureGapSec": 560.125,
+      "bothStopped": true
+    },
+    {
+      "stop": 121,
+      "earlierId": 30054,
+      "laterId": 30141,
+      "earlierBus": "#316",
+      "laterBus": "#310",
+      "metAt": 1789053245554,
+      "overlapSec": 74.914,
+      "earlierLeavesSecAfterMeet": 74.914,
+      "laterLeavesSecAfterMeet": 910.049,
+      "signedDepartureGapSec": 835.135,
+      "bothStopped": true
+    },
+    {
+      "stop": 121,
+      "earlierId": 38520,
+      "laterId": 38549,
+      "earlierBus": "#304",
+      "laterBus": "#310",
+      "metAt": 1789159947699,
+      "overlapSec": 74.9,
+      "earlierLeavesSecAfterMeet": 74.9,
+      "laterLeavesSecAfterMeet": 419.931,
+      "signedDepartureGapSec": 345.031,
+      "bothStopped": true
+    },
+    {
+      "stop": 11,
+      "earlierId": 782,
+      "laterId": 871,
+      "earlierBus": "#310",
+      "laterBus": "#316",
+      "metAt": 1788521685894,
+      "overlapSec": 15.061,
+      "earlierLeavesSecAfterMeet": 15.061,
+      "laterLeavesSecAfterMeet": 710.012,
+      "signedDepartureGapSec": 694.951,
+      "bothStopped": true
+    },
+    {
+      "stop": 11,
+      "earlierId": 38305,
+      "laterId": 38379,
+      "earlierBus": "#304",
+      "laterBus": "#310",
+      "metAt": 1789158102034,
+      "overlapSec": 85.088,
+      "earlierLeavesSecAfterMeet": 85.088,
+      "laterLeavesSecAfterMeet": 660.262,
+      "signedDepartureGapSec": 575.174,
+      "bothStopped": true
+    },
+    {
+      "stop": 11,
+      "earlierId": 38788,
+      "laterId": 38791,
+      "earlierBus": "#304",
+      "laterBus": "#310",
+      "metAt": 1789161857798,
+      "overlapSec": 450.046,
+      "earlierLeavesSecAfterMeet": 450.046,
+      "laterLeavesSecAfterMeet": 485.081,
+      "signedDepartureGapSec": 35.035,
+      "bothStopped": true
+    },
+    {
+      "stop": 11,
+      "earlierId": 60735,
+      "laterId": 60836,
+      "earlierBus": "#308",
+      "laterBus": "#316",
+      "metAt": 1789587164077,
+      "overlapSec": 30.036,
+      "earlierLeavesSecAfterMeet": 30.036,
+      "laterLeavesSecAfterMeet": 835.143,
+      "signedDepartureGapSec": 805.107,
+      "bothStopped": true
+    }
+  ]
+}

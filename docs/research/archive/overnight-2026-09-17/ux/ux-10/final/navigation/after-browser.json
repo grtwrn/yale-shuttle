@@ -1,0 +1,100 @@
+{
+  "source": "Built SPA with intercepted API fixture; no external requests",
+  "mode": "after",
+  "checks": [
+    "ArrowDown/ArrowUp wrap the displayed destination matches; Escape closes suggestions with focus retained; no dangling active descendant",
+    "360/390/430/1280px and 640 CSS-pixel reflow, 16px inputs and >=44px height",
+    "Destination suggestion pick focuses its summary; Tab continues to Save this destination",
+    "From editor opens by Enter; Current location plus recent place are navigable; Enter picks recent origin",
+    "Typed From ArrowUp/Enter picks the final match; summary focus continues by Tab to Swap",
+    "Trip/Map/Issues keyboard navigation retains button focus and planned endpoints; draft survives reload",
+    "Pending, empty, failed and recovered geocode responses keep suggestion state consistent",
+    "Mobile tap commits a suggestion and closes the list without reopening the keyboard",
+    "Selecting a result after focus moved to navigation does not steal focus",
+    "Current location row remains keyboard selectable with focus on the From summary",
+    "Escape from the idle From list restores the original start",
+    "Leaving a typed origin still resolves its single match; completion preserves focus on the destination"
+  ],
+  "snapshots": {
+    "initial": "- combobox \"To\"",
+    "navigation": "- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻",
+    "matches": "- listbox \"To suggestions\":\n  - option \"📚 Sterling Memorial Library\"\n  - option \"📚 Sterling Hall of Medicine / Medical Historical Library\" [selected]",
+    "afterPickFocus": {
+      "tag": "DIV",
+      "text": "To🏁 Sterling Memorial Library☆"
+    },
+    "from": "- combobox \"From\" [expanded]",
+    "loading": "- status: Finding places…",
+    "empty": "- alert: No matches found — try another name or address.",
+    "failed": "- alert: Search is unavailable — please try again.",
+    "currentLocationWithoutGps": "FROM\n📍 Tap to set start"
+  },
+  "errors": [],
+  "requests": [
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    }
+  ],
+  "completed": true
+}

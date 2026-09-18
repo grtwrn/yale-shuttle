@@ -1,0 +1,26 @@
+{
+  "status": "ready",
+  "createdAt": "2026-09-18T02:02:42Z",
+  "team": "eta",
+  "deadline": "2026-09-18T11:30:00Z",
+  "worktree": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17",
+  "initialHead": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "handoff": "HANDOFF.md",
+  "backlog": "BACKLOG.md",
+  "firstTask": "FIRST_TASK.md",
+  "firstTaskMinutes": 90,
+  "firstTaskSummary": "Test fixed-landmark remaining-wait distributions conditioned on causally observed ahead/follower snapshots, then request independent review before full rider replay.",
+  "applicationChanged": false,
+  "fittingRun": false,
+  "buildsRun": false,
+  "commitsCreated": false,
+  "deploymentsMade": false,
+  "blockers": [],
+  "setupNotes": [
+    "Node dependencies are absent in the new worktree; root should provide dependencies before application checks.",
+    "Original research scripts hardcode output paths; copy/adapt before running to preserve prior archives.",
+    "September 17 afternoon has already been used; new experiments must label it reused evaluation.",
+    "The old production-replay script's release-off arm is obsolete as a new comparator; compare current production release ON against each overnight candidate.",
+    "Root AGENT.md is archived v1 guidance; CLAUDE.md explicitly identifies deployed services/shuttle-v2."
+  ]
+}

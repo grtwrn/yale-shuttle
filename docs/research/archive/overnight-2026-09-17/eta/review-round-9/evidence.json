@@ -1,0 +1,45 @@
+{
+  "head": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "cleanGit": true,
+  "inputHashes": 11,
+  "pairedSelections": 4688,
+  "missingDestinationAttributionChanges": 742,
+  "sameBusLaterObserved": 0,
+  "rawUnlinked": 38,
+  "rawUnlinkedBeforeDeparture": 24,
+  "rawUnlinkedAfterDeparture": 14,
+  "preservedConnectedOutcomes": 1400,
+  "retainedWorstRegression": {
+    "session": "63523:4:0",
+    "at": 1789644066335,
+    "sourceId": 63523,
+    "targetVisit": 63632,
+    "bus": "316",
+    "actualConnectedSec": 936.1583949181681,
+    "changed": true,
+    "baseline": {
+      "totalSec": 597.0954139790535,
+      "errorSec": -339.0629809391146,
+      "journeyAvailable": false,
+      "widthSec": null,
+      "earlyMiss": false,
+      "lateMiss": false
+    },
+    "ordered": {
+      "totalSec": 1718.0483950195312,
+      "errorSec": 781.8900001013631,
+      "journeyAvailable": true,
+      "widthSec": 1034.0,
+      "earlyMiss": true,
+      "lateMiss": false
+    },
+    "absErrorIncreaseSec": 442.82701916224846
+  },
+  "browserStates": 8,
+  "boundaryCases": 13,
+  "screenshotsAdded": 0,
+  "combinedScreenshots": {
+    "n": 187,
+    "bytes": 8452304
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "createdAt": "2026-09-18T11:22:46.697641+00:00",
+  "counts": {
+    "all": 70162,
+    "occurrence1": 21911,
+    "occurrence0": 48251,
+    "uncertainPhysicalKeys": 19
+  },
+  "zeroHopCounts": {
+    "current:different-tracked-rest": 8,
+    "current:remainingScored": 19,
+    "current:no-exact-pin": 11,
+    "canonical:different-tracked-rest": 8,
+    "canonical:remainingScored": 19,
+    "canonical:no-exact-pin": 11
+  },
+  "inclusiveMAE": {
+    "current": 234.83155786608137,
+    "canonical": 234.8517628203301
+  },
+  "complementarySensitivityMAE": {
+    "current": 234.64129887515503,
+    "canonical": 234.66150930242506
+  },
+  "uncertainDifferentArmRows": [],
+  "tailReasons": {
+    "source-target-identity-unresolved": 660,
+    "connected": 382,
+    "unreached-or-invalid-leg": 111,
+    "gap-or-no-departure": 69,
+    "two-laps-complete": 1,
+    "arm-origin-alignment-unresolved": 483,
+    "missing-or-ambiguous-leg": 60,
+    "lagged-target-identity-unresolved": 2,
+    "missing-or-ambiguous-visit": 3
+  },
+  "largestRawTailChange": {
+    "at": 1789595164980,
+    "poll": 7682,
+    "route": 9,
+    "bus": "122",
+    "targetIndex": 11,
+    "targetStop": 127,
+    "occurrence": 0,
+    "sourceId": 61782,
+    "targetId": null,
+    "legIds": [],
+    "truthSec": null,
+    "current": [
+      4193,
+      3,
+      5494,
+      24
+    ],
+    "canonical": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "maxBandDelta": 5494,
+    "reason": "source-target-identity-unresolved"
+  },
+  "largestPointRegression": {
+    "at": 1789590244470,
+    "poll": 6698,
+    "route": 1,
+    "bus": "46",
+    "targetIndex": 19,
+    "targetStop": 98,
+    "occurrence": 1,
+    "sourceId": 61141,
+    "targetId": 61502,
+    "legIds": [
+      56646,
+      56660,
+      56668,
+      56681,
+      56684,
+      56712,
+      56722,
+      56730,
+      56747,
+      56768,
+      56772,
+      56779,
+      56799,
+      56801,
+      56819,
+      56832,
+      56845,
+      56853,
+      56863,
+      56872,
+      56890,
+      56891,
+      56900,
+      56909,
+      56910,
+      56915,
+      56928,
+      56929,
+      56953,
+      56968,
+      56983
+    ],
+    "truthSec": 2690.307,
+    "current": [
+      3257,
+      2796,
+      5157,
+      31
+    ],
+    "canonical": [
+      3321,
+      2860,
+      4458,
+      31
+    ],
+    "maxBandDelta": 699,
+    "reason": "connected",
+    "errorIncrease": 64.0
+  },
+  "decisions": {
+    "pairedDecisions": 1836,
+    "sessions": 12,
+    "pickupSelectionMetadataDifferences": 20,
+    "boardingVehicleDifferences": 0,
+    "visibleOrderDifferences": 1,
+    "cautionDifferences": 1,
+    "journeyAvailabilityDifferences": 0,
+    "syntheticPointDeadlineDifferences": 4,
+    "changedOptionDecisions": 1412,
+    "limits": "Actual current extracted numerical options/planner/ranking on allfleet wire; prior selected Red-origin geometries, hypothetical stationary walkers and synthetic 15/30/45minute point deadlines. Full actual chosen-bus connected rider outcomes remain separate; this is not browser verification or deadline probability validation."
+  },
+  "riders": {
+    "createdAt": "2026-09-18T11:20:47.115465+00:00",
+    "arms": {
+      "current": {
+        "connected": 4088,
+        "pickup-chain-incomplete-or-skipped": 985,
+        "missing-destination-forecast": 192,
+        "destination-chain-incomplete": 1173,
+        "missing-or-ambiguous-journey-trace": 10,
+        "source-target-identity-unresolved": 116,
+        "no-selected-pickup": 124
+      },
+      "canonical": {
+        "connected": 4088,
+        "pickup-chain-incomplete-or-skipped": 985,
+        "missing-destination-forecast": 192,
+        "destination-chain-incomplete": 1173,
+        "missing-or-ambiguous-journey-trace": 10,
+        "source-target-identity-unresolved": 116,
+        "no-selected-pickup": 124
+      }
+    },
+    "paired": {
+      "bothConnected": 4088,
+      "sameConnectedTrip": 4088,
+      "modelAccessBeforeRecordedDeparture": 3910,
+      "unresolvedAtLeastOne": 2600
+    },
+    "sameTripMetrics": {
+      "current": {
+        "rows": 4088,
+        "MAE": 369.24020620618177,
+        "median": 218.29199989863673
+      },
+      "canonical": {
+        "rows": 4088,
+        "MAE": 369.1122707854381,
+        "median": 218.33449989863675
+      }
+    },
+    "limits": "Reused selected stationary-origin sessions; correlated option-polls, not independent riders. Arrival truth is recorded connected target time plus modeled egress, not observed walking. Access compared to retrospective recorded departure is not proof of physical boarding, especially passed stops/raw current transitions. Exact positive-sublap source identities and incomplete chains remain unresolved. No browser, calibration or rider-choice improvement claim."
+  },
+  "caveats": "Complement is exploratory sensitivity only, not a certified cohort or replacement score. All uncertain rows stay included. Original prefix57/58 uncertain rows and poll508 sign sensitivity remain unchanged in review15. No exclusions or calibration claims."
+}

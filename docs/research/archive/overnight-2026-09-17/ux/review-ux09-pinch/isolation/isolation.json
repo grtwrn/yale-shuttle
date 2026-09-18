@@ -1,0 +1,28 @@
+{
+  "scope": "Actual helper and installed Leaflet in bounded two-map fixture; native browser touch; normal clock",
+  "checks": [
+    "Removing one map unregisters only its callbacks; a different active map completes native pinch"
+  ],
+  "errors": [],
+  "before": {
+    "touchmove": 0,
+    "touchend": 0,
+    "touchcancel": 0
+  },
+  "afterUnmovedFirst": {
+    "touchmove": 1,
+    "touchend": 1,
+    "touchcancel": 1
+  },
+  "both": {
+    "touchmove": 2,
+    "touchend": 2,
+    "touchcancel": 2
+  },
+  "afterFirstRemoved": {
+    "touchmove": 1,
+    "touchend": 1,
+    "touchcancel": 1
+  },
+  "resourcesClosed": true
+}

@@ -1,0 +1,53 @@
+{
+  "createdAt": "2026-09-18T15:25:12.139859+00:00",
+  "purpose": "One bounded remaining-wait screen of own prior Union departure age for Red Winchester; no application or production edits.",
+  "arms": [
+    "lap_elapsed_clock",
+    "plus_own_union_age"
+  ],
+  "training": "Same160 completed holds with outcomes known before2026-09-14T04:00:00Z; original six dates. Each hold contributes ONE ordinary event-history survival likelihood, no repeated-landmark training and no outcome-dependent inverse-landmark weights in fit.",
+  "evaluation": "Original285 visits;125 later visits at elapsed0,60,180,300,480 when still held. Sep14\u201317 and Sep18 separate. Earlier dates are reused development; Sep18 had binary-screen inspection before this experiment, so is chronological follow-up rather than untouched confirmation.",
+  "featureContract": "Latch latest own legacy Union departure <=pin\u2212120sec, same local day and age0\u20137200sec. Exact origin verified against original forecast-time features; it does not change at any existing landmark. Age advances deterministically in future hazard bins; no future bus observation, next arrival, or current outcome enters feature.",
+  "hazardFeatures": [
+    "intercept",
+    "log1p(elapsed/60)",
+    "elapsed/600",
+    "max(elapsed\u2212300,0)/600",
+    "max(elapsed\u2212600,0)/600",
+    "supported own lap fixed at pin centered at training reference /600",
+    "missing supported lap",
+    "sin(15minute deterministic wallclock phase)",
+    "cos(15minute deterministic wallclock phase)"
+  ],
+  "candidateFeatures": [
+    "own Union departure age at future bin minus training median pin-age, divided by600; zero if missing",
+    "own Union origin missing at pin"
+  ],
+  "fit": "15sec exposure bins; fixed L2=4 on non-intercept coefficients, no standardization/tuning or calibration. One end event per hold; holds>1800sec contribute censored exposure through1800 without deletion. Fit two models independently on matched rows.",
+  "prediction": "Runtime-like pin-phase and lap quantization to5sec, log-linear survival between15sec knots, stable conditional inversion, continued bounded exponential tail beyond1800. Future own-Union age is deterministic elapsed since latched departure. Unsupported lap retained with missingness in matched research arms, and actual runtime component uses its existing marginal fallback.",
+  "weighting": "Main descriptive totals average landmarks within each visit then visits equally; this estimates a visit-balanced sampled-landmark population, not live per-poll calibrated probabilities. Fixed-age summaries use equal visits. Also report checkpoint-equal totals.",
+  "metrics": [
+    "MAE",
+    "median/p90 absolute error",
+    "80% weighted interval score",
+    "10\u201390 width",
+    "departure before lower/after upper bound counts/rates",
+    "lower-bound shortfall severity",
+    "10th-quantile pinball loss",
+    "median overprediction>120s (bus left earlier than point forecast)",
+    "remaining<=120s stratum",
+    "per-day and per-elapsed results",
+    "top individual regressions"
+  ],
+  "runtimeComparator": "Call unchanged current fitRelease on SAME preSep14 training rows, actual releaseDist/releaseResidual and actual marginal/lap fallback for unsupported laps; frozen fit/tables, not whole served ETA or six-hour live update. No full replay in this bounded task.",
+  "exclusions": "Exactly parent cohort; preserve all genuine early and long waits, no residual trimming. Only prior independently verified restart truncation65237 is quarantined by parent. Parent exclusions retained.",
+  "resource": "All fits and runtime comparison under overnight-2026-09-17/heavy.lock, one BLAS thread.",
+  "claimLimit": "Association/component distribution screen only; no driver instruction, calibrated probability, safe minimum, model-selection or deployment claim.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/PLAN.json": "de4f067dcc3f1ea34ced225e79b38d1c761538680796a32ffb14b7212d261e45",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/features-predictions.jsonl": "38053e51f484bcc7632a6817fcb33f4e6e81d5ab8c0c87c646f4e76db46c059c",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/legacy-followup.json": "3b352c00ff6e773160fa5499f19a187b2582de3f752d32ab9772d5de3d39fb77",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/recordings-followup.json": "5e19538a3fd4c7c3cae3d0cd201bdec959ac3e4887142dcd5f7c8930f0ce8fad",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/screen.py": "42f338e30344fda67b2808e476caeb4d57791a8a89e8379aeb054a2279841532"
+  }
+}

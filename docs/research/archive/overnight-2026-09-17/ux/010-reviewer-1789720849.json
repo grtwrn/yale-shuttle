@@ -1,0 +1,25 @@
+{
+  "verdict": "approve",
+  "summary": "No blocking findings. Independently verified the combined pickup-identity and ride-recovery changes: 218 tests, both typechecks, build and five browser runs passed. Checkout and index unchanged. Evidence saved in ux/independent-review-round-13.md.",
+  "head_sha": "bffa61342d00ce87fca5b8f228e206357b8b93b5",
+  "base_sha": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "next_task": "Controller completes release gates; next builder resumes UX09 crash/offline recovery.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux08-ride/browser flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08-ride/verify.sh",
+      "exit_code": 0,
+      "result": "62 tests, backend/frontend typechecks, Vite build and mobile/desktop ride-recovery checks passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux08-ride/integration.sh",
+      "exit_code": 0,
+      "result": "156 additional tests, pickup browser regression and reviewer-authored mobile/desktop lifecycle checks passed. All browser resources closed."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux08-ride/verify-integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base, unchanged checkout/index, source/bundle parity, preserved calculations and screenshot budget verified."
+    }
+  ]
+}

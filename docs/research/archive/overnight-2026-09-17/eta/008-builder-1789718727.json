@@ -1,0 +1,13 @@
+{
+  "outcome": "research",
+  "summary": "Matched 32 of 38 decisions to the alternative bus’s own journey; six remain unresolved. In 18 matched pre-departure decisions, switching meant arriving 16–33 minutes later. No additional ETA change is supported. Evidence saved in eta/cycle-12; checkout and HEAD remain unchanged.",
+  "next_task": "Review cycle-12/REVIEW_REQUEST.md. Keep the combined UX pickup candidate on its separate review path. Next ETA research should inspect actual first-received payloads around raw-stop/served-position disagreements.",
+  "tests": [
+    "Vitest with cycle-12/vitest.config.mjs: 9 regression tests passed; initial harness and fixture failures preserved.",
+    "Shared-lock cycle-12/typecheck.mjs: virtual backend and frontend typechecks passed.",
+    "tsx cycle-12/current_pair.mts: 38 paired states, 76 options and 76 traces matched exactly.",
+    "python3 cycle-12/verify_outcomes.py: verified 1,410 historical leg uses, both occurrences, 1,400 preserved outcomes and the prior 442.827-second regression.",
+    "python3 cycle-12/audit_chain_gaps.py: documented all six unresolved cases without substituting records.",
+    "python3 cycle-12/finish.py and git diff/status checks: clean checkout/index, unchanged HEAD and applicable artifact patches."
+  ]
+}

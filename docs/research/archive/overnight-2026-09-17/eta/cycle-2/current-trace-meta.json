@@ -1,0 +1,26 @@
+{
+  "frames": 11107,
+  "emitted": 4116,
+  "parityChecks": 163,
+  "gaps": [
+    {
+      "at": 1789556683166,
+      "gapMs": null
+    },
+    {
+      "at": 1789642866201,
+      "gapMs": 45035866
+    }
+  ],
+  "elapsedSec": 73.67569168799999,
+  "endAt": 1789657462890,
+  "targets": [
+    11,
+    48,
+    4
+  ],
+  "comparator": "40af3c0 release ON with archived causal development calibration",
+  "noCandidate": true,
+  "collectorClockProvenance": "reconstructed; raw coordinates recorded",
+  "occurrences": "infer by stopsAhead relative to 29-stop ring; h=29 ambiguous and must remain explicit"
+}

@@ -1,0 +1,22 @@
+{
+  "head": "a401ef5c7fe675e59e0ec0e2b4dbb474ba176b34",
+  "base": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "parents": [
+    "97b754165138b15342e3758ef342af1dbb749b1b",
+    "d5a392f533e8684320259ff0d323a3b0da75cc50"
+  ],
+  "sources": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "e2369fa85ccaa0f88e2b28a32735b2a7fe831bc11676bd8b69aa7e66cfcda395",
+    "services/shuttle-v2/scripts/empty-service-check.mjs": "ff92d71672caf980147d5becfdec7b70b6e034a7c06171378c7b263a1c8bed4e"
+  },
+  "numerical_options_sha256": "c897c8084a4172ec4bb99f0d1e8e65a6502f5290d282b32e3ef3bc2cb3fe4db9",
+  "map_filter_sha256": "9b43ea91e840e7b6d6d38857f10ff2b474c1fba663e68f2dcfce656e8ed178e8",
+  "unchanged_numerical_modules": true,
+  "poll_only_adds_presentation_flag": true,
+  "all_routes_map_unchanged": true,
+  "builder_artifacts_preserved": 37,
+  "bundle_source_matches_head": true,
+  "clean_checkout_index": true,
+  "image_count": 178,
+  "image_bytes": 8046753
+}

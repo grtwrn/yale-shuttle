@@ -1,0 +1,16 @@
+{
+  "frozenExperimentBase": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "currentOriginMaster": "7e29064475315c2d621b77cdca130c05737d1ab8",
+  "numericalBlockEqual": true,
+  "numericalSha256": "94da2f72efbea472b20634f6e0308f0962c28d8bd9f24233665fcdee36c2aee7",
+  "unchangedModules": [
+    "planner.ts",
+    "journeyArrival.ts",
+    "tripBusIdentity.ts",
+    "TripBoardingActions.tsx",
+    "tripRanking.ts",
+    "etaSource.ts",
+    "liveArrivals.ts"
+  ],
+  "limit": "Read current local origin/master. No production request or deployment verification. This round browser used frozen d5a392f presentation plus additive ETA overlay; newer UX presentation was not rebuilt here."
+}

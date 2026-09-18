@@ -1,0 +1,24 @@
+{
+  "source": "https://yale-shuttle.fly.dev",
+  "errors": [],
+  "checks": [
+    "390px and 320px layouts",
+    "buffer changes destination target",
+    "destination distribution has 50 server outcomes, deadline and walking markers",
+    "mini-map keeps the point estimate and arrival window in separate lines",
+    "hollow historical dots display dated observed trips",
+    "recorded waits are the primary pickup graph; current forecast expands separately",
+    "pickup distribution and following-shuttle wording",
+    "history failure leaves live distribution and forecast usable",
+    "deadline survives reload",
+    "trip details, pickup gap and Escape focus still work",
+    "passed deadline rejected",
+    "empty time remains editable",
+    "failed feed suppresses shuttle recommendation",
+    "clear returns to normal planner"
+  ],
+  "comparison": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach LEPH / 60 College by 9:39 AM · 10 min before class.\n\nYour arrival is at risk\n\nNo available option fits your buffer with enough information. Check the times below.\n\nEstimated arrival at destination\n\nBlue Day · #44\n9:25 AM–9:35 AM\nConnection uncertain · View trip ›\nThe bus could reach pickup before you. This window assumes you catch it.\nWalk\nAbout 9:42 AM\nMay use your buffer · View trip ›\nSee possible arrival times ▾\nHow to read these times ▾",
+  "route": "Blue Day",
+  "pickupDetails": "Blue Day arrival\n×\n\nAbout 8 min\n\nLikely arrival window: 4–14 min\n\nUse the early end of the estimated window when deciding when to reach your stop.\n\nShuttle\n#44\nStops to pickup\n8\nFollowing shuttle · #46\nAbout 17 min later\n\nThe following arrival is estimated in about 25 min from now. Both arrival estimates can change.\n\nPast trips to this stop\n\nProspect / Canner → Whitney / Linden\n\nMeasured from departure at the starting stop. These are full stop-to-stop times; the live estimate accounts for this shuttle’s current progress.\n\nTravel time after departure\n0 min\n7 min\n14 min\n\n24 recorded trips across 7 dates. Each dot is one completed journey.\n\nObserved median: 8 min\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 8:51 AM · #38\nSep 17, 8:37 AM · #46\nSep 17, 8:17 AM · #44\nAbout these records ▾\n\nComparison captured Sep 17, 9:04 AM\n\nRefresh comparison\nForecast for this shuttle ▾",
+  "historyQueries": []
+}

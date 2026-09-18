@@ -1,0 +1,8 @@
+{
+  "frames": 11081,
+  "matched": 1172,
+  "rows": 160496,
+  "beliefs": 32081,
+  "boundaryChecks": 143,
+  "source": "Unmodified exact-head application and frozen exact-base modules; continuous raw prefix; no model fit or future labels."
+}

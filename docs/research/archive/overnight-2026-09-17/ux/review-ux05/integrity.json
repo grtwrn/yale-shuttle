@@ -1,0 +1,13 @@
+{
+  "head": "ed6bc1ce06b78d79898599e3dcb6ad021dcab47a",
+  "base": "6220b860a69f5567557926f41de59ed1af72d2f8",
+  "clean": true,
+  "candidateSha256": {
+    "services/shuttle-v2/scripts/minimap-label-check.mjs": "6f58a5eabeef9483529186266bcb6cdcc14cc751be9e1f89aaf26e59d5c0078e",
+    "services/shuttle-v2/web/src/TransitMap.tsx": "561543891501b8f39cd5b362b0b965ca2c5609eacd1df567e687a0b881e8ebe7",
+    "services/shuttle-v2/web/src/mapLabels.test.ts": "938b65b645ec719c28e7f88d14c157795a1755f462d69c5b7347888db9010e90",
+    "services/shuttle-v2/web/src/mapLabels.ts": "f431758f5dc7f06ea559294d12604c6230819a4840127f0929a3b2c0f450dfc7"
+  },
+  "screenshots": 118,
+  "screenshotBytes": 5080504
+}

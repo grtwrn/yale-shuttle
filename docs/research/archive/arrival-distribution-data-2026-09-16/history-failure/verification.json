@@ -1,0 +1,33 @@
+{
+  "source": "Recorded Red feed, 2026-09-16",
+  "errors": [],
+  "checks": [
+    "390px and 320px layouts",
+    "buffer changes destination target",
+    "destination distribution has 50 server outcomes, deadline and walking markers",
+    "hollow historical dots display dated observed trips",
+    "pickup distribution and following-shuttle wording",
+    "history failure leaves live distribution and forecast usable",
+    "deadline survives reload",
+    "trip details, pickup gap and Escape focus still work",
+    "passed deadline rejected",
+    "empty time remains editable",
+    "failed feed suppresses shuttle recommendation",
+    "clear returns to normal planner"
+  ],
+  "comparison": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach LEPH / 60 College by 11:02 AM · 10 min before class.\n\nTake Red\n\nHead to Division / Prospect. The shuttle window fits before your target.\n\nEstimated arrival at destination\n\nRed · #308\n10:42 AM–10:58 AM\nWindow fits buffer · View trip ›\nWalk\nAbout 11:05 AM\nMay use your buffer · View trip ›\nSee possible arrival times ▾\nHow to read these times ▾",
+  "route": "Red",
+  "pickupDetails": "Red arrival\n×\n\nAbout 5 min\n\nLikely arrival window: <1–15 min\n\nPossible pickup times\n10:27 AM\n10:39 AM\n10:51 AM\n│ Estimate 10:33 AM\n\nFilled dots show possible arrivals in the forecast. A taller stack means more modeled outcomes around that time; these are not past buses.\n\nThis is an estimated window, not a guaranteed cutoff. Use the early end when deciding when to reach your stop.\n\nWaiting at 344 Winchester. The window may stay wide until the shuttle leaves.\n\nShuttle\n#308\nStops to pickup\n3\nFollowing shuttle · #316\nAbout 14 min later\n\nThe following arrival is estimated in about 20 min from now. Both arrival estimates can change.\n\nWhat happened on past trips\nRecorded time until arrival\n0 min\n7 min\n14 min\n\n24 recorded trips · each hollow dot is one observed arrival, not a predicted outcome.\n\nSame line and stop, with forecasts of 5 min–8 min, near this time of day. These past waits are context, not a probability for your shuttle.\n\nDates and recorded waits ▾\nRecent recorded arrivals at this stop\nSep 16, 10:04 AM · #309\nSep 16, 9:47 AM · #316\nSep 16, 9:36 AM · #308\n\nUp to 24 matches among recent recorded trips from the past 30 days, within two hours of this time and the same weekday/weekend category. Arrivals are detected from shuttle GPS; recording gaps can leave trips out.",
+  "historyQueries": [
+    {
+      "route": "Red",
+      "stop": 72,
+      "eta": 1292
+    },
+    {
+      "route": "Red",
+      "stop": 48,
+      "eta": 352
+    }
+  ]
+}

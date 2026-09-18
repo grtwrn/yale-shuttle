@@ -1,0 +1,79 @@
+{
+  "source": "Built SPA with intercepted API fixture; no external requests",
+  "mode": "before",
+  "checks": [
+    "ArrowDown/ArrowUp wrap the displayed destination matches; Escape closes suggestions with focus retained; no dangling active descendant",
+    "360/390/430/1280px and 640 CSS-pixel reflow, 16px inputs and >=44px height",
+    "From editor opens by Enter; Current location plus recent place are navigable; Enter picks recent origin",
+    "Trip/Map/Issues keyboard navigation retains button focus and planned endpoints; draft survives reload",
+    "Pending, empty, failed and recovered geocode responses keep suggestion state consistent"
+  ],
+  "snapshots": {
+    "initial": "- combobox \"Where do you want to go?\"",
+    "navigation": "- button \"trip\"\n- button \"map\"\n- button \"issues\"\n- button \"Refresh the app\": ↻",
+    "matches": "- listbox:\n  - option \"📚 Sterling Memorial Library\"\n  - option \"📚 Sterling Hall of Medicine / Medical Historical Library\" [selected]",
+    "afterPickFocus": {
+      "tag": "BODY",
+      "text": "\n    \n        * { box-sizing: border-box; }\n        body { m"
+    },
+    "from": "- combobox \"📍 Current location\" [expanded]",
+    "loading": "- status: Finding places…",
+    "empty": "- text: No matches found — try another name or address.",
+    "failed": "- text: Search is unavailable — please try again."
+  },
+  "errors": [],
+  "requests": [
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    }
+  ]
+}

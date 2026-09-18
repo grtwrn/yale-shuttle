@@ -1,0 +1,1376 @@
+{
+  "expected": "fde964bdfeb0",
+  "at": "2026-09-17T12:44:07.334Z",
+  "polls": [
+    {
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 1546,
+        "collectorLagMs": 1510,
+        "knownBuses": 19,
+        "serverEta": {
+          "restored": 19,
+          "forecastAt": 1789649045994,
+          "checkpointAt": 1789649026206,
+          "beliefs": 19,
+          "steps": 5,
+          "failures": 0,
+          "lastStepMs": 163,
+          "rows": 779
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "fde964bdfeb0"
+      },
+      "feedMs": 232.623743,
+      "routes": [
+        "Red",
+        "Blue Day",
+        "Orange Day",
+        "Pink",
+        "Purple",
+        "Green",
+        "Brown",
+        "Gold"
+      ]
+    },
+    {
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 1954,
+        "collectorLagMs": 1878,
+        "knownBuses": 19,
+        "serverEta": {
+          "restored": 19,
+          "forecastAt": 1789649051036,
+          "checkpointAt": 1789649026206,
+          "beliefs": 19,
+          "steps": 6,
+          "failures": 0,
+          "lastStepMs": 266,
+          "rows": 779
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "fde964bdfeb0"
+      },
+      "feedMs": 204.17130499999985,
+      "routes": [
+        "Red",
+        "Blue Day",
+        "Orange Day",
+        "Pink",
+        "Purple",
+        "Green",
+        "Brown",
+        "Gold"
+      ]
+    },
+    {
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 2162,
+        "collectorLagMs": 2067,
+        "knownBuses": 19,
+        "serverEta": {
+          "restored": 19,
+          "forecastAt": 1789649056069,
+          "checkpointAt": 1789649026206,
+          "beliefs": 19,
+          "steps": 7,
+          "failures": 0,
+          "lastStepMs": 124,
+          "rows": 779
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "fde964bdfeb0"
+      },
+      "feedMs": 169.44114900000022,
+      "routes": [
+        "Red",
+        "Blue Day",
+        "Orange Day",
+        "Pink",
+        "Purple",
+        "Green",
+        "Brown",
+        "Gold"
+      ]
+    },
+    {
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 2341,
+        "collectorLagMs": 2251,
+        "knownBuses": 19,
+        "serverEta": {
+          "restored": 19,
+          "forecastAt": 1789649061053,
+          "checkpointAt": 1789649061053,
+          "beliefs": 19,
+          "steps": 8,
+          "failures": 0,
+          "lastStepMs": 129,
+          "rows": 779
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "fde964bdfeb0"
+      },
+      "feedMs": 307.6499530000001,
+      "routes": [
+        "Red",
+        "Blue Day",
+        "Orange Day",
+        "Gold",
+        "Purple",
+        "Pink",
+        "Green",
+        "Brown"
+      ]
+    },
+    {
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 2650,
+        "collectorLagMs": 2590,
+        "knownBuses": 19,
+        "serverEta": {
+          "restored": 19,
+          "forecastAt": 1789649066023,
+          "checkpointAt": 1789649061053,
+          "beliefs": 19,
+          "steps": 9,
+          "failures": 0,
+          "lastStepMs": 238,
+          "rows": 779
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "fde964bdfeb0"
+      },
+      "feedMs": 195.7249030000021,
+      "routes": [
+        "Red",
+        "Blue Day",
+        "Orange Day",
+        "Gold",
+        "Purple",
+        "Pink",
+        "Green",
+        "Brown"
+      ]
+    }
+  ],
+  "history": [
+    {
+      "query": {
+        "route": "Red",
+        "bus": "309",
+        "stop": "41",
+        "eta": "13"
+      },
+      "ms": 42.66956699999997,
+      "result": {
+        "asOf": 1789649047673,
+        "days": 30,
+        "journey": {
+          "fromStopId": 31,
+          "fromName": "Chapel / College",
+          "toStopId": 41,
+          "toName": "College / Wall (N)",
+          "mode": "departure",
+          "elapsedSec": null,
+          "trips": [
+            {
+              "busName": "#316",
+              "startedAt": 1789648044990,
+              "departedAt": 1789648044990,
+              "arrivedAt": 1789648144927,
+              "actualSec": 99.937
+            },
+            {
+              "busName": "#300",
+              "startedAt": 1789647086736,
+              "departedAt": 1789647086736,
+              "arrivedAt": 1789647171744,
+              "actualSec": 85.008
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789568803197,
+              "departedAt": 1789568803197,
+              "arrivedAt": 1789568913331,
+              "actualSec": 110.134
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789568062365,
+              "departedAt": 1789568062365,
+              "arrivedAt": 1789568122366,
+              "actualSec": 60.001
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789565207050,
+              "departedAt": 1789565207050,
+              "arrivedAt": 1789565257080,
+              "actualSec": 50.03
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789563381878,
+              "departedAt": 1789563381878,
+              "arrivedAt": 1789563461865,
+              "actualSec": 79.987
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789561851214,
+              "departedAt": 1789561851214,
+              "arrivedAt": 1789561926301,
+              "actualSec": 75.087
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789560991069,
+              "departedAt": 1789560991069,
+              "arrivedAt": 1789561036079,
+              "actualSec": 45.01
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789483175465,
+              "departedAt": 1789483175465,
+              "arrivedAt": 1789483235508,
+              "actualSec": 60.043
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789479860052,
+              "departedAt": 1789479860052,
+              "arrivedAt": 1789479915080,
+              "actualSec": 55.028
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789478279903,
+              "departedAt": 1789478279903,
+              "arrivedAt": 1789478329938,
+              "actualSec": 50.035
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789476657842,
+              "departedAt": 1789476657842,
+              "arrivedAt": 1789476712895,
+              "actualSec": 55.053
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789396061046,
+              "departedAt": 1789396061046,
+              "arrivedAt": 1789396116017,
+              "actualSec": 54.971
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789395095939,
+              "departedAt": 1789395095939,
+              "arrivedAt": 1789395150969,
+              "actualSec": 55.03
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789391710613,
+              "departedAt": 1789391710613,
+              "arrivedAt": 1789391830732,
+              "actualSec": 120.119
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789390175573,
+              "departedAt": 1789390175573,
+              "arrivedAt": 1789390210500,
+              "actualSec": 34.927
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789389210470,
+              "departedAt": 1789389210470,
+              "arrivedAt": 1789389275496,
+              "actualSec": 65.026
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789387825335,
+              "departedAt": 1789387825335,
+              "arrivedAt": 1789387950603,
+              "actualSec": 125.268
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1789137550497,
+              "departedAt": 1789137550497,
+              "arrivedAt": 1789137605460,
+              "actualSec": 54.963
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789136910104,
+              "departedAt": 1789136910104,
+              "arrivedAt": 1789136990169,
+              "actualSec": 80.065
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789128782709,
+              "departedAt": 1789128782709,
+              "arrivedAt": 1789128842656,
+              "actualSec": 59.947
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1789126962422,
+              "departedAt": 1789126962422,
+              "arrivedAt": 1789127042434,
+              "actualSec": 80.012
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789051290202,
+              "departedAt": 1789051290202,
+              "arrivedAt": 1789051390096,
+              "actualSec": 99.894
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789050405029,
+              "departedAt": 1789050405029,
+              "arrivedAt": 1789050504949,
+              "actualSec": 99.92
+            }
+          ],
+          "serviceDates": 6
+        },
+        "recent": [
+          {
+            "busName": "#316",
+            "arrivedAt": 1789648144927
+          },
+          {
+            "busName": "#300",
+            "arrivedAt": 1789647171744
+          },
+          {
+            "busName": "#316",
+            "arrivedAt": 1789644731406
+          }
+        ]
+      }
+    },
+    {
+      "query": {
+        "route": "Red",
+        "bus": "300",
+        "stop": "4",
+        "eta": "13"
+      },
+      "ms": 22.453276000000017,
+      "result": {
+        "asOf": 1789649047715,
+        "days": 30,
+        "journey": {
+          "fromStopId": 113,
+          "fromName": "SCL",
+          "toStopId": 4,
+          "toName": "130 Prospect Street (S)",
+          "mode": "departure",
+          "elapsedSec": null,
+          "trips": [
+            {
+              "busName": "#308",
+              "startedAt": 1789569588340,
+              "departedAt": 1789569588340,
+              "arrivedAt": 1789569648382,
+              "actualSec": 60.042
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789566582337,
+              "departedAt": 1789566582337,
+              "arrivedAt": 1789566622188,
+              "actualSec": 39.851
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789564841955,
+              "departedAt": 1789564841955,
+              "arrivedAt": 1789564912002,
+              "actualSec": 70.047
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789483100453,
+              "departedAt": 1789483100453,
+              "arrivedAt": 1789483180518,
+              "actualSec": 80.065
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789481205137,
+              "departedAt": 1789481205137,
+              "arrivedAt": 1789481275134,
+              "actualSec": 69.997
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789476137802,
+              "departedAt": 1789476137802,
+              "arrivedAt": 1789476182849,
+              "actualSec": 45.047
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789474172535,
+              "departedAt": 1789474172535,
+              "arrivedAt": 1789474207559,
+              "actualSec": 35.024
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789394825904,
+              "departedAt": 1789394825904,
+              "arrivedAt": 1789394861026,
+              "actualSec": 35.122
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789393945837,
+              "departedAt": 1789393945837,
+              "arrivedAt": 1789393990844,
+              "actualSec": 45.007
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789393100761,
+              "departedAt": 1789393100761,
+              "arrivedAt": 1789393140781,
+              "actualSec": 40.02
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789137525447,
+              "departedAt": 1789137525447,
+              "arrivedAt": 1789137560545,
+              "actualSec": 35.098
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789133962934,
+              "departedAt": 1789133962934,
+              "arrivedAt": 1789134017916,
+              "actualSec": 54.982
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789130696429,
+              "departedAt": 1789130696429,
+              "arrivedAt": 1789130751442,
+              "actualSec": 55.013
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789048904059,
+              "departedAt": 1789048904059,
+              "arrivedAt": 1789049024660,
+              "actualSec": 120.601
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789048256596,
+              "departedAt": 1789048256596,
+              "arrivedAt": 1789048321588,
+              "actualSec": 64.992
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789047830549,
+              "departedAt": 1789047830549,
+              "arrivedAt": 1789047926289,
+              "actualSec": 95.74
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789044443028,
+              "departedAt": 1789044443028,
+              "arrivedAt": 1789044488051,
+              "actualSec": 45.023
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789042202812,
+              "departedAt": 1789042202812,
+              "arrivedAt": 1789042242836,
+              "actualSec": 40.024
+            },
+            {
+              "busName": "#119",
+              "startedAt": 1788964702654,
+              "departedAt": 1788964702654,
+              "arrivedAt": 1788964747664,
+              "actualSec": 45.01
+            },
+            {
+              "busName": "#306",
+              "startedAt": 1788962774552,
+              "departedAt": 1788962774552,
+              "arrivedAt": 1788962839678,
+              "actualSec": 65.126
+            },
+            {
+              "busName": "#306",
+              "startedAt": 1788875419825,
+              "departedAt": 1788875419825,
+              "arrivedAt": 1788875499804,
+              "actualSec": 79.979
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1788872827868,
+              "departedAt": 1788872827868,
+              "arrivedAt": 1788872867988,
+              "actualSec": 40.12
+            },
+            {
+              "busName": "#306",
+              "startedAt": 1788871892806,
+              "departedAt": 1788871892806,
+              "arrivedAt": 1788871932807,
+              "actualSec": 40.001
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1788869157712,
+              "departedAt": 1788869157712,
+              "arrivedAt": 1788869222760,
+              "actualSec": 65.048
+            }
+          ],
+          "serviceDates": 7
+        },
+        "recent": [
+          {
+            "busName": "#309",
+            "arrivedAt": 1789646941653
+          },
+          {
+            "busName": "#309",
+            "arrivedAt": 1789593219899
+          },
+          {
+            "busName": "#316",
+            "arrivedAt": 1789591864630
+          }
+        ]
+      }
+    },
+    {
+      "query": {
+        "route": "Red",
+        "bus": "316",
+        "stop": "146",
+        "eta": "59"
+      },
+      "ms": 31.676695999999993,
+      "result": {
+        "asOf": 1789649047738,
+        "days": 30,
+        "journey": {
+          "fromStopId": 11,
+          "fromName": "344 Winchester",
+          "toStopId": 146,
+          "toName": "Winchester / Division",
+          "mode": "standing",
+          "elapsedSec": 180,
+          "trips": [
+            {
+              "busName": "#300",
+              "startedAt": 1789648004926,
+              "departedAt": 1789648405718,
+              "arrivedAt": 1789648425558,
+              "actualSec": 420.632
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789646266533,
+              "departedAt": 1789646471640,
+              "arrivedAt": 1789646491885,
+              "actualSec": 225.352
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789645436440,
+              "departedAt": 1789645631482,
+              "arrivedAt": 1789645651484,
+              "actualSec": 215.044
+            },
+            {
+              "busName": "#300",
+              "startedAt": 1789644461355,
+              "departedAt": 1789644826431,
+              "arrivedAt": 1789644846434,
+              "actualSec": 385.079
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789568968257,
+              "departedAt": 1789569253320,
+              "arrivedAt": 1789569273351,
+              "actualSec": 305.094
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789560024189,
+              "departedAt": 1789560074288,
+              "arrivedAt": 1789560104213,
+              "actualSec": 80.024
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789475062754,
+              "departedAt": 1789475492715,
+              "arrivedAt": 1789475502726,
+              "actualSec": 439.972
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789473257461,
+              "departedAt": 1789473642506,
+              "arrivedAt": 1789473662494,
+              "actualSec": 405.033
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789392630711,
+              "departedAt": 1789392715743,
+              "arrivedAt": 1789392730778,
+              "actualSec": 100.067
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789385273540,
+              "departedAt": 1789385663601,
+              "arrivedAt": 1789385683597,
+              "actualSec": 410.057
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789137055218,
+              "departedAt": 1789137190164,
+              "arrivedAt": 1789137205218,
+              "actualSec": 150
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789130455435,
+              "departedAt": 1789130766342,
+              "arrivedAt": 1789130781269,
+              "actualSec": 325.834
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789129627819,
+              "departedAt": 1789130037999,
+              "arrivedAt": 1789130057968,
+              "actualSec": 430.149
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789126907405,
+              "departedAt": 1789127227441,
+              "arrivedAt": 1789127247551,
+              "actualSec": 340.146
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789047920569,
+              "departedAt": 1789047961289,
+              "arrivedAt": 1789047981485,
+              "actualSec": 60.916
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789047033298,
+              "departedAt": 1789047238464,
+              "arrivedAt": 1789047258346,
+              "actualSec": 225.048
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789045373270,
+              "departedAt": 1789045378173,
+              "arrivedAt": 1789045398133,
+              "actualSec": 24.863
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789044178001,
+              "departedAt": 1789044353066,
+              "arrivedAt": 1789044378028,
+              "actualSec": 200.027
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789043267943,
+              "departedAt": 1789043682940,
+              "arrivedAt": 1789043702967,
+              "actualSec": 435.024
+            },
+            {
+              "busName": "#119",
+              "startedAt": 1788963857746,
+              "departedAt": 1788964402637,
+              "arrivedAt": 1788964422657,
+              "actualSec": 564.911
+            },
+            {
+              "busName": "#119",
+              "startedAt": 1788956966468,
+              "departedAt": 1788957342177,
+              "arrivedAt": 1788957362144,
+              "actualSec": 395.676
+            },
+            {
+              "busName": "#119",
+              "startedAt": 1788953839435,
+              "departedAt": 1788953859441,
+              "arrivedAt": 1788953874520,
+              "actualSec": 35.085
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1788872242858,
+              "departedAt": 1788872397954,
+              "arrivedAt": 1788872422966,
+              "actualSec": 180.108
+            },
+            {
+              "busName": "#306",
+              "startedAt": 1788871412785,
+              "departedAt": 1788871567777,
+              "arrivedAt": 1788871587777,
+              "actualSec": 174.992
+            }
+          ],
+          "serviceDates": 8
+        },
+        "recent": [
+          {
+            "busName": "#300",
+            "arrivedAt": 1789648425558
+          },
+          {
+            "busName": "#309",
+            "arrivedAt": 1789646491885
+          },
+          {
+            "busName": "#316",
+            "arrivedAt": 1789645651484
+          }
+        ]
+      }
+    },
+    {
+      "query": {
+        "route": "Red",
+        "bus": "309",
+        "stop": "126",
+        "eta": "86"
+      },
+      "ms": 26.126787999999976,
+      "result": {
+        "asOf": 1789649047769,
+        "days": 30,
+        "journey": {
+          "fromStopId": 31,
+          "fromName": "Chapel / College",
+          "toStopId": 126,
+          "toName": "Wall / Church",
+          "mode": "departure",
+          "elapsedSec": null,
+          "trips": [
+            {
+              "busName": "#300",
+              "startedAt": 1789647086736,
+              "departedAt": 1789647086736,
+              "arrivedAt": 1789647246648,
+              "actualSec": 159.912
+            },
+            {
+              "busName": "#300",
+              "startedAt": 1789643736290,
+              "departedAt": 1789643736290,
+              "arrivedAt": 1789643881332,
+              "actualSec": 145.042
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789563381878,
+              "departedAt": 1789563381878,
+              "arrivedAt": 1789563551823,
+              "actualSec": 169.945
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789561851214,
+              "departedAt": 1789561851214,
+              "arrivedAt": 1789562026649,
+              "actualSec": 175.435
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789560991069,
+              "departedAt": 1789560991069,
+              "arrivedAt": 1789561116016,
+              "actualSec": 124.947
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789479860052,
+              "departedAt": 1789479860052,
+              "arrivedAt": 1789480025068,
+              "actualSec": 165.016
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789476657842,
+              "departedAt": 1789476657842,
+              "arrivedAt": 1789476807865,
+              "actualSec": 150.023
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789470666167,
+              "departedAt": 1789470666167,
+              "arrivedAt": 1789470781132,
+              "actualSec": 114.965
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789396061046,
+              "departedAt": 1789396061046,
+              "arrivedAt": 1789396206087,
+              "actualSec": 145.041
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789395095939,
+              "departedAt": 1789395095939,
+              "arrivedAt": 1789395215990,
+              "actualSec": 120.051
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789390175573,
+              "departedAt": 1789390175573,
+              "arrivedAt": 1789390260539,
+              "actualSec": 84.966
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789389210470,
+              "departedAt": 1789389210470,
+              "arrivedAt": 1789389340545,
+              "actualSec": 130.075
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1789137550497,
+              "departedAt": 1789137550497,
+              "arrivedAt": 1789137665517,
+              "actualSec": 115.02
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789136910104,
+              "departedAt": 1789136910104,
+              "arrivedAt": 1789137085144,
+              "actualSec": 175.04
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1789126962422,
+              "departedAt": 1789126962422,
+              "arrivedAt": 1789127107485,
+              "actualSec": 145.063
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789050405029,
+              "departedAt": 1789050405029,
+              "arrivedAt": 1789050610051,
+              "actualSec": 205.022
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789049679885,
+              "departedAt": 1789049679885,
+              "arrivedAt": 1789049854955,
+              "actualSec": 175.07
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789047013358,
+              "departedAt": 1789047013358,
+              "arrivedAt": 1789047298378,
+              "actualSec": 285.02
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789044413034,
+              "departedAt": 1789044413034,
+              "arrivedAt": 1789044603203,
+              "actualSec": 190.169
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789043278081,
+              "departedAt": 1789043278081,
+              "arrivedAt": 1789043402934,
+              "actualSec": 124.853
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789042392831,
+              "departedAt": 1789042392831,
+              "arrivedAt": 1789042502841,
+              "actualSec": 110.01
+            },
+            {
+              "busName": "#306",
+              "startedAt": 1788961468300,
+              "departedAt": 1788961468300,
+              "arrivedAt": 1788961603450,
+              "actualSec": 135.15
+            },
+            {
+              "busName": "#306",
+              "startedAt": 1788957942917,
+              "departedAt": 1788957942917,
+              "arrivedAt": 1788958193131,
+              "actualSec": 250.214
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1788874774720,
+              "departedAt": 1788874774720,
+              "arrivedAt": 1788874944758,
+              "actualSec": 170.038
+            }
+          ],
+          "serviceDates": 8
+        },
+        "recent": [
+          {
+            "busName": "#300",
+            "arrivedAt": 1789647246648
+          },
+          {
+            "busName": "#300",
+            "arrivedAt": 1789643881332
+          },
+          {
+            "busName": "#308",
+            "arrivedAt": 1789596660253
+          }
+        ]
+      }
+    },
+    {
+      "query": {
+        "route": "Red",
+        "bus": "316",
+        "stop": "49",
+        "eta": "87"
+      },
+      "ms": 27.498631000000046,
+      "result": {
+        "asOf": 1789649047795,
+        "days": 30,
+        "journey": {
+          "fromStopId": 11,
+          "fromName": "344 Winchester",
+          "toStopId": 49,
+          "toName": "Division / Sheffield",
+          "mode": "standing",
+          "elapsedSec": 180,
+          "trips": [
+            {
+              "busName": "#300",
+              "startedAt": 1789648004926,
+              "departedAt": 1789648405718,
+              "arrivedAt": 1789648450547,
+              "actualSec": 445.621
+            },
+            {
+              "busName": "#300",
+              "startedAt": 1789644461355,
+              "departedAt": 1789644826431,
+              "arrivedAt": 1789644891424,
+              "actualSec": 430.069
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789562741646,
+              "departedAt": 1789562781707,
+              "arrivedAt": 1789562851797,
+              "actualSec": 110.151
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789558958374,
+              "departedAt": 1789559228434,
+              "arrivedAt": 1789559259262,
+              "actualSec": 300.888
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789557988282,
+              "departedAt": 1789558368329,
+              "arrivedAt": 1789558413347,
+              "actualSec": 425.065
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789475062754,
+              "departedAt": 1789475492715,
+              "arrivedAt": 1789475557756,
+              "actualSec": 495.002
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789473257461,
+              "departedAt": 1789473642506,
+              "arrivedAt": 1789473767502,
+              "actualSec": 510.041
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789471431143,
+              "departedAt": 1789471886425,
+              "arrivedAt": 1789471921214,
+              "actualSec": 490.071
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1789131201279,
+              "departedAt": 1789131651499,
+              "arrivedAt": 1789131696510,
+              "actualSec": 495.231
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789125937351,
+              "departedAt": 1789126532425,
+              "arrivedAt": 1789126572394,
+              "actualSec": 635.043
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789047033298,
+              "departedAt": 1789047238464,
+              "arrivedAt": 1789047313334,
+              "actualSec": 280.036
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789041432769,
+              "departedAt": 1789041622774,
+              "arrivedAt": 1789041667759,
+              "actualSec": 234.99
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789039427523,
+              "departedAt": 1789040142613,
+              "arrivedAt": 1789040182676,
+              "actualSec": 755.153
+            },
+            {
+              "busName": "#119",
+              "startedAt": 1788963857746,
+              "departedAt": 1788964402637,
+              "arrivedAt": 1788964452654,
+              "actualSec": 594.908
+            },
+            {
+              "busName": "#119",
+              "startedAt": 1788953839435,
+              "departedAt": 1788953859441,
+              "arrivedAt": 1788953914449,
+              "actualSec": 75.014
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1788872242858,
+              "departedAt": 1788872397954,
+              "arrivedAt": 1788872452826,
+              "actualSec": 209.968
+            },
+            {
+              "busName": "#304",
+              "startedAt": 1788868667533,
+              "departedAt": 1788868752589,
+              "arrivedAt": 1788868807572,
+              "actualSec": 140.039
+            },
+            {
+              "busName": "#306",
+              "startedAt": 1788867932464,
+              "departedAt": 1788868017482,
+              "arrivedAt": 1788868057572,
+              "actualSec": 125.108
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1788525029413,
+              "departedAt": 1788525154941,
+              "arrivedAt": 1788525199903,
+              "actualSec": 170.49
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1788521540791,
+              "departedAt": 1788521700955,
+              "arrivedAt": 1788521760840,
+              "actualSec": 220.049
+            }
+          ],
+          "serviceDates": 8
+        },
+        "recent": [
+          {
+            "busName": "#300",
+            "arrivedAt": 1789648450547
+          },
+          {
+            "busName": "#300",
+            "arrivedAt": 1789644891424
+          },
+          {
+            "busName": "#308",
+            "arrivedAt": 1789594614953
+          }
+        ]
+      }
+    },
+    {
+      "query": {
+        "route": "Red",
+        "bus": "316",
+        "stop": "48",
+        "eta": "117"
+      },
+      "ms": 28.242032999999992,
+      "result": {
+        "asOf": 1789649047823,
+        "days": 30,
+        "journey": {
+          "fromStopId": 11,
+          "fromName": "344 Winchester",
+          "toStopId": 48,
+          "toName": "Division / Prospect",
+          "mode": "standing",
+          "elapsedSec": 180,
+          "trips": [
+            {
+              "busName": "#300",
+              "startedAt": 1789648004926,
+              "departedAt": 1789648405718,
+              "arrivedAt": 1789648505588,
+              "actualSec": 500.662
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789646266533,
+              "departedAt": 1789646471640,
+              "arrivedAt": 1789646576585,
+              "actualSec": 310.052
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789645436440,
+              "departedAt": 1789645631482,
+              "arrivedAt": 1789645721498,
+              "actualSec": 285.058
+            },
+            {
+              "busName": "#300",
+              "startedAt": 1789644461355,
+              "departedAt": 1789644826431,
+              "arrivedAt": 1789644936444,
+              "actualSec": 475.089
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789569718409,
+              "departedAt": 1789569973981,
+              "arrivedAt": 1789570044071,
+              "actualSec": 325.662
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789568968257,
+              "departedAt": 1789569253320,
+              "arrivedAt": 1789569333425,
+              "actualSec": 365.168
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789566022083,
+              "departedAt": 1789566367155,
+              "arrivedAt": 1789566437170,
+              "actualSec": 415.087
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789564426916,
+              "departedAt": 1789564426957,
+              "arrivedAt": 1789564511964,
+              "actualSec": 85.048
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789562741646,
+              "departedAt": 1789562781707,
+              "arrivedAt": 1789562946755,
+              "actualSec": 205.109
+            },
+            {
+              "busName": "#309",
+              "startedAt": 1789560024189,
+              "departedAt": 1789560074288,
+              "arrivedAt": 1789560199242,
+              "actualSec": 175.053
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789558958374,
+              "departedAt": 1789559228434,
+              "arrivedAt": 1789559319156,
+              "actualSec": 360.782
+            },
+            {
+              "busName": "#308",
+              "startedAt": 1789557988282,
+              "departedAt": 1789558368329,
+              "arrivedAt": 1789558458337,
+              "actualSec": 470.055
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789482415250,
+              "departedAt": 1789482755338,
+              "arrivedAt": 1789482830343,
+              "actualSec": 415.093
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789480710147,
+              "departedAt": 1789480870133,
+              "arrivedAt": 1789480945128,
+              "actualSec": 234.981
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789475062754,
+              "departedAt": 1789475492715,
+              "arrivedAt": 1789475607808,
+              "actualSec": 545.054
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789473257461,
+              "departedAt": 1789473642506,
+              "arrivedAt": 1789473817605,
+              "actualSec": 560.144
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789471431143,
+              "departedAt": 1789471886425,
+              "arrivedAt": 1789471966224,
+              "actualSec": 535.081
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789397006087,
+              "departedAt": 1789397091150,
+              "arrivedAt": 1789397296296,
+              "actualSec": 290.209
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789395871154,
+              "departedAt": 1789396381098,
+              "arrivedAt": 1789396446029,
+              "actualSec": 574.875
+            },
+            {
+              "busName": "#316",
+              "startedAt": 1789393095744,
+              "departedAt": 1789393460792,
+              "arrivedAt": 1789393665920,
+              "actualSec": 570.176
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789392630711,
+              "departedAt": 1789392715743,
+              "arrivedAt": 1789392795782,
+              "actualSec": 165.071
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789388695437,
+              "departedAt": 1789389230416,
+              "arrivedAt": 1789389300509,
+              "actualSec": 605.072
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789385273540,
+              "departedAt": 1789385663601,
+              "arrivedAt": 1789385763613,
+              "actualSec": 490.073
+            },
+            {
+              "busName": "#310",
+              "startedAt": 1789137055218,
+              "departedAt": 1789137190164,
+              "arrivedAt": 1789137275202,
+              "actualSec": 219.984
+            }
+          ],
+          "serviceDates": 5
+        },
+        "recent": [
+          {
+            "busName": "#300",
+            "arrivedAt": 1789648505588
+          },
+          {
+            "busName": "#309",
+            "arrivedAt": 1789646576585
+          },
+          {
+            "busName": "#316",
+            "arrivedAt": 1789645721498
+          }
+        ]
+      }
+    }
+  ]
+}

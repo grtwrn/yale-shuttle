@@ -1,0 +1,299 @@
+{
+  "passed": 17,
+  "checks": [
+    {
+      "name": "same bus later occurrence",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 30,
+          "etaSec": 1200,
+          "lowSec": 1180,
+          "highSec": 1280
+        },
+        "relation": "same-bus-later-visit"
+      },
+      "journeyAvailable": true
+    },
+    {
+      "name": "later same bus with missing destination",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 30,
+          "etaSec": 1200,
+          "lowSec": 1180,
+          "highSec": 1280
+        },
+        "relation": "same-bus-later-visit"
+      },
+      "journeyAvailable": false
+    },
+    {
+      "name": "different vehicle with closing countdown",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "309",
+          "stopId": 48,
+          "stopsAhead": 3,
+          "etaSec": 300,
+          "lowSec": 280,
+          "highSec": 380
+        },
+        "relation": "different-bus"
+      },
+      "journeyAvailable": true
+    },
+    {
+      "name": "different vehicle with missing destination",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "309",
+          "stopId": 48,
+          "stopsAhead": 3,
+          "etaSec": 300,
+          "lowSec": 280,
+          "highSec": 380
+        },
+        "relation": "different-bus"
+      },
+      "journeyAvailable": false
+    },
+    {
+      "name": "fallback when no arrival is catchable",
+      "journeyAvailable": false
+    },
+    {
+      "name": "pinned walking tolerance retains selected fallback",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "relation": "same-visit"
+      },
+      "journeyAvailable": false
+    },
+    {
+      "name": "normalized bus name, same occurrence",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "relation": "same-visit"
+      },
+      "journeyAvailable": false
+    },
+    {
+      "name": "folded route selects permitted pickup",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 6,
+          "etaSec": 150,
+          "lowSec": 130,
+          "highSec": 230
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 6,
+          "etaSec": 150,
+          "lowSec": 130,
+          "highSec": 230
+        },
+        "relation": "same-visit"
+      },
+      "journeyAvailable": true
+    },
+    {
+      "name": "folded missing destination uses actual changed selection",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "relation": "same-visit"
+      },
+      "journeyAvailable": false
+    },
+    {
+      "name": "raw current without compatible forecast never borrows next lap",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "raw-at-stop",
+          "busName": "307",
+          "stopId": 48
+        },
+        "boarding": {
+          "source": "raw-at-stop",
+          "busName": "307",
+          "stopId": 48
+        },
+        "relation": "raw-current"
+      }
+    },
+    {
+      "name": "empty selector"
+    },
+    {
+      "name": "equal times on different occurrences",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 30,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "relation": "same-bus-later-visit"
+      }
+    },
+    {
+      "name": "same occurrence with copied row/changed time",
+      "metadata": {
+        "selectedAtMs": 1789668000000,
+        "countdown": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 999,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "relation": "same-visit"
+      }
+    },
+    {
+      "name": "missing live and moving-walk clears prior metadata"
+    },
+    {
+      "name": "missing origin walk clears prior metadata"
+    },
+    {
+      "name": "future guard clears only past exact 60-second boundary"
+    },
+    {
+      "name": "input options and selected rows never mutated"
+    }
+  ]
+}

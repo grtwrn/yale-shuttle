@@ -1,0 +1,83 @@
+{
+  "baseline": false,
+  "desktop": false,
+  "scope": "Actual three map components and berth disclosure; synthetic props; intercepted network",
+  "checks": [
+    "combined: three true-keyboard reopen cycles, external/closed focus ownership, child event ownership, exact listener balance",
+    "walk: three true-keyboard reopen cycles, external/closed focus ownership, child event ownership, exact listener balance",
+    "berth: three true-keyboard reopen cycles, external/closed focus ownership, child event ownership, exact listener balance",
+    "Fresh to missing to empty while fullscreen keeps Back and a single listener; Escape restores persistent toggle",
+    "Collapsing the berth disclosure during fullscreen tears down its listener and preserves disclosure focus",
+    "Unmount while fullscreen removes listener; remount starts closed with no stale berth instance and can reopen/close normally"
+  ],
+  "states": [
+    {
+      "kind": "combined",
+      "cycle": 0,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    },
+    {
+      "kind": "combined",
+      "cycle": 1,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    },
+    {
+      "kind": "combined",
+      "cycle": 2,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    },
+    {
+      "kind": "walk",
+      "cycle": 0,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    },
+    {
+      "kind": "walk",
+      "cycle": 1,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    },
+    {
+      "kind": "walk",
+      "cycle": 2,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    },
+    {
+      "kind": "berth",
+      "cycle": 0,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    },
+    {
+      "kind": "berth",
+      "cycle": 1,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    },
+    {
+      "kind": "berth",
+      "cycle": 2,
+      "naturalBackNavigation": true,
+      "listeners": 0,
+      "focusReturned": true
+    }
+  ],
+  "errors": [],
+  "initialListeners": 0,
+  "finalListeners": 0,
+  "completed": true,
+  "resourcesClosed": true
+}

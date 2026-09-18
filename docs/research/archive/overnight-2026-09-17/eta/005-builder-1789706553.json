@@ -1,0 +1,11 @@
+{
+  "outcome": "candidate",
+  "summary": "Prevent future-lap smoothing from overwriting arrived pickups. Fixed all 101 observed corrupt pickup rows and restored 149 journeys; all 150,020 destination forecasts remain unchanged. Ready for independent review; not deployed.",
+  "next_task": "Review cycle-5/RESULTS.md, REVIEW_REQUEST.md and traversal-guard/FINAL_STATUS.md. Validate occurrence boundaries and retained fallback-to-full-forecast regressions, then proceed through controller-owned staging and CI.",
+  "tests": [
+    "Locked traversal-guard/verify_all.sh passed: 2,755 tests, both typechecks, Vite build, 156 browser comparisons, 46,790 identical belief comparisons and 302 server parity checks.",
+    "traversal-guard/score_selected.sh passed: 101 pickup errors fixed, 149 journeys gained, none lost; 177 endpoint checkpoints unchanged.",
+    "score_full.py traversal-guard passed: 150,020 exact baseline matches; 2,508 first-occurrence and 801 second-occurrence checkpoints retain identical scores.",
+    "git diff --check and git diff --cached --exit-code passed. HEAD preserved at 6220b860a69f5567557926f41de59ed1af72d2f8."
+  ]
+}

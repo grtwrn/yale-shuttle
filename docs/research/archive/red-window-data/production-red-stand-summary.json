@@ -1,0 +1,45 @@
+{
+  "asOf": "2026-09-17T13:59:54.211000+00:00",
+  "context": "Red 344 Winchester stopped visits, total stand, not remaining arrival time",
+  "all": {
+    "n": 250,
+    "dates": 10,
+    "min": 0.33,
+    "p10": 2.0,
+    "median": 5.63,
+    "p90": 10.33,
+    "max": 14.92
+  },
+  "last48h": {
+    "n": 57,
+    "dates": 3,
+    "min": 1.67,
+    "p10": 2.22,
+    "median": 4.75,
+    "p90": 9.24,
+    "max": 13.92
+  },
+  "older": {
+    "n": 193,
+    "dates": 8,
+    "min": 0.33,
+    "p10": 1.92,
+    "median": 5.83,
+    "p90": 10.57,
+    "max": 14.92
+  },
+  "ageAwareIqrFenceMinutes": [
+    0,
+    14.750350000000001
+  ],
+  "removed": 1,
+  "filtered": {
+    "n": 249,
+    "dates": 10,
+    "min": 0.33,
+    "p10": 2.0,
+    "median": 5.59,
+    "p90": 10.27,
+    "max": 13.92
+  }
+}

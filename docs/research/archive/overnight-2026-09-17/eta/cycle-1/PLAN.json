@@ -1,0 +1,78 @@
+{
+  "createdAtUTC": "2026-09-18T02:25:30.092180+00:00",
+  "baseCommit": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "status": "frozen before landmark extraction or new candidate scoring",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/outcomes.db": "daf4702f128f47f010b6a2235e54196e0aacc5cc5b3db790cc8cdbc951a69b5e",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-window-data/operating-pattern-screen.json": "33e331dde10a268885e53de2a6afcda142e2e5c56ce8f18df2dadbd63c28ab7e",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/extract_landmarks.py": "3f3d533d5e111f51a823122fb5d153065336fef486bb3369f4e74f331d500572"
+  },
+  "fitBefore": 1789012800000,
+  "calibrationBefore": 1789358400000,
+  "developmentEnd": 1789665240913,
+  "chronology": "Sep3/4/8/9 training; Sep10/11 calibration; Sep14\u201317 13:14 ET reused development. No later afternoon or fresh holdout.",
+  "landmarksSec": [
+    0,
+    60,
+    180,
+    300,
+    480
+  ],
+  "regimes": [
+    "arrival15",
+    "completed120"
+  ],
+  "stepSec": 15,
+  "penaltyL2": 10,
+  "family": "Landmark residual discrete survival with snapshot frozen for EVERY future risk row in BOTH training and inference.",
+  "arms": [
+    "landmark_lap_elapsed_clock",
+    "plus_ahead_snapshot",
+    "plus_ahead_follower_snapshot"
+  ],
+  "baselineFeatures": [
+    "intercept",
+    "log1p(total_elapsed/60)",
+    "total_elapsed/600",
+    "positive(total_elapsed-300)/600",
+    "positive(total_elapsed-600)/600",
+    "centered_supported_lap/600",
+    "lap_missing",
+    "sin(future_clock15)",
+    "cos(future_clock15)",
+    "landmark_elapsed/600"
+  ],
+  "peerFeatures": [
+    "usable_identity",
+    "progress_available",
+    "sin(relative_stop_index)",
+    "cos(relative_stop_index)",
+    "log1p(snapshot_progress_age_minutes)",
+    "snapshot_origin_age_hours",
+    "persistent_reached_flags_for_every_route_stop"
+  ],
+  "interactions": "Each frozen peer feature multiplied by deterministic future clock sin and cos; no future peer observation or origin-age updates.",
+  "support": "Minimum five training visits across two training dates per added nonzero column; exact duplicates removed using training only; no development-based stop selection.",
+  "fallback": "All snapshots retained. Absent, stale >600s, other-route or invalid peer has zero added features; unsupported lap uses landmark core baseline in ALL candidate arms. Production comparison must report its own fallback.",
+  "weighting": "Each visit contributes total landmark weight one per regime; each future risk row retains that landmark weight. This normalizes repeated landmark likelihoods, not risk-bin exposure. Scores show visit-weighted and checkpoint-weighted summaries.",
+  "tail": "Train residual likelihood to1800s with longer remaining waits right-censored, never deleted or labeled a departure at1800. Extend constant final-bin hazard beyond1800; bound hazard to[1/1800,1/5] persecond as production does. Quantiles have no time cap.",
+  "availability": "Pin-latched prior confirmed departure order; completed+120 known-time for identity. Arrival15 uses pin+15 arrival and unconditional anchor+15 progress; completed120 delays each event to completion. Latest all-route anchor checked at pin/landmark. These are availability proxies, not exact receipts.",
+  "calibration": "Primary raw fitted coefficients. Optional intercept-only sensitivity trained on Sep10/11 with same landmark weighting, reported separately; no penalty search.",
+  "productionComparator": "Current release ON implementation at40af3c0; Winchester actual release CDF and Union actual marginal/lap fallback. Extraction alone is not a production ETA comparison. Export exact runtime comparator before model promotion.",
+  "requiredMetrics": [
+    "MAE",
+    "median/p90 absolute error",
+    "WIS80",
+    "width80",
+    "bus arrives before lower bound",
+    "bus arrives after upper bound",
+    "availability",
+    "per date",
+    "same/distinct/unknown identity"
+  ],
+  "exclusions": "Only previously proved restart truncation65237. Keep all legitimate short/long outcomes. Landmark past actual departure is ineligible by landmark definition, recorded explicitly.",
+  "limitations": [
+    "Conditional on true continuing pinned rest, not first-published pin receipt or live state.",
+    "No connected rider, repeated target occurrence, stability or full-server claims until later paired replay."
+  ]
+}

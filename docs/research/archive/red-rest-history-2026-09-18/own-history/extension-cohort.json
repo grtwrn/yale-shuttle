@@ -1,0 +1,1852 @@
+[
+  {
+    "id": 72247,
+    "bus": "#306",
+    "day": "2026-09-18",
+    "a": 1789744971535,
+    "y": 705.839,
+    "lap": 2850.653,
+    "stop": 11,
+    "ready": 1789745797374,
+    "split": "development",
+    "lapSupported": true,
+    "ownUnionDeparture": 1789743781076,
+    "ownUnionAge": 1190.459,
+    "histories": {
+      "primary": {
+        "features": [
+          2.6854023299358647,
+          0.0,
+          2.0690397130835665,
+          0.0,
+          0.46018474808601123,
+          0.0,
+          0.08247052736358064,
+          0.0,
+          2.1503134799478203,
+          1.0,
+          0.35846833333333333,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71757,
+            "stop": 11,
+            "anchor": 1789741270702,
+            "departedAt": 1789742105879,
+            "knownAt": 1789742225879,
+            "duration": 819.846,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72001,
+            "stop": 121,
+            "anchor": 1789743196113,
+            "departedAt": 1789743681049,
+            "knownAt": 1789743801049,
+            "duration": 415.033,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 71919,
+            "stop": 117,
+            "anchor": 1789743051158,
+            "departedAt": 1789743096043,
+            "knownAt": 1789743216043,
+            "duration": 35.062,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 71927,
+            "stop": 13,
+            "anchor": 1789743121040,
+            "departedAt": 1789743136155,
+            "knownAt": 1789743256155,
+            "duration": 5.158,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71757,
+          "stop": 11,
+          "anchor": 1789741270702,
+          "departedAt": 1789742105879,
+          "knownAt": 1789742225879,
+          "duration": 819.846,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 71919,
+            "stop": 117,
+            "anchor": 1789743051158,
+            "departedAt": 1789743096043,
+            "knownAt": 1789743216043,
+            "duration": 35.062,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 71927,
+            "stop": 13,
+            "anchor": 1789743121040,
+            "departedAt": 1789743136155,
+            "knownAt": 1789743256155,
+            "duration": 5.158,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72001,
+            "stop": 121,
+            "anchor": 1789743196113,
+            "departedAt": 1789743681049,
+            "knownAt": 1789743801049,
+            "duration": 415.033,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 455.253,
+        "lastRestAgeSec": 1290.486,
+        "latestOtherRouteAnchor": null
+      },
+      "earlier120": {
+        "features": [
+          2.6854023299358647,
+          0.0,
+          2.0690397130835665,
+          0.0,
+          0.46018474808601123,
+          0.0,
+          0.08247052736358064,
+          0.0,
+          2.1503134799478203,
+          1.0,
+          0.35846833333333333,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71757,
+            "stop": 11,
+            "anchor": 1789741270702,
+            "departedAt": 1789742105879,
+            "knownAt": 1789742225879,
+            "duration": 819.846,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72001,
+            "stop": 121,
+            "anchor": 1789743196113,
+            "departedAt": 1789743681049,
+            "knownAt": 1789743801049,
+            "duration": 415.033,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 71919,
+            "stop": 117,
+            "anchor": 1789743051158,
+            "departedAt": 1789743096043,
+            "knownAt": 1789743216043,
+            "duration": 35.062,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 71927,
+            "stop": 13,
+            "anchor": 1789743121040,
+            "departedAt": 1789743136155,
+            "knownAt": 1789743256155,
+            "duration": 5.158,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71757,
+          "stop": 11,
+          "anchor": 1789741270702,
+          "departedAt": 1789742105879,
+          "knownAt": 1789742225879,
+          "duration": 819.846,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 71919,
+            "stop": 117,
+            "anchor": 1789743051158,
+            "departedAt": 1789743096043,
+            "knownAt": 1789743216043,
+            "duration": 35.062,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 71927,
+            "stop": 13,
+            "anchor": 1789743121040,
+            "departedAt": 1789743136155,
+            "knownAt": 1789743256155,
+            "duration": 5.158,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72001,
+            "stop": 121,
+            "anchor": 1789743196113,
+            "departedAt": 1789743681049,
+            "knownAt": 1789743801049,
+            "duration": 415.033,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 455.253,
+        "lastRestAgeSec": 1290.486,
+        "latestOtherRouteAnchor": null
+      },
+      "maxgap600": {
+        "features": [
+          2.6854023299358647,
+          0.0,
+          2.0690397130835665,
+          0.0,
+          0.46018474808601123,
+          0.0,
+          0.08247052736358064,
+          0.0,
+          2.1503134799478203,
+          1.0,
+          0.35846833333333333,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71757,
+            "stop": 11,
+            "anchor": 1789741270702,
+            "departedAt": 1789742105879,
+            "knownAt": 1789742715805.0,
+            "duration": 819.846,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72001,
+            "stop": 121,
+            "anchor": 1789743196113,
+            "departedAt": 1789743681049,
+            "knownAt": 1789744336050.0,
+            "duration": 415.033,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 71919,
+            "stop": 117,
+            "anchor": 1789743051158,
+            "departedAt": 1789743096043,
+            "knownAt": 1789743716100.0,
+            "duration": 35.062,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 71927,
+            "stop": 13,
+            "anchor": 1789743121040,
+            "departedAt": 1789743136155,
+            "knownAt": 1789743761158.0,
+            "duration": 5.158,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71757,
+          "stop": 11,
+          "anchor": 1789741270702,
+          "departedAt": 1789742105879,
+          "knownAt": 1789742715805.0,
+          "duration": 819.846,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 71919,
+            "stop": 117,
+            "anchor": 1789743051158,
+            "departedAt": 1789743096043,
+            "knownAt": 1789743716100.0,
+            "duration": 35.062,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 71927,
+            "stop": 13,
+            "anchor": 1789743121040,
+            "departedAt": 1789743136155,
+            "knownAt": 1789743761158.0,
+            "duration": 5.158,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72001,
+            "stop": 121,
+            "anchor": 1789743196113,
+            "departedAt": 1789743681049,
+            "knownAt": 1789744336050.0,
+            "duration": 415.033,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 455.253,
+        "lastRestAgeSec": 1290.486,
+        "latestOtherRouteAnchor": null
+      }
+    }
+  },
+  {
+    "id": 72363,
+    "bus": "#316",
+    "day": "2026-09-18",
+    "a": 1789745979490,
+    "y": 446.114,
+    "lap": 3178.536,
+    "stop": 11,
+    "ready": 1789746545604,
+    "split": "development",
+    "lapSupported": true,
+    "ownUnionDeparture": 1789744596368,
+    "ownUnionAge": 1383.122,
+    "histories": {
+      "primary": {
+        "features": [
+          1.5582288250273584,
+          0.0,
+          2.512454261577648,
+          0.0,
+          0.459858591938496,
+          0.0,
+          0.0,
+          0.0,
+          2.5587003860668642,
+          1.0,
+          0.40369361111111113,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71867,
+            "stop": 11,
+            "anchor": 1789742536057,
+            "departedAt": 1789742780966,
+            "knownAt": 1789742900966,
+            "duration": 225.024,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72119,
+            "stop": 121,
+            "anchor": 1789743781076,
+            "departedAt": 1789744526193,
+            "knownAt": 1789744646193,
+            "duration": 680.11,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 71998,
+            "stop": 117,
+            "anchor": 1789743666069,
+            "departedAt": 1789743706103,
+            "knownAt": 1789743826103,
+            "duration": 35.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72003,
+            "stop": 13,
+            "anchor": 1789743721072,
+            "departedAt": 1789743736099,
+            "knownAt": 1789743856099,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71867,
+          "stop": 11,
+          "anchor": 1789742536057,
+          "departedAt": 1789742780966,
+          "knownAt": 1789742900966,
+          "duration": 225.024,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 71998,
+            "stop": 117,
+            "anchor": 1789743666069,
+            "departedAt": 1789743706103,
+            "knownAt": 1789743826103,
+            "duration": 35.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72003,
+            "stop": 13,
+            "anchor": 1789743721072,
+            "departedAt": 1789743736099,
+            "knownAt": 1789743856099,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72119,
+            "stop": 121,
+            "anchor": 1789743781076,
+            "departedAt": 1789744526193,
+            "knownAt": 1789744646193,
+            "duration": 680.11,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 715.141,
+        "lastRestAgeSec": 1453.297,
+        "latestOtherRouteAnchor": null
+      },
+      "earlier120": {
+        "features": [
+          1.5582288250273584,
+          0.0,
+          2.512454261577648,
+          0.0,
+          0.459858591938496,
+          0.0,
+          0.0,
+          0.0,
+          2.5587003860668642,
+          1.0,
+          0.40369361111111113,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71867,
+            "stop": 11,
+            "anchor": 1789742536057,
+            "departedAt": 1789742780966,
+            "knownAt": 1789742900966,
+            "duration": 225.024,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72119,
+            "stop": 121,
+            "anchor": 1789743781076,
+            "departedAt": 1789744526193,
+            "knownAt": 1789744646193,
+            "duration": 680.11,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 71998,
+            "stop": 117,
+            "anchor": 1789743666069,
+            "departedAt": 1789743706103,
+            "knownAt": 1789743826103,
+            "duration": 35.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72003,
+            "stop": 13,
+            "anchor": 1789743721072,
+            "departedAt": 1789743736099,
+            "knownAt": 1789743856099,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71867,
+          "stop": 11,
+          "anchor": 1789742536057,
+          "departedAt": 1789742780966,
+          "knownAt": 1789742900966,
+          "duration": 225.024,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 71998,
+            "stop": 117,
+            "anchor": 1789743666069,
+            "departedAt": 1789743706103,
+            "knownAt": 1789743826103,
+            "duration": 35.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72003,
+            "stop": 13,
+            "anchor": 1789743721072,
+            "departedAt": 1789743736099,
+            "knownAt": 1789743856099,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72119,
+            "stop": 121,
+            "anchor": 1789743781076,
+            "departedAt": 1789744526193,
+            "knownAt": 1789744646193,
+            "duration": 680.11,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 715.141,
+        "lastRestAgeSec": 1453.297,
+        "latestOtherRouteAnchor": null
+      },
+      "maxgap600": {
+        "features": [
+          1.5582288250273584,
+          0.0,
+          2.512454261577648,
+          0.0,
+          0.459858591938496,
+          0.0,
+          0.0,
+          0.0,
+          2.5587003860668642,
+          1.0,
+          0.40369361111111113,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71867,
+            "stop": 11,
+            "anchor": 1789742536057,
+            "departedAt": 1789742780966,
+            "knownAt": 1789743395915.0,
+            "duration": 225.024,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72119,
+            "stop": 121,
+            "anchor": 1789743781076,
+            "departedAt": 1789744526193,
+            "knownAt": 1789745156224.0,
+            "duration": 680.11,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 71998,
+            "stop": 117,
+            "anchor": 1789743666069,
+            "departedAt": 1789743706103,
+            "knownAt": 1789744321086.0,
+            "duration": 35.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72003,
+            "stop": 13,
+            "anchor": 1789743721072,
+            "departedAt": 1789743736099,
+            "knownAt": 1789744336099,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71867,
+          "stop": 11,
+          "anchor": 1789742536057,
+          "departedAt": 1789742780966,
+          "knownAt": 1789743395915.0,
+          "duration": 225.024,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 71998,
+            "stop": 117,
+            "anchor": 1789743666069,
+            "departedAt": 1789743706103,
+            "knownAt": 1789744321086.0,
+            "duration": 35.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72003,
+            "stop": 13,
+            "anchor": 1789743721072,
+            "departedAt": 1789743736099,
+            "knownAt": 1789744336099,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72119,
+            "stop": 121,
+            "anchor": 1789743781076,
+            "departedAt": 1789744526193,
+            "knownAt": 1789745156224.0,
+            "duration": 680.11,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 715.141,
+        "lastRestAgeSec": 1453.297,
+        "latestOtherRouteAnchor": null
+      }
+    }
+  },
+  {
+    "id": 72447,
+    "bus": "#309",
+    "day": "2026-09-18",
+    "a": 1789746600650,
+    "y": 650.044,
+    "lap": 2949.607,
+    "stop": 11,
+    "ready": 1789747370694,
+    "split": "development",
+    "lapSupported": true,
+    "ownUnionDeparture": 1789745461621,
+    "ownUnionAge": 1139.029,
+    "histories": {
+      "primary": {
+        "features": [
+          2.4352173315006347,
+          0.0,
+          2.449709719241383,
+          0.0,
+          0.4035187707774817,
+          0.0,
+          0.1537791822591525,
+          0.0,
+          2.5053871518503197,
+          1.0,
+          0.3261263888888889,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71987,
+            "stop": 11,
+            "anchor": 1789742990973,
+            "departedAt": 1789743636070,
+            "knownAt": 1789743756070,
+            "duration": 625.098,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72215,
+            "stop": 121,
+            "anchor": 1789744726519,
+            "departedAt": 1789745426595,
+            "knownAt": 1789745546595,
+            "duration": 635.099,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72117,
+            "stop": 117,
+            "anchor": 1789744496255,
+            "departedAt": 1789744536128,
+            "knownAt": 1789744656128,
+            "duration": 29.825,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72122,
+            "stop": 13,
+            "anchor": 1789744551124,
+            "departedAt": 1789744571124,
+            "knownAt": 1789744691124,
+            "duration": 9.974,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71987,
+          "stop": 11,
+          "anchor": 1789742990973,
+          "departedAt": 1789743636070,
+          "knownAt": 1789743756070,
+          "duration": 625.098,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72117,
+            "stop": 117,
+            "anchor": 1789744496255,
+            "departedAt": 1789744536128,
+            "knownAt": 1789744656128,
+            "duration": 29.825,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72122,
+            "stop": 13,
+            "anchor": 1789744551124,
+            "departedAt": 1789744571124,
+            "knownAt": 1789744691124,
+            "duration": 9.974,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72215,
+            "stop": 121,
+            "anchor": 1789744726519,
+            "departedAt": 1789745426595,
+            "knownAt": 1789745546595,
+            "duration": 635.099,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 674.898,
+        "lastRestAgeSec": 1174.055,
+        "latestOtherRouteAnchor": null
+      },
+      "earlier120": {
+        "features": [
+          2.4352173315006347,
+          0.0,
+          2.449709719241383,
+          0.0,
+          0.4035187707774817,
+          0.0,
+          0.1537791822591525,
+          0.0,
+          2.5053871518503197,
+          1.0,
+          0.3261263888888889,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71987,
+            "stop": 11,
+            "anchor": 1789742990973,
+            "departedAt": 1789743636070,
+            "knownAt": 1789743756070,
+            "duration": 625.098,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72215,
+            "stop": 121,
+            "anchor": 1789744726519,
+            "departedAt": 1789745426595,
+            "knownAt": 1789745546595,
+            "duration": 635.099,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72117,
+            "stop": 117,
+            "anchor": 1789744496255,
+            "departedAt": 1789744536128,
+            "knownAt": 1789744656128,
+            "duration": 29.825,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72122,
+            "stop": 13,
+            "anchor": 1789744551124,
+            "departedAt": 1789744571124,
+            "knownAt": 1789744691124,
+            "duration": 9.974,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71987,
+          "stop": 11,
+          "anchor": 1789742990973,
+          "departedAt": 1789743636070,
+          "knownAt": 1789743756070,
+          "duration": 625.098,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72117,
+            "stop": 117,
+            "anchor": 1789744496255,
+            "departedAt": 1789744536128,
+            "knownAt": 1789744656128,
+            "duration": 29.825,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72122,
+            "stop": 13,
+            "anchor": 1789744551124,
+            "departedAt": 1789744571124,
+            "knownAt": 1789744691124,
+            "duration": 9.974,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72215,
+            "stop": 121,
+            "anchor": 1789744726519,
+            "departedAt": 1789745426595,
+            "knownAt": 1789745546595,
+            "duration": 635.099,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 674.898,
+        "lastRestAgeSec": 1174.055,
+        "latestOtherRouteAnchor": null
+      },
+      "maxgap600": {
+        "features": [
+          2.4352173315006347,
+          0.0,
+          2.449709719241383,
+          0.0,
+          0.4035187707774817,
+          0.0,
+          0.1537791822591525,
+          0.0,
+          2.5053871518503197,
+          1.0,
+          0.3261263888888889,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 71987,
+            "stop": 11,
+            "anchor": 1789742990973,
+            "departedAt": 1789743636070,
+            "knownAt": 1789744246068.0,
+            "duration": 625.098,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72215,
+            "stop": 121,
+            "anchor": 1789744726519,
+            "departedAt": 1789745426595,
+            "knownAt": 1789746031636.0,
+            "duration": 635.099,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72117,
+            "stop": 117,
+            "anchor": 1789744496255,
+            "departedAt": 1789744536128,
+            "knownAt": 1789745151048.0,
+            "duration": 29.825,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72122,
+            "stop": 13,
+            "anchor": 1789744551124,
+            "departedAt": 1789744571124,
+            "knownAt": 1789745181149.0,
+            "duration": 9.974,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 71987,
+          "stop": 11,
+          "anchor": 1789742990973,
+          "departedAt": 1789743636070,
+          "knownAt": 1789744246068.0,
+          "duration": 625.098,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72117,
+            "stop": 117,
+            "anchor": 1789744496255,
+            "departedAt": 1789744536128,
+            "knownAt": 1789745151048.0,
+            "duration": 29.825,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72122,
+            "stop": 13,
+            "anchor": 1789744551124,
+            "departedAt": 1789744571124,
+            "knownAt": 1789745181149.0,
+            "duration": 9.974,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72215,
+            "stop": 121,
+            "anchor": 1789744726519,
+            "departedAt": 1789745426595,
+            "knownAt": 1789746031636.0,
+            "duration": 635.099,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 674.898,
+        "lastRestAgeSec": 1174.055,
+        "latestOtherRouteAnchor": null
+      }
+    }
+  },
+  {
+    "id": 72691,
+    "bus": "#306",
+    "day": "2026-09-18",
+    "a": 1789748750815,
+    "y": 565.855,
+    "lap": 3058.109,
+    "stop": 11,
+    "ready": 1789749436670,
+    "split": "development",
+    "lapSupported": true,
+    "ownUnionDeparture": 1789747415712,
+    "ownUnionAge": 1335.103,
+    "histories": {
+      "primary": {
+        "features": [
+          2.5466274026593734,
+          0.0,
+          1.981173867798137,
+          0.0,
+          0.7342171443332839,
+          0.0,
+          0.0,
+          0.0,
+          2.1204755137312667,
+          1.0,
+          0.3916922222222222,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 72247,
+            "stop": 11,
+            "anchor": 1789744956697,
+            "departedAt": 1789745677374,
+            "knownAt": 1789745797374,
+            "duration": 705.839,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72466,
+            "stop": 121,
+            "anchor": 1789746880675,
+            "departedAt": 1789747340723,
+            "knownAt": 1789747460723,
+            "duration": 375.075,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72408,
+            "stop": 117,
+            "anchor": 1789746650663,
+            "departedAt": 1789746725684,
+            "knownAt": 1789746845684,
+            "duration": 65.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72413,
+            "stop": 13,
+            "anchor": 1789746745636,
+            "departedAt": 1789746760714,
+            "knownAt": 1789746880714,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 72247,
+          "stop": 11,
+          "anchor": 1789744956697,
+          "departedAt": 1789745677374,
+          "knownAt": 1789745797374,
+          "duration": 705.839,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72408,
+            "stop": 117,
+            "anchor": 1789746650663,
+            "departedAt": 1789746725684,
+            "knownAt": 1789746845684,
+            "duration": 65.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72413,
+            "stop": 13,
+            "anchor": 1789746745636,
+            "departedAt": 1789746760714,
+            "knownAt": 1789746880714,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72466,
+            "stop": 121,
+            "anchor": 1789746880675,
+            "departedAt": 1789747340723,
+            "knownAt": 1789747460723,
+            "duration": 375.075,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 440.106,
+        "lastRestAgeSec": 1410.092,
+        "latestOtherRouteAnchor": null
+      },
+      "earlier120": {
+        "features": [
+          2.5466274026593734,
+          0.0,
+          1.981173867798137,
+          0.0,
+          0.7342171443332839,
+          0.0,
+          0.0,
+          0.0,
+          2.1204755137312667,
+          1.0,
+          0.3916922222222222,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 72247,
+            "stop": 11,
+            "anchor": 1789744956697,
+            "departedAt": 1789745677374,
+            "knownAt": 1789745797374,
+            "duration": 705.839,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72466,
+            "stop": 121,
+            "anchor": 1789746880675,
+            "departedAt": 1789747340723,
+            "knownAt": 1789747460723,
+            "duration": 375.075,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72408,
+            "stop": 117,
+            "anchor": 1789746650663,
+            "departedAt": 1789746725684,
+            "knownAt": 1789746845684,
+            "duration": 65.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72413,
+            "stop": 13,
+            "anchor": 1789746745636,
+            "departedAt": 1789746760714,
+            "knownAt": 1789746880714,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 72247,
+          "stop": 11,
+          "anchor": 1789744956697,
+          "departedAt": 1789745677374,
+          "knownAt": 1789745797374,
+          "duration": 705.839,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72408,
+            "stop": 117,
+            "anchor": 1789746650663,
+            "departedAt": 1789746725684,
+            "knownAt": 1789746845684,
+            "duration": 65.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72413,
+            "stop": 13,
+            "anchor": 1789746745636,
+            "departedAt": 1789746760714,
+            "knownAt": 1789746880714,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72466,
+            "stop": 121,
+            "anchor": 1789746880675,
+            "departedAt": 1789747340723,
+            "knownAt": 1789747460723,
+            "duration": 375.075,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 440.106,
+        "lastRestAgeSec": 1410.092,
+        "latestOtherRouteAnchor": null
+      },
+      "maxgap600": {
+        "features": [
+          2.5466274026593734,
+          0.0,
+          1.981173867798137,
+          0.0,
+          0.7342171443332839,
+          0.0,
+          0.0,
+          0.0,
+          2.1204755137312667,
+          1.0,
+          0.3916922222222222,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 72247,
+            "stop": 11,
+            "anchor": 1789744956697,
+            "departedAt": 1789745677374,
+            "knownAt": 1789746287350.0,
+            "duration": 705.839,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72466,
+            "stop": 121,
+            "anchor": 1789746880675,
+            "departedAt": 1789747340723,
+            "knownAt": 1789747980751.0,
+            "duration": 375.075,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72408,
+            "stop": 117,
+            "anchor": 1789746650663,
+            "departedAt": 1789746725684,
+            "knownAt": 1789747345628.0,
+            "duration": 65.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "13": {
+            "id": 72413,
+            "stop": 13,
+            "anchor": 1789746745636,
+            "departedAt": 1789746760714,
+            "knownAt": 1789747360714,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 72247,
+          "stop": 11,
+          "anchor": 1789744956697,
+          "departedAt": 1789745677374,
+          "knownAt": 1789746287350.0,
+          "duration": 705.839,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72408,
+            "stop": 117,
+            "anchor": 1789746650663,
+            "departedAt": 1789746725684,
+            "knownAt": 1789747345628.0,
+            "duration": 65.031,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          {
+            "id": 72413,
+            "stop": 13,
+            "anchor": 1789746745636,
+            "departedAt": 1789746760714,
+            "knownAt": 1789747360714,
+            "duration": 0,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72466,
+            "stop": 121,
+            "anchor": 1789746880675,
+            "departedAt": 1789747340723,
+            "knownAt": 1789747980751.0,
+            "duration": 375.075,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 440.106,
+        "lastRestAgeSec": 1410.092,
+        "latestOtherRouteAnchor": null
+      }
+    }
+  },
+  {
+    "id": 72799,
+    "bus": "#316",
+    "day": "2026-09-18",
+    "a": 1789749706635,
+    "y": 430.043,
+    "lap": 3266.027,
+    "stop": 11,
+    "ready": 1789750256678,
+    "split": "development",
+    "lapSupported": true,
+    "ownUnionDeparture": 1789748165850,
+    "ownUnionAge": 1540.785,
+    "histories": {
+      "primary": {
+        "features": [
+          2.12196608603924,
+          0.0,
+          2.140477843450331,
+          0.0,
+          0.0802734502811825,
+          0.0,
+          0.07962723676206426,
+          0.0,
+          2.1598649461099346,
+          1.0,
+          0.4446452777777778,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 72363,
+            "stop": 11,
+            "anchor": 1789745959508,
+            "departedAt": 1789746425604,
+            "knownAt": 1789746545604,
+            "duration": 440.852,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72557,
+            "stop": 121,
+            "anchor": 1789747580727,
+            "departedAt": 1789748105912,
+            "knownAt": 1789748225912,
+            "duration": 450.21,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72475,
+            "stop": 117,
+            "anchor": 1789747390734,
+            "departedAt": 1789747410695,
+            "knownAt": 1789747530695,
+            "duration": 5.015,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          "13": {
+            "id": 72479,
+            "stop": 13,
+            "anchor": 1789747445717,
+            "departedAt": 1789747450690,
+            "knownAt": 1789747570690,
+            "duration": 4.973,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 72363,
+          "stop": 11,
+          "anchor": 1789745959508,
+          "departedAt": 1789746425604,
+          "knownAt": 1789746545604,
+          "duration": 440.852,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72475,
+            "stop": 117,
+            "anchor": 1789747390734,
+            "departedAt": 1789747410695,
+            "knownAt": 1789747530695,
+            "duration": 5.015,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72479,
+            "stop": 13,
+            "anchor": 1789747445717,
+            "departedAt": 1789747450690,
+            "knownAt": 1789747570690,
+            "duration": 4.973,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72557,
+            "stop": 121,
+            "anchor": 1789747580727,
+            "departedAt": 1789748105912,
+            "knownAt": 1789748225912,
+            "duration": 450.21,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 460.198,
+        "lastRestAgeSec": 1600.723,
+        "latestOtherRouteAnchor": null
+      },
+      "earlier120": {
+        "features": [
+          2.12196608603924,
+          0.0,
+          2.140477843450331,
+          0.0,
+          0.0802734502811825,
+          0.0,
+          0.07962723676206426,
+          0.0,
+          2.1598649461099346,
+          1.0,
+          0.4446452777777778,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 72363,
+            "stop": 11,
+            "anchor": 1789745959508,
+            "departedAt": 1789746425604,
+            "knownAt": 1789746545604,
+            "duration": 440.852,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72557,
+            "stop": 121,
+            "anchor": 1789747580727,
+            "departedAt": 1789748105912,
+            "knownAt": 1789748225912,
+            "duration": 450.21,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72475,
+            "stop": 117,
+            "anchor": 1789747390734,
+            "departedAt": 1789747410695,
+            "knownAt": 1789747530695,
+            "duration": 5.015,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          "13": {
+            "id": 72479,
+            "stop": 13,
+            "anchor": 1789747445717,
+            "departedAt": 1789747450690,
+            "knownAt": 1789747570690,
+            "duration": 4.973,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 72363,
+          "stop": 11,
+          "anchor": 1789745959508,
+          "departedAt": 1789746425604,
+          "knownAt": 1789746545604,
+          "duration": 440.852,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72475,
+            "stop": 117,
+            "anchor": 1789747390734,
+            "departedAt": 1789747410695,
+            "knownAt": 1789747530695,
+            "duration": 5.015,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72479,
+            "stop": 13,
+            "anchor": 1789747445717,
+            "departedAt": 1789747450690,
+            "knownAt": 1789747570690,
+            "duration": 4.973,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72557,
+            "stop": 121,
+            "anchor": 1789747580727,
+            "departedAt": 1789748105912,
+            "knownAt": 1789748225912,
+            "duration": 450.21,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 460.198,
+        "lastRestAgeSec": 1600.723,
+        "latestOtherRouteAnchor": null
+      },
+      "maxgap600": {
+        "features": [
+          2.12196608603924,
+          0.0,
+          2.140477843450331,
+          0.0,
+          0.0802734502811825,
+          0.0,
+          0.07962723676206426,
+          0.0,
+          2.1598649461099346,
+          1.0,
+          0.4446452777777778,
+          0.0,
+          0.0
+        ],
+        "latest": {
+          "11": {
+            "id": 72363,
+            "stop": 11,
+            "anchor": 1789745959508,
+            "departedAt": 1789746425604,
+            "knownAt": 1789747035601.0,
+            "duration": 440.852,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "121": {
+            "id": 72557,
+            "stop": 121,
+            "anchor": 1789747580727,
+            "departedAt": 1789748105912,
+            "knownAt": 1789748720914.0,
+            "duration": 450.21,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          },
+          "117": {
+            "id": 72475,
+            "stop": 117,
+            "anchor": 1789747390734,
+            "departedAt": 1789747410695,
+            "knownAt": 1789748040700.0,
+            "duration": 5.015,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          "13": {
+            "id": 72479,
+            "stop": 13,
+            "anchor": 1789747445717,
+            "departedAt": 1789747450690,
+            "knownAt": 1789748060633.0,
+            "duration": 4.973,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          }
+        },
+        "validLap": true,
+        "origin": {
+          "id": 72363,
+          "stop": 11,
+          "anchor": 1789745959508,
+          "departedAt": 1789746425604,
+          "knownAt": 1789747035601.0,
+          "duration": 440.852,
+          "reason": "valid",
+          "clockUsable": true,
+          "outcome": "stopped"
+        },
+        "currentLapEvents": [
+          {
+            "id": 72475,
+            "stop": 117,
+            "anchor": 1789747390734,
+            "departedAt": 1789747410695,
+            "knownAt": 1789748040700.0,
+            "duration": 5.015,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72479,
+            "stop": 13,
+            "anchor": 1789747445717,
+            "departedAt": 1789747450690,
+            "knownAt": 1789748060633.0,
+            "duration": 4.973,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "passed"
+          },
+          {
+            "id": 72557,
+            "stop": 121,
+            "anchor": 1789747580727,
+            "departedAt": 1789748105912,
+            "knownAt": 1789748720914.0,
+            "duration": 450.21,
+            "reason": "valid",
+            "clockUsable": true,
+            "outcome": "stopped"
+          }
+        ],
+        "coveredStops": [
+          13,
+          117,
+          121
+        ],
+        "observedRestSumSec": 460.198,
+        "lastRestAgeSec": 1600.723,
+        "latestOtherRouteAnchor": null
+      }
+    }
+  }
+]

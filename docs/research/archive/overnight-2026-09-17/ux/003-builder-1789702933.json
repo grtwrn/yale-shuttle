@@ -1,0 +1,11 @@
+{
+  "outcome": "candidate",
+  "summary": "Make feedback errors visible and screenshot actions keyboard accessible\nAdded named fields, selected priorities, announced status and guarded focus restoration. Evidence and checkpoints saved in ux/ux-03. HEAD preserved; ready for independent review.",
+  "next_task": "Review ux/ux-03/REPORT.md, especially attachment focus, failed-send draft preservation and focus after asynchronous replies. Controller retains CI/publication gates. Next builder task: UX-04 historical/forecast detail hierarchy.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-03/verify.sh — exit 0: 40 tests, backend/frontend typechecks, Vite build, mobile and desktop browser regressions.",
+    "From services/shuttle-v2: OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-03 flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node scripts/feedback-accessibility-check.mjs — exit 0, including actual mobile taps.",
+    "node --check services/shuttle-v2/scripts/feedback-accessibility-check.mjs; git diff --check; git diff --cached --exit-code — passed.",
+    "Full suite and complete staging smoke remain controller/CI gates."
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "frames": 78,
+    "fixtureMaxDifference": 3768,
+    "fixtureDifferentRows": 1828,
+    "trackingAndOccurrenceAvailabilityMatch": true,
+    "exactForecastMatch": false,
+    "scope": "Fresh-process checkpoint replay WITHOUT observer. Quantitative paired candidate scoring requires resolving divergence or replaying the continuous prefix."
+  },
+  "records": []
+}

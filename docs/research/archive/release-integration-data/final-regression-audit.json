@@ -1,0 +1,172 @@
+[
+  {
+    "id": 67957,
+    "bus": "#316",
+    "hour": 16,
+    "holdSec": 350.107,
+    "polls": 85,
+    "maxGapSec": 5.252,
+    "pins": [
+      "2026-09-17T20:39:11.500"
+    ],
+    "plateaus": [
+      {
+        "start": 1789677551500,
+        "end": 1789677576522,
+        "lat": 41.324343,
+        "lon": -72.928124,
+        "n": 6,
+        "seconds": 25.022
+      },
+      {
+        "start": 1789677591513,
+        "end": 1789677601714,
+        "lat": 41.324823,
+        "lon": -72.928283,
+        "n": 3,
+        "seconds": 10.201
+      },
+      {
+        "start": 1789677606531,
+        "end": 1789677821618,
+        "lat": 41.324743,
+        "lon": -72.928631,
+        "n": 44,
+        "seconds": 215.087
+      },
+      {
+        "start": 1789677841537,
+        "end": 1789677851548,
+        "lat": 41.323885,
+        "lon": -72.928906,
+        "n": 3,
+        "seconds": 10.011
+      },
+      {
+        "start": 1789677861536,
+        "end": 1789677901607,
+        "lat": 41.324279,
+        "lon": -72.928467,
+        "n": 9,
+        "seconds": 40.071
+      },
+      {
+        "start": 1789677921541,
+        "end": 1789677931600,
+        "lat": 41.325205,
+        "lon": -72.927825,
+        "n": 3,
+        "seconds": 10.059
+      }
+    ],
+    "finalPlateauSec": 40.071,
+    "firstFinalMoveLagSec": 4.953,
+    "connectedTargets": [
+      {
+        "sourceId": 67957,
+        "target": 48,
+        "targetVisitId": 67974,
+        "targetOutcome": "passed",
+        "targetClosestM": 5.060211565844647,
+        "legIds": [
+          63058,
+          63067,
+          63071
+        ]
+      },
+      {
+        "sourceId": 67957,
+        "target": 4,
+        "targetVisitId": 68015,
+        "targetOutcome": "stopped",
+        "targetClosestM": 56.47518428348255,
+        "legIds": [
+          63058,
+          63067,
+          63071,
+          63074,
+          63098,
+          63103
+        ]
+      }
+    ],
+    "decision": "retain: continuous recorded stop and onward movement; no proven measurement error"
+  },
+  {
+    "id": 68304,
+    "bus": "#300",
+    "hour": 17,
+    "holdSec": 285.084,
+    "polls": 72,
+    "maxGapSec": 5.157,
+    "pins": [
+      "2026-09-17T21:25:21.828"
+    ],
+    "plateaus": [
+      {
+        "start": 1789680326833,
+        "end": 1789680351823,
+        "lat": 41.324345,
+        "lon": -72.928135,
+        "n": 6,
+        "seconds": 24.99
+      },
+      {
+        "start": 1789680361820,
+        "end": 1789680371842,
+        "lat": 41.324822,
+        "lon": -72.928291,
+        "n": 3,
+        "seconds": 10.022
+      },
+      {
+        "start": 1789680376847,
+        "end": 1789680541934,
+        "lat": 41.324724,
+        "lon": -72.928629,
+        "n": 34,
+        "seconds": 165.087
+      },
+      {
+        "start": 1789680566912,
+        "end": 1789680606912,
+        "lat": 41.324271,
+        "lon": -72.92847,
+        "n": 9,
+        "seconds": 40.0
+      }
+    ],
+    "finalPlateauSec": 40.0,
+    "firstFinalMoveLagSec": 4.947,
+    "connectedTargets": [
+      {
+        "sourceId": 68304,
+        "target": 48,
+        "targetVisitId": 68322,
+        "targetOutcome": "stopped",
+        "targetClosestM": 9.902489568987745,
+        "legIds": [
+          63394,
+          63399,
+          63402
+        ]
+      },
+      {
+        "sourceId": 68304,
+        "target": 4,
+        "targetVisitId": 68360,
+        "targetOutcome": "stopped",
+        "targetClosestM": 63.76873858687667,
+        "legIds": [
+          63394,
+          63399,
+          63402,
+          63418,
+          63436,
+          63443
+        ]
+      }
+    ],
+    "decision": "retain: continuous recorded stop and onward movement; no proven measurement error"
+  }
+]

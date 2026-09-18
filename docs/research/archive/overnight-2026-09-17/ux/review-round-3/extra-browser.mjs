@@ -1,0 +1,143 @@
+import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import assert from 'node:assert/strict';
+const service = process.cwd();
+const out = '/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-round-3';
+const { chromium } = createRequire(service + '/package.json')('playwright-core');
+const { seedTestId } = await import(service + '/scripts/testId.mjs');
+const feed = JSON.parse(await fs.readFile(service + '/web/src/__fixtures__/buses-payload.json', 'utf8'));
+feed.buses = [];
+feed.stop_names = Object.fromEntries(JSON.parse(await fs.readFile(service + '/src/server/__fixtures__/stops.json', 'utf8')).map(s => [s.id, s.name]));
+const draft = {fromText:'Review origin',fromLL:{lat:41.3113,lon:-72.9288},toText:'Review destination',toLL:{lat:41.3037,lon:-72.9322},tripTime:'',expandedKey:null};
+const matches = [{display_name:'First review match',lat:41.3113,lon:-72.9288,class:'amenity',type:'library'}, {display_name:'Second review match with a long destination name',lat:41.3037,lon:-72.9322,class:'amenity',type:'library'}];
+const report = {checks:[],errors:[],queries:[],resourcesClosed:false};
+const browser = await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
+let ctx;
+let page;
+try {
+  ctx = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block',timezoneId:'America/New_York'});
+  await seedTestId(ctx);
+  await ctx.addInitScript(d => {
+    if (!sessionStorage.getItem('review-seeded')) {
+      sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({...d,savedAt:Date.now()}));
+      sessionStorage.setItem('review-seeded','yes');
+    }
+  },draft);
+  page = await ctx.newPage();
+  page.setDefaultTimeout(8000);
+  page.on('pageerror',e => report.errors.push(e.message));
+  let failed = false;
+  await page.route('**/*',async route => {
+    const u = new URL(route.request().url());
+    if (u.hostname !== 'shuttle.test') return route.abort();
+    if(u.pathname === '/api/buses') return route.fulfill({json:feed});
+    if(u.pathname === '/api/weather') return route.fulfill({status:204});
+    if(u.pathname === '/api/geocode') {
+      report.queries.push(u.searchParams.get('q'));
+      return route.fulfill(failed ? {status:503,json:{}} : {json:{results:matches}});
+    }
+    if(u.pathname.startsWith('/api/')) {
+      assert.notEqual(u.pathname,'/api/report');
+      return route.fulfill({json:{reports:[],results:[],routes:[]}});
+    }
+    const f = u.pathname === '/' ? '/index.html' : u.pathname;
+    try { return route.fulfill({body:await fs.readFile(service+'/web/dist'+f),contentType:f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':'text/html'}); }
+    catch {return route.fulfill({status:404});}
+  });
+  await page.goto('https://shuttle.test',{waitUntil:'domcontentloaded'});
+  const nav = view => page.getByRole('button',{name:view,exact:true});
+  const toSummary = () => page.getByRole('button',{name:/^To 🏁/});
+  const fromSummary = () => page.getByRole('button',{name:/^From 📍/});
+  const fromInput = page.getByRole('combobox',{name:'From',exact:true});
+  const toInput = page.getByRole('combobox',{name:'To',exact:true});
+  await toSummary().waitFor();
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now()+50));
+  await toSummary().click();
+  await page.clock.runFor(32);
+  assert(await toInput.evaluate(e => document.activeElement === e));
+  await nav('trip').focus();
+  await toInput.focus();
+  await toInput.fill('new destination after refocus');
+  await page.clock.runFor(400);
+  await page.getByRole('option').nth(1).waitFor();
+  assert.equal(await toInput.inputValue(),'new destination after refocus');
+  assert(await toInput.evaluate(e => document.activeElement === e));
+  assert.equal(await page.getByRole('listbox',{name:'To suggestions'}).count(),1);
+  report.checks.push('To blur/refocus before 180ms preserves the new editor and query when the old blur deadline passes.');
+  await page.screenshot({path:out+'/review-to-refocus-390.png'});
+  await toInput.press('ArrowUp');
+  await toInput.press('Enter');
+  await toSummary().waitFor();
+  await nav('trip').focus();
+  await page.clock.runFor(32);
+  assert(await nav('trip').evaluate(e => document.activeElement === e));
+  assert.match(await toSummary().innerText(),/Second review match/);
+  report.checks.push('Focus moved to navigation between selection and requestAnimationFrame stays there.');
+  await toSummary().focus();
+  await toSummary().press('Enter');
+  await page.clock.runFor(32);
+  await toInput.fill('rapid destination reopen');
+  await page.clock.runFor(400);
+  await page.getByRole('option').nth(1).waitFor();
+  assert.equal(await toInput.inputValue(),'rapid destination reopen');
+  assert(await toInput.evaluate(e => document.activeElement === e));
+  await toInput.press('ArrowDown');
+  await toInput.press('Enter');
+  await page.clock.runFor(32);
+  assert(await toSummary().evaluate(e => document.activeElement === e));
+  report.checks.push('To selection followed by immediate keyboard reopening preserves the reopened editor; the next pick returns focus.');
+  await page.clock.runFor(220);
+  const saved = await page.evaluate(() => JSON.parse(sessionStorage.getItem('shuttle-trip-draft')));
+  const priorQueries = report.queries.length;
+  await fromSummary().click();
+  await page.clock.runFor(32);
+  await fromInput.fill('uncommitted new origin');
+  await nav('map').click();
+  await nav('trip').click();
+  await page.clock.runFor(500);
+  await fromSummary().waitFor();
+  assert.match(await fromSummary().innerText(),/Review origin/);
+  assert.equal(report.queries.length,priorQueries,'unmounted blur/debounce must not fetch');
+  const after = await page.evaluate(() => JSON.parse(sessionStorage.getItem('shuttle-trip-draft')));
+  for (const k of ['fromText','fromLL','toText','toLL','tripTime','expandedKey']) assert.deepEqual(after[k],saved[k]);
+  assert(await nav('trip').evaluate(e => document.activeElement === e));
+  report.checks.push('View change during an uncommitted From edit cancels delayed blur/debounce; prior endpoints persist and navigation retains focus.');
+  await fromSummary().click();
+  await page.clock.runFor(32);
+  failed = true;
+  await fromInput.fill('failed origin');
+  await page.clock.runFor(350);
+  await page.getByRole('alert').waitFor();
+  assert.match(await page.getByRole('alert').innerText(),/Search is unavailable/);
+  assert.equal(await fromInput.getAttribute('aria-expanded'),'false');
+  failed = false;
+  await fromInput.fill('recovered origin');
+  await page.clock.runFor(350);
+  await page.getByRole('option').nth(1).waitFor();
+  assert.equal(await fromInput.getAttribute('aria-expanded'),'true');
+  assert.equal(await page.getByRole('alert').count(),0);
+  await fromInput.press('ArrowDown');
+  const active = await fromInput.getAttribute('aria-activedescendant');
+  assert.equal(await page.locator('#'+active).getAttribute('aria-selected'),'true');
+  await fromInput.press('Enter');
+  await page.clock.runFor(32);
+  assert(await fromSummary().evaluate(e => document.activeElement === e));
+  report.checks.push('From failure is announced and clears on successful recovery; active descendant names a selected rendered option.');
+  await page.clock.resume();
+  await page.reload({waitUntil:'domcontentloaded'});
+  await fromSummary().waitFor();
+  assert.match(await fromSummary().innerText(),/First review match/);
+  assert.match(await toSummary().innerText(),/First review match/);
+  assert.deepEqual(report.errors,[]);
+  report.checks.push('Final selected endpoints survive reload without stale editor state.');
+  report.completed = true;
+} finally {
+  if (!report.completed && page) report.failureSnapshot = await page.locator('body').ariaSnapshot().catch(() => 'unavailable');
+  if (page) await page.close();
+  if (ctx) await ctx.close();
+  await browser.close();
+  report.resourcesClosed = true;
+  await fs.writeFile(out+'/extra-browser.json',JSON.stringify(report,null,2));
+}
+console.log(JSON.stringify(report,null,2));

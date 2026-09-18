@@ -1,0 +1,13 @@
+{
+  "outcome": "research",
+  "summary": "Localized ten difficult ETA cases to different downstream delays and future Winchester waits. No common clock correction is supported. Saved reproducible traces, both-occurrence accounting, review request and updated handoff. Application files and HEAD remain unchanged.",
+  "next_task": "Independently review cycle-2/TRACE_REPORT.md, reusing saved traces and component snapshots. Then advance backlog4’s service-role persistence experiment, distinguishing it from the already-tested two-departure phase predictor.",
+  "tests": [
+    "From services/shuttle-v2: flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/trace_current.mts — passed; 11,107 frames and 163 server parity checks.",
+    "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/trace_outcomes.py — passed; 33 connected identities, 12 incomplete second chains retained.",
+    "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/score_trace.py — passed; 242 archived forecasts matched exactly, 177 checkpoints scored, 14 unavailable forecasts retained.",
+    "From services/shuttle-v2: flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/probe_components.mts — passed after documented harness correction; 25 exact row comparisons and 5,120 sample identities.",
+    "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/audit_intermediate_raw.py — passed; ten intermediate-stop GPS audits.",
+    "git diff --check && git diff --exit-code && git diff --cached --exit-code && git rev-parse HEAD && git status --porcelain — passed; clean checkout at 40af3c0. No application typecheck, full suite, build or staging run this round."
+  ]
+}

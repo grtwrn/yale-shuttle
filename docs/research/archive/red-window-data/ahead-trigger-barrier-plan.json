@@ -1,0 +1,14 @@
+{
+  "createdAtUTC": "2026-09-18T00:29:05.573184+00:00",
+  "arms": [
+    "reached_barrier",
+    "cleared_barrier",
+    "reached_clock_interactions"
+  ],
+  "motivation": "User says wait UNTIL predecessor reaches X: latch already-observed events from its selected prior-source departure, rather than only recent120s pulses.",
+  "postFirstScreen": true,
+  "penalty": 10,
+  "features": "Presence/headway controls plus all-stop reached or cleared flags; final family also interacts reached flags with first-harmonic current15min clock.",
+  "noForwardLeakage": "Latch uses event known<=risk-bin start and physical event>=selected already-confirmed predecessor source departure. Never uses whether predecessor eventually serves another stop.",
+  "selection": "Support at least5trainingepisodes and2trainingdates; exact duplicate training columns collapsed; all family results reported."
+}

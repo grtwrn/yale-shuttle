@@ -1,0 +1,4972 @@
+{
+  "method": "Selected-case measurement audit, no fitting. Primary availability=max(departure+120s,departure+confirmSec+15s,firstMovedAt+confirmSec); strict sensitivity=departure+600s+confirmSec. These are proxies, not exact publication times. Selected examples are descriptive and cannot establish a driver rule.",
+  "redSequence": [
+    {
+      "index": 0,
+      "id": 121,
+      "name": "Union Station (N)"
+    },
+    {
+      "index": 1,
+      "id": 115,
+      "name": "State St Station"
+    },
+    {
+      "index": 2,
+      "id": 45,
+      "name": "Court / Olive"
+    },
+    {
+      "index": 3,
+      "id": 75,
+      "name": "Olive / Chapel"
+    },
+    {
+      "index": 4,
+      "id": 30,
+      "name": "Chapel / Church"
+    },
+    {
+      "index": 5,
+      "id": 31,
+      "name": "Chapel / College"
+    },
+    {
+      "index": 6,
+      "id": 41,
+      "name": "College / Wall (N)"
+    },
+    {
+      "index": 7,
+      "id": 126,
+      "name": "Wall / Church"
+    },
+    {
+      "index": 8,
+      "id": 36,
+      "name": "Church / Grove"
+    },
+    {
+      "index": 9,
+      "id": 128,
+      "name": "Whitney / Audubon"
+    },
+    {
+      "index": 10,
+      "id": 120,
+      "name": "Trumbull / Hillhouse"
+    },
+    {
+      "index": 11,
+      "id": 3,
+      "name": "130 Prospect Street (N)"
+    },
+    {
+      "index": 12,
+      "id": 147,
+      "name": "Winchester / Sachem"
+    },
+    {
+      "index": 13,
+      "id": 27,
+      "name": "Canal / Munson"
+    },
+    {
+      "index": 14,
+      "id": 11,
+      "name": "344 Winchester"
+    },
+    {
+      "index": 15,
+      "id": 146,
+      "name": "Winchester / Division"
+    },
+    {
+      "index": 16,
+      "id": 49,
+      "name": "Division / Sheffield"
+    },
+    {
+      "index": 17,
+      "id": 48,
+      "name": "Division / Prospect"
+    },
+    {
+      "index": 18,
+      "id": 104,
+      "name": "Prospect / Hillside"
+    },
+    {
+      "index": 19,
+      "id": 113,
+      "name": "SCL"
+    },
+    {
+      "index": 20,
+      "id": 4,
+      "name": "130 Prospect Street (S)"
+    },
+    {
+      "index": 21,
+      "id": 42,
+      "name": "College / Wall (S)"
+    },
+    {
+      "index": 22,
+      "id": 98,
+      "name": "Phelps Gate"
+    },
+    {
+      "index": 23,
+      "id": 38,
+      "name": "College / Crown"
+    },
+    {
+      "index": 24,
+      "id": 39,
+      "name": "College / George"
+    },
+    {
+      "index": 25,
+      "id": 72,
+      "name": "LEPH / 60 College"
+    },
+    {
+      "index": 26,
+      "id": 117,
+      "name": "Gilbert / Cedar"
+    },
+    {
+      "index": 27,
+      "id": 13,
+      "name": "Amistad / Cedar"
+    },
+    {
+      "index": 28,
+      "id": 14,
+      "name": "Amistad / Church St South"
+    }
+  ],
+  "cedarStopsOnRed": [
+    117,
+    13
+  ],
+  "cedarNamesOffRed": [
+    {
+      "id": 8,
+      "name": "300 Cedar (TAC)"
+    },
+    {
+      "id": 10,
+      "name": "333 Cedar"
+    },
+    {
+      "id": 17,
+      "name": "Amistand / Cedar Weekend Blue"
+    },
+    {
+      "id": 43,
+      "name": "Congress / Cedar"
+    },
+    {
+      "id": 149,
+      "name": "York / Cedar"
+    }
+  ],
+  "cedarSummary": [
+    {
+      "stop": 117,
+      "name": "Gilbert / Cedar",
+      "visits": 295,
+      "outcomes": {
+        "stopped": 257,
+        "passed": 38
+      },
+      "gapCount": 0,
+      "missingPin": 0,
+      "passedWithPositivePinnedSpan": 38
+    },
+    {
+      "stop": 13,
+      "name": "Amistad / Cedar",
+      "visits": 292,
+      "outcomes": {
+        "passed": 258,
+        "stopped": 34
+      },
+      "gapCount": 0,
+      "missingPin": 2,
+      "passedWithPositivePinnedSpan": 256
+    }
+  ],
+  "cases": [
+    {
+      "sourceId": 64318,
+      "bus": "#309",
+      "sourcePinET": "2026-09-17T08:56:08.217000-04:00",
+      "priorSourceId": 63838,
+      "history": [
+        {
+          "visit": {
+            "id": 63838,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789646071702,
+            "pinned_at": 1789646086533,
+            "arrived_at": 1789646086533,
+            "departed_at": 1789646471640,
+            "stand_sec": 385.107,
+            "inside_sec": 400.02,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.46724829593866,
+            "steps": 3,
+            "far_m": 74.61007044552329,
+            "confirm_sec": 9.863,
+            "rest_polls": 10,
+            "shuffles": 3,
+            "first_moved_at": 1789646096532,
+            "last_at_rest_at": 1789646471640,
+            "closest_m": 65.4546108456678,
+            "dow": 4,
+            "hour": 7
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 385.107,
+          "storedStandSec": 385.107,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 78,
+            "maxGapSec": 5.332,
+            "longestExactCoordinatePlateauSec": 254.97799999999995,
+            "minDistanceToStopM": 10.33478808051719,
+            "firstFinalMovementAfterDepartureSec": 5.05,
+            "exactInboundLegIds": [
+              59133
+            ],
+            "finalRaw": [
+              {
+                "at": 1789646456726,
+                "lat": 41.324335,
+                "lon": -72.928448
+              },
+              {
+                "at": 1789646461600,
+                "lat": 41.324335,
+                "lon": -72.928448
+              },
+              {
+                "at": 1789646466564,
+                "lat": 41.324335,
+                "lon": -72.928448
+              },
+              {
+                "at": 1789646471640,
+                "lat": 41.324335,
+                "lon": -72.928448
+              },
+              {
+                "at": 1789646476690,
+                "lat": 41.324441,
+                "lon": -72.928112
+              },
+              {
+                "at": 1789646481555,
+                "lat": 41.324717,
+                "lon": -72.927997
+              },
+              {
+                "at": 1789646486553,
+                "lat": 41.324984,
+                "lon": -72.927895
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64006,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 117,
+            "stop_index": 26,
+            "anchored_at": 1789647574888,
+            "pinned_at": 1789647614833,
+            "arrived_at": 1789647614833,
+            "departed_at": 1789647654888,
+            "stand_sec": 40.055,
+            "inside_sec": 50.007,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 34.7988932965476,
+            "steps": 4,
+            "far_m": 128.3116877610895,
+            "confirm_sec": 24.795,
+            "rest_polls": 4,
+            "shuffles": 1,
+            "first_moved_at": 1789647629835,
+            "last_at_rest_at": 1789647654888,
+            "closest_m": 67.66691290417987,
+            "dow": 4,
+            "hour": 8
+          },
+          "stopName": "Gilbert / Cedar",
+          "pinnedHoldSec": 40.055,
+          "storedStandSec": 40.055,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 9,
+            "maxGapSec": 5.156,
+            "longestExactCoordinatePlateauSec": 20.051000000000002,
+            "minDistanceToStopM": 9.326884677607822,
+            "firstFinalMovementAfterDepartureSec": 5.156,
+            "exactInboundLegIds": [
+              59335
+            ],
+            "finalRaw": [
+              {
+                "at": 1789647644840,
+                "lat": 41.301694,
+                "lon": -72.93343
+              },
+              {
+                "at": 1789647649838,
+                "lat": 41.301694,
+                "lon": -72.93343
+              },
+              {
+                "at": 1789647654888,
+                "lat": 41.301694,
+                "lon": -72.93343
+              },
+              {
+                "at": 1789647660044,
+                "lat": 41.301403,
+                "lon": -72.933278
+              },
+              {
+                "at": 1789647664840,
+                "lat": 41.301135,
+                "lon": -72.933126
+              },
+              {
+                "at": 1789647669838,
+                "lat": 41.301135,
+                "lon": -72.933126
+              },
+              {
+                "at": 1789647674860,
+                "lat": 41.301135,
+                "lon": -72.933126
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64010,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 13,
+            "stop_index": 27,
+            "anchored_at": 1789647684839,
+            "pinned_at": 1789647689882,
+            "arrived_at": 1789647694889,
+            "departed_at": 1789647694889,
+            "stand_sec": 0,
+            "inside_sec": 15.028,
+            "outcome": "passed",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": null,
+            "steps": 0,
+            "far_m": null,
+            "confirm_sec": null,
+            "rest_polls": 0,
+            "shuffles": 0,
+            "first_moved_at": null,
+            "last_at_rest_at": null,
+            "closest_m": 7.149749666401913,
+            "dow": 4,
+            "hour": 8
+          },
+          "stopName": "Amistad / Cedar",
+          "pinnedHoldSec": 5.007,
+          "storedStandSec": 0,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 2,
+            "maxGapSec": 5.043,
+            "longestExactCoordinatePlateauSec": 0,
+            "minDistanceToStopM": 7.141716579952176,
+            "firstFinalMovementAfterDepartureSec": 5.037,
+            "exactInboundLegIds": [
+              59348
+            ],
+            "finalRaw": [
+              {
+                "at": 1789647684839,
+                "lat": 41.300558,
+                "lon": -72.932841
+              },
+              {
+                "at": 1789647689882,
+                "lat": 41.300266,
+                "lon": -72.932691
+              },
+              {
+                "at": 1789647694889,
+                "lat": 41.300281,
+                "lon": -72.93196
+              },
+              {
+                "at": 1789647699926,
+                "lat": 41.300335,
+                "lon": -72.931514
+              },
+              {
+                "at": 1789647704910,
+                "lat": 41.300426,
+                "lon": -72.930772
+              },
+              {
+                "at": 1789647709882,
+                "lat": 41.300473,
+                "lon": -72.930389
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64017,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 14,
+            "stop_index": 28,
+            "anchored_at": 1789647704910,
+            "pinned_at": 1789647709882,
+            "arrived_at": 1789647714914,
+            "departed_at": 1789647744876,
+            "stand_sec": 29.962,
+            "inside_sec": 39.991,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 30.83286986246925,
+            "steps": 4,
+            "far_m": 177.4546383837574,
+            "confirm_sec": 19.987,
+            "rest_polls": 6,
+            "shuffles": 0,
+            "first_moved_at": 1789647749873,
+            "last_at_rest_at": 1789647744876,
+            "closest_m": 13.720497826334112,
+            "dow": 4,
+            "hour": 8
+          },
+          "stopName": "Amistad / Church St South",
+          "pinnedHoldSec": 34.994,
+          "storedStandSec": 29.962,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 8,
+            "maxGapSec": 5.166,
+            "longestExactCoordinatePlateauSec": 29.962000000000003,
+            "minDistanceToStopM": 13.705082189470378,
+            "firstFinalMovementAfterDepartureSec": 4.997,
+            "exactInboundLegIds": [
+              59350
+            ],
+            "finalRaw": [
+              {
+                "at": 1789647730014,
+                "lat": 41.300517,
+                "lon": -72.930029
+              },
+              {
+                "at": 1789647734848,
+                "lat": 41.300517,
+                "lon": -72.930029
+              },
+              {
+                "at": 1789647739873,
+                "lat": 41.300517,
+                "lon": -72.930029
+              },
+              {
+                "at": 1789647744876,
+                "lat": 41.300517,
+                "lon": -72.930029
+              },
+              {
+                "at": 1789647749873,
+                "lat": 41.300561,
+                "lon": -72.929665
+              },
+              {
+                "at": 1789647754848,
+                "lat": 41.300561,
+                "lon": -72.929665
+              },
+              {
+                "at": 1789647759852,
+                "lat": 41.299904,
+                "lon": -72.929409
+              },
+              {
+                "at": 1789647764848,
+                "lat": 41.299603,
+                "lon": -72.929337
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64082,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 121,
+            "stop_index": 0,
+            "anchored_at": 1789647809849,
+            "pinned_at": 1789647875031,
+            "arrived_at": 1789647875031,
+            "departed_at": 1789648179926,
+            "stand_sec": 304.895,
+            "inside_sec": 319.884,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 32.09029969682677,
+            "steps": 5,
+            "far_m": 126.72903626036326,
+            "confirm_sec": 30.193,
+            "rest_polls": 61,
+            "shuffles": 0,
+            "first_moved_at": 1789648184897,
+            "last_at_rest_at": 1789648179926,
+            "closest_m": 42.19063855618899,
+            "dow": 4,
+            "hour": 8
+          },
+          "stopName": "Union Station (N)",
+          "pinnedHoldSec": 304.895,
+          "storedStandSec": 304.895,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 62,
+            "maxGapSec": 5.235,
+            "longestExactCoordinatePlateauSec": 304.895,
+            "minDistanceToStopM": 42.143235351624234,
+            "firstFinalMovementAfterDepartureSec": 4.971,
+            "exactInboundLegIds": [
+              59373
+            ],
+            "finalRaw": [
+              {
+                "at": 1789648165021,
+                "lat": 41.297558,
+                "lon": -72.927073
+              },
+              {
+                "at": 1789648169935,
+                "lat": 41.297558,
+                "lon": -72.927073
+              },
+              {
+                "at": 1789648174934,
+                "lat": 41.297558,
+                "lon": -72.927073
+              },
+              {
+                "at": 1789648179926,
+                "lat": 41.297558,
+                "lon": -72.927073
+              },
+              {
+                "at": 1789648184897,
+                "lat": 41.29777,
+                "lon": -72.926813
+              },
+              {
+                "at": 1789648189897,
+                "lat": 41.297991,
+                "lon": -72.92658
+              },
+              {
+                "at": 1789648194915,
+                "lat": 41.298254,
+                "lon": -72.926327
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64318,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789649753079,
+            "pinned_at": 1789649768217,
+            "arrived_at": 1789649768217,
+            "departed_at": 1789649928303,
+            "stand_sec": 160.086,
+            "inside_sec": 170.288,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.182977866156076,
+            "steps": 3,
+            "far_m": 77.52781842696558,
+            "confirm_sec": 10.046,
+            "rest_polls": 9,
+            "shuffles": 3,
+            "first_moved_at": 1789649778210,
+            "last_at_rest_at": 1789649928303,
+            "closest_m": 63.60766521184506,
+            "dow": 4,
+            "hour": 8
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 160.086,
+          "storedStandSec": 160.086,
+          "durationQuarantined": false,
+          "knownAtPin": false,
+          "strictKnownAtPin": false,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 33,
+            "maxGapSec": 5.413,
+            "longestExactCoordinatePlateauSec": 45.19500000000001,
+            "minDistanceToStopM": 5.295239372681551,
+            "firstFinalMovementAfterDepartureSec": 4.789,
+            "exactInboundLegIds": [
+              59612
+            ],
+            "finalRaw": [
+              {
+                "at": 1789649918113,
+                "lat": 41.324293,
+                "lon": -72.928463
+              },
+              {
+                "at": 1789649923109,
+                "lat": 41.324293,
+                "lon": -72.928463
+              },
+              {
+                "at": 1789649928303,
+                "lat": 41.324293,
+                "lon": -72.928463
+              },
+              {
+                "at": 1789649933092,
+                "lat": 41.324466,
+                "lon": -72.928185
+              },
+              {
+                "at": 1789649938505,
+                "lat": 41.324703,
+                "lon": -72.928003
+              },
+              {
+                "at": 1789649943138,
+                "lat": 41.325033,
+                "lon": -72.927893
+              },
+              {
+                "at": 1789649948273,
+                "lat": 41.325033,
+                "lon": -72.927893
+              }
+            ]
+          }
+        }
+      ],
+      "allObservedRouteIds": [
+        3
+      ],
+      "providerBusIds": [
+        66491
+      ]
+    },
+    {
+      "sourceId": 64854,
+      "bus": "#309",
+      "sourcePinET": "2026-09-17T09:51:23.593000-04:00",
+      "priorSourceId": 64318,
+      "history": [
+        {
+          "visit": {
+            "id": 64318,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789649753079,
+            "pinned_at": 1789649768217,
+            "arrived_at": 1789649768217,
+            "departed_at": 1789649928303,
+            "stand_sec": 160.086,
+            "inside_sec": 170.288,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.182977866156076,
+            "steps": 3,
+            "far_m": 77.52781842696558,
+            "confirm_sec": 10.046,
+            "rest_polls": 9,
+            "shuffles": 3,
+            "first_moved_at": 1789649778210,
+            "last_at_rest_at": 1789649928303,
+            "closest_m": 63.60766521184506,
+            "dow": 4,
+            "hour": 8
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 160.086,
+          "storedStandSec": 160.086,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 33,
+            "maxGapSec": 5.413,
+            "longestExactCoordinatePlateauSec": 45.19500000000001,
+            "minDistanceToStopM": 5.295239372681551,
+            "firstFinalMovementAfterDepartureSec": 4.789,
+            "exactInboundLegIds": [
+              59612
+            ],
+            "finalRaw": [
+              {
+                "at": 1789649918113,
+                "lat": 41.324293,
+                "lon": -72.928463
+              },
+              {
+                "at": 1789649923109,
+                "lat": 41.324293,
+                "lon": -72.928463
+              },
+              {
+                "at": 1789649928303,
+                "lat": 41.324293,
+                "lon": -72.928463
+              },
+              {
+                "at": 1789649933092,
+                "lat": 41.324466,
+                "lon": -72.928185
+              },
+              {
+                "at": 1789649938505,
+                "lat": 41.324703,
+                "lon": -72.928003
+              },
+              {
+                "at": 1789649943138,
+                "lat": 41.325033,
+                "lon": -72.927893
+              },
+              {
+                "at": 1789649948273,
+                "lat": 41.325033,
+                "lon": -72.927893
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64468,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 117,
+            "stop_index": 26,
+            "anchored_at": 1789650876799,
+            "pinned_at": 1789650876799,
+            "arrived_at": 1789650881890,
+            "departed_at": 1789650926803,
+            "stand_sec": 44.913,
+            "inside_sec": 60.008,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 30.11957609176896,
+            "steps": 5,
+            "far_m": 150.12744778064587,
+            "confirm_sec": 25.098,
+            "rest_polls": 5,
+            "shuffles": 1,
+            "first_moved_at": 1789650901833,
+            "last_at_rest_at": 1789650926803,
+            "closest_m": 43.21009912544809,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "Gilbert / Cedar",
+          "pinnedHoldSec": 50.004,
+          "storedStandSec": 44.913,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 11,
+            "maxGapSec": 5.147,
+            "longestExactCoordinatePlateauSec": 24.97,
+            "minDistanceToStopM": 11.441118045004906,
+            "firstFinalMovementAfterDepartureSec": 5.102,
+            "exactInboundLegIds": [
+              59750
+            ],
+            "finalRaw": [
+              {
+                "at": 1789650911969,
+                "lat": 41.301715,
+                "lon": -72.933441
+              },
+              {
+                "at": 1789650916863,
+                "lat": 41.301715,
+                "lon": -72.933441
+              },
+              {
+                "at": 1789650921788,
+                "lat": 41.301715,
+                "lon": -72.933441
+              },
+              {
+                "at": 1789650926803,
+                "lat": 41.301715,
+                "lon": -72.933441
+              },
+              {
+                "at": 1789650931905,
+                "lat": 41.301467,
+                "lon": -72.933297
+              },
+              {
+                "at": 1789650936807,
+                "lat": 41.301211,
+                "lon": -72.933149
+              },
+              {
+                "at": 1789650941917,
+                "lat": 41.301211,
+                "lon": -72.933149
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64475,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 13,
+            "stop_index": 27,
+            "anchored_at": 1789650951881,
+            "pinned_at": 1789650957003,
+            "arrived_at": 1789650957003,
+            "departed_at": 1789650961871,
+            "stand_sec": 4.868,
+            "inside_sec": 34.842,
+            "outcome": "passed",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 33.4431293278145,
+            "steps": 5,
+            "far_m": 147.47105295036076,
+            "confirm_sec": 30.026,
+            "rest_polls": 1,
+            "shuffles": 0,
+            "first_moved_at": 1789650966846,
+            "last_at_rest_at": 1789650961871,
+            "closest_m": 62.65632597507911,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "Amistad / Cedar",
+          "pinnedHoldSec": 4.868,
+          "storedStandSec": 4.868,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 2,
+            "maxGapSec": 5.286,
+            "longestExactCoordinatePlateauSec": 4.868,
+            "minDistanceToStopM": 62.585928589531605,
+            "firstFinalMovementAfterDepartureSec": 4.975,
+            "exactInboundLegIds": [
+              59758
+            ],
+            "finalRaw": [
+              {
+                "at": 1789650951881,
+                "lat": 41.300671,
+                "lon": -72.932901
+              },
+              {
+                "at": 1789650957003,
+                "lat": 41.300375,
+                "lon": -72.932747
+              },
+              {
+                "at": 1789650961871,
+                "lat": 41.300375,
+                "lon": -72.932747
+              },
+              {
+                "at": 1789650966846,
+                "lat": 41.300227,
+                "lon": -72.932399
+              },
+              {
+                "at": 1789650972132,
+                "lat": 41.300227,
+                "lon": -72.932399
+              },
+              {
+                "at": 1789650976903,
+                "lat": 41.300227,
+                "lon": -72.932399
+              },
+              {
+                "at": 1789650981798,
+                "lat": 41.300283,
+                "lon": -72.931979
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64482,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 14,
+            "stop_index": 28,
+            "anchored_at": 1789650996872,
+            "pinned_at": 1789650996872,
+            "arrived_at": 1789651001946,
+            "departed_at": 1789651016857,
+            "stand_sec": 14.911,
+            "inside_sec": 24.986,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 31.896821129263394,
+            "steps": 4,
+            "far_m": 149.40690446780854,
+            "confirm_sec": 14.963,
+            "rest_polls": 3,
+            "shuffles": 0,
+            "first_moved_at": 1789651021858,
+            "last_at_rest_at": 1789651016857,
+            "closest_m": 4.814840046723611,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "Amistad / Church St South",
+          "pinnedHoldSec": 19.985,
+          "storedStandSec": 14.911,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 5,
+            "maxGapSec": 5.136,
+            "longestExactCoordinatePlateauSec": 14.911000000000001,
+            "minDistanceToStopM": 4.80943034308573,
+            "firstFinalMovementAfterDepartureSec": 5.001,
+            "exactInboundLegIds": [
+              59765
+            ],
+            "finalRaw": [
+              {
+                "at": 1789651001946,
+                "lat": 41.300546,
+                "lon": -72.92992
+              },
+              {
+                "at": 1789651006912,
+                "lat": 41.300546,
+                "lon": -72.92992
+              },
+              {
+                "at": 1789651011795,
+                "lat": 41.300546,
+                "lon": -72.92992
+              },
+              {
+                "at": 1789651016857,
+                "lat": 41.300546,
+                "lon": -72.92992
+              },
+              {
+                "at": 1789651021858,
+                "lat": 41.300468,
+                "lon": -72.929553
+              },
+              {
+                "at": 1789651026868,
+                "lat": 41.29988,
+                "lon": -72.929399
+              },
+              {
+                "at": 1789651032004,
+                "lat": 41.299586,
+                "lon": -72.929332
+              },
+              {
+                "at": 1789651036821,
+                "lat": 41.299272,
+                "lon": -72.929247
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64594,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 121,
+            "stop_index": 0,
+            "anchored_at": 1789651051826,
+            "pinned_at": 1789651116835,
+            "arrived_at": 1789651122250,
+            "departed_at": 1789651886559,
+            "stand_sec": 764.309,
+            "inside_sec": 774.759,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 33.7071607467598,
+            "steps": 3,
+            "far_m": 158.4264514643754,
+            "confirm_sec": 9.873,
+            "rest_polls": 147,
+            "shuffles": 0,
+            "first_moved_at": 1789651891594,
+            "last_at_rest_at": 1789651886559,
+            "closest_m": 17.750536786236772,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "Union Station (N)",
+          "pinnedHoldSec": 769.724,
+          "storedStandSec": 764.309,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 152,
+            "maxGapSec": 19.525,
+            "longestExactCoordinatePlateauSec": 749.692,
+            "minDistanceToStopM": 15.999423991124043,
+            "firstFinalMovementAfterDepartureSec": 5.035,
+            "exactInboundLegIds": [
+              59778
+            ],
+            "finalRaw": [
+              {
+                "at": 1789651876545,
+                "lat": 41.297996,
+                "lon": -72.926659
+              },
+              {
+                "at": 1789651881469,
+                "lat": 41.297996,
+                "lon": -72.926659
+              },
+              {
+                "at": 1789651886559,
+                "lat": 41.297996,
+                "lon": -72.926659
+              },
+              {
+                "at": 1789651891594,
+                "lat": 41.298237,
+                "lon": -72.926415
+              },
+              {
+                "at": 1789651896511,
+                "lat": 41.298502,
+                "lon": -72.926182
+              },
+              {
+                "at": 1789651901467,
+                "lat": 41.299037,
+                "lon": -72.925704
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64854,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789653068567,
+            "pinned_at": 1789653083593,
+            "arrived_at": 1789653083593,
+            "departed_at": 1789653673640,
+            "stand_sec": 590.047,
+            "inside_sec": 600.049,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.884386853946054,
+            "steps": 3,
+            "far_m": 100.28028445040015,
+            "confirm_sec": 9.992,
+            "rest_polls": 9,
+            "shuffles": 2,
+            "first_moved_at": 1789653113591,
+            "last_at_rest_at": 1789653673640,
+            "closest_m": 58.64473120015384,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 590.047,
+          "storedStandSec": 590.047,
+          "durationQuarantined": false,
+          "knownAtPin": false,
+          "strictKnownAtPin": false,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 119,
+            "maxGapSec": 5.246,
+            "longestExactCoordinatePlateauSec": 460.39199999999994,
+            "minDistanceToStopM": 11.327512958138087,
+            "firstFinalMovementAfterDepartureSec": 5.013,
+            "exactInboundLegIds": [
+              60040
+            ],
+            "finalRaw": [
+              {
+                "at": 1789653658645,
+                "lat": 41.324313,
+                "lon": -72.928464
+              },
+              {
+                "at": 1789653663655,
+                "lat": 41.324313,
+                "lon": -72.928464
+              },
+              {
+                "at": 1789653668641,
+                "lat": 41.324313,
+                "lon": -72.928464
+              },
+              {
+                "at": 1789653673640,
+                "lat": 41.324313,
+                "lon": -72.928464
+              },
+              {
+                "at": 1789653678653,
+                "lat": 41.324481,
+                "lon": -72.92817
+              },
+              {
+                "at": 1789653683642,
+                "lat": 41.324721,
+                "lon": -72.927996
+              },
+              {
+                "at": 1789653688645,
+                "lat": 41.325289,
+                "lon": -72.927817
+              }
+            ]
+          }
+        }
+      ],
+      "allObservedRouteIds": [
+        3
+      ],
+      "providerBusIds": [
+        66491
+      ]
+    },
+    {
+      "sourceId": 65347,
+      "bus": "#309",
+      "sourcePinET": "2026-09-17T10:50:52.856000-04:00",
+      "priorSourceId": 64854,
+      "history": [
+        {
+          "visit": {
+            "id": 64854,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789653068567,
+            "pinned_at": 1789653083593,
+            "arrived_at": 1789653083593,
+            "departed_at": 1789653673640,
+            "stand_sec": 590.047,
+            "inside_sec": 600.049,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.884386853946054,
+            "steps": 3,
+            "far_m": 100.28028445040015,
+            "confirm_sec": 9.992,
+            "rest_polls": 9,
+            "shuffles": 2,
+            "first_moved_at": 1789653113591,
+            "last_at_rest_at": 1789653673640,
+            "closest_m": 58.64473120015384,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 590.047,
+          "storedStandSec": 590.047,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 119,
+            "maxGapSec": 5.246,
+            "longestExactCoordinatePlateauSec": 460.39199999999994,
+            "minDistanceToStopM": 11.327512958138087,
+            "firstFinalMovementAfterDepartureSec": 5.013,
+            "exactInboundLegIds": [
+              60040
+            ],
+            "finalRaw": [
+              {
+                "at": 1789653658645,
+                "lat": 41.324313,
+                "lon": -72.928464
+              },
+              {
+                "at": 1789653663655,
+                "lat": 41.324313,
+                "lon": -72.928464
+              },
+              {
+                "at": 1789653668641,
+                "lat": 41.324313,
+                "lon": -72.928464
+              },
+              {
+                "at": 1789653673640,
+                "lat": 41.324313,
+                "lon": -72.928464
+              },
+              {
+                "at": 1789653678653,
+                "lat": 41.324481,
+                "lon": -72.92817
+              },
+              {
+                "at": 1789653683642,
+                "lat": 41.324721,
+                "lon": -72.927996
+              },
+              {
+                "at": 1789653688645,
+                "lat": 41.325289,
+                "lon": -72.927817
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 65013,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 117,
+            "stop_index": 26,
+            "anchored_at": 1789654664408,
+            "pinned_at": 1789654674298,
+            "arrived_at": 1789654674298,
+            "departed_at": 1789654729302,
+            "stand_sec": 55.004,
+            "inside_sec": 65.06,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 33.95132107016809,
+            "steps": 4,
+            "far_m": 133.77351581754263,
+            "confirm_sec": 25.009,
+            "rest_polls": 3,
+            "shuffles": 1,
+            "first_moved_at": 1789654704294,
+            "last_at_rest_at": 1789654729302,
+            "closest_m": 67.65994731573478,
+            "dow": 4,
+            "hour": 10
+          },
+          "stopName": "Gilbert / Cedar",
+          "pinnedHoldSec": 55.004,
+          "storedStandSec": 55.004,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 12,
+            "maxGapSec": 5.133,
+            "longestExactCoordinatePlateauSec": 24.998,
+            "minDistanceToStopM": 6.896638961798841,
+            "firstFinalMovementAfterDepartureSec": 4.996,
+            "exactInboundLegIds": [
+              60257
+            ],
+            "finalRaw": [
+              {
+                "at": 1789654719303,
+                "lat": 41.301665,
+                "lon": -72.933414
+              },
+              {
+                "at": 1789654724326,
+                "lat": 41.301665,
+                "lon": -72.933414
+              },
+              {
+                "at": 1789654729302,
+                "lat": 41.301665,
+                "lon": -72.933414
+              },
+              {
+                "at": 1789654734298,
+                "lat": 41.301381,
+                "lon": -72.933266
+              },
+              {
+                "at": 1789654739358,
+                "lat": 41.301123,
+                "lon": -72.933103
+              },
+              {
+                "at": 1789654744304,
+                "lat": 41.301123,
+                "lon": -72.933103
+              },
+              {
+                "at": 1789654749300,
+                "lat": 41.301123,
+                "lon": -72.933103
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 65020,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 13,
+            "stop_index": 27,
+            "anchored_at": 1789654759307,
+            "pinned_at": 1789654759307,
+            "arrived_at": 1789654759307,
+            "departed_at": 1789654774316,
+            "stand_sec": 15.009,
+            "inside_sec": 30.073,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 31.76790280046255,
+            "steps": 5,
+            "far_m": 154.7701849698125,
+            "confirm_sec": 20.019,
+            "rest_polls": 3,
+            "shuffles": 0,
+            "first_moved_at": 1789654779308,
+            "last_at_rest_at": 1789654774316,
+            "closest_m": 72.49486388641174,
+            "dow": 4,
+            "hour": 10
+          },
+          "stopName": "Amistad / Cedar",
+          "pinnedHoldSec": 15.009,
+          "storedStandSec": 15.009,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 4,
+            "maxGapSec": 5.06,
+            "longestExactCoordinatePlateauSec": 15.009,
+            "minDistanceToStopM": 72.41341243168995,
+            "firstFinalMovementAfterDepartureSec": 4.992,
+            "exactInboundLegIds": [
+              60267
+            ],
+            "finalRaw": [
+              {
+                "at": 1789654764360,
+                "lat": 41.300517,
+                "lon": -72.932803
+              },
+              {
+                "at": 1789654769301,
+                "lat": 41.300517,
+                "lon": -72.932803
+              },
+              {
+                "at": 1789654774316,
+                "lat": 41.300517,
+                "lon": -72.932803
+              },
+              {
+                "at": 1789654779308,
+                "lat": 41.300247,
+                "lon": -72.93268
+              },
+              {
+                "at": 1789654784364,
+                "lat": 41.300241,
+                "lon": -72.932282
+              },
+              {
+                "at": 1789654789380,
+                "lat": 41.300358,
+                "lon": -72.931398
+              },
+              {
+                "at": 1789654794311,
+                "lat": 41.300404,
+                "lon": -72.931031
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 65037,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 14,
+            "stop_index": 28,
+            "anchored_at": 1789654799327,
+            "pinned_at": 1789654799327,
+            "arrived_at": 1789654804319,
+            "departed_at": 1789654869316,
+            "stand_sec": 64.997,
+            "inside_sec": 74.995,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 57.10891544335893,
+            "steps": 2,
+            "far_m": 129.28958882801476,
+            "confirm_sec": 5.072,
+            "rest_polls": 13,
+            "shuffles": 0,
+            "first_moved_at": 1789654874322,
+            "last_at_rest_at": 1789654869316,
+            "closest_m": 4.752639160825871,
+            "dow": 4,
+            "hour": 10
+          },
+          "stopName": "Amistad / Church St South",
+          "pinnedHoldSec": 69.989,
+          "storedStandSec": 64.997,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 15,
+            "maxGapSec": 5.163,
+            "longestExactCoordinatePlateauSec": 64.99699999999999,
+            "minDistanceToStopM": 4.7472993426977315,
+            "firstFinalMovementAfterDepartureSec": 5.006,
+            "exactInboundLegIds": [
+              60278
+            ],
+            "finalRaw": [
+              {
+                "at": 1789654859376,
+                "lat": 41.300555,
+                "lon": -72.929819
+              },
+              {
+                "at": 1789654864310,
+                "lat": 41.300555,
+                "lon": -72.929819
+              },
+              {
+                "at": 1789654869316,
+                "lat": 41.300555,
+                "lon": -72.929819
+              },
+              {
+                "at": 1789654874322,
+                "lat": 41.30012,
+                "lon": -72.929457
+              },
+              {
+                "at": 1789654879394,
+                "lat": 41.299452,
+                "lon": -72.929294
+              },
+              {
+                "at": 1789654884317,
+                "lat": 41.299152,
+                "lon": -72.929227
+              },
+              {
+                "at": 1789654889315,
+                "lat": 41.298881,
+                "lon": -72.929169
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 65096,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 121,
+            "stop_index": 0,
+            "anchored_at": 1789654914342,
+            "pinned_at": 1789654984382,
+            "arrived_at": 1789654994341,
+            "departed_at": 1789655409571,
+            "stand_sec": 415.23,
+            "inside_sec": 430.192,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 33.23568152015118,
+            "steps": 3,
+            "far_m": 126.85100419650652,
+            "confirm_sec": 55.035,
+            "rest_polls": 77,
+            "shuffles": 0,
+            "first_moved_at": 1789655414574,
+            "last_at_rest_at": 1789655409571,
+            "closest_m": 23.291572674515553,
+            "dow": 4,
+            "hour": 10
+          },
+          "stopName": "Union Station (N)",
+          "pinnedHoldSec": 425.189,
+          "storedStandSec": 415.23,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 82,
+            "maxGapSec": 25.128,
+            "longestExactCoordinatePlateauSec": 405.24099999999993,
+            "minDistanceToStopM": 8.262946137423528,
+            "firstFinalMovementAfterDepartureSec": 5.003,
+            "exactInboundLegIds": [
+              60303
+            ],
+            "finalRaw": [
+              {
+                "at": 1789655395088,
+                "lat": 41.298025,
+                "lon": -72.926597
+              },
+              {
+                "at": 1789655399566,
+                "lat": 41.298025,
+                "lon": -72.926597
+              },
+              {
+                "at": 1789655404574,
+                "lat": 41.298025,
+                "lon": -72.926597
+              },
+              {
+                "at": 1789655409571,
+                "lat": 41.298025,
+                "lon": -72.926597
+              },
+              {
+                "at": 1789655414574,
+                "lat": 41.298278,
+                "lon": -72.926386
+              },
+              {
+                "at": 1789655419546,
+                "lat": 41.298544,
+                "lon": -72.926146
+              },
+              {
+                "at": 1789655424681,
+                "lat": 41.298544,
+                "lon": -72.926146
+              },
+              {
+                "at": 1789655429570,
+                "lat": 41.298544,
+                "lon": -72.926146
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 65347,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789656637744,
+            "pinned_at": 1789656652856,
+            "arrived_at": 1789656652856,
+            "departed_at": 1789657152981,
+            "stand_sec": 500.125,
+            "inside_sec": 515.262,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 31.691025689341433,
+            "steps": 3,
+            "far_m": 80.71910263683685,
+            "confirm_sec": 15.192,
+            "rest_polls": 7,
+            "shuffles": 3,
+            "first_moved_at": 1789656667748,
+            "last_at_rest_at": 1789657152981,
+            "closest_m": 65.86926007526351,
+            "dow": 4,
+            "hour": 10
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 500.125,
+          "storedStandSec": 500.125,
+          "durationQuarantined": false,
+          "knownAtPin": false,
+          "strictKnownAtPin": false,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 101,
+            "maxGapSec": 5.215,
+            "longestExactCoordinatePlateauSec": 385.03299999999984,
+            "minDistanceToStopM": 7.024689245425665,
+            "firstFinalMovementAfterDepartureSec": 4.975,
+            "exactInboundLegIds": [
+              60506
+            ],
+            "finalRaw": [
+              {
+                "at": 1789657142883,
+                "lat": 41.324297,
+                "lon": -72.928462
+              },
+              {
+                "at": 1789657147949,
+                "lat": 41.324297,
+                "lon": -72.928462
+              },
+              {
+                "at": 1789657152981,
+                "lat": 41.324297,
+                "lon": -72.928462
+              },
+              {
+                "at": 1789657157956,
+                "lat": 41.324472,
+                "lon": -72.928163
+              },
+              {
+                "at": 1789657162971,
+                "lat": 41.324472,
+                "lon": -72.928163
+              },
+              {
+                "at": 1789657168118,
+                "lat": 41.324728,
+                "lon": -72.927972
+              }
+            ]
+          }
+        }
+      ],
+      "allObservedRouteIds": [
+        3
+      ],
+      "providerBusIds": [
+        66491
+      ]
+    },
+    {
+      "sourceId": 68304,
+      "bus": "#300",
+      "sourcePinET": "2026-09-17T17:25:21.828000-04:00",
+      "priorSourceId": 67871,
+      "history": [
+        {
+          "visit": {
+            "id": 67871,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789676886370,
+            "pinned_at": 1789676906315,
+            "arrived_at": 1789676911375,
+            "departed_at": 1789677091309,
+            "stand_sec": 179.934,
+            "inside_sec": 199.997,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.254025369150348,
+            "steps": 3,
+            "far_m": 104.09657548619226,
+            "confirm_sec": 15.042,
+            "rest_polls": 7,
+            "shuffles": 2,
+            "first_moved_at": 1789676941270,
+            "last_at_rest_at": 1789677091309,
+            "closest_m": 55.16804937287154,
+            "dow": 4,
+            "hour": 16
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 184.994,
+          "storedStandSec": 179.934,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 38,
+            "maxGapSec": 5.321,
+            "longestExactCoordinatePlateauSec": 54.726000000000006,
+            "minDistanceToStopM": 10.70754591662898,
+            "firstFinalMovementAfterDepartureSec": 5.007,
+            "exactInboundLegIds": [
+              62947
+            ],
+            "finalRaw": [
+              {
+                "at": 1789677081304,
+                "lat": 41.324313,
+                "lon": -72.928456
+              },
+              {
+                "at": 1789677086306,
+                "lat": 41.324313,
+                "lon": -72.928456
+              },
+              {
+                "at": 1789677091309,
+                "lat": 41.324313,
+                "lon": -72.928456
+              },
+              {
+                "at": 1789677096316,
+                "lat": 41.324465,
+                "lon": -72.928156
+              },
+              {
+                "at": 1789677101313,
+                "lat": 41.324465,
+                "lon": -72.928156
+              },
+              {
+                "at": 1789677106312,
+                "lat": 41.324758,
+                "lon": -72.92795
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 68011,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 117,
+            "stop_index": 26,
+            "anchored_at": 1789678146572,
+            "pinned_at": 1789678156641,
+            "arrived_at": 1789678156641,
+            "departed_at": 1789678217258,
+            "stand_sec": 60.617,
+            "inside_sec": 70.058,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 30.668471908055757,
+            "steps": 4,
+            "far_m": 130.0850387036912,
+            "confirm_sec": 24.852,
+            "rest_polls": 3,
+            "shuffles": 1,
+            "first_moved_at": 1789678196626,
+            "last_at_rest_at": 1789678217258,
+            "closest_m": 54.49138989844922,
+            "dow": 4,
+            "hour": 16
+          },
+          "stopName": "Gilbert / Cedar",
+          "pinnedHoldSec": 60.617,
+          "storedStandSec": 60.617,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 13,
+            "maxGapSec": 5.661,
+            "longestExactCoordinatePlateauSec": 35.19,
+            "minDistanceToStopM": 8.483226047546195,
+            "firstFinalMovementAfterDepartureSec": 4.574,
+            "exactInboundLegIds": [
+              63090
+            ],
+            "finalRaw": [
+              {
+                "at": 1789678206686,
+                "lat": 41.301596,
+                "lon": -72.93336
+              },
+              {
+                "at": 1789678211597,
+                "lat": 41.301596,
+                "lon": -72.93336
+              },
+              {
+                "at": 1789678217258,
+                "lat": 41.301596,
+                "lon": -72.93336
+              },
+              {
+                "at": 1789678221832,
+                "lat": 41.301337,
+                "lon": -72.933235
+              },
+              {
+                "at": 1789678226699,
+                "lat": 41.301071,
+                "lon": -72.933096
+              },
+              {
+                "at": 1789678231594,
+                "lat": 41.301071,
+                "lon": -72.933096
+              },
+              {
+                "at": 1789678236595,
+                "lat": 41.301071,
+                "lon": -72.933096
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 68017,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 13,
+            "stop_index": 27,
+            "anchored_at": 1789678246684,
+            "pinned_at": 1789678251570,
+            "arrived_at": 1789678256880,
+            "departed_at": 1789678266702,
+            "stand_sec": 9.822,
+            "inside_sec": 25.252,
+            "outcome": "passed",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 36.432228627486225,
+            "steps": 4,
+            "far_m": 111.90722306835173,
+            "confirm_sec": 14.797,
+            "rest_polls": 2,
+            "shuffles": 0,
+            "first_moved_at": 1789678271775,
+            "last_at_rest_at": 1789678266702,
+            "closest_m": 21.169035111939486,
+            "dow": 4,
+            "hour": 16
+          },
+          "stopName": "Amistad / Cedar",
+          "pinnedHoldSec": 15.132,
+          "storedStandSec": 9.822,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 4,
+            "maxGapSec": 5.31,
+            "longestExactCoordinatePlateauSec": 9.822,
+            "minDistanceToStopM": 21.14525068637314,
+            "firstFinalMovementAfterDepartureSec": 5.073,
+            "exactInboundLegIds": [
+              63109
+            ],
+            "finalRaw": [
+              {
+                "at": 1789678256880,
+                "lat": 41.300242,
+                "lon": -72.932274
+              },
+              {
+                "at": 1789678261941,
+                "lat": 41.300242,
+                "lon": -72.932274
+              },
+              {
+                "at": 1789678266702,
+                "lat": 41.300242,
+                "lon": -72.932274
+              },
+              {
+                "at": 1789678271775,
+                "lat": 41.300303,
+                "lon": -72.931846
+              },
+              {
+                "at": 1789678276822,
+                "lat": 41.300346,
+                "lon": -72.931463
+              },
+              {
+                "at": 1789678281595,
+                "lat": 41.300395,
+                "lon": -72.931065
+              },
+              {
+                "at": 1789678286572,
+                "lat": 41.300441,
+                "lon": -72.930711
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 68033,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 14,
+            "stop_index": 28,
+            "anchored_at": 1789678286572,
+            "pinned_at": 1789678286572,
+            "arrived_at": 1789678296648,
+            "departed_at": 1789678406586,
+            "stand_sec": 109.938,
+            "inside_sec": 130.025,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 29.992482325444925,
+            "steps": 5,
+            "far_m": 147.93439928686436,
+            "confirm_sec": 19.837,
+            "rest_polls": 22,
+            "shuffles": 0,
+            "first_moved_at": 1789678411784,
+            "last_at_rest_at": 1789678406586,
+            "closest_m": 7.630660560598422,
+            "dow": 4,
+            "hour": 16
+          },
+          "stopName": "Amistad / Church St South",
+          "pinnedHoldSec": 120.014,
+          "storedStandSec": 109.938,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 25,
+            "maxGapSec": 5.216,
+            "longestExactCoordinatePlateauSec": 109.93799999999997,
+            "minDistanceToStopM": 7.622087147722032,
+            "firstFinalMovementAfterDepartureSec": 5.198,
+            "exactInboundLegIds": [
+              63113
+            ],
+            "finalRaw": [
+              {
+                "at": 1789678391608,
+                "lat": 41.300536,
+                "lon": -72.929957
+              },
+              {
+                "at": 1789678396689,
+                "lat": 41.300536,
+                "lon": -72.929957
+              },
+              {
+                "at": 1789678401614,
+                "lat": 41.300536,
+                "lon": -72.929957
+              },
+              {
+                "at": 1789678406586,
+                "lat": 41.300536,
+                "lon": -72.929957
+              },
+              {
+                "at": 1789678411784,
+                "lat": 41.300552,
+                "lon": -72.929599
+              },
+              {
+                "at": 1789678416597,
+                "lat": 41.30023,
+                "lon": -72.929506
+              },
+              {
+                "at": 1789678421584,
+                "lat": 41.299888,
+                "lon": -72.929429
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 68052,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 121,
+            "stop_index": 0,
+            "anchored_at": 1789678466608,
+            "pinned_at": 1789678526594,
+            "arrived_at": 1789678526594,
+            "departed_at": 1789678561691,
+            "stand_sec": 35.097,
+            "inside_sec": 60.024,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 31.838611642843865,
+            "steps": 6,
+            "far_m": 133.4009238570965,
+            "confirm_sec": 54.906,
+            "rest_polls": 7,
+            "shuffles": 0,
+            "first_moved_at": 1789678566717,
+            "last_at_rest_at": 1789678561691,
+            "closest_m": 59.07915000123201,
+            "dow": 4,
+            "hour": 16
+          },
+          "stopName": "Union Station (N)",
+          "pinnedHoldSec": 35.097,
+          "storedStandSec": 35.097,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 8,
+            "maxGapSec": 5.096,
+            "longestExactCoordinatePlateauSec": 35.097,
+            "minDistanceToStopM": 59.01277174431805,
+            "firstFinalMovementAfterDepartureSec": 5.026,
+            "exactInboundLegIds": [
+              63135
+            ],
+            "finalRaw": [
+              {
+                "at": 1789678546696,
+                "lat": 41.297416,
+                "lon": -72.927156
+              },
+              {
+                "at": 1789678551670,
+                "lat": 41.297416,
+                "lon": -72.927156
+              },
+              {
+                "at": 1789678556654,
+                "lat": 41.297416,
+                "lon": -72.927156
+              },
+              {
+                "at": 1789678561691,
+                "lat": 41.297416,
+                "lon": -72.927156
+              },
+              {
+                "at": 1789678566717,
+                "lat": 41.297657,
+                "lon": -72.926951
+              },
+              {
+                "at": 1789678571681,
+                "lat": 41.297657,
+                "lon": -72.926951
+              },
+              {
+                "at": 1789678576608,
+                "lat": 41.297905,
+                "lon": -72.926692
+              },
+              {
+                "at": 1789678581659,
+                "lat": 41.298135,
+                "lon": -72.926461
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 68304,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789680306814,
+            "pinned_at": 1789680321828,
+            "arrived_at": 1789680326833,
+            "departed_at": 1789680606912,
+            "stand_sec": 280.079,
+            "inside_sec": 300.119,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 33.29224960097354,
+            "steps": 3,
+            "far_m": 74.37528377675305,
+            "confirm_sec": 10.088,
+            "rest_polls": 8,
+            "shuffles": 2,
+            "first_moved_at": 1789680356842,
+            "last_at_rest_at": 1789680606912,
+            "closest_m": 57.36287991901085,
+            "dow": 4,
+            "hour": 17
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 285.084,
+          "storedStandSec": 280.079,
+          "durationQuarantined": false,
+          "knownAtPin": false,
+          "strictKnownAtPin": false,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 58,
+            "maxGapSec": 5.157,
+            "longestExactCoordinatePlateauSec": 165.08699999999996,
+            "minDistanceToStopM": 8.070934824912712,
+            "firstFinalMovementAfterDepartureSec": 4.947,
+            "exactInboundLegIds": [
+              63349
+            ],
+            "finalRaw": [
+              {
+                "at": 1789680596898,
+                "lat": 41.324271,
+                "lon": -72.92847
+              },
+              {
+                "at": 1789680601900,
+                "lat": 41.324271,
+                "lon": -72.92847
+              },
+              {
+                "at": 1789680606912,
+                "lat": 41.324271,
+                "lon": -72.92847
+              },
+              {
+                "at": 1789680611859,
+                "lat": 41.324448,
+                "lon": -72.928149
+              },
+              {
+                "at": 1789680616856,
+                "lat": 41.324706,
+                "lon": -72.927977
+              },
+              {
+                "at": 1789680621947,
+                "lat": 41.324974,
+                "lon": -72.927891
+              }
+            ]
+          }
+        }
+      ],
+      "allObservedRouteIds": [
+        3
+      ],
+      "providerBusIds": [
+        66507
+      ]
+    },
+    {
+      "sourceId": 70927,
+      "bus": "#309",
+      "sourcePinET": "2026-09-18T08:48:02.156000-04:00",
+      "priorSourceId": 70458,
+      "history": [
+        {
+          "visit": {
+            "id": 70458,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789732446006,
+            "pinned_at": 1789732465971,
+            "arrived_at": 1789732471028,
+            "departed_at": 1789732881594,
+            "stand_sec": 410.566,
+            "inside_sec": 420.653,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.092171088287397,
+            "steps": 2,
+            "far_m": 78.56344825478604,
+            "confirm_sec": 5.107,
+            "rest_polls": 9,
+            "shuffles": 2,
+            "first_moved_at": 1789732490990,
+            "last_at_rest_at": 1789732881594,
+            "closest_m": 51.31091472750871,
+            "dow": 5,
+            "hour": 7
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 415.623,
+          "storedStandSec": 410.566,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 84,
+            "maxGapSec": 5.719,
+            "longestExactCoordinatePlateauSec": 305.666,
+            "minDistanceToStopM": 8.51896665470798,
+            "firstFinalMovementAfterDepartureSec": 5.03,
+            "exactInboundLegIds": [
+              65344
+            ],
+            "finalRaw": [
+              {
+                "at": 1789732871590,
+                "lat": 41.324287,
+                "lon": -72.928465
+              },
+              {
+                "at": 1789732876683,
+                "lat": 41.324287,
+                "lon": -72.928465
+              },
+              {
+                "at": 1789732881594,
+                "lat": 41.324287,
+                "lon": -72.928465
+              },
+              {
+                "at": 1789732886624,
+                "lat": 41.324455,
+                "lon": -72.928183
+              },
+              {
+                "at": 1789732891731,
+                "lat": 41.325049,
+                "lon": -72.927892
+              },
+              {
+                "at": 1789732896624,
+                "lat": 41.325342,
+                "lon": -72.927785
+              },
+              {
+                "at": 1789732901593,
+                "lat": 41.325342,
+                "lon": -72.927785
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 70586,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 117,
+            "stop_index": 26,
+            "anchored_at": 1789733666843,
+            "pinned_at": 1789733701912,
+            "arrived_at": 1789733701912,
+            "departed_at": 1789733761997,
+            "stand_sec": 60.085,
+            "inside_sec": 69.911,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 32.58249359807037,
+            "steps": 4,
+            "far_m": 140.34950813527286,
+            "confirm_sec": 15.02,
+            "rest_polls": 3,
+            "shuffles": 1,
+            "first_moved_at": 1789733741876,
+            "last_at_rest_at": 1789733761997,
+            "closest_m": 50.04954974950686,
+            "dow": 5,
+            "hour": 8
+          },
+          "stopName": "Gilbert / Cedar",
+          "pinnedHoldSec": 60.085,
+          "storedStandSec": 60.085,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 13,
+            "maxGapSec": 5.191,
+            "longestExactCoordinatePlateauSec": 34.922,
+            "minDistanceToStopM": 7.150778001510628,
+            "firstFinalMovementAfterDepartureSec": 4.841,
+            "exactInboundLegIds": [
+              65507
+            ],
+            "finalRaw": [
+              {
+                "at": 1789733751804,
+                "lat": 41.301582,
+                "lon": -72.933384
+              },
+              {
+                "at": 1789733756806,
+                "lat": 41.301582,
+                "lon": -72.933384
+              },
+              {
+                "at": 1789733761997,
+                "lat": 41.301582,
+                "lon": -72.933384
+              },
+              {
+                "at": 1789733766838,
+                "lat": 41.301308,
+                "lon": -72.933247
+              },
+              {
+                "at": 1789733771823,
+                "lat": 41.301012,
+                "lon": -72.933077
+              },
+              {
+                "at": 1789733776799,
+                "lat": 41.300718,
+                "lon": -72.932939
+              },
+              {
+                "at": 1789733781858,
+                "lat": 41.30045,
+                "lon": -72.932811
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 70590,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 13,
+            "stop_index": 27,
+            "anchored_at": 1789733776799,
+            "pinned_at": 1789733781858,
+            "arrived_at": 1789733786835,
+            "departed_at": 1789733796810,
+            "stand_sec": 9.975,
+            "inside_sec": 24.953,
+            "outcome": "passed",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 34.27474261722288,
+            "steps": 3,
+            "far_m": 108.69290119767601,
+            "confirm_sec": 10.029,
+            "rest_polls": 2,
+            "shuffles": 0,
+            "first_moved_at": 1789733801813,
+            "last_at_rest_at": 1789733796810,
+            "closest_m": 40.18006132382584,
+            "dow": 5,
+            "hour": 8
+          },
+          "stopName": "Amistad / Cedar",
+          "pinnedHoldSec": 14.952,
+          "storedStandSec": 9.975,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 4,
+            "maxGapSec": 5.204,
+            "longestExactCoordinatePlateauSec": 9.975,
+            "minDistanceToStopM": 40.134917099110936,
+            "firstFinalMovementAfterDepartureSec": 5.003,
+            "exactInboundLegIds": [
+              65518
+            ],
+            "finalRaw": [
+              {
+                "at": 1789733781858,
+                "lat": 41.30045,
+                "lon": -72.932811
+              },
+              {
+                "at": 1789733786835,
+                "lat": 41.300208,
+                "lon": -72.9325
+              },
+              {
+                "at": 1789733791899,
+                "lat": 41.300208,
+                "lon": -72.9325
+              },
+              {
+                "at": 1789733796810,
+                "lat": 41.300208,
+                "lon": -72.9325
+              },
+              {
+                "at": 1789733801813,
+                "lat": 41.300264,
+                "lon": -72.932097
+              },
+              {
+                "at": 1789733806811,
+                "lat": 41.30033,
+                "lon": -72.931659
+              },
+              {
+                "at": 1789733811842,
+                "lat": 41.30044,
+                "lon": -72.93075
+              },
+              {
+                "at": 1789733816808,
+                "lat": 41.300497,
+                "lon": -72.930273
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 70600,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 14,
+            "stop_index": 28,
+            "anchored_at": 1789733811842,
+            "pinned_at": 1789733811842,
+            "arrived_at": 1789733822012,
+            "departed_at": 1789733876969,
+            "stand_sec": 54.957,
+            "inside_sec": 70.319,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 31.73289146312052,
+            "steps": 3,
+            "far_m": 127.93665949708527,
+            "confirm_sec": 9.684,
+            "rest_polls": 11,
+            "shuffles": 0,
+            "first_moved_at": 1789733882161,
+            "last_at_rest_at": 1789733876969,
+            "closest_m": 2.378288280513199,
+            "dow": 5,
+            "hour": 8
+          },
+          "stopName": "Amistad / Church St South",
+          "pinnedHoldSec": 65.127,
+          "storedStandSec": 54.957,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 14,
+            "maxGapSec": 5.204,
+            "longestExactCoordinatePlateauSec": 54.95700000000001,
+            "minDistanceToStopM": 2.3756161593439633,
+            "firstFinalMovementAfterDepartureSec": 5.192,
+            "exactInboundLegIds": [
+              65522
+            ],
+            "finalRaw": [
+              {
+                "at": 1789733866857,
+                "lat": 41.300551,
+                "lon": -72.929856
+              },
+              {
+                "at": 1789733871805,
+                "lat": 41.300551,
+                "lon": -72.929856
+              },
+              {
+                "at": 1789733876969,
+                "lat": 41.300551,
+                "lon": -72.929856
+              },
+              {
+                "at": 1789733882161,
+                "lat": 41.300399,
+                "lon": -72.929535
+              },
+              {
+                "at": 1789733886809,
+                "lat": 41.299808,
+                "lon": -72.929399
+              },
+              {
+                "at": 1789733891845,
+                "lat": 41.299458,
+                "lon": -72.929318
+              },
+              {
+                "at": 1789733896822,
+                "lat": 41.299122,
+                "lon": -72.929243
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 70686,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 121,
+            "stop_index": 0,
+            "anchored_at": 1789733931826,
+            "pinned_at": 1789733981831,
+            "arrived_at": 1789733981831,
+            "departed_at": 1789734581866,
+            "stand_sec": 600.035,
+            "inside_sec": 605.184,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 31.307729620908745,
+            "steps": 3,
+            "far_m": 146.23877088935393,
+            "confirm_sec": 24.871,
+            "rest_polls": 117,
+            "shuffles": 1,
+            "first_moved_at": 1789733996830,
+            "last_at_rest_at": 1789734581866,
+            "closest_m": 50.49190481965928,
+            "dow": 5,
+            "hour": 8
+          },
+          "stopName": "Union Station (N)",
+          "pinnedHoldSec": 600.035,
+          "storedStandSec": 600.035,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 121,
+            "maxGapSec": 5.415,
+            "longestExactCoordinatePlateauSec": 585.036,
+            "minDistanceToStopM": 19.436483695865626,
+            "firstFinalMovementAfterDepartureSec": 5.149,
+            "exactInboundLegIds": [
+              65542
+            ],
+            "finalRaw": [
+              {
+                "at": 1789734566973,
+                "lat": 41.297751,
+                "lon": -72.926948
+              },
+              {
+                "at": 1789734572132,
+                "lat": 41.297751,
+                "lon": -72.926948
+              },
+              {
+                "at": 1789734576963,
+                "lat": 41.297751,
+                "lon": -72.926948
+              },
+              {
+                "at": 1789734581866,
+                "lat": 41.297751,
+                "lon": -72.926948
+              },
+              {
+                "at": 1789734587015,
+                "lat": 41.297941,
+                "lon": -72.926672
+              },
+              {
+                "at": 1789734591890,
+                "lat": 41.298428,
+                "lon": -72.926248
+              },
+              {
+                "at": 1789734596863,
+                "lat": 41.298428,
+                "lon": -72.926248
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 70927,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789735666965,
+            "pinned_at": 1789735682156,
+            "arrived_at": 1789735686969,
+            "departed_at": 1789736432044,
+            "stand_sec": 745.075,
+            "inside_sec": 759.895,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 33.738072977297115,
+            "steps": 3,
+            "far_m": 76.90738387693402,
+            "confirm_sec": 9.897,
+            "rest_polls": 4,
+            "shuffles": 2,
+            "first_moved_at": 1789735712210,
+            "last_at_rest_at": 1789736432044,
+            "closest_m": 54.13624048414833,
+            "dow": 5,
+            "hour": 8
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 749.888,
+          "storedStandSec": 745.075,
+          "durationQuarantined": false,
+          "knownAtPin": false,
+          "strictKnownAtPin": false,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 151,
+            "maxGapSec": 5.424,
+            "longestExactCoordinatePlateauSec": 645.0790000000002,
+            "minDistanceToStopM": 15.641589260548516,
+            "firstFinalMovementAfterDepartureSec": 5.1,
+            "exactInboundLegIds": [
+              65750
+            ],
+            "finalRaw": [
+              {
+                "at": 1789736417048,
+                "lat": 41.324303,
+                "lon": -72.928459
+              },
+              {
+                "at": 1789736422148,
+                "lat": 41.324303,
+                "lon": -72.928459
+              },
+              {
+                "at": 1789736427050,
+                "lat": 41.324303,
+                "lon": -72.928459
+              },
+              {
+                "at": 1789736432044,
+                "lat": 41.324303,
+                "lon": -72.928459
+              },
+              {
+                "at": 1789736437144,
+                "lat": 41.324472,
+                "lon": -72.928124
+              },
+              {
+                "at": 1789736442051,
+                "lat": 41.324749,
+                "lon": -72.927982
+              },
+              {
+                "at": 1789736447041,
+                "lat": 41.32502,
+                "lon": -72.927891
+              }
+            ]
+          }
+        }
+      ],
+      "allObservedRouteIds": [
+        3
+      ],
+      "providerBusIds": [
+        66544
+      ]
+    },
+    {
+      "sourceId": 58505,
+      "bus": "#308",
+      "sourcePinET": "2026-09-16T10:26:28.257000-04:00",
+      "priorSourceId": 57965,
+      "history": [
+        {
+          "visit": {
+            "id": 57965,
+            "bus_id": 66427,
+            "bus_name": "#308",
+            "anchor_bus_id": 66427,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789565562042,
+            "pinned_at": 1789565577048,
+            "arrived_at": 1789565577048,
+            "departed_at": 1789565707078,
+            "stand_sec": 130.03,
+            "inside_sec": 140.036,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 34.628385509227336,
+            "steps": 2,
+            "far_m": 65.7853671741363,
+            "confirm_sec": 5.027,
+            "rest_polls": 6,
+            "shuffles": 2,
+            "first_moved_at": 1789565597113,
+            "last_at_rest_at": 1789565707078,
+            "closest_m": 55.115349228978666,
+            "dow": 3,
+            "hour": 9
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 130.03,
+          "storedStandSec": 130.03,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 27,
+            "maxGapSec": 5.114,
+            "longestExactCoordinatePlateauSec": 30.023000000000003,
+            "minDistanceToStopM": 9.09020580396781,
+            "firstFinalMovementAfterDepartureSec": 4.979,
+            "exactInboundLegIds": [
+              53583
+            ],
+            "finalRaw": [
+              {
+                "at": 1789565692107,
+                "lat": 41.324479,
+                "lon": -72.928409
+              },
+              {
+                "at": 1789565697221,
+                "lat": 41.324479,
+                "lon": -72.928409
+              },
+              {
+                "at": 1789565702058,
+                "lat": 41.324479,
+                "lon": -72.928409
+              },
+              {
+                "at": 1789565707078,
+                "lat": 41.324479,
+                "lon": -72.928409
+              },
+              {
+                "at": 1789565712057,
+                "lat": 41.324575,
+                "lon": -72.928015
+              },
+              {
+                "at": 1789565717084,
+                "lat": 41.324862,
+                "lon": -72.927937
+              },
+              {
+                "at": 1789565722060,
+                "lat": 41.325175,
+                "lon": -72.927828
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 58129,
+            "bus_id": 66427,
+            "bus_name": "#308",
+            "anchor_bus_id": 66427,
+            "route_id": 3,
+            "stop_id": 117,
+            "stop_index": 26,
+            "anchored_at": 1789566657202,
+            "pinned_at": 1789566667185,
+            "arrived_at": 1789566672169,
+            "departed_at": 1789566742209,
+            "stand_sec": 70.04,
+            "inside_sec": 80.004,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 61.83314292728554,
+            "steps": 3,
+            "far_m": 129.5999806826111,
+            "confirm_sec": 15.012,
+            "rest_polls": 5,
+            "shuffles": 1,
+            "first_moved_at": 1789566717213,
+            "last_at_rest_at": 1789566742209,
+            "closest_m": 38.1680735851666,
+            "dow": 3,
+            "hour": 9
+          },
+          "stopName": "Gilbert / Cedar",
+          "pinnedHoldSec": 75.024,
+          "storedStandSec": 70.04,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 16,
+            "maxGapSec": 5.122,
+            "longestExactCoordinatePlateauSec": 40.007000000000005,
+            "minDistanceToStopM": 3.947690993484205,
+            "firstFinalMovementAfterDepartureSec": 4.98,
+            "exactInboundLegIds": [
+              53747
+            ],
+            "finalRaw": [
+              {
+                "at": 1789566732258,
+                "lat": 41.301636,
+                "lon": -72.933423
+              },
+              {
+                "at": 1789566737179,
+                "lat": 41.301636,
+                "lon": -72.933423
+              },
+              {
+                "at": 1789566742209,
+                "lat": 41.301636,
+                "lon": -72.933423
+              },
+              {
+                "at": 1789566747189,
+                "lat": 41.301127,
+                "lon": -72.933127
+              },
+              {
+                "at": 1789566752187,
+                "lat": 41.301127,
+                "lon": -72.933127
+              },
+              {
+                "at": 1789566757309,
+                "lat": 41.30085,
+                "lon": -72.932982
+              },
+              {
+                "at": 1789566762201,
+                "lat": 41.300549,
+                "lon": -72.93283
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 58174,
+            "bus_id": 66427,
+            "bus_name": "#308",
+            "anchor_bus_id": 66427,
+            "route_id": 3,
+            "stop_id": 13,
+            "stop_index": 27,
+            "anchored_at": 1789566762201,
+            "pinned_at": 1789566767203,
+            "arrived_at": 1789566767203,
+            "departed_at": 1789567077254,
+            "stand_sec": 310.051,
+            "inside_sec": 320.03,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 33.50809875827348,
+            "steps": 4,
+            "far_m": 146.3654876052527,
+            "confirm_sec": 14.983,
+            "rest_polls": 60,
+            "shuffles": 1,
+            "first_moved_at": 1789566777210,
+            "last_at_rest_at": 1789567077254,
+            "closest_m": 56.359371975888656,
+            "dow": 3,
+            "hour": 9
+          },
+          "stopName": "Amistad / Cedar",
+          "pinnedHoldSec": 310.051,
+          "storedStandSec": 310.051,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 63,
+            "maxGapSec": 5.229,
+            "longestExactCoordinatePlateauSec": 300.0440000000001,
+            "minDistanceToStopM": 25.657503189893074,
+            "firstFinalMovementAfterDepartureSec": 5.005,
+            "exactInboundLegIds": [
+              53765
+            ],
+            "finalRaw": [
+              {
+                "at": 1789567067358,
+                "lat": 41.300229,
+                "lon": -72.932328
+              },
+              {
+                "at": 1789567072230,
+                "lat": 41.300229,
+                "lon": -72.932328
+              },
+              {
+                "at": 1789567077254,
+                "lat": 41.300229,
+                "lon": -72.932328
+              },
+              {
+                "at": 1789567082259,
+                "lat": 41.300298,
+                "lon": -72.931938
+              },
+              {
+                "at": 1789567087233,
+                "lat": 41.300348,
+                "lon": -72.93151
+              },
+              {
+                "at": 1789567092271,
+                "lat": 41.300385,
+                "lon": -72.931107
+              },
+              {
+                "at": 1789567097242,
+                "lat": 41.300479,
+                "lon": -72.930301
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 58186,
+            "bus_id": 66427,
+            "bus_name": "#308",
+            "anchor_bus_id": 66427,
+            "route_id": 3,
+            "stop_id": 14,
+            "stop_index": 28,
+            "anchored_at": 1789567097242,
+            "pinned_at": 1789567097242,
+            "arrived_at": 1789567102435,
+            "departed_at": 1789567157301,
+            "stand_sec": 54.866,
+            "inside_sec": 70.011,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1.0,
+            "first_step_m": 31.08874303132681,
+            "steps": 4,
+            "far_m": 174.68305224677317,
+            "confirm_sec": 15.079,
+            "rest_polls": 11,
+            "shuffles": 0,
+            "first_moved_at": 1789567162258,
+            "last_at_rest_at": 1789567157301,
+            "closest_m": 5.691199483391251,
+            "dow": 3,
+            "hour": 9
+          },
+          "stopName": "Amistad / Church St South",
+          "pinnedHoldSec": 60.059,
+          "storedStandSec": 54.866,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 13,
+            "maxGapSec": 5.193,
+            "longestExactCoordinatePlateauSec": 54.866,
+            "minDistanceToStopM": 5.684805147996568,
+            "firstFinalMovementAfterDepartureSec": 4.957,
+            "exactInboundLegIds": [
+              53814
+            ],
+            "finalRaw": [
+              {
+                "at": 1789567147369,
+                "lat": 41.300529,
+                "lon": -72.929934
+              },
+              {
+                "at": 1789567152348,
+                "lat": 41.300529,
+                "lon": -72.929934
+              },
+              {
+                "at": 1789567157301,
+                "lat": 41.300529,
+                "lon": -72.929934
+              },
+              {
+                "at": 1789567162258,
+                "lat": 41.300556,
+                "lon": -72.929564
+              },
+              {
+                "at": 1789567167253,
+                "lat": 41.300283,
+                "lon": -72.929473
+              },
+              {
+                "at": 1789567172279,
+                "lat": 41.299663,
+                "lon": -72.929346
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 58235,
+            "bus_id": 66427,
+            "bus_name": "#308",
+            "anchor_bus_id": 66427,
+            "route_id": 3,
+            "stop_id": 121,
+            "stop_index": 0,
+            "anchored_at": 1789567227272,
+            "pinned_at": 1789567267284,
+            "arrived_at": 1789567277277,
+            "departed_at": 1789567422311,
+            "stand_sec": 145.034,
+            "inside_sec": 165.079,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 31.24504726095349,
+            "steps": 4,
+            "far_m": 130.01798749875996,
+            "confirm_sec": 29.999,
+            "rest_polls": 29,
+            "shuffles": 0,
+            "first_moved_at": 1789567427326,
+            "last_at_rest_at": 1789567422311,
+            "closest_m": 7.762148504142255,
+            "dow": 3,
+            "hour": 10
+          },
+          "stopName": "Union Station (N)",
+          "pinnedHoldSec": 155.027,
+          "storedStandSec": 145.034,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 32,
+            "maxGapSec": 5.195,
+            "longestExactCoordinatePlateauSec": 145.03400000000002,
+            "minDistanceToStopM": 7.753427358240317,
+            "firstFinalMovementAfterDepartureSec": 5.015,
+            "exactInboundLegIds": [
+              53841
+            ],
+            "finalRaw": [
+              {
+                "at": 1789567412344,
+                "lat": 41.297901,
+                "lon": -72.926691
+              },
+              {
+                "at": 1789567417329,
+                "lat": 41.297901,
+                "lon": -72.926691
+              },
+              {
+                "at": 1789567422311,
+                "lat": 41.297901,
+                "lon": -72.926691
+              },
+              {
+                "at": 1789567427326,
+                "lat": 41.298121,
+                "lon": -72.926459
+              },
+              {
+                "at": 1789567432363,
+                "lat": 41.298359,
+                "lon": -72.926263
+              },
+              {
+                "at": 1789567437293,
+                "lat": 41.298577,
+                "lon": -72.926045
+              },
+              {
+                "at": 1789567442309,
+                "lat": 41.298577,
+                "lon": -72.926045
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 58505,
+            "bus_id": 66427,
+            "bus_name": "#308",
+            "anchor_bus_id": 66427,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789568768189,
+            "pinned_at": 1789568788257,
+            "arrived_at": 1789568788257,
+            "departed_at": 1789569253320,
+            "stand_sec": 465.063,
+            "inside_sec": 475.098,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 31.160882900509684,
+            "steps": 3,
+            "far_m": 78.65581538032544,
+            "confirm_sec": 9.998,
+            "rest_polls": 9,
+            "shuffles": 3,
+            "first_moved_at": 1789568808237,
+            "last_at_rest_at": 1789569253320,
+            "closest_m": 60.624819929991176,
+            "dow": 3,
+            "hour": 10
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 465.063,
+          "storedStandSec": 465.063,
+          "durationQuarantined": false,
+          "knownAtPin": false,
+          "strictKnownAtPin": false,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 94,
+            "maxGapSec": 5.297,
+            "longestExactCoordinatePlateauSec": 335.0520000000002,
+            "minDistanceToStopM": 9.441223648001255,
+            "firstFinalMovementAfterDepartureSec": 5.004,
+            "exactInboundLegIds": [
+              54060
+            ],
+            "finalRaw": [
+              {
+                "at": 1789569243344,
+                "lat": 41.324299,
+                "lon": -72.928461
+              },
+              {
+                "at": 1789569248325,
+                "lat": 41.324299,
+                "lon": -72.928461
+              },
+              {
+                "at": 1789569253320,
+                "lat": 41.324299,
+                "lon": -72.928461
+              },
+              {
+                "at": 1789569258324,
+                "lat": 41.324451,
+                "lon": -72.928148
+              },
+              {
+                "at": 1789569263355,
+                "lat": 41.324749,
+                "lon": -72.927964
+              },
+              {
+                "at": 1789569268322,
+                "lat": 41.325028,
+                "lon": -72.927873
+              }
+            ]
+          }
+        }
+      ],
+      "allObservedRouteIds": [
+        3
+      ],
+      "providerBusIds": [
+        66427
+      ]
+    },
+    {
+      "sourceId": 65119,
+      "bus": "#300",
+      "sourcePinET": "2026-09-17T10:22:19.440000-04:00",
+      "priorSourceId": 64603,
+      "history": [
+        {
+          "visit": {
+            "id": 64603,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "anchor_bus_id": 66486,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789651686434,
+            "pinned_at": 1789651701561,
+            "arrived_at": 1789651706467,
+            "departed_at": 1789651963507,
+            "stand_sec": 257.04,
+            "inside_sec": 267.048,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.075334263575073,
+            "steps": 2,
+            "far_m": 94.80359775203098,
+            "confirm_sec": 4.887,
+            "rest_polls": 4,
+            "shuffles": 3,
+            "first_moved_at": 1789651726574,
+            "last_at_rest_at": 1789651963507,
+            "closest_m": 42.912455765452684,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 261.946,
+          "storedStandSec": 257.04,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 53,
+            "maxGapSec": 7.16,
+            "longestExactCoordinatePlateauSec": 134.86100000000002,
+            "minDistanceToStopM": 1.8077679418608799,
+            "firstFinalMovementAfterDepartureSec": 5.102,
+            "exactInboundLegIds": [
+              59845
+            ],
+            "finalRaw": [
+              {
+                "at": 1789651948511,
+                "lat": 41.324457,
+                "lon": -72.928253
+              },
+              {
+                "at": 1789651953495,
+                "lat": 41.324457,
+                "lon": -72.928253
+              },
+              {
+                "at": 1789651958729,
+                "lat": 41.324457,
+                "lon": -72.928253
+              },
+              {
+                "at": 1789651963507,
+                "lat": 41.324457,
+                "lon": -72.928253
+              },
+              {
+                "at": 1789651968609,
+                "lat": 41.324652,
+                "lon": -72.928004
+              },
+              {
+                "at": 1789651973496,
+                "lat": 41.325217,
+                "lon": -72.927818
+              },
+              {
+                "at": 1789651978508,
+                "lat": 41.325217,
+                "lon": -72.927818
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64755,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "anchor_bus_id": 66486,
+            "route_id": 3,
+            "stop_id": 117,
+            "stop_index": 26,
+            "anchored_at": 1789652873580,
+            "pinned_at": 1789652898825,
+            "arrived_at": 1789652898825,
+            "departed_at": 1789652968564,
+            "stand_sec": 69.739,
+            "inside_sec": 79.765,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 32.04888539561471,
+            "steps": 5,
+            "far_m": 153.10703408333362,
+            "confirm_sec": 19.959,
+            "rest_polls": 4,
+            "shuffles": 1,
+            "first_moved_at": 1789652943616,
+            "last_at_rest_at": 1789652968564,
+            "closest_m": 62.54385416220212,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "Gilbert / Cedar",
+          "pinnedHoldSec": 69.739,
+          "storedStandSec": 69.739,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 15,
+            "maxGapSec": 5.263,
+            "longestExactCoordinatePlateauSec": 39.766999999999996,
+            "minDistanceToStopM": 8.0657503817548,
+            "firstFinalMovementAfterDepartureSec": 5.066,
+            "exactInboundLegIds": [
+              60016
+            ],
+            "finalRaw": [
+              {
+                "at": 1789652953587,
+                "lat": 41.30168,
+                "lon": -72.933422
+              },
+              {
+                "at": 1789652958573,
+                "lat": 41.30168,
+                "lon": -72.933422
+              },
+              {
+                "at": 1789652963613,
+                "lat": 41.30168,
+                "lon": -72.933422
+              },
+              {
+                "at": 1789652968564,
+                "lat": 41.30168,
+                "lon": -72.933422
+              },
+              {
+                "at": 1789652973630,
+                "lat": 41.301412,
+                "lon": -72.933282
+              },
+              {
+                "at": 1789652978590,
+                "lat": 41.301132,
+                "lon": -72.933124
+              },
+              {
+                "at": 1789652983564,
+                "lat": 41.300878,
+                "lon": -72.932982
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64797,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "anchor_bus_id": 66486,
+            "route_id": 3,
+            "stop_id": 13,
+            "stop_index": 27,
+            "anchored_at": 1789652988738,
+            "pinned_at": 1789652993589,
+            "arrived_at": 1789652998592,
+            "departed_at": 1789653233590,
+            "stand_sec": 234.998,
+            "inside_sec": 254.996,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 30.13730091041936,
+            "steps": 5,
+            "far_m": 175.0929830152587,
+            "confirm_sec": 20.01,
+            "rest_polls": 47,
+            "shuffles": 0,
+            "first_moved_at": 1789653238579,
+            "last_at_rest_at": 1789653233590,
+            "closest_m": 29.1946595610341,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "Amistad / Cedar",
+          "pinnedHoldSec": 240.001,
+          "storedStandSec": 234.998,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 49,
+            "maxGapSec": 5.174,
+            "longestExactCoordinatePlateauSec": 234.998,
+            "minDistanceToStopM": 29.161857961728717,
+            "firstFinalMovementAfterDepartureSec": 4.989,
+            "exactInboundLegIds": [
+              60029
+            ],
+            "finalRaw": [
+              {
+                "at": 1789653218633,
+                "lat": 41.30023,
+                "lon": -72.93237
+              },
+              {
+                "at": 1789653223578,
+                "lat": 41.30023,
+                "lon": -72.93237
+              },
+              {
+                "at": 1789653228640,
+                "lat": 41.30023,
+                "lon": -72.93237
+              },
+              {
+                "at": 1789653233590,
+                "lat": 41.30023,
+                "lon": -72.93237
+              },
+              {
+                "at": 1789653238579,
+                "lat": 41.300272,
+                "lon": -72.932014
+              },
+              {
+                "at": 1789653243583,
+                "lat": 41.300294,
+                "lon": -72.931578
+              },
+              {
+                "at": 1789653248585,
+                "lat": 41.300361,
+                "lon": -72.931167
+              },
+              {
+                "at": 1789653253583,
+                "lat": 41.300403,
+                "lon": -72.930768
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64807,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "anchor_bus_id": 66486,
+            "route_id": 3,
+            "stop_id": 14,
+            "stop_index": 28,
+            "anchored_at": 1789653253583,
+            "pinned_at": 1789653258589,
+            "arrived_at": 1789653258589,
+            "departed_at": 1789653313639,
+            "stand_sec": 55.05,
+            "inside_sec": 65.032,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 30.401721293435113,
+            "steps": 4,
+            "far_m": 157.12819379236316,
+            "confirm_sec": 14.994,
+            "rest_polls": 11,
+            "shuffles": 0,
+            "first_moved_at": 1789653318647,
+            "last_at_rest_at": 1789653313639,
+            "closest_m": 8.105293371137371,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "Amistad / Church St South",
+          "pinnedHoldSec": 55.05,
+          "storedStandSec": 55.05,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 12,
+            "maxGapSec": 5.057,
+            "longestExactCoordinatePlateauSec": 55.05,
+            "minDistanceToStopM": 8.096186685540815,
+            "firstFinalMovementAfterDepartureSec": 5.008,
+            "exactInboundLegIds": [
+              60065
+            ],
+            "finalRaw": [
+              {
+                "at": 1789653303606,
+                "lat": 41.300521,
+                "lon": -72.929962
+              },
+              {
+                "at": 1789653308659,
+                "lat": 41.300521,
+                "lon": -72.929962
+              },
+              {
+                "at": 1789653313639,
+                "lat": 41.300521,
+                "lon": -72.929962
+              },
+              {
+                "at": 1789653318647,
+                "lat": 41.300546,
+                "lon": -72.9296
+              },
+              {
+                "at": 1789653323621,
+                "lat": 41.300227,
+                "lon": -72.929477
+              },
+              {
+                "at": 1789653328648,
+                "lat": 41.299535,
+                "lon": -72.929329
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 64843,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "anchor_bus_id": 66486,
+            "route_id": 3,
+            "stop_id": 121,
+            "stop_index": 0,
+            "anchored_at": 1789653368661,
+            "pinned_at": 1789653423611,
+            "arrived_at": 1789653423611,
+            "departed_at": 1789653588983,
+            "stand_sec": 165.372,
+            "inside_sec": 185.064,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 30.986275850865272,
+            "steps": 6,
+            "far_m": 183.37390384539074,
+            "confirm_sec": 39.998,
+            "rest_polls": 33,
+            "shuffles": 0,
+            "first_moved_at": 1789653593664,
+            "last_at_rest_at": 1789653588983,
+            "closest_m": 47.64349276305788,
+            "dow": 4,
+            "hour": 9
+          },
+          "stopName": "Union Station (N)",
+          "pinnedHoldSec": 165.372,
+          "storedStandSec": 165.372,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 34,
+            "maxGapSec": 5.246,
+            "longestExactCoordinatePlateauSec": 165.37199999999999,
+            "minDistanceToStopM": 47.58996301517834,
+            "firstFinalMovementAfterDepartureSec": 4.681,
+            "exactInboundLegIds": [
+              60084
+            ],
+            "finalRaw": [
+              {
+                "at": 1789653578697,
+                "lat": 41.297496,
+                "lon": -72.927069
+              },
+              {
+                "at": 1789653583737,
+                "lat": 41.297496,
+                "lon": -72.927069
+              },
+              {
+                "at": 1789653588983,
+                "lat": 41.297496,
+                "lon": -72.927069
+              },
+              {
+                "at": 1789653593664,
+                "lat": 41.297685,
+                "lon": -72.926797
+              },
+              {
+                "at": 1789653598635,
+                "lat": 41.297685,
+                "lon": -72.926797
+              },
+              {
+                "at": 1789653603744,
+                "lat": 41.297932,
+                "lon": -72.926605
+              },
+              {
+                "at": 1789653608675,
+                "lat": 41.298218,
+                "lon": -72.926376
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 65119,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "anchor_bus_id": 66486,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789654924338,
+            "pinned_at": 1789654939440,
+            "arrived_at": 1789654939440,
+            "departed_at": 1789655599583,
+            "stand_sec": 660.143,
+            "inside_sec": 671.852,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 32.508640354673155,
+            "steps": 3,
+            "far_m": 75.74861480088018,
+            "confirm_sec": 9.814,
+            "rest_polls": 10,
+            "shuffles": 1,
+            "first_moved_at": 1789655524563,
+            "last_at_rest_at": 1789655599583,
+            "closest_m": 5.946954181804439,
+            "dow": 4,
+            "hour": 10
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 660.143,
+          "storedStandSec": 660.143,
+          "durationQuarantined": false,
+          "knownAtPin": false,
+          "strictKnownAtPin": false,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 129,
+            "maxGapSec": 25.128,
+            "longestExactCoordinatePlateauSec": 540.2499999999998,
+            "minDistanceToStopM": 5.940272493782738,
+            "firstFinalMovementAfterDepartureSec": 6.874,
+            "exactInboundLegIds": [
+              60295
+            ],
+            "finalRaw": [
+              {
+                "at": 1789655584583,
+                "lat": 41.324263,
+                "lon": -72.928494
+              },
+              {
+                "at": 1789655589636,
+                "lat": 41.324263,
+                "lon": -72.928494
+              },
+              {
+                "at": 1789655594572,
+                "lat": 41.324263,
+                "lon": -72.928494
+              },
+              {
+                "at": 1789655599583,
+                "lat": 41.324263,
+                "lon": -72.928494
+              },
+              {
+                "at": 1789655606457,
+                "lat": 41.324455,
+                "lon": -72.928201
+              },
+              {
+                "at": 1789655611292,
+                "lat": 41.324702,
+                "lon": -72.927991
+              },
+              {
+                "at": 1789655616271,
+                "lat": 41.325006,
+                "lon": -72.927896
+              }
+            ]
+          }
+        }
+      ],
+      "allObservedRouteIds": [
+        3
+      ],
+      "providerBusIds": [
+        66486
+      ]
+    },
+    {
+      "sourceId": 67621,
+      "bus": "#309",
+      "sourcePinET": "2026-09-17T15:56:26.655000-04:00",
+      "priorSourceId": 67188,
+      "history": [
+        {
+          "visit": {
+            "id": 67188,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789671197018,
+            "pinned_at": 1789671206953,
+            "arrived_at": 1789671212006,
+            "departed_at": 1789671852025,
+            "stand_sec": 640.019,
+            "inside_sec": 650.051,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 32.60914305083285,
+            "steps": 2,
+            "far_m": 79.40387220128034,
+            "confirm_sec": 9.999,
+            "rest_polls": 7,
+            "shuffles": 2,
+            "first_moved_at": 1789671236957,
+            "last_at_rest_at": 1789671852025,
+            "closest_m": 55.656394714120296,
+            "dow": 4,
+            "hour": 14
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 645.072,
+          "storedStandSec": 640.019,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 130,
+            "maxGapSec": 5.218,
+            "longestExactCoordinatePlateauSec": 529.8749999999999,
+            "minDistanceToStopM": 10.796666487069766,
+            "firstFinalMovementAfterDepartureSec": 4.979,
+            "exactInboundLegIds": [
+              62275
+            ],
+            "finalRaw": [
+              {
+                "at": 1789671842018,
+                "lat": 41.324299,
+                "lon": -72.928461
+              },
+              {
+                "at": 1789671847090,
+                "lat": 41.324299,
+                "lon": -72.928461
+              },
+              {
+                "at": 1789671852025,
+                "lat": 41.324299,
+                "lon": -72.928461
+              },
+              {
+                "at": 1789671857004,
+                "lat": 41.324499,
+                "lon": -72.928176
+              },
+              {
+                "at": 1789671861984,
+                "lat": 41.324499,
+                "lon": -72.928176
+              },
+              {
+                "at": 1789671867003,
+                "lat": 41.325057,
+                "lon": -72.927887
+              },
+              {
+                "at": 1789671872010,
+                "lat": 41.325322,
+                "lon": -72.927813
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 67321,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 117,
+            "stop_index": 26,
+            "anchored_at": 1789672694151,
+            "pinned_at": 1789672704382,
+            "arrived_at": 1789672704382,
+            "departed_at": 1789672749207,
+            "stand_sec": 44.825,
+            "inside_sec": 54.818,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 30.83166719236453,
+            "steps": 4,
+            "far_m": 139.16483528600386,
+            "confirm_sec": 19.944,
+            "rest_polls": 3,
+            "shuffles": 1,
+            "first_moved_at": 1789672724158,
+            "last_at_rest_at": 1789672749207,
+            "closest_m": 50.48713951091138,
+            "dow": 4,
+            "hour": 15
+          },
+          "stopName": "Gilbert / Cedar",
+          "pinnedHoldSec": 44.825,
+          "storedStandSec": 44.825,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 10,
+            "maxGapSec": 5.226,
+            "longestExactCoordinatePlateauSec": 14.850999999999999,
+            "minDistanceToStopM": 6.023741616496065,
+            "firstFinalMovementAfterDepartureSec": 5.009,
+            "exactInboundLegIds": [
+              62436
+            ],
+            "finalRaw": [
+              {
+                "at": 1789672734356,
+                "lat": 41.301616,
+                "lon": -72.933387
+              },
+              {
+                "at": 1789672739173,
+                "lat": 41.301616,
+                "lon": -72.933387
+              },
+              {
+                "at": 1789672744178,
+                "lat": 41.301616,
+                "lon": -72.933387
+              },
+              {
+                "at": 1789672749207,
+                "lat": 41.301616,
+                "lon": -72.933387
+              },
+              {
+                "at": 1789672754216,
+                "lat": 41.301349,
+                "lon": -72.933289
+              },
+              {
+                "at": 1789672759200,
+                "lat": 41.301066,
+                "lon": -72.933124
+              },
+              {
+                "at": 1789672764277,
+                "lat": 41.301066,
+                "lon": -72.933124
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 67326,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 13,
+            "stop_index": 27,
+            "anchored_at": 1789672769294,
+            "pinned_at": 1789672774160,
+            "arrived_at": 1789672774160,
+            "departed_at": 1789672784196,
+            "stand_sec": 10.036,
+            "inside_sec": 25.058,
+            "outcome": "passed",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 35.92754735974282,
+            "steps": 5,
+            "far_m": 126.74338293092963,
+            "confirm_sec": 20.035,
+            "rest_polls": 2,
+            "shuffles": 0,
+            "first_moved_at": 1789672789158,
+            "last_at_rest_at": 1789672784196,
+            "closest_m": 68.999470405248,
+            "dow": 4,
+            "hour": 15
+          },
+          "stopName": "Amistad / Cedar",
+          "pinnedHoldSec": 10.036,
+          "storedStandSec": 10.036,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 3,
+            "maxGapSec": 5.302,
+            "longestExactCoordinatePlateauSec": 10.036,
+            "minDistanceToStopM": 68.92194619275199,
+            "firstFinalMovementAfterDepartureSec": 4.962,
+            "exactInboundLegIds": [
+              62446
+            ],
+            "finalRaw": [
+              {
+                "at": 1789672769294,
+                "lat": 41.30078,
+                "lon": -72.932936
+              },
+              {
+                "at": 1789672774160,
+                "lat": 41.30047,
+                "lon": -72.932785
+              },
+              {
+                "at": 1789672779191,
+                "lat": 41.30047,
+                "lon": -72.932785
+              },
+              {
+                "at": 1789672784196,
+                "lat": 41.30047,
+                "lon": -72.932785
+              },
+              {
+                "at": 1789672789158,
+                "lat": 41.300207,
+                "lon": -72.932536
+              },
+              {
+                "at": 1789672794460,
+                "lat": 41.300263,
+                "lon": -72.932102
+              },
+              {
+                "at": 1789672799218,
+                "lat": 41.300328,
+                "lon": -72.931665
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 67334,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 14,
+            "stop_index": 28,
+            "anchored_at": 1789672804259,
+            "pinned_at": 1789672809193,
+            "arrived_at": 1789672809193,
+            "departed_at": 1789672824252,
+            "stand_sec": 15.059,
+            "inside_sec": 34.971,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 30.649075377605552,
+            "steps": 4,
+            "far_m": 135.32475171533542,
+            "confirm_sec": 19.999,
+            "rest_polls": 3,
+            "shuffles": 0,
+            "first_moved_at": 1789672829164,
+            "last_at_rest_at": 1789672824252,
+            "closest_m": 56.566241292638075,
+            "dow": 4,
+            "hour": 15
+          },
+          "stopName": "Amistad / Church St South",
+          "pinnedHoldSec": 15.059,
+          "storedStandSec": 15.059,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 4,
+            "maxGapSec": 5.302,
+            "longestExactCoordinatePlateauSec": 15.059000000000001,
+            "minDistanceToStopM": 56.50268640928591,
+            "firstFinalMovementAfterDepartureSec": 4.912,
+            "exactInboundLegIds": [
+              62453
+            ],
+            "finalRaw": [
+              {
+                "at": 1789672814167,
+                "lat": 41.300467,
+                "lon": -72.930537
+              },
+              {
+                "at": 1789672819164,
+                "lat": 41.300467,
+                "lon": -72.930537
+              },
+              {
+                "at": 1789672824252,
+                "lat": 41.300467,
+                "lon": -72.930537
+              },
+              {
+                "at": 1789672829164,
+                "lat": 41.300499,
+                "lon": -72.930173
+              },
+              {
+                "at": 1789672834288,
+                "lat": 41.300563,
+                "lon": -72.929785
+              },
+              {
+                "at": 1789672839151,
+                "lat": 41.300563,
+                "lon": -72.929785
+              },
+              {
+                "at": 1789672844164,
+                "lat": 41.300014,
+                "lon": -72.929447
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 67413,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 121,
+            "stop_index": 0,
+            "anchored_at": 1789672864169,
+            "pinned_at": 1789672909158,
+            "arrived_at": 1789672914358,
+            "departed_at": 1789673429984,
+            "stand_sec": 515.626,
+            "inside_sec": 530.703,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1,
+            "first_step_m": 32.61198120273853,
+            "steps": 5,
+            "far_m": 184.6584119973998,
+            "confirm_sec": 70.2,
+            "rest_polls": 103,
+            "shuffles": 0,
+            "first_moved_at": 1789673434861,
+            "last_at_rest_at": 1789673429984,
+            "closest_m": 13.823793163774946,
+            "dow": 4,
+            "hour": 15
+          },
+          "stopName": "Union Station (N)",
+          "pinnedHoldSec": 520.826,
+          "storedStandSec": 515.626,
+          "durationQuarantined": false,
+          "knownAtPin": true,
+          "strictKnownAtPin": true,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 105,
+            "maxGapSec": 6.067,
+            "longestExactCoordinatePlateauSec": 515.6260000000001,
+            "minDistanceToStopM": 13.808261469387752,
+            "firstFinalMovementAfterDepartureSec": 4.877,
+            "exactInboundLegIds": [
+              62473
+            ],
+            "finalRaw": [
+              {
+                "at": 1789673419857,
+                "lat": 41.297757,
+                "lon": -72.926861
+              },
+              {
+                "at": 1789673425009,
+                "lat": 41.297757,
+                "lon": -72.926861
+              },
+              {
+                "at": 1789673429984,
+                "lat": 41.297757,
+                "lon": -72.926861
+              },
+              {
+                "at": 1789673434861,
+                "lat": 41.297976,
+                "lon": -72.926602
+              },
+              {
+                "at": 1789673439861,
+                "lat": 41.298241,
+                "lon": -72.926377
+              },
+              {
+                "at": 1789673444873,
+                "lat": 41.298468,
+                "lon": -72.926155
+              }
+            ]
+          }
+        },
+        {
+          "visit": {
+            "id": 67621,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789674971542,
+            "pinned_at": 1789674986655,
+            "arrived_at": 1789674986655,
+            "departed_at": 1789675231997,
+            "stand_sec": 245.342,
+            "inside_sec": 255.343,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1,
+            "first_step_m": 38.70854869362958,
+            "steps": 2,
+            "far_m": 63.2719268789962,
+            "confirm_sec": 5.007,
+            "rest_polls": 9,
+            "shuffles": 2,
+            "first_moved_at": 1789675011545,
+            "last_at_rest_at": 1789675231997,
+            "closest_m": 55.01834326719834,
+            "dow": 4,
+            "hour": 15
+          },
+          "stopName": "344 Winchester",
+          "pinnedHoldSec": 245.342,
+          "storedStandSec": 245.342,
+          "durationQuarantined": false,
+          "knownAtPin": false,
+          "strictKnownAtPin": false,
+          "quality": {
+            "rawAvailable": true,
+            "rawRows": 46,
+            "maxGapSec": 25.478,
+            "longestExactCoordinatePlateauSec": 110.12400000000002,
+            "minDistanceToStopM": 13.885195612606744,
+            "firstFinalMovementAfterDepartureSec": 4.994,
+            "exactInboundLegIds": [
+              62713
+            ],
+            "finalRaw": [
+              {
+                "at": 1789675217150,
+                "lat": 41.324378,
+                "lon": -72.928434
+              },
+              {
+                "at": 1789675221995,
+                "lat": 41.324378,
+                "lon": -72.928434
+              },
+              {
+                "at": 1789675227112,
+                "lat": 41.324378,
+                "lon": -72.928434
+              },
+              {
+                "at": 1789675231997,
+                "lat": 41.324378,
+                "lon": -72.928434
+              },
+              {
+                "at": 1789675236991,
+                "lat": 41.324583,
+                "lon": -72.92806
+              },
+              {
+                "at": 1789675241998,
+                "lat": 41.324843,
+                "lon": -72.92796
+              },
+              {
+                "at": 1789675247835,
+                "lat": 41.325433,
+                "lon": -72.92775
+              }
+            ]
+          }
+        }
+      ],
+      "allObservedRouteIds": [
+        3
+      ],
+      "providerBusIds": [
+        66491
+      ]
+    }
+  ],
+  "data": {
+    "outcomesDB": "release-integration-data/outcomes-complete.db",
+    "freshCapture": "red-rest-history-2026-09-18/recordings.json",
+    "capturedAt": 1789750650143
+  },
+  "limitations": [
+    "Bus name/provider ID are observed; driver identity and shift changes are not. No statement is a driver-level causal conclusion.",
+    "Pinned duration, plateau-based stand_sec, broader physical waiting and legacy dwell are different measurements.",
+    "Passed episodes may have positive pinned spans; these are not automatically discretionary breaks.",
+    "Quarantine65237 only affects its corrupted hold start/duration; final departure and outgoing leg remain valid.",
+    "A later dataset read is used only for labels; historical feature eligibility is explicitly checked against pin."
+  ],
+  "priorCedarTrainingSupport": [
+    {
+      "stop": 117,
+      "completedSourceVisits": 167,
+      "stopped": 144,
+      "atLeast120s": [
+        {
+          "id": 28403,
+          "bus": "#309",
+          "standSec": 159.956,
+          "pinnedSec": 159.956
+        },
+        {
+          "id": 31990,
+          "bus": "#309",
+          "standSec": 140.279,
+          "pinnedSec": 140.279
+        }
+      ],
+      "caveat": "Source-visit count, not necessarily eligible histories among the160 fitted focal holds."
+    },
+    {
+      "stop": 13,
+      "completedSourceVisits": 163,
+      "stopped": 17,
+      "atLeast120s": [
+        {
+          "id": 23155,
+          "bus": "#119",
+          "standSec": 189.893,
+          "pinnedSec": 199.904
+        }
+      ],
+      "caveat": "Source-visit count, not necessarily eligible histories among the160 fitted focal holds."
+    }
+  ],
+  "additionalUnionFragments": [
+    {
+      "focalId": 25064,
+      "old": {
+        "id": 24861,
+        "bus_id": 66115,
+        "bus_name": "#119",
+        "anchor_bus_id": 66115,
+        "route_id": 3,
+        "stop_id": 121,
+        "stop_index": 0,
+        "anchored_at": 1788976474814,
+        "pinned_at": 1788976530386,
+        "arrived_at": 1788976535322,
+        "departed_at": null,
+        "stand_sec": null,
+        "inside_sec": 30.088,
+        "outcome": "unresolved",
+        "how": null,
+        "confidence": null,
+        "first_step_m": null,
+        "steps": 0,
+        "far_m": null,
+        "confirm_sec": null,
+        "rest_polls": 5,
+        "shuffles": 0,
+        "first_moved_at": null,
+        "last_at_rest_at": 1788976560474,
+        "closest_m": 23.643015838991417,
+        "dow": 3,
+        "hour": 13
+      },
+      "new": {
+        "id": 24868,
+        "bus_id": 66136,
+        "bus_name": "#119",
+        "anchor_bus_id": 66136,
+        "route_id": 3,
+        "stop_id": 121,
+        "stop_index": 0,
+        "anchored_at": 1788976685353,
+        "pinned_at": 1788976685353,
+        "arrived_at": 1788976685353,
+        "departed_at": 1788976770403,
+        "stand_sec": 85.05,
+        "inside_sec": 95.027,
+        "outcome": "stopped",
+        "how": "far",
+        "confidence": 1.0,
+        "first_step_m": 30.833939187740604,
+        "steps": 4,
+        "far_m": 173.4406891083637,
+        "confirm_sec": 14.985,
+        "rest_polls": 17,
+        "shuffles": 0,
+        "first_moved_at": 1788976775362,
+        "last_at_rest_at": 1788976770403,
+        "closest_m": 8.08787902809894,
+        "dow": 3,
+        "hour": 13
+      },
+      "rawRows": 0,
+      "coordinateRuns": [],
+      "maxRawGapSec": null,
+      "legacy": [
+        {
+          "id": 675570,
+          "bus_id": 66115,
+          "bus_name": "#119",
+          "route_id": 3,
+          "stop_id": 121,
+          "arrived_at": 1788976474814,
+          "departed_at": null,
+          "dwell_sec": null,
+          "dow": 3,
+          "hour": 13
+        },
+        {
+          "id": 675593,
+          "bus_id": 66136,
+          "bus_name": "#119",
+          "route_id": 3,
+          "stop_id": 121,
+          "arrived_at": 1788976685353,
+          "departed_at": 1788976875383,
+          "dwell_sec": 190.03,
+          "dow": 3,
+          "hour": 13
+        }
+      ],
+      "verdict": "Uncertain/incomplete prior duration: provider ID change, earlier unresolved same-stop visit and unmatched older inbound pin; no local raw to reconstruct total."
+    },
+    {
+      "focalId": 60263,
+      "old": {
+        "id": 59983,
+        "bus_id": 66427,
+        "bus_name": "#308",
+        "anchor_bus_id": 66427,
+        "route_id": 3,
+        "stop_id": 121,
+        "stop_index": 0,
+        "anchored_at": 1789581027001,
+        "pinned_at": 1789581071994,
+        "arrived_at": 1789581076978,
+        "departed_at": null,
+        "stand_sec": null,
+        "inside_sec": 54.98,
+        "outcome": "unresolved",
+        "how": null,
+        "confidence": null,
+        "first_step_m": null,
+        "steps": 0,
+        "far_m": null,
+        "confirm_sec": null,
+        "rest_polls": 4,
+        "shuffles": 1,
+        "first_moved_at": 1789581106986,
+        "last_at_rest_at": 1789581126974,
+        "closest_m": 38.547585707672546,
+        "dow": 3,
+        "hour": 13
+      },
+      "new": {
+        "id": 60020,
+        "bus_id": 66453,
+        "bus_name": "#308",
+        "anchor_bus_id": 66453,
+        "route_id": 3,
+        "stop_id": 121,
+        "stop_index": 0,
+        "anchored_at": 1789581565252,
+        "pinned_at": 1789581565252,
+        "arrived_at": 1789581575183,
+        "departed_at": 1789581580129,
+        "stand_sec": 4.946,
+        "inside_sec": 14.877,
+        "outcome": "passed",
+        "how": "far",
+        "confidence": 1.0,
+        "first_step_m": 68.62898019118114,
+        "steps": 1,
+        "far_m": 175.5903266746109,
+        "confirm_sec": 0.0,
+        "rest_polls": 1,
+        "shuffles": 0,
+        "first_moved_at": 1789581585129,
+        "last_at_rest_at": 1789581580129,
+        "closest_m": 38.80831490100774,
+        "dow": 3,
+        "hour": 13
+      },
+      "rawRows": 107,
+      "coordinateRuns": [
+        {
+          "key": [
+            66427,
+            3,
+            41.300536,
+            -72.929843
+          ],
+          "start": 1789580997006,
+          "end": 1789580997006,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.300027,
+            -72.929436
+          ],
+          "start": 1789581002054,
+          "end": 1789581002054,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.299755,
+            -72.929383
+          ],
+          "start": 1789581006979,
+          "end": 1789581006979,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.299136,
+            -72.929243
+          ],
+          "start": 1789581011970,
+          "end": 1789581011970,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.298848,
+            -72.929184
+          ],
+          "start": 1789581017039,
+          "end": 1789581021988,
+          "n": 2
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.298216,
+            -72.92905
+          ],
+          "start": 1789581027001,
+          "end": 1789581027001,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.297925,
+            -72.92899
+          ],
+          "start": 1789581032013,
+          "end": 1789581032013,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.297326,
+            -72.928843
+          ],
+          "start": 1789581037092,
+          "end": 1789581037092,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.297047,
+            -72.928774
+          ],
+          "start": 1789581042048,
+          "end": 1789581042048,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.29671,
+            -72.928684
+          ],
+          "start": 1789581046986,
+          "end": 1789581046986,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.296427,
+            -72.928536
+          ],
+          "start": 1789581051983,
+          "end": 1789581051983,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.296317,
+            -72.928201
+          ],
+          "start": 1789581057061,
+          "end": 1789581057061,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.296599,
+            -72.927953
+          ],
+          "start": 1789581061997,
+          "end": 1789581061997,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.296898,
+            -72.927675
+          ],
+          "start": 1789581066981,
+          "end": 1789581066981,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.297359,
+            -72.927248
+          ],
+          "start": 1789581071994,
+          "end": 1789581071994,
+          "n": 1
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.297578,
+            -72.927036
+          ],
+          "start": 1789581076978,
+          "end": 1789581102001,
+          "n": 6
+        },
+        {
+          "key": [
+            66427,
+            3,
+            41.297775,
+            -72.926774
+          ],
+          "start": 1789581106986,
+          "end": 1789581126974,
+          "n": 5
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.297872,
+            -72.926686
+          ],
+          "start": 1789581227043,
+          "end": 1789581547036,
+          "n": 65
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.298135,
+            -72.926483
+          ],
+          "start": 1789581565252,
+          "end": 1789581565252,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.298396,
+            -72.92625
+          ],
+          "start": 1789581570152,
+          "end": 1789581570152,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.298647,
+            -72.926035
+          ],
+          "start": 1789581575183,
+          "end": 1789581580129,
+          "n": 2
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.299156,
+            -72.925572
+          ],
+          "start": 1789581585129,
+          "end": 1789581585129,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.299455,
+            -72.925307
+          ],
+          "start": 1789581590292,
+          "end": 1789581590292,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.299922,
+            -72.924889
+          ],
+          "start": 1789581595139,
+          "end": 1789581595139,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.30021,
+            -72.924618
+          ],
+          "start": 1789581600218,
+          "end": 1789581600218,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.300483,
+            -72.924348
+          ],
+          "start": 1789581605231,
+          "end": 1789581605231,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.300763,
+            -72.92425
+          ],
+          "start": 1789581610139,
+          "end": 1789581610139,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.301082,
+            -72.924235
+          ],
+          "start": 1789581615132,
+          "end": 1789581615132,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.301326,
+            -72.923985
+          ],
+          "start": 1789581620187,
+          "end": 1789581625804,
+          "n": 2
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.301382,
+            -72.923573
+          ],
+          "start": 1789581630654,
+          "end": 1789581630654,
+          "n": 1
+        },
+        {
+          "key": [
+            66453,
+            3,
+            41.301378,
+            -72.923173
+          ],
+          "start": 1789581635614,
+          "end": 1789581635614,
+          "n": 1
+        }
+      ],
+      "maxRawGapSec": 100.069,
+      "legacy": [
+        {
+          "id": 711252,
+          "bus_id": 66427,
+          "bus_name": "#308",
+          "route_id": 3,
+          "stop_id": 121,
+          "arrived_at": 1789581027001,
+          "departed_at": null,
+          "dwell_sec": null,
+          "dow": 3,
+          "hour": 13
+        },
+        {
+          "id": 711276,
+          "bus_id": 66453,
+          "bus_name": "#308",
+          "route_id": 3,
+          "stop_id": 121,
+          "arrived_at": 1789581227043,
+          "departed_at": null,
+          "dwell_sec": null,
+          "dow": 3,
+          "hour": 13
+        },
+        {
+          "id": 711322,
+          "bus_id": 66453,
+          "bus_name": "#308",
+          "route_id": 3,
+          "stop_id": 121,
+          "arrived_at": 1789581565252,
+          "departed_at": 1789581620187,
+          "dwell_sec": 54.935,
+          "dow": 3,
+          "hour": 13
+        }
+      ],
+      "verdict": "Confirmed incomplete prior duration: observed320s same-zone plateau precedes new fragment, no intervening lap."
+    }
+  ],
+  "priorWinchesterCohortMetadataCheck": {
+    "distinctUsedPriorDurations": 250,
+    "flags": [],
+    "rule": "Flag a used prior Winchester duration if an earlier unresolved/gap Winchester anchor on that bus is within20min, without an intervening Union anchor. Metadata screen only; absence is not full raw validation."
+  }
+}

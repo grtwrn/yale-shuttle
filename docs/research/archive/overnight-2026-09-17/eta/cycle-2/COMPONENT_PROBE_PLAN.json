@@ -1,0 +1,8 @@
+{
+  "purpose": "Observer-only additive sample means for current-code Union departure+60 at five fixed selected cases; no candidate or intervention.",
+  "accounting": "Per-sample time before Winchester, future Winchester wait, and subsequent travel/intermediate stops to each endpoint. Weighted mixture means add; displayed quantile differences do not.",
+  "validation": "Compare every observer priceRoute output to untouched current priceRoute on identical warm states, plus current displayed outputs; check per-sample additive identity.",
+  "source": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/arrival.ts",
+  "sourceSHA256": "7b92e398a3aa6a02b5358106380058e82d44c3400879caf94e402010d478d59a",
+  "generatedObserverSHA256": "927ed8fb80f0d6caf7e12f5f10c9692c6dd00e386a50a96b0ea1103f8a2500a9"
+}

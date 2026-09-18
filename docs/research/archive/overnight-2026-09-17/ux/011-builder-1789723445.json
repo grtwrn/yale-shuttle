@@ -1,0 +1,12 @@
+{
+  "outcome": "candidate",
+  "summary": "Prevent map errors when zooming and leaving a view\nFixed system-map and ride-map teardown errors. Keyboard, touch, wheel zoom and recovery behavior pass browser checks. Evidence: ux/ux-09-map/REPORT.md. HEAD and index preserved.",
+  "next_task": "Independently review the two-file map proposal, then resume UX10 saved-place, location and weather checks. Controller owns release gates.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-map/verify.sh — 77 tests, both typechecks and Vite passed; wrapper exited 1 on a subsequently corrected browser-fixture focus assertion.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-map/browser.sh — exit 0: mobile/desktop lifecycle, original reproduction, feed-state and fullscreen checks.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-map/gestures.sh — exit 0: pinch, wheel, reflow and 24 lifecycle cycles; zero page errors.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-map/verify-integrity.py — exit 0: scope, source/bundle parity, HEAD/index and screenshot budget verified.",
+    "node --check services/shuttle-v2/scripts/map-lifecycle-check.mjs; git diff --check — both exit 0. All owned browser/server resources closed."
+  ]
+}

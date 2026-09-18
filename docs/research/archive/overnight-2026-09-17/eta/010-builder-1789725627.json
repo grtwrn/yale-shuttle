@@ -1,0 +1,12 @@
+{
+  "outcome": "research",
+  "summary": "Completed the saved 6,000-poll fleet evaluation and corrected replay occurrence labels. Average ETA changes are negligible; connected rider-trip error slightly worsens, with large individual changes retained. Evidence and handoff saved in eta/cycle-15. Application files and HEAD remain unchanged.",
+  "next_task": "Independently review cycle-15/REVIEW_REQUEST.md and final corrected outputs. Then resume frozen current/canonical arms from poll 6000 to 9000 using saved native checkpoints; preserve unresolved identities, both occurrences and all regressions.",
+  "tests": [
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/verify_score.py — passed under heavy lock; 182,918 truths and 1,920,044 connected leg uses verified.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/verify_semantics.py — passed; both-arm wire/occurrence checks and 4,925 connected rider outcomes per arm.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/verify_decisions.py — passed; 2,036 comparisons preserve vehicle, ordering and walking caution.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/compare_resume.py — passed; both 100-poll continuations match exactly.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/finish.py — passed; clean checkout/index, frozen inputs and artifact integrity verified."
+  ]
+}

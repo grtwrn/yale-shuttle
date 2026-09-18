@@ -1,0 +1,84 @@
+{
+  "note": "Synthetic forecast jumps over recorded September17 route geometry; verifies ranking/UI stability, not ETA accuracy.",
+  "initialOrder": [
+    "View Red trip details",
+    "View Walk trip details",
+    "View Blue Day trip details",
+    "View Brown trip details",
+    "View Orange Day trip details"
+  ],
+  "sequence": [
+    {
+      "phase": 1,
+      "order": [
+        "View Red trip details",
+        "View Walk trip details",
+        "View Blue Day trip details",
+        "View Brown trip details",
+        "View Orange Day trip details"
+      ],
+      "redText": "Red\nAbout 1 min ⓘ\nLikely <1–40 min\n4 min\n🚌 2 min\n›\n🚶 1 min\n10:34a\n›",
+      "feedReads": 4
+    },
+    {
+      "phase": 2,
+      "order": [
+        "View Red trip details",
+        "View Walk trip details",
+        "View Blue Day trip details",
+        "View Brown trip details",
+        "View Orange Day trip details"
+      ],
+      "redText": "Red\nAbout 6 min ⓘ\nLikely <1–40 min\n16 min\n🚌 9 min\n›\n🚶 1 min\n10:46a\n›",
+      "feedReads": 5
+    },
+    {
+      "phase": 3,
+      "order": [
+        "View Red trip details",
+        "View Walk trip details",
+        "View Blue Day trip details",
+        "View Brown trip details",
+        "View Orange Day trip details"
+      ],
+      "redText": "Red\nAbout 5 min ⓘ\nLikely <1–40 min\n16 min\n🚌 9 min\n›\n🚶 1 min\n10:46a\n›",
+      "feedReads": 6
+    },
+    {
+      "phase": 1,
+      "order": [
+        "View Red trip details",
+        "View Walk trip details",
+        "View Blue Day trip details",
+        "View Brown trip details",
+        "View Orange Day trip details"
+      ],
+      "redText": "Red\nAbout 1 min ⓘ\nLikely <1–40 min\n4 min\n🚌 2 min\n›\n🚶 1 min\n10:35a\n›",
+      "feedReads": 8
+    },
+    {
+      "phase": 2,
+      "order": [
+        "View Red trip details",
+        "View Walk trip details",
+        "View Blue Day trip details",
+        "View Brown trip details",
+        "View Orange Day trip details"
+      ],
+      "redText": "Red\nAbout 6 min ⓘ\nLikely <1–40 min\n16 min\n🚌 9 min\n›\n🚶 1 min\n10:47a\n›",
+      "feedReads": 9
+    },
+    {
+      "phase": 0,
+      "order": [
+        "View Red trip details",
+        "View Walk trip details",
+        "View Blue Day trip details",
+        "View Brown trip details",
+        "View Orange Day trip details"
+      ],
+      "redText": "Red\nAbout 3 min ⓘ\nLikely <1–11 min\n10 min\n🚌 6 min\n›\n🚶 1 min\n10:41a\n›",
+      "feedReads": 10
+    }
+  ]
+}

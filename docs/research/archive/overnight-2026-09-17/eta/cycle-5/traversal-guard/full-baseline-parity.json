@@ -1,0 +1,4 @@
+{
+  "exactPriorReleaseOnRows": 150020,
+  "comparator": "Both current-code baseline and candidate have release ON; comparison to archived candidate establishes prior release parity, not new baseline OFF."
+}
