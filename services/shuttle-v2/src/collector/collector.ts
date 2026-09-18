@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 
 import { calibrate } from "../calibrator/calibrator.js";
+import { ReleaseFitCache } from "../calibrator/releaseFit.js";
 import { LapFitCache } from "../calibrator/lapFit.js";
 import type { DB, DbBundle } from "../db/client.js";
 import {
@@ -1251,6 +1252,7 @@ export class Collector {
    */
   private readonly lapClock = new Map<string, Map<number, number>>();
   private lapFitsCache: LapFitCache | null = null;
+  private releaseFitsCache: ReleaseFitCache | null = null;
 
   /** Seconds since this bus last departed each stop it has a record for. */
   lapAges(busName: string, nowMs: number): Record<string, number> | undefined {
@@ -1358,11 +1360,15 @@ export class Collector {
       const fitAt = Date.now();
       const lapFits = this.lapFitsCache.get();
       const lapFitMs = Date.now() - fitAt;
-      const stats = calibrate(this.db, this.ref.get(), new Date(), lapFits);
+      if (!this.releaseFitsCache) this.releaseFitsCache = new ReleaseFitCache(this.sqlite);
+      const releaseAt = Date.now();
+      const releaseFits = this.releaseFitsCache.get();
+      const releaseFitMs = Date.now() - releaseAt;
+      const stats = calibrate(this.db, this.ref.get(), new Date(), lapFits, releaseFits);
       // Calibration mutates the live network's stats in place, so readers
       // memoizing on dataVersion() must be told the segment/dwell numbers moved.
       this.version++;
-      this.logger.info("collector.calibrated", { ...stats, lapFitMs, loopHeldMs: stats.durationMs + lapFitMs });
+      this.logger.info("collector.calibrated", { ...stats, lapFitMs, releaseFitMs, releaseFitCount: releaseFits.size, loopHeldMs: stats.durationMs + lapFitMs + releaseFitMs });
     } catch (err) {
       this.logger.error("collector.calibrate_failed", {
         error: (err as Error).message,

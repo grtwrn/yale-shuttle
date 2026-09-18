@@ -1,3 +1,4 @@
+import type { ReleaseFit } from "../../web/src/eta/release.js";
 /**
  * v1-compatibility API layer.
  *
@@ -67,6 +68,7 @@ export type DwellEntry = {
    * payload without them, prices every stand exactly as before.
    */
   lapB?: number; lapM?: number; lapN?: number;
+  release?: ReleaseFit;
 };
 /**
  * `pace[route]`: seconds per ROAD metre (`legM`; chord where absent),
@@ -321,6 +323,7 @@ export function buildBusesPayload(
         ...(d.low !== undefined ? { low: round1(d.low) } : {}),
         ...dwellSplitFields(d),
         ...dwellLapFields(d),
+        ...(d.release ? { release: d.release } : {}),
       };
     }
     // A stop the route lists more than once (the West Campus out-and-backs)

@@ -33,6 +33,7 @@ import { priceRoute, type Floors, type StopArrival } from "./arrival";
 import { stepBelief, type Belief, type FilterBus } from "./filter";
 import { ringFor, setRingProfile, type Ring } from "./ring";
 import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
+import { releaseModelEnabled, type ReleasePin } from './release';
 
 /**
  * The displayed quantile. 0.5 = the median.
@@ -49,7 +50,7 @@ export const DISPLAY_TAU = 0.5;
  * Keyed by `anchorKeyFor(routeLabel, busName)` (liveAnchor.ts) — the bus
  * NAME, never `bus_id`, which TransLoc reissues per service block.
  */
-export interface ModelEntry { belief?: Belief | undefined; floors?: Floors | undefined }
+export interface ModelEntry { belief?: Belief | undefined; floors?: Floors | undefined; releasePin?: ReleasePin | undefined; releaseSmoothing?: Map<number, { at: number; row: StopArrival }> }
 export type AnchorStore = Map<string, ModelEntry>;
 
 /**
@@ -160,12 +161,49 @@ export function arrivalsForBus(
   const tables = tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute);
   const belief = beliefFor(store, key, bus, ring, ring.stops, now);
   let floors: Floors | undefined;
+  let releasePin: ReleasePin | undefined;
   if (store) {
     const e = entryFor(store, key);
+    if (bus.at_stop_id !== undefined && bus.at_stop_id !== null && bus.at_stop_since) {
+      const since = new Date(bus.at_stop_since.endsWith('Z') ? bus.at_stop_since : bus.at_stop_since + 'Z').getTime();
+      if (Number.isFinite(since) && since <= now) {
+        const stopId = Number(bus.at_stop_id), old = e.releasePin;
+        const age = lapAgesOf(bus)?.[stopId];
+        const lapAtPin = old?.stopId === stopId && old.since === since && old.lapAtPin !== undefined
+          ? old.lapAtPin : age === undefined ? undefined : age - (now - since) / 1000;
+        e.releasePin = { stopId, since, ...(lapAtPin === undefined ? {} : { lapAtPin }) };
+      }
+    }
+    releasePin = e.releasePin;
     if (!e.floors) e.floors = { map: new Map() };
     floors = e.floors;
   }
-  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, lapAgesOf(bus), includeDistribution);
+  const rows = priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, lapAgesOf(bus), includeDistribution, releasePin);
+  // Pool absolute arrival quantiles only while the tracked rest continues.
+  // This damps swaps between the leave-now and keep-waiting hypotheses. It
+  // imposes no monotone ETA ceiling and releases as soon as the rest ends.
+  // Missing lap history retains marginal pricing and the same stabilization.
+  if (store && ring.routeId === '3' && releaseModelEnabled() && tables.stops.some(s => s.release)) {
+    const entry = entryFor(store, key);
+    const memory = entry.releaseSmoothing ??= new Map();
+    const active = releasePin && belief.rested && ring.stops[belief.restStop] === releasePin.stopId && tables.stops[belief.restStop]?.release?.stopId === releasePin.stopId;
+    for (const row of rows) {
+      const rowKey = row.stopId * 2 + row.occurrence, old = memory.get(rowKey);
+      const dt = old ? (now - old.at) / 1000 : Infinity;
+      if (active && old && dt >= 0 && dt <= 15 && row.stopsAhead <= old.row.stopsAhead) {
+        const weight = 1 - Math.exp(-dt / 30);
+        const mix = (before: number, current: number) => Math.max(0, (before - dt) * (1 - weight) + current * weight);
+        row.eta = mix(old.row.eta, row.eta);
+        row.low = Math.min(row.eta, mix(old.row.low, row.low));
+        row.high = Math.max(row.eta, mix(old.row.high, row.high));
+        if (row.distribution && old.row.distribution?.length === row.distribution.length) {
+          row.distribution = row.distribution.map((v, i) => mix(old.row.distribution![i]!, v));
+        }
+      }
+      memory.set(rowKey, { at: now, row: { ...row } });
+    }
+  }
+  return rows;
 }
 
 // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only
@@ -185,6 +223,10 @@ function mixInto(h: number, routeDwells: Record<string, DwellLike>): number {
     mix(Math.round((d.lapB ?? 0) * 1e7));
     mix(Math.round(d.lapM ?? -1));
     mix(d.lapN ?? -1);
+    if (d.release) {
+      const serialized = JSON.stringify(d.release);
+      for (let i = 0; i < serialized.length; i++) mix(serialized.charCodeAt(i));
+    }
     if (d.q) for (const x of d.q) mix(Math.round(x));
   }
   return h;

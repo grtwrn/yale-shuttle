@@ -78,10 +78,11 @@ describe("collector.calibrated names the lap fit's own cost", () => {
     // The stats the calibrator already reported, unchanged.
     expect(m).toHaveProperty("lapFitCount");
     expect(m).toHaveProperty("durationMs");
-    // ...plus the half `durationMs` structurally cannot see.
+    // ...plus both history fits that `durationMs` structurally cannot see.
     expect(typeof m.lapFitMs).toBe("number");
+    expect(typeof m.releaseFitMs).toBe("number");
     expect(typeof m.loopHeldMs).toBe("number");
-    expect(m.loopHeldMs).toBe((m.durationMs as number) + (m.lapFitMs as number));
+    expect(m.loopHeldMs).toBe((m.durationMs as number) + (m.lapFitMs as number) + (m.releaseFitMs as number));
     expect(m.loopHeldMs as number).toBeGreaterThanOrEqual(m.durationMs as number);
   });
 
