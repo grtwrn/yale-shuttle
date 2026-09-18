@@ -77,6 +77,10 @@ try {
   // keeps that opacity at zero; finish only that animation for capture.
   await page.addStyleTag({ content: '.trip-map-wrap .leaflet-tile { opacity: 1 !important; }' });
   await page.waitForTimeout(500);
+  // Capture variants from a detached copy of the rendered map. React and
+  // Leaflet can finish asynchronous updates on their original nodes without
+  // replacing a label midway through a screenshot of this fixed example.
+  await map.evaluate(el => el.replaceWith(el.cloneNode(true)));
   await map.evaluate(el => {
     window.previewOriginal = [...el.querySelectorAll('.leaflet-tooltip')].map(t => ({ t, html: t.innerHTML, style: t.getAttribute('style') }));
     const legend = [...el.querySelectorAll(':scope > div')].find(n => n.style.position === 'absolute' && n.style.bottom === '8px' && n.style.left === '8px');
@@ -125,9 +129,12 @@ try {
     }, id);
     assert.deepEqual(await geometry(), originalGeometry, `Option ${id} changed map geometry`);
     const name = `option-${String(id).padStart(2, '0')}.png`;
-    const bytes = await map.screenshot({ path: path.join(out, name) });
+    const labels = () => map.evaluate(el => [...el.querySelectorAll('.leaflet-tooltip')].map(t => ({ text: t.textContent, visible: t.style.visibility !== 'hidden' })));
+    const before = await labels();
+    const bytes = await map.screenshot({ path: path.join(out, name), animations: 'disabled' });
+    assert.deepEqual(await labels(), before, `Option ${id} labels changed during capture`);
     manifest.images[name] = hash(bytes);
-    manifest.checks.push({ id, geometryUnchanged: true });
+    manifest.checks.push({ id, geometryUnchanged: true, labels: before });
   }
   assert.equal(new Set(Object.values(manifest.images)).size, 11, 'An option did not visibly change its labels');
   assert.deepEqual(errors, []);
