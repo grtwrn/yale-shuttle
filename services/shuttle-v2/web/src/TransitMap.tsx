@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
 import L from "leaflet";
+import { cancelMapTouchZoom } from "./mapLifecycle";
 import "leaflet/dist/leaflet.css";
 import {
   stations, routes, stopToStation, routeNameMap,
@@ -1546,6 +1547,7 @@ const AllRoutesMap: FC<{
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
+      cancelMapTouchZoom(map);
       try { map.stop(); } catch { /* mid-animation teardown */ }
       map.remove();
       mapRef.current = null;
@@ -6373,6 +6375,7 @@ const RideRouteMap: FC<{
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
+      cancelMapTouchZoom(map);
       try { map.stop(); } catch { /* mid-animation teardown */ }
       map.remove();
       mapRef.current = null; busLayerRef.current = null; youMarkerRef.current = null;
