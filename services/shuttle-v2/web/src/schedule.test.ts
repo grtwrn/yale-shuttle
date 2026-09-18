@@ -454,8 +454,8 @@ describe("ROUTE_CALENDAR (the grocery lines' alternate weekends)", () => {
   const SUN_0906_1028 = new Date("2026-09-06T10:28:00-04:00");
   const SAT_0912_0700 = new Date("2026-09-12T07:00:00-04:00");
 
-  it("reproduces the published 2026 calendar, both days of every weekend, for both lines", () => {
-    for (const w of TJ_2026) {
+  it("preserves the old calendar before Sep 19 and gives Hamden the later weekends", () => {
+    for (const w of TJ_2026.filter(day => day < '2026-09-19')) {
       expect(calendarAllows(tj, sat(w)), `TJ on ${w}`).toBe(true);
       expect(calendarAllows(tj, sun(w)), `TJ on ${w}+1`).toBe(true);
       expect(calendarAllows(ham, sat(w)), `Ham off ${w}`).toBe(false);
@@ -466,6 +466,12 @@ describe("ROUTE_CALENDAR (the grocery lines' alternate weekends)", () => {
       expect(calendarAllows(ham, sun(w)), `Ham on ${w}+1`).toBe(true);
       expect(calendarAllows(tj, sat(w)), `TJ off ${w}`).toBe(false);
       expect(calendarAllows(tj, sun(w)), `TJ off ${w}+1`).toBe(false);
+    }
+    for (const w of TJ_2026.filter(day => day >= '2026-09-19')) {
+      expect(calendarAllows(tj, sat(w)), `Milford retired ${w}`).toBe(false);
+      expect(calendarAllows(tj, sun(w))).toBe(false);
+      expect(calendarAllows(ham, sat(w)), `Hamden now serves ${w}`).toBe(true);
+      expect(calendarAllows(ham, sun(w))).toBe(true);
     }
     // Every Saturday of 2026 outside the winter recess belongs to exactly one line.
     for (let d = sat("2026-01-03"); d.getTime() < sat("2026-12-24").getTime(); d = new Date(d.getTime() + 7 * 86_400_000)) {
@@ -486,12 +492,12 @@ describe("ROUTE_CALENDAR (the grocery lines' alternate weekends)", () => {
     }
     expect(isClosedOn(tj, sat("2026-12-23"))).toBe(false);
     expect(isClosedOn(tj, sat("2027-01-01"))).toBe(false);
-    // Sat Dec 26 would be Hamden's by the cycle; the next Hamden start is Sat Jan 9 2027.
+    // Hamden no longer alternates; the next weekend after recess is Jan 2.
     const dec26 = new Date("2026-12-26T10:00:00-05:00");
     const st = serviceStateAt(HAM_WINS, "Grocery Ham", dec26);
     expect(st.open).toBe(false);
-    expect(st.off).toEqual({ partner: "Grocery TJ" });
-    expect(st.next?.toISOString()).toBe(new Date("2027-01-09T07:00:00-05:00").toISOString());
+    expect(st.off).toEqual({ partner: null });
+    expect(st.next?.toISOString()).toBe(new Date("2027-01-02T07:00:00-05:00").toISOString());
   });
 
   it("a TJ weekend day is in service; a Hamden weekend day is 'not this weekend', with TJ's next date", () => {
@@ -531,8 +537,8 @@ describe("ROUTE_CALENDAR (the grocery lines' alternate weekends)", () => {
       const at = new Date("2026-09-12T10:00:00-04:00");
       const st = serviceStateAt(TJ_WINS, "Grocery TJ", at, live(false, at));
       expect(st).toMatchObject({ open: false, off: { partner: "Grocery Ham" } });
-      // Next: after this weekend, the cycle having shifted — Sat Sep 19, not Sep 26.
-      expect(st.next?.toISOString()).toBe(new Date("2026-09-19T07:00:00-04:00").toISOString());
+      // The remaining weekend is overridden; the following weekend is after retirement.
+      expect(st.next).toBeNull();
     });
 
     it("active=false in the first minutes of the window is not yet 'not running' (the flag may lag the bus)", () => {
@@ -568,9 +574,9 @@ describe("ROUTE_CALENDAR (the grocery lines' alternate weekends)", () => {
     const live = { labels: new Set(["Grocery Ham"]), now: sat("2026-09-12") };
     const st = serviceStateAt(TJ_WINS, "Grocery TJ", sat("2026-09-12"), live);
     expect(st).toMatchObject({ open: false, off: { partner: "Grocery Ham" } });
-    expect(st.next?.toISOString()).toBe(new Date("2026-09-19T07:00:00-04:00").toISOString());
+    expect(st.next).toBeNull();
     expect(serviceStateAt(TJ_WINS, "Grocery TJ", sat("2026-09-19"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-12") }).open).toBe(false);
-    expect(serviceStateAt(TJ_WINS, "Grocery TJ", sat("2026-09-26"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-19") }).open).toBe(true);
+    expect(serviceStateAt(TJ_WINS, "Grocery TJ", sat("2026-09-26"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-19") }).open).toBe(false);
     expect(serviceStateAt(HAM_WINS, "Grocery Ham", sat("2026-09-19"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-19") }).open).toBe(true);
   });
 
