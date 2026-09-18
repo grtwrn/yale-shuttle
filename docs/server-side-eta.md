@@ -96,13 +96,18 @@ matching at exact GPS positions remains a later extension requiring sufficient
 recorded trajectories and direction/occurrence checks.
 
 Hollow dots retain their actual horizontal values and show recorded durations,
-with dated timing anchors in a table, a sample/date count, an observed median
-when at least five trips exist, and the last three recorded arrivals. The
+with dated timing anchors in a table, a sample/date count and range, and the
+last three recorded arrivals. The "Typical past trip" summary is a
+recency-weighted median, shown only when the effective weighted sample reaches
+five trips; weight halves every two days. The weighting method remains in
+"About these records". The snapshot timestamp and historical summary precede
+the plot, alongside the matched origin and whether remaining wait is included. The
 min/max is not presented as a prediction interval. Destination history ends at
 the drop-off stop before the final walk.
 
 Each opening or explicit refresh obtains a labeled snapshot, with no hidden
-polling. The reader has a bounded 60-second cache keyed by route occurrences,
+polling. Refresh stays focusable while loading and ignores repeat activation;
+loading and errors are announced. The reader has a bounded 60-second cache keyed by route occurrences,
 mode and elapsed-wait bucket; the public endpoint is rate limited and marked
 `no-store`. Sparse/failed history does not block live estimates. The old
 `/api/arrival-history` similar-ETA diagnostic remains for cached older clients;
