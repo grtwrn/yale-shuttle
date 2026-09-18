@@ -11,13 +11,16 @@ const out = path.join(service, 'web/public/minimap-options/previews');
 const hash = data => createHash('sha256').update(data).digest('hex');
 const sources = ['web/src/TransitMap.tsx', 'web/src/mapLabels.ts', 'scripts/__fixtures__/minimap-label-feed.json', 'scripts/minimap-label-render.mjs'];
 const sourceHashes = Object.fromEntries(await Promise.all(sources.map(async name => [name, hash(await fs.readFile(path.join(service, name)))])));
-try {
-  const manifest = JSON.parse(await fs.readFile(path.join(out, 'manifest.json'), 'utf8'));
+let reviewed;
+try { reviewed = JSON.parse(await fs.readFile(path.join(out, 'manifest.json'), 'utf8')); }
+catch (e) { if (e.code !== 'ENOENT') throw e; }
+if (reviewed) {
+  const manifest = reviewed;
   assert.deepEqual(manifest.sourceHashes, sourceHashes, 'Preview source changed: remove previews and regenerate in hosted CI');
   for (const [file, checksum] of Object.entries(manifest.images)) assert.equal(hash(await fs.readFile(path.join(out, file))), checksum, `Image changed: ${file}`);
   console.log('Reviewed preview images match their source and checksums.');
   process.exit(0);
-} catch (e) { if (e.code !== 'ENOENT') throw e; }
+}
 await fs.mkdir(out, { recursive: true });
 const feed = JSON.parse(await fs.readFile(path.join(service, 'scripts/__fixtures__/minimap-label-feed.json'), 'utf8'));
 const now = feed.server_eta.servedAt;
@@ -65,6 +68,9 @@ try {
     const images = [...document.querySelectorAll('.trip-map-wrap .leaflet-tile')];
     return images.length > 0 && images.every(i => i.complete && i.naturalWidth > 0);
   });
+  // Leaflet uses Date.now() for tile fade-in. The frozen scenario clock
+  // keeps that opacity at zero; finish only that animation for capture.
+  await page.addStyleTag({ content: '.trip-map-wrap .leaflet-tile { opacity: 1 !important; }' });
   await page.waitForTimeout(500);
   await map.evaluate(el => {
     window.previewOriginal = [...el.querySelectorAll('.leaflet-tooltip')].map(t => ({ t, html: t.innerHTML, style: t.getAttribute('style') }));
@@ -92,7 +98,10 @@ try {
       const hide = node => { node.style.visibility = 'hidden'; };
       if (id === 1) hide(destination);
       if (id === 2) hide(wait);
-      if (id === 3) label.querySelector('.bus-wait-route').textContent = 'R';
+      if (id === 3) {
+        const route = label.querySelector('.bus-wait-route');
+        route.textContent = route.textContent.replace(/^Red/, 'R');
+      }
       if (id === 4) label.querySelector('.bus-wait-route').remove();
       if (id === 5) for (const chip of tips) chip.innerHTML = chip.innerHTML.replace(/\(R\)\s*/g, '');
       if (id === 6) hide(pickup);

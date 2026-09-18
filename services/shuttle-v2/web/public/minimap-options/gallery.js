@@ -6,7 +6,7 @@ const options = [
   ['Remove repeated route initials', 'Drop “(R)” from the pickup and destination labels when viewing this single Red route.'],
   ['Hide pickup time', 'Keep the waiting label and destination time. The route card supplies the pickup countdown.'],
   ['Pickup time only', 'Keep the pickup label; hide the destination and waiting labels. All pins stay.'],
-  ['Waiting label below the bus', 'Move the same waiting label directly below the bus icon. Keep the other labels as they are.'],
+  ['Center the waiting label below the bus', 'Center the same waiting label directly below the bus icon. Keep the other labels as they are.'],
   ['Waiting time in the legend', 'Move elapsed / usual wait to the existing Red legend at the bottom left. Keep pickup and destination times.'],
   ['Pins without time labels', 'Hide all three timing labels. Keep the current streets, route, pins and controls. Read times on the route card.'],
 ];

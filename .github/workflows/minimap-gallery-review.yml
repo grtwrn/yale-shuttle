@@ -11,6 +11,9 @@ on:
       - 'services/shuttle-v2/web/src/DestinationArrival.tsx'
       - 'services/shuttle-v2/web/src/TransitMap.tsx'
       - '.github/workflows/minimap-gallery-review.yml'
+concurrency:
+  group: minimap-gallery-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
