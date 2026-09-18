@@ -8,4 +8,6 @@ The old alternating-weekend calendar ends for Hamden on that date. Existing week
 
 Trip fallback cards, expanded grocery trip cards, route-hour captions and the map's route list show the notice. Retired Milford cards do not suggest a future departure or current service hours. New Hamden stop geometry, retail location coordinates and timetable changes are not inferred from the notice; those continue to come from the existing route data.
 
+The live feed confirmed notice 27 with the title `Grocery Route`. That title now matches both grocery lines instead of being treated as system-wide. Expanded grocery cards replace this specific dated upstream notice with the single date-aware message; other service announcements are retained.
+
 Validation covers the Eastern-midnight cutoff, historical dates, both subsequent weekends, weekday/holiday closures, stale live flags, no future Milford starts, and future-trip fallback wording. App checks and deployment run on hosted GitHub Actions to avoid loading the Pi.

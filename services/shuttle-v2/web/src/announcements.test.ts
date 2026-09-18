@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { announcementRouteLabels, announcementsForRoute, generalAnnouncements } from "./announcements";
+import { announcementRouteLabels, announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement } from "./announcements";
 
 describe("announcementRouteLabels", () => {
   // The live banner that motivated the feature, verbatim.
@@ -24,6 +24,26 @@ describe("announcementRouteLabels", () => {
 
   it("an unrecognised title matches nothing (treated as general)", () => {
     expect(announcementRouteLabels("Campus Notice").size).toBe(0);
+  });
+
+  it.each(['Grocery Route', 'Grocery Routes', 'Grocery Line', 'Grocery Lines'])("targets %s to both grocery lines", title => {
+    expect(announcementRouteLabels(title)).toEqual(new Set(['Grocery TJ', 'Grocery Ham']));
+  });
+});
+
+describe('live grocery-transition notice', () => {
+  const notice = { id: 27, title: 'Grocery Route', message: "Beginning 9/19/2026, the Hamden Grocery route will be the main Grocery Line which now offers Trader Joes's. The Milford route is discontinued." };
+  it('reaches both grocery lines without appearing on unrelated routes or as a general notice', () => {
+    expect(announcementsForRoute('Grocery Ham', [notice])).toEqual([notice]);
+    expect(announcementsForRoute('Grocery TJ', [notice])).toEqual([notice]);
+    expect(announcementsForRoute('Red', [notice])).toEqual([]);
+    expect(generalAnnouncements([notice])).toEqual([]);
+  });
+  it('recognizes only the notice replaced by the date-aware message', () => {
+    expect(isGroceryTransitionAnnouncement(notice)).toBe(true);
+    expect(isGroceryTransitionAnnouncement({ ...notice, message: notice.message.replace('9/19/2026', '10/19/2026') })).toBe(false);
+    expect(isGroceryTransitionAnnouncement({ ...notice, message: 'Hamden grocery pickup relocated today.' })).toBe(false);
+    expect(isGroceryTransitionAnnouncement({ ...notice, title: 'Red' })).toBe(false);
   });
 });
 
