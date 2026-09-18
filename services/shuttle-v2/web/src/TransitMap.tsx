@@ -5495,6 +5495,14 @@ const StopList: FC<{
    * switch. One at a time: opening a second closes the first.
    */
   const [alertChooserFor, setAlertChooserFor] = useState<string | null>(null);
+  const closeAlertChooser = (triggerId: string) => {
+    // This disclosure removes its focused choices. Return to the bell on
+    // explicit close/arm, before removing them; no delayed focus to steal
+    // from another view or from the browser's permission prompt.
+    // Find the currently rendered bell: polling may have reordered its row.
+    document.getElementById(triggerId)?.focus();
+    setAlertChooserFor(null);
+  };
 
   // ── ONE estimator, one anchor, for the whole page ──────────────────────
   //
@@ -5778,6 +5786,7 @@ const StopList: FC<{
           const armedAlert = stopAlerts ? findStopAlert(stopAlerts, cfg.label, stopId) : undefined;
           const chooserKey = `${listIdx}:${stopId}`;
           const chooserOpen = alertChooserFor === chooserKey;
+          const chooserId = `stop-alert-chooser-${listView}-${listIdx}-${stopId}`;
 
           return (
             <Fragment key={key}>
@@ -5906,6 +5915,7 @@ const StopList: FC<{
                   is untouched). */}
               {onArmStopAlert && (
                 <button
+                  id={`${chooserId}-trigger`}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (armedAlert) {
@@ -5914,6 +5924,16 @@ const StopList: FC<{
                       return;
                     }
                     setAlertChooserFor(chooserOpen ? null : chooserKey);
+                  }}
+                  aria-expanded={chooserOpen && !armedAlert}
+                  aria-controls={chooserOpen && !armedAlert ? chooserId : undefined}
+                  aria-pressed={!!armedAlert}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && chooserOpen && !armedAlert) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      closeAlertChooser(`${chooserId}-trigger`);
+                    }
                   }}
                   aria-label={armedAlert
                     ? `Cancel the alert for ${cfg.label} at ${name}`
@@ -5947,7 +5967,18 @@ const StopList: FC<{
                 honest limit of phase 1 — the ping needs this page alive. */}
             {chooserOpen && !armedAlert && (
               <div
+                id={chooserId}
+                role="group"
+                aria-label={`Alert for ${cfg.label} at ${name}`}
+                aria-describedby={`${chooserId}-hint`}
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeAlertChooser(`${chooserId}-trigger`);
+                  }
+                }}
                 style={{
                   padding: "8px 10px 10px 26px", background: `${cfg.color}0D`,
                   borderLeft: `4px solid ${cfg.color}`, borderRadius: 4,
@@ -5963,7 +5994,7 @@ const StopList: FC<{
                       key={m}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setAlertChooserFor(null);
+                        closeAlertChooser(`${chooserId}-trigger`);
                         onArmStopAlert?.(primaryRouteId!, cfg.label, stopId, name, m);
                       }}
                       title={`Ping me ${m} min before it arrives, and again when it gets here`}
@@ -5978,15 +6009,15 @@ const StopList: FC<{
                     >{m} min</button>
                   ))}
                   <button
-                    onClick={(e) => { e.stopPropagation(); setAlertChooserFor(null); }}
-                    aria-label="Cancel"
+                    onClick={(e) => { e.stopPropagation(); closeAlertChooser(`${chooserId}-trigger`); }}
+                    aria-label="Cancel alert setup"
                     style={{
                       minHeight: 44, width: 44, border: "none", background: "transparent",
                       color: "#78909c", fontSize: 15, cursor: "pointer", fontFamily: "inherit",
                     }}
                   >✕</button>
                 </span>
-                <span style={{ fontSize: 11, color: "#78909c", lineHeight: 1.35, flexBasis: "100%" }}>
+                <span id={`${chooserId}-hint`} style={{ fontSize: 11, color: "#78909c", lineHeight: 1.35, flexBasis: "100%" }}>
                   {stopAlertPermissionHint(notifyPermissionState())}
                 </span>
               </div>
