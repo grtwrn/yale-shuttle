@@ -40,7 +40,6 @@ import { waitLegText } from "./etaBand";
 import { ArrivalDetails } from "./ArrivalDetails";
 import { DestinationArrival } from "./DestinationArrival";
 import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
-import { ArriveBy } from "./ArriveBy";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
 import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
 import { tripBusIdentity } from "./tripBusIdentity";
@@ -1857,13 +1856,11 @@ const TripPlanner: FC<{
     setTripTimeValue(value);
     setTripTimeSetAt(Date.now());
   };
-  const [arriveBy, setArriveBy] = useState<string | null>(initialDraft?.arriveBy ?? null);
-  const [classBufferMin, setClassBufferMin] = useState(initialDraft?.classBufferMin ?? 5);
   useEffect(() => {
     // Preserve the last committed selection while either field is being edited.
     if (fromExpanded || toExpanded) return;
-    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, arriveBy: arriveBy ?? undefined, classBufferMin } : null);
-  }, [fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, arriveBy, classBufferMin, fromExpanded, toExpanded]);
+    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey } : null);
+  }, [fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, fromExpanded, toExpanded]);
   const targetDate = tripTime ? new Date(tripTime) : null;
   const tripTimeError = planningTimeError(tripTime, tripTimeSetAt);
   const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
@@ -3510,13 +3507,6 @@ const TripPlanner: FC<{
               }}
             >← All routes</button>
           )}
-          {!detailOpen && <ArriveBy
-            value={arriveBy} onChange={setArriveBy} bufferMin={classBufferMin} onBufferChange={setClassBufferMin}
-            options={orderedOptions ?? options} destination={toText} stopNames={stopNames}
-            departureMs={isFuture ? targetDate?.getTime() : undefined}
-            lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
-            onSelect={setExpandedKey}
-          />}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
               style — map first, cards below. Open by default (see
@@ -3531,8 +3521,7 @@ const TripPlanner: FC<{
             const _sortedForMap = orderedOptions ?? [];
             // Same rule as the list below — the map shows what the list shows.
             const _visibleForMap = showAllOptions ? _sortedForMap : (visibleOptions ?? []);
-            // Route-details view open: the map narrows to just that route,
-            // including a route opened from deadline advice behind Show more.
+            // Route-details view open: the map narrows to just that route.
             const _mapOpts = expandedKey
               ? _sortedForMap.filter((o) => o.routeLabel === expandedKey)
               : _visibleForMap;

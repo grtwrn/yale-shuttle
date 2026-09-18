@@ -6,13 +6,13 @@ const makeStore = () => { let value: string | null = null; return {
 const trip: TripDraft = { fromText: "", fromLL: null, toText: "Yale Public Health",
   toLL: { lat: 41.303735, lon: -72.932155 }, tripTime: "", expandedKey: "Red" };
 describe("waiting trip restoration", () => {
-  it('restores a class deadline and buffer, discarding malformed optional values', () => {
+  it('restores the trip and departure time while ignoring retired class deadline fields', () => {
     const store = makeStore();
-    const draft = { ...trip, arriveBy: '2026-09-16T12:30', classBufferMin: 10 };
-    saveTripDraft(draft, store, 1000);
+    const draft = { ...trip, tripTime: '2026-09-18T12:30', tripTimeSetAt: 1000 };
+    store.setItem('shuttle-trip-draft', JSON.stringify({ ...draft, arriveBy: '2026-09-18T13:00', classBufferMin: 10, savedAt: 1000 }));
     expect(loadTripDraft(store, 2000)).toEqual(draft);
-    saveTripDraft({ ...draft, arriveBy: 'bad date', classBufferMin: -5 }, store, 1000);
-    expect(loadTripDraft(store, 2000)).toEqual(trip);
+    saveTripDraft(loadTripDraft(store, 2000), store, 2000);
+    expect(JSON.parse(store.getItem()!)).toEqual({ ...draft, savedAt: 2000 });
   });
   it("preserves the selection time across later saves and reloads", () => {
     const draft = { ...trip, tripTime: "2026-09-10T17:00", tripTimeSetAt: 1000 };

@@ -1,4 +1,25 @@
-# Class arrival comparison
+# Historical: class arrival comparison
+
+**Removed on September 18, 2026.** This document records the earlier design;
+the separate Arrive by bar and class deadline/buffer panel are no longer part
+of the app. Plan for later remains the trip scheduling control. Destination
+arrival windows remain on route cards through `DestinationArrival.tsx` and
+the shared `journeyArrival.ts` calculation.
+
+For the current UI, build `services/shuttle-v2/web`, then run
+`node scripts/trip-scheduling-check.mjs` from `services/shuttle-v2`. This
+isolated browser check verifies legacy draft migration, Plan for later,
+future departure selection, Now recovery, destination arrival windows, and
+watcher recognition of arrival windows and approximate points at 360, 390,
+and 1280 px. It uses checked-in fixtures, intercepts all network requests,
+and closes its browser afterward. Set `BOT_CHROMIUM_PATH` to your Chromium
+executable and `TRIP_SCHEDULING_OUT` to choose the screenshot/result directory
+(default: `pr-preview/trip-scheduling/`).
+
+The older `scripts/arrive-by-check.mjs` below applies only to revisions before
+the removal. It is not a current UI or staged-deployment check.
+
+## Earlier design
 
 The trip planner offers **Arrive by…** after selecting a destination. Set the class date/time and a 0–30 minute indoor buffer (default 5). The comparison sits above the map and shows one relevant shuttle and the walking alternative. Tapping either opens its existing trip details.
 
@@ -14,7 +35,7 @@ The conditional window is **not a calibrated on-time probability**. It assumes t
 
 The existing pickup dialog remains available for observed hold location, stops away, next arrival, and estimated gap. This change does not invent historical previous-shuttle observations or exact on-time percentages. The September 16 replay found that the target 80% interval under-covered one cold-start rider cohort, so whole-journey percentages remain deferred.
 
-## Verification
+## Historical verification
 
 Pure regressions cover forward visit matching, repeated pickups, different vehicles/routes, full-chain interval arithmetic, risky boarding, missing/malformed arrivals, buffer boundaries, expired dates, stale/failed feeds, future departures, and draft restoration.
 
@@ -28,7 +49,7 @@ ARRIVE_BY_WATCHER=/path/to/watcher.jsonl \
 node scripts/arrive-by-check.mjs
 ```
 
-Production check after deployment:
+Historical production command (before removal; do not run against the current site):
 
 ```sh
 ARRIVE_BY_URL=https://yale-shuttle.fly.dev \
