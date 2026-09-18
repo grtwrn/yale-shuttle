@@ -14,7 +14,7 @@ import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource
 import { liveAnchorStore } from "./eta";
 import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
-import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
+import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
@@ -4198,6 +4198,7 @@ const TripPlanner: FC<{
                   // one Google Maps can navigate to.
                   const cfgBerth = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
                   const berth = cfgBerth ? berthFor(o.boardStopId, cfgBerth.busRouteIds) : null;
+                  const groceryNotice = groceryServiceNotice(o.routeLabel, targetDate ?? new Date());
                   return (
                     <div style={{
                       fontSize: 14, color: "#5f6368", lineHeight: 1.6,
@@ -4209,12 +4210,13 @@ const TripPlanner: FC<{
                           A stop relocation belongs at decision time, in the
                           card the rider is already reading — not on a page
                           they'll never visit. */}
-                      {groceryServiceNotice(o.routeLabel, targetDate ?? new Date()) && (
+                      {groceryNotice && (
                         <div role="note" style={{ background: "#FFF8E1", border: "1px solid #FFE082", borderRadius: 6, padding: "6px 8px", marginBottom: 8, fontSize: 12.5, color: "#795548", lineHeight: 1.45 }}>
-                          {groceryServiceNotice(o.routeLabel, targetDate ?? new Date())}
+                          {groceryNotice}
                         </div>
                       )}
-                      {announcementsForRoute(o.routeLabel, announcements).map((a) => (
+                      {announcementsForRoute(o.routeLabel, announcements)
+                        .filter(a => !(groceryNotice && isGroceryTransitionAnnouncement(a))).map((a) => (
                         <div key={a.id} style={{
                           display: "flex", gap: 6, alignItems: "flex-start",
                           background: "#FFF8E1", border: "1px solid #FFE082",

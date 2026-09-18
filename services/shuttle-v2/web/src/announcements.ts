@@ -35,7 +35,7 @@ export function announcementRouteLabels(
     for (const t of tokens) {
       // Prefix in either direction: "Blue" names "Blue Night"; upstream's
       // fuller "Orange - Night" also names our "Orange Night".
-      const norm = t.replace(/\s*-\s*/g, " ");
+      const norm = t.replace(/\s*-\s*/g, " ").replace(/^grocery\s+(?:routes?|lines?)$/, "grocery");
       if (label.startsWith(norm) || norm.startsWith(label)) {
         out.add(cfg.label);
         break;
@@ -43,6 +43,16 @@ export function announcementRouteLabels(
     }
   }
   return out;
+}
+
+/** The specific notice already expressed by the date-aware grocery message.
+ * Do not suppress other grocery alerts or notices with a different date. */
+export function isGroceryTransitionAnnouncement(a: ServiceAnnouncement): boolean {
+  const labels = announcementRouteLabels(a.title);
+  return labels.has('Grocery Ham') && labels.has('Grocery TJ')
+    && /\b0?9\/19\/2026\b/.test(a.message)
+    && /\bHamden\b/i.test(a.message) && /\bMilford\b/i.test(a.message)
+    && /\bdiscontinued\b/i.test(a.message);
 }
 
 /** The banners that name this route, plus general ones that name no route. */
