@@ -11,7 +11,7 @@ const row = (stopId: number, stopsAhead: number, eta: number, patch: Partial<Upc
 });
 const visits = [row(10, 1, 10), row(20, 6, 500), row(10, 30, 3000), row(20, 35, 3500)];
 const board = (rows = visits, bus = '#307') => atStopJourneyBoard(rows, 'Red', bus, 10, 20);
-const arrival = (rows = visits, walk = 0) => journeyArrival(board(rows), rows, 20, walk, 30, now);
+const arrival = (rows = visits, walk = 0) => journeyArrival(board(rows), rows, 20, walk, 30, now, 'at-stop');
 
 describe('raw at-stop journey uses an existing ordered forecast', () => {
   it('restores the first destination plus final walk, preserving both pickup and destination occurrences', () => {
@@ -53,9 +53,18 @@ describe('raw at-stop journey uses an existing ordered forecast', () => {
     expect(board(laterVisit)).toBe(folded[1]);
     expect(arrival(laterVisit)?.pointMs).toBe(now + 530_000);
   });
-  it('flags a nonzero walk that can miss pickup and rejects impossible destination timing', () => {
-    expect(arrival(visits, 5)?.catchRisk).toBe(false);
-    expect(arrival(visits, 6)?.catchRisk).toBe(true);
+  it.each([0, 100, 150, 151])('keeps raw at-stop caution for a %s-second walk despite a positive pickup lower bound', walk => {
+    const rows = [row(10, 1, 200, { low: 150, high: 300 }), ...visits.slice(1)];
+    const before = structuredClone(rows);
+    const rawAtStop = arrival(rows, walk)!;
+    const approaching = journeyArrival(board(rows), rows, 20, walk, 30, now)!;
+    expect(rawAtStop.catchRisk).toBe(walk > 0);
+    expect(approaching.catchRisk).toBe(walk > 150);
+    // Pickup context changes only connection caution, not the destination window.
+    expect(rawAtStop).toEqual({ ...approaching, catchRisk: walk > 0 });
+    expect(rows).toEqual(before);
+  });
+  it('rejects impossible destination timing', () => {
     expect(arrival(visits, 501)).toBeUndefined();
     for (const patch of [{ eta: 1 }, { high: NaN }, { low: 1000, high: 900 }]) {
       expect(arrival([visits[0]!, row(20, 6, 500, patch)])).toBeUndefined();
@@ -80,5 +89,13 @@ describe('restored journey class-deadline availability', () => {
     expect(compare(1400, arrival(), { etaUnavailable: true }).shuttle?.status).toBe('unknown');
     expect(compareDeadline([{ ...option, journeyArrival: arrival() }], now + 1400_000, 5,
       now, now - 45_000, false).shuttle?.status).toBe('unknown');
+  });
+  it.each([100, 150])('keeps class connection caution for a %s-second walk below or at the pickup lower bound', walk => {
+    const rows = [row(10, 1, 200, { low: 150, high: 300 }), ...visits.slice(1)];
+    const result = compare(1400, arrival(rows, walk), { walkToSec: walk });
+    expect(result.shuttle?.status).toBe('fits');
+    expect(result.shuttle?.caution).toContain('assumes you catch it');
+    expect(result.recommendation).toBeUndefined();
+    expect(compare(1400, arrival(rows, 0)).recommendation?.option.mode).toBe('shuttle');
   });
 });

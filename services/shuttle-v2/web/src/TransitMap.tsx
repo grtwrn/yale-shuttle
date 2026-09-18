@@ -2248,7 +2248,7 @@ const TripPlanner: FC<{
         const waitSec = 0;
         const board = live.find(a => norm(a.busName) === norm(hereBus.bus_name) && a.stopsAhead === 0 && a.eta === 0);
         const forecastBoard = atStopJourneyBoard(visits, o.routeLabel, hereBus.bus_name, o.boardStopId, o.alightStopId);
-        const arrival = journeyArrival(forecastBoard, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs);
+        const arrival = journeyArrival(forecastBoard, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs, 'at-stop');
         const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
           : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {

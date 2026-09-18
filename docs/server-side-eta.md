@@ -60,7 +60,9 @@ first forward destination. The raw boarding/dwell gate and pickup countdown
 remain separate: no zero-time forecast row is invented. A pickup after the
 first destination cannot borrow a later lap, and repeated-pickup checks still
 reject a journey through the wrong stop occurrence. Missing destinations stay
-unavailable; nonzero walks retain the connection-risk warning. This restores
+unavailable; nonzero walks retain the connection-risk warning even when the
+forecast pickup lower bound exceeds the walk. Raw at-stop context cannot use an
+approaching forecast as evidence that the driver will wait. This restores
 destination windows for some at-stop states without changing the served ETA
 rows, distributions, ranking rules or bus selection.
 
