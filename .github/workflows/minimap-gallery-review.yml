@@ -1,0 +1,31 @@
+name: minimap-gallery-review
+on:
+  pull_request:
+    paths:
+      - 'services/shuttle-v2/web/public/minimap-options/**'
+      - 'services/shuttle-v2/scripts/minimap-gallery-check.mjs'
+      - '.github/workflows/minimap-gallery-review.yml'
+permissions:
+  contents: read
+jobs:
+  gallery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/shuttle-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/shuttle-v2/package-lock.json
+      - run: npm ci
+      - name: Inspect gallery and interactions in hosted Chrome
+        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-gallery-check.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: minimap-gallery-review
+          path: services/shuttle-v2/gallery-review/

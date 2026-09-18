@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex">
+  <title>10 quieter mini maps · Yale Shuttle</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./gallery.js" defer></script>
+</head>
+<body>
+  <header class="intro">
+    <a class="back" href="/">← Shuttle app</a>
+    <p class="eyebrow">MINI MAP / DESIGN REVIEW</p>
+    <h1>Less on the map.<br>More at a glance.</h1>
+    <p class="lead">Ten ways to simplify the same trip. Try the bus markers and controls, then save your favorites.</p>
+    <div class="scenario"><span class="route-badge">Red</span> Division / Prospect <span aria-hidden="true">→</span> Rosenkranz</div>
+    <p class="sample-note">Illustrative times, simplified maps. These are design concepts, not live forecasts.</p>
+  </header>
+  <nav class="toolbar" aria-label="Gallery controls">
+    <div class="filters"><button id="all" class="filter active" aria-pressed="true">All 10</button><button id="favorites" class="filter" aria-pressed="false">Saved <span id="saved-count">0</span></button></div>
+    <span class="start-hint">Start with <a href="#option-2">02</a>, <a href="#option-6">06</a> &amp; <a href="#option-8">08</a></span>
+  </nav>
+  <main>
+    <div id="gallery" class="gallery"></div>
+    <p id="empty" hidden>No saved designs yet. Use “Save” on any option.</p>
+    <noscript>Enable JavaScript to view the ten interactive design concepts.</noscript>
+  </main>
+  <footer class="page-footer">Favorites stay in this browser. Choose a number to discuss; the rider app keeps its current layout.</footer>
+  <dialog id="detail" aria-labelledby="detail-title"><button class="close" aria-label="Close details">×</button><div id="detail-content"></div></dialog>
+  <p id="announcement" class="sr-only" aria-live="polite"></p>
+</body>
+</html>
