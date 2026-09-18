@@ -54,6 +54,16 @@ recommendations state that the shuttle *may* fit the buffer and keep the catch
 assumption beside that conclusion. Dot fractions are not validated on-time
 probabilities.
 
+When raw GPS reports a shuttle at pickup but the estimator still forecasts
+its approach, the trip can use that existing pickup row to join the same bus's
+first forward destination. The raw boarding/dwell gate and pickup countdown
+remain separate: no zero-time forecast row is invented. A pickup after the
+first destination cannot borrow a later lap, and repeated-pickup checks still
+reject a journey through the wrong stop occurrence. Missing destinations stay
+unavailable; nonzero walks retain the connection-risk warning. This restores
+destination windows for some at-stop states without changing the served ETA
+rows, distributions, ranking rules or bus selection.
+
 Opening either disclosure requests
 `/api/journey-history?route=Red&bus=308&stop=48&eta=360&limit=100`. The bus/ETA identify the
 selected forward occurrence in the existing warm server snapshot; requests do

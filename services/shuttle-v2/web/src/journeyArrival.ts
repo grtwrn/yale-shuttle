@@ -1,5 +1,26 @@
 import type { UpcomingArrival } from './arrivals';
 
+/** Join a raw at-stop observation to an existing forecast visit. GPS can report
+ * the curb while the estimator still has an approaching pickup. Only accept a
+ * pickup before this bus's FIRST destination; a later lap cannot price the
+ * board-now journey. The caller retains its raw boarding/dwell gate and pickup
+ * countdown, and journeyArrival still checks folded-route visit order. */
+export function atStopJourneyBoard(
+  visits: readonly UpcomingArrival[],
+  routeLabel: string,
+  busName: string,
+  boardStopId: number,
+  alightStopId: number,
+): UpcomingArrival | undefined {
+  const norm = (name: string) => name.replace(/^#/, '');
+  const sameBus = visits.filter(a => a.routeLabel === routeLabel && norm(a.busName) === norm(busName))
+    .sort((a, b) => a.stopsAhead - b.stopsAhead);
+  const arrived = sameBus.find(a => a.stopId === boardStopId && a.stopsAhead === 0 && a.eta === 0);
+  if (arrived) return arrived;
+  const firstDestination = sameBus.find(a => a.stopId === alightStopId);
+  return firstDestination && sameBus.find(a => a.stopId === boardStopId && a.stopsAhead < firstDestination.stopsAhead);
+}
+
 export interface JourneyArrival {
   busName: string;
   distributionMs?: number[] | undefined;
