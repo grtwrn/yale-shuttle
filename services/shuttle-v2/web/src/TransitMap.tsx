@@ -40,6 +40,7 @@ import { ArrivalDetails } from "./ArrivalDetails";
 import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { ArriveBy } from "./ArriveBy";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
+import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
 import { tripBusIdentity } from "./tripBusIdentity";
 import { TripBoardingActions } from "./TripBoardingActions";
 import {
@@ -2186,16 +2187,16 @@ const TripPlanner: FC<{
     // For future-mode (user picked a date >60s out) we can't refresh
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
-    if (isFutureMode) return stableOptions;
+    if (isFutureMode) return stableOptions.map(o => ({ ...o, livePickupSelection: undefined }));
     return stableOptions.map((o) => {
       if (o.mode !== "shuttle") {
         // A live origin moves with the rider for both alternatives.
         const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
-        if (!from || !toLL) return o;
+        if (!from || !toLL) return { ...o, livePickupSelection: undefined };
         const totalSec = walkSecFromMeters(haversineMeters(from, toLL));
-        return { ...o, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
+        return { ...o, livePickupSelection: undefined, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
       }
-      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, etaUnavailable: true, journeyArrival: undefined };
+      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, livePickupSelection: undefined, etaUnavailable: true, journeyArrival: undefined };
       // Re-derive wait from current arrivals. Simpler than it used to
       // be — a large pinned.eta *by itself* doesn't mean "just
       // passed" (it could just mean the bus is on the far side of
@@ -2259,6 +2260,7 @@ const TripPlanner: FC<{
         return {
           ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
           rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
+          livePickupSelection: rawPickupSelection(hereBus.bus_name, o.boardStopId, nowMs),
           journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
           busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
         };
@@ -2266,14 +2268,14 @@ const TripPlanner: FC<{
 
       if (live.length === 0) {
         // No future arrival and no bus parked at the stop — truly unreachable.
-        return { ...o, journeyArrival: undefined, departed: true };
+        return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
       }
       // Which arrival to follow — pinned-bus loyalty, its catchability
       // bounds, the report-#49 dominance switch, and the departed verdict
       // all live in pickLiveArrival (planner.ts), where they are unit
       // tested. `live` is non-empty here, so the pick exists.
       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
-      if (!picked) return { ...o, journeyArrival: undefined, departed: true };
+      if (!picked) return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
       const { match, boardable, departed, missedBus } = picked;
       // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
       // the one the rider can see coming, which must not vanish while it is
@@ -2295,6 +2297,7 @@ const TripPlanner: FC<{
       return {
         ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
         rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - waitSec - o.walkFromSec) : o.rideSec,
+        livePickupSelection: forecastPickupSelection(picked, nowMs),
         journeyArrival: arrival, busName: match.busName, departed, missedBus,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
@@ -4329,10 +4332,9 @@ const TripPlanner: FC<{
                           distance"). */}
                       {(() => {
                         const busNo = tripBus.ride;
-                        // The pickup band's bus can differ from the journey's.
-                        // In that case use the journey's existing wait estimate;
-                        // never apply the approaching bus's window to this ride.
-                        const waitText = o.etaUnavailable ? null : tripBus.different
+                        // A later pickup (including the same bus next lap) must use
+                        // its selected wait, even without a destination forecast.
+                        const waitText = o.etaUnavailable ? null : tripBus.separateWait
                           ? fmtWait(o.waitSec) : waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
@@ -4358,7 +4360,12 @@ const TripPlanner: FC<{
                       })()}
                       {tripBus.different && (
                         <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.4 }}>
-                          Trip time uses #{tripBus.ride}. #{tripBus.pickup} may reach pickup before you.
+                          Trip uses #{tripBus.ride}. #{tripBus.pickup} may reach pickup before you.
+                        </p>
+                      )}
+                      {tripBus.laterVisit && (
+                        <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.4 }}>
+                          Trip uses #{tripBus.ride} on a later visit.
                         </p>
                       )}
                       {/* Where the bus really pulls up, when that is not the
