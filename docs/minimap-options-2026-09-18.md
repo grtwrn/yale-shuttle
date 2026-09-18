@@ -7,7 +7,7 @@ Division / Prospect to Rosenkranz. The current map is shown as the baseline.
 Ten alternatives change only label visibility, wording or placement: hide the
 destination clock; hide the waiting label; shorten Red to R; show wait numbers
 only; remove repeated route initials; hide pickup time; keep pickup time only;
-move the waiting label below the bus; move waiting time to the existing legend;
+drop the bus number from the waiting label; move waiting time to the existing legend;
 hide all time labels. Streets, route shape, map bounds, markers, controls,
 colors and typography remain the same. These are static comparison images;
 the live mini map remains unchanged pending selection.

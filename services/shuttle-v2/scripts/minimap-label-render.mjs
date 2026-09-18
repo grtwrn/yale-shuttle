@@ -116,9 +116,8 @@ try {
       if (id === 6) hide(pickup);
       if (id === 7) { hide(destination); hide(wait); }
       if (id === 8) {
-        const bus = el.querySelector('.bus-pin-sm').getBoundingClientRect();
-        const box = wait.getBoundingClientRect();
-        wait.style.translate = `${bus.x + bus.width / 2 - box.x - box.width / 2}px ${bus.bottom + 6 - box.top}px`;
+        const route = label.querySelector('.bus-wait-route');
+        route.textContent = route.textContent.replace(/ #\S+$/, '');
       }
       if (id === 9) {
         hide(wait);
