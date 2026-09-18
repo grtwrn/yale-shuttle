@@ -1,5 +1,11 @@
-// Run with node --import tsx after building web/: ARRIVE_BY_FEED=payload.json ARRIVE_BY_WATCHER=watcher.jsonl node scripts/arrive-by-check.mjs
-// Or use the live site: ARRIVE_BY_URL=https://yale-shuttle.fly.dev node scripts/arrive-by-check.mjs
+/** HISTORICAL HARNESS: only for app revisions before the September 18, 2026
+ * removal of the Arrive by bar. It intentionally clicks controls that no
+ * longer exist. Do not run against the current app; this script is not part
+ * of staged deployment checks. Use trip-scheduling-check.mjs for current UI.
+ *
+ * Historical recorded-data invocation, after building the matching web/:
+ * ARRIVE_BY_FEED=payload.json ARRIVE_BY_WATCHER=watcher.jsonl node --import tsx scripts/arrive-by-check.mjs
+ */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';

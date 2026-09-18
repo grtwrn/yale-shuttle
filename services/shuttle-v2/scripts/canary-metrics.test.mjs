@@ -1298,8 +1298,8 @@ describe("the arrival clock has TWO readers", () => {
   });
 
   it("reads actual built-page cards after removing the separate arrive-by bar", () => {
-    // Captured at360px from the built SPA with a synthetic shared-server ETA
-    // fixture,2026-09-18. These are rendered text, not a mocked card layout.
+    // Captured at 360px from the built SPA with a synthetic shared-server ETA
+    // fixture, 2026-09-18. These are rendered text, not a mocked card layout.
     const live = readFileSync(new URL('./__fixtures__/trip-without-arrive-by-live.txt', import.meta.url), 'utf8');
     const future = readFileSync(new URL('./__fixtures__/trip-without-arrive-by-future.txt', import.meta.url), 'utf8');
     const liveOptions = parseOptions(live);
