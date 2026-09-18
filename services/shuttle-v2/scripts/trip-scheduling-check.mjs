@@ -31,7 +31,7 @@ feed.server_eta = { v: 2, at: now, servedAt: now, buses: ['307', '309'].map(b =>
 const report = { scope: 'Built SPA, isolated synthetic API fixture; external network blocked; browser closed on exit', runs: [], errors: [] };
 const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH ?? '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
 try {
-  for (const width of [360, 390, 1280]) {
+  for (const width of [320, 390, 1280]) {
     const run = { width, errors: [], requests: [] };
     report.runs.push(run);
     const context = await browser.newContext({ viewport: { width, height: 844 }, isMobile: width < 600, hasTouch: width < 600,
@@ -70,6 +70,9 @@ try {
       assert.doesNotMatch(text, /Arrive by|Plan for class|Class starts/);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal page overflow');
       const box = await destination.boundingBox();
+      const pickup = card.getByRole('button', { name: /^Red arrival details:/ });
+      const pickupBox = await pickup.count() ? await pickup.boundingBox() : null;
+      if (pickupBox) assert(pickupBox.x + pickupBox.width <= box.x, 'pickup overlaps destination');
       assert(box.x >= 0 && box.x + box.width <= width, 'destination range outside viewport');
       assert(await destination.evaluate(e => e.scrollWidth <= e.clientWidth), 'clipped destination range');
       assert(await destination.locator('span[style*="white-space"]').evaluateAll(es => es.every(e => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects().length === 1; })), 'clock digits wrap');
@@ -82,7 +85,16 @@ try {
     }
     assert.equal(await destination.getAttribute('data-kind'), 'window');
     assert.match(await destination.innerText(), /10:21a–10:27a/);
+    const pickup = card.getByRole('button', { name: /^Red arrival details:/ });
+    assert.match(await pickup.innerText(), /Arrives in ~5 min/);
+    assert.match(await pickup.innerText(), /Next in ~20 min/);
+    assert.doesNotMatch(await card.innerText(), /^23 min$/m, 'total duration still occupies card');
     await capture('live');
+    assert.deepEqual(run.live.parsed.find(o => o.routeLabel === 'Red').eta.second, [1200, 1260]);
+    await pickup.click();
+    const details = page.getByRole('dialog');
+    assert.match(await details.innerText(), /Likely arrival window: 3–9 min/);
+    await details.getByRole('button', { name: 'Close arrival details' }).click();
     const later = page.getByRole('button', { name: 'Plan for later…', exact: true });
     assert.equal(await later.count(), 1);
     await later.focus(); await page.keyboard.press('Enter');

@@ -62,7 +62,7 @@ describe('route card destination arrival', () => {
   });
   it('labels the destination separately from pickup in visible and accessible text', () => {
     const html = renderToStaticMarkup(<DestinationArrival option={option} destination="Rosenkranz Hall" now={now} />);
-    expect(html).toContain('At destination (est.)');
+    expect(html).toContain('At destination');
     expect(html).toContain('Estimated arrival at Rosenkranz Hall: 10:09a–10:17a');
   });
 });

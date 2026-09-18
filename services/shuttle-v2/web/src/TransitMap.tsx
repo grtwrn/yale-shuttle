@@ -3915,40 +3915,15 @@ const TripPlanner: FC<{
               onClick={isExpanded ? undefined : () => setExpandedKey(oKey)}>
                 {/* The back control lives at the TOP of the details page
                     (above the map) — see the detailOpen bar. */}
-                {/* Lines 1 and 2 are ONE two-column block (operator,
-                    2026-09-04): the left column is the line and how it is
-                    made — pill + countdown over the walk/ride legs — and the
-                    right column is the two clock facts, how long it takes
-                    over when you land, right-aligned and flush with each
-                    other. The arrival used to lead line 2 with the duration
-                    alone on the right, so the two numbers a rider compares
-                    across cards ("23 min", "arrive 10:33a") sat on opposite
-                    sides of the card and never lined up.
-
-                    The chevron is a THIRD column, vertically centred across
-                    both rows, because the slot it used to occupy — the right
-                    end of line 2 — is now the arrival clock. Putting it back
-                    there would either shove the clock out of alignment with
-                    the duration or stack under it. It is decoration, not the
-                    control: the whole card carries the onClick, so the tap
-                    target is the full row, and the chevron still gets 44 px
-                    of height so a stylus-precise tap on the glyph itself
-                    lands. */}
+                {/* Pickup countdowns on the left; destination arrival on the right.
+                    The total duration is already explained by the journey legs. */}
                 <div style={{
                   display: "flex", alignItems: "center", gap: 8,
                   marginBottom: (!o.departed || !isExpanded) ? 8 : 0,
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Line 1: THE LINE LEADS (operator, 2026-09-04) — route
-                        pill top-left, the two-bus countdown beside it, the
-                        total duration on the right. The total used to hold
-                        the top-left slot with the pill a row below it, so
-                        picking "the Blue one" off a five-card list meant
-                        reading five durations first. Reading order is now
-                        line → when it comes → how long it takes → what the
-                        trip is made of and when you land (line 2). */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0 8px", flexWrap: "wrap", minWidth: 0, flex: 1 }}>
                         {/* Pill colour comes off the option, i.e. off ROUTE_LISTS —
                             the one source. The walk option keeps its outlined
                             chip: it is an option, not a line. */}
@@ -3965,8 +3940,7 @@ const TripPlanner: FC<{
                             maxWidth: 168, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                           }}>{o.routeLabel}</span>
                         )}
-                        {/* Keep the estimate and full likely window visible in both
-                            card states. Tap for the next shuttle and estimated gap. */}
+                        {/* Tap the pickup estimate for its uncertainty window and history. */}
                         {busEtaLive !== null && !o.departed && (
                           <ArrivalDetails
                             routeLabel={o.routeLabel} busName={o.busName}
@@ -3980,34 +3954,20 @@ const TripPlanner: FC<{
                           />
                         )}
                       </span>
-                      {/* Duration, right-aligned. "Departed" takes the same slot —
-                          it is what that number would have said. */}
                       {o.etaUnavailable ? (
                         <span style={{ fontSize: 14, color: "#795000" }}>ETA unavailable</span>
                       ) : o.departed ? (
                         <span style={{ fontSize: 16, fontWeight: 600, color: "#5f6368", flexShrink: 0 }}>Departed</span>
                       ) : (
-                        <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap", flexShrink: 0 }}>
-                          {fmtMin(o.totalSec)}
-                        </span>
+                        <DestinationArrival option={o} destination={toText}
+                          departureMs={isFuture ? targetDate?.getTime() : undefined} />
                       )}
                     </div>
                     {/* No badges: FASTEST is implied by sort order — the top card
                         is the recommendation, Google-style — and
                         slower-than-walking is already communicated by the tier
                         sort + the "walking wins" banner. */}
-                    {/* Line 2: what the trip is made of on the left, when you
-                        land on the right. The legs used to be led by the route
-                        pill — the pill has moved to line 1, so the ride between
-                        the walks is drawn in the same ink as them rather than
-                        repeating the name. Collapsed rows only: the details
-                        view's step list carries the same durations (user
-                        feedback 2026-07-17). Every leg is optional — a walk of
-                        0 s is omitted and the wait, when there is one, has its
-                        own line below — so the row carries a minHeight: a
-                        Departed card with no walks would otherwise collapse to
-                        nothing and the card would jump a line shorter than its
-                        neighbours. */}
+                    {/* The journey legs remain visible on collapsed cards. */}
                     {(!o.departed || !isExpanded) && (
                     <div style={{
                       display: "flex", alignItems: "flex-start", justifyContent: "space-between",
@@ -4054,13 +4014,6 @@ const TripPlanner: FC<{
                           </span>
                         )}
                       </span>
-                      {/* The destination window belongs to the catchable bus's
-                          joined visit and includes the final walk. Pickup has
-                          its own countdown above. Walking and future plans
-                          retain an explicit point estimate, never a made-up
-                          window or a departure-to-arrival span. */}
-                      <DestinationArrival option={o} destination={toText}
-                        departureMs={isFuture ? targetDate?.getTime() : undefined} />
                     </div>
                     )}
                   </div>
