@@ -36,3 +36,16 @@ one minute and observed presence retain their precise labels. Tapping still
 shows the pickup window and history. Walking/future plans retain an explicit
 approximate destination time when no live journey window exists. The watcher
 parser accepts both the previous layout and the compact cards.
+
+## Review evidence
+
+- Full app gates (typecheck, 2,820 tests, build, staging and browser smoke):
+  [hosted run 35397563112](https://github.com/grtwrn/yale-shuttle/actions/runs/35397563112).
+- Final generated previews and card/gallery browser checks:
+  [hosted run 35397796955](https://github.com/grtwrn/yale-shuttle/actions/runs/35397796955).
+- All eleven map images were visually reviewed. Each variant uses the rendered
+  map DOM with animation frozen; recorded labels are checked before and after
+  capture. The reference and every option retain the actual OSM streets.
+- The running watcher was moved to `compact-arrivals-v5`, preserving its runner
+  behavior and 75% CPU quota. Graceful stop excluded interrupted journeys from
+  accuracy; both rider slots resumed with a fresh heartbeat and no feed error.
