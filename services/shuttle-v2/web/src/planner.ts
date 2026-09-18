@@ -15,6 +15,7 @@ import {
 import type { PublishedWindow } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
 import type { JourneyArrival } from './journeyArrival';
+import type { LivePickupSelection } from './livePickupSelection';
 
 export type TripOption = {
   mode: "shuttle" | "walk";
@@ -64,6 +65,8 @@ export type TripOption = {
   computedAtMs?: number;
   /** Destination arrival for the catchable bus, including the final walk. */
   journeyArrival?: JourneyArrival;
+  /** Existing countdown and selected boarding evidence, independent of destination availability. */
+  livePickupSelection?: LivePickupSelection;
   etaUnavailable?: boolean;
 };
 

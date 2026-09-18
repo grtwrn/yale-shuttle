@@ -48,7 +48,7 @@ try{
  assert.equal(option.busName,'307');assert.equal(option.journeyArrival.busName,'309');
  assert.equal(option.boardStopId,48);assert.equal(option.alightStopId,121);
  assert(option.walkFromSec>=60,'fixture has a final walk');
- assert.match(report.after,/Trip time uses #309. #307 may reach pickup before you/);
+ assert.match(report.after,/Trip uses #309. #307 may reach pickup before you/);
  assert(report.after.includes(`🚌 #309 · ${Math.floor(option.rideSec/60)} min`),'ride duration matches the chosen journey');
  assert.match(report.after,/⏳ 17 min/);assert(!report.after.includes('⏳ now-2 min'));
  assert.match(report.after,/GET OFFUnion Station/);
@@ -77,13 +77,13 @@ try{
  const wire=feed.server_eta;delete feed.server_eta;
  await page.clock.runFor(5500);await page.waitForTimeout(100);
  await page.getByText('ETA unavailable',{exact:true}).first().waitFor();
- assert.equal(await page.getByText(/Trip time uses #309/).count(),0);
+ assert.equal(await page.getByText(/Trip uses #309/).count(),0);
  assert.equal(await page.getByRole('button',{name:/I'm on #309/}).count(),0);
  assert(await page.getByRole('button',{name:"🚌 I'm on it",exact:true}).evaluate(e=>e===document.activeElement),'missing journey returns focus to persistent boarding action');
  feed.server_eta=wire;await page.clock.runFor(5500);await page.waitForTimeout(100);await action.waitFor();
  const directions=page.getByRole('link',{name:'🧭 Directions to stop',exact:true});await directions.focus();
  wire.servedAt=wire.at+60000;await page.clock.runFor(5500);await page.waitForTimeout(100);
- assert.equal(await page.getByText(/Trip time uses #309/).count(),0);
+ assert.equal(await page.getByText(/Trip uses #309/).count(),0);
  assert(await directions.evaluate(e=>e===document.activeElement),'stale transition preserves external focus');
  wire.servedAt=wire.at;await page.clock.runFor(5500);await page.waitForTimeout(100);await action.waitFor();
  report.checks.push('Both pickup identities, Back/draft, missing and stale wire removal, and fresh recovery preserved');
@@ -110,7 +110,7 @@ try{
  wire.rows.sort((a,b)=>a[2]-b[2]);wire.distributions=wire.rows.map(r=>Array.from({length:50},(_,i)=>r[3]+i*(r[4]-r[3])/49));
  await page.clock.runFor(5500);await page.waitForTimeout(100);
  await page.getByRole('button',{name:"🚌 I'm on it",exact:true}).waitFor();
- assert.equal(await page.getByText(/Trip time uses/).count(),0);
+ assert.equal(await page.getByText(/Trip uses/).count(),0);
  assert.match(await page.locator('body').innerText(),/🚌 #307 · 1[78] min/);
  assert.deepEqual(report.errors,[]);report.completed=true;
 

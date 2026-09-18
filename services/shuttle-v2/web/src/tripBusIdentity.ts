@@ -1,12 +1,15 @@
 import type { TripOption } from './planner';
 
-/** The pickup countdown can follow a bus the walk model cannot catch.
- * Attribute the ride to the existing destination forecast without changing
- * either selection. Keep both identities available for manual boarding. */
-export function tripBusIdentity(option: Pick<TripOption, 'busName' | 'journeyArrival' | 'etaUnavailable' | 'departed'>) {
+/** The countdown may precede the pickup used for the trip. Destination
+ * availability must not erase that selected vehicle or occurrence. */
+export function tripBusIdentity(option: Pick<TripOption, 'busName' | 'journeyArrival' | 'livePickupSelection' | 'etaUnavailable' | 'departed'>) {
   const normalize = (name: string) => name.replace(/^#/, '');
   const pickup = normalize(option.busName);
-  const ride = !option.etaUnavailable && !option.departed && option.journeyArrival?.busName
-    ? normalize(option.journeyArrival.busName) : pickup;
-  return { pickup, ride, different: !!pickup && !!ride && pickup !== ride };
+  const usable = !option.etaUnavailable && !option.departed;
+  const selection = usable ? option.livePickupSelection : undefined;
+  const ride = normalize(selection?.boarding.busName
+    || (usable ? option.journeyArrival?.busName : undefined) || pickup);
+  const different = !!pickup && !!ride && pickup !== ride;
+  const laterVisit = selection?.relation === 'same-bus-later-visit';
+  return { pickup, ride, different, laterVisit, separateWait: different || laterVisit };
 }

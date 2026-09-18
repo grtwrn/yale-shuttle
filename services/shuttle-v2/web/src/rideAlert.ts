@@ -4,3 +4,11 @@ export function getOffAlertTitle(stopsRemaining: number | null): string | null {
   if (stopsRemaining <= 0) return "Get off here";
   return stopsRemaining === 1 ? "Get off at the next stop" : "Get off in 2 stops";
 }
+
+/** An already-open prompt must follow current evidence, including its loss. */
+export function getOffPromptTitle(stopsRemaining: number | null): string {
+  return getOffAlertTitle(stopsRemaining)
+    ?? (stopsRemaining === null
+      ? "Live stop position unavailable"
+      : `Your stop is ${stopsRemaining} stops away`);
+}
