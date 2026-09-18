@@ -39,7 +39,7 @@ import { waitLegText } from "./etaBand";
 import { ArrivalDetails } from "./ArrivalDetails";
 import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { ArriveBy } from "./ArriveBy";
-import { journeyArrival } from "./journeyArrival";
+import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
 import { tripBusIdentity } from "./tripBusIdentity";
 import { TripBoardingActions } from "./TripBoardingActions";
 import {
@@ -2249,7 +2249,8 @@ const TripPlanner: FC<{
         // they arrive, so fall through to the normal math.
         const waitSec = 0;
         const board = live.find(a => norm(a.busName) === norm(hereBus.bus_name) && a.stopsAhead === 0 && a.eta === 0);
-        const arrival = journeyArrival(board, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs);
+        const forecastBoard = atStopJourneyBoard(visits, o.routeLabel, hereBus.bus_name, o.boardStopId, o.alightStopId);
+        const arrival = journeyArrival(forecastBoard, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs, 'at-stop');
         const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
           : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {

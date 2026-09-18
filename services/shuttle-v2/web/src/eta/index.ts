@@ -138,6 +138,34 @@ export function beliefFor(
 
 export interface ModelArrival extends StopArrival { busName: string }
 
+/** Pool only rows whose stop, occurrence and future traversal still agree.
+ * Occurrence zero can switch from a future lap to an already-arrived stop.
+ * Hops 1..N and N+1..2N describe different future traversals. Crossing that
+ * boundary is ambiguous without an unwrapped target identity: use the new
+ * forecast directly. Ordinary forward hop progress retains stabilization.
+ */
+export function poolReleaseArrivals(
+  memory: NonNullable<ModelEntry['releaseSmoothing']>, rows: StopArrival[], now: number, active: boolean, stopCount: number,
+): void {
+  for (const row of rows) {
+    const rowKey = row.stopId * 2 + row.occurrence, old = memory.get(rowKey);
+    const dt = old ? (now - old.at) / 1000 : Infinity;
+    if (active && old && dt >= 0 && dt <= 15 && row.stopsAhead > 0
+      && row.stopsAhead <= old.row.stopsAhead
+      && Math.ceil(row.stopsAhead / stopCount) === Math.ceil(old.row.stopsAhead / stopCount)) {
+      const weight = 1 - Math.exp(-dt / 30);
+      const mix = (before: number, current: number) => Math.max(0, (before - dt) * (1 - weight) + current * weight);
+      row.eta = mix(old.row.eta, row.eta);
+      row.low = Math.min(row.eta, mix(old.row.low, row.low));
+      row.high = Math.max(row.eta, mix(old.row.high, row.high));
+      if (row.distribution && old.row.distribution?.length === row.distribution.length) {
+        row.distribution = row.distribution.map((v, i) => mix(old.row.distribution![i]!, v));
+      }
+    }
+    memory.set(rowKey, { at: now, row: { ...row } });
+  }
+}
+
 /**
  * Price every target stop for one bus. `dwellsByRoute` is every route's
  * dwell table (the payload's `dwells`), from which the all-routes stand
@@ -187,21 +215,7 @@ export function arrivalsForBus(
     const entry = entryFor(store, key);
     const memory = entry.releaseSmoothing ??= new Map();
     const active = releasePin && belief.rested && ring.stops[belief.restStop] === releasePin.stopId && tables.stops[belief.restStop]?.release?.stopId === releasePin.stopId;
-    for (const row of rows) {
-      const rowKey = row.stopId * 2 + row.occurrence, old = memory.get(rowKey);
-      const dt = old ? (now - old.at) / 1000 : Infinity;
-      if (active && old && dt >= 0 && dt <= 15 && row.stopsAhead <= old.row.stopsAhead) {
-        const weight = 1 - Math.exp(-dt / 30);
-        const mix = (before: number, current: number) => Math.max(0, (before - dt) * (1 - weight) + current * weight);
-        row.eta = mix(old.row.eta, row.eta);
-        row.low = Math.min(row.eta, mix(old.row.low, row.low));
-        row.high = Math.max(row.eta, mix(old.row.high, row.high));
-        if (row.distribution && old.row.distribution?.length === row.distribution.length) {
-          row.distribution = row.distribution.map((v, i) => mix(old.row.distribution![i]!, v));
-        }
-      }
-      memory.set(rowKey, { at: now, row: { ...row } });
-    }
+    poolReleaseArrivals(memory, rows, now, Boolean(active), ring.N);
   }
   return rows;
 }

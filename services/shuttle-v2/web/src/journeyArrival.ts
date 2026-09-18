@@ -1,5 +1,26 @@
 import type { UpcomingArrival } from './arrivals';
 
+/** Join a raw at-stop observation to an existing forecast visit. GPS can report
+ * the curb while the estimator still has an approaching pickup. Only accept a
+ * pickup before this bus's FIRST destination; a later lap cannot price the
+ * board-now journey. The caller retains its raw boarding/dwell gate and pickup
+ * countdown, and journeyArrival still checks folded-route visit order. */
+export function atStopJourneyBoard(
+  visits: readonly UpcomingArrival[],
+  routeLabel: string,
+  busName: string,
+  boardStopId: number,
+  alightStopId: number,
+): UpcomingArrival | undefined {
+  const norm = (name: string) => name.replace(/^#/, '');
+  const sameBus = visits.filter(a => a.routeLabel === routeLabel && norm(a.busName) === norm(busName))
+    .sort((a, b) => a.stopsAhead - b.stopsAhead);
+  const arrived = sameBus.find(a => a.stopId === boardStopId && a.stopsAhead === 0 && a.eta === 0);
+  if (arrived) return arrived;
+  const firstDestination = sameBus.find(a => a.stopId === alightStopId);
+  return firstDestination && sameBus.find(a => a.stopId === boardStopId && a.stopsAhead < firstDestination.stopsAhead);
+}
+
 export interface JourneyArrival {
   busName: string;
   distributionMs?: number[] | undefined;
@@ -21,6 +42,7 @@ export function journeyArrival(
   walkToSec: number,
   walkFromSec: number,
   now: number,
+  pickupState: 'forecast' | 'at-stop' = 'forecast',
 ): JourneyArrival | undefined {
   if (!board || ![walkToSec, walkFromSec, board.eta, board.low, now].every(Number.isFinite)
     || walkToSec < 0 || walkFromSec < 0) return undefined;
@@ -37,9 +59,9 @@ export function journeyArrival(
     pointMs: now + (destination.eta + walkFromSec) * 1000,
     lowMs: now + (destination.low + walkFromSec) * 1000,
     highMs: now + (Math.max(destination.eta, destination.high) + walkFromSec) * 1000,
-    // Do not count on a driver waiting. A bus already at pickup is only a
-    // confident connection when the rider is there too (walkToSec === 0).
-    catchRisk: walkToSec > Math.max(0, board.low),
+    // Raw GPS may already place the bus at pickup while its forecast is still
+    // approaching. That forecast does not establish that the driver will wait.
+    catchRisk: walkToSec > (pickupState === 'at-stop' ? 0 : Math.max(0, board.low)),
     estimated: destination.estimated || board.estimated,
   };
 }
