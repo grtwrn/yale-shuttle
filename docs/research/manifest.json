@@ -27,11 +27,12 @@
     "server-eta-data",
     "wait-route-data",
     "red-ride-2026-09-10",
-    "replay-inputs"
+    "replay-inputs",
+    "red-bunching-2026-09-18"
   ],
   "counts": {
-    "published": 2104,
-    "not-published": 2326
+    "published": 2121,
+    "not-published": 2332
   },
   "files": [
     {
@@ -34714,7 +34715,197 @@
       "published": "archive/replay-inputs/manifest.json",
       "publishedBytes": 2102,
       "publishedSha256": "3a22e69db69d1bbeb1a97f97edf43f4f6c8daa5cd7361a9eaa706b581bb715e9"
+    },
+    {
+      "source": "red-bunching-2026-09-18/INDEPENDENT-REVIEW.md",
+      "bytes": 8991,
+      "sha256": "c12b4e010d1cd7b6233de0abb3fc2757b04fc8bf3ccedfec75187185acc310b0",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/INDEPENDENT-REVIEW.md",
+      "publishedBytes": 8991,
+      "publishedSha256": "c12b4e010d1cd7b6233de0abb3fc2757b04fc8bf3ccedfec75187185acc310b0"
+    },
+    {
+      "source": "red-bunching-2026-09-18/PLAN.json",
+      "bytes": 7162,
+      "sha256": "7a7d9d66e3810c7fa2d47b847fc892798ee8672faee741b0a304ec7751f97c88",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/PLAN.json",
+      "publishedBytes": 7162,
+      "publishedSha256": "7a7d9d66e3810c7fa2d47b847fc892798ee8672faee741b0a304ec7751f97c88"
+    },
+    {
+      "source": "red-bunching-2026-09-18/REPORT.md",
+      "bytes": 10506,
+      "sha256": "3368bf284e92a502758a410c18051cce8e4eac59f4898c51c9e2402158e528a8",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/REPORT.md",
+      "publishedBytes": 10506,
+      "publishedSha256": "3368bf284e92a502758a410c18051cce8e4eac59f4898c51c9e2402158e528a8"
+    },
+    {
+      "source": "red-bunching-2026-09-18/STOP_STATUS.json",
+      "bytes": 882,
+      "sha256": "42c88d4ccf27d20966d5662198b2fe79f188688a927cf258443126e6b863a0e2",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/STOP_STATUS.json",
+      "publishedBytes": 882,
+      "publishedSha256": "42c88d4ccf27d20966d5662198b2fe79f188688a927cf258443126e6b863a0e2"
+    },
+    {
+      "source": "red-bunching-2026-09-18/extend.py",
+      "bytes": 5080,
+      "sha256": "16d2fd5c7e6f2c1517be256a24e6545281905738ecac100924a42133e9b12406",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/extend.py",
+      "publishedBytes": 5080,
+      "publishedSha256": "16d2fd5c7e6f2c1517be256a24e6545281905738ecac100924a42133e9b12406"
+    },
+    {
+      "source": "red-bunching-2026-09-18/extension-cohort.json",
+      "bytes": 2163,
+      "sha256": "dc7fa1e9c55734f738e6d40bc994b72e41edacf44b1586af683c0f9ece434f48",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/extension-cohort.json",
+      "publishedBytes": 2163,
+      "publishedSha256": "dc7fa1e9c55734f738e6d40bc994b72e41edacf44b1586af683c0f9ece434f48"
+    },
+    {
+      "source": "red-bunching-2026-09-18/extension-meta.json",
+      "bytes": 886,
+      "sha256": "c1a584f12db2d5a2be36981fab6b6a046df981a0bf3457a3051138b85791fed9",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/extension-meta.json",
+      "publishedBytes": 886,
+      "publishedSha256": "c1a584f12db2d5a2be36981fab6b6a046df981a0bf3457a3051138b85791fed9"
+    },
+    {
+      "source": "red-bunching-2026-09-18/extension-predictions.jsonl",
+      "bytes": 83504,
+      "status": "not-published",
+      "reason": "bulk prediction rows or execution log; aggregate findings retained"
+    },
+    {
+      "source": "red-bunching-2026-09-18/extension-scores.json",
+      "bytes": 391105,
+      "sha256": "87df1b981e149b4dd5dde4f487e8288fc9908010c56a48aacdd5fc3e75280664",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/extension-scores.json",
+      "publishedBytes": 391105,
+      "publishedSha256": "87df1b981e149b4dd5dde4f487e8288fc9908010c56a48aacdd5fc3e75280664"
+    },
+    {
+      "source": "red-bunching-2026-09-18/extension.log",
+      "bytes": 4526,
+      "status": "not-published",
+      "reason": "bulk prediction rows or execution log; aggregate findings retained"
+    },
+    {
+      "source": "red-bunching-2026-09-18/extraction-audit.json",
+      "bytes": 694,
+      "sha256": "7adaefec19f42b2715b5ae2aaad69d82fd7d433647b6d4041cd0741a3cb3daf0",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/extraction-audit.json",
+      "publishedBytes": 694,
+      "publishedSha256": "7adaefec19f42b2715b5ae2aaad69d82fd7d433647b6d4041cd0741a3cb3daf0"
+    },
+    {
+      "source": "red-bunching-2026-09-18/fits.json",
+      "bytes": 5743,
+      "sha256": "1cc1e4e92d6fea1caebc1882665d1f82d4a4f8a80aeaa7f901461d168481e654",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/fits.json",
+      "publishedBytes": 5743,
+      "publishedSha256": "1cc1e4e92d6fea1caebc1882665d1f82d4a4f8a80aeaa7f901461d168481e654"
+    },
+    {
+      "source": "red-bunching-2026-09-18/predictions.jsonl",
+      "bytes": 3245469,
+      "status": "not-published",
+      "reason": "bulk prediction rows or execution log; aggregate findings retained"
+    },
+    {
+      "source": "red-bunching-2026-09-18/runtime-comparator.json",
+      "bytes": 353197,
+      "sha256": "9cf51782a779a57d3fcc28c221991ea18ea6cd158096eba1270cae19588f123d",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/runtime-comparator.json",
+      "publishedBytes": 353197,
+      "publishedSha256": "9cf51782a779a57d3fcc28c221991ea18ea6cd158096eba1270cae19588f123d"
+    },
+    {
+      "source": "red-bunching-2026-09-18/runtime-comparator.log",
+      "bytes": 75,
+      "status": "not-published",
+      "reason": "bulk prediction rows or execution log; aggregate findings retained"
+    },
+    {
+      "source": "red-bunching-2026-09-18/runtime-comparator.mts",
+      "bytes": 3931,
+      "sha256": "f0e180a49acc05f921199ed38e5e4bf95fc1be51174a8cf4051a5cc6584d2d9c",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/runtime-comparator.mts",
+      "publishedBytes": 3931,
+      "publishedSha256": "f0e180a49acc05f921199ed38e5e4bf95fc1be51174a8cf4051a5cc6584d2d9c"
+    },
+    {
+      "source": "red-bunching-2026-09-18/scores.json",
+      "bytes": 1414845,
+      "sha256": "feb9fac60de289ebf38a10a75fb82b0bee0e72d49d73a897ef34aa4b88904942",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/scores.json",
+      "publishedBytes": 1414845,
+      "publishedSha256": "feb9fac60de289ebf38a10a75fb82b0bee0e72d49d73a897ef34aa4b88904942"
+    },
+    {
+      "source": "red-bunching-2026-09-18/screen.log",
+      "bytes": 16860,
+      "status": "not-published",
+      "reason": "bulk prediction rows or execution log; aggregate findings retained"
+    },
+    {
+      "source": "red-bunching-2026-09-18/screen.py",
+      "bytes": 16086,
+      "sha256": "c9c94a555781cee58106a8b327c98e287eb1feedcea2754e8773eca23fa891ba",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/screen.py",
+      "publishedBytes": 16086,
+      "publishedSha256": "c9c94a555781cee58106a8b327c98e287eb1feedcea2754e8773eca23fa891ba"
+    },
+    {
+      "source": "red-bunching-2026-09-18/summarize.py",
+      "bytes": 7026,
+      "sha256": "006371452abe9c233c6921bf5dcd13dafb4b96576b09bce49bef5a8302b03ec6",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/summarize.py",
+      "publishedBytes": 7026,
+      "publishedSha256": "006371452abe9c233c6921bf5dcd13dafb4b96576b09bce49bef5a8302b03ec6"
+    },
+    {
+      "source": "red-bunching-2026-09-18/validate.py",
+      "bytes": 3894,
+      "sha256": "2529f81e8e95b1dff45bb8cfa197cc07a085c6af131b6a1bdf2bf4a1d0a2eddf",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/validate.py",
+      "publishedBytes": 3894,
+      "publishedSha256": "2529f81e8e95b1dff45bb8cfa197cc07a085c6af131b6a1bdf2bf4a1d0a2eddf"
+    },
+    {
+      "source": "red-bunching-2026-09-18/validation.json",
+      "bytes": 559,
+      "sha256": "36a93ab8cee1cf9d3e7d6e236203519beb7c2484a6cc15f2be5cb437178eb45c",
+      "status": "published",
+      "published": "archive/red-bunching-2026-09-18/validation.json",
+      "publishedBytes": 559,
+      "publishedSha256": "36a93ab8cee1cf9d3e7d6e236203519beb7c2484a6cc15f2be5cb437178eb45c"
+    },
+    {
+      "source": "red-bunching-2026-09-18/validation.log",
+      "bytes": 559,
+      "status": "not-published",
+      "reason": "bulk prediction rows or execution log; aggregate findings retained"
     }
   ],
-  "publishedBytes": 76922853
+  "publishedBytes": 76922853,
+  "updatedAt": "2026-09-18T20:14:29.674983+00:00"
 }

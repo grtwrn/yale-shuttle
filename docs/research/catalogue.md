@@ -264,3 +264,8 @@ Snapshot: September 18, 2026. Read the [topic/status index](README.md) first. Re
 - [statistical review response](../statistical-review-response.md)
 - [stop data visualizer](../stop-data-visualizer.md)
 - [upstream eta measurement](../upstream-eta-measurement.md)
+
+## red-bunching-2026-09-18
+
+- [Frozen bunching study](archive/red-bunching-2026-09-18/REPORT.md) — `REPORT.md`
+- [Independent bunching review](archive/red-bunching-2026-09-18/INDEPENDENT-REVIEW.md) — `INDEPENDENT-REVIEW.md`
