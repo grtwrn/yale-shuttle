@@ -1754,6 +1754,19 @@ const TripPlanner: FC<{
   const [toExpanded, setToExpanded] = useState(false);
   const fromInputRef = useRef<HTMLInputElement | null>(null);
   const toInputRef = useRef<HTMLInputElement | null>(null);
+  const fromSummaryRef = useRef<HTMLDivElement | null>(null);
+  const toSummaryRef = useRef<HTMLDivElement | null>(null);
+  const fromBlurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toBlurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPlaceBlur = (which: "from" | "to") => {
+    const timer = which === "from" ? fromBlurRef : toBlurRef;
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => () => {
+    if (fromBlurRef.current !== null) clearTimeout(fromBlurRef.current);
+    if (toBlurRef.current !== null) clearTimeout(toBlurRef.current);
+  }, []);
   const [searching, setSearching] = useState<"from" | "to" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Expansion state is keyed by OPTION IDENTITY (route label; "Walk" for
@@ -1878,9 +1891,21 @@ const TripPlanner: FC<{
     return () => clearTimeout(id);
   }, [searching]);
 
+  const returnPlaceFocus = (which: "from" | "to") => {
+    const input = which === "from" ? fromInputRef : toInputRef;
+    const summary = which === "from" ? fromSummaryRef : toSummaryRef;
+    if (document.activeElement !== input.current) return;
+    // Picking removes the editor. Keep the keyboard position on its summary,
+    // without reopening the phone keyboard or stealing focus if the rider
+    // has already moved to another control while React commits the pick.
+    requestAnimationFrame(() => {
+      if (document.activeElement === document.body) summary.current?.focus({ preventScroll: true });
+    });
+  };
   // Settle the From box on a known place — a geocoder pick, a recent, a
   // saved or popular destination — without going back to the geocoder.
   const commitFrom = (display: string, ll: LatLon) => {
+    returnPlaceFocus("from");
     fromAbortRef.current?.abort();
     fromAbortRef.current = null;
     setFromLL({ lat: ll.lat, lon: ll.lon });
@@ -1902,6 +1927,7 @@ const TripPlanner: FC<{
   // drop the word that made the rider pick this one over its namesake.
   const pickFrom = (g: GeocodeResult) => commitFrom(suggLabel(g, fromSugg), g);
   const pickTo = (g: GeocodeResult) => {
+    returnPlaceFocus("to");
     toAbortRef.current?.abort();
     toAbortRef.current = null;
     setToLL({ lat: g.lat, lon: g.lon });
@@ -2744,6 +2770,7 @@ const TripPlanner: FC<{
         // Collapse to the pill the way a pick does. The blur handler below
         // restores `prevFromTextRef`, so it must already say 📍.
         prevFromTextRef.current = CURRENT_LOCATION_TEXT;
+        returnPlaceFocus("from");
         useCurrent();
         fromInputRef.current?.blur();
         setFromExpanded(false);
@@ -2825,6 +2852,7 @@ const TripPlanner: FC<{
           full input; after a pick, auto-collapses back. */}
       {!showFromRow ? null : !fromExpanded ? (
         <div
+          ref={fromSummaryRef}
           onClick={() => {
             prevFromTextRef.current = fromText;
             setFromText("");
@@ -2895,11 +2923,13 @@ const TripPlanner: FC<{
       ) : (
       <div style={{ marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 34, flexShrink: 0 }}>From</span>
+          <label htmlFor="trip-from" style={{ fontSize: 11, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 34, flexShrink: 0 }}>From</label>
           <input ref={fromInputRef}
+                 id="trip-from"
                  inputMode="search"
                  enterKeyHint="search"
                  value={fromText}
+                 onFocus={() => cancelPlaceBlur("from")}
                  onChange={(e) => {
                    setFromText(e.target.value);
                    // Typing invalidates any prior coord (locked pick or
@@ -2948,7 +2978,7 @@ const TripPlanner: FC<{
                  aria-autocomplete="list"
                  aria-controls="from-suggestions"
                  aria-activedescendant={
-                   fromActive >= 0 ? `from-suggestions-${fromActive}` : undefined
+                   fromRows[fromActive] ? `from-suggestions-${fromActive}` : undefined
                  }
                  onBlur={() => {
                    // Bail-out path: if they opened edit mode and
@@ -2956,7 +2986,11 @@ const TripPlanner: FC<{
                    // pill text (and coord state) rather than leaving
                    // a half-edited field. The 180 ms delay lets a
                    // suggestion click land first.
-                   setTimeout(() => {
+                   // A new editing session cancels this delayed departure;
+                   // the old callback must not close the newly focused box.
+                   cancelPlaceBlur("from");
+                   fromBlurRef.current = setTimeout(() => {
+                     fromBlurRef.current = null;
                      if (!fromText && prevFromTextRef.current) {
                        setFromText(prevFromTextRef.current);
                        setFromExpanded(false);
@@ -2976,7 +3010,7 @@ const TripPlanner: FC<{
                  placeholder="📍 Current location"
                  style={inputStyle} />
         </div>
-        <PlaceList id="from-suggestions" rows={fromRows} active={fromActive} onHover={setFromActive} />
+        <PlaceList id="from-suggestions" label="From suggestions" rows={fromRows} active={fromActive} onHover={setFromActive} />
       </div>
       )}
 
@@ -2991,6 +3025,7 @@ const TripPlanner: FC<{
         // can type fresh — same interaction pattern as Google Maps'
         // destination field.
         <div
+          ref={toSummaryRef}
           onClick={() => {
             // Cache the current text so we can restore it if the
             // rider bails out without picking a new destination.
@@ -3052,9 +3087,12 @@ const TripPlanner: FC<{
           {/* "To" label only once a destination has been locked — until
               then the placeholder alone is the prompt. */}
           {toLL && (
-            <span style={{ fontSize: 11, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 34, flexShrink: 0 }}>To</span>
+            <label htmlFor="trip-to" style={{ fontSize: 11, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 34, flexShrink: 0 }}>To</label>
           )}
           <input ref={toInputRef}
+                 id="trip-to"
+                 aria-label="To"
+                 onFocus={() => cancelPlaceBlur("to")}
                  inputMode="search"
                  enterKeyHint="search"
                  value={toText} onChange={(e) => { setToText(e.target.value); setToLL(null); }}
@@ -3090,11 +3128,11 @@ const TripPlanner: FC<{
                    (e.target as HTMLInputElement).blur();
                  }}
                  role="combobox"
-                 aria-expanded={toSugg.length > 0}
+                 aria-expanded={toRows.length > 0}
                  aria-autocomplete="list"
                  aria-controls="to-suggestions"
                  aria-activedescendant={
-                   toActive >= 0 ? `to-suggestions-${toActive}` : undefined
+                   toRows[toActive] ? `to-suggestions-${toActive}` : undefined
                  }
                  onBlur={() => {
                    // If the rider opened edit mode on a locked
@@ -3103,7 +3141,9 @@ const TripPlanner: FC<{
                    // the previous pill rather than leaving them in a
                    // half-edited state. The 180 ms delay lets an
                    // in-progress suggestion click register first.
-                   setTimeout(() => {
+                   cancelPlaceBlur("to");
+                   toBlurRef.current = setTimeout(() => {
+                     toBlurRef.current = null;
                      if (toLL && !toText && prevToTextRef.current) {
                        setToText(prevToTextRef.current);
                        setToExpanded(false);
@@ -3132,7 +3172,7 @@ const TripPlanner: FC<{
             </button>
           )}
         </div>
-        <PlaceList id="to-suggestions" rows={toRows} active={toActive} onHover={setToActive} />
+        <PlaceList id="to-suggestions" label="To suggestions" rows={toRows} active={toActive} onHover={setToActive} />
       </div>
       )}
       {/* Only while the start still depends on GPS. Once the rider has a
@@ -3206,7 +3246,7 @@ const TripPlanner: FC<{
         </div>
       )}
 
-      {error && <div style={{ fontSize: 13, color: "#C62828", marginBottom: 8 }}>{error}</div>}
+      {error && <div role="alert" style={{ fontSize: 13, color: "#C62828", marginBottom: 8 }}>{error}</div>}
 
       {/* Loading indicator: shown whenever a geocode is in flight (user
           typed + is resolving to a coordinate) or a "From" lookup is
@@ -7629,7 +7669,7 @@ const TransitMap: FC = () => {
       {/* View tabs — the tabs themselves are hidden while on a bus, since the
           ride page is its own view, but the row stays so Refresh never
           disappears. */}
-      <div className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
+      <nav aria-label="Main" className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
         <div style={{
           display: "flex", gap: 4, padding: "4px 4px 6px", fontSize: 11,
           overflowX: "auto", WebkitOverflowScrolling: "touch",
@@ -7641,6 +7681,7 @@ const TransitMap: FC = () => {
           {!boardedRide && (["trip", "map", "issues"] as const).map((v) => (
             <button
               key={v}
+              aria-current={listView === v ? "page" : undefined}
               onClick={() => { setListView(v); }}
               style={{
                 // These are the app's primary navigation and were the
@@ -7696,7 +7737,7 @@ const TransitMap: FC = () => {
             ↻
           </button>
         </div>
-      </div>
+      </nav>
 
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
