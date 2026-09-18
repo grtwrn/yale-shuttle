@@ -40,8 +40,14 @@ its complete arrival forecasts did not consistently improve.
   and the plotted distribution use the same pooling. Marginal fallbacks at
   Winchester also receive this stabilization when an accepted fit exists.
   Pooling ends as soon as the tracked rest ends, rather than using the first
-  movement as a departure oracle. A gap over 15 seconds or a new route lap
-  bypasses old pooling memory. Checkpoints persist that memory with the belief.
+  movement as a departure oracle. Already-arrived (zero-hop) rows remain zero.
+  A gap over 15 seconds, an increased hop count, or a change between the first
+  and second future traversal bypasses old pooling memory. This matters when
+  a standing hypothesis changes occurrence zero from a future lap to the
+  current arrival, and occurrence one from two future laps to one. Ordinary
+  forward hop progress within a traversal retains smoothing. Ambiguous rows
+  use the new forecast and seed fresh memory; no ETA cap is imposed.
+  Checkpoints persist that memory with the belief.
 - The wire payload carries the small fit with dwell statistics. It is also
   included in the shared runtime module's Docker dependency closure. Fit cost
   and fit count are included in collector calibration logs.
