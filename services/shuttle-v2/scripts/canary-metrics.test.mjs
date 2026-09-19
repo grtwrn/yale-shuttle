@@ -2888,3 +2888,27 @@ it('retains the visible pickup window alongside the point and following shuttle'
   expect(parseBusEtaText('Arrives in ~5 min, 9–3 min range')).toBeNull();
   expect(parseBusEtaText('Arrives in ~5 min, 3 min range')).toMatchObject({ first: [180, 180] });
 });
+
+
+it('reads arrivals from the mini-map table when cards contain only route legs', () => {
+  const text = `Route\tAt stop (in min)\tAt destination
+Red\t~5 (3–9)\nNext ~20\t10:21a–10:27a
+Blue Night\tAt stop\nNext ~15\t10:20a–10:30a
+Orange Night\tUnavailable\t—
+Green\tMissed\t—
+Purple\tScheduled\t~11:32a
+Walk\t—\t~10:45a
+Red
+🚶 2 min
+›
+🚌 18 min
+›`;
+  const cards = parseOptions(text);
+  expect(cards.map(c => c.routeLabel)).toEqual(['Red', 'Blue Night', 'Orange Night', 'Green', 'Purple', 'Walk']);
+  expect(cards[0].eta).toMatchObject({ first: [180, 540], median: [300, 360], second: [1200, 1260], spread: true });
+  expect(cards[1].eta).toMatchObject({ first: [0, 10], second: [900, 960] });
+  expect(cards[2]).toMatchObject({ etaUnavailable: true, eta: null, arriveText: null });
+  expect(cards[3]).toMatchObject({ departed: true, eta: null, arriveText: null });
+  expect(cards[4]).toMatchObject({ eta: null, arriveText: '~11:32a' });
+  expect(cards[5]).toMatchObject({ mode: 'walk', eta: null, arriveText: '~10:45a' });
+});

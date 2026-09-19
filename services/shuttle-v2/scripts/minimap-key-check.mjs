@@ -1,0 +1,74 @@
+/** Recorded Red hold: inspect the actual mini-map key without loading the Pi. */
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright-core';
+import { seedTestId } from './testId.mjs';
+import { parseOptions } from './canary-metrics.mjs';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const out = path.join(root, 'gallery-review/timing-key');
+await fs.mkdir(out, { recursive: true });
+const feed = JSON.parse(await fs.readFile(path.join(root, 'scripts/__fixtures__/minimap-label-feed.json'), 'utf8'));
+const now = feed.server_eta.servedAt;
+const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+const report = { errors: [], runs: [] };
+try {
+  for (const width of [320, 390]) {
+    const context = await browser.newContext({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true,
+      geolocation: { latitude: 41.324769, longitude: -72.923522 }, permissions: ['geolocation'], timezoneId: 'America/New_York', serviceWorkers: 'block' });
+    await seedTestId(context);
+    await context.addInitScript(now => {
+      const D = Date;
+      window.Date = class extends D { constructor(...a) { super(...(a.length ? a : [now])); } static now() { return now; } };
+      window.setInterval = () => 0;
+    }, now);
+    const page = await context.newPage();
+    page.on('pageerror', e => report.errors.push(e.message));
+    await page.route('**/*', async route => {
+      const u = new URL(route.request().url());
+      if (['tile.openstreetmap.org', 'fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname)) return route.continue();
+      if (u.hostname !== 'timing-key.test') return route.abort();
+      if (u.pathname === '/api/buses') return route.fulfill({ json: feed });
+      if (u.pathname === '/api/geocode') return route.fulfill({ json: { results: [{ display_name: 'Rosenkranz Hall', lat: 41.314701, lon: -72.924551, type: 'college', class: 'yale' }] } });
+      if (u.pathname === '/api/weather') return route.fulfill({ status: 204 });
+      if (u.pathname.startsWith('/api/')) return route.fulfill({ json: { reports: [], results: [], routes: [] } });
+      const f = u.pathname === '/' ? '/index.html' : u.pathname;
+      try { return route.fulfill({ body: await fs.readFile(root + '/web/dist' + f), contentType: f.endsWith('.js') ? 'text/javascript' : f.endsWith('.css') ? 'text/css' : 'text/html' }); }
+      catch { return route.fulfill({ status: 404 }); }
+    });
+    await page.goto('https://timing-key.test');
+    await page.getByPlaceholder('Where do you want to go?').fill('Rosenkranz');
+    await page.getByText('Rosenkranz Hall', { exact: true }).first().click();
+    const more = page.getByRole('button', { name: /Show \d+ more route/ });
+    if (await more.isVisible()) await more.click();
+    const card = page.getByRole('button', { name: 'View Red trip details', exact: true });
+    await card.waitFor();
+    await page.addStyleTag({ content: '.trip-map-wrap .leaflet-tile { opacity: 1 !important; }' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForFunction(() => {
+      const tiles = [...document.querySelectorAll('.trip-map-canvas .leaflet-tile')];
+      return tiles.length && tiles.every(i => i.complete && i.naturalWidth);
+    });
+    const table = page.getByTestId('route-timing-table');
+    await table.scrollIntoViewIfNeeded();
+    assert(await table.isVisible());
+    assert.equal(await page.locator('.trip-map-canvas .eta-tip:not(.bus-wait-tip)').count(), 0);
+    assert(await page.locator('.bus-wait-label').count() > 0, 'waiting label was lost');
+    assert.doesNotMatch(await card.innerText(), /Arrives in|At destination/);
+    const text = await page.locator('body').innerText();
+    assert(parseOptions(text).some(o => o.routeLabel === 'Red' && o.eta?.spread));
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({ path: path.join(out, `overview-${width}.png`), fullPage: true });
+    await card.focus(); await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: '← All routes', exact: true }).waitFor();
+    assert.equal(await table.locator('tbody tr').count(), 1);
+    await page.locator('.trip-map-wrap').screenshot({ path: path.join(out, `red-detail-${width}.png`), animations: 'disabled' });
+    const waiting = await page.locator('.bus-wait-label').innerText();
+    assert.match(waiting, /Red/);
+    report.runs.push({ width, waiting, table: await table.innerText() });
+    await context.close();
+  }
+  assert.deepEqual(report.errors, []);
+} finally { await browser.close(); await fs.writeFile(path.join(out, 'result.json'), JSON.stringify(report, null, 2)); }
+console.log(JSON.stringify(report));

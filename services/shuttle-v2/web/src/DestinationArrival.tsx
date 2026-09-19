@@ -37,17 +37,17 @@ export function destinationArrivalView(option: ArrivalOption, now: number, depar
   };
 }
 
-export function DestinationArrival({ option, destination, departureMs, now = Date.now() }: {
-  option: ArrivalOption; destination: string; departureMs?: number | undefined; now?: number;
+export function DestinationArrival({ option, destination, departureMs, now = Date.now(), compact = false }: {
+  option: ArrivalOption; destination: string; departureMs?: number | undefined; now?: number; compact?: boolean;
 }) {
   const view = destinationArrivalView(option, now, departureMs);
   if (!view) return null;
   return <span data-testid="destination-arrival" data-kind={view.kind}
     aria-label={`Estimated arrival at ${destination}: ${view.text}. ${view.description}`}
     title={view.description}
-    style={{ flexShrink: 0, maxWidth: '60%', textAlign: 'right', color: '#202124', fontSize: 16, fontWeight: 600 }}>
-    <span style={{ display: 'block', fontSize: 11, fontWeight: 400, color: '#5f6368' }}>At destination</span>
-    <span style={{ display: 'block', fontVariantNumeric: 'tabular-nums' }}>{view.text.split('–').map((endpoint, i) => {
+    style={{ flexShrink: 0, maxWidth: compact ? undefined : '60%', textAlign: 'right', color: '#202124', fontSize: compact ? 12 : 16, fontWeight: 600 }}>
+    {!compact && <span style={{ display: 'block', fontSize: 11, fontWeight: 400, color: '#5f6368' }}>At destination</span>}
+    <span style={{ display: compact ? 'inline' : 'block', fontVariantNumeric: 'tabular-nums' }}>{view.text.split('–').map((endpoint, i) => {
       // A date can wrap above its clock; the digits of a clock stay together.
       const timeAt = endpoint.lastIndexOf(' ') + 1;
       return <Fragment key={i}>{i > 0 && <>–<wbr /></>}{endpoint.slice(0, timeAt)}<span style={{ whiteSpace: 'nowrap' }}>{endpoint.slice(timeAt)}</span></Fragment>;
