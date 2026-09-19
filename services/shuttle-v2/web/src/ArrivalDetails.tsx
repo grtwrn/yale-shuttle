@@ -46,7 +46,7 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
       onKeyDown={e => e.stopPropagation()}
       onClick={e => { e.stopPropagation(); dialog.current?.showModal(); setOpen(true); }}
       style={{ border: 0, background: 'transparent', padding: '4px 0', minHeight: 44, minWidth: 0, color: '#374151', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
-      <span style={{ display: 'block', fontSize: table ? 11 : 12, fontWeight: 600 }}>
+      <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>
         {table ? <span data-testid={band ? 'pickup-range' : undefined}>{compact}</span> : <>{pickup}{band && <span data-testid="pickup-range" style={{ fontWeight: 400, color: '#5f6368' }}>, {band.text} range</span>}</>}
       </span>
       {!table && next && <span style={{ display: 'block', fontSize: 12, color: '#5f6368' }}>Next in {next.startsWith('<') ? next : `~${next}`}</span>}

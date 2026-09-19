@@ -89,9 +89,13 @@ try {
       assert.equal(await card.getByTestId('destination-arrival').count(), 0);
       assert.equal(await card.getByRole('button', { name: /arrival details:/ }).count(), 0);
       assert.doesNotMatch(await card.innerText(), /Arrives in|At destination|most direct|wait.*for/);
+      assert.equal(await page.getByTestId('route-summary').count(), 0, 'separate route cards remain');
+      assert.equal(await page.getByTestId('trip-detail-panel').count(), 0, 'trip details rendered before selection');
+      assert.match(await row.getByTestId('journey-legs').innerText(), /🚶.*2 min[\s\S]*🚌/);
       assert.equal(await page.locator('.trip-map-canvas .eta-tip:not(.bus-wait-tip)').count(), 0, 'stop timing chips still drawn');
       assert(await table.evaluate(e => e.scrollWidth <= e.clientWidth), 'key clips horizontally');
-      assert((await page.locator('.trip-map-wrap').boundingBox()).height <= 322, 'key adds vertical space below the map');
+      const mapBox = await page.locator('.trip-map-canvas').boundingBox();
+      assert((await table.boundingBox()).y >= mapBox.y + mapBox.height, 'key must sit below the map');
       assert(run[state].parsed.some(o => o.routeLabel === 'Red'), 'watcher cannot parse Red card');
       assert(run[state].parsed.some(o => o.routeLabel === 'Walk'), 'watcher cannot parse walking alternative');
     }
@@ -112,8 +116,8 @@ try {
       await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
       await page.locator('.trip-map-wrap.map-fs').waitFor();
       const keyBox = await table.boundingBox(), mapBox = await page.locator('.trip-map-canvas').boundingBox();
-      assert(keyBox.y > mapBox.y && keyBox.y + keyBox.height < mapBox.y + mapBox.height, 'key must float within the map');
-      assert(keyBox.height < 100, 'two-route key is unnecessarily tall');
+      assert(keyBox.y >= mapBox.y + mapBox.height, 'fullscreen key covers the map');
+      assert(keyBox.y + keyBox.height <= 844, 'fullscreen key leaves the viewport');
       await page.screenshot({ path: `${out}fullscreen-${width}.png` });
       await page.getByRole('button', { name: 'Back', exact: true }).click();
     }
@@ -123,9 +127,23 @@ try {
     assert.deepEqual(parsedPickup.median, [300, 360]);
     await pickup.click();
     const details = page.getByRole('dialog');
+    assert.equal(await page.getByTestId('trip-detail-panel').count(), 0, 'arrival details also selected the route');
     assert.match(await details.innerText(), /Likely arrival window: 3–9 min/);
     assert.match(await details.innerText(), /The following arrival is estimated in about 20 min from now/);
     await details.getByRole('button', { name: 'Close arrival details' }).click();
+    // The destination and journey legs are part of the route's click target.
+    for (const target of [destination, row.getByTestId('journey-legs')]) {
+      await target.click();
+      await page.getByTestId('trip-detail-panel').waitFor();
+      assert.equal(await table.locator('tbody[data-route]').count(), 1);
+      await page.getByRole('button', { name: '← All routes', exact: true }).click();
+      await card.waitFor();
+    }
+    await page.getByRole('button', { name: 'View Walk trip details', exact: true }).focus();
+    await page.keyboard.press('Space');
+    await page.getByTestId('trip-detail-panel').waitFor();
+    assert.equal(await table.locator('tbody[data-route="Walk"]').count(), 1);
+    await page.getByRole('button', { name: '← All routes', exact: true }).click();
     const later = page.getByRole('button', { name: 'Plan for later…', exact: true });
     assert.equal(await later.count(), 1);
     await later.focus(); await page.keyboard.press('Enter');
@@ -148,7 +166,7 @@ try {
     await page.getByRole('button', { name: '← All routes', exact: true }).waitFor();
     assert.equal(await destination.getAttribute('data-kind'), 'window');
     run.expanded = await destination.innerText();
-    assert.equal(await table.locator('tbody tr').count(), 1, 'detail key must narrow to the selected route');
+    assert.equal(await table.locator('tbody[data-route]').count(), 1, 'detail key must narrow to the selected route');
     assert.deepEqual(run.errors, []);
     assert(!run.requests.some(r => r.path === '/api/report'));
     await context.close();

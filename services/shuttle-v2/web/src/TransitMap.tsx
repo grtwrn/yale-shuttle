@@ -939,8 +939,6 @@ const CombinedTripMap: FC<{
   timingKey: React.ReactNode;
 }> = ({ from, to, options, timingKey }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const keyRef = useRef<HTMLDivElement>(null);
-  const boundsRef = useRef<L.LatLngBounds | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkersRef = useRef<Record<string, L.Marker>>({});
   const startMarkerRef = useRef<L.Marker | null>(null);
@@ -952,7 +950,7 @@ const CombinedTripMap: FC<{
     });
     for (const { tooltip } of tooltips) { tooltip.options.offset = L.point(0, -10); tooltip.update(); }
     // Fullscreen/Back are siblings of the Leaflet container, inside the wrapper.
-    const obstacles = [...ref.current.parentElement!.querySelectorAll('.eta-tip, .leaflet-control, .bus-pin-sm, .trip-map-key, :scope > button')]
+    const obstacles = [...ref.current.parentElement!.querySelectorAll('.eta-tip, .leaflet-control, .bus-pin-sm, :scope > button')]
       .filter(e => !e.querySelector('.bus-wait-label')).map(e => e.getBoundingClientRect());
     for (const { tooltip, marker } of tooltips) {
       const element = tooltip.getElement();
@@ -962,15 +960,6 @@ const CombinedTripMap: FC<{
       tooltip.options.offset = L.point(shift.x, -10 + shift.y); tooltip.update();
       obstacles.push(element.getBoundingClientRect());
     }
-  }
-  function fitTripMap() {
-    if (!mapRef.current || !boundsRef.current) return;
-    // Reserve the floating legend's actual height, including wrapped names
-    // or service notices, so the initial view keeps pins above it.
-    const keyHeight = keyRef.current?.getBoundingClientRect().height ?? 0;
-    mapRef.current.fitBounds(boundsRef.current, {
-      paddingTopLeft: [28, 64], paddingBottomRight: [28, keyHeight + 42], maxZoom: 15, animate: false,
-    });
   }
   // Build/teardown when the set of endpoints or options changes.
   useEffect(() => {
@@ -996,8 +985,6 @@ const CombinedTripMap: FC<{
     // pre-sliced route path when available, straight line otherwise.
     for (const o of options) {
       if (o.segCoords.length < 2) continue;
-      if (o.bus) points.push([o.bus.lat, o.bus.lon]);
-      if (o.passedBus) points.push([o.passedBus.lat, o.passedBus.lon]);
       const road: [number, number][] = o.road && o.road.length >= 2
         ? o.road
         : o.segCoords.map((s) => [s.lat, s.lon] as [number, number]);
@@ -1053,23 +1040,20 @@ const CombinedTripMap: FC<{
     }
 
     map.on("zoomend moveend resize", layoutWaitLabels);
-    map.on("resize", fitTripMap);
-    boundsRef.current = L.latLngBounds(points);
-    fitTripMap();
-    const keyResize = new ResizeObserver(fitTripMap);
-    if (keyRef.current) keyResize.observe(keyRef.current);
+
+    // Leave room above the northern stops for the waiting bus label.
+    // Tight endpoint-only bounds clipped it at 320px.
+    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [28, 88], paddingBottomRight: [28, 40], maxZoom: 15 });
     const sizeTimer = setTimeout(() => { if (mapRef.current === map) map.invalidateSize(); }, 60);
 
     return () => {
       clearTimeout(sizeTimer);
-      keyResize.disconnect();
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
       try { map.stop(); } catch { /* mid-animation teardown */ }
       map.remove();
       mapRef.current = null;
-      boundsRef.current = null;
       busMarkersRef.current = {};
       approachLayersRef.current = {};
       startMarkerRef.current = null;
@@ -1289,14 +1273,9 @@ const CombinedTripMap: FC<{
       >
         {fullscreen ? "✕" : "⛶"}
       </button>
-      <div ref={keyRef} className="trip-map-key" style={{
-        position: 'absolute', bottom: 22, left: 8, right: 8, zIndex: 1000,
-        background: 'rgba(255,255,255,0.94)', borderRadius: 6,
-        padding: '3px', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-        maxHeight: '40%', overflowY: 'auto', overscrollBehavior: 'contain',
-      }}>
-        {timingKey}
       </div>
+      <div style={{ background: '#fff', borderTop: '1px solid #e0ddd8', flexShrink: 0, maxHeight: fullscreen ? '40dvh' : undefined, overflowY: fullscreen ? 'auto' : undefined }}>
+        {timingKey}
       </div>
     </div>
   );
@@ -3498,7 +3477,7 @@ const TripPlanner: FC<{
           )}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
-              style — map first, cards below. Open by default (see
+              style — map first, clickable timing key below. Open by default (see
               overviewExpanded init). Built from the same segCoords +
               busMatch we compute per option below. */}
           {effectiveFromLL && toLL && (() => {
@@ -3612,6 +3591,7 @@ const TripPlanner: FC<{
               };
             });
             const timingKey = <MiniMapKey rows={timingRows} destination={toText}
+              onSelectRoute={detailOpen ? undefined : setExpandedKey}
               departureMs={isFuture ? targetDate?.getTime() : undefined} />;
             // "All N routes" was a lie whenever options sat behind "Show N
             // more routes" (map-bot report #28: header said ALL 2 ROUTES over
@@ -3736,15 +3716,15 @@ const TripPlanner: FC<{
             </div>
           )}
           {!_detailOpen && _sorted.some(o => o.mode === 'shuttle') && <p style={{ fontSize: 12, color: '#5f6368', margin: '0 4px 8px' }}>When arrival timing is unclear, shorter walks and rides come first.</p>}
-          <div style={{
+          {_detailOpen && <div data-testid="trip-detail-panel" style={{
             background: "#fff", borderRadius: 12, marginBottom: 8,
             border: "1px solid #e8eaed", boxShadow: "0 1px 2px rgba(60,64,67,0.08)",
             overflow: "hidden",
           }}>
-          {_visible.map((o, i) => {
+          {_visible.map((o) => {
             // Details mode: only the tapped route renders; the other rows
             // hide until the rider taps ← back.
-            if (_detailOpen && o.routeLabel !== expandedKey) return null;
+            if (o.routeLabel !== expandedKey) return null;
             // Stable identity for expansion state — one option per route,
             // so the label alone is unique ("Walk" for the walk option).
             const oKey = o.routeLabel;
@@ -3791,40 +3771,7 @@ const TripPlanner: FC<{
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
               // key would remount every card's map/tracker on reorder.
-              <div key={oKey} style={{
-                padding: "12px 16px",
-                borderBottom: !isExpanded && i < _visible.length - 1 ? "1px solid #f1f3f4" : "none",
-                cursor: isExpanded ? "default" : "pointer",
-                opacity: o.departed ? 0.7 : 1,
-              }}
-              role={isExpanded ? undefined : "button"}
-              tabIndex={isExpanded ? undefined : 0}
-              aria-label={isExpanded ? undefined : `View ${o.routeLabel} trip details`}
-              onKeyDown={isExpanded ? undefined : (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setExpandedKey(oKey);
-                }
-              }}
-              onClick={isExpanded ? undefined : () => setExpandedKey(oKey)}>
-                {/* The back control lives at the TOP of the details page
-                    (above the map) — see the detailOpen bar. */}
-                <div data-testid="route-summary" style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 32 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: o.mode === 'walk' ? '#5f6368' : '#fff',
-                    background: o.mode === 'walk' ? 'transparent' : o.color,
-                    border: o.mode === 'walk' ? '1px solid #dadce0' : undefined,
-                    borderRadius: 6, padding: '3px 8px', flexShrink: 0, maxWidth: '38%', overflowWrap: 'anywhere' }}>
-                    {o.mode === 'walk' ? '🚶 Walk' : o.routeLabel}
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, flex: 1, minWidth: 0, fontSize: 13, color: '#5f6368' }}>
-                    {o.mode === 'walk' ? <span>🚶 {fmtWalk(o.totalSec)}</span> : <>
-                      {o.walkToSec > 0 && <><span style={{ whiteSpace: 'nowrap' }}>🚶 {fmtWalk(o.walkToSec)}</span><span>›</span></>}
-                      <span style={{ whiteSpace: 'nowrap' }}>🚌 {fmtMin(o.rideSec)}</span>
-                      {o.walkFromSec > 0 && <><span>›</span><span style={{ whiteSpace: 'nowrap' }}>🚶 {fmtWalk(o.walkFromSec)}</span></>}
-                    </>}
-                  </span>
-                  {!isExpanded && <span aria-hidden="true" style={{ color: '#9aa0a6' }}>›</span>}
-                </div>
+              <div key={oKey} style={{ padding: "12px 16px", opacity: o.departed ? 0.7 : 1 }}>
                 {/* Last-bus warning — the key carries the headline; the
                     details view adds the full explanation. Two
                     nowrap lines (measured at 390px, see lastBus.test.ts);
@@ -4522,7 +4469,7 @@ const TripPlanner: FC<{
               </div>
             );
           })}
-          </div>
+          </div>}
             {_hidden > 0 && !_detailOpen && (
               <button
                 onClick={() => setShowAllOptions(true)}
