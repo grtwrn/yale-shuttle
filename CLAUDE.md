@@ -17,10 +17,16 @@ Arrival distribution UI (2026-09-16): `ArrivalPlot.tsx` renders the optional
 and following-shuttle timing. `MiniMapKey.tsx` places pickup and destination
 arrival windows in a clickable table below the mini-map, including when the map
 is collapsed or fullscreen. Each route entry includes its walking/riding legs
-and opens trip details; there are no separate collapsed trip cards. The pickup
+and opens trip details; there are no separate collapsed trip cards. In route
+details, the approach and ride stop list sits in that same panel below the map,
+under the selected route summary, including in fullscreen. The pickup
 estimate opens arrival history separately. Following-shuttle timing stays in
-those arrival details. Destination windows come from `DestinationArrival.tsx`. Stop-time bubbles are
-removed; bus waiting labels remain beside their icons. The separate "Arrive by" bar was
+those arrival details. Route names use colored pills; visible pickup and
+destination ranges have spaces around the dash. Destination windows come from `DestinationArrival.tsx`. Stop-time bubbles are
+removed; bus waiting labels remain beside their icons. `routeLines.ts` paints
+parallel traces on multi-route maps using bounded pixel offsets from
+`routeOffsets.ts`; selected single routes stay centered. Bus/stop coordinates
+and planner geometry do not change. The separate "Arrive by" bar was
 removed at the operator's request (2026-09-18); "Plan for later" remains the
 single trip scheduling control. `ArrivalHistory.tsx` fetches the bounded public
 `/api/journey-history` endpoint only when expanded or explicitly refreshed.

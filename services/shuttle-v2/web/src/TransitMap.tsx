@@ -37,6 +37,7 @@ import { useMapFullscreen } from "./useMapFullscreen";
 import { arrivalBand, standChipFor, standWaitFor } from "./standWait";
 import { waitLegText } from "./etaBand";
 import { MiniMapKey, type TimingRow } from "./MiniMapKey";
+import { addRouteLines } from './routeLines';
 import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
 import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
@@ -981,14 +982,13 @@ const CombinedTripMap: FC<{
     L.marker([to.lat, to.lon], { icon: makeDestPin(), zIndexOffset: 500 })
       .addTo(map).bindTooltip("End", { direction: "top" });
 
-    // Each option: colored polyline, board/alight rings. Use the
-    // pre-sliced route path when available, straight line otherwise.
+    const clearRouteLines = addRouteLines(map, options.filter(o => o.segCoords.length >= 2).map(o => ({
+      label: o.label, color: o.color,
+      path: o.road && o.road.length >= 2 ? o.road : o.segCoords.map(s => [s.lat, s.lon] as [number, number]),
+    })));
+    // Each option keeps its board/alight rings at the real stop coordinates.
     for (const o of options) {
       if (o.segCoords.length < 2) continue;
-      const road: [number, number][] = o.road && o.road.length >= 2
-        ? o.road
-        : o.segCoords.map((s) => [s.lat, s.lon] as [number, number]);
-      L.polyline(road, { color: o.color, weight: 5, opacity: 0.9 }).addTo(map);
       const board = o.segCoords[0];
       const alight = o.segCoords[o.segCoords.length - 1];
       // Stops the bus calls at along the way, as small faded dots — the same
@@ -1048,6 +1048,7 @@ const CombinedTripMap: FC<{
 
     return () => {
       clearTimeout(sizeTimer);
+      clearRouteLines();
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
@@ -1361,11 +1362,14 @@ const AllRoutesMap: FC<{
       const toggle = ROUTE_ID_TO_TOGGLE[Number(rid)];
       return !toggle || !hiddenRoutes.has(toggle);
     };
+    const routeLines: { label: string; color: string; path: [number, number][] }[] = [];
     for (const [rid, path] of Object.entries(routePaths)) {
       if (!path || path.length < 2 || !shown(rid)) continue;
-      L.polyline(path, { color: routeColorFor(Number(rid)), weight: 4, opacity: 0.85 }).addTo(map);
+      routeLines.push({ label: ROUTE_LISTS.find(cfg => cfg.routeIds.includes(rid))?.label ?? rid,
+        color: routeColorFor(Number(rid)), path });
       for (const p of path) pts.push(p);
     }
+    const clearRouteLines = addRouteLines(map, routeLines);
     // Stops follow their routes: a lone dot from a hidden line is noise.
     const stopIds = new Set<number>();
     for (const [rid, ids] of Object.entries(routeStops)) {
@@ -1417,6 +1421,7 @@ const AllRoutesMap: FC<{
 
     return () => {
       clearTimeout(t1); clearTimeout(t2);
+      clearRouteLines();
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
@@ -2636,6 +2641,369 @@ const TripPlanner: FC<{
     return timing;
   };
 
+  const renderTripStops = (o: TripOption) => {
+    if (o.mode !== "shuttle") return null;
+    const { busEtaLive } = getTripTiming(o);
+    // Stop list, two sections. ALWAYS shown with the route —
+    // the "Stops ▾" toggle was removed on 2026-09-03 (operator:
+    // "we'll always want to show the drop-down"), and it had
+    // auto-opened since 2026-07-17 anyway, so the control's only
+    // remaining job was to take the list away. First the
+    // APPROACH (the stops
+    // the bus still has to clear to reach the pickup, muted,
+    // with typical hold times and a live "been sitting here"
+    // counter at its current stop), then the board→alight
+    // ride. The 2026-07-16 cockpit cull stands otherwise —
+    // no embedded map/iframe/pace flags/strikethroughs.
+    const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+    if (!cfg) return null;
+    const allStops: number[] = [];
+    const seen = new Set<number>();
+    for (const rid of cfg.routeIds) {
+      for (const sid of (routeStops[rid] ?? [])) {
+        if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
+      }
+    }
+    const bi = allStops.indexOf(o.boardStopId);
+    const ai = allStops.indexOf(o.alightStopId);
+    if (bi === -1 || ai === -1) return null;
+    const segStops = bi <= ai
+      ? allStops.slice(bi, ai + 1)
+      : [...allStops.slice(bi), ...allStops.slice(0, ai + 1)];
+    const normBus = (s: string) => s.replace(/^#/, "");
+    const busMatch = buses.find((b) =>
+      normBus(b.bus_name) === normBus(o.busName) &&
+      cfg.busRouteIds.includes(b.route_id) &&
+      isBusOnRoute(b, allStops, stopCoords),
+    );
+    // THE number the rider reads on the "🚌 #316 · N stops away"
+    // line below. Ungated it oscillated 3/4/4/2/4 across polls
+    // beside a countdown that was not moving; it now comes from
+    // the same gated anchor the countdown does.
+    const busAnchorIdx = busMatch
+      ? anchorIndexOnList(
+          busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+        )
+      : -1;
+    const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
+    // Approach: bus's current stop → the stop before the
+    // pickup, only while the bus is genuinely upstream.
+    const stopsAway = busAnchorIdx >= 0 ? (bi - busAnchorIdx + allStops.length) % allStops.length : 0;
+    const approachStops = busAnchorIdx >= 0 && stopsAway > 0 && busSegPos === -1
+      ? (busAnchorIdx <= bi
+          ? allStops.slice(busAnchorIdx, bi)
+          : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
+      : [];
+    // Same point + complete window as the card and mini-map,
+    // without the legacy rounded-width switch (reports 113/114).
+    const boardArrival = approachStops.length > 0 && busEtaLive !== null && !o.departed
+      ? mapArrivalLabel({ eta: busEtaLive, low: o.busLowSec, high: o.busHighSec, computedAtMs: o.computedAtMs })
+      : null;
+    // Dwell readouts: the typical hold at a stop, plus the live
+    // elapsed while the bus is parked at its current stop.
+    const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
+    // The hold SHOWN must be the hold BILLED — see shownStandSec
+    // (report #73: "it says arrive in 8 but expected dwell is
+    // 10", which was the median on screen and a low quantile in
+    // the arithmetic).
+    //
+    // So this reads the same records computeUpcomingArrivals
+    // prices from, through the same predicates, and nothing else.
+    // Two ways it has drifted before:
+    //
+    //  - It used to prefer a per-bus dwell (dwellsByBus, n >= 5)
+    //    while the arithmetic only ever read the ROUTE dwell:
+    //    "held 5 min of ~5" beside a countdown charging a
+    //    different ~5. It could not fire only because the server
+    //    hardcodes dwells_by_bus to {} (src/server/v1compat.ts)
+    //    — a latent trap, not a working feature.
+    //  - Once the stand/drive split went live (Red, Blue Day)
+    //    the chip kept quoting `dwell.med`, the arrival-to-
+    //    arrival median that CONTAINS DRIVE TIME, while the
+    //    countdown priced the conditional standing quantiles:
+    //    "⏸ 3 min / ~10 min" beside "5 min" (2026-09-04).
+    //
+    // If per-bus dwells are ever really served, thread them into
+    // computeUpcomingArrivals FIRST; display follows billing.
+    // The chip reads the model's own stand table (see
+    // shownStandSec), the one the countdown is billed from.
+    const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
+    /**
+     * M:SS for the live pause chip, so a hold keeps its seconds
+     * past the first minute.
+     *
+     * `fmtShort` drops to whole minutes at 60 s, which is right
+     * for a figure a rider glances at but wrong for one they are
+     * watching tick: the operator, watching a bus stand at a
+     * layover — "after it gets to 1 min we lose the seconds but I
+     * like those". A hold is the one number on this screen that
+     * moves every second and is worth watching move.
+     *
+     * NOT `min`-suffixed, and that is a deliberate exception to
+     * the app's "spell minutes `min`" rule rather than an
+     * oversight: the rule exists so a bare `m` is never read as
+     * miles, and `2:15` cannot be. It reads as a stopwatch,
+     * which is what it is. Minutes past the hour never appear —
+     * a layover running over 59 minutes would print `62:10`,
+     * which is still a duration and still unambiguous.
+     */
+    const fmtMmss = (s: number) => {
+      const t = Math.max(0, Math.round(s));
+      return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+    };
+    /**
+     * WHERE THE BUS IS STANDING — the estimator's answer, not a
+     * second reading of the payload.
+     *
+     * This used to derive the hold straight from
+     * `at_stop_id`/`at_stop_since`. That agreed with the price
+     * until #130 shipped the approach zone, and then stopped: a
+     * bus taking its layover short of the marker publishes no
+     * `at_stop_id`, so the countdown priced it as standing while
+     * the chip beside it showed nothing and the row read as a bus
+     * still rolling. Report #102 is a rider seeing exactly that —
+     * "a bus sitting in a garage lot was counted down as if on
+     * its way".
+     *
+     * `resolveStandingStop` is the one the price uses. The hold
+     * shown must be the hold billed, and now the STOP shown is
+     * the stop billed too.
+     */
+    const standing = busMatch
+      ? resolveStandingStop(
+          busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+        )
+      : null;
+    const liveElapsedSec = standing ? standing.standingSec : null;
+    /** The chip's clock and words — one composition for both stop lists. */
+    const standChip = standChipFor(standing, routeDwells, dwellTimes ?? undefined);
+    /**
+     * The hold to show at `sid`. `elapsed` is passed only for the
+     * stop the bus is actually standing at — everywhere else
+     * there is no remainder to state, so the typical hold is
+     * the honest answer. Same table, same pools, same clock as
+     * the countdown (shownStandSec).
+     */
+    const standAt = (sid: number, elapsed: number | null) => {
+      const stat = routeDwells[String(sid)];
+      if (!stat || stat.n < 3) return null;
+      return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
+    };
+    return (
+      <div data-testid="trip-stop-list" role="region" aria-label={`${o.routeLabel} stops`}
+        style={{ padding: "10px 12px", borderTop: "1px solid #eceff1" }} onClick={(e) => e.stopPropagation()}>
+        {approachStops.length > 0 && busMatch && (
+          // Name the vehicle this approach belongs to. Report #41
+          // said the list showed "only 3 stops" on an 11-stop
+          // approach; with the bus unnamed there was no way for
+          // the rider (or us) to tell whether the anchor was wrong
+          // or they were simply watching a different shuttle.
+          <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>
+            🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} away
+          </div>
+        )}
+        {approachStops.length > 0 && (
+          <div style={{ position: "relative", paddingLeft: 16, marginBottom: 4 }}>
+            <span style={{
+              position: "absolute", left: 6, top: 6, bottom: 0,
+              borderLeft: `2px dashed ${o.color}`, opacity: 0.4,
+            }} />
+            {approachStops.map((sid, j) => {
+              const isBusHere = j === 0;
+              const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+              const showLive = isBusHere && standing?.stopId === sid && liveElapsedSec != null;
+              const stand = standAt(sid, showLive ? liveElapsedSec : null);
+              const hl = stopRowHighlight(isBusHere, false, o.color);
+              return (
+                <div key={sid} style={{
+                  position: "relative", display: "flex", alignItems: "center",
+                  padding: hl.banded ? "4px 6px" : "2px 0",
+                  marginLeft: hl.banded ? -6 : 0,
+                  borderRadius: 4,
+                  background: hl.background,
+                  opacity: isBusHere ? 1 : 0.65,
+                }}>
+                  <span style={{
+                    position: "absolute", left: hl.banded ? -7 : -13, top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 7, height: 7, borderRadius: "50%",
+                    background: "#fff", border: `2px solid ${o.color}`,
+                    boxSizing: "border-box",
+                  }} />
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: isBusHere ? 700 : 400,
+                    color: hl.color,
+                    marginLeft: 10,
+                  }}>
+                    {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
+                    {name}
+                    {showLive && (
+                      // "⏸ 3:21 · leaves in 1-6 min" — the clock the
+                      // rider watches tick, then WHAT IS LEFT of the
+                      // stand, bounded.
+                      //
+                      // It used to be "3:21 / ~4:48": elapsed over the
+                      // stop's TYPICAL hold. Two shapes have now failed
+                      // here for the same reason — a rider subtracts.
+                      // First Y was `dwell.med`, an arrival-to-arrival
+                      // figure containing drive time ("3 of 10" → they
+                      // expected seven more minutes and the app said
+                      // four). Then Y became the typical hold, honest
+                      // about the STOP and still wrong about the BUS:
+                      // at 3:21 into the operator's 2026-09-07 stand it
+                      // implied 1:27 more when the model's own answer
+                      // was 3:15 and the truth 5:55. The right number
+                      // was already here — the tooltip has always said
+                      // "about N still to go".
+                      //
+                      // So the chip states the remainder, and states it
+                      // as a pair or a ceiling rather than a point,
+                      // because a stand that has run long ends at no
+                      // predictable second (standWait.ts). The typical
+                      // hold keeps its place in the tooltip, where a
+                      // rider reads it as context instead of subtracting
+                      // from it.
+                      //
+                      // AND IT NAMES WHICH QUANTITY IT IS. "<1-8 min
+                      // left" sat twelve pixels under a row reading "in
+                      // 2-9 min" and a bubble reading "(R) 2-9 min"
+                      // (operator, 2026-09-11). Both were right —
+                      // reproduced from production, the remainder is
+                      // q10/q50/q90 = 56/241/487 s and the drive floor to
+                      // the board stop 72 s, so 2-9 IS (<1-8) + the
+                      // drive — but nothing on screen said the 8 minutes
+                      // were a DEPARTURE. `standChipFor` says it.
+                      //
+                      // Composed in standWait.ts, not here, so the Map
+                      // tab's route-card rows print the identical string
+                      // for the identical bus (a source-level test in
+                      // standWait.test.ts fails if either site composes
+                      // its own).
+                      <span style={{
+                              fontSize: 10, fontWeight: 700, marginLeft: 6,
+                              // Amber once the stand has outlasted the stop's
+                              // typical hold. The typical figure itself left
+                              // the chip (it was the misleading half), so this
+                              // is what carries "this is running long" at a
+                              // glance; the tooltip names the figure.
+                              color: standChip?.overdue ? "#8a5300" : "#5f6368",
+                            }}
+                            title={standChip
+                              ? standChip.title
+                              : "Time the bus has been sitting here"}>
+                        ⏸ {standChip ? standChip.clock : fmtMmss(liveElapsedSec!)}
+                        {standChip ? ` · ${standChip.text}` : ""}
+                      </span>
+                    )}
+                    {showLive && standing?.approach && (
+                      // WHERE it is waiting, in one word.
+                      //
+                      // Report #102: a bus holding in the Science
+                      // Park Garage lot showed as "here" at
+                      // 344 Winchester, 144 m away. The countdown
+                      // is right — it IS taking that layover — but
+                      // a rider standing at the marker looks up
+                      // and sees no bus.
+                      //
+                      // Deliberately NOT a "~" prefix on the
+                      // clock, which was the first draft: this UI
+                      // already spends "~" on approximate
+                      // DURATIONS (the hold beside it), so
+                      // the same mark for approximate PLACE reads
+                      // as fuzziness about the number instead.
+                      // A word cannot be misread that way.
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "#9aa0a6", marginLeft: 4 }}
+                            title="Holding just short of the stop, not at the kerb">
+                        nearby
+                      </span>
+                    )}
+                    {!showLive && stand != null && stand.sec >= 180 && (
+                      // One figure, before the bus arrives and
+                      // after. This was briefly a "5-9 min"
+                      // range, because the ETA billed a low
+                      // quantile ahead of the stop and the
+                      // median once the bus was standing there,
+                      // and report #77 saw the number change on
+                      // arrival. The estimator no longer bills
+                      // two prices, so there is nothing left to
+                      // disagree and nothing to show a spread
+                      // for.
+                      <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
+                            title="Typical hold at this stop">
+                        ⏸ ~{fmtShort(stand.sec)}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ position: "relative", paddingLeft: 16 }}>
+        <span style={{
+          position: "absolute", left: 6, top: 6, bottom: 6,
+          width: 2, background: o.color, opacity: 0.6,
+        }} />
+        {segStops.map((sid, j) => {
+          const isBoard = j === 0;
+          const isAlight = j === segStops.length - 1;
+          const isEnd = isBoard || isAlight;
+          const isBusHere = j === busSegPos;
+          const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+          const hl = stopRowHighlight(isBusHere, isEnd, o.color);
+          return (
+            <div key={sid} style={{
+              position: "relative", display: "flex", alignItems: "center",
+              padding: hl.banded ? "4px 6px" : "2px 0",
+              marginLeft: hl.banded ? -6 : 0,
+              borderRadius: 4,
+              background: hl.background,
+            }}>
+              <span style={{
+                position: "absolute", left: hl.banded ? -8 : -14, top: "50%",
+                transform: "translateY(-50%)",
+                width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
+                borderRadius: "50%",
+                background: isEnd ? o.color : "#fff",
+                border: `2px solid ${o.color}`,
+                boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
+                boxSizing: "border-box",
+              }} />
+              <span style={{
+                fontSize: 14,
+                fontWeight: isEnd || isBusHere ? 700 : 400,
+                color: hl.color,
+                marginLeft: 10,
+              }}>
+                {isBoard && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
+                {isAlight && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
+                {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
+                {name}
+                {isBoard && boardArrival && (
+                  <span style={{ display: 'block', fontSize: 10, color: '#5f6368', marginTop: 2 }}>
+                    Arrival: {boardArrival.point}{boardArrival.window ? ` · ${boardArrival.window}` : ''}
+                  </span>
+                )}
+                {isBusHere && standing?.stopId === sid && liveElapsedSec != null && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
+                        title={standing.approach
+                          ? "The bus is waiting for this stop — it is holding just short of the marker"
+                          : "Time the bus has been sitting here"}>
+                    ⏸ {fmtMmss(liveElapsedSec)}
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+        </div>
+      </div>
+    );
+
+  };
+  // End trip stop list.
+
   // Minimum 44×44 hit target (iOS/Material guideline). The clear-×
   // buttons were ~20px before and hard to hit on phones.
   const btnStyle: React.CSSProperties = {
@@ -3590,9 +3958,12 @@ const TripPlanner: FC<{
                 note: lastBus?.headline ?? (o.missedBus && !o.departed ? 'Showing next bus' : undefined),
               };
             });
-            const timingKey = <MiniMapKey rows={timingRows} destination={toText}
-              onSelectRoute={detailOpen ? undefined : setExpandedKey}
-              departureMs={isFuture ? targetDate?.getTime() : undefined} />;
+            const timingKey = <div data-testid="map-trip-panel">
+              <MiniMapKey rows={timingRows} destination={toText}
+                onSelectRoute={detailOpen ? undefined : setExpandedKey}
+                departureMs={isFuture ? targetDate?.getTime() : undefined} />
+              {detailOpen && _mapOpts[0] && renderTripStops(_mapOpts[0])}
+            </div>;
             // "All N routes" was a lie whenever options sat behind "Show N
             // more routes" (map-bot report #28: header said ALL 2 ROUTES over
             // a 5-option list). Only claim "all" when the list really is.
@@ -4109,363 +4480,7 @@ const TripPlanner: FC<{
                     <TripMap from={fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL} to={toLL} color={o.color} />
                   </div>
                 )}
-                {isExpanded && o.mode === "shuttle" && (() => {
-                  // Stop list, two sections. ALWAYS shown with the route —
-                  // the "Stops ▾" toggle was removed on 2026-09-03 (operator:
-                  // "we'll always want to show the drop-down"), and it had
-                  // auto-opened since 2026-07-17 anyway, so the control's only
-                  // remaining job was to take the list away. First the
-                  // APPROACH (the stops
-                  // the bus still has to clear to reach the pickup, muted,
-                  // with typical hold times and a live "been sitting here"
-                  // counter at its current stop), then the board→alight
-                  // ride. The 2026-07-16 cockpit cull stands otherwise —
-                  // no embedded map/iframe/pace flags/strikethroughs.
-                  const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
-                  if (!cfg) return null;
-                  const allStops: number[] = [];
-                  const seen = new Set<number>();
-                  for (const rid of cfg.routeIds) {
-                    for (const sid of (routeStops[rid] ?? [])) {
-                      if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
-                    }
-                  }
-                  const bi = allStops.indexOf(o.boardStopId);
-                  const ai = allStops.indexOf(o.alightStopId);
-                  if (bi === -1 || ai === -1) return null;
-                  const segStops = bi <= ai
-                    ? allStops.slice(bi, ai + 1)
-                    : [...allStops.slice(bi), ...allStops.slice(0, ai + 1)];
-                  const normBus = (s: string) => s.replace(/^#/, "");
-                  const busMatch = buses.find((b) =>
-                    normBus(b.bus_name) === normBus(o.busName) &&
-                    cfg.busRouteIds.includes(b.route_id) &&
-                    isBusOnRoute(b, allStops, stopCoords),
-                  );
-                  // THE number the rider reads on the "🚌 #316 · N stops away"
-                  // line below. Ungated it oscillated 3/4/4/2/4 across polls
-                  // beside a countdown that was not moving; it now comes from
-                  // the same gated anchor the countdown does.
-                  const busAnchorIdx = busMatch
-                    ? anchorIndexOnList(
-                        busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
-                      )
-                    : -1;
-                  const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
-                  // Approach: bus's current stop → the stop before the
-                  // pickup, only while the bus is genuinely upstream.
-                  const stopsAway = busAnchorIdx >= 0 ? (bi - busAnchorIdx + allStops.length) % allStops.length : 0;
-                  const approachStops = busAnchorIdx >= 0 && stopsAway > 0 && busSegPos === -1
-                    ? (busAnchorIdx <= bi
-                        ? allStops.slice(busAnchorIdx, bi)
-                        : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
-                    : [];
-                  // Same point + complete window as the card and mini-map,
-                  // without the legacy rounded-width switch (reports 113/114).
-                  const boardArrival = approachStops.length > 0 && busEtaLive !== null && !o.departed
-                    ? mapArrivalLabel({ eta: busEtaLive, low: o.busLowSec, high: o.busHighSec, computedAtMs: o.computedAtMs })
-                    : null;
-                  // Dwell readouts: the typical hold at a stop, plus the live
-                  // elapsed while the bus is parked at its current stop.
-                  const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
-                  // The hold SHOWN must be the hold BILLED — see shownStandSec
-                  // (report #73: "it says arrive in 8 but expected dwell is
-                  // 10", which was the median on screen and a low quantile in
-                  // the arithmetic).
-                  //
-                  // So this reads the same records computeUpcomingArrivals
-                  // prices from, through the same predicates, and nothing else.
-                  // Two ways it has drifted before:
-                  //
-                  //  - It used to prefer a per-bus dwell (dwellsByBus, n >= 5)
-                  //    while the arithmetic only ever read the ROUTE dwell:
-                  //    "held 5 min of ~5" beside a countdown charging a
-                  //    different ~5. It could not fire only because the server
-                  //    hardcodes dwells_by_bus to {} (src/server/v1compat.ts)
-                  //    — a latent trap, not a working feature.
-                  //  - Once the stand/drive split went live (Red, Blue Day)
-                  //    the chip kept quoting `dwell.med`, the arrival-to-
-                  //    arrival median that CONTAINS DRIVE TIME, while the
-                  //    countdown priced the conditional standing quantiles:
-                  //    "⏸ 3 min / ~10 min" beside "5 min" (2026-09-04).
-                  //
-                  // If per-bus dwells are ever really served, thread them into
-                  // computeUpcomingArrivals FIRST; display follows billing.
-                  // The chip reads the model's own stand table (see
-                  // shownStandSec), the one the countdown is billed from.
-                  const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
-                  /**
-                   * M:SS for the live pause chip, so a hold keeps its seconds
-                   * past the first minute.
-                   *
-                   * `fmtShort` drops to whole minutes at 60 s, which is right
-                   * for a figure a rider glances at but wrong for one they are
-                   * watching tick: the operator, watching a bus stand at a
-                   * layover — "after it gets to 1 min we lose the seconds but I
-                   * like those". A hold is the one number on this screen that
-                   * moves every second and is worth watching move.
-                   *
-                   * NOT `min`-suffixed, and that is a deliberate exception to
-                   * the app's "spell minutes `min`" rule rather than an
-                   * oversight: the rule exists so a bare `m` is never read as
-                   * miles, and `2:15` cannot be. It reads as a stopwatch,
-                   * which is what it is. Minutes past the hour never appear —
-                   * a layover running over 59 minutes would print `62:10`,
-                   * which is still a duration and still unambiguous.
-                   */
-                  const fmtMmss = (s: number) => {
-                    const t = Math.max(0, Math.round(s));
-                    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-                  };
-                  /**
-                   * WHERE THE BUS IS STANDING — the estimator's answer, not a
-                   * second reading of the payload.
-                   *
-                   * This used to derive the hold straight from
-                   * `at_stop_id`/`at_stop_since`. That agreed with the price
-                   * until #130 shipped the approach zone, and then stopped: a
-                   * bus taking its layover short of the marker publishes no
-                   * `at_stop_id`, so the countdown priced it as standing while
-                   * the chip beside it showed nothing and the row read as a bus
-                   * still rolling. Report #102 is a rider seeing exactly that —
-                   * "a bus sitting in a garage lot was counted down as if on
-                   * its way".
-                   *
-                   * `resolveStandingStop` is the one the price uses. The hold
-                   * shown must be the hold billed, and now the STOP shown is
-                   * the stop billed too.
-                   */
-                  const standing = busMatch
-                    ? resolveStandingStop(
-                        busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                      )
-                    : null;
-                  const liveElapsedSec = standing ? standing.standingSec : null;
-                  /** The chip's clock and words — one composition for both stop lists. */
-                  const standChip = standChipFor(standing, routeDwells, dwellTimes ?? undefined);
-                  /**
-                   * The hold to show at `sid`. `elapsed` is passed only for the
-                   * stop the bus is actually standing at — everywhere else
-                   * there is no remainder to state, so the typical hold is
-                   * the honest answer. Same table, same pools, same clock as
-                   * the countdown (shownStandSec).
-                   */
-                  const standAt = (sid: number, elapsed: number | null) => {
-                    const stat = routeDwells[String(sid)];
-                    if (!stat || stat.n < 3) return null;
-                    return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
-                  };
-                  return (
-                    <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
-                      {approachStops.length > 0 && busMatch && (
-                        // Name the vehicle this approach belongs to. Report #41
-                        // said the list showed "only 3 stops" on an 11-stop
-                        // approach; with the bus unnamed there was no way for
-                        // the rider (or us) to tell whether the anchor was wrong
-                        // or they were simply watching a different shuttle.
-                        <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>
-                          🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} away
-                        </div>
-                      )}
-                      {approachStops.length > 0 && (
-                        <div style={{ position: "relative", paddingLeft: 16, marginBottom: 4 }}>
-                          <span style={{
-                            position: "absolute", left: 6, top: 6, bottom: 0,
-                            borderLeft: `2px dashed ${o.color}`, opacity: 0.4,
-                          }} />
-                          {approachStops.map((sid, j) => {
-                            const isBusHere = j === 0;
-                            const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const showLive = isBusHere && standing?.stopId === sid && liveElapsedSec != null;
-                            const stand = standAt(sid, showLive ? liveElapsedSec : null);
-                            const hl = stopRowHighlight(isBusHere, false, o.color);
-                            return (
-                              <div key={sid} style={{
-                                position: "relative", display: "flex", alignItems: "center",
-                                padding: hl.banded ? "4px 6px" : "2px 0",
-                                marginLeft: hl.banded ? -6 : 0,
-                                borderRadius: 4,
-                                background: hl.background,
-                                opacity: isBusHere ? 1 : 0.65,
-                              }}>
-                                <span style={{
-                                  position: "absolute", left: hl.banded ? -7 : -13, top: "50%",
-                                  transform: "translateY(-50%)",
-                                  width: 7, height: 7, borderRadius: "50%",
-                                  background: "#fff", border: `2px solid ${o.color}`,
-                                  boxSizing: "border-box",
-                                }} />
-                                <span style={{
-                                  fontSize: 13,
-                                  fontWeight: isBusHere ? 700 : 400,
-                                  color: hl.color,
-                                  marginLeft: 10,
-                                }}>
-                                  {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
-                                  {name}
-                                  {showLive && (
-                                    // "⏸ 3:21 · leaves in 1-6 min" — the clock the
-                                    // rider watches tick, then WHAT IS LEFT of the
-                                    // stand, bounded.
-                                    //
-                                    // It used to be "3:21 / ~4:48": elapsed over the
-                                    // stop's TYPICAL hold. Two shapes have now failed
-                                    // here for the same reason — a rider subtracts.
-                                    // First Y was `dwell.med`, an arrival-to-arrival
-                                    // figure containing drive time ("3 of 10" → they
-                                    // expected seven more minutes and the app said
-                                    // four). Then Y became the typical hold, honest
-                                    // about the STOP and still wrong about the BUS:
-                                    // at 3:21 into the operator's 2026-09-07 stand it
-                                    // implied 1:27 more when the model's own answer
-                                    // was 3:15 and the truth 5:55. The right number
-                                    // was already here — the tooltip has always said
-                                    // "about N still to go".
-                                    //
-                                    // So the chip states the remainder, and states it
-                                    // as a pair or a ceiling rather than a point,
-                                    // because a stand that has run long ends at no
-                                    // predictable second (standWait.ts). The typical
-                                    // hold keeps its place in the tooltip, where a
-                                    // rider reads it as context instead of subtracting
-                                    // from it.
-                                    //
-                                    // AND IT NAMES WHICH QUANTITY IT IS. "<1-8 min
-                                    // left" sat twelve pixels under a row reading "in
-                                    // 2-9 min" and a bubble reading "(R) 2-9 min"
-                                    // (operator, 2026-09-11). Both were right —
-                                    // reproduced from production, the remainder is
-                                    // q10/q50/q90 = 56/241/487 s and the drive floor to
-                                    // the board stop 72 s, so 2-9 IS (<1-8) + the
-                                    // drive — but nothing on screen said the 8 minutes
-                                    // were a DEPARTURE. `standChipFor` says it.
-                                    //
-                                    // Composed in standWait.ts, not here, so the Map
-                                    // tab's route-card rows print the identical string
-                                    // for the identical bus (a source-level test in
-                                    // standWait.test.ts fails if either site composes
-                                    // its own).
-                                    <span style={{
-                                            fontSize: 10, fontWeight: 700, marginLeft: 6,
-                                            // Amber once the stand has outlasted the stop's
-                                            // typical hold. The typical figure itself left
-                                            // the chip (it was the misleading half), so this
-                                            // is what carries "this is running long" at a
-                                            // glance; the tooltip names the figure.
-                                            color: standChip?.overdue ? "#8a5300" : "#5f6368",
-                                          }}
-                                          title={standChip
-                                            ? standChip.title
-                                            : "Time the bus has been sitting here"}>
-                                      ⏸ {standChip ? standChip.clock : fmtMmss(liveElapsedSec!)}
-                                      {standChip ? ` · ${standChip.text}` : ""}
-                                    </span>
-                                  )}
-                                  {showLive && standing?.approach && (
-                                    // WHERE it is waiting, in one word.
-                                    //
-                                    // Report #102: a bus holding in the Science
-                                    // Park Garage lot showed as "here" at
-                                    // 344 Winchester, 144 m away. The countdown
-                                    // is right — it IS taking that layover — but
-                                    // a rider standing at the marker looks up
-                                    // and sees no bus.
-                                    //
-                                    // Deliberately NOT a "~" prefix on the
-                                    // clock, which was the first draft: this UI
-                                    // already spends "~" on approximate
-                                    // DURATIONS (the hold beside it), so
-                                    // the same mark for approximate PLACE reads
-                                    // as fuzziness about the number instead.
-                                    // A word cannot be misread that way.
-                                    <span style={{ fontSize: 10, fontWeight: 600, color: "#9aa0a6", marginLeft: 4 }}
-                                          title="Holding just short of the stop, not at the kerb">
-                                      nearby
-                                    </span>
-                                  )}
-                                  {!showLive && stand != null && stand.sec >= 180 && (
-                                    // One figure, before the bus arrives and
-                                    // after. This was briefly a "5-9 min"
-                                    // range, because the ETA billed a low
-                                    // quantile ahead of the stop and the
-                                    // median once the bus was standing there,
-                                    // and report #77 saw the number change on
-                                    // arrival. The estimator no longer bills
-                                    // two prices, so there is nothing left to
-                                    // disagree and nothing to show a spread
-                                    // for.
-                                    <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
-                                          title="Typical hold at this stop">
-                                      ⏸ ~{fmtShort(stand.sec)}
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                      <div style={{ position: "relative", paddingLeft: 16 }}>
-                      <span style={{
-                        position: "absolute", left: 6, top: 6, bottom: 6,
-                        width: 2, background: o.color, opacity: 0.6,
-                      }} />
-                      {segStops.map((sid, j) => {
-                        const isBoard = j === 0;
-                        const isAlight = j === segStops.length - 1;
-                        const isEnd = isBoard || isAlight;
-                        const isBusHere = j === busSegPos;
-                        const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                        const hl = stopRowHighlight(isBusHere, isEnd, o.color);
-                        return (
-                          <div key={sid} style={{
-                            position: "relative", display: "flex", alignItems: "center",
-                            padding: hl.banded ? "4px 6px" : "2px 0",
-                            marginLeft: hl.banded ? -6 : 0,
-                            borderRadius: 4,
-                            background: hl.background,
-                          }}>
-                            <span style={{
-                              position: "absolute", left: hl.banded ? -8 : -14, top: "50%",
-                              transform: "translateY(-50%)",
-                              width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
-                              borderRadius: "50%",
-                              background: isEnd ? o.color : "#fff",
-                              border: `2px solid ${o.color}`,
-                              boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
-                              boxSizing: "border-box",
-                            }} />
-                            <span style={{
-                              fontSize: 14,
-                              fontWeight: isEnd || isBusHere ? 700 : 400,
-                              color: hl.color,
-                              marginLeft: 10,
-                            }}>
-                              {isBoard && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
-                              {isAlight && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
-                              {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
-                              {name}
-                              {isBoard && boardArrival && (
-                                <span style={{ display: 'block', fontSize: 10, color: '#5f6368', marginTop: 2 }}>
-                                  Arrival: {boardArrival.point}{boardArrival.window ? ` · ${boardArrival.window}` : ''}
-                                </span>
-                              )}
-                              {isBusHere && standing?.stopId === sid && liveElapsedSec != null && (
-                                <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                      title={standing.approach
-                                        ? "The bus is waiting for this stop — it is holding just short of the marker"
-                                        : "Time the bus has been sitting here"}>
-                                  ⏸ {fmtMmss(liveElapsedSec)}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      </div>
-                    </div>
-                  );
-                })()}
+
               </div>
             );
           })}

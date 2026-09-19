@@ -533,7 +533,7 @@ export function parseTimingTable(bodyText) {
     const [, label, cell, destination] = match;
     const lines = cell.trim().split('\n').map(s => s.trim()).filter(Boolean);
     const first = lines[0];
-    const point = first?.match(/^(~?<1|~?\d+)(?: \((<1|\d+)(?:[–-](\d+))?\))?$/);
+    const point = first?.match(/^(~?<1|~?\d+)(?: \((<1|\d+)(?:\s*[–-]\s*(\d+))?\))?$/);
     const atStop = first === 'At stop';
     if (!point && !atStop && !['—', 'Missed', 'Unavailable', 'Scheduled'].includes(first)) continue;
     const clock = destination.trim();

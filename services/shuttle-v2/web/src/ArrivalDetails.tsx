@@ -33,7 +33,7 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
   const next = gap !== null ? (nextSec! < 60 ? '<1 min' : fmtMin(nextSec!)) : null;
   const pickup = atPickup ? 'At your stop' : `Arrives in ${etaSec < 60 ? '<1 min' : `~${fmtMin(etaSec)}`}`;
   const table = props.variant === 'table';
-  const compact = atPickup ? 'At stop' : `${etaSec < 60 ? '<1' : `~${fmtMin(etaSec).replace(' min', '')}`}${band ? ` (${band.text.replace(' min', '')})` : ''}`;
+  const compact = atPickup ? 'At stop' : `${etaSec < 60 ? '<1' : `~${fmtMin(etaSec).replace(' min', '')}`}${band ? ` (${band.text.replace(' min', '').replace('–', ' – ')})` : ''}`;
   const sameBus = !!nextBusName && nextBusName.replace(/^#/, '') === busName.replace(/^#/, '');
   const dots = distributionSec?.map(s => now + remainingSec(s, computedAtMs, now) * 1000);
   // An interval bar communicates the three known quantiles without inventing

@@ -100,12 +100,13 @@ try {
       assert(run[state].parsed.some(o => o.routeLabel === 'Walk'), 'watcher cannot parse walking alternative');
     }
     assert.equal(await destination.getAttribute('data-kind'), 'window');
-    assert.match(await destination.innerText(), /10:21a–10:27a/);
+    assert.match(await destination.innerText(), /10:21a – 10:27a/);
     const pickup = row.getByRole('button', { name: /^Red arrival details:/ });
-    assert.match(await pickup.innerText(), /~5 \(3–9\)/);
+    assert.match(await pickup.innerText(), /~5 \(3 – 9\)/);
     assert(await pickup.getByTestId('pickup-range').isVisible(), 'pickup window must remain visible in the key');
     assert.doesNotMatch(await pickup.innerText(), /Next/);
     assert.doesNotMatch(await card.innerText(), /^23 min$/m, 'total duration still occupies card');
+    assert.equal(await row.getByTestId('route-pill').evaluate(e => getComputedStyle(e).backgroundColor), 'rgb(198, 40, 40)');
     await capture('live');
     await page.getByRole('button', { name: 'Collapse map', exact: true }).click();
     assert(await table.isVisible(), 'collapsing map hides arrival estimates');
@@ -136,8 +137,10 @@ try {
       await target.click();
       await page.getByTestId('trip-detail-panel').waitFor();
       assert.equal(await table.locator('tbody[data-route]').count(), 1);
+      assert.equal(await page.getByTestId('map-trip-panel').getByTestId('trip-stop-list').count(), 1);
       await page.getByRole('button', { name: '← All routes', exact: true }).click();
       await card.waitFor();
+      assert.equal(await page.getByTestId('trip-stop-list').count(), 0, 'route choices retain a previous stop list');
     }
     await page.getByRole('button', { name: 'View Walk trip details', exact: true }).focus();
     await page.keyboard.press('Space');
@@ -154,6 +157,10 @@ try {
     assert.match(await destination.innerText(), /~/);
     assert.equal(await departure.inputValue(), '2026-09-18T11:00');
     await capture('future');
+    const routeTraces = page.locator('.trip-map-canvas .map-route-line');
+    assert(await routeTraces.count() >= 2, 'future trip must exercise multiple route traces');
+    const offsets = await routeTraces.evaluateAll(es => es.map(e => e.dataset.offset));
+    assert.equal(new Set(offsets).size, offsets.length, 'route traces share an offset');
     const saved = await page.evaluate(() => JSON.parse(sessionStorage.getItem('shuttle-trip-draft')));
     assert.equal(saved.tripTime, '2026-09-18T11:00');
     assert(!Object.hasOwn(saved, 'arriveBy') && !Object.hasOwn(saved, 'classBufferMin'));
@@ -161,11 +168,13 @@ try {
     await page.getByRole('button', { name: 'Now', exact: true }).click();
     await later.waitFor();
     assert.equal(await destination.getAttribute('data-kind'), 'window');
-    assert.match(await destination.innerText(), /10:21a–10:27a/);
+    assert.match(await destination.innerText(), /10:21a – 10:27a/);
     await card.focus(); await page.keyboard.press('Enter');
     await page.getByRole('button', { name: '← All routes', exact: true }).waitFor();
     assert.equal(await destination.getAttribute('data-kind'), 'window');
     run.expanded = await destination.innerText();
+    assert.equal(await routeTraces.count(), 1);
+    assert.equal(await routeTraces.getAttribute('data-offset'), '0', 'selected route must follow its original geometry');
     assert.equal(await table.locator('tbody[data-route]').count(), 1, 'detail key must narrow to the selected route');
     assert.deepEqual(run.errors, []);
     assert(!run.requests.some(r => r.path === '/api/report'));

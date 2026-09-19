@@ -15,6 +15,7 @@ const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM
 const report = { errors: [], runs: [] };
 try {
   for (const width of [320, 390]) {
+    let servedFeed = feed;
     const context = await browser.newContext({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true,
       geolocation: { latitude: 41.324769, longitude: -72.923522 }, permissions: ['geolocation'], timezoneId: 'America/New_York', serviceWorkers: 'block' });
     await seedTestId(context);
@@ -29,7 +30,7 @@ try {
       const u = new URL(route.request().url());
       if (['tile.openstreetmap.org', 'fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname)) return route.continue();
       if (u.hostname !== 'timing-key.test') return route.abort();
-      if (u.pathname === '/api/buses') return route.fulfill({ json: feed });
+      if (u.pathname === '/api/buses') return route.fulfill({ json: servedFeed });
       if (u.pathname === '/api/geocode') return route.fulfill({ json: { results: [{ display_name: 'Rosenkranz Hall', lat: 41.314701, lon: -72.924551, type: 'college', class: 'yale' }] } });
       if (u.pathname === '/api/weather') return route.fulfill({ status: 204 });
       if (u.pathname.startsWith('/api/')) return route.fulfill({ json: { reports: [], results: [], routes: [] } });
@@ -80,6 +81,10 @@ try {
     await card.focus(); await page.keyboard.press('Enter');
     await page.getByRole('button', { name: '← All routes', exact: true }).waitFor();
     assert.equal(await table.locator('tbody[data-route]').count(), 1);
+    const stopList = page.locator('.trip-map-wrap').getByTestId('trip-stop-list');
+    assert.equal(await stopList.count(), 1, 'selected stops must be in the map panel');
+    assert.equal(await page.getByTestId('trip-detail-panel').getByTestId('trip-stop-list').count(), 0, 'stop list is duplicated below trip controls');
+    assert.match(await stopList.innerText(), /BOARD[\s\S]*GET OFF/);
     await checkKey();
     await page.locator('.trip-map-wrap').screenshot({ path: path.join(out, `red-detail-${width}.png`), animations: 'disabled' });
     const waiting = await page.locator('.bus-wait-label').innerText();
@@ -88,12 +93,52 @@ try {
       await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
       await page.waitForTimeout(250);
       await checkKey();
+      assert.equal(await page.locator('.map-fs').getByTestId('trip-stop-list').count(), 1);
       await page.screenshot({ path: path.join(out, 'red-fullscreen-390.png') });
       await table.getByRole('button', { name: /^Red arrival details:/ }).click();
       assert(await page.getByRole('dialog').isVisible(), 'key cannot open arrival details');
       await page.getByRole('button', { name: 'Close arrival details' }).click();
     }
     report.runs.push({ width, waiting, table: await table.innerText(), overview });
+    if (width === 390) {
+      // Deliberately identical paths expose occlusion that two merely
+      // intersecting real routes would not. Put both synthetic buses on them
+      // so the Map tab's running/on-route filter includes both lines.
+      const redBus = feed.buses.find(b => b.route_id === 3);
+      servedFeed = { ...feed, routes: { '1': feed.routes['3'], '3': feed.routes['3'] },
+        route_paths: { '1': feed.route_paths['3'], '3': feed.route_paths['3'] },
+        buses: [{ ...redBus, route_id: 1, bus_name: '#38', bus_id: 999 }, redBus] };
+      await page.reload();
+      await page.getByRole('button', { name: /^map$/i }).click();
+      const lines = page.locator('.map-route-line:visible');
+      await lines.first().waitFor();
+      assert.equal(await lines.count(), 2);
+      const checkSeparation = async () => {
+        const measured = await lines.evaluateAll(es => {
+          const [a, b] = es;
+          const distances = [0.2, 0.4, 0.6, 0.8].map(t => {
+            const point = a.getPointAtLength(a.getTotalLength() * t);
+            let nearest = Infinity;
+            for (let j = 0; j <= 500; j++) {
+              const other = b.getPointAtLength(b.getTotalLength() * j / 500);
+              nearest = Math.min(nearest, Math.hypot(point.x - other.x, point.y - other.y));
+            }
+            return nearest;
+          }).sort((a, b) => a - b);
+          return { separation: distances[2], offsets: es.map(e => Number(e.dataset.offset)).sort((a, b) => a - b), paths: es.map(e => e.getAttribute('d')) };
+        });
+        assert.deepEqual(measured.offsets, [0, 5]);
+        assert.notEqual(measured.paths[0], measured.paths[1]);
+        assert(measured.separation >= 3 && measured.separation <= 8, `shared routes not visibly separated: ${measured.separation}`);
+        return measured.separation;
+      };
+      const beforeZoom = await checkSeparation();
+      await page.locator('.leaflet-control-zoom-in:visible').click();
+      await page.waitForTimeout(250);
+      const afterZoom = await checkSeparation();
+      await page.screenshot({ path: path.join(out, 'identical-routes-separated-390.png'), fullPage: true });
+      report.overlap = { fixture: 'Synthetic identical Blue Day / Red paths and bus positions', beforeZoom, afterZoom };
+    }
     await context.close();
   }
   assert.deepEqual(report.errors, []);

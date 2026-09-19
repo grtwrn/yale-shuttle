@@ -2903,6 +2903,7 @@ Red
 ›
 🚌 18 min
 ›`;
+  expect(parseOptions(text.replaceAll('–', ' – '))).toEqual(parseOptions(text).map(card => ({ ...card, arriveText: card.arriveText?.replaceAll('–', ' – ') ?? null })));
   const cards = parseOptions(text);
   expect(cards.map(c => c.routeLabel)).toEqual(['Red', 'Blue Night', 'Orange Night', 'Green', 'Purple', 'Walk']);
   expect(cards[0].eta).toMatchObject({ first: [180, 540], median: [300, 360], second: [1200, 1260], spread: true });

@@ -50,7 +50,7 @@ export function DestinationArrival({ option, destination, departureMs, now = Dat
     <span style={{ display: compact ? 'inline' : 'block', fontVariantNumeric: 'tabular-nums' }}>{view.text.split('–').map((endpoint, i) => {
       // A date can wrap above its clock; the digits of a clock stay together.
       const timeAt = endpoint.lastIndexOf(' ') + 1;
-      return <Fragment key={i}>{i > 0 && <>–<wbr /></>}{endpoint.slice(0, timeAt)}<span style={{ whiteSpace: 'nowrap' }}>{endpoint.slice(timeAt)}</span></Fragment>;
+      return <Fragment key={i}>{i > 0 && <> – <wbr /></>}{endpoint.slice(0, timeAt)}<span style={{ whiteSpace: 'nowrap' }}>{endpoint.slice(timeAt)}</span></Fragment>;
     })}</span>
   </span>;
 }
