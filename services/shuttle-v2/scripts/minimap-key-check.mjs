@@ -81,6 +81,10 @@ try {
     await card.focus(); await page.keyboard.press('Enter');
     await page.getByRole('button', { name: '← All routes', exact: true }).waitFor();
     assert.equal(await table.locator('tbody[data-route]').count(), 1);
+    const stopList = page.locator('.trip-map-wrap').getByTestId('trip-stop-list');
+    assert.equal(await stopList.count(), 1, 'selected stops must be in the map panel');
+    assert.equal(await page.getByTestId('trip-detail-panel').getByTestId('trip-stop-list').count(), 0, 'stop list is duplicated below trip controls');
+    assert.match(await stopList.innerText(), /BOARD[\s\S]*GET OFF/);
     await checkKey();
     await page.locator('.trip-map-wrap').screenshot({ path: path.join(out, `red-detail-${width}.png`), animations: 'disabled' });
     const waiting = await page.locator('.bus-wait-label').innerText();
@@ -89,6 +93,7 @@ try {
       await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
       await page.waitForTimeout(250);
       await checkKey();
+      assert.equal(await page.locator('.map-fs').getByTestId('trip-stop-list').count(), 1);
       await page.screenshot({ path: path.join(out, 'red-fullscreen-390.png') });
       await table.getByRole('button', { name: /^Red arrival details:/ }).click();
       assert(await page.getByRole('dialog').isVisible(), 'key cannot open arrival details');
@@ -102,7 +107,7 @@ try {
         route_paths: { '1': feed.route_paths['3'], '3': feed.route_paths['3'] },
         buses: [feed.buses.find(b => b.route_id === 1), feed.buses.find(b => b.route_id === 3)] };
       await page.reload();
-      await page.getByRole('button', { name: 'Map', exact: true }).click();
+      await page.getByRole('button', { name: /^map$/i }).click();
       const lines = page.locator('.map-route-line:visible');
       await lines.first().waitFor();
       assert.equal(await lines.count(), 2);

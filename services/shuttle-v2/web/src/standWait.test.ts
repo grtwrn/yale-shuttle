@@ -339,7 +339,7 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
     // The key and expanded details use one shared timing calculation.
     expect(src.match(/const busEtaLive\b/g)?.length).toBe(1);
     expect(src.match(/const leadBand\b/g)?.length).toBe(1);
-    expect(src.match(/= getTripTiming\(o\)/g)?.length).toBe(2);
+    expect(src.match(/= getTripTiming\(o\)/g)?.length).toBe(3);
     // The tappable summary reads the same arrival, retaining the full bounds.
     expect(src).toContain("etaSec: busEtaLive, lowSec: o.busLowSec, highSec: o.busHighSec");
     const key = readFileSync(new URL("./MiniMapKey.tsx", import.meta.url), "utf8");
@@ -351,7 +351,7 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
     // Inside the expanded card's stop list nothing composes an arrival of its
     // own: no second band, no second formatter, no bare point.
     const from = src.indexOf("// Stop list, two sections.");
-    const to = src.indexOf("{_hidden > 0 && !_detailOpen", from);
+    const to = src.indexOf("// End trip stop list.", from);
     expect(from).toBeGreaterThan(0);
     expect(to).toBeGreaterThan(from);
     const list = src.slice(from, to).replace(/^\s*\/\/.*$/gm, "");

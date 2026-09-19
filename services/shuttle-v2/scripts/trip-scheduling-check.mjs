@@ -137,8 +137,10 @@ try {
       await target.click();
       await page.getByTestId('trip-detail-panel').waitFor();
       assert.equal(await table.locator('tbody[data-route]').count(), 1);
+      assert.equal(await page.getByTestId('map-trip-panel').getByTestId('trip-stop-list').count(), 1);
       await page.getByRole('button', { name: '← All routes', exact: true }).click();
       await card.waitFor();
+      assert.equal(await page.getByTestId('trip-stop-list').count(), 0, 'route choices retain a previous stop list');
     }
     await page.getByRole('button', { name: 'View Walk trip details', exact: true }).focus();
     await page.keyboard.press('Space');

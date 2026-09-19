@@ -17,7 +17,9 @@ Arrival distribution UI (2026-09-16): `ArrivalPlot.tsx` renders the optional
 and following-shuttle timing. `MiniMapKey.tsx` places pickup and destination
 arrival windows in a clickable table below the mini-map, including when the map
 is collapsed or fullscreen. Each route entry includes its walking/riding legs
-and opens trip details; there are no separate collapsed trip cards. The pickup
+and opens trip details; there are no separate collapsed trip cards. In route
+details, the approach and ride stop list sits in that same panel below the map,
+under the selected route summary, including in fullscreen. The pickup
 estimate opens arrival history separately. Following-shuttle timing stays in
 those arrival details. Route names use colored pills; visible pickup and
 destination ranges have spaces around the dash. Destination windows come from `DestinationArrival.tsx`. Stop-time bubbles are
