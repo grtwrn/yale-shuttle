@@ -1041,8 +1041,8 @@ const CombinedTripMap: FC<{
 
     map.on("zoomend moveend resize", layoutWaitLabels);
 
-    // Leave room above the northern stops for the arrival chip and
-    // a waiting bus label. Tight endpoint-only bounds clipped both at 320px.
+    // Leave room above the northern stops for the waiting bus label.
+    // Tight endpoint-only bounds clipped it at 320px.
     map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [28, 88], paddingBottomRight: [28, 40], maxZoom: 15 });
     const sizeTimer = setTimeout(() => { if (mapRef.current === map) map.invalidateSize(); }, 60);
 
@@ -2580,11 +2580,7 @@ const TripPlanner: FC<{
       ).length;
       return { busMatch, stopsAway, normBus, cfg, liveCount, allStops };
     })();
-    // Live bus ETA, hoisted to row scope so the TOP line can carry it
-    // beside the total (operator, 2026-09-03: "could this go on the
-    // top line ... between total time and arrival time?"). Computed
-    // ONCE here and consumed both there and by the departed warning
-    // below, so the two can never disagree.
+    // Compute the live ETA once for the key and expanded trip details.
     //
     // NOT walkToSec + waitSec: waitSec clamps at 0 once the bus will
     // beat the rider to the stop, which froze the readout at the
@@ -2593,6 +2589,8 @@ const TripPlanner: FC<{
     const busEtaLive = o.mode === "shuttle" && !o.etaUnavailable && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
       ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
       : null;
+    // Strictly follow the pinned arrival; a previous, uncatchable bus
+    // must never masquerade as the next shuttle.
     const nextArrLive = busEtaLive !== null && !o.departed
       ? nextArrivalAfterPinned(
           computeUpcomingArrivals(
@@ -3768,10 +3766,6 @@ const TripPlanner: FC<{
             const leadBand = o.mode === "shuttle" && !o.departed && busEtaLive !== null
               ? arrivalBand(standCtx, { low: o.busLowSec, high: o.busHighSec, departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs })
               : null;
-            // The bus AFTER the pinned one (user request 2026-07-17) — lets
-            // riders judge "can I skip this one?" at a glance. Strictly later
-            // than the pinned arrival so an earlier, uncatchable bus never
-            // masquerades as "next"; the same vehicle a loop later counts.
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
@@ -3810,8 +3804,8 @@ const TripPlanner: FC<{
                   </span>
                   {!isExpanded && <span aria-hidden="true" style={{ color: '#9aa0a6' }}>›</span>}
                 </div>
-                {/* Last-bus warning — shown in BOTH the collapsed row and the
-                    details view, because the rider decides in either. Two
+                {/* Last-bus warning — the key carries the headline; the
+                    details view adds the full explanation. Two
                     nowrap lines (measured at 390px, see lastBus.test.ts);
                     explicit background and colour because the rider app has
                     no dark theme to inherit from. Amber like the service

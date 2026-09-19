@@ -14,8 +14,11 @@ Live web app at **https://yale-shuttle.fly.dev** showing Yale Downtowner shuttle
 
 Arrival distribution UI (2026-09-16): `ArrivalPlot.tsx` renders the optional
 50-quantile `server_eta.distributions` rows; `ArrivalDetails.tsx` shows pickup
-and following-shuttle timing. Route cards show estimated destination arrival
-windows through `DestinationArrival.tsx`. The separate "Arrive by" bar was
+and following-shuttle timing. `MiniMapKey.tsx` places pickup and destination
+arrival windows in a table below the mini-map, including when it is collapsed
+or fullscreen. Destination windows come from `DestinationArrival.tsx`. Route
+cards show only the line pill and walking/riding legs. Stop-time bubbles are
+removed; bus waiting labels remain beside their icons. The separate "Arrive by" bar was
 removed at the operator's request (2026-09-18); "Plan for later" remains the
 single trip scheduling control. `ArrivalHistory.tsx` fetches the bounded public
 `/api/journey-history` endpoint only when expanded or explicitly refreshed.
