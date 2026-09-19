@@ -37,6 +37,7 @@ import { useMapFullscreen } from "./useMapFullscreen";
 import { standChipFor } from "./standWait";
 import "./TripActions.css";
 import { MiniMapKey, type TimingRow } from "./MiniMapKey";
+import { isMilfordGrocerySearch } from "./grocerySearch";
 import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
 import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
@@ -3078,6 +3079,9 @@ const TripPlanner: FC<{
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
   const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
+  const grocerySearchNotice = isMilfordGrocerySearch(fromText, fromSugg.map(g => g.display_name))
+    || isMilfordGrocerySearch(toText, toSugg.map(g => g.display_name))
+    ? groceryServiceNotice('Grocery TJ', targetDate ?? new Date()) : null;
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {/* In-app fallback for a leave-time ping when a system notification
@@ -3278,6 +3282,16 @@ const TripPlanner: FC<{
       </div>
       )}
 
+      {grocerySearchNotice && (
+        <div id="grocery-search-notice" role="status" style={{
+          marginBottom: 8, padding: "10px 12px", borderRadius: 8,
+          background: "#FFF8E1", border: "1px solid #FFE082",
+          color: "#795548", fontSize: 13, lineHeight: 1.45,
+        }}>
+          <strong style={{ display: "block", marginBottom: 2 }}>Grocery route update</strong>
+          {grocerySearchNotice}
+        </div>
+      )}
       {/* To — the raw input while the rider is searching (no "To"
           label, just the placeholder as the whole prompt). Once a
           destination is locked AND the rider isn't actively editing,

@@ -10,4 +10,6 @@ Trip fallback cards, expanded grocery trip cards, route-hour captions and the ma
 
 The live feed confirmed notice 27 with the title `Grocery Route`. That title now matches both grocery lines instead of being treated as system-wide. Expanded grocery cards replace this specific dated upstream notice with the single date-aware message; other service announcements are retained.
 
+The trip search also shows the update when a rider types Trader Joe's Milford (including apostrophe variants and TJ/TJs), or a generic Trader Joe's search returns the Milford branch. It stays visible after selecting or restoring that location, for either endpoint. Explicit Hamden and unrelated searches clear it. The notice uses the trip's date and does not replace the chosen destination or invent a new Hamden stop.
+
 Validation covers the Eastern-midnight cutoff, historical dates, both subsequent weekends, weekday/holiday closures, stale live flags, no future Milford starts, and future-trip fallback wording. App checks and deployment run on hosted GitHub Actions to avoid loading the Pi.
