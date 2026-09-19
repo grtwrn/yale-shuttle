@@ -1,0 +1,28 @@
+{
+  "errors": [],
+  "runs": [
+    {
+      "width": 320,
+      "waiting": "Red #300 6:54/~5m",
+      "table": "Route\tAt stop (in min)\tAt destination\nRed\t\n~3 (<1 – 11)\n\t10:35a – 10:47a\n\n🚌 6 min\n›\n🚶 1 min",
+      "overview": {
+        "keyHeight": 176,
+        "mapHeight": 320
+      }
+    },
+    {
+      "width": 390,
+      "waiting": "Red #300 6:54/~5m",
+      "table": "Route\tAt stop (in min)\tAt destination\nRed\t\n~3 (<1 – 11)\n\t10:35a – 10:47a\n\n🚌 6 min\n›\n🚶 1 min",
+      "overview": {
+        "keyHeight": 176,
+        "mapHeight": 320
+      }
+    }
+  ],
+  "overlap": {
+    "fixture": "Synthetic identical Blue Day / Red paths and bus positions",
+    "beforeZoom": 5.002600871574883,
+    "afterZoom": 5.094118606743427
+  }
+}
