@@ -51,6 +51,19 @@ try {
       return tiles.length && tiles.every(i => i.complete && i.naturalWidth);
     });
     const table = page.getByTestId('route-timing-table');
+    const checkKey = async () => {
+      const key = await page.locator('.trip-map-key').boundingBox();
+      const map = await page.locator('.trip-map-canvas').boundingBox();
+      assert(key.x >= map.x && key.y >= map.y && key.y + key.height < map.y + map.height, 'key must float inside map');
+      assert.doesNotMatch(await table.innerText(), /Next/);
+      const pins = await page.locator('.trip-map-canvas .leaflet-marker-icon, .trip-map-canvas .bus-wait-label').evaluateAll(es => es.map(e => {
+        const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height };
+      }));
+      for (const pin of pins) {
+        assert(pin.y + pin.height <= key.y || pin.x + pin.width <= key.x || pin.x >= key.x + key.width, 'floating key hides a pin or waiting label');
+      }
+      return { keyHeight: key.height, mapHeight: map.height };
+    };
     await table.scrollIntoViewIfNeeded();
     assert(await table.isVisible());
     assert.equal(await page.locator('.trip-map-canvas .eta-tip:not(.bus-wait-tip)').count(), 0);
@@ -59,14 +72,26 @@ try {
     const text = await page.locator('body').innerText();
     assert(parseOptions(text).some(o => o.routeLabel === 'Red' && o.eta?.spread));
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    const overview = await checkKey();
+    assert((await page.locator('.trip-map-wrap').boundingBox()).height <= 322);
     await page.screenshot({ path: path.join(out, `overview-${width}.png`), fullPage: true });
     await card.focus(); await page.keyboard.press('Enter');
     await page.getByRole('button', { name: '← All routes', exact: true }).waitFor();
     assert.equal(await table.locator('tbody tr').count(), 1);
+    await checkKey();
     await page.locator('.trip-map-wrap').screenshot({ path: path.join(out, `red-detail-${width}.png`), animations: 'disabled' });
     const waiting = await page.locator('.bus-wait-label').innerText();
     assert.match(waiting, /Red/);
-    report.runs.push({ width, waiting, table: await table.innerText() });
+    if (width === 390) {
+      await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
+      await page.waitForTimeout(250);
+      await checkKey();
+      await page.screenshot({ path: path.join(out, 'red-fullscreen-390.png') });
+      await table.getByRole('button', { name: /^Red arrival details:/ }).click();
+      assert(await page.getByRole('dialog').isVisible(), 'floating key cannot open arrival details');
+      await page.getByRole('button', { name: 'Close arrival details' }).click();
+    }
+    report.runs.push({ width, waiting, table: await table.innerText(), overview });
     await context.close();
   }
   assert.deepEqual(report.errors, []);
