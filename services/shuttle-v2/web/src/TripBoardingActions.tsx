@@ -20,14 +20,9 @@ export function TripBoardingActions({ pickup, ride, different, onBoard }: {
     <button
       key={isRide ? 'journey' : 'pickup'}
       ref={isRide ? setRideRef : pickupRef}
+      className="trip-action-button"
       onClick={(e) => { e.stopPropagation(); onBoard(busName); }}
       title="Track this ride now — use this if the app didn't notice you boarding"
-      style={{
-        fontSize: 13, fontWeight: 500, padding: '0 8px',
-        minHeight: 44, display: 'inline-flex', alignItems: 'center',
-        border: 'none', background: 'transparent', color: '#1a73e8',
-        cursor: 'pointer', fontFamily: 'inherit',
-      }}
     >
       🚌 {different ? `I'm on #${busName}` : "I'm on it"}
     </button>

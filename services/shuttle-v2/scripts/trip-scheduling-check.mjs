@@ -64,12 +64,14 @@ try {
     const row = table.locator('[data-route="Red"]');
     const destination = row.getByTestId('destination-arrival');
     await card.waitFor();
+    assert.deepEqual(await table.locator('thead th').allTextContents(), ['Route', 'Board in (min)', 'Arrive at']);
     await destination.locator('[style*="white-space"]').first().waitFor();
     async function capture(state) {
       assert.equal(await page.getByRole('button', { name: /^Arrive by/ }).count(), 0);
       assert.equal(await page.locator('[aria-label="Arrive by class"]').count(), 0);
       const text = await page.locator('body').innerText();
       assert.doesNotMatch(text, /Arrive by|Plan for class|Class starts/);
+      assert.doesNotMatch(text, /When arrival timing is unclear, shorter walks and rides come first/);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal page overflow');
       const box = await destination.boundingBox();
       const pickup = row.getByRole('button', { name: /^Red arrival details:/ });
@@ -170,6 +172,54 @@ try {
     assert.equal(await destination.getAttribute('data-kind'), 'window');
     run.expanded = await destination.innerText();
     assert.equal(await table.locator('tbody[data-route]').count(), 1, 'detail key must narrow to the selected route');
+    const actions = page.getByRole('group', { name: 'Trip actions', exact: true });
+    const panel = page.getByTestId('trip-detail-panel');
+    assert.doesNotMatch(await panel.innerText(), /🚶|⏳|🚌\s*#\d+\s*·/, 'duplicate journey strip remains above Directions');
+    const directions = actions.getByRole('link', { name: '🧭 Directions to stop', exact: true });
+    const nav = new URL(await directions.getAttribute('href'));
+    assert.equal(nav.searchParams.get('destination'), `${feed.stop_coords[48].lat},${feed.stop_coords[48].lon}`);
+    assert.equal(nav.searchParams.get('travelmode'), 'walking');
+    const remind = actions.getByRole('button', { name: '🔔 Remind me', exact: true });
+    await remind.focus(); await page.keyboard.press('Space');
+    const armed = actions.getByRole('button', { name: '🔔 Reminding you', exact: true });
+    assert.equal(await armed.getAttribute('aria-pressed'), 'true');
+    await page.keyboard.press('Space');
+    assert.equal(await remind.getAttribute('aria-pressed'), 'false');
+    page.once('dialog', dialog => dialog.dismiss());
+    await actions.getByRole('button', { name: '🚩 Report', exact: true }).click();
+    const tracker = actions.getByRole('button', { name: '📱 Yale tracker', exact: true });
+    assert.equal(await actions.locator('iframe').count(), 0, 'closed tracker loads an iframe');
+    await tracker.focus(); await page.keyboard.press('Enter');
+    const frame = actions.locator('iframe');
+    assert.equal(await frame.getAttribute('src'), 'https://yale.downtownerapp.com/routes/3');
+    assert.equal(await actions.getByRole('link', { name: 'Open ↗', exact: true }).getAttribute('href'), await frame.getAttribute('src'));
+    assert((await frame.boundingBox()).width <= (await panel.boundingBox()).width, 'tracker overflows the action panel');
+    await actions.getByTitle('Hide preview', { exact: true }).click();
+    assert.equal(await actions.locator('iframe').count(), 0);
+    assert(await tracker.evaluate(e => e === document.activeElement), 'closing tracker loses keyboard focus');
+    const berth = actions.getByRole('button', { name: /stops about .*metres/ });
+    if (await berth.count()) {
+      await berth.click();
+      assert.equal(await berth.getAttribute('aria-expanded'), 'true');
+      assert(await actions.getByRole('link', { name: '🧭 Directions to published stop', exact: true }).isVisible());
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      await berth.click();
+    }
+    for (const button of await actions.getByRole('button').all()) {
+      const box = await button.boundingBox();
+      assert(box.width >= 44 && box.height >= 44, 'action has a small touch target');
+      assert(await button.evaluate(e => e.scrollWidth <= e.clientWidth), 'action text clips');
+    }
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await panel.screenshot({ path: `${out}actions-${width}.png` });
+    await page.screenshot({ path: `${out}route-detail-${width}.png`, fullPage: true });
+    await actions.getByRole('button', { name: "🚌 I'm on it", exact: true }).click();
+    await page.getByRole('button', { name: 'Done', exact: true }).waitFor();
+    const ride = await page.evaluate(() => JSON.parse(localStorage.getItem('shuttle-boarded-ride')));
+    assert.equal(ride.busName, '307');
+    assert.equal(ride.boardStopId, 48);
+    assert.equal(ride.alightStopId, 121);
+    run.actions = { directions: true, reminder: true, reportCancelled: true, tracker: true, boarding: true };
     assert.deepEqual(run.errors, []);
     assert(!run.requests.some(r => r.path === '/api/report'));
     await context.close();
