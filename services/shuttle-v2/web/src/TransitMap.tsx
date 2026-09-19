@@ -37,7 +37,8 @@ import { useMapFullscreen } from "./useMapFullscreen";
 import { standChipFor } from "./standWait";
 import "./TripActions.css";
 import { MiniMapKey, type TimingRow } from "./MiniMapKey";
-import { isMilfordGrocerySearch } from "./grocerySearch";
+import { isMilfordGroceryPlace, isMilfordGrocerySearch } from "./grocerySearch";
+import { TripServiceNotices } from "./TripServiceNotices";
 import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
 import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
@@ -1803,13 +1804,19 @@ const TripPlanner: FC<{
   };
   // Same label the row carried, town and all — the pill must not quietly
   // drop the word that made the rider pick this one over its namesake.
-  const pickFrom = (g: GeocodeResult) => commitFrom(suggLabel(g, fromSugg), g);
+  const tripPlaceLabel = (g: GeocodeResult, siblings: GeocodeResult[]) => {
+    const label = suggLabel(g, siblings);
+    // Keep the town when trimming an external grocery result. It identifies
+    // the retired service and must survive selection, saved trips and reloads.
+    return isMilfordGroceryPlace(g) && !/\bmilford\b/i.test(label) ? `${label} (Milford)` : label;
+  };
+  const pickFrom = (g: GeocodeResult) => commitFrom(tripPlaceLabel(g, fromSugg), g);
   const pickTo = (g: GeocodeResult) => {
     returnPlaceFocus("to");
     toAbortRef.current?.abort();
     toAbortRef.current = null;
     setToLL({ lat: g.lat, lon: g.lon });
-    const display = suggLabel(g, toSugg);
+    const display = tripPlaceLabel(g, toSugg);
     setToText(display);
     // Remember what we landed on so the pill can be restored if the
     // rider later opens edit mode and bails without re-picking.
@@ -3014,7 +3021,7 @@ const TripPlanner: FC<{
     list.map((g) => ({
       key: `${g.lat},${g.lon},${g.display_name}`,
       icon: suggIcon(g),
-      label: suggLabel(g, list),
+      label: tripPlaceLabel(g, list),
       onPick: () => pick(g),
     }));
   // What the From box offers BEFORE the rider types (operator, 2026-09-06:
@@ -3079,9 +3086,12 @@ const TripPlanner: FC<{
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
   const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
-  const grocerySearchNotice = isMilfordGrocerySearch(fromText, fromSugg.map(g => g.display_name))
-    || isMilfordGrocerySearch(toText, toSugg.map(g => g.display_name))
-    ? groceryServiceNotice('Grocery TJ', targetDate ?? new Date()) : null;
+  const grocerySearchNotice = isMilfordGrocerySearch(fromText, fromSugg)
+    || isMilfordGrocerySearch(toText, toSugg)
+    ? groceryServiceNotice('Grocery Ham', targetDate ?? new Date()) : null;
+  const overviewShuttles = (showAllOptions ? orderedOptions ?? [] : visibleOptions ?? [])
+    .filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
+  const overviewRouteLabels = overviewShuttles.length ? overviewShuttles : potentialRoutes.map(p => p.label);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {/* In-app fallback for a leave-time ping when a system notification
@@ -3706,6 +3716,10 @@ const TripPlanner: FC<{
         );
       })()}
       {/* Results */}
+      {options && !alreadyThere && !detailOpen && (
+        <TripServiceNotices routeLabels={overviewRouteLabels} announcements={announcements}
+          at={targetDate ?? new Date()} groceryNoticeVisible={!!grocerySearchNotice} />
+      )}
       {/* A trip of no distance is not a trip. Say the true thing FIRST.
           Measured on master with the rider standing at Phelps Gate and Phelps
           Gate as the destination: the walk-only shape lit the fallback below,

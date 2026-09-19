@@ -60,9 +60,18 @@ export function announcementsForRoute(
   routeLabel: string,
   all: readonly ServiceAnnouncement[],
 ): ServiceAnnouncement[] {
+  return announcementsForRoutes([routeLabel], all);
+}
+
+/** One copy of each relevant notice across the visible trip choices. */
+export function announcementsForRoutes(
+  routeLabels: readonly string[],
+  all: readonly ServiceAnnouncement[],
+): ServiceAnnouncement[] {
+  if (routeLabels.length === 0) return [];
   return all.filter((a) => {
     const labels = announcementRouteLabels(a.title);
-    return labels.size === 0 || labels.has(routeLabel);
+    return labels.size === 0 || routeLabels.some(label => labels.has(label));
   });
 }
 

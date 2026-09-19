@@ -13,6 +13,7 @@ on:
       - 'services/shuttle-v2/scripts/orange-east-map-check.mjs'
       - 'services/shuttle-v2/scripts/grocery-search-check.mjs'
       - 'services/shuttle-v2/web/src/grocerySearch.ts'
+      - 'services/shuttle-v2/web/src/TripServiceNotices.tsx'
       - 'services/shuttle-v2/web/src/DestinationArrival.tsx'
       - 'services/shuttle-v2/web/src/TransitMap.tsx'
       - '.github/workflows/minimap-gallery-review.yml'
@@ -43,7 +44,7 @@ jobs:
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-key-check.mjs
       - name: Inspect Orange East from Division / Prospect to YSPH
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node --import tsx scripts/orange-east-map-check.mjs
-      - name: Check the Milford grocery update during search and selection
+      - name: Check grocery search notices and service alerts before route selection
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/grocery-search-check.mjs
       - name: Render current map and ten label-only variants
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-label-render.mjs
