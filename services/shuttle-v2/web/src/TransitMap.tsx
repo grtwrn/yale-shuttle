@@ -939,6 +939,8 @@ const CombinedTripMap: FC<{
   timingKey: React.ReactNode;
 }> = ({ from, to, options, timingKey }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const keyRef = useRef<HTMLDivElement>(null);
+  const boundsRef = useRef<L.LatLngBounds | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkersRef = useRef<Record<string, L.Marker>>({});
   const startMarkerRef = useRef<L.Marker | null>(null);
@@ -950,7 +952,7 @@ const CombinedTripMap: FC<{
     });
     for (const { tooltip } of tooltips) { tooltip.options.offset = L.point(0, -10); tooltip.update(); }
     // Fullscreen/Back are siblings of the Leaflet container, inside the wrapper.
-    const obstacles = [...ref.current.parentElement!.querySelectorAll('.eta-tip, .leaflet-control, .bus-pin-sm, :scope > button')]
+    const obstacles = [...ref.current.parentElement!.querySelectorAll('.eta-tip, .leaflet-control, .bus-pin-sm, .trip-map-key, :scope > button')]
       .filter(e => !e.querySelector('.bus-wait-label')).map(e => e.getBoundingClientRect());
     for (const { tooltip, marker } of tooltips) {
       const element = tooltip.getElement();
@@ -960,6 +962,15 @@ const CombinedTripMap: FC<{
       tooltip.options.offset = L.point(shift.x, -10 + shift.y); tooltip.update();
       obstacles.push(element.getBoundingClientRect());
     }
+  }
+  function fitTripMap() {
+    if (!mapRef.current || !boundsRef.current) return;
+    // Reserve the floating legend's actual height, including wrapped names
+    // or service notices, so the initial view keeps pins above it.
+    const keyHeight = keyRef.current?.getBoundingClientRect().height ?? 0;
+    mapRef.current.fitBounds(boundsRef.current, {
+      paddingTopLeft: [28, 64], paddingBottomRight: [28, keyHeight + 42], maxZoom: 15, animate: false,
+    });
   }
   // Build/teardown when the set of endpoints or options changes.
   useEffect(() => {
@@ -985,6 +996,8 @@ const CombinedTripMap: FC<{
     // pre-sliced route path when available, straight line otherwise.
     for (const o of options) {
       if (o.segCoords.length < 2) continue;
+      if (o.bus) points.push([o.bus.lat, o.bus.lon]);
+      if (o.passedBus) points.push([o.passedBus.lat, o.passedBus.lon]);
       const road: [number, number][] = o.road && o.road.length >= 2
         ? o.road
         : o.segCoords.map((s) => [s.lat, s.lon] as [number, number]);
@@ -1040,20 +1053,23 @@ const CombinedTripMap: FC<{
     }
 
     map.on("zoomend moveend resize", layoutWaitLabels);
-
-    // Leave room above the northern stops for the waiting bus label.
-    // Tight endpoint-only bounds clipped it at 320px.
-    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [28, 88], paddingBottomRight: [28, 40], maxZoom: 15 });
+    map.on("resize", fitTripMap);
+    boundsRef.current = L.latLngBounds(points);
+    fitTripMap();
+    const keyResize = new ResizeObserver(fitTripMap);
+    if (keyRef.current) keyResize.observe(keyRef.current);
     const sizeTimer = setTimeout(() => { if (mapRef.current === map) map.invalidateSize(); }, 60);
 
     return () => {
       clearTimeout(sizeTimer);
+      keyResize.disconnect();
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
       try { map.stop(); } catch { /* mid-animation teardown */ }
       map.remove();
       mapRef.current = null;
+      boundsRef.current = null;
       busMarkersRef.current = {};
       approachLayersRef.current = {};
       startMarkerRef.current = null;
@@ -1273,9 +1289,14 @@ const CombinedTripMap: FC<{
       >
         {fullscreen ? "✕" : "⛶"}
       </button>
-      </div>
-      <div style={{ background: '#fff', borderTop: '1px solid #e0ddd8', flexShrink: 0, maxHeight: fullscreen ? '40dvh' : undefined, overflowY: fullscreen ? 'auto' : undefined }}>
+      <div ref={keyRef} className="trip-map-key" style={{
+        position: 'absolute', bottom: 22, left: 8, right: 8, zIndex: 1000,
+        background: 'rgba(255,255,255,0.94)', borderRadius: 6,
+        padding: '3px', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+        maxHeight: '40%', overflowY: 'auto', overscrollBehavior: 'contain',
+      }}>
         {timingKey}
+      </div>
       </div>
     </div>
   );

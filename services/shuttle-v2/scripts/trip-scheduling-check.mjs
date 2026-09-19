@@ -91,6 +91,7 @@ try {
       assert.doesNotMatch(await card.innerText(), /Arrives in|At destination|most direct|wait.*for/);
       assert.equal(await page.locator('.trip-map-canvas .eta-tip:not(.bus-wait-tip)').count(), 0, 'stop timing chips still drawn');
       assert(await table.evaluate(e => e.scrollWidth <= e.clientWidth), 'key clips horizontally');
+      assert((await page.locator('.trip-map-wrap').boundingBox()).height <= 322, 'key adds vertical space below the map');
       assert(run[state].parsed.some(o => o.routeLabel === 'Red'), 'watcher cannot parse Red card');
       assert(run[state].parsed.some(o => o.routeLabel === 'Walk'), 'watcher cannot parse walking alternative');
     }
@@ -99,7 +100,7 @@ try {
     const pickup = row.getByRole('button', { name: /^Red arrival details:/ });
     assert.match(await pickup.innerText(), /~5 \(3–9\)/);
     assert(await pickup.getByTestId('pickup-range').isVisible(), 'pickup window must remain visible in the key');
-    assert.match(await pickup.innerText(), /Next ~20/);
+    assert.doesNotMatch(await pickup.innerText(), /Next/);
     assert.doesNotMatch(await card.innerText(), /^23 min$/m, 'total duration still occupies card');
     await capture('live');
     await page.getByRole('button', { name: 'Collapse map', exact: true }).click();
@@ -111,18 +112,19 @@ try {
       await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
       await page.locator('.trip-map-wrap.map-fs').waitFor();
       const keyBox = await table.boundingBox(), mapBox = await page.locator('.trip-map-canvas').boundingBox();
-      assert(keyBox.y >= mapBox.y + mapBox.height, 'timing key covers the map');
-      assert(keyBox.y + keyBox.height <= 844, 'fullscreen key is outside viewport');
+      assert(keyBox.y > mapBox.y && keyBox.y + keyBox.height < mapBox.y + mapBox.height, 'key must float within the map');
+      assert(keyBox.height < 100, 'two-route key is unnecessarily tall');
       await page.screenshot({ path: `${out}fullscreen-${width}.png` });
       await page.getByRole('button', { name: 'Back', exact: true }).click();
     }
     const parsedPickup = run.live.parsed.find(o => o.routeLabel === 'Red').eta;
-    assert.deepEqual(parsedPickup.second, [1200, 1260]);
+    assert.equal(parsedPickup.second, null);
     assert.deepEqual(parsedPickup.first, [180, 540]);
     assert.deepEqual(parsedPickup.median, [300, 360]);
     await pickup.click();
     const details = page.getByRole('dialog');
     assert.match(await details.innerText(), /Likely arrival window: 3–9 min/);
+    assert.match(await details.innerText(), /The following arrival is estimated in about 20 min from now/);
     await details.getByRole('button', { name: 'Close arrival details' }).click();
     const later = page.getByRole('button', { name: 'Plan for later…', exact: true });
     assert.equal(await later.count(), 1);
