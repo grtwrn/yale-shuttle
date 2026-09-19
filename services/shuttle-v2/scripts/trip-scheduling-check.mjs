@@ -38,6 +38,8 @@ try {
       timezoneId: 'America/New_York', serviceWorkers: 'block' });
     await seedTestId(context);
     await context.addInitScript(({ now, fromLL, toLL }) => {
+      // Draft and clock belong to the app, not the optional external tracker frame.
+      if (window.top !== window) return;
       const D = Date;
       window.Date = class extends D { constructor(...a) { super(...(a.length ? a : [now])); } static now() { return now; } };
       sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({ fromText: 'Division / Prospect', fromLL,
