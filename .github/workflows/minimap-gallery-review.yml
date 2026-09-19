@@ -10,6 +10,7 @@ on:
       - 'services/shuttle-v2/web/src/ArrivalDetails.tsx'
       - 'services/shuttle-v2/web/src/MiniMapKey.tsx'
       - 'services/shuttle-v2/scripts/minimap-key-check.mjs'
+      - 'services/shuttle-v2/scripts/orange-east-map-check.mjs'
       - 'services/shuttle-v2/web/src/DestinationArrival.tsx'
       - 'services/shuttle-v2/web/src/TransitMap.tsx'
       - '.github/workflows/minimap-gallery-review.yml'
@@ -38,6 +39,8 @@ jobs:
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" TRIP_SCHEDULING_OUT=gallery-review/cards node scripts/trip-scheduling-check.mjs
       - name: Inspect recorded Red hold and the timing key
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-key-check.mjs
+      - name: Inspect Orange East from Division / Prospect to YSPH
+        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node --import tsx scripts/orange-east-map-check.mjs
       - name: Render current map and ten label-only variants
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-label-render.mjs
       - name: Inspect gallery and interactions in hosted Chrome

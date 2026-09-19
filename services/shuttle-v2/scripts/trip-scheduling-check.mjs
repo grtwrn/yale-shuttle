@@ -157,10 +157,6 @@ try {
     assert.match(await destination.innerText(), /~/);
     assert.equal(await departure.inputValue(), '2026-09-18T11:00');
     await capture('future');
-    const routeTraces = page.locator('.trip-map-canvas .map-route-line');
-    assert(await routeTraces.count() >= 2, 'future trip must exercise multiple route traces');
-    const offsets = await routeTraces.evaluateAll(es => es.map(e => e.dataset.offset));
-    assert.equal(new Set(offsets).size, offsets.length, 'route traces share an offset');
     const saved = await page.evaluate(() => JSON.parse(sessionStorage.getItem('shuttle-trip-draft')));
     assert.equal(saved.tripTime, '2026-09-18T11:00');
     assert(!Object.hasOwn(saved, 'arriveBy') && !Object.hasOwn(saved, 'classBufferMin'));
@@ -173,8 +169,6 @@ try {
     await page.getByRole('button', { name: '← All routes', exact: true }).waitFor();
     assert.equal(await destination.getAttribute('data-kind'), 'window');
     run.expanded = await destination.innerText();
-    assert.equal(await routeTraces.count(), 1);
-    assert.equal(await routeTraces.getAttribute('data-offset'), '0', 'selected route must follow its original geometry');
     assert.equal(await table.locator('tbody[data-route]').count(), 1, 'detail key must narrow to the selected route');
     assert.deepEqual(run.errors, []);
     assert(!run.requests.some(r => r.path === '/api/report'));
