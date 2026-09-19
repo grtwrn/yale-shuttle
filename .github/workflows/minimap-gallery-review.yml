@@ -40,7 +40,7 @@ jobs:
       - name: Inspect recorded Red hold and the timing key
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-key-check.mjs
       - name: Inspect Orange East from Division / Prospect to YSPH
-        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/orange-east-map-check.mjs
+        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node --import tsx scripts/orange-east-map-check.mjs
       - name: Render current map and ten label-only variants
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-label-render.mjs
       - name: Inspect gallery and interactions in hosted Chrome

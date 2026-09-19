@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { seedTestId } from './testId.mjs';
+import { traceStopLegs, polylineMeters } from '../web/src/geo.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(root, 'gallery-review/orange-east');
@@ -12,6 +13,13 @@ await fs.mkdir(out, { recursive: true });
 const feed = JSON.parse(await fs.readFile(path.join(root, 'scripts/__fixtures__/minimap-label-feed.json'), 'utf8'));
 const now = feed.server_eta.servedAt;
 const report = { errors: [], scope: 'Recorded route geometry; scheduled evening trip, not live ETA validation' };
+const routeStops = feed.routes['17'];
+const routeCoords = [...routeStops, routeStops[0]].map(id => feed.stop_coords[id]);
+report.geometry = traceStopLegs(feed.route_paths['17'], routeCoords).map((leg, i) => ({
+  from: feed.stop_names[routeStops[i]], to: feed.stop_names[routeStops[(i + 1) % routeStops.length]],
+  meters: Math.round(polylineMeters(leg.slice)), bridged: leg.bridged,
+}));
+assert(report.geometry.every(leg => !leg.bridged), 'Orange East drawing falls back to a straight line between stops');
 const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
@@ -23,7 +31,7 @@ try {
     window.setInterval = () => 0;
     sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({ fromText: 'Division / Prospect', fromLL,
       toText: 'School of Public Health (YSPH)', toLL: { lat: 41.303735, lon: -72.932155 },
-      tripTime: '2026-09-18T19:00', expandedKey: null, savedAt: now }));
+      tripTime: '', expandedKey: null, savedAt: now }));
   }, { now, fromLL: feed.stop_coords[48] });
   const page = await context.newPage();
   page.on('pageerror', e => report.errors.push(e.message));
@@ -39,7 +47,12 @@ try {
     catch { return route.fulfill({ status: 404 }); }
   });
   await page.goto('https://orange-east.test');
-  await page.getByTestId('route-timing-table').waitFor();
+  // Choose an evening departure after the recorded feed has loaded, as a
+  // rider does. The initial empty feed cannot supply scheduled route geometry.
+  await page.getByRole('button', { name: 'View Red trip details', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Plan for later…', exact: true }).click();
+  await page.getByLabel('Departure time', { exact: true }).fill('2026-09-18T19:00');
+  await page.getByText(/Estimated from service hours and typical wait and travel times/).waitFor();
   const more = page.getByRole('button', { name: /Show \d+ more route/ });
   if (await more.isVisible()) await more.click();
   report.options = await page.getByTestId('route-timing-table').innerText();
@@ -56,6 +69,9 @@ try {
   assert.deepEqual(report.errors, []);
   await page.locator('.trip-map-wrap').screenshot({ path: path.join(out, 'division-prospect-ysph-390.png'), animations: 'disabled' });
   await context.close();
+} catch (error) {
+  report.errors.push(String(error.stack));
+  throw error;
 } finally {
   await browser.close();
   await fs.writeFile(path.join(out, 'result.json'), JSON.stringify(report, null, 2));
