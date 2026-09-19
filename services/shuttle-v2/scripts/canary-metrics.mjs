@@ -93,13 +93,21 @@ export function bucketOf(token) {
 export function parseBusEtaText(line) {
   let t = String(line).replace(/^🚌\s*/u, "").trim();
   const full = t;
-  // Compact pickup summary: both values are arrivals from now, not a gap.
-  const compact = t.match(/^(Arrives in (~?)(<1|\d+) min|At your stop)\s*ⓘ?(?:\s*\nNext in ~?(<1|\d+) min)?$/);
-  if (compact) return {
-    first: compact[1] === 'At your stop' ? [0, 10] : compact[3] === '<1' ? [0, 60] : bucketOf(compact[3]),
-    second: compact[4] === '<1' ? [0, 60] : compact[4] ? bucketOf(compact[4]) : null,
-    raw: full, spread: false, bunched: false,
-  };
+  // Keep the visible pickup window, its point and the following arrival
+  // separate. The next value is an arrival from now, not a gap.
+  const compact = t.match(/^(Arrives in ~?(<1|\d+) min|At your stop)(?:,\s*(<1|\d+)(?:[–-](\d+))? min range)?\s*ⓘ?(?:\s*\nNext in ~?(<1|\d+) min)?$/);
+  if (compact) {
+    const point = compact[1] === 'At your stop' ? [0, 10] : compact[2] === '<1' ? [0, 60] : bucketOf(compact[2]);
+    const second = compact[5] === '<1' ? [0, 60] : compact[5] ? bucketOf(compact[5]) : null;
+    if (compact[3]) {
+      const lo = compact[3] === '<1' ? 0 : Number(compact[3]) * 60;
+      const hi = Number(compact[4] ?? compact[3]) * 60;
+      return Number.isFinite(hi) && hi >= lo ? {
+        first: [lo, hi], median: point, second, raw: full, spread: true, bunched: false,
+      } : null;
+    }
+    return { first: point, second, raw: full, spread: false, bunched: false };
+  }
   // The tappable ETA keeps the point and prediction window on separate lines.
   // Score the window when both are captured, retaining the point separately.
   const detail = t.match(/^About (<1|\d+) min\s*ⓘ?\s*\nLikely (<1|\d+)(?:[–-](\d+))? min$/);

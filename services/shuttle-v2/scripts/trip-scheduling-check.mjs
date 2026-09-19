@@ -72,7 +72,10 @@ try {
       const box = await destination.boundingBox();
       const pickup = card.getByRole('button', { name: /^Red arrival details:/ });
       const pickupBox = await pickup.count() ? await pickup.boundingBox() : null;
-      if (pickupBox) assert(pickupBox.x + pickupBox.width <= box.x, 'pickup overlaps destination');
+      if (pickupBox) {
+        assert(pickupBox.x + pickupBox.width <= box.x, 'pickup overlaps destination');
+        assert(await pickup.evaluate(e => e.scrollWidth <= e.clientWidth), 'pickup text clipped');
+      }
       assert(box.x >= 0 && box.x + box.width <= width, 'destination range outside viewport');
       assert(await destination.evaluate(e => e.scrollWidth <= e.clientWidth), 'clipped destination range');
       assert(await destination.locator('span[style*="white-space"]').evaluateAll(es => es.every(e => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects().length === 1; })), 'clock digits wrap');
@@ -86,11 +89,15 @@ try {
     assert.equal(await destination.getAttribute('data-kind'), 'window');
     assert.match(await destination.innerText(), /10:21a–10:27a/);
     const pickup = card.getByRole('button', { name: /^Red arrival details:/ });
-    assert.match(await pickup.innerText(), /Arrives in ~5 min/);
+    assert.match(await pickup.innerText(), /Arrives in ~5 min, 3–9 min range/);
+    assert(await pickup.getByTestId('pickup-range').isVisible(), 'pickup window must remain visible on the card');
     assert.match(await pickup.innerText(), /Next in ~20 min/);
     assert.doesNotMatch(await card.innerText(), /^23 min$/m, 'total duration still occupies card');
     await capture('live');
-    assert.deepEqual(run.live.parsed.find(o => o.routeLabel === 'Red').eta.second, [1200, 1260]);
+    const parsedPickup = run.live.parsed.find(o => o.routeLabel === 'Red').eta;
+    assert.deepEqual(parsedPickup.second, [1200, 1260]);
+    assert.deepEqual(parsedPickup.first, [180, 540]);
+    assert.deepEqual(parsedPickup.median, [300, 360]);
     await pickup.click();
     const details = page.getByRole('dialog');
     assert.match(await details.innerText(), /Likely arrival window: 3–9 min/);

@@ -2877,3 +2877,14 @@ Show 2 more routes`;
   expect(parseOptions('Blue Night\nAt destination\n~11:20p')[0]).toMatchObject({ routeLabel: 'Blue Night', eta: null });
   expect(parseOptions('Red\nETA unavailable')[0]).toMatchObject({ routeLabel: 'Red', eta: null, arriveText: null });
 });
+
+
+it('retains the visible pickup window alongside the point and following shuttle', () => {
+  const summary = 'Arrives in ~5 min, 3–9 min range\nNext in ~20 min';
+  const expected = { first: [180, 540], median: [300, 360], second: [1200, 1260], spread: true };
+  expect(parseBusEtaText(summary)).toMatchObject(expected);
+  expect(parseOptions(`Red\n${summary}\nAt destination\n10:21a–10:27a`)[0].eta).toMatchObject(expected);
+  expect(parseBusEtaText('Arrives in <1 min, <1–2 min range')).toMatchObject({ first: [0, 120], median: [0, 60] });
+  expect(parseBusEtaText('Arrives in ~5 min, 9–3 min range')).toBeNull();
+  expect(parseBusEtaText('Arrives in ~5 min, 3 min range')).toMatchObject({ first: [180, 180] });
+});
