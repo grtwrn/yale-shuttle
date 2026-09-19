@@ -60,7 +60,9 @@ try {
     });
     await page.goto('https://trip-ui.test', { waitUntil: 'domcontentloaded' });
     const card = page.getByRole('button', { name: 'View Red trip details', exact: true });
-    const destination = card.getByTestId('destination-arrival');
+    const table = page.getByTestId('route-timing-table');
+    const row = table.locator('[data-route="Red"]');
+    const destination = row.getByTestId('destination-arrival');
     await card.waitFor();
     await destination.locator('[style*="white-space"]').first().waitFor();
     async function capture(state) {
@@ -70,7 +72,7 @@ try {
       assert.doesNotMatch(text, /Arrive by|Plan for class|Class starts/);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal page overflow');
       const box = await destination.boundingBox();
-      const pickup = card.getByRole('button', { name: /^Red arrival details:/ });
+      const pickup = row.getByRole('button', { name: /^Red arrival details:/ });
       const pickupBox = await pickup.count() ? await pickup.boundingBox() : null;
       if (pickupBox) {
         assert(pickupBox.x + pickupBox.width <= box.x, 'pickup overlaps destination');
@@ -81,19 +83,39 @@ try {
       assert(await destination.locator('span[style*="white-space"]').evaluateAll(es => es.every(e => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects().length === 1; })), 'clock digits wrap');
       await fs.writeFile(`${out}${state}-${width}.txt`, text + '\n');
       await page.screenshot({ path: `${out}${state}-${width}.png`, fullPage: true });
-      run[state] = { text, card: await card.innerText(), destination: await destination.innerText(), parsed: parseOptions(text), recognizedCard: hasArrivalClock(await card.innerText()) };
+      run[state] = { text, card: await card.innerText(), destination: await destination.innerText(), parsed: parseOptions(text), recognizedCard: await card.getAttribute('aria-label') === 'View Red trip details' };
       assert(run[state].recognizedCard, 'watcher cannot recognize Red card');
+      assert(hasArrivalClock(await destination.innerText()), 'watcher cannot recognize destination clock');
+      assert.equal(await card.getByTestId('destination-arrival').count(), 0);
+      assert.equal(await card.getByRole('button', { name: /arrival details:/ }).count(), 0);
+      assert.doesNotMatch(await card.innerText(), /Arrives in|At destination|most direct|wait.*for/);
+      assert.equal(await page.locator('.trip-map-canvas .eta-tip:not(.bus-wait-tip)').count(), 0, 'stop timing chips still drawn');
+      assert(await table.evaluate(e => e.scrollWidth <= e.clientWidth), 'key clips horizontally');
       assert(run[state].parsed.some(o => o.routeLabel === 'Red'), 'watcher cannot parse Red card');
       assert(run[state].parsed.some(o => o.routeLabel === 'Walk'), 'watcher cannot parse walking alternative');
     }
     assert.equal(await destination.getAttribute('data-kind'), 'window');
     assert.match(await destination.innerText(), /10:21a–10:27a/);
-    const pickup = card.getByRole('button', { name: /^Red arrival details:/ });
-    assert.match(await pickup.innerText(), /Arrives in ~5 min, 3–9 min range/);
-    assert(await pickup.getByTestId('pickup-range').isVisible(), 'pickup window must remain visible on the card');
-    assert.match(await pickup.innerText(), /Next in ~20 min/);
+    const pickup = row.getByRole('button', { name: /^Red arrival details:/ });
+    assert.match(await pickup.innerText(), /~5 \(3–9\)/);
+    assert(await pickup.getByTestId('pickup-range').isVisible(), 'pickup window must remain visible in the key');
+    assert.match(await pickup.innerText(), /Next ~20/);
     assert.doesNotMatch(await card.innerText(), /^23 min$/m, 'total duration still occupies card');
     await capture('live');
+    await page.getByRole('button', { name: 'Collapse map', exact: true }).click();
+    assert(await table.isVisible(), 'collapsing map hides arrival estimates');
+    assert.equal(await page.locator('.trip-map-canvas').count(), 0);
+    await page.getByRole('button', { name: 'Expand map', exact: true }).click();
+    await page.locator('.trip-map-canvas').waitFor();
+    if (width === 390) {
+      await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
+      await page.locator('.trip-map-wrap.map-fs').waitFor();
+      const keyBox = await table.boundingBox(), mapBox = await page.locator('.trip-map-canvas').boundingBox();
+      assert(keyBox.y >= mapBox.y + mapBox.height, 'timing key covers the map');
+      assert(keyBox.y + keyBox.height <= 844, 'fullscreen key is outside viewport');
+      await page.screenshot({ path: `${out}fullscreen-${width}.png` });
+      await page.getByRole('button', { name: 'Back', exact: true }).click();
+    }
     const parsedPickup = run.live.parsed.find(o => o.routeLabel === 'Red').eta;
     assert.deepEqual(parsedPickup.second, [1200, 1260]);
     assert.deepEqual(parsedPickup.first, [180, 540]);
@@ -122,8 +144,9 @@ try {
     assert.match(await destination.innerText(), /10:21a–10:27a/);
     await card.focus(); await page.keyboard.press('Enter');
     await page.getByRole('button', { name: '← All routes', exact: true }).waitFor();
-    assert.equal(await page.getByTestId('destination-arrival').getAttribute('data-kind'), 'window');
-    run.expanded = await page.getByTestId('destination-arrival').innerText();
+    assert.equal(await destination.getAttribute('data-kind'), 'window');
+    run.expanded = await destination.innerText();
+    assert.equal(await table.locator('tbody tr').count(), 1, 'detail key must narrow to the selected route');
     assert.deepEqual(run.errors, []);
     assert(!run.requests.some(r => r.path === '/api/report'));
     await context.close();

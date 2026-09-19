@@ -19,6 +19,7 @@ export interface ArrivalDetailsProps {
   stopsAway?: number | null;
   holdingAt?: string;
   atPickup?: boolean;
+  variant?: 'card' | 'table';
 }
 
 export function ArrivalDetails(props: ArrivalDetailsProps) {
@@ -31,6 +32,8 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
   const gap = estimatedGap(etaSec, nextSec);
   const next = gap !== null ? (nextSec! < 60 ? '<1 min' : fmtMin(nextSec!)) : null;
   const pickup = atPickup ? 'At your stop' : `Arrives in ${etaSec < 60 ? '<1 min' : `~${fmtMin(etaSec)}`}`;
+  const table = props.variant === 'table';
+  const compact = atPickup ? 'At stop' : `${etaSec < 60 ? '<1' : `~${fmtMin(etaSec).replace(' min', '')}`}${band ? ` (${band.text.replace(' min', '')})` : ''}`;
   const sameBus = !!nextBusName && nextBusName.replace(/^#/, '') === busName.replace(/^#/, '');
   const dots = distributionSec?.map(s => now + remainingSec(s, computedAtMs, now) * 1000);
   // An interval bar communicates the three known quantiles without inventing
@@ -39,14 +42,14 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
   const position = (sec: number) => `${Math.max(0, Math.min(100, 100 * sec / extent))}%`;
   const valueStyle = { margin: 0, fontWeight: 600, textAlign: 'right' as const };
   return <>
-    <button type="button" aria-haspopup="dialog" aria-label={`${routeLabel} arrival details: ${pickup}${next ? `, next in ${next}` : ''}${band ? `, likely ${band.text}` : ''}`}
+    <button type="button" aria-haspopup="dialog" aria-label={`${routeLabel} arrival details: ${pickup}${band ? `, likely ${band.text}` : ''}${next ? `, next in ${next}` : ''}`}
       onKeyDown={e => e.stopPropagation()}
       onClick={e => { e.stopPropagation(); dialog.current?.showModal(); setOpen(true); }}
       style={{ border: 0, background: 'transparent', padding: '4px 0', minHeight: 44, minWidth: 0, color: '#374151', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
       <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>
-        {pickup}{band && <span data-testid="pickup-range" style={{ fontWeight: 400, color: '#5f6368' }}>, {band.text} range</span>}
+        {table ? <span data-testid={band ? 'pickup-range' : undefined}>{compact}</span> : <>{pickup}{band && <span data-testid="pickup-range" style={{ fontWeight: 400, color: '#5f6368' }}>, {band.text} range</span>}</>}
       </span>
-      {next && <span style={{ display: 'block', fontSize: 12, color: '#5f6368' }}>Next in {next.startsWith('<') ? next : `~${next}`}</span>}
+      {next && <span style={{ display: 'block', fontSize: 12, color: '#5f6368' }}>{table ? `Next ${next.startsWith('<') ? '' : '~'}${next.replace(' min', '')}` : `Next in ${next.startsWith('<') ? next : `~${next}`}`}</span>}
     </button>
     {createPortal(<dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)} onKeyDown={e => e.stopPropagation()} onClick={e => {
       e.stopPropagation();
