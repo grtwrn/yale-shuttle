@@ -102,10 +102,12 @@ try {
     report.runs.push({ width, waiting, table: await table.innerText(), overview });
     if (width === 390) {
       // Deliberately identical paths expose occlusion that two merely
-      // intersecting real routes would not. Bus locations remain recorded.
+      // intersecting real routes would not. Put both synthetic buses on them
+      // so the Map tab's running/on-route filter includes both lines.
+      const redBus = feed.buses.find(b => b.route_id === 3);
       servedFeed = { ...feed, routes: { '1': feed.routes['3'], '3': feed.routes['3'] },
         route_paths: { '1': feed.route_paths['3'], '3': feed.route_paths['3'] },
-        buses: [feed.buses.find(b => b.route_id === 1), feed.buses.find(b => b.route_id === 3)] };
+        buses: [{ ...redBus, route_id: 1, bus_name: '#38', bus_id: 999 }, redBus] };
       await page.reload();
       await page.getByRole('button', { name: /^map$/i }).click();
       const lines = page.locator('.map-route-line:visible');
@@ -135,7 +137,7 @@ try {
       await page.waitForTimeout(250);
       const afterZoom = await checkSeparation();
       await page.screenshot({ path: path.join(out, 'identical-routes-separated-390.png'), fullPage: true });
-      report.overlap = { fixture: 'Synthetic identical Blue Day / Red paths with recorded bus positions', beforeZoom, afterZoom };
+      report.overlap = { fixture: 'Synthetic identical Blue Day / Red paths and bus positions', beforeZoom, afterZoom };
     }
     await context.close();
   }
