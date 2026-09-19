@@ -3,6 +3,14 @@ import { DestinationArrival } from './DestinationArrival';
 import type { TripOption } from './planner';
 import { fmtMin, fmtWalk } from './format';
 
+function RoutePill({ option }: { option: TripOption }) {
+  return <span data-testid="route-pill" style={{ display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box',
+    padding: '3px 7px', borderRadius: 6, fontWeight: 600, lineHeight: '16px',
+    background: option.mode === 'walk' ? 'transparent' : option.color,
+    color: option.mode === 'walk' ? '#5f6368' : '#fff',
+    border: option.mode === 'walk' ? '1px solid #dadce0' : undefined }}>{option.routeLabel}</span>;
+}
+
 export interface TimingRow {
   option: TripOption;
   pickup?: ArrivalDetailsProps;
@@ -31,8 +39,8 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
           {onSelectRoute ? <button type="button" aria-label={`View ${option.routeLabel} trip details`}
             onClick={event => { event.stopPropagation(); onSelectRoute(option.routeLabel); }}
             style={{ display: 'inline-block', width: '100%', minHeight: 44, padding: 0, border: 0, background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer', overflowWrap: 'anywhere' }}>
-            {option.routeLabel}
-          </button> : option.routeLabel}
+            <RoutePill option={option} />
+          </button> : <RoutePill option={option} />}
         </th>
         <td style={{ padding: '0 6px' }}>
           {pickup ? <ArrivalDetails {...pickup} variant="table" /> : <span style={{ display: 'block', padding: '12px 0' }}>{status}</span>}

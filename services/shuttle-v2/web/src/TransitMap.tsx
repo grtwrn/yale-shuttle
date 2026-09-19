@@ -37,6 +37,7 @@ import { useMapFullscreen } from "./useMapFullscreen";
 import { arrivalBand, standChipFor, standWaitFor } from "./standWait";
 import { waitLegText } from "./etaBand";
 import { MiniMapKey, type TimingRow } from "./MiniMapKey";
+import { addRouteLines } from './routeLines';
 import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
 import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
@@ -981,14 +982,13 @@ const CombinedTripMap: FC<{
     L.marker([to.lat, to.lon], { icon: makeDestPin(), zIndexOffset: 500 })
       .addTo(map).bindTooltip("End", { direction: "top" });
 
-    // Each option: colored polyline, board/alight rings. Use the
-    // pre-sliced route path when available, straight line otherwise.
+    const clearRouteLines = addRouteLines(map, options.filter(o => o.segCoords.length >= 2).map(o => ({
+      label: o.label, color: o.color,
+      path: o.road && o.road.length >= 2 ? o.road : o.segCoords.map(s => [s.lat, s.lon] as [number, number]),
+    })));
+    // Each option keeps its board/alight rings at the real stop coordinates.
     for (const o of options) {
       if (o.segCoords.length < 2) continue;
-      const road: [number, number][] = o.road && o.road.length >= 2
-        ? o.road
-        : o.segCoords.map((s) => [s.lat, s.lon] as [number, number]);
-      L.polyline(road, { color: o.color, weight: 5, opacity: 0.9 }).addTo(map);
       const board = o.segCoords[0];
       const alight = o.segCoords[o.segCoords.length - 1];
       // Stops the bus calls at along the way, as small faded dots — the same
@@ -1048,6 +1048,7 @@ const CombinedTripMap: FC<{
 
     return () => {
       clearTimeout(sizeTimer);
+      clearRouteLines();
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
@@ -1361,11 +1362,14 @@ const AllRoutesMap: FC<{
       const toggle = ROUTE_ID_TO_TOGGLE[Number(rid)];
       return !toggle || !hiddenRoutes.has(toggle);
     };
+    const routeLines: { label: string; color: string; path: [number, number][] }[] = [];
     for (const [rid, path] of Object.entries(routePaths)) {
       if (!path || path.length < 2 || !shown(rid)) continue;
-      L.polyline(path, { color: routeColorFor(Number(rid)), weight: 4, opacity: 0.85 }).addTo(map);
+      routeLines.push({ label: ROUTE_LISTS.find(cfg => cfg.routeIds.includes(rid))?.label ?? rid,
+        color: routeColorFor(Number(rid)), path });
       for (const p of path) pts.push(p);
     }
+    const clearRouteLines = addRouteLines(map, routeLines);
     // Stops follow their routes: a lone dot from a hidden line is noise.
     const stopIds = new Set<number>();
     for (const [rid, ids] of Object.entries(routeStops)) {
@@ -1417,6 +1421,7 @@ const AllRoutesMap: FC<{
 
     return () => {
       clearTimeout(t1); clearTimeout(t2);
+      clearRouteLines();
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
