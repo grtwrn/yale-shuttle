@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { announcementRouteLabels, announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement } from "./announcements";
+import { announcementRouteLabels, announcementsForRoute, announcementsForRoutes, generalAnnouncements, isGroceryTransitionAnnouncement } from "./announcements";
 
 describe("announcementRouteLabels", () => {
   // The live banner that motivated the feature, verbatim.
@@ -59,6 +59,12 @@ describe("announcementsForRoute", () => {
 
   it("spares unaffected routes the targeted banner", () => {
     expect(announcementsForRoute("Purple", banners).map((a) => a.id)).toEqual([2]);
+  });
+
+  it("shows each shared alert once across route choices, including general alerts", () => {
+    expect(announcementsForRoutes(['Red', 'Brown'], banners).map(a => a.id)).toEqual([1, 2]);
+    expect(announcementsForRoutes(['Grocery Ham'], banners).map(a => a.id)).toEqual([2]);
+    expect(announcementsForRoutes([], banners)).toEqual([]);
   });
 });
 
