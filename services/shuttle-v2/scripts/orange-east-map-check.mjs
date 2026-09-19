@@ -60,6 +60,8 @@ try {
   const stops = page.getByTestId('trip-stop-list');
   await stops.waitFor();
   report.stops = await stops.innerText();
+  // The pinned Date prevents Leaflet's tile fade from advancing.
+  await page.addStyleTag({ content: '.trip-map-wrap .leaflet-tile { opacity: 1 !important; }' });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() => {
     const tiles = [...document.querySelectorAll('.trip-map-canvas .leaflet-tile')];

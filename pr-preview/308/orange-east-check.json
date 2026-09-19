@@ -1,0 +1,80 @@
+{
+  "errors": [],
+  "scope": "Recorded route geometry; scheduled evening trip, not live ETA validation",
+  "geometry": [
+    {
+      "from": "333 Cedar",
+      "to": "York / Chapel",
+      "meters": 679,
+      "bridged": false
+    },
+    {
+      "from": "York / Chapel",
+      "to": "Elm / Orange",
+      "meters": 1003,
+      "bridged": false
+    },
+    {
+      "from": "Elm / Orange",
+      "to": "Eagle / Nash",
+      "meters": 1977,
+      "bridged": false
+    },
+    {
+      "from": "Eagle / Nash",
+      "to": "Nash / Willow",
+      "meters": 141,
+      "bridged": false
+    },
+    {
+      "from": "Nash / Willow",
+      "to": "Nicoll / Edwards",
+      "meters": 618,
+      "bridged": false
+    },
+    {
+      "from": "Nicoll / Edwards",
+      "to": "Olive / Lyon",
+      "meters": 1461,
+      "bridged": false
+    },
+    {
+      "from": "Olive / Lyon",
+      "to": "Olive / Greene",
+      "meters": 261,
+      "bridged": false
+    },
+    {
+      "from": "Olive / Greene",
+      "to": "Olive / Chapel",
+      "meters": 208,
+      "bridged": false
+    },
+    {
+      "from": "Olive / Chapel",
+      "to": "Olive / Wooster",
+      "meters": 116,
+      "bridged": false
+    },
+    {
+      "from": "Olive / Wooster",
+      "to": "Union / Fair",
+      "meters": 499,
+      "bridged": false
+    },
+    {
+      "from": "Union / Fair",
+      "to": "Union Station (N)",
+      "meters": 917,
+      "bridged": false
+    },
+    {
+      "from": "Union Station (N)",
+      "to": "333 Cedar",
+      "meters": 1668,
+      "bridged": false
+    }
+  ],
+  "options": "Route\tAt stop (in min)\tAt destination\nBlue West\t\nScheduled\n\t~Sep 18, 7:21p\n\n🚶 1 min\n›\n🚌 7 min\n›\n🚶 3 min\n›\n\nOrange Night\t\nScheduled\n\t~Sep 18, 7:31p\n\n🚶 9 min\n›\n🚌 9 min\n›\n🚶 3 min\n›\n\nBlue Night\t\nScheduled\n\t~Sep 18, 7:31p\n\n🚶 15 min\n›\n🚌 5 min\n›\n🚶 1 min\n›\n\nOrange East\t\nScheduled\n\t~Sep 18, 7:42p\n\n🚶 20 min\n›\n🚌 9 min\n›\n🚶 3 min\n›\n\nWalk\t\n—\n\t~Sep 18, 7:37p\n\n🚶 37 min\n›",
+  "stops": "BOARDNicoll/Edwards\nOlive/Lyon\nOlive/Greene\nOlive/Chapel\nOlive/Wooster\nUnion/Fair\nUnion Station (N)\nGET OFF333 Cedar"
+}
