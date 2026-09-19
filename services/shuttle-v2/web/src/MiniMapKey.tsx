@@ -28,8 +28,8 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
     <colgroup><col style={{ width: '23%' }} /><col style={{ width: '37%' }} /><col style={{ width: '40%' }} /></colgroup>
     <thead><tr style={{ color: '#5f6368', fontSize: 11 }}>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Route</th>
-      <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>At stop <span style={{ fontWeight: 400 }}>(in min)</span></th>
-      <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500, textAlign: 'right' }}>At destination</th>
+      <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Board in <span style={{ fontWeight: 400 }}>(min)</span></th>
+      <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500, textAlign: 'right' }}>Arrive at</th>
     </tr></thead>
     {rows.map(({ option, pickup, status, note }) => <tbody key={option.routeLabel} data-route={option.routeLabel}
       onClick={onSelectRoute ? () => onSelectRoute(option.routeLabel) : undefined}

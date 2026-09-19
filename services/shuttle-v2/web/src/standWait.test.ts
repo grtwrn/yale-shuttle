@@ -338,7 +338,6 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
     const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
     // The key and expanded details use one shared timing calculation.
     expect(src.match(/const busEtaLive\b/g)?.length).toBe(1);
-    expect(src.match(/const leadBand\b/g)?.length).toBe(1);
     expect(src.match(/= getTripTiming\(o\)/g)?.length).toBe(3);
     // The tappable summary reads the same arrival, retaining the full bounds.
     expect(src).toContain("etaSec: busEtaLive, lowSec: o.busLowSec, highSec: o.busHighSec");
@@ -372,9 +371,8 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
 describe("the render sites read the shared composition", () => {
   const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
 
-  it("imports both helpers and calls each twice", () => {
-    expect(src).toContain('import { arrivalBand, standChipFor, standWaitFor } from "./standWait";');
-    expect(src).toContain('import { waitLegText } from "./etaBand";');
+  it("uses the shared stop-list compositions", () => {
+    expect(src).toContain('import { standChipFor } from "./standWait";');
     // The trip card's expanded stop list and the Map tab's route card.
     expect(src.match(/standChipFor\(/g)?.length).toBe(2);
     // The trip's BOARD row and the Map tab's per-stop countdown.
