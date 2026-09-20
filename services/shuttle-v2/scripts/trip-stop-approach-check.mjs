@@ -80,7 +80,7 @@ try {
       assert.match(await bus.innerText(), /⏸ 1:02/, 'current hold moved to the wrong visit');
       assert.equal(await ride.locator('[data-bus-here="true"]').count(), scenario.approach.length ? 0 : 1,
         'bus is highlighted on the future ride before pickup');
-      if (scenario.approach.length) assert.match(await stops.innerText(), new RegExp(`${scenario.approach.length} stops? to pickup`));
+      if (scenario.approach.length) assert.match(await stops.innerText(), new RegExp(`${scenario.approach.length} stops? away`));
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal overflow');
       await page.addStyleTag({ content: '.trip-map-wrap .leaflet-tile { opacity: 1 !important; }' });
       if (scenario.stop === 98) {

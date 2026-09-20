@@ -2805,7 +2805,7 @@ const TripPlanner: FC<{
           // the rider (or us) to tell whether the anchor was wrong
           // or they were simply watching a different shuttle.
           <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>
-            🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} to pickup
+            🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} away
           </div>
         )}
         {approachStops.length > 0 && (
