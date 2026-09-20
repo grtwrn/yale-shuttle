@@ -2689,10 +2689,13 @@ const TripPlanner: FC<{
         )
       : -1;
     const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
-    // Approach: bus's current stop → the stop before the
-    // pickup, only while the bus is genuinely upstream.
+    // Follow the loop to the pickup even when the bus is currently on a
+    // stop the rider will visit AFTER boarding. That is an earlier visit,
+    // not evidence the rider is already aboard (report #121: Phelps Gate
+    // before a Mansfield / Division pickup hid the rest of Blue West's loop).
+    // A watched bus explicitly marked departed still belongs on the ride.
     const stopsAway = busAnchorIdx >= 0 ? (bi - busAnchorIdx + allStops.length) % allStops.length : 0;
-    const approachStops = busAnchorIdx >= 0 && stopsAway > 0 && busSegPos === -1
+    const approachStops = busAnchorIdx >= 0 && stopsAway > 0 && !o.departed
       ? (busAnchorIdx <= bi
           ? allStops.slice(busAnchorIdx, bi)
           : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
@@ -2806,7 +2809,7 @@ const TripPlanner: FC<{
           </div>
         )}
         {approachStops.length > 0 && (
-          <div style={{ position: "relative", paddingLeft: 16, marginBottom: 4 }}>
+          <div data-testid="trip-approach-stops" aria-label="Stops before pickup" style={{ position: "relative", paddingLeft: 16, marginBottom: 4 }}>
             <span style={{
               position: "absolute", left: 6, top: 6, bottom: 0,
               borderLeft: `2px dashed ${o.color}`, opacity: 0.4,
@@ -2818,7 +2821,7 @@ const TripPlanner: FC<{
               const stand = standAt(sid, showLive ? liveElapsedSec : null);
               const hl = stopRowHighlight(isBusHere, false, o.color);
               return (
-                <div key={sid} style={{
+                <div key={sid} data-stop-id={sid} data-bus-here={isBusHere || undefined} style={{
                   position: "relative", display: "flex", alignItems: "center",
                   padding: hl.banded ? "4px 6px" : "2px 0",
                   marginLeft: hl.banded ? -6 : 0,
@@ -2943,7 +2946,7 @@ const TripPlanner: FC<{
             })}
           </div>
         )}
-        <div style={{ position: "relative", paddingLeft: 16 }}>
+        <div data-testid="trip-ride-stops" aria-label="Stops after boarding" style={{ position: "relative", paddingLeft: 16 }}>
         <span style={{
           position: "absolute", left: 6, top: 6, bottom: 6,
           width: 2, background: o.color, opacity: 0.6,
@@ -2952,11 +2955,11 @@ const TripPlanner: FC<{
           const isBoard = j === 0;
           const isAlight = j === segStops.length - 1;
           const isEnd = isBoard || isAlight;
-          const isBusHere = j === busSegPos;
+          const isBusHere = approachStops.length === 0 && j === busSegPos;
           const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
           const hl = stopRowHighlight(isBusHere, isEnd, o.color);
           return (
-            <div key={sid} style={{
+            <div key={sid} data-stop-id={sid} data-bus-here={isBusHere || undefined} style={{
               position: "relative", display: "flex", alignItems: "center",
               padding: hl.banded ? "4px 6px" : "2px 0",
               marginLeft: hl.banded ? -6 : 0,
