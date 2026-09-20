@@ -12,6 +12,7 @@ on:
       - 'services/shuttle-v2/scripts/minimap-key-check.mjs'
       - 'services/shuttle-v2/scripts/orange-east-map-check.mjs'
       - 'services/shuttle-v2/scripts/grocery-search-check.mjs'
+      - 'services/shuttle-v2/scripts/trip-stop-approach-check.mjs'
       - 'services/shuttle-v2/web/src/grocerySearch.ts'
       - 'services/shuttle-v2/web/src/TripServiceNotices.tsx'
       - 'services/shuttle-v2/web/src/DestinationArrival.tsx'
@@ -46,6 +47,8 @@ jobs:
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node --import tsx scripts/orange-east-map-check.mjs
       - name: Check grocery search notices and service alerts before route selection
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/grocery-search-check.mjs
+      - name: Check the full bus approach before a loop-route pickup
+        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/trip-stop-approach-check.mjs
       - name: Render current map and ten label-only variants
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-label-render.mjs
       - name: Inspect gallery and interactions in hosted Chrome
