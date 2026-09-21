@@ -17,8 +17,8 @@ interface Clock {
   evidence: K10Evidence | undefined;
 }
 
-/** Only live reducer outputs enter this clock. No backfilled visits, restart
- * recovery, or future finalized database rows can manufacture an origin. */
+/** Only chronological GPS reducer outputs enter this clock. Historical GPS
+ * may be replayed; finalized database visits cannot manufacture an origin. */
 export class K10Clock {
   private clocks = new Map<string, Clock>();
 

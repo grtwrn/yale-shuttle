@@ -27,7 +27,7 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } from "./departure.js";
 import { visitRowsOf } from "./visitRows.js";
 import { recoverOpenVisit, type OpenArrival } from "./visitRecovery.js";
-import { K10Clock } from './k10Clock.js';
+import { K10Tracker, K10_HISTORY_MS, K10_HISTORY_LIMIT, type K10RecoveryStats } from './k10Tracker.js';
 import type {
   BusObservation,
   BusState,
@@ -453,7 +453,8 @@ export class Collector {
    * same track. See `departure.ts`.
    */
   private readonly visitStates = new Map<string, VisitState>();
-  private readonly k10Clock = new K10Clock();
+  private readonly k10Clock = new K10Tracker();
+  private readonly k10HistoryStmt: Database.Statement;
   /** Names seen carried by two live ids at once, cumulative. */
   private contendedNameEvents = 0;
 
@@ -665,6 +666,14 @@ export class Collector {
     // invisible here, and an id reissue is precisely the case where the clock
     // is SUPPOSED to restart (see MAX_HANDOFF_GAP_MS). DESC because the scan
     // walks backwards from the present until the stand ends.
+    // The time-leading index bounds the fleet scan to one hour. Include all
+    // route assignments and provider IDs for this name: both matter to replay.
+    this.k10HistoryStmt = this.sqlite.prepare(
+      "SELECT bus_id AS busId, bus_name AS busName, route_id AS routeId, lat, lon, heading, " +
+        "last_stop_id AS lastStopId, collected_at AS collectedAt FROM raw_positions " +
+        "WHERE collected_at >= ? AND collected_at < ? AND bus_name = ? " +
+        "ORDER BY collected_at DESC, bus_id DESC LIMIT ?",
+    );
     this.recentBusSamplesStmt = this.sqlite.prepare(
       "SELECT bus_id AS busId, bus_name AS busName, route_id AS routeId, lat, lon, heading, " +
         "last_stop_id AS lastStopId, collected_at AS collectedAt FROM raw_positions " +
@@ -863,7 +872,9 @@ export class Collector {
         );
         if (stepped.events.length > 0) this.persistEvents(stepped.events);
         if (stepped.visits.length > 0) this.persistVisits(stepped.visits);
-        this.k10Clock.update(observations, stepped.visits, this.states, this.visitStates, plan);
+        this.k10Clock.update(this.ref.get(), observations, obs => this.k10HistoryStmt.all(
+          obs.collectedAt - K10_HISTORY_MS, obs.collectedAt, obs.busName, K10_HISTORY_LIMIT,
+        ).reverse() as BusObservation[]);
         this.updateLivePositions(observations, plan);
         this.notifyPollObserver();
       } catch (err) {
@@ -961,11 +972,12 @@ export class Collector {
    * exceeded the 5 s poll interval; `droppedObservations` rising means the
    * feed is emitting rows we refuse to trust.
    */
-  pollStats(): { skipped: number; droppedObservations: number; knownBuses: number } {
+  pollStats(): { skipped: number; droppedObservations: number; knownBuses: number; k10History: K10RecoveryStats } {
     return {
       skipped: this.pollSkipped,
       droppedObservations: this.droppedObservations,
       knownBuses: this.livePositions.size,
+      k10History: this.k10Clock.stats(),
     };
   }
 
