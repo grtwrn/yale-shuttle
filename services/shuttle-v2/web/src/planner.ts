@@ -893,11 +893,23 @@ export const THIRD_SHUTTLE_KEEP_SLACK_SEC = 8 * 60;
  *   that row, gets the wider slack. A different route in the third slot has
  *   not earned it and must clear the normal bar.
  */
+/** Reports #125/#126: a short ride surrounded by almost the entire direct
+ * walk is a poor overview recommendation. Keep it in the full route list,
+ * but require a third less walking for the overview, regardless of ETA. */
+export function worthwhileOverviewOption(o: TripOption, directWalkSec = o.directWalkSec): boolean {
+  return o.mode !== 'shuttle' || o.walkToSec + o.walkFromSec <= directWalkSec * (2 / 3);
+}
+
 export function topVisibleOptions(
   sorted: readonly TripOption[],
   shownThird?: string | null,
 ): TripOption[] {
-  const shuttles = sorted.filter((o) => o.mode === "shuttle");
+  const directWalkSec = sorted.find(o => o.mode === 'walk')?.totalSec;
+  const eligible = sorted.filter(o => worthwhileOverviewOption(o, directWalkSec ?? o.directWalkSec));
+  // Without a direct-walk alternative (e.g. a walk over an hour), retain
+  // the best available option rather than rendering an empty overview.
+  if (eligible.length === 0) return sorted.slice(0, 1);
+  const shuttles = eligible.filter((o) => o.mode === "shuttle");
   const second = shuttles[1];
   const third = shuttles[2];
   const slack = third !== undefined && third.routeLabel === shownThird
@@ -906,9 +918,9 @@ export function topVisibleOptions(
   const keepThird =
     second !== undefined && third !== undefined &&
     commuteSec(third) <= commuteSec(second) + slack;
-  const promoted = directPromotion(sorted);
+  const promoted = directPromotion(eligible);
   let seen = 0;
-  return sorted.filter((o) => {
+  return eligible.filter((o) => {
     if (o.mode !== "shuttle") return true;
     seen++;
     if (seen <= 2 || (seen === 3 && keepThird)) return true;
