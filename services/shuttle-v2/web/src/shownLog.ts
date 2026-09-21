@@ -46,6 +46,7 @@
  */
 
 import type { UpcomingArrival } from "./arrivals";
+import { k10TrialSelected } from './etaTrial';
 
 /** Server-side quantum; mirrored so the client dedups to the same buckets. */
 export const SHOWN_BUCKET_MS = 15_000;
@@ -90,7 +91,7 @@ export type ShownSurface = "trip" | "ride" | "card";
  * whose instant is wrong cannot be paired with an arrival, which is the whole
  * point of the table.
  */
-export type ShownTuple = [string, number, number, number, number, number, number, ShownSurface];
+export type ShownTuple = [string, number, number, number, number, number, number, ShownSurface | `${ShownSurface}-k10`];
 
 interface Pending {
   busName: string;
@@ -121,7 +122,7 @@ let installed = false;
 export function clientBuild(): string {
   try {
     const url = typeof import.meta !== "undefined" ? String(import.meta.url ?? "") : "";
-    return buildFromModuleUrl(url);
+    return buildFromModuleUrl(url) + (k10TrialSelected() ? '-k10' : '');
   } catch {
     return "dev";
   }
@@ -229,7 +230,8 @@ export function drainBatch(now = Date.now()): ShownTuple[] {
     // Negative would mean the clock went backwards mid-batch; drop rather than
     // post a reading the server will reject anyway.
     if (ageMs < 0 || ageMs > SHOWN_MAX_AGE_MS) continue;
-    out.push([r.busName, r.stopId, r.etaSec, r.lowSec, r.highSec, r.stopsAhead, ageMs, r.surface]);
+    const surface = k10TrialSelected() ? `${r.surface}-k10` as const : r.surface;
+    out.push([r.busName, r.stopId, r.etaSec, r.lowSec, r.highSec, r.stopsAhead, ageMs, surface]);
   }
   return out.slice(0, SHOWN_MAX_BATCH);
 }

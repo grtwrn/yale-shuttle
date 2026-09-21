@@ -153,6 +153,19 @@ async function browserSmoke(base, { markAsTest }) {
       }
     }
 
+    // The opt-in must reach the API, render, and be removable without changing
+    // any other saved route choices. Exercise the actual bundled frontend.
+    const trialPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
+      && new URL(r.url()).searchParams.get('eta_model') === 'k10');
+    await page.goto(`${base}/?eta_model=k10`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await trialPoll;
+    await page.getByText('Red ETA trial', { exact: true }).waitFor();
+    const usualPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
+      && !new URL(r.url()).searchParams.has('eta_model'));
+    await page.getByRole('link', { name: 'Use usual estimates' }).click();
+    await usualPoll;
+    if (new URL(page.url()).searchParams.has('eta_model')) fail('trial rollback did not remove opt-in');
+
     const fatal = errors.filter((e) => !e.startsWith("console:"));
     if (fatal.length) fail(`browser smoke: page errors:\n  ${fatal.join("\n  ")}`);
     if (errors.length) log(`  (non-fatal console errors: ${errors.length})`);
