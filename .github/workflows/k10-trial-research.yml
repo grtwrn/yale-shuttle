@@ -1,0 +1,34 @@
+name: k10-trial-research
+on:
+  push:
+    branches: [research/earlier-checkpoint-2026-09-21]
+    paths: ['research/earlier-checkpoint/live_trial.py', '.github/workflows/k10-trial-research.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: earlier-checkpoint-results
+          run-id: 35642308886
+          github-token: ${{ github.token }}
+          path: research/earlier-checkpoint/results
+      - name: Check the archived run and freeze the trial prior
+        run: |
+          python3 - <<'PY'
+          import pathlib,json,hashlib
+          root=pathlib.Path('research/earlier-checkpoint/results')
+          for name,digest in json.loads((root/'result-manifest.json').read_text()).items():
+              assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest,name
+          PY
+          python3 research/earlier-checkpoint/live_trial.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k10-trial-research
+          path: research/earlier-checkpoint/trial-results
+          retention-days: 30
