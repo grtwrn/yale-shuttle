@@ -25,10 +25,13 @@ not trigger it. The usual estimator continues to run on every collector poll,
 so it is warm when selected; it accounts for live GPS progress and waiting,
 rather than simply averaging from a stop label.
 
-If the earlier countdown falls to 60 seconds while upstream, use the full
-usual forecast. This prevents it reaching the UI's 15-second “now” threshold
-during a 45-second snapshot lifetime. This is a fallback, not a claim that the
-bus must arrive within one minute. Source clocks clear on a gap over 60 seconds,
+If any downstream countdown falls to 60 seconds while upstream, use the full
+usual forecast for the **whole downstream group**. Likewise, every pickup in
+the group must have sufficient historical support. A pickup-specific fallback
+could make a later stop appear to arrive before an earlier stop. The shared
+guard prevents both that mixed-model boundary and reaching the UI's 15-second
+“now” threshold during a 45-second snapshot lifetime. This is a fallback, not
+a claim that the bus must arrive within one minute. Source clocks clear on a gap over 60 seconds,
 route change, new lap or restart; the trial requires ten minutes of continuous
 observations and a newly observed source departure. Unknown or stale evidence,
 route-order changes and insufficient history also select the usual forecast.
@@ -43,7 +46,7 @@ renewing or broadening the trial requires evaluating a refreshed prior.
 ## Evidence and limitations
 
 Research source: `research/earlier-checkpoint-2026-09-21`, export commit
-`9739210`, [hosted validation](https://github.com/grtwrn/yale-shuttle/actions/runs/35645600276).
+`01a1979`, [hosted validation](https://github.com/grtwrn/yale-shuttle/actions/runs/35647393979).
 The frozen causal replay artifact is from
 [run 35642308886](https://github.com/grtwrn/yale-shuttle/actions/runs/35642308886).
 No rider identifiers, positions or report images enter the model or fixtures.
@@ -55,11 +58,14 @@ pickups on the same bus trip are correlated.
 
 | Pickup cohort | Usual error / width / coverage | K10 with expiry fallback |
 | --- | --- | --- |
-| Division / Prospect, 36 visits | 1:56 / 10:04 / 93.8% | 2:00 / 6:44 / 84.1% |
-| All 14 pickups, 89 visits | 1:52 / 10:30 / 95.5% | 1:41 / 7:04 / 88.9% |
+| Division / Prospect, 36 visits | 1:56 / 10:04 / 93.8% | 1:58 / 6:49 / 84.7% |
+| All 14 pickups, 89 visits | 1:52 / 10:30 / 95.5% | 1:48 / 7:07 / 88.4% |
 
 The expiry fallback removed all 54 recorded K10 false-now snapshots (ETA at
 most 15s with actual arrival over 120s away) in the paired 14-stop cohort.
+The shared guard also removed three pickup-order reversals introduced by the
+pickup-specific expiry guard: zero reversals over 30 seconds in 189 paired
+adjacent-stop readings, matching the usual estimator in that subset.
 This does not establish zero future failures. Narrower bands have lower
 coverage, and long Canal waits remain sparsely represented. The live overlay
 also requires the ring and causal tracker to agree on the same-lap occurrence;

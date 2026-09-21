@@ -117,7 +117,7 @@ describe("the served answer", () => {
     expect(engine.stats().steps).toBe(1);
     expect(engine.contribute(payload, 1, now)).toEqual(control);
     expect(control.trial).toBeUndefined();
-    const row = trial.rows.find((r,i) => r[2] !== control.rows[i]![2])!;
+    const row = trial.rows.find(r => r[2] !== control.rows.find(c => c[0] === r[0] && c[1] === r[1] && c[5] === r[5])![2])!;
     expect(engine.historyPosition('Red','306',row[1],row[2],now,true)).not.toBeNull();
     released = true;
     const next = { ...payload, buses: [{ ...bus, observed_at: now + 5000 }] };

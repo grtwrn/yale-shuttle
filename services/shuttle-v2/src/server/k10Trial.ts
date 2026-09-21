@@ -42,12 +42,27 @@ export function k10Prediction(model: K10Model, target: number, departed: number,
     distribution: Array.from({ length: 50 }, (_, i) => q((i + .5) / 50)) };
 }
 
+/** Expiry is a bus/section decision, never a pickup-specific switch. Otherwise
+ * a later pickup could retain a short prior while an earlier one jumps to live. */
+export function k10GroupPredictions(model: K10Model, departed: number, now: number) {
+  const predictions = new Map<number, NonNullable<ReturnType<typeof k10Prediction>>>();
+  for (const target of model.sequence.slice(15)) {
+    const p = k10Prediction(model, target, departed, now);
+    if (p) predictions.set(target, p);
+  }
+  // 45s snapshot lifetime + 15s 'now' threshold. All downstream pickups share
+  // this same source and elapsed clock, so the fallback cannot slide by target.
+  if (predictions.size !== model.sequence.length - 15 || [...predictions.values()].some(p => p.eta <= 60)) return null;
+  return predictions;
+}
+
 /** Overlay only this lap's validated downstream pickups. Full live rows and
  * distributions survive every fallback and the observed-departure handoff. */
 export function applyK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<string, K10Evidence>,
   sequence: readonly number[] | undefined, model = K10_MODEL): ServerEtaWire {
   const enabled = sequence?.join(',') === model.sequence.join(',') && wire.at < model.validUntil;
   let changed = 0;
+  const byBus = new Map<string, ReturnType<typeof k10GroupPredictions>>();
   const distributions = wire.rows.map((_, i) => wire.distributions?.[i] ?? []);
   const rows = wire.rows.map((r, i): ServerEtaRow => {
     const b = wire.buses[r[0]], e = b && evidence.get(b[0]);
@@ -57,13 +72,17 @@ export function applyK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<string,
       || b[2] < 4 || b[2] > 14 || r[5] !== target - b[2]
       || e.origin.departed > e.origin.knownAt || e.origin.knownAt > e.observedAt
       || e.observedAt > wire.at || wire.at - e.observedAt > 15_000) return r;
-    const p = k10Prediction(model, r[1], e.origin.departed, wire.at);
-    // A historical countdown must not become "now" upstream while a cached
-    // snapshot is still fresh (45s TTL + the 15s now threshold).
-    if (!p || p.eta <= 60) return r;
+    if (!byBus.has(b[0])) byBus.set(b[0], k10GroupPredictions(model, e.origin.departed, wire.at));
+    const p = byBus.get(b[0])?.get(r[1]);
+    if (!p) return r;
     changed++;
     distributions[i] = p.distribution.map(Math.round);
     return [r[0], r[1], Math.round(p.eta), Math.round(p.low), Math.round(p.high), r[5], r[6], r[7], r[8]];
   });
-  return { ...wire, rows, distributions, trial: { model: model.version, changedRows: changed, validUntil: model.validUntil } };
+  // Callers select the first arrival for a stop. A changed Red forecast can
+  // overtake another bus, so keep the shared API's ETA ordering and carry its
+  // distribution along with the row when it moves.
+  const ordered = rows.map((row, i) => ({ row, distribution: distributions[i]! })).sort((a,b) => a.row[2] - b.row[2]);
+  return { ...wire, rows: ordered.map(x => x.row), distributions: ordered.map(x => x.distribution),
+    trial: { model: model.version, changedRows: changed, validUntil: model.validUntil } };
 }
