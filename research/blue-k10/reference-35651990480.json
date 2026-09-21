@@ -1,0 +1,394 @@
+{
+  "1": {
+    "K10": {
+      "all": {
+        "snapshots": 5641,
+        "visits": 177,
+        "days": 2,
+        "mae": 167.2168870337407,
+        "width": 640.7502445227601,
+        "coverage": 0.8389482278846683,
+        "bias": 16.941033552966754,
+        "early": 0.09600000961521717,
+        "late": 0.06505176250011455,
+        "falseNow": 0.0001486767766874814
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K5": {
+      "all": {
+        "snapshots": 5641,
+        "visits": 177,
+        "days": 2,
+        "mae": 167.2168870337407,
+        "width": 640.7502445227601,
+        "coverage": 0.8389482278846683,
+        "bias": 16.941033552966754,
+        "early": 0.09600000961521717,
+        "late": 0.06505176250011455,
+        "falseNow": 0.0001486767766874814
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K10_first10": {
+      "all": {
+        "snapshots": 5641,
+        "visits": 177,
+        "days": 2,
+        "mae": 172.22868282760143,
+        "width": 621.776242503595,
+        "coverage": 0.8051216652445463,
+        "bias": 5.3147741381991365,
+        "early": 0.09712995311804203,
+        "late": 0.09774838163741165,
+        "falseNow": 0.0001486767766874814
+      },
+      "changed": {
+        "snapshots": 201,
+        "visits": 31,
+        "days": 2,
+        "mae": 383.66927090599455,
+        "width": 723.0542580645161,
+        "coverage": 0.3870967741935484,
+        "bias": -331.45858052506003,
+        "early": 0.03225806451612903,
+        "late": 0.5806451612903226,
+        "falseNow": 0.0
+      },
+      "usualOnChanged": {
+        "snapshots": 201,
+        "visits": 31,
+        "days": 2,
+        "mae": 335.204670995671,
+        "width": 902.4779059883548,
+        "coverage": 0.7258064516129032,
+        "bias": -227.9357309035051,
+        "early": 0.016129032258064516,
+        "late": 0.25806451612903225,
+        "falseNow": 0.0
+      }
+    },
+    "K5_first10": {
+      "all": {
+        "snapshots": 5641,
+        "visits": 177,
+        "days": 2,
+        "mae": 166.84675892711488,
+        "width": 625.6049985459706,
+        "coverage": 0.8354714786452072,
+        "bias": 14.204553883350034,
+        "early": 0.09712995311804203,
+        "late": 0.06739856823675079,
+        "falseNow": 0.0001486767766874814
+      },
+      "changed": {
+        "snapshots": 126,
+        "visits": 11,
+        "days": 2,
+        "mae": 215.46118699184765,
+        "width": 583.6193636363637,
+        "coverage": 0.8181818181818182,
+        "bias": -61.96384784259947,
+        "early": 0.09090909090909091,
+        "late": 0.09090909090909091,
+        "falseNow": 0.0
+      },
+      "usualOnChanged": {
+        "snapshots": 126,
+        "visits": 11,
+        "days": 2,
+        "mae": 207.75657383357384,
+        "width": 917.6386002886003,
+        "coverage": 0.9545454545454546,
+        "bias": -0.21319721019720947,
+        "early": 0.045454545454545456,
+        "late": 0.0,
+        "falseNow": 0.0
+      }
+    }
+  },
+  "4": {
+    "K10": {
+      "all": {
+        "snapshots": 406,
+        "visits": 43,
+        "days": 2,
+        "mae": 223.32424066856754,
+        "width": 946.8381977486708,
+        "coverage": 0.8831782945736434,
+        "bias": -121.9295672577148,
+        "early": 0.046511627906976744,
+        "late": 0.07031007751937984,
+        "falseNow": 0.0
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K5": {
+      "all": {
+        "snapshots": 406,
+        "visits": 43,
+        "days": 2,
+        "mae": 223.32424066856754,
+        "width": 946.8381977486708,
+        "coverage": 0.8831782945736434,
+        "bias": -121.9295672577148,
+        "early": 0.046511627906976744,
+        "late": 0.07031007751937984,
+        "falseNow": 0.0
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K10_first10": {
+      "all": {
+        "snapshots": 406,
+        "visits": 43,
+        "days": 2,
+        "mae": 223.32424066856754,
+        "width": 946.8381977486708,
+        "coverage": 0.8831782945736434,
+        "bias": -121.9295672577148,
+        "early": 0.046511627906976744,
+        "late": 0.07031007751937984,
+        "falseNow": 0.0
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K5_first10": {
+      "all": {
+        "snapshots": 406,
+        "visits": 43,
+        "days": 2,
+        "mae": 223.32424066856754,
+        "width": 946.8381977486708,
+        "coverage": 0.8831782945736434,
+        "bias": -121.9295672577148,
+        "early": 0.046511627906976744,
+        "late": 0.07031007751937984,
+        "falseNow": 0.0
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    }
+  },
+  "13": {
+    "K10": {
+      "all": {
+        "snapshots": 1684,
+        "visits": 62,
+        "days": 4,
+        "mae": 210.44441315310564,
+        "width": 779.2939407005877,
+        "coverage": 0.9115105106092962,
+        "bias": 105.44496243312116,
+        "early": 0.044582765515048986,
+        "late": 0.043906723875654786,
+        "falseNow": 0.0
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K5": {
+      "all": {
+        "snapshots": 1684,
+        "visits": 62,
+        "days": 4,
+        "mae": 210.44441315310564,
+        "width": 779.2939407005877,
+        "coverage": 0.9115105106092962,
+        "bias": 105.44496243312116,
+        "early": 0.044582765515048986,
+        "late": 0.043906723875654786,
+        "falseNow": 0.0
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K10_first10": {
+      "all": {
+        "snapshots": 1684,
+        "visits": 62,
+        "days": 4,
+        "mae": 210.44441315310564,
+        "width": 779.2939407005877,
+        "coverage": 0.9115105106092962,
+        "bias": 105.44496243312116,
+        "early": 0.044582765515048986,
+        "late": 0.043906723875654786,
+        "falseNow": 0.0
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K5_first10": {
+      "all": {
+        "snapshots": 1684,
+        "visits": 62,
+        "days": 4,
+        "mae": 210.44441315310564,
+        "width": 779.2939407005877,
+        "coverage": 0.9115105106092962,
+        "bias": 105.44496243312116,
+        "early": 0.044582765515048986,
+        "late": 0.043906723875654786,
+        "falseNow": 0.0
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    }
+  },
+  "16": {
+    "K10": {
+      "all": {
+        "snapshots": 953,
+        "visits": 31,
+        "days": 4,
+        "mae": 170.94525310420994,
+        "width": 1303.6421320057632,
+        "coverage": 0.9631669866302054,
+        "bias": 96.91658623686881,
+        "early": 0.03683301336979462,
+        "late": 0.0,
+        "falseNow": 0.0015549230444866118
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K5": {
+      "all": {
+        "snapshots": 953,
+        "visits": 31,
+        "days": 4,
+        "mae": 170.94525310420994,
+        "width": 1303.6421320057632,
+        "coverage": 0.9631669866302054,
+        "bias": 96.91658623686881,
+        "early": 0.03683301336979462,
+        "late": 0.0,
+        "falseNow": 0.0015549230444866118
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K10_first10": {
+      "all": {
+        "snapshots": 953,
+        "visits": 31,
+        "days": 4,
+        "mae": 170.94525310420994,
+        "width": 1303.6421320057632,
+        "coverage": 0.9631669866302054,
+        "bias": 96.91658623686881,
+        "early": 0.03683301336979462,
+        "late": 0.0,
+        "falseNow": 0.0015549230444866118
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    },
+    "K5_first10": {
+      "all": {
+        "snapshots": 953,
+        "visits": 31,
+        "days": 4,
+        "mae": 170.94525310420994,
+        "width": 1303.6421320057632,
+        "coverage": 0.9631669866302054,
+        "bias": 96.91658623686881,
+        "early": 0.03683301336979462,
+        "late": 0.0,
+        "falseNow": 0.0015549230444866118
+      },
+      "changed": {
+        "snapshots": 0,
+        "visits": 0
+      },
+      "usualOnChanged": {
+        "snapshots": 0,
+        "visits": 0
+      }
+    }
+  }
+}

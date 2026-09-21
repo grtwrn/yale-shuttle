@@ -1,9 +1,15 @@
 """Occurrence-aware Blue transfer test. Freeze forecasts before attaching test outcomes."""
-import bisect, collections, datetime as dt, gzip, json, math, statistics as st
+import bisect, collections, datetime as dt, gzip, json, math, os, statistics as st
 from pathlib import Path
-from prepare import HERE, OUT, ROUTES, TZ, CUTOFF, read, write, date
+from prepare import HERE, OUT, ROUTES, TZ, CUTOFF, read, date
+IN=OUT
+MODEL_CAP=int(os.environ.get('BLUE_MAX_PATH_SECONDS','2700'))
+if MODEL_CAP!=2700:OUT=IN/'long90';OUT.mkdir(exist_ok=True)
+def write(name,rows):
+    with gzip.open(OUT/(name+'.jsonl.gz'),'wt') as f:
+        for row in rows:f.write(json.dumps(row,separators=(',',':'))+'\n')
 ARMS={'K10':(10,None),'K5':(5,None),'K10_first10':(10,10),'K5_first10':(5,10)}
-WAITS={int(k):v for k,v in json.loads((OUT/'preparation.json').read_text())['waits'].items()}
+WAITS={int(k):v for k,v in json.loads((IN/'preparation.json').read_text())['waits'].items()}
 TEST=int(dt.datetime(2026,9,17,tzinfo=TZ).timestamp()*1000)
 def clock(ms):
     t=dt.datetime.fromtimestamp(ms/1000,TZ);return t.hour*60+t.minute+t.second/60
@@ -63,7 +69,7 @@ class Models:
                         if v['arrived_at'] is None:continue
                         if v['arrived_at']<=s['departed_at']:continue
                         duration=(v['arrived_at']-s['departed_at'])/1000
-                        if duration>2700:break
+                        if duration>MODEL_CAP:break
                         hop=distance(prev,v['stop_index'],n)
                         if hop>5:break
                         progress+=hop;prev=v['stop_index']
@@ -74,7 +80,7 @@ class Models:
                         if not quality.ok(bus,rid,s['departed_at'],v['arrived_at']):self.audit['disconnected_path']+=1;continue
                         e=dict(start=s['departed_at'],end=v['arrived_at'],day=date(s['departed_at']),duration=duration,weekend=weekend(s['departed_at']),bus=bus,sourceId=s['id'],targetId=v['id'])
                         self.paths[rid,k,w,ti].append(e);self.audit['paths']+=1
-                    self.audit['unreached_or_over45min']+=len(wanted)-len(reached)
+                    self.audit['unreached_or_overCap']+=len(wanted)-len(reached)
         assert all(e['end']<CUTOFF for es in self.paths.values() for e in es)
     def fit(self,rid,k,w,ti,departure):
         key=(rid,k,w,ti,departure)
@@ -115,7 +121,7 @@ class Models:
         forecasts={};elapsed=(r['at']-origin['departed'])/1000
         for target in targets(rid,w,limit):
             f=self.fit(rid,k,w,target,origin['departed'])
-            if f is None:return dict(base,reason='group lacks historical support')
+            if f is None:return dict(base,reason='group lacks historical support',unsupportedTarget=seq[target])
             candidate={key:max(0,f[key]-elapsed) for key in ('eta','low','high')}
             if candidate['eta']<=60:return dict(base,reason='group countdown expired')
             forecasts[target]=candidate
@@ -145,7 +151,7 @@ def metrics(rows,arm):
         f=r['baseline'] if arm=='usual' else r['forecasts'][arm]['forecast'];truth=r['truth'];err=f['eta']-truth
         by[r['route'],r['label']['id']].append(dict(mae=abs(err),width=f['high']-f['low'],coverage=float(f['low']<=truth<=f['high']),bias=err,early=float(truth<f['low']),late=float(truth>f['high']),falseNow=float(f['eta']<=15 and truth>120)))
     if not by:return dict(snapshots=0,visits=0)
-    return dict(snapshots=len(rows),visits=len(by),days=len({date(r['at']) for r in rows}),**{k:st.mean(st.mean(v[k] for v in vs) for vs in by.values()) for k in next(iter(by.values()))[0]})
+    return dict(snapshots=len(rows),visits=len(by),falseNowSnapshots=sum((r['baseline'] if arm=='usual' else r['forecasts'][arm]['forecast'])['eta']<=15 and r['truth']>120 for r in rows),days=len({date(r['at']) for r in rows}),**{k:st.mean(st.mean(v[k] for v in vs) for vs in by.values()) for k in next(iter(by.values()))[0]})
 def summarize(rows):
     result={}
     for arm in ARMS:
@@ -163,9 +169,9 @@ def invariants():
     return dict(wraparound=True,multipleWaits=True,overnightClock=True)
 def DateTs(s):return int(dt.datetime.fromisoformat(s).timestamp()*1000)
 def main():
-    checks=invariants();quality=Quality(read(OUT/'raw_positions.jsonl.gz'));visits=read(OUT/'stop_visits.jsonl.gz')
+    checks=invariants();quality=Quality(read(IN/'raw_positions.jsonl.gz'));visits=read(IN/'stop_visits.jsonl.gz')
     model=Models(visits,quality)
-    features=read(OUT/'features.jsonl.gz')
+    features=read(IN/'features.jsonl.gz')
     generated=[dict(r,forecasts={a:model.predict(r,a) for a in ARMS}) for r in features]
     write('forecasts',generated) # This artifact is written before evaluation labels are read.
     # Removing every future finalized visit must leave the training model identical.
@@ -178,7 +184,7 @@ def main():
         scored.append(dict(r,label=label,truth=(label['arrival']-r['at'])/1000))
     write('scored',scored)
     test=[r for r in scored if r['at']>=TEST]
-    result=dict(checks=checks,training=dict(model.audit),trainingByCell={str(k):len(v) for k,v in model.paths.items()},unmatched={str(k):v for k,v in unmatched.items()},routes={},days={},stops={},worst={})
+    result=dict(modelCapSeconds=MODEL_CAP,checks=checks,training=dict(model.audit),trainingByCell={str(k):len(v) for k,v in model.paths.items()},unmatched={str(k):v for k,v in unmatched.items()},routes={},days={},stops={},worst={})
     for rid in ROUTES:
         rs=[r for r in test if r['route']==rid];result['routes'][rid]=summarize(rs)
         result['days'][rid]={d:summarize([r for r in rs if date(r['at'])==d]) for d in sorted({date(r['at']) for r in rs})}
@@ -186,7 +192,7 @@ def main():
         result['worst'][rid]={a:sorted([dict(bus=r['bus'],at=r['at'],target=r['target'],truth=r['truth'],usual=r['baseline'],candidate=r['forecasts'][a]['forecast'],visit=r['label']['id']) for r in rs if r['forecasts'][a]['changed']],key=lambda r:abs(r['candidate']['eta']-r['truth']),reverse=True)[:10] for a in ARMS}
     # Delayed feed uses the SAME forecasts' evaluation rules and fixed prior.
     delayed=[]
-    for r in read(OUT/'features-delay15.jsonl.gz'):
+    for r in read(IN/'features-delay15.jsonl.gz'):
         if r['at']<TEST:continue
         label,reason=labels.label(r)
         if label:delayed.append(dict(r,forecasts={a:model.predict(r,a) for a in ARMS},label=label,truth=(label['arrival']-r['at'])/1000))
