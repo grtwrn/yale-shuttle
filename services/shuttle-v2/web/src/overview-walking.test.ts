@@ -35,3 +35,9 @@ it('does not let a retained third-slot label override the walking-benefit rule',
   const a=shuttle('Red',1,10,2,33),b=shuttle('Blue Day',2,15,3,33),green=shuttle('Green',8,5,16,33);
   expect(topVisibleOptions([a,b,green,walk(33)],'Green').map(o=>o.routeLabel)).toEqual(['Red','Blue Day','Walk']);
 });
+
+it('retains the best available trip when a long direct walk was suppressed', () => {
+  const only=shuttle('Green',30,5,30,75);
+  expect(topVisibleOptions([only])).toEqual([only]);
+  expect(topVisibleOptions([])).toEqual([]);
+});

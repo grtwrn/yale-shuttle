@@ -906,6 +906,9 @@ export function topVisibleOptions(
 ): TripOption[] {
   const directWalkSec = sorted.find(o => o.mode === 'walk')?.totalSec;
   const eligible = sorted.filter(o => worthwhileOverviewOption(o, directWalkSec ?? o.directWalkSec));
+  // Without a direct-walk alternative (e.g. a walk over an hour), retain
+  // the best available option rather than rendering an empty overview.
+  if (eligible.length === 0) return sorted.slice(0, 1);
   const shuttles = eligible.filter((o) => o.mode === "shuttle");
   const second = shuttles[1];
   const third = shuttles[2];
