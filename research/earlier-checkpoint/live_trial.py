@@ -36,7 +36,7 @@ def earliest_mean(departed):
         for day,_,w in weighted:days[day]+=w
         if total and total*total/sum(p[2]**2 for p in weighted)>=12 and sum(w>=.05*total for w in days.values())>=3:
             values[target]=sum(duration*w for _,duration,w in weighted)/total
-    return min(values.values()) if str(targets[0]) in values else None
+    return min(values.values()) if len(values)==len(targets) else None
 arm='wait_minus10_departure_mean/after_observed_exit'
 raw='wait_minus10_departure_mean/no_switch'
 paired=[];fixtures=[];counts=collections.Counter()
