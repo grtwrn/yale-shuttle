@@ -21,6 +21,7 @@ jobs:
         run: |
           if test -f research/blue-k10/replay.ts; then
             services/shuttle-v2/node_modules/.bin/tsx research/blue-k10/replay.ts
+            python3 research/blue-k10/test_behavior.py
             python3 research/blue-k10/evaluate.py
             BLUE_MAX_PATH_SECONDS=5400 python3 research/blue-k10/evaluate.py
             python3 research/blue-k10/audit.py

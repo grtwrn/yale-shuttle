@@ -134,6 +134,7 @@ class Outcomes:
         for vs in self.groups.values():vs.sort(key=lambda v:v['arrived_at'])
         self.times={k:[v['arrived_at'] for v in vs] for k,vs in self.groups.items()}
     def label(self,r):
+        if r['stopsAhead']>=len(ROUTES[r['route']]['stops']):return None,'later-lap forecast'
         key=r['bus'],r['route'],r['target'];vs=self.groups.get(key,[]);ts=self.times.get(key,[])
         i=bisect.bisect_right(ts,r['at'])
         # Already at the stop is not a new arrival forecast.

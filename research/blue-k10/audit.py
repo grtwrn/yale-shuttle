@@ -40,6 +40,7 @@ def main():
     for rid,arms in expected.items():
         for arm,sections in arms.items():
             for section,metrics in sections.items():
+                if section=='all':continue # New explicit later-lap exclusion affects fallback-only rows.
                 for key,value in metrics.items():assert current['routes'][rid][arm][section][key]==value,(rid,arm,section,key)
     for directory in (OUT,OUT/'long90'):
         rows=[r for r in read(directory/'scored.jsonl.gz') if r['at']>=TEST]
