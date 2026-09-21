@@ -149,12 +149,13 @@ class Labels:
         return None,'no unambiguous causal source/outcome match'
 
 class Predictor:
-    def __init__(self,episodes):
+    def __init__(self,episodes,cutoff=TRAIN_END):
+        self.cutoff=cutoff
         self.paths=collections.defaultdict(list)
         for e in episodes:
-            if e['day']<'2026-09-16' and e['end']<TRAIN_END:
+            if e['end']<cutoff:
                 self.paths[(e['sourceIndex'],e['target'])].append(e)
-        assert all(e['end']<TRAIN_END for rs in self.paths.values() for e in rs)
+        assert all(e['end']<cutoff for rs in self.paths.values() for e in rs)
 
     @staticmethod
     def fallback(r,reason):
@@ -180,7 +181,7 @@ class Predictor:
         suffix=arm in ('current_suffix','fixed_progress','five_before_progress')
         values=[];weights=[];days=[]
         for e in paths:
-            assert e['end']<TRAIN_END<=r['at']
+            assert e['end']<self.cutoff<=r['at']
             if suffix:
                 stage=e['stages'].get(str(r['index']))
                 if not stage:continue
