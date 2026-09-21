@@ -99,8 +99,9 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
         if(pass && pass.arrivedAt!==null && pass.stopIndex<=(downstream?27:13) && pass.arrivedAt<=asof && at-pass.arrivedAt<=2700000 && (!targetDeparture || targetDeparture.departed<pass.arrivedAt)){
           checkpointArrivals[pass.stopIndex]={stop:pass.stopId,index:pass.stopIndex,arrived:pass.arrivedAt,departed:pass.arrivedAt,knownAt:s.lastObservedAt,active:true};
         }
+        const compact=(entries:any)=>Object.fromEntries(Object.entries(entries).map(([i,e]:any)=>[i,{departed:e.departed,knownAt:e.knownAt}]));
         out.push({at,asof,day,bus:s.busName,busId:s.busId,target,index,nearestIndex:s.nearestIndex,phase,began,age:(at-began)/1000,observedAt:s.lastObservedAt,
-          lat:s.lat,lon:s.lon,origins:currentOrigins,checkpointOrigins,checkpointArrivals,releaseEvents:releases.get(s.busName)??[],canal:canal && canal.knownAt<=asof?canal:null,baseline:b,dense:at%30000===0});
+          lat:s.lat,lon:s.lon,origins:downstream?compact(currentOrigins):currentOrigins,checkpointOrigins:downstream?compact(checkpointOrigins):checkpointOrigins,checkpointArrivals:downstream?{}:checkpointArrivals,releaseEvents:releases.get(s.busName)??[],canal:canal && canal.knownAt<=asof?canal:null,baseline:b,dense:at%30000===0});
       }
     }
   }
@@ -121,8 +122,18 @@ for(const[day,rows]of byDay){
   audits.push({day,rawRows:rows.length,features:a.rows.length,delayedFeatures:b.rows.length,emittedVisits:a.emittedVisits,prefixRows:prefix.rows.length,prefixInvariant:true});
 }
 for(const[name,rows]of [['features',out],['features-delay15',delayed]] as const){
-  fs.writeFileSync(outputDir+'/'+name+'.jsonl.gz',zlib.gzipSync(rows.map(r=>JSON.stringify(r)).join('\n')+'\n'));
+  const path=outputDir+'/'+name+'.jsonl.gz';
+  fs.writeFileSync(path,'');
+  // Concatenated gzip members are a standard gzip stream, read transparently
+  // by Python gzip and Node gunzip. Bound each temporary string's size.
+  for(let start=0;start<rows.length;start+=500){
+    fs.appendFileSync(path,zlib.gzipSync(rows.slice(start,start+500).map(r=>JSON.stringify(r)).join('\n')+'\n'));
+  }
 }
-const hash=(x:any)=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
+const hash=(rows:any[])=>{
+  const h=crypto.createHash('sha256');h.update('[');
+  for(let i=0;i<rows.length;i++){if(i)h.update(',');h.update(JSON.stringify(rows[i]));}
+  h.update(']');return h.digest('hex');
+};
 fs.writeFileSync(outputDir+'/replay-audit.json',JSON.stringify({audits,duplicatePredictions,featureHash:hash(out),delayedHash:hash(delayed),note:'Current production detector/departure reducers, chronological raw observations only. No outcome table enters features. Red-only replay resets each day and after a per-bus gap over60s; ten-minute warmup required. Logged forecast clocks are15s buckets.'},null,2));
 console.log(JSON.stringify(audits));
