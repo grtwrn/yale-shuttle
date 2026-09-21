@@ -35,8 +35,16 @@ could make a later stop appear to arrive before an earlier stop. The shared
 guard prevents both that mixed-model boundary and reaching the UI's 15-second
 “now” threshold during a 45-second snapshot lifetime. This is a fallback, not
 a claim that the bus must arrive within one minute. Source clocks clear on a gap over 60 seconds,
-route change, new lap or restart; the trial requires ten minutes of continuous
-observations and a newly observed source departure. Unknown or stale evidence,
+route change or new lap. On restart, the server replays up to one hour (at most
+1,500 samples per bus) of its recorded GPS, then continues those same reducers
+with live observations. Ten minutes of continuous observations and a confirmed
+source departure are still required; historical GPS can now supply both.
+Only observations before the current poll enter recovery, never finalized visit
+rows. Ambiguous bus names, route changes and gaps break the recovered clock.
+Historical replay is isolated from arrival and calibration persistence.
+Missing or stale history falls back to ordinary live warmup. `/healthz`
+reports attempts, samples replayed, immediately recovered clocks and replay cost
+under `k10History`. Unknown or stale evidence,
 route-order changes and insufficient history also select the usual forecast.
 
 The historical prior is deliberately frozen for this bounded trial. It contains

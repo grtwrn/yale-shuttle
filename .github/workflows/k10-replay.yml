@@ -10,7 +10,7 @@ jobs:
   replay:
     # One-off qualification of this trial. The archived reference artifact has
     # finite retention and must not become a permanent dependency of other PRs.
-    if: github.head_ref == 'feat/k10-live-trial-2026-09-21'
+    if: github.head_ref == 'feat/k10-live-trial-2026-09-21' || github.head_ref == 'feat/k10-history-warmup-2026-09-21'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -34,3 +34,8 @@ jobs:
         env:
           TZ: America/New_York
         run: services/shuttle-v2/node_modules/.bin/tsx services/shuttle-v2/scripts/k10-clock-replay.ts research-source/research/earlier-checkpoint/data frozen-results
+      - name: Recover restart clocks from preceding GPS only
+        if: github.head_ref == 'feat/k10-history-warmup-2026-09-21'
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx services/shuttle-v2/scripts/k10-warmup-replay.ts research-source/research/earlier-checkpoint/data frozen-results

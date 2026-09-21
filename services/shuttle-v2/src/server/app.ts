@@ -1455,6 +1455,7 @@ export function buildApp(opts: AppOptions): Hono {
         knownBuses: buses.length,
         ...(serverEta ? { serverEta: serverEta.stats() } : {}),
         pollSkipped: poll.skipped,
+        k10History: poll.k10History,
         droppedObservations: poll.droppedObservations,
         // The commit this server was built from (SHUTTLE_BUILD_SHA, stamped by
         // the Dockerfile; "dev" otherwise). The scorecard versions its rows by
