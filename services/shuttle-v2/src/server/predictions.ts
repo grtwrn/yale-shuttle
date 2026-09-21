@@ -140,10 +140,11 @@ export const STANDING_LOOKBACK_MS = 2 * 60 * 60 * 1000;
  * rather than an obvious error. Anything else is recorded as `trip`-less and
  * dropped by `parseShownBatch`.
  */
-export const SHOWN_SURFACES = ["trip", "ride", "card", "trip-k10", "ride-k10", "card-k10"] as const;
-export type ShownSurface = (typeof SHOWN_SURFACES)[number];
+export const SHOWN_SURFACES = ["trip", "ride", "card"] as const;
+export const TRIAL_SURFACES = ['trip-k10', 'ride-k10', 'card-k10'] as const;
+export type ShownSurface = (typeof SHOWN_SURFACES)[number] | (typeof TRIAL_SURFACES)[number];
 export function isShownSurface(x: unknown): x is ShownSurface {
-  return typeof x === "string" && (SHOWN_SURFACES as readonly string[]).includes(x);
+  return typeof x === "string" && ([...SHOWN_SURFACES, ...TRIAL_SURFACES] as readonly string[]).includes(x);
 }
 
 /**
@@ -162,7 +163,7 @@ export function isShownSurface(x: unknown): x is ShownSurface {
 export const UPSTREAM_SURFACE = "upstream";
 
 /** Every value the `surface` COLUMN may hold. A superset of the wire list. */
-export const PREDICTION_SURFACES = [...SHOWN_SURFACES, UPSTREAM_SURFACE] as const;
+export const PREDICTION_SURFACES = [...SHOWN_SURFACES, ...TRIAL_SURFACES, UPSTREAM_SURFACE] as const;
 export type PredictionSurface = (typeof PREDICTION_SURFACES)[number];
 /**
  * Guards a READ, not a write. `/api/predictions?surface=…` names which arm to

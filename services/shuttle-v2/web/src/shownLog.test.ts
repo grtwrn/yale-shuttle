@@ -61,6 +61,13 @@ afterEach(() => {
 });
 
 describe("what leaves the browser", () => {
+  it('tags opt-in readings separately on the wire and in the bundle identity', async () => {
+    vi.stubGlobal('window', { location: { search: '?eta_model=k10' } });
+    alwaysSampled(); noteShown([arrival()], 'trip', T); await flushShown(T);
+    const body = JSON.parse(String(posts[0]!.init.body));
+    expect(body.b).toMatch(/-k10$/);
+    expect(body.p[0][7]).toBe('trip-k10');
+  });
   it("sends the reading and nothing about the reader", async () => {
     alwaysSampled();
     noteShown([arrival()], "trip", T);

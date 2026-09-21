@@ -55,8 +55,8 @@ pickups on the same bus trip are correlated.
 
 | Pickup cohort | Usual error / width / coverage | K10 with expiry fallback |
 | --- | --- | --- |
-| Division / Prospect, 36 visits | 1:56 / 10:04 / 93.8% | 2:00 / 6:44 / 84.3% |
-| All 14 pickups, 89 visits | 1:52 / 10:30 / 95.5% | 1:41 / 7:04 / 88.8% |
+| Division / Prospect, 36 visits | 1:56 / 10:04 / 93.8% | 2:00 / 6:44 / 84.1% |
+| All 14 pickups, 89 visits | 1:52 / 10:30 / 95.5% | 1:41 / 7:04 / 88.9% |
 
 The expiry fallback removed all 54 recorded K10 false-now snapshots (ETA at
 most 15s with actual arrival over 120s away) in the paired 14-stop cohort.
