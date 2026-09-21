@@ -11,6 +11,7 @@ import {
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
 import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
+import { etaTrialQuery, k10TrialSelected, withoutEtaTrial } from './etaTrial';
 import { liveAnchorStore } from "./eta";
 import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
@@ -6965,7 +6966,7 @@ const TransitMap: FC = () => {
         // Rider counting rides along on this poll rather than adding a beacon
         // of its own — see anonId.ts. Absent when storage is unavailable, which
         // the server treats as "uncounted", never as an error.
-        const res = await fetch("/api/buses", {
+        const res = await fetch(`/api/buses${etaTrialQuery() ? '?' + etaTrialQuery() : ''}`, {
           signal: controller.signal,
           headers: anonIdHeader(),
         });
@@ -7122,6 +7123,10 @@ const TransitMap: FC = () => {
         />
       )}
       {/* Header */}
+      {k10TrialSelected() && <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 14 }}>
+        <span>Red ETA trial</span>
+        <a href={withoutEtaTrial(window.location.href)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>Use usual estimates</a>
+      </div>}
       <div className="app-header" style={{
         width: "100%", maxWidth: 1200, padding: "20px 24px 6px",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 2,

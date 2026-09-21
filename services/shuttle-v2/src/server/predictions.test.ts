@@ -218,6 +218,16 @@ describe("deduplication — one row per (bus, stop, bucket, screen), whoever rep
     expect(rows()[0]!.predicted_sec).toBe(300);
   });
 
+  it('keeps K10 trial readings separate from default readings and accuracy', () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    rec.record([reading({ surface: 'trip' }), reading({ surface: 'trip-k10', etaSec: 190 })], ctx());
+    rec.flush();
+    expect(rows()).toHaveLength(2);
+    const control = bundle.sqlite.prepare(`SELECT surface FROM predictions_log WHERE ${RIDER_SURFACES_SQL}`).all();
+    expect(control).toEqual([{ surface: 'trip' }]);
+    expect(rows().find(r => r.surface === 'trip-k10')!.predicted_sec).toBe(190);
+  });
+
   it("drops a reading claiming a screen that does not exist", () => {
     const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
     // The surface is part of the dedup key, so an unrecognised value would

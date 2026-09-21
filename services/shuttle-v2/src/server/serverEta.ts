@@ -15,6 +15,8 @@ import type { LatLon } from "../../web/src/geo.js";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes.js";
 import { ETA_MAX_AGE_MS } from '../../web/src/etaSource.js';
 import { serialize, deserialize } from 'node:v8';
+import { applyK10Trial } from './k10Trial.js';
+import type { K10Evidence } from '../collector/k10Clock.js';
 
 export const RECOVERY_MAX_AGE_MS = 120_000;
 export interface EtaCheckpointStore { load(): Uint8Array | null; save(value: Uint8Array): void }
@@ -92,6 +94,8 @@ export class ServerEta {
 
   private lastVersion = -1;
   private wire: ServerEtaWire | null = null;
+  private trialWire: ServerEtaWire | null = null;
+  private trialEvidence: ((now: number) => ReadonlyMap<string, K10Evidence>) | undefined;
   private steps = 0;
   private failures = 0;
   private lastStepMs = 0;
@@ -146,19 +150,27 @@ export class ServerEta {
    * Never throws. A same-`version` call re-serves the rows already computed,
    * filtered to buses still in the payload — see constraint 2 in the header.
    */
-  contribute(payload: EtaPayloadView, version: number, now: number): ServerEtaWire | null {
+  useK10Trial(source: (now: number) => ReadonlyMap<string, K10Evidence>): void { this.trialEvidence = source; }
+
+  contribute(payload: EtaPayloadView, version: number, now: number, trial = false): ServerEtaWire | null {
     this.currentBuses = payload.buses;
     try {
       if (version !== this.lastVersion) {
         this.lastVersion = version;
         this.wire = this.recompute(payload, now);
+        this.trialWire = this.wire;
+        if (this.wire && this.trialEvidence) {
+          try { this.trialWire = applyK10Trial(this.wire, this.trialEvidence(now), payload.routes['3']); }
+          catch (err) { this.log('server_eta.k10_failed', { error: String(err) }); }
+        }
         this.saveCheckpoint(now);
       }
-      const wire = this.filterToLive(this.wire, payload.buses, now);
+      const wire = this.filterToLive(trial ? this.trialWire : this.wire, payload.buses, now);
       return wire ? { ...wire, servedAt: now } : null;
     } catch (err) {
       this.failures++;
       this.wire = null;
+      this.trialWire = null;
       this.log("server_eta.step_failed", {
         error: err instanceof Error ? err.message : String(err),
         failures: this.failures,
@@ -187,8 +199,8 @@ export class ServerEta {
 
   /** Read the same source occurrence as the displayed ETA, without stepping
    * the estimator. Used only to anchor historical fleet comparisons. */
-  historyPosition(label: string, busName: string, stopId: number, etaSec: number, now: number) {
-    const wire = this.filterToLive(this.wire, this.currentBuses, now);
+  historyPosition(label: string, busName: string, stopId: number, etaSec: number, now: number, trial = false) {
+    const wire = this.filterToLive(trial ? this.trialWire : this.wire, this.currentBuses, now);
     if (!wire || now < wire.at || now - wire.at >= ETA_MAX_AGE_MS) return null;
     const name = busName.replace(/^#/, '');
     const bi = wire.buses.findIndex(b => b[0] === name && b[1] === label);

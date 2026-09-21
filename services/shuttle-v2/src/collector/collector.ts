@@ -27,6 +27,7 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } from "./departure.js";
 import { visitRowsOf } from "./visitRows.js";
 import { recoverOpenVisit, type OpenArrival } from "./visitRecovery.js";
+import { K10Clock } from './k10Clock.js';
 import type {
   BusObservation,
   BusState,
@@ -452,6 +453,7 @@ export class Collector {
    * same track. See `departure.ts`.
    */
   private readonly visitStates = new Map<string, VisitState>();
+  private readonly k10Clock = new K10Clock();
   /** Names seen carried by two live ids at once, cumulative. */
   private contendedNameEvents = 0;
 
@@ -861,6 +863,7 @@ export class Collector {
         );
         if (stepped.events.length > 0) this.persistEvents(stepped.events);
         if (stepped.visits.length > 0) this.persistVisits(stepped.visits);
+        this.k10Clock.update(observations, stepped.visits, this.states, this.visitStates, plan);
         this.updateLivePositions(observations, plan);
         this.notifyPollObserver();
       } catch (err) {
@@ -980,6 +983,8 @@ export class Collector {
   dataVersion(): number {
     return this.version;
   }
+
+  k10Evidence(now: number) { return this.k10Clock.snapshot(now); }
 
   /**
    * One slot for something that must run on every poll that produced new

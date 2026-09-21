@@ -422,12 +422,13 @@ export function createBusesPayloadCache(
    * ordering that keeps that true.
    */
   serverEta?: ServerEta | null,
-): () => string {
+): (trial?: boolean) => string {
   let cachedVersion = -1;
   let cachedParamsVersion = -1;
   let cachedAt = 0;
   let cachedJson = "";
-  return () => {
+  let cachedTrialJson = "";
+  return (trial = false) => {
     const nowMs = Date.now();
     // The parameter set is its own version because a publish must reach riders
     // on their next poll and does NOT move the collector's data version: the
@@ -438,7 +439,7 @@ export function createBusesPayloadCache(
       && cachedParamsVersion === paramsVersion
       && nowMs - cachedAt < BUSES_CACHE_MAX_AGE_MS
     ) {
-      return cachedJson;
+      return trial ? cachedTrialJson : cachedJson;
     }
     cachedVersion = collector.dataVersion();
     cachedParamsVersion = paramsVersion;
@@ -450,8 +451,10 @@ export function createBusesPayloadCache(
       if (wire) payload["server_eta"] = wire;
     }
     cachedJson = JSON.stringify(payload);
+    const trialWire = serverEta?.contribute(payload as unknown as EtaPayloadView, collector.observationVersion(), nowMs, true);
+    cachedTrialJson = trialWire ? JSON.stringify({ ...payload, server_eta: trialWire }) : cachedJson;
     cachedAt = nowMs;
-    return cachedJson;
+    return trial ? cachedTrialJson : cachedJson;
   };
 }
 
