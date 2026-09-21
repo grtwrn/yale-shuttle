@@ -14,7 +14,7 @@ const net = TransitNetwork.build(top.stops,[top.route]);
 const seq:number[] = top.route.stops;
 const raw = input('raw_positions').sort((a,b)=>a.collected_at-b.collected_at || a.bus_id-b.bus_id);
 const predictions = input('predictions_log');
-const byDay = Map.groupBy(raw,r=>r.day);
+const byDay = Map.groupBy(raw.filter(r=>r.day>='2026-09-16'),r=>r.day);
 const preds = new Map<string,any>();
 let duplicatePredictions=0;
 for (const p of predictions) {

@@ -219,6 +219,62 @@
       "extension": true,
       "sha256": "f059053914431d1a677e198a73c05550479c2f0ad9ad1c749f415bc117066c00",
       "bytes": 7659669
+    },
+    {
+      "day": "2026-09-03",
+      "table": "raw_positions",
+      "purpose": "training path quality sensitivity",
+      "sha256": "81b274c19a4d4fa45d52583e6182b55e805fb42a2d91908333ca1ad440284f60",
+      "bytes": 1170195
+    },
+    {
+      "day": "2026-09-04",
+      "table": "raw_positions",
+      "purpose": "training path quality sensitivity",
+      "sha256": "d191af25433cec60619b8ca5cb37ef525fa5bc4c7f434e60a73157cf6055cd67",
+      "bytes": 1613158
+    },
+    {
+      "day": "2026-09-08",
+      "table": "raw_positions",
+      "purpose": "training path quality sensitivity",
+      "sha256": "914974e556ed495fffacf0a881bbf0a7e5a033df4b3e355e27264a316a1e3f30",
+      "bytes": 384999
+    },
+    {
+      "day": "2026-09-09",
+      "table": "raw_positions",
+      "purpose": "training path quality sensitivity",
+      "sha256": "b04fbea91a064db9c221515cbd4c0fa5b614815b5ab96d7c721baf8559216ee0",
+      "bytes": 601484
+    },
+    {
+      "day": "2026-09-10",
+      "table": "raw_positions",
+      "purpose": "training path quality sensitivity",
+      "sha256": "bd4539cafaca1c9b0c8c89ccf3aa9c40fcb4da6e37885dd459dd5c937aab5821",
+      "bytes": 1886099
+    },
+    {
+      "day": "2026-09-11",
+      "table": "raw_positions",
+      "purpose": "training path quality sensitivity",
+      "sha256": "d2017b5a34335caa0a6377dcd429864534fc09f412e93463a494646ba2fbc9b7",
+      "bytes": 117310
+    },
+    {
+      "day": "2026-09-14",
+      "table": "raw_positions",
+      "purpose": "training path quality sensitivity",
+      "sha256": "b29566295187107892aea9eca1eef02f8ece6956d7cb685affcaefa365b480be",
+      "bytes": 141906
+    },
+    {
+      "day": "2026-09-15",
+      "table": "raw_positions",
+      "purpose": "training path quality sensitivity",
+      "sha256": "3a3bc3fd73f7afb3ea5dc04059474d224df97424671021fbd4012de0bfa5b6f3",
+      "bytes": 141582
     }
   ],
   "outputs": {
@@ -259,14 +315,19 @@
       "bytes": 406134
     },
     "raw_positions.jsonl.gz": {
-      "sha256": "e16d8d73c123100c1e1688a0879bcab8f916b164190b0e1eda0d5b57d84f293e",
+      "sha256": "f6b7fbf70bf76165bdc7e2ba0fa3335e27ae35f178dba916631abb94a35eab18",
       "counts": {
         "2026-09-16": 23646,
         "2026-09-17": 22977,
         "2026-09-18": 22917,
-        "2026-09-21": 14128
+        "2026-09-21": 14128,
+        "2026-09-03": 17550,
+        "2026-09-04": 21718,
+        "2026-09-08": 1606,
+        "2026-09-09": 3819,
+        "2026-09-10": 23356
       },
-      "bytes": 886138
+      "bytes": 1602029
     },
     "predictions_log.jsonl.gz": {
       "sha256": "da5ab6c33728f8b756691fbffae86ea4f6ec07a112e4d8dbdff349906c9b3b74",
