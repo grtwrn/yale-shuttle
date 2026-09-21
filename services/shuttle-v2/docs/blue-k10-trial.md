@@ -63,3 +63,10 @@ Hosted checks compare every exported Blue forecast/fallback decision, replay raw
 GPS through the production tracker and startup recovery, and repeat Red's GPS
 replay to catch changes to its behavior. Regular gates cover types, the full
 application suite, build, staging API and a real-browser default/opt-out flow.
+
+The production replay matched 8,335 available Blue clocks (4,899 before release,
+3,436 released), all 413 sampled restarts, and all 2,100 replacement forecasts
+(1,329 Day, 771 West). It introduced no extra fallback in the qualified cohort.
+The broader count includes the reserved September 16 diagnostics and is an
+implementation-parity result, not additional independent accuracy evidence.
+Red's repeated replay matched 5,232 clocks and all 150 sampled restarts.
