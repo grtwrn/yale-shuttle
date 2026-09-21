@@ -47,8 +47,8 @@ class FollowupPredictor:
         if arm=='ten_before_pickup_mean':
             return TARGET_INDEX[row['target']]-10, False
         if arm.startswith('wait_minus'):
-            k = int(arm[len('wait_minus')])
-            assert k in (1,2)
+            k = int(arm[len('wait_minus'):].split('_')[0])
+            assert k in (1,2,5,10)
             return 14-k, '_arrival_' in arm
         raise ValueError(arm)
 

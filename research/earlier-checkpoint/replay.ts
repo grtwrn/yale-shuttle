@@ -27,6 +27,7 @@ for (const p of predictions) {
 function replay(rows:any[], day:string, delay=0, end=Infinity) {
   const states:any=new Map(), visits:any=new Map();
   const history=new Map<string,Map<number,any>>(), warm=new Map<string,any>();
+  const releases=new Map<string,any[]>();
   const times=new Set<number>();
   for(let at=Math.ceil(rows[0].collected_at/30000)*30000;at<=Math.min(rows.at(-1).collected_at,end);at+=30000)times.add(at);
   for(const p of predictions)if(p.day===day && p.predicted_at<=end)times.add(p.predicted_at);
@@ -41,7 +42,7 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
       for(const o of obs){
         const w=warm.get(o.busName);
         if(!w || time-w.last>60000){
-          warm.set(o.busName,{first:time,last:time});history.delete(o.busName);
+          warm.set(o.busName,{first:time,last:time});history.delete(o.busName);releases.delete(o.busName);
           for(const[k,s]of states)if(s.busName===o.busName){states.delete(k);visits.delete(k);}
         }else w.last=time;
       }
@@ -54,6 +55,10 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
         assert(e.departedAt<=time);
         let h=history.get(e.busName);if(!h)history.set(e.busName,h=new Map());
         h.set(e.stopIndex,{stop:e.stopId,index:e.stopIndex,arrived:e.arrivedAt,departed:e.departedAt,anchored:e.anchoredAt,knownAt:time,stand:e.standSec});
+        if(e.stopIndex===14 || (e.stopIndex===13 && e.standSec!==null && e.standSec>=300)){
+          // Replace the array so later departures cannot mutate earlier features.
+          releases.set(e.busName,[...(releases.get(e.busName)??[]).filter(r=>time-r.departed<=2700000),h.get(e.stopIndex)]);
+        }
         emittedVisits++;
       }
     }
@@ -92,7 +97,7 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
           checkpointArrivals[pass.stopIndex]={stop:pass.stopId,index:pass.stopIndex,arrived:pass.arrivedAt,departed:pass.arrivedAt,knownAt:s.lastObservedAt,active:true};
         }
         out.push({at,asof,day,bus:s.busName,busId:s.busId,target,index,nearestIndex:s.nearestIndex,phase,began,age:(at-began)/1000,observedAt:s.lastObservedAt,
-          lat:s.lat,lon:s.lon,origins:currentOrigins,checkpointOrigins,checkpointArrivals,canal:canal && canal.knownAt<=asof?canal:null,baseline:b,dense:at%30000===0});
+          lat:s.lat,lon:s.lon,origins:currentOrigins,checkpointOrigins,checkpointArrivals,releaseEvents:releases.get(s.busName)??[],canal:canal && canal.knownAt<=asof?canal:null,baseline:b,dense:at%30000===0});
       }
     }
   }
@@ -108,6 +113,7 @@ for(const[day,rows]of byDay){
   // Input prefix may end before a scheduled origin; use its last observed clock.
   assert.deepEqual(prefix.rows,expected.filter(r=>r.at<=rows.filter(r=>r.collected_at<=midpoint).at(-1).collected_at));
   for(const r of a.rows)for(const group of [r.origins,r.checkpointOrigins,r.checkpointArrivals])for(const e of Object.values(group) as any[])assert(e.knownAt<=r.asof && e.departed<=r.asof);
+  for(const r of a.rows)for(const e of r.releaseEvents)assert((e.index===14 || (e.index===13 && e.stand>=300)) && e.knownAt<=r.asof && e.departed<=r.asof);
   out.push(...a.rows);delayed.push(...b.rows);
   audits.push({day,rawRows:rows.length,features:a.rows.length,delayedFeatures:b.rows.length,emittedVisits:a.emittedVisits,prefixRows:prefix.rows.length,prefixInvariant:true});
 }
