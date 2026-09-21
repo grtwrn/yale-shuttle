@@ -8,6 +8,9 @@ permissions:
   actions: read
 jobs:
   replay:
+    # One-off qualification of this trial. The archived reference artifact has
+    # finite retention and must not become a permanent dependency of other PRs.
+    if: github.head_ref == 'feat/k10-live-trial-2026-09-21'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
