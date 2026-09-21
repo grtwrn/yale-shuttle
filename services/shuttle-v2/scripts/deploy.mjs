@@ -153,18 +153,20 @@ async function browserSmoke(base, { markAsTest }) {
       }
     }
 
-    // The opt-in must reach the API, render, and be removable without changing
-    // any other saved route choices. Exercise the actual bundled frontend.
-    const trialPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
-      && new URL(r.url()).searchParams.get('eta_model') === 'k10');
-    await page.goto(`${base}/?eta_model=k10`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-    await trialPoll;
+    // Red uses the trial by default. Exercise opting out and restoring the
+    // default through the actual bundled frontend and its API requests.
     await page.getByText('Red ETA trial', { exact: true }).waitFor();
     const usualPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
-      && !new URL(r.url()).searchParams.has('eta_model'));
-    await page.getByRole('link', { name: 'Use usual estimates' }).click();
+      && new URL(r.url()).searchParams.get('eta_model') === 'usual');
+    await page.getByRole('link', { name: 'Use previous estimates' }).click();
     await usualPoll;
-    if (new URL(page.url()).searchParams.has('eta_model')) fail('trial rollback did not remove opt-in');
+    await page.getByText('Previous Red estimates', { exact: true }).waitFor();
+    const defaultPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
+      && !new URL(r.url()).searchParams.has('eta_model'));
+    await page.getByRole('link', { name: 'Use updated estimates' }).click();
+    await defaultPoll;
+    if (new URL(page.url()).searchParams.has('eta_model')) fail('restoring Red default left an override');
+    await page.getByText('Red ETA trial', { exact: true }).waitFor();
 
     const fatal = errors.filter((e) => !e.startsWith("console:"));
     if (fatal.length) fail(`browser smoke: page errors:\n  ${fatal.join("\n  ")}`);

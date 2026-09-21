@@ -220,9 +220,9 @@ describe("deduplication — one row per (bus, stop, bucket, screen), whoever rep
 
   it('keeps K10 trial readings separate from default readings and accuracy', () => {
     const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
-    rec.record([reading({ surface: 'trip' }), reading({ surface: 'trip-k10', etaSec: 190 })], ctx());
+    rec.record([reading({ surface: 'trip' }), reading({ surface: 'trip-k10', etaSec: 190 }), reading({ surface: 'trip-usual', etaSec: 250 })], ctx());
     rec.flush();
-    expect(rows()).toHaveLength(2);
+    expect(rows()).toHaveLength(3);
     const control = bundle.sqlite.prepare(`SELECT surface FROM predictions_log WHERE ${RIDER_SURFACES_SQL}`).all();
     expect(control).toEqual([{ surface: 'trip' }]);
     expect(rows().find(r => r.surface === 'trip-k10')!.predicted_sec).toBe(190);

@@ -33,7 +33,7 @@ export function ArrivalHistory({ route, stopId, etaSec, busName }: { route: stri
     let active = true;
     const timeout = setTimeout(() => abort.abort(), 10_000);
     const query = new URLSearchParams({ route, stop: String(stopId), bus: busName, eta: String(Math.round(etaSec)), limit: '100' });
-    if (k10TrialSelected()) query.set('eta_model', 'k10');
+    if (!k10TrialSelected()) query.set('eta_model', 'usual');
     fetch(`/api/journey-history?${query}`, { signal: abort.signal }).then(async r => {
       if (!r.ok) throw new Error('history unavailable');
       const raw = await r.json();

@@ -319,7 +319,7 @@ export function buildApp(opts: AppOptions): Hono {
     const stop = c.req.query('stop') ?? '', eta = c.req.query('eta') ?? '';
     if (!label || label.length > 40 || !bus || bus.length > 24 || !stop || !eta
       || !Number.isFinite(Number(eta)) || Number(eta) < 0 || Number(eta) > 14_400) return c.json({ error: 'invalid_query' }, 400);
-    const position = serverEta?.historyPosition(label, bus, Number(stop), Number(eta), at, c.req.query('eta_model') === 'k10') ?? null;
+    const position = serverEta?.historyPosition(label, bus, Number(stop), Number(eta), at, c.req.query('eta_model') !== 'usual') ?? null;
     // Older cached clients only accept 24 observations. New readers request
     // the larger sample explicitly; both remain bounded and cached separately.
     const limit = c.req.query('limit');
@@ -347,7 +347,7 @@ export function buildApp(opts: AppOptions): Hono {
     // HTTP response rewinds waiting clocks and extends stale forecast life.
     // busesJson already memoizes the expensive payload on the server.
     c.header("Cache-Control", "no-store");
-    return c.body(busesJson(c.req.query('eta_model') === 'k10'));
+    return c.body(busesJson(c.req.query('eta_model') !== 'usual'));
   });
 
   // -- What the client actually displayed ------------------------------------
