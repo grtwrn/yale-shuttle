@@ -1,0 +1,31 @@
+{
+  "run": "https://github.com/grtwrn/yale-shuttle/actions/runs/35637541951",
+  "codeCommit": "e163b40be0801a0ba998d2e625d56f0a9513ac81",
+  "resultHashes": {
+    "primary-scored.jsonl.gz": "8d40df2c91dc4a54ac3d2f10a3a3d521705b7429879628f594f7834bfedf8ccc",
+    "features-delay15.jsonl.gz": "33cf2a8461d77d6e8d8cb5221e94b29bd784a9a3f7ea7f32e7d0eb47c6c12a84",
+    "label-audit.json": "f21982194b50b8112af9f0b70ebb54a06c9b3f299ba7a9f39ac3c3eef779ea64",
+    "followup-scored.jsonl.gz": "86ff23498921fb4c2e29000745d6895ffde163a8de7cc11c540823bdfdf0d0f6",
+    "followup-calibration.json": "86e57e7e3c7f20af1eb9480e15cbcefb601edebaad317384d8a145094ffc7a4c",
+    "replay-audit.json": "e29852ddaf705662eeeb7d17562ab1530dc314671408cb7402299ca46ee7362d",
+    "delay15-scored.jsonl.gz": "8b9efaa251cbd6af417870d752c1f6299cbaefd472f9de59742dd33d9ab7b651",
+    "followup-rolling-scored.jsonl.gz": "09a4b43a67c1e74b1867dbd3128aae88e78c66ef2d50e8a76aa91bbbd3a45bd8",
+    "rolling-scored.jsonl.gz": "b71ffe14c3ae0c28a3525d863be27b1df436b1670458813d70310622b135b840",
+    "rolling-summary.json": "25f2ffc41c0209bb890a00d40ca2c476055c79e7af9d93c84afee00470bc75de",
+    "summary.json": "231a6df21afd5ca45dbec38de0fed3ff9ebd9509c6a095ed8ec0ce72ce37da99",
+    "followup-delay15-scored.jsonl.gz": "523d7eb645bda8b8739a2f02c399fb643e5e2a57a2b2fe1d060a72d86c572cfe",
+    "audit.json": "40e0f24ca460cb05b896c527f57341814a2340494374fb7e5c988d17f7c9e22e",
+    "followup-predictions.jsonl.gz": "444bc17ed17fadf6629acfe09714f34ed537b9e3763049bd7cbeb409463369df",
+    "delay15-predictions.jsonl.gz": "23bbebdd790300d90676de0430f1151be2bc68594e7601135b67bf8c510507bb",
+    "followup-summary.json": "08e1a4a9f036fd2c329cb7999541b1de3a44f793feb07c9ea9f8aaf36f4f3251",
+    "primary-predictions.jsonl.gz": "9128b4729e120958ee954e904c950d096f74c6d9c7d85b4c9f99fde709e97ceb",
+    "frozen-calibration.json": "f94df996617f5f81bd7ada92c5827e83085c7ac0d44614e488bf05b294396105",
+    "features.jsonl.gz": "fffacee660a23fcb235ed520a0ca5a8df940c85f305c0165082a8722051722a6",
+    "regressions.json": "d986b5a022508c26956a4a241de7d1b573b4676cbf9b9fc1193ea8e4411f2695"
+  },
+  "originalNumericalFilesUnchanged": [
+    "summary.json",
+    "rolling-summary.json",
+    "audit.json"
+  ]
+}
