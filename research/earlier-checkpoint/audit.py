@@ -85,6 +85,6 @@ for target_id in case_ids:
             trace.append(r);previous=key;last=r['collected_at']
     result['cases'][str(target_id)]={'episode':e,'rawQuality':labels.raw_quality(e['day'],e['bus'],e['start'],e['end']),'rawTrace':trace,'timeline':[{'at':r['at'],'phase':r['phase'],'index':r['index'],'truth':r['truth'],'forecasts':r['forecasts']} for r in selected]}
 (OUT/'audit.json').write_text(json.dumps(result,indent=2))
-manifest={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in OUT.iterdir() if p.is_file() and p.name not in ('result-manifest.json','evaluation.log')}
+manifest={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in OUT.iterdir() if p.is_file() and p.name!='result-manifest.json' and p.suffix!='.log'}
 (OUT/'result-manifest.json').write_text(json.dumps(manifest,indent=2))
 print(json.dumps({'subgroups':result['subgroups'],'trainingSupport':result['trainingSupport']},indent=2))

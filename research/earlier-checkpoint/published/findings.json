@@ -1,0 +1,4224 @@
+{
+  "testedCommit": "0a404dfd09b1ed134572672c307e796be7160bf9",
+  "run": "https://github.com/grtwrn/yale-shuttle/actions/runs/35635235179",
+  "verdict": "No production replacement. Windows narrow but point-error gains are not robust; naive means become overdue, phase matching has sparse support and added arrival-time jumps.",
+  "counts": {
+    "labelCounts": {
+      "strict": 4238,
+      "raw-continuous": 630,
+      "disconnected labels and insufficient raw continuity": 684,
+      "no target within45min/censored": 455,
+      "intervening loop/route occurrence": 51
+    },
+    "featureCount": 11605,
+    "scored": 11039,
+    "unmatched": {
+      "target already arrived": 50,
+      "no unambiguous causal source/outcome match": 516
+    }
+  },
+  "primaryDivision": {
+    "logged_production": {
+      "mae": 116.46281803648242,
+      "bias": -50.88405547132149,
+      "width": 604.3695774118476,
+      "coverage": 0.9379539389992244,
+      "earlyRate": 0.019444444444444445,
+      "lateRate": 0.04260161655633111,
+      "earlySeverity": 1.4148203703703706,
+      "lateSeverity": 1.578460966278606,
+      "wis": 81.10776539738329,
+      "departureRisk": 0.012037037037037037,
+      "departureExcess": 0.8497268518518518,
+      "rmse": 164.39739759477334,
+      "n": 1655,
+      "journeys": 36,
+      "days": 3,
+      "earlyJourneys": 1,
+      "lateJourneys": 17,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 157.286,
+      "maxLateSec": 304.27200000000005,
+      "maxDepartureExcess": 122.285,
+      "p90AbsSnapshotSec": 269.73800000000006
+    },
+    "current_suffix": {
+      "mae": 128.44102413888555,
+      "bias": -10.917420667294584,
+      "width": 448.43388330683024,
+      "coverage": 0.7878185776538784,
+      "earlyRate": 0.10175618423286457,
+      "lateRate": 0.11042523811325705,
+      "earlySeverity": 5.005772641154016,
+      "lateSeverity": 7.142397432937931,
+      "wis": 80.80804698281183,
+      "departureRisk": 0.04103700306603494,
+      "departureExcess": 2.791957889873024,
+      "rmse": 165.25709825662216,
+      "n": 1655,
+      "journeys": 36,
+      "days": 3,
+      "earlyJourneys": 26,
+      "lateJourneys": 18,
+      "departureRiskJourneys": 12,
+      "maxEarlySec": 334.075,
+      "maxLateSec": 209.951,
+      "maxDepartureExcess": 299.074,
+      "p90AbsSnapshotSec": 260.07399999999996
+    },
+    "fixed_mean": {
+      "mae": 131.1473122337532,
+      "bias": -57.35929322017297,
+      "width": 437.9972163687213,
+      "coverage": 0.8629032258064516,
+      "earlyRate": 0.027777777777777776,
+      "lateRate": 0.10931899641577061,
+      "earlySeverity": 4.526907407407408,
+      "lateSeverity": 8.635549940262845,
+      "wis": 81.69055673427933,
+      "departureRisk": 0.027777777777777776,
+      "departureExcess": 3.5546574074074075,
+      "rmse": 166.40740172647594,
+      "n": 1655,
+      "journeys": 36,
+      "days": 3,
+      "earlyJourneys": 1,
+      "lateJourneys": 4,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 169.93100000000004,
+      "maxLateSec": 102.27800000000002,
+      "maxDepartureExcess": 134.93,
+      "p90AbsSnapshotSec": 212.7739597942376
+    },
+    "fixed_survival": {
+      "mae": 120.17636704980738,
+      "bias": -15.460217163753759,
+      "width": 449.24807310025255,
+      "coverage": 0.8450148632524491,
+      "earlyRate": 0.055124523446077316,
+      "lateRate": 0.09986061330147351,
+      "earlySeverity": 5.001130809266465,
+      "lateSeverity": 6.822200398247711,
+      "wis": 77.89088136162874,
+      "departureRisk": 0.03041958041958042,
+      "departureExcess": 3.591308300958301,
+      "rmse": 154.79252798728186,
+      "n": 1655,
+      "journeys": 36,
+      "days": 3,
+      "earlyJourneys": 19,
+      "lateJourneys": 4,
+      "departureRiskJourneys": 3,
+      "maxEarlySec": 169.93100000000004,
+      "maxLateSec": 102.27800000000002,
+      "maxDepartureExcess": 134.93,
+      "p90AbsSnapshotSec": 220.98
+    },
+    "fixed_progress": {
+      "mae": 122.1293893960376,
+      "bias": -12.591254298921216,
+      "width": 449.36427518891384,
+      "coverage": 0.7944054685951513,
+      "earlyRate": 0.09662507322926028,
+      "lateRate": 0.1089694581755884,
+      "earlySeverity": 4.575049007424433,
+      "lateSeverity": 6.734651416688113,
+      "wis": 78.20721509401515,
+      "departureRisk": 0.03125646828414281,
+      "departureExcess": 2.4612500501514436,
+      "rmse": 158.74302079805148,
+      "n": 1655,
+      "journeys": 36,
+      "days": 3,
+      "earlyJourneys": 25,
+      "lateJourneys": 18,
+      "departureRiskJourneys": 8,
+      "maxEarlySec": 334.07200000000006,
+      "maxLateSec": 214.94,
+      "maxDepartureExcess": 299.071,
+      "p90AbsSnapshotSec": 254.73299999999995
+    },
+    "five_before_mean": {
+      "mae": 138.05354369357775,
+      "bias": -48.86371712260739,
+      "width": 496.4480629277318,
+      "coverage": 0.7898688807222902,
+      "earlyRate": 0.027777777777777776,
+      "lateRate": 0.18235334149993196,
+      "earlySeverity": 2.602190740740741,
+      "lateSeverity": 6.179095071849393,
+      "wis": 84.96857596810146,
+      "departureRisk": 0.024074074074074074,
+      "departureExcess": 1.6788851851851851,
+      "rmse": 171.74394254949985,
+      "n": 1655,
+      "journeys": 36,
+      "days": 3,
+      "earlyJourneys": 1,
+      "lateJourneys": 7,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 157.286,
+      "maxLateSec": 95.29200000000003,
+      "maxDepartureExcess": 122.285,
+      "p90AbsSnapshotSec": 252.07963339241837
+    },
+    "five_before_progress": {
+      "mae": 121.76543721930656,
+      "bias": -13.812941900081945,
+      "width": 506.2339893723939,
+      "coverage": 0.8377419559237869,
+      "earlyRate": 0.08648025552499826,
+      "lateRate": 0.07577778855121488,
+      "earlySeverity": 3.401455508303453,
+      "lateSeverity": 3.7439837069476987,
+      "wis": 79.10103784142922,
+      "departureRisk": 0.029295683970417322,
+      "departureExcess": 1.6906798673512127,
+      "rmse": 160.13022057401767,
+      "n": 1655,
+      "journeys": 36,
+      "days": 3,
+      "earlyJourneys": 23,
+      "lateJourneys": 16,
+      "departureRiskJourneys": 8,
+      "maxEarlySec": 157.286,
+      "maxLateSec": 210.101,
+      "maxDepartureExcess": 122.285,
+      "p90AbsSnapshotSec": 246.5470000000003
+    },
+    "trailing_five_mean": {
+      "mae": 133.62446238672445,
+      "bias": -55.73894631505946,
+      "width": 415.90332081431586,
+      "coverage": 0.8436900324716424,
+      "earlyRate": 0.030246913580246913,
+      "lateRate": 0.12606305394811065,
+      "earlySeverity": 4.243083333333332,
+      "lateSeverity": 9.155317520539404,
+      "wis": 81.20064275244437,
+      "departureRisk": 0.027777777777777776,
+      "departureExcess": 3.231485185185185,
+      "rmse": 167.23284961462,
+      "n": 1655,
+      "journeys": 36,
+      "days": 3,
+      "earlyJourneys": 2,
+      "lateJourneys": 9,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 185.35699999999997,
+      "maxLateSec": 158.25400000000013,
+      "maxDepartureExcess": 150.356,
+      "p90AbsSnapshotSec": 234.58370535601318
+    }
+  },
+  "stoppedDivision": {
+    "logged_production": {
+      "mae": 116.24857389047338,
+      "bias": -40.46486255882679,
+      "width": 627.8543204423341,
+      "coverage": 0.9440816440566134,
+      "earlyRate": 0.02413793103448276,
+      "lateRate": 0.031780424908903815,
+      "earlySeverity": 1.756328735632184,
+      "lateSeverity": 0.8219364828210161,
+      "wis": 82.32532280528221,
+      "departureRisk": 0.014942528735632184,
+      "departureExcess": 1.0548333333333333,
+      "rmse": 165.02987222280711,
+      "n": 1282,
+      "journeys": 29,
+      "days": 3,
+      "earlyJourneys": 1,
+      "lateJourneys": 12,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 157.286,
+      "maxLateSec": 209.029,
+      "maxDepartureExcess": 122.285,
+      "p90AbsSnapshotSec": 265.7985
+    },
+    "current_suffix": {
+      "mae": 138.86755980271406,
+      "bias": -8.486933555048157,
+      "width": 463.60163844510305,
+      "coverage": 0.7619618384175472,
+      "earlyRate": 0.11049231690665356,
+      "lateRate": 0.1275458446757992,
+      "earlySeverity": 6.023133496259907,
+      "lateSeverity": 8.701664883163431,
+      "wis": 87.01249475019378,
+      "departureRisk": 0.044709130354995144,
+      "departureExcess": 3.3841006798527693,
+      "rmse": 176.2546812837324,
+      "n": 1282,
+      "journeys": 29,
+      "days": 3,
+      "earlyJourneys": 20,
+      "lateJourneys": 15,
+      "departureRiskJourneys": 7,
+      "maxEarlySec": 334.075,
+      "maxLateSec": 209.951,
+      "maxDepartureExcess": 299.074,
+      "p90AbsSnapshotSec": 280.04999999999995
+    },
+    "fixed_mean": {
+      "mae": 137.05266814083626,
+      "bias": -50.90734524643038,
+      "width": 443.39878326222197,
+      "coverage": 0.864293659621802,
+      "earlyRate": 0.034482758620689655,
+      "lateRate": 0.10122358175750834,
+      "earlySeverity": 5.619609195402299,
+      "lateSeverity": 7.469634408602152,
+      "wis": 83.97030400042985,
+      "departureRisk": 0.034482758620689655,
+      "departureExcess": 4.4126781609195405,
+      "rmse": 172.56519463589868,
+      "n": 1282,
+      "journeys": 29,
+      "days": 3,
+      "earlyJourneys": 1,
+      "lateJourneys": 3,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 169.93100000000004,
+      "maxLateSec": 102.27800000000002,
+      "maxDepartureExcess": 134.93,
+      "p90AbsSnapshotSec": 212.7739597942376
+    },
+    "fixed_survival": {
+      "mae": 126.49656399862837,
+      "bias": -11.264075800441352,
+      "width": 458.4494418986631,
+      "coverage": 0.8425203168842167,
+      "earlyRate": 0.060334707216636155,
+      "lateRate": 0.0971449758991472,
+      "earlySeverity": 6.1096719437058615,
+      "lateSeverity": 6.6893874675565455,
+      "wis": 81.26152373362861,
+      "departureRisk": 0.034482758620689655,
+      "departureExcess": 4.4126781609195405,
+      "rmse": 162.66610513514306,
+      "n": 1282,
+      "journeys": 29,
+      "days": 3,
+      "earlyJourneys": 15,
+      "lateJourneys": 3,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 169.93100000000004,
+      "maxLateSec": 102.27800000000002,
+      "maxDepartureExcess": 134.93,
+      "p90AbsSnapshotSec": 225.11300000000006
+    },
+    "fixed_progress": {
+      "mae": 131.56662804592497,
+      "bias": -11.044754537456365,
+      "width": 464.2238539987827,
+      "coverage": 0.7724375191262538,
+      "earlyRate": 0.10412266186769653,
+      "lateRate": 0.12343981900604963,
+      "earlySeverity": 5.497179627247864,
+      "lateSeverity": 8.057871848710505,
+      "wis": 83.84050059919943,
+      "departureRisk": 0.0325677768326463,
+      "departureExcess": 2.977527791227726,
+      "rmse": 169.00428584152203,
+      "n": 1282,
+      "journeys": 29,
+      "days": 3,
+      "earlyJourneys": 19,
+      "lateJourneys": 15,
+      "departureRiskJourneys": 3,
+      "maxEarlySec": 334.07200000000006,
+      "maxLateSec": 214.94,
+      "maxDepartureExcess": 299.071,
+      "p90AbsSnapshotSec": 270.034
+    },
+    "five_before_mean": {
+      "mae": 148.78850218180642,
+      "bias": -44.85672126112603,
+      "width": 501.170941078015,
+      "coverage": 0.7736303346897396,
+      "earlyRate": 0.034482758620689655,
+      "lateRate": 0.1918869066895707,
+      "earlySeverity": 3.230305747126437,
+      "lateSeverity": 7.32694560643373,
+      "wis": 90.04573103484326,
+      "departureRisk": 0.029885057471264367,
+      "departureExcess": 2.0841333333333334,
+      "rmse": 181.9708625173173,
+      "n": 1282,
+      "journeys": 29,
+      "days": 3,
+      "earlyJourneys": 1,
+      "lateJourneys": 6,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 157.286,
+      "maxLateSec": 95.29200000000003,
+      "maxDepartureExcess": 122.285,
+      "p90AbsSnapshotSec": 252.07963339241843
+    },
+    "five_before_progress": {
+      "mae": 130.30243107781055,
+      "bias": -13.454432667548447,
+      "width": 523.888510098976,
+      "coverage": 0.8302133177198916,
+      "earlyRate": 0.08755031522155693,
+      "lateRate": 0.08223636705855146,
+      "earlySeverity": 4.071029433508172,
+      "lateSeverity": 4.491792253616518,
+      "wis": 84.06859215728504,
+      "departureRisk": 0.030133699753538794,
+      "departureExcess": 2.041393003118934,
+      "rmse": 170.2800267567261,
+      "n": 1282,
+      "journeys": 29,
+      "days": 3,
+      "earlyJourneys": 17,
+      "lateJourneys": 13,
+      "departureRiskJourneys": 3,
+      "maxEarlySec": 157.286,
+      "maxLateSec": 210.101,
+      "maxDepartureExcess": 122.285,
+      "p90AbsSnapshotSec": 264.011
+    },
+    "trailing_five_mean": {
+      "mae": 141.06092051341142,
+      "bias": -49.53089319644291,
+      "width": 420.2358010447045,
+      "coverage": 0.8404427989303147,
+      "earlyRate": 0.037547892720306515,
+      "lateRate": 0.12200930834937875,
+      "earlySeverity": 5.267275862068964,
+      "lateSeverity": 8.142328263045082,
+      "wis": 83.97576299086015,
+      "departureRisk": 0.034482758620689655,
+      "departureExcess": 4.0114988505747124,
+      "rmse": 174.11850635035668,
+      "n": 1282,
+      "journeys": 29,
+      "days": 3,
+      "earlyJourneys": 2,
+      "lateJourneys": 8,
+      "departureRiskJourneys": 1,
+      "maxEarlySec": 185.35699999999997,
+      "maxLateSec": 158.25400000000013,
+      "maxDepartureExcess": 150.356,
+      "p90AbsSnapshotSec": 237.53479569195767
+    }
+  },
+  "byDay": {
+    "division_0917": {
+      "logged_production": {
+        "mae": 130.61951096209503,
+        "bias": -36.85803415241918,
+        "width": 618.2615250895061,
+        "coverage": 0.8818170164648129,
+        "earlyRate": 0.049999999999999996,
+        "lateRate": 0.06818298353518708,
+        "earlySeverity": 3.6381095238095242,
+        "lateSeverity": 2.6950444317089324,
+        "wis": 88.9793746303444,
+        "departureRisk": 0.030952380952380953,
+        "departureExcess": 2.1850119047619048,
+        "rmse": 185.48327710481442,
+        "n": 777,
+        "journeys": 14,
+        "days": 1,
+        "earlyJourneys": 1,
+        "lateJourneys": 11,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 157.286,
+        "maxLateSec": 304.27200000000005,
+        "maxDepartureExcess": 122.285,
+        "p90AbsSnapshotSec": 310.8487999999999
+      },
+      "current_suffix": {
+        "mae": 105.67404771558759,
+        "bias": 34.18858786982727,
+        "width": 456.0558566953066,
+        "coverage": 0.8529899583552127,
+        "earlyRate": 0.11566552636346637,
+        "lateRate": 0.031344515281320935,
+        "earlySeverity": 9.634633695846613,
+        "lateSeverity": 0.4690283624305185,
+        "wis": 72.36418105706773,
+        "departureRisk": 0.0794480046383904,
+        "departureExcess": 6.655574542429553,
+        "rmse": 145.24050333681663,
+        "n": 777,
+        "journeys": 14,
+        "days": 1,
+        "earlyJourneys": 12,
+        "lateJourneys": 8,
+        "departureRiskJourneys": 8,
+        "maxEarlySec": 334.075,
+        "maxLateSec": 30.599999999999994,
+        "maxDepartureExcess": 299.074,
+        "p90AbsSnapshotSec": 189.69600000000003
+      },
+      "fixed_mean": {
+        "mae": 124.71748071691871,
+        "bias": -14.221880714918216,
+        "width": 455.14733933716303,
+        "coverage": 0.8571428571428571,
+        "earlyRate": 0.07142857142857142,
+        "lateRate": 0.07142857142857142,
+        "earlySeverity": 11.64061904761905,
+        "lateSeverity": 6.732885714285715,
+        "wis": 84.16465270272029,
+        "departureRisk": 0.07142857142857142,
+        "departureExcess": 9.14054761904762,
+        "rmse": 171.16961271900584,
+        "n": 777,
+        "journeys": 14,
+        "days": 1,
+        "earlyJourneys": 1,
+        "lateJourneys": 1,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 169.93100000000004,
+        "maxLateSec": 99.61000000000007,
+        "maxDepartureExcess": 134.93,
+        "p90AbsSnapshotSec": 186.46970479706283
+      },
+      "fixed_survival": {
+        "mae": 115.5812700958688,
+        "bias": 24.98399561456944,
+        "width": 450.5164899053406,
+        "coverage": 0.841490653330903,
+        "earlyRate": 0.10295379111354142,
+        "lateRate": 0.05555555555555556,
+        "earlySeverity": 12.285882702757181,
+        "lateSeverity": 3.6862126984126986,
+        "wis": 79.20958629309223,
+        "departureRisk": 0.07272727272727272,
+        "departureExcess": 9.151512554112555,
+        "rmse": 163.34940281761567,
+        "n": 777,
+        "journeys": 14,
+        "days": 1,
+        "earlyJourneys": 9,
+        "lateJourneys": 1,
+        "departureRiskJourneys": 2,
+        "maxEarlySec": 169.93100000000004,
+        "maxLateSec": 99.61000000000001,
+        "maxDepartureExcess": 134.93,
+        "p90AbsSnapshotSec": 199.476
+      },
+      "fixed_progress": {
+        "mae": 103.23781574117862,
+        "bias": 34.33743766211758,
+        "width": 456.5435113097709,
+        "coverage": 0.8501255661837418,
+        "earlyRate": 0.11126060055133362,
+        "lateRate": 0.03861383326492463,
+        "earlySeverity": 9.21257807109225,
+        "lateSeverity": 0.7915449606342383,
+        "wis": 71.51825468886193,
+        "departureRisk": 0.07396351917753939,
+        "departureExcess": 6.288962583173309,
+        "rmse": 144.1720800227983,
+        "n": 777,
+        "journeys": 14,
+        "days": 1,
+        "earlyJourneys": 12,
+        "lateJourneys": 9,
+        "departureRiskJourneys": 6,
+        "maxEarlySec": 334.07200000000006,
+        "maxLateSec": 49.769000000000005,
+        "maxDepartureExcess": 299.071,
+        "p90AbsSnapshotSec": 184.85500000000008
+      },
+      "five_before_mean": {
+        "mae": 116.62632844192673,
+        "bias": 9.000496096374373,
+        "width": 528.8999960466439,
+        "coverage": 0.8571428571428571,
+        "earlyRate": 0.07142857142857142,
+        "lateRate": 0.07142857142857142,
+        "earlySeverity": 6.69134761904762,
+        "lateSeverity": 0.7118571428571405,
+        "wis": 79.07091239168834,
+        "departureRisk": 0.06190476190476191,
+        "departureExcess": 4.3171333333333335,
+        "rmse": 157.67258228451297,
+        "n": 777,
+        "journeys": 14,
+        "days": 1,
+        "earlyJourneys": 1,
+        "lateJourneys": 1,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 157.286,
+        "maxLateSec": 9.966000000000008,
+        "maxDepartureExcess": 122.285,
+        "p90AbsSnapshotSec": 197.4784451301009
+      },
+      "five_before_progress": {
+        "mae": 101.87463655839005,
+        "bias": 33.739023275353844,
+        "width": 509.6983978787996,
+        "coverage": 0.8572461366329754,
+        "earlyRate": 0.10414003010209996,
+        "lateRate": 0.03861383326492463,
+        "earlySeverity": 6.991097486740044,
+        "lateSeverity": 0.45944512603498733,
+        "wis": 72.90513378656668,
+        "departureRisk": 0.0689215023708167,
+        "departureExcess": 4.31836453069799,
+        "rmse": 144.66323481233232,
+        "n": 777,
+        "journeys": 14,
+        "days": 1,
+        "earlyJourneys": 12,
+        "lateJourneys": 9,
+        "departureRiskJourneys": 6,
+        "maxEarlySec": 157.286,
+        "maxLateSec": 25.777000000000015,
+        "maxDepartureExcess": 122.285,
+        "p90AbsSnapshotSec": 178.2502
+      },
+      "trailing_five_mean": {
+        "mae": 127.05353638929105,
+        "bias": -18.21227000586098,
+        "width": 434.2445988021553,
+        "coverage": 0.8503401360544218,
+        "earlyRate": 0.07142857142857142,
+        "lateRate": 0.0782312925170068,
+        "earlySeverity": 10.80960476190476,
+        "lateSeverity": 6.701442630385486,
+        "wis": 82.9748503114342,
+        "departureRisk": 0.07142857142857142,
+        "departureExcess": 8.309533333333333,
+        "rmse": 171.13965048787557,
+        "n": 777,
+        "journeys": 14,
+        "days": 1,
+        "earlyJourneys": 1,
+        "lateJourneys": 2,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 185.35699999999997,
+        "maxLateSec": 99.61000000000007,
+        "maxDepartureExcess": 150.356,
+        "p90AbsSnapshotSec": 191.6353518969105
+      }
+    },
+    "division_0918": {
+      "logged_production": {
+        "mae": 73.80092780996883,
+        "bias": -13.846464705590083,
+        "width": 527.0116016424344,
+        "coverage": 0.9473533295604603,
+        "earlyRate": 0,
+        "lateRate": 0.05264667043953971,
+        "earlySeverity": 0,
+        "lateSeverity": 1.6021248217317494,
+        "wis": 60.802499260639735,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 108.50038491853154,
+        "n": 437,
+        "journeys": 10,
+        "days": 1,
+        "earlyJourneys": 0,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 51.884000000000015,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 250.5732
+      },
+      "current_suffix": {
+        "mae": 134.20886041643377,
+        "bias": 14.230300633112494,
+        "width": 382.39005315280474,
+        "coverage": 0.7341356297804955,
+        "earlyRate": 0.1386766534967734,
+        "lateRate": 0.12718771672273102,
+        "earlySeverity": 3.7772891068561125,
+        "lateSeverity": 8.97319349270353,
+        "wis": 78.72927874870467,
+        "departureRisk": 0.025,
+        "departureExcess": 0.6393,
+        "rmse": 166.07889424084732,
+        "n": 437,
+        "journeys": 10,
+        "days": 1,
+        "earlyJourneys": 8,
+        "lateJourneys": 4,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 75.97400000000005,
+        "maxLateSec": 152.5619999999999,
+        "maxDepartureExcess": 25.572,
+        "p90AbsSnapshotSec": 313.55460000000005
+      },
+      "fixed_mean": {
+        "mae": 123.64858535355674,
+        "bias": -40.67363787706777,
+        "width": 403.6656822030457,
+        "coverage": 0.9064516129032258,
+        "earlyRate": 0,
+        "lateRate": 0.09354838709677418,
+        "earlySeverity": 0,
+        "lateSeverity": 9.218739784946239,
+        "wis": 74.2730671213528,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 152.92261713485325,
+        "n": 437,
+        "journeys": 10,
+        "days": 1,
+        "earlyJourneys": 0,
+        "lateJourneys": 1,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 102.27800000000002,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 339.57180681138703
+      },
+      "fixed_survival": {
+        "mae": 115.49181733172541,
+        "bias": 9.1754102221778,
+        "width": 440.34161281735936,
+        "coverage": 0.8869397620395074,
+        "earlyRate": 0.031339807852965744,
+        "lateRate": 0.08172043010752689,
+        "earlySeverity": 0.5152250093984957,
+        "lateSeverity": 6.956023655913979,
+        "wis": 72.83421240860741,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 142.11426832773785,
+        "n": 437,
+        "journeys": 10,
+        "days": 1,
+        "earlyJourneys": 5,
+        "lateJourneys": 1,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 41.062999999999946,
+        "maxLateSec": 102.27800000000002,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 307.16459999999995
+      },
+      "fixed_progress": {
+        "mae": 123.34790446980873,
+        "bias": 8.043463763156081,
+        "width": 375.60061264456766,
+        "coverage": 0.7440241897369404,
+        "earlyRate": 0.137763955084075,
+        "lateRate": 0.11821185517898462,
+        "earlySeverity": 3.1661693088897196,
+        "lateSeverity": 7.958960820913297,
+        "wis": 73.57276241944277,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 154.6063501026182,
+        "n": 437,
+        "journeys": 10,
+        "days": 1,
+        "earlyJourneys": 8,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 75.97100000000012,
+        "maxLateSec": 152.55899999999997,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 295.01099999999997
+      },
+      "five_before_mean": {
+        "mae": 145.68748239157796,
+        "bias": -37.21863639940453,
+        "width": 419.7425937158666,
+        "coverage": 0.743527970600245,
+        "earlyRate": 0,
+        "lateRate": 0.256472029399755,
+        "earlySeverity": 0,
+        "lateSeverity": 11.535020036435588,
+        "wis": 84.23534706920749,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 170.43287533836485,
+        "n": 437,
+        "journeys": 10,
+        "days": 1,
+        "earlyJourneys": 0,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 95.29200000000003,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 330.05647168123176
+      },
+      "five_before_progress": {
+        "mae": 121.325037716837,
+        "bias": 8.475032882185705,
+        "width": 415.1839307732227,
+        "coverage": 0.7969865012333475,
+        "earlyRate": 0.10083573913687172,
+        "lateRate": 0.10217775962978087,
+        "earlySeverity": 2.2106542774790365,
+        "lateSeverity": 6.351251327072274,
+        "wis": 73.82854502686139,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 150.71890173676883,
+        "n": 437,
+        "journeys": 10,
+        "days": 1,
+        "earlyJourneys": 7,
+        "lateJourneys": 2,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 60.257000000000005,
+        "maxLateSec": 124.88400000000001,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 287.0840000000001
+      },
+      "trailing_five_mean": {
+        "mae": 125.33766905367855,
+        "bias": -35.8478447876191,
+        "width": 387.00223175066776,
+        "coverage": 0.8776864793932985,
+        "earlyRate": 0.008888888888888889,
+        "lateRate": 0.11342463171781261,
+        "earlySeverity": 0.14165333333333313,
+        "lateSeverity": 10.596902793395527,
+        "wis": 74.73840921908995,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 155.49846520817107,
+        "n": 437,
+        "journeys": 10,
+        "days": 1,
+        "earlyJourneys": 1,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 15.935999999999979,
+        "maxLateSec": 158.25400000000013,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 339.57180681138703
+      }
+    },
+    "division_0921": {
+      "logged_production": {
+        "mae": 135.4982514786957,
+        "bias": -98.1124059814837,
+        "width": 652.6272849290903,
+        "coverage": 0.9956141898216747,
+        "earlyRate": 0,
+        "lateRate": 0.004385810178325313,
+        "earlySeverity": 0,
+        "lateSeverity": 0.25606037706560547,
+        "wis": 88.84527640621499,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 176.4403052076795,
+        "n": 441,
+        "journeys": 12,
+        "days": 1,
+        "earlyJourneys": 0,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 209.029,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 254.82799999999997
+      },
+      "current_suffix": {
+        "mae": 150.195966401443,
+        "bias": -84.49753171094265,
+        "width": 494.57810614862905,
+        "coverage": 0.756521090063474,
+        "earlyRate": 0.05476156069390509,
+        "lateRate": 0.1887173492426209,
+        "earlySeverity": 0.6291710225942395,
+        "lateSeverity": 13.402331298725247,
+        "wis": 92.39153075793593,
+        "departureRisk": 0.00958833711998269,
+        "departureExcess": 0.07828670345126042,
+        "rmse": 185.29423952529484,
+        "n": 441,
+        "journeys": 12,
+        "days": 1,
+        "earlyJourneys": 6,
+        "lateJourneys": 6,
+        "departureRiskJourneys": 3,
+        "maxEarlySec": 59.99399999999997,
+        "maxLateSec": 209.951,
+        "maxDepartureExcess": 39.728,
+        "p90AbsSnapshotSec": 270.24300000000005
+      },
+      "fixed_mean": {
+        "mae": 144.89772140355717,
+        "bias": -121.59098726222452,
+        "width": 446.5983513769356,
+        "coverage": 0.8333333333333334,
+        "earlyRate": 0,
+        "lateRate": 0.16666666666666666,
+        "earlySeverity": 0,
+        "lateSeverity": 10.369333333333335,
+        "wis": 84.98535278187032,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 171.47678749757733,
+        "n": 441,
+        "journeys": 12,
+        "days": 1,
+        "earlyJourneys": 0,
+        "lateJourneys": 2,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 99.96900000000005,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 212.7739597942375
+      },
+      "fixed_survival": {
+        "mae": 129.44110492780402,
+        "bias": -83.1748215600738,
+        "width": 455.19030373006086,
+        "coverage": 0.8141890258383712,
+        "earlyRate": 0.019144307494962164,
+        "lateRate": 0.16666666666666666,
+        "earlySeverity": 0.2405084334172709,
+        "lateSeverity": 10.369333333333335,
+        "wis": 80.56628306910581,
+        "departureRisk": 0.006410256410256411,
+        "departureExcess": 0.0971602564102564,
+        "rmse": 154.666071939269,
+        "n": 441,
+        "journeys": 12,
+        "days": 1,
+        "earlyJourneys": 5,
+        "lateJourneys": 2,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 25.139999999999997,
+        "maxLateSec": 99.96900000000005,
+        "maxDepartureExcess": 15.157,
+        "p90AbsSnapshotSec": 194.96400000000006
+      },
+      "fixed_progress": {
+        "mae": 143.15412943189713,
+        "bias": -84.53699330519756,
+        "width": 502.4582185015358,
+        "coverage": 0.7713830871236382,
+        "earlyRate": 0.04526788980782914,
+        "lateRate": 0.18334902306853262,
+        "earlySeverity": 0.3386648485909108,
+        "lateSeverity": 12.648017778563313,
+        "wis": 89.87304612883759,
+        "departureRisk": 0.007478632478632479,
+        "departureExcess": 0.04662713675213675,
+        "rmse": 177.28202657097114,
+        "n": 441,
+        "journeys": 12,
+        "days": 1,
+        "earlyJourneys": 5,
+        "lateJourneys": 6,
+        "departureRiskJourneys": 2,
+        "maxEarlySec": 44.73300000000005,
+        "maxLateSec": 214.94,
+        "maxDepartureExcess": 39.725,
+        "p90AbsSnapshotSec": 255.0859999999999
+      },
+      "five_before_mean": {
+        "mae": 156.6903459055038,
+        "bias": -126.07619981408851,
+        "width": 522.5086986322221,
+        "coverage": 0.75,
+        "earlyRate": 0,
+        "lateRate": 0.25,
+        "earlySeverity": 0,
+        "lateSeverity": 8.094268518518525,
+        "wis": 92.46020755632841,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 187.8236517914467,
+        "n": 441,
+        "journeys": 12,
+        "days": 1,
+        "earlyJourneys": 0,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 44.928,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 229.519
+      },
+      "five_before_progress": {
+        "mae": 145.33837090910046,
+        "bias": -87.86354692331341,
+        "width": 578.0672282808966,
+        "coverage": 0.8489499573384331,
+        "earlyRate": 0.05391428217515174,
+        "lateRate": 0.09713576048641516,
+        "earlySeverity": 0.2058742258144445,
+        "lateSeverity": 5.4032223679087155,
+        "wis": 90.72333658424203,
+        "departureRisk": 0.007478632478632479,
+        "departureExcess": 0.03394764957264958,
+        "rmse": 183.2472275784999,
+        "n": 441,
+        "journeys": 12,
+        "days": 1,
+        "earlyJourneys": 4,
+        "lateJourneys": 5,
+        "departureRiskJourneys": 2,
+        "maxEarlySec": 35.636999999999986,
+        "maxLateSec": 210.101,
+        "maxDepartureExcess": 30.629,
+        "p90AbsSnapshotSec": 250.14800000000002
+      },
+      "trailing_five_mean": {
+        "mae": 148.19620382793497,
+        "bias": -116.09598661532463,
+        "width": 418.58940404820993,
+        "coverage": 0.8076012058570198,
+        "earlyRate": 0,
+        "lateRate": 0.1923987941429802,
+        "earlySeverity": 0,
+        "lateSeverity": 10.816850498338868,
+        "wis": 84.51592854475156,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 171.9896046421607,
+        "n": 441,
+        "journeys": 12,
+        "days": 1,
+        "earlyJourneys": 0,
+        "lateJourneys": 4,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 120.15000000000009,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 204.93318052199953
+      }
+    }
+  },
+  "trainingSupport": {
+    "9": {
+      "paths": 168,
+      "dates": 8,
+      "longCanalPaths": 2,
+      "longCanalSources": [
+        1600,
+        52744
+      ]
+    },
+    "12": {
+      "paths": 172,
+      "dates": 8,
+      "longCanalPaths": 3,
+      "longCanalSources": [
+        889,
+        1642,
+        52783
+      ]
+    }
+  },
+  "support": {
+    "current_suffix": {
+      "allTestFeatures": 8705,
+      "supportedFeatures": 6880,
+      "paired": 1673,
+      "supportedPaired": 1281,
+      "fallbackReasons": {
+        "insufficient historical support": 1825,
+        "supported": 6880
+      }
+    },
+    "fixed_mean": {
+      "allTestFeatures": 8705,
+      "supportedFeatures": 8107,
+      "paired": 1673,
+      "supportedPaired": 1556,
+      "fallbackReasons": {
+        "origin not yet confirmed": 598,
+        "supported": 8107
+      }
+    },
+    "fixed_survival": {
+      "allTestFeatures": 8705,
+      "supportedFeatures": 8014,
+      "paired": 1673,
+      "supportedPaired": 1537,
+      "fallbackReasons": {
+        "origin not yet confirmed": 598,
+        "supported": 8014,
+        "insufficient historical support": 93
+      }
+    },
+    "fixed_progress": {
+      "allTestFeatures": 8705,
+      "supportedFeatures": 6527,
+      "paired": 1673,
+      "supportedPaired": 1239,
+      "fallbackReasons": {
+        "origin not yet confirmed": 598,
+        "supported": 6527,
+        "insufficient historical support": 1580
+      }
+    },
+    "five_before_mean": {
+      "allTestFeatures": 8705,
+      "supportedFeatures": 6289,
+      "paired": 1673,
+      "supportedPaired": 1142,
+      "fallbackReasons": {
+        "origin not yet confirmed": 2416,
+        "supported": 6289
+      }
+    },
+    "five_before_progress": {
+      "allTestFeatures": 8705,
+      "supportedFeatures": 5158,
+      "paired": 1673,
+      "supportedPaired": 925,
+      "fallbackReasons": {
+        "origin not yet confirmed": 2416,
+        "supported": 5158,
+        "insufficient historical support": 1131
+      }
+    },
+    "trailing_five_mean": {
+      "allTestFeatures": 8705,
+      "supportedFeatures": 8433,
+      "paired": 1673,
+      "supportedPaired": 1629,
+      "fallbackReasons": {
+        "supported": 8433,
+        "origin not yet confirmed": 272
+      }
+    }
+  },
+  "falseNow": {
+    "current_suffix": {
+      "current_suffix": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      },
+      "logged_production": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      }
+    },
+    "fixed_mean": {
+      "fixed_mean": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 75,
+        "flaggedJourneys": 14
+      },
+      "logged_production": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      }
+    },
+    "fixed_survival": {
+      "fixed_survival": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      },
+      "logged_production": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      }
+    },
+    "fixed_progress": {
+      "fixed_progress": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      },
+      "logged_production": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      }
+    },
+    "five_before_mean": {
+      "five_before_mean": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 77,
+        "flaggedJourneys": 12
+      },
+      "logged_production": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      }
+    },
+    "five_before_progress": {
+      "five_before_progress": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      },
+      "logged_production": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      }
+    },
+    "trailing_five_mean": {
+      "trailing_five_mean": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 75,
+        "flaggedJourneys": 14
+      },
+      "logged_production": {
+        "eligibleSnapshots": 1655,
+        "flaggedSnapshots": 0,
+        "flaggedJourneys": 0
+      }
+    }
+  },
+  "departureRisks": {
+    "current_suffix": [
+      {
+        "at": 1789657170000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 35.112,
+        "baselineExcessSec": -60.862,
+        "sourceId": 65256
+      },
+      {
+        "at": 1789677105000,
+        "day": "2026-09-17",
+        "bus": "#300",
+        "excessSec": 0.008,
+        "baselineExcessSec": -107.392,
+        "sourceId": 67812
+      },
+      {
+        "at": 1789679040000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 4.893,
+        "baselineExcessSec": -93.706,
+        "sourceId": 68055
+      },
+      {
+        "at": 1789680600000,
+        "day": "2026-09-17",
+        "bus": "#300",
+        "excessSec": 29.892,
+        "baselineExcessSec": -106.945,
+        "sourceId": 68231
+      },
+      {
+        "at": 1789681815000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 299.074,
+        "baselineExcessSec": 54.285,
+        "sourceId": 68466
+      },
+      {
+        "at": 1789756245000,
+        "day": "2026-09-18",
+        "bus": "#306",
+        "excessSec": 25.572,
+        "baselineExcessSec": -79.605,
+        "sourceId": 73405
+      },
+      {
+        "at": 1789990545000,
+        "day": "2026-09-21",
+        "bus": "#309",
+        "excessSec": 14.996,
+        "baselineExcessSec": -157.517,
+        "sourceId": 80963
+      }
+    ],
+    "fixed_mean": [
+      {
+        "at": 1789681770000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 134.93,
+        "baselineExcessSec": 81.285,
+        "sourceId": 68466
+      }
+    ],
+    "fixed_survival": [
+      {
+        "at": 1789681770000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 134.93,
+        "baselineExcessSec": 81.285,
+        "sourceId": 68466
+      }
+    ],
+    "fixed_progress": [
+      {
+        "at": 1789657170000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 35.109,
+        "baselineExcessSec": -60.862,
+        "sourceId": 65256
+      },
+      {
+        "at": 1789680600000,
+        "day": "2026-09-17",
+        "bus": "#300",
+        "excessSec": 19.934,
+        "baselineExcessSec": -106.945,
+        "sourceId": 68231
+      },
+      {
+        "at": 1789681815000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 299.071,
+        "baselineExcessSec": 54.285,
+        "sourceId": 68466
+      }
+    ],
+    "five_before_mean": [
+      {
+        "at": 1789681695000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 122.285,
+        "baselineExcessSec": 122.285,
+        "sourceId": 68451
+      }
+    ],
+    "five_before_progress": [
+      {
+        "at": 1789657140000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 18.152,
+        "baselineExcessSec": -122.862,
+        "sourceId": 65256
+      },
+      {
+        "at": 1789680570000,
+        "day": "2026-09-17",
+        "bus": "#300",
+        "excessSec": 15.095,
+        "baselineExcessSec": -136.945,
+        "sourceId": 68231
+      },
+      {
+        "at": 1789681695000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 122.285,
+        "baselineExcessSec": 122.285,
+        "sourceId": 68451
+      }
+    ],
+    "trailing_five_mean": [
+      {
+        "at": 1789681980000,
+        "day": "2026-09-17",
+        "bus": "#309",
+        "excessSec": 150.356,
+        "baselineExcessSec": -55.715,
+        "sourceId": 68489
+      }
+    ]
+  },
+  "commonOriginJumps": {
+    "current_suffix": {
+      "current_suffix": {
+        "n": 1617,
+        "upOver60": 53,
+        "downOver60": 82
+      },
+      "logged_production": {
+        "n": 1617,
+        "upOver60": 11,
+        "downOver60": 31
+      }
+    },
+    "fixed_mean": {
+      "fixed_mean": {
+        "n": 1617,
+        "upOver60": 2,
+        "downOver60": 6
+      },
+      "logged_production": {
+        "n": 1617,
+        "upOver60": 11,
+        "downOver60": 31
+      }
+    },
+    "fixed_survival": {
+      "fixed_survival": {
+        "n": 1617,
+        "upOver60": 5,
+        "downOver60": 7
+      },
+      "logged_production": {
+        "n": 1617,
+        "upOver60": 11,
+        "downOver60": 31
+      }
+    },
+    "fixed_progress": {
+      "fixed_progress": {
+        "n": 1617,
+        "upOver60": 49,
+        "downOver60": 75
+      },
+      "logged_production": {
+        "n": 1617,
+        "upOver60": 11,
+        "downOver60": 31
+      }
+    },
+    "five_before_mean": {
+      "five_before_mean": {
+        "n": 1617,
+        "upOver60": 6,
+        "downOver60": 1
+      },
+      "logged_production": {
+        "n": 1617,
+        "upOver60": 11,
+        "downOver60": 31
+      }
+    },
+    "five_before_progress": {
+      "five_before_progress": {
+        "n": 1617,
+        "upOver60": 30,
+        "downOver60": 30
+      },
+      "logged_production": {
+        "n": 1617,
+        "upOver60": 11,
+        "downOver60": 31
+      }
+    },
+    "trailing_five_mean": {
+      "trailing_five_mean": {
+        "n": 1617,
+        "upOver60": 10,
+        "downOver60": 7
+      },
+      "logged_production": {
+        "n": 1617,
+        "upOver60": 11,
+        "downOver60": 31
+      }
+    }
+  },
+  "rollingDivision": {
+    "current_suffix": {
+      "all": {
+        "production": {
+          "mae": 116.46281803648242,
+          "bias": -50.88405547132149,
+          "width": 604.3695774118476,
+          "coverage": 0.9379539389992244,
+          "earlyRate": 0.019444444444444445,
+          "lateRate": 0.04260161655633111,
+          "earlySeverity": 1.4148203703703706,
+          "lateSeverity": 1.578460966278606,
+          "wis": 81.10776539738329,
+          "departureRisk": 0.012037037037037037,
+          "departureExcess": 0.8497268518518518,
+          "rmse": 164.39739759477334,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 269.73800000000006
+        },
+        "candidate": {
+          "mae": 124.0242003805962,
+          "bias": -15.624649845887362,
+          "width": 436.68751710434736,
+          "coverage": 0.7747754214340609,
+          "earlyRate": 0.11376578240272395,
+          "lateRate": 0.11145879616321518,
+          "earlySeverity": 5.161795013906066,
+          "lateSeverity": 7.199452235725838,
+          "wis": 78.69473276690982,
+          "departureRisk": 0.04149506796868846,
+          "departureExcess": 2.7475100854368333,
+          "rmse": 159.87326425294822,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 28,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 13,
+          "maxEarlySec": 198.72999999999996,
+          "maxLateSec": 204.63,
+          "maxDepartureExcess": 163.729,
+          "p90AbsSnapshotSec": 259.83799999999997
+        }
+      },
+      "2026-09-17": {
+        "production": {
+          "mae": 130.61951096209503,
+          "bias": -36.85803415241918,
+          "width": 618.2615250895061,
+          "coverage": 0.8818170164648129,
+          "earlyRate": 0.049999999999999996,
+          "lateRate": 0.06818298353518708,
+          "earlySeverity": 3.6381095238095242,
+          "lateSeverity": 2.6950444317089324,
+          "wis": 88.9793746303444,
+          "departureRisk": 0.030952380952380953,
+          "departureExcess": 2.1850119047619048,
+          "rmse": 185.48327710481442,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 11,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 310.8487999999999
+        },
+        "candidate": {
+          "mae": 100.80310073541413,
+          "bias": 20.959334014619813,
+          "width": 450.8393850103168,
+          "coverage": 0.8458327010061395,
+          "earlyRate": 0.12253418342393929,
+          "lateRate": 0.031633115569921225,
+          "earlySeverity": 9.534322251698324,
+          "lateSeverity": 0.4808079605836602,
+          "wis": 70.33374605401382,
+          "departureRisk": 0.07698606572112601,
+          "departureExcess": 6.537072770582644,
+          "rmse": 139.21204835985623,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 12,
+          "lateJourneys": 8,
+          "departureRiskJourneys": 9,
+          "maxEarlySec": 198.72999999999996,
+          "maxLateSec": 30.689999999999998,
+          "maxDepartureExcess": 163.729,
+          "p90AbsSnapshotSec": 190.39880000000002
+        }
+      },
+      "2026-09-18": {
+        "production": {
+          "mae": 73.80092780996883,
+          "bias": -13.846464705590083,
+          "width": 527.0116016424344,
+          "coverage": 0.9473533295604603,
+          "earlyRate": 0,
+          "lateRate": 0.05264667043953971,
+          "earlySeverity": 0,
+          "lateSeverity": 1.6021248217317494,
+          "wis": 60.802499260639735,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 108.50038491853154,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 51.884000000000015,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 250.5732
+        },
+        "candidate": {
+          "mae": 129.2409186273849,
+          "bias": 7.072054192393507,
+          "width": 374.8254092832595,
+          "coverage": 0.7046333310189127,
+          "earlyRate": 0.15873913393276828,
+          "lateRate": 0.13662753504831904,
+          "earlySeverity": 3.8597771938466567,
+          "lateSeverity": 10.500004551857897,
+          "wis": 77.64185465848198,
+          "departureRisk": 0.025,
+          "departureExcess": 0.618525,
+          "rmse": 160.85079888722228,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 9,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 64.99500000000006,
+          "maxLateSec": 168.77200000000005,
+          "maxDepartureExcess": 24.741,
+          "p90AbsSnapshotSec": 314.27520000000004
+        }
+      },
+      "2026-09-21": {
+        "production": {
+          "mae": 135.4982514786957,
+          "bias": -98.1124059814837,
+          "width": 652.6272849290903,
+          "coverage": 0.9956141898216747,
+          "earlyRate": 0,
+          "lateRate": 0.004385810178325313,
+          "earlySeverity": 0,
+          "lateSeverity": 0.25606037706560547,
+          "wis": 88.84527640621499,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 176.4403052076795,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 209.029,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 254.82799999999997
+        },
+        "candidate": {
+          "mae": 146.76821809431803,
+          "bias": -77.21988438171311,
+          "width": 471.72876106495625,
+          "coverage": 0.750327003945926,
+          "earlyRate": 0.06605818826960243,
+          "lateRate": 0.18361480778447156,
+          "earlySeverity": 1.1455280865312738,
+          "lateSeverity": 12.287410293281662,
+          "wis": 89.32661568897838,
+          "departureRisk": 0.013834793898085038,
+          "departureExcess": 0.10050785729741427,
+          "rmse": 180.29856388730948,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 7,
+          "lateJourneys": 6,
+          "departureRiskJourneys": 3,
+          "maxEarlySec": 55.21199999999999,
+          "maxLateSec": 204.63,
+          "maxDepartureExcess": 30.03,
+          "p90AbsSnapshotSec": 275.01300000000003
+        }
+      }
+    },
+    "fixed_mean": {
+      "all": {
+        "production": {
+          "mae": 116.46281803648242,
+          "bias": -50.88405547132149,
+          "width": 604.3695774118476,
+          "coverage": 0.9379539389992244,
+          "earlyRate": 0.019444444444444445,
+          "lateRate": 0.04260161655633111,
+          "earlySeverity": 1.4148203703703706,
+          "lateSeverity": 1.578460966278606,
+          "wis": 81.10776539738329,
+          "departureRisk": 0.012037037037037037,
+          "departureExcess": 0.8497268518518518,
+          "rmse": 164.39739759477334,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 269.73800000000006
+        },
+        "candidate": {
+          "mae": 131.33301127803753,
+          "bias": -55.56245761243621,
+          "width": 427.6383653954994,
+          "coverage": 0.8629032258064516,
+          "earlyRate": 0.027777777777777776,
+          "lateRate": 0.10931899641577061,
+          "earlySeverity": 5.161107407407408,
+          "lateSeverity": 8.623188829151735,
+          "wis": 81.47642561008523,
+          "departureRisk": 0.027777777777777776,
+          "departureExcess": 4.188857407407408,
+          "rmse": 164.94091252294947,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 4,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 198.47000000000003,
+          "maxLateSec": 102.27800000000002,
+          "maxDepartureExcess": 163.469,
+          "p90AbsSnapshotSec": 215.4827037121272
+        }
+      },
+      "2026-09-17": {
+        "production": {
+          "mae": 130.61951096209503,
+          "bias": -36.85803415241918,
+          "width": 618.2615250895061,
+          "coverage": 0.8818170164648129,
+          "earlyRate": 0.049999999999999996,
+          "lateRate": 0.06818298353518708,
+          "earlySeverity": 3.6381095238095242,
+          "lateSeverity": 2.6950444317089324,
+          "wis": 88.9793746303444,
+          "departureRisk": 0.030952380952380953,
+          "departureExcess": 2.1850119047619048,
+          "rmse": 185.48327710481442,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 11,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 310.8487999999999
+        },
+        "candidate": {
+          "mae": 126.49842439034694,
+          "bias": -17.07603109016545,
+          "width": 450.7808043942904,
+          "coverage": 0.8571428571428571,
+          "earlyRate": 0.07142857142857142,
+          "lateRate": 0.07142857142857142,
+          "earlySeverity": 13.271419047619048,
+          "lateSeverity": 6.732885714285715,
+          "wis": 85.55439826433819,
+          "departureRisk": 0.07142857142857142,
+          "departureExcess": 10.771347619047619,
+          "rmse": 172.16506365820683,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 1,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 198.47000000000003,
+          "maxLateSec": 99.61000000000007,
+          "maxDepartureExcess": 163.469,
+          "p90AbsSnapshotSec": 185.20231528259956
+        }
+      },
+      "2026-09-18": {
+        "production": {
+          "mae": 73.80092780996883,
+          "bias": -13.846464705590083,
+          "width": 527.0116016424344,
+          "coverage": 0.9473533295604603,
+          "earlyRate": 0,
+          "lateRate": 0.05264667043953971,
+          "earlySeverity": 0,
+          "lateSeverity": 1.6021248217317494,
+          "wis": 60.802499260639735,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 108.50038491853154,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 51.884000000000015,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 250.5732
+        },
+        "candidate": {
+          "mae": 124.37520776104846,
+          "bias": -38.469288821195555,
+          "width": 397.2259092715063,
+          "coverage": 0.9064516129032258,
+          "earlyRate": 0,
+          "lateRate": 0.09354838709677418,
+          "earlySeverity": 0,
+          "lateSeverity": 9.218739784946239,
+          "wis": 74.08595639508073,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 152.6123038805129,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 1,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 102.27800000000002,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 337.8636612480423
+        }
+      },
+      "2026-09-21": {
+        "production": {
+          "mae": 135.4982514786957,
+          "bias": -98.1124059814837,
+          "width": 652.6272849290903,
+          "coverage": 0.9956141898216747,
+          "earlyRate": 0,
+          "lateRate": 0.004385810178325313,
+          "earlySeverity": 0,
+          "lateSeverity": 0.25606037706560547,
+          "wis": 88.84527640621499,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 176.4403052076795,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 209.029,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 254.82799999999997
+        },
+        "candidate": {
+          "mae": 142.77153224450075,
+          "bias": -114.7075958811193,
+          "width": 425.98256666690435,
+          "coverage": 0.8333333333333334,
+          "earlyRate": 0,
+          "lateRate": 0.16666666666666666,
+          "earlySeverity": 0,
+          "lateSeverity": 10.332250000000007,
+          "wis": 82.87751519262721,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 166.21313763790755,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 2,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 99.52400000000011,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 215.4827037121271
+        }
+      }
+    },
+    "fixed_survival": {
+      "all": {
+        "production": {
+          "mae": 116.46281803648242,
+          "bias": -50.88405547132149,
+          "width": 604.3695774118476,
+          "coverage": 0.9379539389992244,
+          "earlyRate": 0.019444444444444445,
+          "lateRate": 0.04260161655633111,
+          "earlySeverity": 1.4148203703703706,
+          "lateSeverity": 1.578460966278606,
+          "wis": 81.10776539738329,
+          "departureRisk": 0.012037037037037037,
+          "departureExcess": 0.8497268518518518,
+          "rmse": 164.39739759477334,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 269.73800000000006
+        },
+        "candidate": {
+          "mae": 119.49476625085431,
+          "bias": -19.673271521718615,
+          "width": 443.70491728692883,
+          "coverage": 0.8442283163793471,
+          "earlyRate": 0.05527387398305823,
+          "lateRate": 0.10049780963759458,
+          "earlySeverity": 5.6039261057482,
+          "lateSeverity": 6.632852588610119,
+          "wis": 77.5697690323189,
+          "departureRisk": 0.03027065527065527,
+          "departureExcess": 4.2180400997150995,
+          "rmse": 152.6976167441575,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 18,
+          "lateJourneys": 4,
+          "departureRiskJourneys": 3,
+          "maxEarlySec": 198.47000000000003,
+          "maxLateSec": 102.27800000000002,
+          "maxDepartureExcess": 163.469,
+          "p90AbsSnapshotSec": 212.49
+        }
+      },
+      "2026-09-17": {
+        "production": {
+          "mae": 130.61951096209503,
+          "bias": -36.85803415241918,
+          "width": 618.2615250895061,
+          "coverage": 0.8818170164648129,
+          "earlyRate": 0.049999999999999996,
+          "lateRate": 0.06818298353518708,
+          "earlySeverity": 3.6381095238095242,
+          "lateSeverity": 2.6950444317089324,
+          "wis": 88.9793746303444,
+          "departureRisk": 0.030952380952380953,
+          "departureExcess": 2.1850119047619048,
+          "rmse": 185.48327710481442,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 11,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 310.8487999999999
+        },
+        "candidate": {
+          "mae": 114.77344259031469,
+          "bias": 13.674780681226059,
+          "width": 447.7044222564135,
+          "coverage": 0.8491397128905256,
+          "earlyRate": 0.09213012837931572,
+          "lateRate": 0.05873015873015873,
+          "earlySeverity": 13.763982477576127,
+          "lateSeverity": 3.47763015873016,
+          "wis": 79.59918410473665,
+          "departureRisk": 0.07142857142857142,
+          "departureExcess": 10.771347619047619,
+          "rmse": 160.33534907758192,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 8,
+          "lateJourneys": 1,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 198.47000000000003,
+          "maxLateSec": 93.3080000000001,
+          "maxDepartureExcess": 163.469,
+          "p90AbsSnapshotSec": 189.32899999999995
+        }
+      },
+      "2026-09-18": {
+        "production": {
+          "mae": 73.80092780996883,
+          "bias": -13.846464705590083,
+          "width": 527.0116016424344,
+          "coverage": 0.9473533295604603,
+          "earlyRate": 0,
+          "lateRate": 0.05264667043953971,
+          "earlySeverity": 0,
+          "lateSeverity": 1.6021248217317494,
+          "wis": 60.802499260639735,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 108.50038491853154,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 51.884000000000015,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 250.5732
+        },
+        "candidate": {
+          "mae": 113.36495818055387,
+          "bias": 5.39306054206195,
+          "width": 439.6628024560527,
+          "coverage": 0.8750322378526962,
+          "earlyRate": 0.045397869674185465,
+          "lateRate": 0.07956989247311827,
+          "earlySeverity": 0.657872043650795,
+          "lateSeverity": 6.610887096774197,
+          "wis": 71.94501231753813,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 140.3626506943006,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 5,
+          "lateJourneys": 1,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 42.979999999999976,
+          "maxLateSec": 102.27800000000002,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 313.57380000000006
+        }
+      },
+      "2026-09-21": {
+        "production": {
+          "mae": 135.4982514786957,
+          "bias": -98.1124059814837,
+          "width": 652.6272849290903,
+          "coverage": 0.9956141898216747,
+          "earlyRate": 0,
+          "lateRate": 0.004385810178325313,
+          "earlySeverity": 0,
+          "lateSeverity": 0.25606037706560547,
+          "wis": 88.84527640621499,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 176.4403052076795,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 209.029,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 254.82799999999997
+        },
+        "candidate": {
+          "mae": 130.11115058006757,
+          "bias": -79.46794247830454,
+          "width": 442.40725718159354,
+          "coverage": 0.8128284192218482,
+          "earlyRate": 0.020504914111485126,
+          "lateRate": 0.16666666666666666,
+          "earlySeverity": 0.20557205703012285,
+          "lateSeverity": 10.332250000000007,
+          "wis": 79.8894153768155,
+          "departureRisk": 0.007478632478632479,
+          "departureExcess": 0.08754807692307692,
+          "rmse": 153.42630216261242,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 5,
+          "lateJourneys": 2,
+          "departureRiskJourneys": 2,
+          "maxEarlySec": 24.653999999999993,
+          "maxLateSec": 99.52400000000011,
+          "maxDepartureExcess": 12.847,
+          "p90AbsSnapshotSec": 212.4899999999999
+        }
+      }
+    },
+    "fixed_progress": {
+      "all": {
+        "production": {
+          "mae": 116.46281803648242,
+          "bias": -50.88405547132149,
+          "width": 604.3695774118476,
+          "coverage": 0.9379539389992244,
+          "earlyRate": 0.019444444444444445,
+          "lateRate": 0.04260161655633111,
+          "earlySeverity": 1.4148203703703706,
+          "lateSeverity": 1.578460966278606,
+          "wis": 81.10776539738329,
+          "departureRisk": 0.012037037037037037,
+          "departureExcess": 0.8497268518518518,
+          "rmse": 164.39739759477334,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 269.73800000000006
+        },
+        "candidate": {
+          "mae": 119.1218201737341,
+          "bias": -16.418807583882202,
+          "width": 439.19530761411863,
+          "coverage": 0.7920520489486845,
+          "earlyRate": 0.09626781707052598,
+          "lateRate": 0.11168013398078946,
+          "earlySeverity": 4.615026504805948,
+          "lateSeverity": 6.693680758136721,
+          "wis": 76.52609874081439,
+          "departureRisk": 0.03797648993735548,
+          "departureExcess": 2.4929382247104885,
+          "rmse": 154.2165927311778,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 25,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 11,
+          "maxEarlySec": 198.72700000000003,
+          "maxLateSec": 209.99,
+          "maxDepartureExcess": 163.726,
+          "p90AbsSnapshotSec": 250.04399999999998
+        }
+      },
+      "2026-09-17": {
+        "production": {
+          "mae": 130.61951096209503,
+          "bias": -36.85803415241918,
+          "width": 618.2615250895061,
+          "coverage": 0.8818170164648129,
+          "earlyRate": 0.049999999999999996,
+          "lateRate": 0.06818298353518708,
+          "earlySeverity": 3.6381095238095242,
+          "lateSeverity": 2.6950444317089324,
+          "wis": 88.9793746303444,
+          "departureRisk": 0.030952380952380953,
+          "departureExcess": 2.1850119047619048,
+          "rmse": 185.48327710481442,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 11,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 310.8487999999999
+        },
+        "candidate": {
+          "mae": 99.32597303500611,
+          "bias": 21.797203653305097,
+          "width": 449.33527005761937,
+          "coverage": 0.8492372696720573,
+          "earlyRate": 0.11169538232378909,
+          "lateRate": 0.03906734800415366,
+          "earlySeverity": 9.119767533374713,
+          "lateSeverity": 0.9511812941680372,
+          "wis": 69.77830823387183,
+          "departureRisk": 0.07044403709340563,
+          "departureExcess": 6.270789833408691,
+          "rmse": 138.27297747921907,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 11,
+          "lateJourneys": 8,
+          "departureRiskJourneys": 6,
+          "maxEarlySec": 198.72700000000003,
+          "maxLateSec": 49.769000000000005,
+          "maxDepartureExcess": 163.726,
+          "p90AbsSnapshotSec": 184.87900000000002
+        }
+      },
+      "2026-09-18": {
+        "production": {
+          "mae": 73.80092780996883,
+          "bias": -13.846464705590083,
+          "width": 527.0116016424344,
+          "coverage": 0.9473533295604603,
+          "earlyRate": 0,
+          "lateRate": 0.05264667043953971,
+          "earlySeverity": 0,
+          "lateSeverity": 1.6021248217317494,
+          "wis": 60.802499260639735,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 108.50038491853154,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 51.884000000000015,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 250.5732
+        },
+        "candidate": {
+          "mae": 123.41176862943266,
+          "bias": 5.457631294158464,
+          "width": 369.5476966083856,
+          "coverage": 0.7259337559998141,
+          "earlyRate": 0.14356144612350152,
+          "lateRate": 0.13050479787668437,
+          "earlySeverity": 3.5228671622640024,
+          "lateSeverity": 9.232500041003128,
+          "wis": 74.27734745254801,
+          "departureRisk": 0.027837301587301588,
+          "departureExcess": 0.13911799603174604,
+          "rmse": 153.3315118648141,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 9,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 3,
+          "maxEarlySec": 77.58000000000004,
+          "maxLateSec": 152.55899999999997,
+          "maxDepartureExcess": 5.008,
+          "p90AbsSnapshotSec": 304.8628
+        }
+      },
+      "2026-09-21": {
+        "production": {
+          "mae": 135.4982514786957,
+          "bias": -98.1124059814837,
+          "width": 652.6272849290903,
+          "coverage": 0.9956141898216747,
+          "earlyRate": 0,
+          "lateRate": 0.004385810178325313,
+          "earlySeverity": 0,
+          "lateSeverity": 0.25606037706560547,
+          "wis": 88.84527640621499,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 176.4403052076795,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 209.029,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 254.82799999999997
+        },
+        "candidate": {
+          "mae": 138.64201812250124,
+          "bias": -79.23451975896795,
+          "width": 485.4050272681453,
+          "coverage": 0.7804345355621418,
+          "earlyRate": 0.03885763339757273,
+          "lateRate": 0.1807078310402855,
+          "earlySeverity": 0.2696280902606742,
+          "lateSeverity": 11.27758073037818,
+          "wis": 86.27248040580267,
+          "departureRisk": 0.008547008547008548,
+          "departureExcess": 0.046961538461538464,
+          "rmse": 171.61048810437103,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 5,
+          "lateJourneys": 6,
+          "departureRiskJourneys": 2,
+          "maxEarlySec": 35.03500000000007,
+          "maxLateSec": 209.99,
+          "maxDepartureExcess": 30.027,
+          "p90AbsSnapshotSec": 250.04399999999998
+        }
+      }
+    },
+    "five_before_mean": {
+      "all": {
+        "production": {
+          "mae": 116.46281803648242,
+          "bias": -50.88405547132149,
+          "width": 604.3695774118476,
+          "coverage": 0.9379539389992244,
+          "earlyRate": 0.019444444444444445,
+          "lateRate": 0.04260161655633111,
+          "earlySeverity": 1.4148203703703706,
+          "lateSeverity": 1.578460966278606,
+          "wis": 81.10776539738329,
+          "departureRisk": 0.012037037037037037,
+          "departureExcess": 0.8497268518518518,
+          "rmse": 164.39739759477334,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 269.73800000000006
+        },
+        "candidate": {
+          "mae": 137.42848518028828,
+          "bias": -48.64232379808487,
+          "width": 490.8439957929057,
+          "coverage": 0.7898688807222902,
+          "earlyRate": 0.027777777777777776,
+          "lateRate": 0.18235334149993196,
+          "earlySeverity": 2.6716592592592594,
+          "lateSeverity": 6.252067294071615,
+          "wis": 84.48157914851039,
+          "departureRisk": 0.024074074074074074,
+          "departureExcess": 1.7483537037037038,
+          "rmse": 170.25373313146198,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 7,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 95.29200000000003,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 253.297497116185
+        }
+      },
+      "2026-09-17": {
+        "production": {
+          "mae": 130.61951096209503,
+          "bias": -36.85803415241918,
+          "width": 618.2615250895061,
+          "coverage": 0.8818170164648129,
+          "earlyRate": 0.049999999999999996,
+          "lateRate": 0.06818298353518708,
+          "earlySeverity": 3.6381095238095242,
+          "lateSeverity": 2.6950444317089324,
+          "wis": 88.9793746303444,
+          "departureRisk": 0.030952380952380953,
+          "departureExcess": 2.1850119047619048,
+          "rmse": 185.48327710481442,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 11,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 310.8487999999999
+        },
+        "candidate": {
+          "mae": 117.69690542846307,
+          "bias": 5.403787620919335,
+          "width": 523.8662978420867,
+          "coverage": 0.8571428571428571,
+          "earlyRate": 0.07142857142857142,
+          "lateRate": 0.07142857142857142,
+          "earlySeverity": 6.869980952380952,
+          "lateSeverity": 0.7118571428571405,
+          "wis": 79.21128039578554,
+          "departureRisk": 0.06190476190476191,
+          "departureExcess": 4.4957666666666665,
+          "rmse": 158.07713441814772,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 1,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 9.966000000000008,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 199.98898438719718
+        }
+      },
+      "2026-09-18": {
+        "production": {
+          "mae": 73.80092780996883,
+          "bias": -13.846464705590083,
+          "width": 527.0116016424344,
+          "coverage": 0.9473533295604603,
+          "earlyRate": 0,
+          "lateRate": 0.05264667043953971,
+          "earlySeverity": 0,
+          "lateSeverity": 1.6021248217317494,
+          "wis": 60.802499260639735,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 108.50038491853154,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 51.884000000000015,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 250.5732
+        },
+        "candidate": {
+          "mae": 144.09711157999035,
+          "bias": -37.87102972800027,
+          "width": 412.31613812525165,
+          "coverage": 0.743527970600245,
+          "earlyRate": 0,
+          "lateRate": 0.256472029399755,
+          "earlySeverity": 0,
+          "lateSeverity": 13.97662003643559,
+          "wis": 84.83785975930397,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 169.04905734194867,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 95.29200000000003,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 328.77073557100505
+        }
+      },
+      "2026-09-21": {
+        "production": {
+          "mae": 135.4982514786957,
+          "bias": -98.1124059814837,
+          "width": 652.6272849290903,
+          "coverage": 0.9956141898216747,
+          "earlyRate": 0,
+          "lateRate": 0.004385810178325313,
+          "earlySeverity": 0,
+          "lateSeverity": 0.25606037706560547,
+          "wis": 88.84527640621499,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 176.4403052076795,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 209.029,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 254.82799999999997
+        },
+        "candidate": {
+          "mae": 154.89147289099924,
+          "bias": -120.67219884532693,
+          "width": 517.7578581252395,
+          "coverage": 0.75,
+          "earlyRate": 0,
+          "lateRate": 0.25,
+          "earlySeverity": 0,
+          "lateSeverity": 6.278518518518524,
+          "wis": 90.33336051769473,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 184.36712635915876,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 44.888000000000034,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 229.519
+        }
+      }
+    },
+    "five_before_progress": {
+      "all": {
+        "production": {
+          "mae": 116.46281803648242,
+          "bias": -50.88405547132149,
+          "width": 604.3695774118476,
+          "coverage": 0.9379539389992244,
+          "earlyRate": 0.019444444444444445,
+          "lateRate": 0.04260161655633111,
+          "earlySeverity": 1.4148203703703706,
+          "lateSeverity": 1.578460966278606,
+          "wis": 81.10776539738329,
+          "departureRisk": 0.012037037037037037,
+          "departureExcess": 0.8497268518518518,
+          "rmse": 164.39739759477334,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 269.73800000000006
+        },
+        "candidate": {
+          "mae": 119.5906036100567,
+          "bias": -15.969720033266345,
+          "width": 500.47025276893925,
+          "coverage": 0.8383049759401673,
+          "earlyRate": 0.08385469813496292,
+          "lateRate": 0.07784032592486975,
+          "earlySeverity": 3.583809251200259,
+          "lateSeverity": 3.979508739821444,
+          "wis": 78.27043004862932,
+          "departureRisk": 0.031825792019184444,
+          "departureExcess": 1.813286307580637,
+          "rmse": 157.8198371167331,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 24,
+          "lateJourneys": 15,
+          "departureRiskJourneys": 7,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 210.08,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 245.08899999999994
+        }
+      },
+      "2026-09-17": {
+        "production": {
+          "mae": 130.61951096209503,
+          "bias": -36.85803415241918,
+          "width": 618.2615250895061,
+          "coverage": 0.8818170164648129,
+          "earlyRate": 0.049999999999999996,
+          "lateRate": 0.06818298353518708,
+          "earlySeverity": 3.6381095238095242,
+          "lateSeverity": 2.6950444317089324,
+          "wis": 88.9793746303444,
+          "departureRisk": 0.030952380952380953,
+          "departureExcess": 2.1850119047619048,
+          "rmse": 185.48327710481442,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 11,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 310.8487999999999
+        },
+        "candidate": {
+          "mae": 98.78622406038626,
+          "bias": 25.828528743501774,
+          "width": 507.78221836387854,
+          "coverage": 0.8535981103822095,
+          "earlyRate": 0.1063560680324236,
+          "lateRate": 0.040045821585366966,
+          "earlySeverity": 6.93734780232124,
+          "lateSeverity": 0.5027591903043233,
+          "wis": 71.74096057280437,
+          "departureRisk": 0.061015319369757036,
+          "departureExcess": 4.359434021690868,
+          "rmse": 141.42137041762751,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 11,
+          "lateJourneys": 9,
+          "departureRiskJourneys": 4,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 30.50100000000009,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 179.3452
+        }
+      },
+      "2026-09-18": {
+        "production": {
+          "mae": 73.80092780996883,
+          "bias": -13.846464705590083,
+          "width": 527.0116016424344,
+          "coverage": 0.9473533295604603,
+          "earlyRate": 0,
+          "lateRate": 0.05264667043953971,
+          "earlySeverity": 0,
+          "lateSeverity": 1.6021248217317494,
+          "wis": 60.802499260639735,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 108.50038491853154,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 51.884000000000015,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 250.5732
+        },
+        "candidate": {
+          "mae": 122.61689056627631,
+          "bias": 7.214082096255971,
+          "width": 409.7231321519746,
+          "coverage": 0.7740010223730217,
+          "earlyRate": 0.11496045850352657,
+          "lateRate": 0.11103851912345175,
+          "earlySeverity": 3.0492054030337608,
+          "lateSeverity": 7.72596405335511,
+          "wis": 75.37061863648299,
+          "departureRisk": 0.026587301587301587,
+          "departureExcess": 0.3857,
+          "rmse": 151.35609422525945,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 9,
+          "lateJourneys": 2,
+          "departureRiskJourneys": 2,
+          "maxEarlySec": 75.043,
+          "maxLateSec": 149.846,
+          "maxDepartureExcess": 15.104,
+          "p90AbsSnapshotSec": 294.9348
+        }
+      },
+      "2026-09-21": {
+        "production": {
+          "mae": 135.4982514786957,
+          "bias": -98.1124059814837,
+          "width": 652.6272849290903,
+          "coverage": 0.9956141898216747,
+          "earlyRate": 0,
+          "lateRate": 0.004385810178325313,
+          "earlySeverity": 0,
+          "lateSeverity": 0.25606037706560547,
+          "wis": 88.84527640621499,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 176.4403052076795,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 209.029,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 254.82799999999997
+        },
+        "candidate": {
+          "mae": 141.34047395448923,
+          "bias": -84.05417871409774,
+          "width": 567.5622267556473,
+          "coverage": 0.8740496137304062,
+          "earlyRate": 0.03168163294745573,
+          "lateRate": 0.09426875332213802,
+          "earlySeverity": 0.11685081503119565,
+          "lateSeverity": 4.913670452980031,
+          "wis": 88.30465394721371,
+          "departureRisk": 0.0021367521367521365,
+          "departureExcess": 0.032435897435897434,
+          "rmse": 179.7147987806941,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 4,
+          "lateJourneys": 4,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 30.19600000000007,
+          "maxLateSec": 210.08,
+          "maxDepartureExcess": 25.188,
+          "p90AbsSnapshotSec": 247.519
+        }
+      }
+    },
+    "trailing_five_mean": {
+      "all": {
+        "production": {
+          "mae": 116.46281803648242,
+          "bias": -50.88405547132149,
+          "width": 604.3695774118476,
+          "coverage": 0.9379539389992244,
+          "earlyRate": 0.019444444444444445,
+          "lateRate": 0.04260161655633111,
+          "earlySeverity": 1.4148203703703706,
+          "lateSeverity": 1.578460966278606,
+          "wis": 81.10776539738329,
+          "departureRisk": 0.012037037037037037,
+          "departureExcess": 0.8497268518518518,
+          "rmse": 164.39739759477334,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 1,
+          "lateJourneys": 17,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 269.73800000000006
+        },
+        "candidate": {
+          "mae": 133.63276207342184,
+          "bias": -53.59363624570224,
+          "width": 405.96742882529486,
+          "coverage": 0.8497100890730944,
+          "earlyRate": 0.0328042328042328,
+          "lateRate": 0.11748567812267281,
+          "earlySeverity": 5.477446340388006,
+          "lateSeverity": 8.362989199407432,
+          "wis": 80.83570630602391,
+          "departureRisk": 0.027777777777777776,
+          "departureExcess": 4.327467592592593,
+          "rmse": 166.05563963238296,
+          "n": 1655,
+          "journeys": 36,
+          "days": 3,
+          "earlyJourneys": 3,
+          "lateJourneys": 7,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 258.4869999999999,
+          "maxLateSec": 128.24900000000002,
+          "maxDepartureExcess": 223.486,
+          "p90AbsSnapshotSec": 223.20725258701287
+        }
+      },
+      "2026-09-17": {
+        "production": {
+          "mae": 130.61951096209503,
+          "bias": -36.85803415241918,
+          "width": 618.2615250895061,
+          "coverage": 0.8818170164648129,
+          "earlyRate": 0.049999999999999996,
+          "lateRate": 0.06818298353518708,
+          "earlySeverity": 3.6381095238095242,
+          "lateSeverity": 2.6950444317089324,
+          "wis": 88.9793746303444,
+          "departureRisk": 0.030952380952380953,
+          "departureExcess": 2.1850119047619048,
+          "rmse": 185.48327710481442,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 11,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 157.286,
+          "maxLateSec": 304.27200000000005,
+          "maxDepartureExcess": 122.285,
+          "p90AbsSnapshotSec": 310.8487999999999
+        },
+        "candidate": {
+          "mae": 128.433484743524,
+          "bias": -20.907473783676554,
+          "width": 425.2279319669988,
+          "coverage": 0.8503401360544218,
+          "earlyRate": 0.07142857142857142,
+          "lateRate": 0.0782312925170068,
+          "earlySeverity": 13.627845238095237,
+          "lateSeverity": 6.813850340136054,
+          "wis": 84.78748743112878,
+          "departureRisk": 0.07142857142857142,
+          "departureExcess": 11.127773809523811,
+          "rmse": 172.14374971666507,
+          "n": 777,
+          "journeys": 14,
+          "days": 1,
+          "earlyJourneys": 1,
+          "lateJourneys": 2,
+          "departureRiskJourneys": 1,
+          "maxEarlySec": 258.4869999999999,
+          "maxLateSec": 99.61000000000007,
+          "maxDepartureExcess": 223.486,
+          "p90AbsSnapshotSec": 193.93193307525712
+        }
+      },
+      "2026-09-18": {
+        "production": {
+          "mae": 73.80092780996883,
+          "bias": -13.846464705590083,
+          "width": 527.0116016424344,
+          "coverage": 0.9473533295604603,
+          "earlyRate": 0,
+          "lateRate": 0.05264667043953971,
+          "earlySeverity": 0,
+          "lateSeverity": 1.6021248217317494,
+          "wis": 60.802499260639735,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 108.50038491853154,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 51.884000000000015,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 250.5732
+        },
+        "candidate": {
+          "mae": 125.71068679034568,
+          "bias": -33.63299900078369,
+          "width": 382.67418167015705,
+          "coverage": 0.8684801301869493,
+          "earlyRate": 0.018095238095238095,
+          "lateRate": 0.11342463171781261,
+          "earlySeverity": 0.6398234920634913,
+          "lateSeverity": 10.20185159405723,
+          "wis": 74.64295776553952,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 155.12731836479387,
+          "n": 437,
+          "journeys": 10,
+          "days": 1,
+          "earlyJourneys": 2,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 52.40299999999996,
+          "maxLateSec": 128.24900000000002,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 337.8636612480423
+        }
+      },
+      "2026-09-21": {
+        "production": {
+          "mae": 135.4982514786957,
+          "bias": -98.1124059814837,
+          "width": 652.6272849290903,
+          "coverage": 0.9956141898216747,
+          "earlyRate": 0,
+          "lateRate": 0.004385810178325313,
+          "earlySeverity": 0,
+          "lateSeverity": 0.25606037706560547,
+          "wis": 88.84527640621499,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 176.4403052076795,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 3,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 209.029,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 254.82799999999997
+        },
+        "candidate": {
+          "mae": 146.30031502753283,
+          "bias": -108.36135682216434,
+          "width": 402.9078811225884,
+          "coverage": 0.8333333333333334,
+          "earlyRate": 0,
+          "lateRate": 0.16666666666666666,
+          "earlySeverity": 0,
+          "lateSeverity": 8.63793253968254,
+          "wis": 81.38591877713853,
+          "departureRisk": 0,
+          "departureExcess": 0,
+          "rmse": 167.62251225402252,
+          "n": 441,
+          "journeys": 12,
+          "days": 1,
+          "earlyJourneys": 0,
+          "lateJourneys": 2,
+          "departureRiskJourneys": 0,
+          "maxEarlySec": 0,
+          "maxLateSec": 93.56400000000008,
+          "maxDepartureExcess": 0,
+          "p90AbsSnapshotSec": 198.1227117230718
+        }
+      }
+    }
+  },
+  "rawGapSensitivity": {
+    "division_raw_gap_le15": {
+      "logged_production": {
+        "mae": 105.19227532718986,
+        "bias": -66.04751393073573,
+        "width": 583.6850537220221,
+        "coverage": 0.9491417792720027,
+        "earlyRate": 0,
+        "lateRate": 0.05085822072799725,
+        "earlySeverity": 0,
+        "lateSeverity": 2.087853533961898,
+        "wis": 75.36833104650603,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 145.3989574588521,
+        "n": 1315,
+        "journeys": 28,
+        "days": 3,
+        "earlyJourneys": 0,
+        "lateJourneys": 14,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 304.27200000000005,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 261.5274
+      },
+      "current_suffix": {
+        "mae": 120.92023629778076,
+        "bias": -31.913291975028223,
+        "width": 421.234271829588,
+        "coverage": 0.8191401977230631,
+        "earlyRate": 0.07770713808396022,
+        "lateRate": 0.10315266419297664,
+        "earlySeverity": 1.7339962998073184,
+        "lateSeverity": 6.580265369949698,
+        "wis": 73.93187133440414,
+        "departureRisk": 0.020053391934969283,
+        "departureExcess": 0.389803722273177,
+        "rmse": 154.07662918817977,
+        "n": 1315,
+        "journeys": 28,
+        "days": 3,
+        "earlyJourneys": 21,
+        "lateJourneys": 15,
+        "departureRiskJourneys": 9,
+        "maxEarlySec": 64.87299999999999,
+        "maxLateSec": 209.951,
+        "maxDepartureExcess": 44.935,
+        "p90AbsSnapshotSec": 260.0428
+      },
+      "fixed_mean": {
+        "mae": 120.8197458023477,
+        "bias": -91.20172754179573,
+        "width": 400.6299999816917,
+        "coverage": 0.8928571428571429,
+        "earlyRate": 0,
+        "lateRate": 0.10714285714285714,
+        "earlySeverity": 0,
+        "lateSeverity": 7.759591050903119,
+        "wis": 72.15497596683076,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 149.00569131937294,
+        "n": 1315,
+        "journeys": 28,
+        "days": 3,
+        "earlyJourneys": 0,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 102.27800000000002,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 212.7739597942376
+      },
+      "fixed_survival": {
+        "mae": 104.84562965134103,
+        "bias": -42.161588125584295,
+        "width": 416.3075233096954,
+        "coverage": 0.8739541114917964,
+        "earlyRate": 0.03135513864504004,
+        "lateRate": 0.09469074986316366,
+        "earlySeverity": 0.5597876046940606,
+        "lateSeverity": 5.372409715380404,
+        "wis": 66.65717631780969,
+        "departureRisk": 0.0027472527472527475,
+        "departureExcess": 0.04164010989010989,
+        "rmse": 128.87181023359807,
+        "n": 1315,
+        "journeys": 28,
+        "days": 3,
+        "earlyJourneys": 15,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 64.23599999999999,
+        "maxLateSec": 102.27800000000002,
+        "maxDepartureExcess": 15.157,
+        "p90AbsSnapshotSec": 199.476
+      },
+      "fixed_progress": {
+        "mae": 112.9975785318229,
+        "bias": -34.21511584474844,
+        "width": 418.88576378758495,
+        "coverage": 0.8258359667172421,
+        "earlyRate": 0.07219350118062962,
+        "lateRate": 0.10197053210212823,
+        "earlySeverity": 1.3156823854403759,
+        "lateSeverity": 6.065979216933817,
+        "wis": 70.51268483136276,
+        "departureRisk": 0.007141623398739148,
+        "departureExcess": 0.10239591343981762,
+        "rmse": 144.43102096339686,
+        "n": 1315,
+        "journeys": 28,
+        "days": 3,
+        "earlyJourneys": 20,
+        "lateJourneys": 15,
+        "departureRiskJourneys": 5,
+        "maxEarlySec": 64.99200000000008,
+        "maxLateSec": 214.94,
+        "maxDepartureExcess": 44.932,
+        "p90AbsSnapshotSec": 249.65280000000024
+      },
+      "five_before_mean": {
+        "mae": 130.82891695414187,
+        "bias": -78.04004004253875,
+        "width": 457.03477130176464,
+        "coverage": 0.7629550252702962,
+        "earlyRate": 0,
+        "lateRate": 0.2370449747297038,
+        "earlySeverity": 0,
+        "lateSeverity": 8.122530509993565,
+        "wis": 79.49364407816066,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 156.44771100680853,
+        "n": 1315,
+        "journeys": 28,
+        "days": 3,
+        "earlyJourneys": 0,
+        "lateJourneys": 7,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 95.29200000000003,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 252.07963339241837
+      },
+      "five_before_progress": {
+        "mae": 111.20535403464258,
+        "bias": -33.16501761417843,
+        "width": 475.775929260903,
+        "coverage": 0.8391781627681033,
+        "earlyRate": 0.06628714636373645,
+        "lateRate": 0.09453469086816021,
+        "earlySeverity": 1.1156742835423024,
+        "lateSeverity": 4.889575139237374,
+        "wis": 72.7903462441275,
+        "departureRisk": 0.008293697131458043,
+        "departureExcess": 0.095225733226293,
+        "rmse": 141.6285316247904,
+        "n": 1315,
+        "journeys": 28,
+        "days": 3,
+        "earlyJourneys": 18,
+        "lateJourneys": 14,
+        "departureRiskJourneys": 5,
+        "maxEarlySec": 60.257000000000005,
+        "maxLateSec": 210.101,
+        "maxDepartureExcess": 40.093,
+        "p90AbsSnapshotSec": 245.08899999999994
+      },
+      "trailing_five_mean": {
+        "mae": 120.62127422963742,
+        "bias": -92.00602226846999,
+        "width": 393.37021276981295,
+        "coverage": 0.8755963778285207,
+        "earlyRate": 0,
+        "lateRate": 0.12440362217147931,
+        "earlySeverity": 0,
+        "lateSeverity": 7.9029593126632545,
+        "wis": 71.70041180297551,
+        "departureRisk": 0,
+        "departureExcess": 0,
+        "rmse": 148.7149320892564,
+        "n": 1315,
+        "journeys": 28,
+        "days": 3,
+        "earlyJourneys": 0,
+        "lateJourneys": 8,
+        "departureRiskJourneys": 0,
+        "maxEarlySec": 0,
+        "maxLateSec": 158.25400000000013,
+        "maxDepartureExcess": 0,
+        "p90AbsSnapshotSec": 212.7739597942376
+      }
+    },
+    "division_raw_gap_le30": {
+      "logged_production": {
+        "mae": 109.11668321495131,
+        "bias": -47.807454164224104,
+        "width": 588.6903971006185,
+        "coverage": 0.933177945998498,
+        "earlyRate": 0.01838235294117647,
+        "lateRate": 0.048439701060325524,
+        "earlySeverity": 0.879031862745098,
+        "lateSeverity": 1.7977434376515768,
+        "wis": 77.40277107862279,
+        "departureRisk": 0.00857843137254902,
+        "departureExcess": 0.3884742647058823,
+        "rmse": 154.28901706129344,
+        "n": 1536,
+        "journeys": 34,
+        "days": 3,
+        "earlyJourneys": 1,
+        "lateJourneys": 17,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 116.286,
+        "maxLateSec": 304.27200000000005,
+        "maxDepartureExcess": 81.285,
+        "p90AbsSnapshotSec": 269.182
+      },
+      "current_suffix": {
+        "mae": 123.53977219524504,
+        "bias": -5.604391990175397,
+        "width": 424.10622906911766,
+        "coverage": 0.7990810783448128,
+        "earlyRate": 0.11070726971310492,
+        "lateRate": 0.09021165194208226,
+        "earlySeverity": 5.264763581046347,
+        "lateSeverity": 5.5018063427267405,
+        "wis": 76.63138595220491,
+        "departureRisk": 0.043122361428845964,
+        "departureExcess": 2.8812297383322756,
+        "rmse": 158.22074935262833,
+        "n": 1536,
+        "journeys": 34,
+        "days": 3,
+        "earlyJourneys": 26,
+        "lateJourneys": 17,
+        "departureRiskJourneys": 12,
+        "maxEarlySec": 334.075,
+        "maxLateSec": 209.951,
+        "maxDepartureExcess": 299.074,
+        "p90AbsSnapshotSec": 260.07399999999996
+      },
+      "fixed_mean": {
+        "mae": 126.61900389695802,
+        "bias": -54.91998647645118,
+        "width": 410.16271444148657,
+        "coverage": 0.8823529411764706,
+        "earlyRate": 0.029411764705882353,
+        "lateRate": 0.08823529411764706,
+        "earlySeverity": 4.997970588235295,
+        "lateSeverity": 6.390251453684922,
+        "wis": 77.14266362303192,
+        "departureRisk": 0.029411764705882353,
+        "departureExcess": 3.968529411764706,
+        "rmse": 159.89130332039406,
+        "n": 1536,
+        "journeys": 34,
+        "days": 3,
+        "earlyJourneys": 1,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 169.93100000000004,
+        "maxLateSec": 102.27800000000002,
+        "maxDepartureExcess": 134.93,
+        "p90AbsSnapshotSec": 212.7739597942376
+      },
+      "fixed_survival": {
+        "mae": 115.4633355226117,
+        "bias": -9.096373234856223,
+        "width": 421.7564951513281,
+        "coverage": 0.8617486970960394,
+        "earlyRate": 0.06027068536959049,
+        "lateRate": 0.07798061753437008,
+        "earlySeverity": 5.531451362212636,
+        "lateSeverity": 4.424337412666215,
+        "wis": 73.24207070087834,
+        "departureRisk": 0.03225090941353917,
+        "departureExcess": 4.007690355780321,
+        "rmse": 147.87696971395232,
+        "n": 1536,
+        "journeys": 34,
+        "days": 3,
+        "earlyJourneys": 19,
+        "lateJourneys": 3,
+        "departureRiskJourneys": 3,
+        "maxEarlySec": 169.93100000000004,
+        "maxLateSec": 102.27800000000002,
+        "maxDepartureExcess": 134.93,
+        "p90AbsSnapshotSec": 220.97999999999996
+      },
+      "fixed_progress": {
+        "mae": 117.09894906861518,
+        "bias": -6.743032486798462,
+        "width": 422.1996948537155,
+        "coverage": 0.8058207312419798,
+        "earlyRate": 0.10494113736134246,
+        "lateRate": 0.08923813139667769,
+        "earlySeverity": 4.769013885610217,
+        "lateSeverity": 5.078668726517584,
+        "wis": 73.7447510878713,
+        "departureRisk": 0.03248914028136232,
+        "departureExcess": 2.4980971605888267,
+        "rmse": 151.18711968845835,
+        "n": 1536,
+        "journeys": 34,
+        "days": 3,
+        "earlyJourneys": 25,
+        "lateJourneys": 17,
+        "departureRiskJourneys": 8,
+        "maxEarlySec": 334.07200000000006,
+        "maxLateSec": 214.94,
+        "maxDepartureExcess": 299.071,
+        "p90AbsSnapshotSec": 252.84800000000004
+      },
+      "five_before_mean": {
+        "mae": 132.6846762465564,
+        "bias": -43.79004364195558,
+        "width": 468.47555503839783,
+        "coverage": 0.7753747266931851,
+        "earlyRate": 0.029411764705882353,
+        "lateRate": 0.19521350860093253,
+        "earlySeverity": 2.4505514705882354,
+        "lateSeverity": 6.689142772935877,
+        "wis": 81.55305858042807,
+        "departureRisk": 0.024509803921568627,
+        "departureExcess": 1.4858897058823528,
+        "rmse": 162.44953577446958,
+        "n": 1536,
+        "journeys": 34,
+        "days": 3,
+        "earlyJourneys": 1,
+        "lateJourneys": 7,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 116.286,
+        "maxLateSec": 95.29200000000003,
+        "maxDepartureExcess": 81.285,
+        "p90AbsSnapshotSec": 252.07963339241837
+      },
+      "five_before_progress": {
+        "mae": 114.76743697135912,
+        "bias": -6.440474894409829,
+        "width": 478.9706909374802,
+        "coverage": 0.8235615018085773,
+        "earlyRate": 0.09332400075213038,
+        "lateRate": 0.08311449743929226,
+        "earlySeverity": 3.292599867995064,
+        "lateSeverity": 4.104295010859844,
+        "wis": 75.11845497218833,
+        "departureRisk": 0.029761436296542588,
+        "departureExcess": 1.4837187550086952,
+        "rmse": 148.7927105323641,
+        "n": 1536,
+        "journeys": 34,
+        "days": 3,
+        "earlyJourneys": 23,
+        "lateJourneys": 16,
+        "departureRiskJourneys": 8,
+        "maxEarlySec": 134.144,
+        "maxLateSec": 210.101,
+        "maxDepartureExcess": 99.143,
+        "p90AbsSnapshotSec": 245.08899999999994
+      },
+      "trailing_five_mean": {
+        "mae": 127.53813470564914,
+        "bias": -54.20616012669861,
+        "width": 404.06533077114136,
+        "coverage": 0.8652687530467301,
+        "earlyRate": 0.032281205164992825,
+        "lateRate": 0.10245004178827709,
+        "earlySeverity": 4.526396520803442,
+        "lateSeverity": 6.508319433957974,
+        "wis": 76.80687758980008,
+        "departureRisk": 0.029411764705882353,
+        "departureExcess": 3.451227941176471,
+        "rmse": 160.2908154897861,
+        "n": 1536,
+        "journeys": 34,
+        "days": 3,
+        "earlyJourneys": 2,
+        "lateJourneys": 8,
+        "departureRiskJourneys": 1,
+        "maxEarlySec": 185.35699999999997,
+        "maxLateSec": 158.25400000000013,
+        "maxDepartureExcess": 150.356,
+        "p90AbsSnapshotSec": 225.98771278827576
+      }
+    }
+  },
+  "extension": {
+    "extension_newly_seen": {
+      "logged_production": {
+        "n": 0
+      },
+      "current_suffix": {
+        "n": 0
+      },
+      "fixed_mean": {
+        "n": 0
+      },
+      "fixed_survival": {
+        "n": 0
+      },
+      "fixed_progress": {
+        "n": 0
+      },
+      "five_before_mean": {
+        "n": 0
+      },
+      "five_before_progress": {
+        "n": 0
+      },
+      "trailing_five_mean": {
+        "n": 0
+      }
+    },
+    "extension_after_model_freeze": {
+      "logged_production": {
+        "n": 0
+      },
+      "current_suffix": {
+        "n": 0
+      },
+      "fixed_mean": {
+        "n": 0
+      },
+      "fixed_survival": {
+        "n": 0
+      },
+      "fixed_progress": {
+        "n": 0
+      },
+      "five_before_mean": {
+        "n": 0
+      },
+      "five_before_progress": {
+        "n": 0
+      },
+      "trailing_five_mean": {
+        "n": 0
+      }
+    }
+  },
+  "exploratoryBefore17": {
+    "logged_production": {
+      "mae": 116.26647048563022,
+      "bias": -74.79596767744728,
+      "width": 606.4552360641403,
+      "coverage": 0.9554203096043113,
+      "earlyRate": 0,
+      "lateRate": 0.044579690395688626,
+      "earlySeverity": 0,
+      "lateSeverity": 1.785515573624461,
+      "wis": 80.37618294856907,
+      "departureRisk": 0,
+      "departureExcess": 0,
+      "rmse": 158.8476344377673,
+      "n": 1430,
+      "journeys": 31,
+      "days": 3,
+      "earlyJourneys": 0,
+      "lateJourneys": 12,
+      "departureRiskJourneys": 0,
+      "maxEarlySec": 0,
+      "maxLateSec": 304.27200000000005,
+      "maxDepartureExcess": 0,
+      "p90AbsSnapshotSec": 268.2914000000001
+    },
+    "current_suffix": {
+      "mae": 123.02373455384624,
+      "bias": -38.34514104858591,
+      "width": 443.20264856872546,
+      "coverage": 0.8071109516924665,
+      "earlyRate": 0.06674968689306236,
+      "lateRate": 0.12613936141447118,
+      "earlySeverity": 1.444989500284462,
+      "lateSeverity": 8.274325417034579,
+      "wis": 77.03429803407647,
+      "departureRisk": 0.016777286533961117,
+      "departureExcess": 0.344471781029015,
+      "rmse": 157.46049210503253,
+      "n": 1430,
+      "journeys": 31,
+      "days": 3,
+      "earlyJourneys": 21,
+      "lateJourneys": 15,
+      "departureRiskJourneys": 9,
+      "maxEarlySec": 65.07700000000006,
+      "maxLateSec": 209.951,
+      "maxDepartureExcess": 44.935,
+      "p90AbsSnapshotSec": 259.98800000000006
+    },
+    "fixed_mean": {
+      "mae": 122.86502629774786,
+      "bias": -89.58766845014146,
+      "width": 433.57591145661826,
+      "coverage": 0.8730489073881373,
+      "earlyRate": 0,
+      "lateRate": 0.12695109261186263,
+      "earlySeverity": 0,
+      "lateSeverity": 10.02838057578911,
+      "wis": 76.54565658021657,
+      "departureRisk": 0,
+      "departureExcess": 0,
+      "rmse": 154.02456795967268,
+      "n": 1430,
+      "journeys": 31,
+      "days": 3,
+      "earlyJourneys": 0,
+      "lateJourneys": 4,
+      "departureRiskJourneys": 0,
+      "maxEarlySec": 0,
+      "maxLateSec": 102.27800000000002,
+      "maxDepartureExcess": 0,
+      "p90AbsSnapshotSec": 212.7739597942376
+    },
+    "fixed_survival": {
+      "mae": 107.96045771479439,
+      "bias": -45.62522453798862,
+      "width": 447.08884890500434,
+      "coverage": 0.8599592880274305,
+      "earlyRate": 0.024073548138600305,
+      "lateRate": 0.11596716383396925,
+      "earlySeverity": 0.4595592165860796,
+      "lateSeverity": 7.92255530119089,
+      "wis": 71.38081884378306,
+      "departureRisk": 0.0030678998420933905,
+      "departureExcess": 0.042562327994586056,
+      "rmse": 135.934048712122,
+      "n": 1430,
+      "journeys": 31,
+      "days": 3,
+      "earlyJourneys": 15,
+      "lateJourneys": 4,
+      "departureRiskJourneys": 2,
+      "maxEarlySec": 64.23599999999999,
+      "maxLateSec": 102.27800000000002,
+      "maxDepartureExcess": 15.157,
+      "p90AbsSnapshotSec": 199.476
+    },
+    "fixed_progress": {
+      "mae": 115.69122590286689,
+      "bias": -40.29948785498226,
+      "width": 444.1541973693331,
+      "coverage": 0.8142317224374621,
+      "earlyRate": 0.06183153207158566,
+      "lateRate": 0.12393674549095222,
+      "earlySeverity": 1.1287763432105782,
+      "lateSeverity": 7.796319820026753,
+      "wis": 74.12408590106939,
+      "departureRisk": 0.00739207828569652,
+      "departureExcess": 0.12228519423026572,
+      "rmse": 149.06508983586653,
+      "n": 1430,
+      "journeys": 31,
+      "days": 3,
+      "earlyJourneys": 20,
+      "lateJourneys": 14,
+      "departureRiskJourneys": 6,
+      "maxEarlySec": 65.07400000000007,
+      "maxLateSec": 214.94,
+      "maxDepartureExcess": 44.932,
+      "p90AbsSnapshotSec": 247.6001000000001
+    },
+    "five_before_mean": {
+      "mae": 132.87686939993878,
+      "bias": -83.92732782925752,
+      "width": 489.94359764051416,
+      "coverage": 0.7882348292258855,
+      "earlyRate": 0,
+      "lateRate": 0.21176517077411453,
+      "earlySeverity": 0,
+      "lateSeverity": 7.175723309244456,
+      "wis": 81.73901184884352,
+      "departureRisk": 0,
+      "departureExcess": 0,
+      "rmse": 163.36849741683486,
+      "n": 1430,
+      "journeys": 31,
+      "days": 3,
+      "earlyJourneys": 0,
+      "lateJourneys": 7,
+      "departureRiskJourneys": 0,
+      "maxEarlySec": 0,
+      "maxLateSec": 95.29200000000003,
+      "maxDepartureExcess": 0,
+      "p90AbsSnapshotSec": 252.07963339241837
+    },
+    "five_before_progress": {
+      "mae": 115.82440348701657,
+      "bias": -41.677249665686226,
+      "width": 503.2145583933586,
+      "coverage": 0.8582764519055501,
+      "earlyRate": 0.05633196732857656,
+      "lateRate": 0.08539158076587329,
+      "earlySeverity": 0.9156817729916887,
+      "lateSeverity": 4.325932058687967,
+      "wis": 75.65018094301587,
+      "departureRisk": 0.00739207828569652,
+      "departureExcess": 0.0820129262851527,
+      "rmse": 150.97018218391798,
+      "n": 1430,
+      "journeys": 31,
+      "days": 3,
+      "earlyJourneys": 18,
+      "lateJourneys": 12,
+      "departureRiskJourneys": 6,
+      "maxEarlySec": 60.257000000000005,
+      "maxLateSec": 210.101,
+      "maxDepartureExcess": 40.093,
+      "p90AbsSnapshotSec": 244.05620000000016
+    },
+    "trailing_five_mean": {
+      "mae": 125.16616485980151,
+      "bias": -87.94005985533325,
+      "width": 409.03250329642617,
+      "coverage": 0.8536041954150974,
+      "earlyRate": 0,
+      "lateRate": 0.1463958045849027,
+      "earlySeverity": 0,
+      "lateSeverity": 10.631981636755436,
+      "wis": 76.07887626419921,
+      "departureRisk": 0,
+      "departureExcess": 0,
+      "rmse": 154.62064110018886,
+      "n": 1430,
+      "journeys": 31,
+      "days": 3,
+      "earlyJourneys": 0,
+      "lateJourneys": 9,
+      "departureRiskJourneys": 0,
+      "maxEarlySec": 0,
+      "maxLateSec": 158.25400000000013,
+      "maxDepartureExcess": 0,
+      "p90AbsSnapshotSec": 221.24550000000048
+    }
+  },
+  "bootstrap": {
+    "current_suffix": {
+      "mae": {
+        "mean": 15.004942436607276,
+        "journeyBootstrap90": [
+          -2.217688779216791,
+          29.628754727980798
+        ],
+        "dayMeans": [
+          -24.94546324650744,
+          55.218685988744824,
+          14.697714922747304
+        ],
+        "leaveOneDayOut": [
+          36.51669934289981,
+          -6.6486117837744825,
+          15.136611371118692
+        ]
+      },
+      "width": {
+        "mean": -160.3946233056267,
+        "journeyBootstrap90": [
+          -196.47581199169468,
+          -126.66560030605508
+        ],
+        "dayMeans": [
+          -162.2056683941995,
+          -160.59395923862436,
+          -158.04917878046126
+        ],
+        "leaveOneDayOut": [
+          -159.41944518101062,
+          -160.28728857247415,
+          -161.39981381641192
+        ]
+      },
+      "wis": {
+        "mean": 0.517794723181981,
+        "journeyBootstrap90": [
+          -6.44365128085433,
+          8.054203924951217
+        ],
+        "dayMeans": [
+          -16.615193573276667,
+          15.054960480892952,
+          3.5462543517209366
+        ],
+        "leaveOneDayOut": [
+          9.743249959736637,
+          -7.3099099155854645,
+          -0.780116546191857
+        ]
+      },
+      "earlyRate": {
+        "mean": 0.10741389914291144,
+        "journeyBootstrap90": [
+          0.068021579316598,
+          0.16110126084900075
+        ],
+        "dayMeans": [
+          0.06566552636346638,
+          0.19429284773579053,
+          0.05476156069390509
+        ],
+        "leaveOneDayOut": [
+          0.12989379217799726,
+          0.06063292682366886,
+          0.12997918704962846
+        ]
+      },
+      "coverage": {
+        "mean": -0.1684551585441448,
+        "journeyBootstrap90": [
+          -0.24778530789894107,
+          -0.10098665642160562
+        ],
+        "dayMeans": [
+          -0.02882705810960023,
+          -0.24753645222378431,
+          -0.23909309975820067
+        ],
+        "leaveOneDayOut": [
+          -0.24363952031659186,
+          -0.12587292348587736,
+          -0.1381817551666923
+        ]
+      }
+    },
+    "fixed_mean": {
+      "mae": {
+        "mean": 16.767565075863548,
+        "journeyBootstrap90": [
+          1.0934127292740845,
+          32.31554156774276
+        ],
+        "dayMeans": [
+          -5.902030245176312,
+          45.75267052633376,
+          9.399469924861474
+        ],
+        "leaveOneDayOut": [
+          28.974270248731166,
+          1.1602006025334353,
+          19.925320140578723
+        ]
+      },
+      "width": {
+        "mean": -164.5334666054803,
+        "journeyBootstrap90": [
+          -204.36854841544402,
+          -123.34128526093788
+        ],
+        "dayMeans": [
+          -163.11418575234305,
+          -130.3852043614681,
+          -206.02893355215465
+        ],
+        "leaveOneDayOut": [
+          -165.29769475716958,
+          -182.92099242917917,
+          -146.74969505690558
+        ]
+      },
+      "wis": {
+        "mean": 0.8886795248685928,
+        "journeyBootstrap90": [
+          -6.304967246091618,
+          9.170837341382265
+        ],
+        "dayMeans": [
+          -4.814721927624104,
+          10.662312248115514,
+          -3.8599236243446686
+        ],
+        "leaveOneDayOut": [
+          3.9597418454415836,
+          -4.37404578764898,
+          2.923795160245705
+        ]
+      },
+      "earlyRate": {
+        "mean": 0.0325,
+        "journeyBootstrap90": [
+          0.0,
+          0.08012499999999989
+        ],
+        "dayMeans": [
+          0.021428571428571432,
+          0.07142857142857142,
+          0
+        ],
+        "leaveOneDayOut": [
+          0.038461538461538464,
+          0.01153846153846154,
+          0.04642857142857143
+        ]
+      },
+      "coverage": {
+        "mean": -0.09254564187349555,
+        "journeyBootstrap90": [
+          -0.1756543261607228,
+          -0.0153692160455805
+        ],
+        "dayMeans": [
+          -0.024674159321955772,
+          -0.10064408332659605,
+          -0.16228085648834137
+        ],
+        "leaveOneDayOut": [
+          -0.12909182478586312,
+          -0.08818494262951836,
+          -0.06265912132427591
+        ]
+      }
+    },
+    "fixed_survival": {
+      "mae": {
+        "mean": 6.8874843897702425,
+        "journeyBootstrap90": [
+          -9.689171592153615,
+          23.323051497969473
+        ],
+        "dayMeans": [
+          -15.038240866226227,
+          39.9086075949055,
+          -6.057146550891674
+        ],
+        "leaveOneDayOut": [
+          18.693644142999112,
+          -10.893120412994895,
+          12.435183364339634
+        ]
+      },
+      "width": {
+        "mean": -156.3753399915466,
+        "journeyBootstrap90": [
+          -197.466147716455,
+          -112.24366785946671
+        ],
+        "dayMeans": [
+          -167.7450351841655,
+          -109.80995233537105,
+          -197.43698119902942
+        ],
+        "leaveOneDayOut": [
+          -150.25319642629032,
+          -181.44901026794884,
+          -138.77749375976828
+        ]
+      },
+      "wis": {
+        "mean": -2.497964613660576,
+        "journeyBootstrap90": [
+          -9.417563081360969,
+          5.61858406324865
+        ],
+        "dayMeans": [
+          -9.769788337252164,
+          9.729026587172678,
+          -8.278993337109188
+        ],
+        "leaveOneDayOut": [
+          1.417632775965663,
+          -9.081729106416944,
+          -0.02038087503974254
+        ]
+      },
+      "earlyRate": {
+        "mean": 0.05711207110146958,
+        "journeyBootstrap90": [
+          0.021476588937374943,
+          0.10509440444254466
+        ],
+        "dayMeans": [
+          0.05295379111354142,
+          0.09381414846640411,
+          0.019144307494962164
+        ],
+        "leaveOneDayOut": [
+          0.05935114494112321,
+          0.03734941405881253,
+          0.07338396978997276
+        ]
+      },
+      "coverage": {
+        "mean": -0.10864516817209774,
+        "journeyBootstrap90": [
+          -0.1868110032096801,
+          -0.039225177410658195
+        ],
+        "dayMeans": [
+          -0.04032636313390989,
+          -0.1145811196578235,
+          -0.18142516398330352
+        ],
+        "leaveOneDayOut": [
+          -0.1454322170388143,
+          -0.1054488866028608,
+          -0.0774537413958667
+        ]
+      }
+    },
+    "fixed_progress": {
+      "mae": {
+        "mean": 8.808361445821895,
+        "journeyBootstrap90": [
+          -7.587045128290969,
+          22.608435686505267
+        ],
+        "dayMeans": [
+          -27.381695220916402,
+          45.98626110623487,
+          7.655877953201439
+        ],
+        "leaveOneDayOut": [
+          28.295315035604055,
+          -11.210507602092783,
+          9.302282942659234
+        ]
+      },
+      "width": {
+        "mean": -158.83049005619588,
+        "journeyBootstrap90": [
+          -195.0471472889215,
+          -125.77544409795127
+        ],
+        "dayMeans": [
+          -161.7180137797352,
+          -163.36704372863497,
+          -150.16906642755447
+        ],
+        "leaveOneDayOut": [
+          -157.27566958967475,
+          -156.387730386421,
+          -162.54252875418507
+        ]
+      },
+      "wis": {
+        "mean": -2.1163533285868787,
+        "journeyBootstrap90": [
+          -8.678353993816625,
+          4.802587998113887
+        ],
+        "dayMeans": [
+          -17.461119941482462,
+          10.533450668986298,
+          1.0277697226225933
+        ],
+        "leaveOneDayOut": [
+          6.146213309126127,
+          -8.927786250357052,
+          -3.4638346362480807
+        ]
+      },
+      "earlyRate": {
+        "mean": 0.10001812146188982,
+        "journeyBootstrap90": [
+          0.060237718628823426,
+          0.15437554370388928
+        ],
+        "dayMeans": [
+          0.061260600551333616,
+          0.18570441236164087,
+          0.04526788980782914
+        ],
+        "leaveOneDayOut": [
+          0.12088755579834315,
+          0.053879349438946934,
+          0.12348250645648724
+        ]
+      },
+      "coverage": {
+        "mean": -0.15974917891922139,
+        "journeyBootstrap90": [
+          -0.2349693445217009,
+          -0.09542017064956934
+        ],
+        "dayMeans": [
+          -0.03169145028107117,
+          -0.23253668717553008,
+          -0.22423110269803645
+        ],
+        "leaveOneDayOut": [
+          -0.22870334049360994,
+          -0.12055590524274745,
+          -0.13211406872830062
+        ]
+      }
+    },
+    "five_before_mean": {
+      "mae": {
+        "mean": 27.006232896922146,
+        "journeyBootstrap90": [
+          11.218879910012863,
+          41.45037822838493
+        ],
+        "dayMeans": [
+          -13.993182520168302,
+          72.98919557411035,
+          21.192094426808094
+        ],
+        "leaveOneDayOut": [
+          49.082841198432384,
+          2.2461760707438803,
+          29.498006526971025
+        ]
+      },
+      "width": {
+        "mean": -105.79749775792641,
+        "journeyBootstrap90": [
+          -144.41039558887203,
+          -69.29489647378486
+        ],
+        "dayMeans": [
+          -89.36152904286223,
+          -101.38681915389765,
+          -130.1185862968682
+        ],
+        "leaveOneDayOut": [
+          -114.64763475834559,
+          -108.17247854471113,
+          -95.37417409837994
+        ]
+      },
+      "wis": {
+        "mean": 5.916447134010316,
+        "journeyBootstrap90": [
+          0.3483221519858067,
+          12.1383291311543
+        ],
+        "dayMeans": [
+          -9.908462238656048,
+          23.71408449287401,
+          3.614931150113429
+        ],
+        "leaveOneDayOut": [
+          14.437552180830666,
+          -3.6668960592239817,
+          6.902811127108982
+        ]
+      },
+      "earlyRate": {
+        "mean": 0.0575,
+        "journeyBootstrap90": [
+          0.007125000000000023,
+          0.125
+        ],
+        "dayMeans": [
+          0.021428571428571432,
+          0.14285714285714285,
+          0
+        ],
+        "leaveOneDayOut": [
+          0.07692307692307693,
+          0.01153846153846154,
+          0.08214285714285714
+        ]
+      },
+      "coverage": {
+        "mean": -0.18327655244924074,
+        "journeyBootstrap90": [
+          -0.2866437008946396,
+          -0.08194779135258025
+        ],
+        "dayMeans": [
+          -0.024674159321955772,
+          -0.2884466849715823,
+          -0.24561418982167468
+        ],
+        "leaveOneDayOut": [
+          -0.2686778410562404,
+          -0.1266464810910568,
+          -0.15656042214676905
+        ]
+      }
+    },
+    "five_before_progress": {
+      "mae": {
+        "mean": 9.377028097875066,
+        "journeyBootstrap90": [
+          -4.410638969522282,
+          21.941592994126523
+        ],
+        "dayMeans": [
+          -28.744874403704976,
+          47.10199517157252,
+          9.840119430404757
+        ],
+        "leaveOneDayOut": [
+          29.904206367956625,
+          -10.936415711038945,
+          9.17856038393377
+        ]
+      },
+      "width": {
+        "mean": -98.36579729106384,
+        "journeyBootstrap90": [
+          -130.11757216840567,
+          -69.64970869117626
+        ],
+        "dayMeans": [
+          -108.56312721070647,
+          -108.57338792245282,
+          -74.56005664819362
+        ],
+        "leaveOneDayOut": [
+          -92.8749273343332,
+          -92.86940233570054,
+          -108.56825756657965
+        ]
+      },
+      "wis": {
+        "mean": -0.8849749855438549,
+        "journeyBootstrap90": [
+          -6.352756530471608,
+          4.846368919072333
+        ],
+        "dayMeans": [
+          -16.07424084377771,
+          11.935975018200654,
+          1.8780601780270463
+        ],
+        "leaveOneDayOut": [
+          7.293860476582067,
+          -7.788563449098591,
+          -2.0691329127885267
+        ]
+      },
+      "earlyRate": {
+        "mean": 0.06311000775027621,
+        "journeyBootstrap90": [
+          0.03889011486862103,
+          0.08780236011083226
+        ],
+        "dayMeans": [
+          0.054140030102099966,
+          0.0799620358914163,
+          0.05391428217515174
+        ],
+        "leaveOneDayOut": [
+          0.06793999571467882,
+          0.054035838751200785,
+          0.06705103299675813
+        ]
+      },
+      "coverage": {
+        "mean": -0.0929685625456716,
+        "journeyBootstrap90": [
+          -0.1544143149554765,
+          -0.050439236753994775
+        ],
+        "dayMeans": [
+          -0.024570879831837512,
+          -0.11534138531301713,
+          -0.1466642324832416
+        ],
+        "leaveOneDayOut": [
+          -0.12979808400696688,
+          -0.0809216579786394,
+          -0.06995613257242732
+        ]
+      }
+    },
+    "trailing_five_mean": {
+      "mae": {
+        "mean": 19.949352349756506,
+        "journeyBootstrap90": [
+          4.311548446634108,
+          35.461773522973225
+        ],
+        "dayMeans": [
+          -3.565974572803972,
+          49.680164987046055,
+          12.69795234923926
+        ],
+        "leaveOneDayOut": [
+          32.61145146190446,
+          3.9404532373698276,
+          23.05709520712104
+        ]
+      },
+      "width": {
+        "mean": -188.6937601044452,
+        "journeyBootstrap90": [
+          -228.87893297720964,
+          -145.8496360454409
+        ],
+        "dayMeans": [
+          -184.0169262873508,
+          -154.50420468459524,
+          -234.03788088088032
+        ],
+        "leaveOneDayOut": [
+          -191.21205523672683,
+          -207.10352071513367,
+          -169.26056548597302
+        ]
+      },
+      "wis": {
+        "mean": 0.4801551532900742,
+        "journeyBootstrap90": [
+          -7.294813780163706,
+          8.80385766882597
+        ],
+        "dayMeans": [
+          -6.004524318910187,
+          11.087265780993336,
+          -4.329347861463427
+        ],
+        "leaveOneDayOut": [
+          3.971905638320984,
+          -5.23136595393476,
+          2.541370731041575
+        ]
+      },
+      "earlyRate": {
+        "mean": 0.034722222222222224,
+        "journeyBootstrap90": [
+          0.0022222222222222222,
+          0.08223611111111111
+        ],
+        "dayMeans": [
+          0.021428571428571432,
+          0.07777777777777778,
+          0
+        ],
+        "leaveOneDayOut": [
+          0.04188034188034188,
+          0.01153846153846154,
+          0.04960317460317461
+        ]
+      },
+      "coverage": {
+        "mean": -0.10983751587482381,
+        "journeyBootstrap90": [
+          -0.19158575455573743,
+          -0.029846058835512786
+        ],
+        "dayMeans": [
+          -0.03147688041039114,
+          -0.12119060726225842,
+          -0.18801298396465488
+        ],
+        "leaveOneDayOut": [
+          -0.15203170420182602,
+          -0.10372431282005133,
+          -0.07633374383632478
+        ]
+      }
+    }
+  },
+  "replayAudit": {
+    "audits": [
+      {
+        "day": "2026-09-16",
+        "rawRows": 23646,
+        "features": 2900,
+        "delayedFeatures": 2904,
+        "emittedVisits": 962,
+        "prefixRows": 1471,
+        "prefixInvariant": true
+      },
+      {
+        "day": "2026-09-17",
+        "rawRows": 22977,
+        "features": 3537,
+        "delayedFeatures": 3524,
+        "emittedVisits": 958,
+        "prefixRows": 1559,
+        "prefixInvariant": true
+      },
+      {
+        "day": "2026-09-18",
+        "rawRows": 22917,
+        "features": 3000,
+        "delayedFeatures": 2992,
+        "emittedVisits": 940,
+        "prefixRows": 1772,
+        "prefixInvariant": true
+      },
+      {
+        "day": "2026-09-21",
+        "rawRows": 14128,
+        "features": 2168,
+        "delayedFeatures": 2159,
+        "emittedVisits": 580,
+        "prefixRows": 1046,
+        "prefixInvariant": true
+      }
+    ],
+    "duplicatePredictions": 2,
+    "featureHash": "ba8f6c292da3e24e2806661c0635f3f54153fecb590b307d0baac37eccf253a3",
+    "delayedHash": "640eb3eebd2fc8b91b47cf08bd8ad0a7129916cbcdc062804d05d1c6b13d007c",
+    "note": "Current production detector/departure reducers, chronological raw observations only. No outcome table enters features. Red-only replay resets each day and after a per-bus gap over60s; ten-minute warmup required. Logged forecast clocks are15s buckets."
+  },
+  "calibration": {
+    "current_suffix": {
+      "padSeconds": 0,
+      "snapshots": 1888,
+      "journeys": 63
+    },
+    "fixed_mean": {
+      "padSeconds": 0,
+      "snapshots": 2226,
+      "journeys": 63
+    },
+    "fixed_survival": {
+      "padSeconds": 0,
+      "snapshots": 2217,
+      "journeys": 63
+    },
+    "fixed_progress": {
+      "padSeconds": 0.002999999999985903,
+      "snapshots": 1822,
+      "journeys": 63
+    },
+    "five_before_mean": {
+      "padSeconds": 0,
+      "snapshots": 1655,
+      "journeys": 63
+    },
+    "five_before_progress": {
+      "padSeconds": 4.8419999999999845,
+      "snapshots": 1402,
+      "journeys": 63
+    },
+    "trailing_five_mean": {
+      "padSeconds": 0,
+      "snapshots": 2317,
+      "journeys": 63
+    }
+  },
+  "inputHashes": {
+    "stop_visits.jsonl.gz": {
+      "sha256": "24902bd73c650524adf5f5ae8cda175bbda7c20b2aadeb685759f76e25260a09",
+      "counts": {
+        "2026-09-03": 718,
+        "2026-09-04": 891,
+        "2026-09-08": 836,
+        "2026-09-09": 760,
+        "2026-09-10": 969,
+        "2026-09-11": 777,
+        "2026-09-14": 838,
+        "2026-09-15": 633,
+        "2026-09-16": 969,
+        "2026-09-17": 958,
+        "2026-09-18": 943,
+        "2026-09-21": 582
+      },
+      "bytes": 990708
+    },
+    "legs.jsonl.gz": {
+      "sha256": "4ecf80564c44dd16c3386005cf4da1be4d3299c7bf2fc0c38a62ff777479ffec",
+      "counts": {
+        "2026-09-03": 714,
+        "2026-09-04": 832,
+        "2026-09-08": 819,
+        "2026-09-09": 742,
+        "2026-09-10": 929,
+        "2026-09-11": 752,
+        "2026-09-14": 825,
+        "2026-09-15": 628,
+        "2026-09-16": 959,
+        "2026-09-17": 940,
+        "2026-09-18": 929,
+        "2026-09-21": 578
+      },
+      "bytes": 406134
+    },
+    "raw_positions.jsonl.gz": {
+      "sha256": "f6b7fbf70bf76165bdc7e2ba0fa3335e27ae35f178dba916631abb94a35eab18",
+      "counts": {
+        "2026-09-16": 23646,
+        "2026-09-17": 22977,
+        "2026-09-18": 22917,
+        "2026-09-21": 14128,
+        "2026-09-03": 17550,
+        "2026-09-04": 21718,
+        "2026-09-08": 1606,
+        "2026-09-09": 3819,
+        "2026-09-10": 23356
+      },
+      "bytes": 1602029
+    },
+    "predictions_log.jsonl.gz": {
+      "sha256": "da5ab6c33728f8b756691fbffae86ea4f6ec07a112e4d8dbdff349906c9b3b74",
+      "counts": {
+        "2026-09-16": 1001,
+        "2026-09-17": 2966,
+        "2026-09-18": 1375,
+        "2026-09-21": 1256
+      },
+      "bytes": 143931
+    },
+    "topology.json": {
+      "sha256": "be9309ce960876c6cde9e389a03c297da48b0f5d1602971da31dfb4c400f9277"
+    }
+  }
+}
