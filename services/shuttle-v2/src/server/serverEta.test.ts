@@ -99,6 +99,36 @@ describe("the served answer", () => {
   beforeEach(() => registerRoutePaths(CAP.static.route_paths));
   afterEach(() => registerRoutePaths(null));
 
+  it('serves both variants from one warm step and hands the trial back to the exact live wire', () => {
+    const now = Date.parse('2026-09-21T16:00:00Z');
+    const position = CAP.static.stop_coords[128]!;
+    const bus: BusData = { bus_id: 99, bus_name: '#306', route_id: 3, ...position, heading: 0,
+      last_stop_id: 128, observed_at: now, stationary: true, at_stop_id: 128,
+      at_stop_since: new Date(now - 60_000).toISOString(),
+      stationary_since: new Date(now - 60_000).toISOString(), last_moved_at: new Date(now - 60_000).toISOString() };
+    const payload = { ...payloadFor(0), buses: [bus] };
+    const engine = new ServerEta({ routes: ['Red'] });
+    let released = false;
+    engine.useK10Trial(at => new Map([['306', { index: 9, phase: 'hold' as const, observedAt: at,
+      origin: { departed: now - 600_000, knownAt: now - 595_000 }, released }]]));
+    const control = engine.contribute(payload, 1, now)!;
+    const trial = engine.contribute(payload, 1, now, true)!;
+    expect(trial.trial!.changedRows).toBeGreaterThan(0);
+    expect(engine.stats().steps).toBe(1);
+    expect(engine.contribute(payload, 1, now)).toEqual(control);
+    expect(control.trial).toBeUndefined();
+    const row = trial.rows.find((r,i) => r[2] !== control.rows[i]![2])!;
+    expect(engine.historyPosition('Red','306',row[1],row[2],now,true)).not.toBeNull();
+    released = true;
+    const next = { ...payload, buses: [{ ...bus, observed_at: now + 5000 }] };
+    const live = engine.contribute(next, 2, now + 5000)!;
+    const handedOff = engine.contribute(next, 2, now + 5000, true)!;
+    expect(handedOff.rows).toEqual(live.rows);
+    expect(handedOff.distributions).toEqual(live.distributions);
+    expect(engine.stats().steps).toBe(2);
+    expect(engine.contribute({ ...next, buses: [] }, 2, now + 6000, true)).toBeNull();
+  });
+
   it("carries only the allowlisted lines", () => {
     const red = new ServerEta({ routes: ["Red"] });
     const wire = red.contribute(payloadFor(0), 1, CAP.frames[0]!.t)!;
