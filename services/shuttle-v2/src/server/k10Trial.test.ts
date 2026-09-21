@@ -88,6 +88,10 @@ describe('K10 trial prior and hybrid', () => {
       expect(applyK10Trial(w, new Map([['309', e]]), seq).rows).toEqual(w.rows);
     };
     expect(applyK10Trial(base, new Map(), K10_MODEL.sequence).rows).toEqual(base.rows);
+    // A recently reassigned fleet name can still have an old Red payload row.
+    // Blue's fresh checkpoint must never price that row with Red's prior.
+    check({ ...sample, routeId: 1 });
+    check({ ...sample, routeId: 16 });
     check({ ...sample, origin: { ...sample.origin, knownAt: sample.now + 1 } });
     check({ ...sample, observedAt: sample.now - 15_001 });
     check({ ...sample, observedAt: sample.now + 1 });

@@ -68,6 +68,7 @@ export function applyK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<string,
     const b = wire.buses[r[0]], e = b && evidence.get(b[0]);
     const target = model.sequence.indexOf(r[1]);
     if (!enabled || !b || b[1] !== 'Red' || !e || e.released || e.index < 8 || e.index > 14
+      || (e.routeId !== undefined && e.routeId !== 3)
       || target < 15 || target <= e.index || r[5] <= 0 || r[5] > target - 4
       || b[2] < 4 || b[2] > 14 || r[5] !== target - b[2]
       || e.origin.departed > e.origin.knownAt || e.origin.knownAt > e.observedAt
