@@ -10,6 +10,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { gunzipSync } from 'node:zlib';
 
 import { Collector } from "../collector/collector.js";
 import type { RawBus, UpstreamClient } from "../collector/upstream.js";
@@ -25,7 +26,8 @@ import {
   type EtaPayloadView,
 } from "./serverEta.js";
 import { buildBusesPayload, createBusesPayloadCache } from "./v1compat.js";
-import { BLUE_K10_MODELS } from './blueK10Trial.js';
+import { BLUE_K10_MODELS, blueK10GroupPredictions } from './blueK10Trial.js';
+import type { K10Evidence } from '../collector/k10Clock.js';
 
 // Read rather than `import ... from`: `resolveJsonModule` would have tsc infer
 // a literal type for a quarter-megabyte of captured JSON on every typecheck.
@@ -101,7 +103,15 @@ describe("the served answer", () => {
   afterEach(() => registerRoutePaths(null));
 
   for (const model of BLUE_K10_MODELS) it(`serves ${model.label}'s updated and usual forecasts from one live step`, () => {
-    const now = Date.parse('2026-09-21T16:00:00Z'), stopId = model.sequence[model.waitIndex]!;
+    // Use an observed, supported service-time clock. An arbitrary midday
+    // departure is not representative of Blue West's operating history.
+    const cases = JSON.parse(gunzipSync(fs.readFileSync(new URL('./__fixtures__/blue-k10-parity.json.gz', import.meta.url))).toString()) as
+      { route: number; now: number; evidence: K10Evidence | null; expected: { changed: boolean } }[];
+    const sample = cases.find(f => f.route === model.routeId && f.expected.changed
+      && f.evidence?.index === model.waitIndex && f.evidence.phase === 'hold')!;
+    expect(sample).toBeDefined();
+    const now = sample.now, stopId = model.sequence[model.waitIndex]!;
+    expect(blueK10GroupPredictions(model, sample.evidence!.origin.departed, now)).not.toBeNull();
     const bus: BusData = { bus_id: 99, bus_name: '#306', route_id: model.routeId,
       ...CAP.static.stop_coords[stopId]!, heading: 0, last_stop_id: stopId, observed_at: now,
       stationary: true, at_stop_id: stopId, at_stop_since: new Date(now - 60_000).toISOString(),
@@ -110,7 +120,7 @@ describe("the served answer", () => {
     const engine = new ServerEta({ routes: [model.label] });
     let released = false;
     engine.useK10Trial(at => new Map([['306', { routeId: model.routeId, index: model.waitIndex,
-      phase: 'hold' as const, observedAt: at, origin: { departed: now - 600_000, knownAt: now - 595_000 }, released }]]));
+      phase: 'hold' as const, observedAt: at, origin: sample.evidence!.origin, released }]]));
     const usual = engine.contribute(payload, 1, now)!, updated = engine.contribute(payload, 1, now, true)!;
     expect(updated.trial!.byRoute![model.label]).toBeGreaterThan(0);
     expect(usual.trial).toBeUndefined(); expect(engine.stats().steps).toBe(1);
