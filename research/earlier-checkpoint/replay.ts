@@ -8,12 +8,15 @@ import {planTracks, reconcileTracks} from '../../services/shuttle-v2/src/collect
 import {stepManyWithVisits, pruneVisits} from '../../services/shuttle-v2/src/collector/departure.ts';
 
 const dir = new URL('.', import.meta.url).pathname;
+const downstream = process.env.REPLAY_SCOPE==='downstream';
+const outputDir=dir+'results'+(downstream?'/multistop':'');
 const input = (name:string) => zlib.gunzipSync(fs.readFileSync(dir+'data/'+name+'.jsonl.gz')).toString().trim().split('\n').filter(Boolean).map(x=>JSON.parse(x));
 const top = JSON.parse(fs.readFileSync(dir+'data/topology.json','utf8'));
 const net = TransitNetwork.build(top.stops,[top.route]);
 const seq:number[] = top.route.stops;
+const targets=downstream?seq.slice(15):[48,4];
 const raw = input('raw_positions').sort((a,b)=>a.collected_at-b.collected_at || a.bus_id-b.bus_id);
-const predictions = input('predictions_log');
+const predictions = input(downstream?'multistop_predictions':'predictions_log');
 const byDay = Map.groupBy(raw.filter(r=>r.day>='2026-09-16'),r=>r.day);
 const preds = new Map<string,any>();
 let duplicatePredictions=0;
@@ -69,14 +72,14 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
       let phase='unknown', index=-1, began=0;
       if(pass && pass.arrivedAt!==null){phase='hold';index=pass.stopIndex;began=pass.arrivedAt;}
       else if(v?.transit){phase='drive';index=v.transit.fromIndex;began=v.transit.departedAt;}
-      if(index<8 || index>19 || began>asof)continue;
+      if(index<8 || index>(downstream?27:19) || began>asof)continue;
       const h=history.get(s.busName)??new Map();
       const origins:any={};
       for(const [i,e]of h){
-        if(i>=4 && i<=12 && i<=index && e.departed<=began && e.knownAt<=asof && at-e.departed<=2700000)origins[i]=e;
+        if(i>=4 && i<=(downstream?27:12) && i<=index && e.departed<=began && e.knownAt<=asof && at-e.departed<=2700000)origins[i]=e;
       }
       const canal=h.get(13);
-      for(const target of [48,4]) {
+      for(const target of targets) {
         const ti=seq.indexOf(target);
         if(index>=ti)continue;
         const base=preds.get(`${at}|${s.busName}|${target}`);
@@ -88,12 +91,12 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
         // origins and all existing model inputs. These remain causal observations.
         const checkpointOrigins:any={},checkpointArrivals:any={};
         for(const [i,e]of h){
-          if(i<0 || i>13 || i>index || e.departed>began || e.knownAt>asof || at-e.departed>2700000)continue;
+          if(i<0 || i>(downstream?27:13) || i>index || e.departed>began || e.knownAt>asof || at-e.departed>2700000)continue;
           if(targetDeparture && targetDeparture.departed>=e.arrived)continue;
           checkpointOrigins[i]=e;
           checkpointArrivals[i]={...e,departed:e.arrived};
         }
-        if(pass && pass.arrivedAt!==null && pass.stopIndex<=13 && pass.arrivedAt<=asof && at-pass.arrivedAt<=2700000 && (!targetDeparture || targetDeparture.departed<pass.arrivedAt)){
+        if(pass && pass.arrivedAt!==null && pass.stopIndex<=(downstream?27:13) && pass.arrivedAt<=asof && at-pass.arrivedAt<=2700000 && (!targetDeparture || targetDeparture.departed<pass.arrivedAt)){
           checkpointArrivals[pass.stopIndex]={stop:pass.stopId,index:pass.stopIndex,arrived:pass.arrivedAt,departed:pass.arrivedAt,knownAt:s.lastObservedAt,active:true};
         }
         out.push({at,asof,day,bus:s.busName,busId:s.busId,target,index,nearestIndex:s.nearestIndex,phase,began,age:(at-began)/1000,observedAt:s.lastObservedAt,
@@ -103,7 +106,7 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
   }
   return {rows:out,emittedVisits};
 }
-fs.mkdirSync(dir+'results',{recursive:true});
+fs.mkdirSync(outputDir,{recursive:true});
 const out:any[]=[], delayed:any[]=[], audits:any[]=[];
 for(const[day,rows]of byDay){
   const a=replay(rows,day);const b=replay(rows,day,15000);
@@ -118,8 +121,8 @@ for(const[day,rows]of byDay){
   audits.push({day,rawRows:rows.length,features:a.rows.length,delayedFeatures:b.rows.length,emittedVisits:a.emittedVisits,prefixRows:prefix.rows.length,prefixInvariant:true});
 }
 for(const[name,rows]of [['features',out],['features-delay15',delayed]] as const){
-  fs.writeFileSync(dir+'results/'+name+'.jsonl.gz',zlib.gzipSync(rows.map(r=>JSON.stringify(r)).join('\n')+'\n'));
+  fs.writeFileSync(outputDir+'/'+name+'.jsonl.gz',zlib.gzipSync(rows.map(r=>JSON.stringify(r)).join('\n')+'\n'));
 }
 const hash=(x:any)=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
-fs.writeFileSync(dir+'results/replay-audit.json',JSON.stringify({audits,duplicatePredictions,featureHash:hash(out),delayedHash:hash(delayed),note:'Current production detector/departure reducers, chronological raw observations only. No outcome table enters features. Red-only replay resets each day and after a per-bus gap over60s; ten-minute warmup required. Logged forecast clocks are15s buckets.'},null,2));
+fs.writeFileSync(outputDir+'/replay-audit.json',JSON.stringify({audits,duplicatePredictions,featureHash:hash(out),delayedHash:hash(delayed),note:'Current production detector/departure reducers, chronological raw observations only. No outcome table enters features. Red-only replay resets each day and after a per-bus gap over60s; ten-minute warmup required. Logged forecast clocks are15s buckets.'},null,2));
 console.log(JSON.stringify(audits));

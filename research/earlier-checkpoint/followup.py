@@ -13,7 +13,7 @@ NEW_ARMS = [
     'wait_minus1_departure_mean', 'wait_minus2_departure_mean',
     'wait_minus1_arrival_mean', 'wait_minus2_arrival_mean',
 ]
-TARGET_INDEX = {48:17, 4:20}
+TARGET_INDEX = {stop:index for index,stop in enumerate(json.loads((HERE/'data/topology.json').read_text())['route']['stops'])}
 
 
 class FollowupLabels(Labels):
@@ -25,11 +25,11 @@ class FollowupLabels(Labels):
 
 
 class FollowupPredictor:
-    def __init__(self, episodes, cutoff=TRAIN_END):
+    def __init__(self, episodes, cutoff=TRAIN_END,max_index=13):
         # Reuse the exact initial mean implementation, including weights and
         # support gates. Only checkpoint identity and timing boundary differ.
         self.models = {}
-        for index in range(14):
+        for index in range(max_index+1):
             paths = [e for e in episodes if e['sourceIndex']==index]
             for arrival in (False, True):
                 converted = []

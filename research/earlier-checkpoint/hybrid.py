@@ -15,8 +15,8 @@ ARMS = [base+'/'+mode for base in BASES for mode in MODES]
 
 
 def release_gate(row, include_long_canal=False):
-    origins = [e for e in row.get('origins',{}).values()
-               if e['knownAt']<=row['asof'] and e['departed']<=row['asof']]
+    origins = [e for index,e in row.get('origins',{}).items()
+               if int(index)<14 and e['knownAt']<=row['asof'] and e['departed']<=row['asof']]
     if not origins:
         return None
     latest_origin = max(e['departed'] for e in origins)

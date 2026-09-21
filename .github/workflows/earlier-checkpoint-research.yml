@@ -31,11 +31,13 @@ jobs:
           p=pathlib.Path('data')
           for name,meta in json.loads((p/'manifest.json').read_text())['outputs'].items():
               assert hashlib.sha256((p/name).read_bytes()).hexdigest()==meta['sha256'],name
+          for name,digest in json.loads((p/'multistop-manifest.json').read_text())['outputs'].items():
+              assert hashlib.sha256((p/name).read_bytes()).hexdigest()==digest,name
           print('All frozen input hashes match.')
           PY
       - name: Check statistical and causal invariants
         working-directory: research/earlier-checkpoint
-        run: python3 -m unittest -v test_experiment.py test_followup.py test_hybrid.py
+        run: python3 -m unittest -v test_experiment.py test_followup.py test_hybrid.py test_multistop.py
       - name: Reconstruct current states without future observations
         env:
           TZ: America/New_York
@@ -50,6 +52,13 @@ jobs:
         run: python3 research/earlier-checkpoint/followup.py > research/earlier-checkpoint/results/followup.log
       - name: Compare K5 and K10 with causal departure switching
         run: python3 research/earlier-checkpoint/hybrid.py > research/earlier-checkpoint/results/hybrid.log
+      - name: Replay other downstream Red pickup stops
+        env:
+          TZ: America/New_York
+          REPLAY_SCOPE: downstream
+        run: services/shuttle-v2/node_modules/.bin/tsx research/earlier-checkpoint/replay.ts
+      - name: Audit destination and moving-cutoff discontinuities
+        run: python3 research/earlier-checkpoint/multistop.py > research/earlier-checkpoint/results/multistop.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

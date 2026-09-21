@@ -32,6 +32,10 @@ class HybridTests(unittest.TestCase):
         row = self.row();row['origins'] = {}
         self.assertIsNone(release_gate(row))
 
+    def test_later_downstream_origin_does_not_undo_release(self):
+        row = self.row();row['origins']['16']={'departed':1170000,'knownAt':1180000}
+        self.assertIsNotNone(release_gate(row))
+
     def test_long_canal_is_only_used_in_sensitivity(self):
         row = self.row();row['releaseEvents'][0]['index'] = 13
         self.assertIsNone(release_gate(row))
