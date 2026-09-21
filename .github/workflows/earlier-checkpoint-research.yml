@@ -42,6 +42,8 @@ jobs:
         run: services/shuttle-v2/node_modules/.bin/tsx research/earlier-checkpoint/replay.ts
       - name: Evaluate frozen chronological candidates
         run: python3 research/earlier-checkpoint/evaluate.py > research/earlier-checkpoint/results/evaluation.log
+      - name: Audit paired subgroups and the largest physical cases
+        run: python3 research/earlier-checkpoint/audit.py > research/earlier-checkpoint/results/audit.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

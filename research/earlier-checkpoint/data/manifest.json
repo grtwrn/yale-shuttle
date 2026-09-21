@@ -191,11 +191,39 @@
       "table": "predictions_log",
       "sha256": "0014fb97113e7e9bb2ac9668ea38a7dcb93f263f78d97023ceb827e38645e733",
       "bytes": 7516585
+    },
+    {
+      "day": "2026-09-21",
+      "table": "stop_visits",
+      "extension": true,
+      "sha256": "6ea7dce97e2134dede54426b9925ce4c2b16eb442ace801af5a10e33a0746cf2",
+      "bytes": 1906882
+    },
+    {
+      "day": "2026-09-21",
+      "table": "legs",
+      "extension": true,
+      "sha256": "9a7979c0be112924d7b348352ce7661b045da4b36846d5b54853d9fe9ca3535c",
+      "bytes": 1071860
+    },
+    {
+      "day": "2026-09-21",
+      "table": "raw_positions",
+      "extension": true,
+      "sha256": "48f2da655c635fc62d4d3d78a2c601301ddf5fa299d688c535942333dca82503",
+      "bytes": 14686616
+    },
+    {
+      "day": "2026-09-21",
+      "table": "predictions_log",
+      "extension": true,
+      "sha256": "f059053914431d1a677e198a73c05550479c2f0ad9ad1c749f415bc117066c00",
+      "bytes": 7659669
     }
   ],
   "outputs": {
     "stop_visits.jsonl.gz": {
-      "sha256": "1609aa3cb17611101714c0dd7dca59911e991518b7605f8abb0e77ed4f3a575e",
+      "sha256": "24902bd73c650524adf5f5ae8cda175bbda7c20b2aadeb685759f76e25260a09",
       "counts": {
         "2026-09-03": 718,
         "2026-09-04": 891,
@@ -208,12 +236,12 @@
         "2026-09-16": 969,
         "2026-09-17": 958,
         "2026-09-18": 943,
-        "2026-09-21": 547
+        "2026-09-21": 582
       },
-      "bytes": 984334
+      "bytes": 990708
     },
     "legs.jsonl.gz": {
-      "sha256": "e7f2224d9ba975bfd6544841aa678c8be343b9c347277097c18cb244e76ef4a5",
+      "sha256": "4ecf80564c44dd16c3386005cf4da1be4d3299c7bf2fc0c38a62ff777479ffec",
       "counts": {
         "2026-09-03": 714,
         "2026-09-04": 832,
@@ -226,29 +254,29 @@
         "2026-09-16": 959,
         "2026-09-17": 940,
         "2026-09-18": 929,
-        "2026-09-21": 560
+        "2026-09-21": 578
       },
-      "bytes": 401784
+      "bytes": 406134
     },
     "raw_positions.jsonl.gz": {
-      "sha256": "b4e608570b0e8f8f8cae22a481e90ba0c1a421e56de5e5c62b8984e363a41140",
+      "sha256": "e16d8d73c123100c1e1688a0879bcab8f916b164190b0e1eda0d5b57d84f293e",
       "counts": {
         "2026-09-16": 23646,
         "2026-09-17": 22977,
         "2026-09-18": 22917,
-        "2026-09-21": 13294
+        "2026-09-21": 14128
       },
-      "bytes": 867808
+      "bytes": 886138
     },
     "predictions_log.jsonl.gz": {
-      "sha256": "f7386503e2640c9ccb89039f21c9de4f383ed09667fb491b6b457f76bb199796",
+      "sha256": "da5ab6c33728f8b756691fbffae86ea4f6ec07a112e4d8dbdff349906c9b3b74",
       "counts": {
         "2026-09-16": 1001,
         "2026-09-17": 2966,
         "2026-09-18": 1375,
         "2026-09-21": 1256
       },
-      "bytes": 142864
+      "bytes": 143931
     },
     "topology.json": {
       "sha256": "be9309ce960876c6cde9e389a03c297da48b0f5d1602971da31dfb4c400f9277"

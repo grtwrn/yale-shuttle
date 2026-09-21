@@ -1,0 +1,31 @@
+{
+  "modelFrozenCommit": "505ef89f9847b6023fd02013ec55ebfac16a38d9",
+  "modelFrozenAt": "2026-09-21T17:47:50Z",
+  "description": "Additional same-day outcomes captured only after numeric model rules were frozen. Clock times before the freeze are newly inspected retrospective extension; only later forecast origins are called prospective. No training or calibration changes.",
+  "tables": {
+    "stop_visits": {
+      "new": 35,
+      "updated": 0,
+      "maxClock": 1790012799590,
+      "previousMaxClock": 1790011209402
+    },
+    "legs": {
+      "new": 18,
+      "updated": 0,
+      "maxClock": 1790012809510,
+      "previousMaxClock": 1790012124448
+    },
+    "raw_positions": {
+      "new": 834,
+      "updated": 0,
+      "maxClock": 1790012964688,
+      "previousMaxClock": 1790011374364
+    },
+    "predictions_log": {
+      "new": 0,
+      "updated": 0,
+      "maxClock": 1790011050000,
+      "previousMaxClock": 1790011050000
+    }
+  }
+}
