@@ -1,0 +1,17 @@
+# Blue checkpoint experiment, frozen before outcome scoring
+
+Question: does averaging complete journeys from K stops BEFORE the previous substantial wait improve Blue estimates, while reverting to the logged live estimator after that wait releases?
+
+Inputs: public fleet archives September 3–20, 2026, hashed in data/manifest.json. Route topology is frozen from the public API. No rider reports, locations, identities, or private trip records are used. Forecast logs contain bus/stop predictions only. Fit paths completed before September 16 00:00 America/New_York. September 16 is reserved for validation; September 17–20 is evaluation. These dates were used for earlier Red research, so this is a route transfer test, not an untouched global holdout.
+
+Analyze Blue Day (1), Weekend (4), Night (13), West (16) separately. Identify substantial wait stops using TRAINING ONLY: at least 30 resolved visits on at least 3 dates, and 75th-percentile observed standing time >=180 seconds. Audit historical stop indices against frozen topology. Fit weekday and weekend service separately.
+
+Primary arm: K=10; checkpoint source is ten route stops before each identified wait. Targets follow that wait through the next major wait's arrival (or the remainder of the loop for one-wait routes). Switch to the exact logged production estimate after observed departure/forward progress past the wait. A target whose next occurrence is before the wait uses production. All eligible targets in a group must have historical support and means >60 seconds, otherwise the entire group falls back. Source and target occurrences are unwrapped through the route cycle; seeing the same physical stop earlier in the approach is not the target arrival.
+
+Prespecified sensitivity arms: K=5 with the same target group; K=10 and K=5 with target groups limited to the first ten stops after a wait. These bounded variants are explicitly secondary, not replacements selected after viewing errors.
+
+Use weighted MEAN completed source-departure-to-target-arrival duration, subtract observed elapsed time. Gaussian departure clock weight, bandwidth 120 minutes, circular 24-hour distance for overnight Blue; >=12 effective paths and >=3 dates each contributing >=5% weight. Raw p10/p90 band expanded to include the mean. No post hoc interval calibration. Maximum labeled journey 45 minutes, recording censoring. Predictors use only chronological raw GPS and completed training paths. Reducers require ten minutes continuous observations, gaps <=60 seconds and freshness <=15 seconds. Departure knownAt is the poll that confirms it, never a finalized outcome timestamp used in advance.
+
+Compare paired actual logged app forecasts (exclude upstream/comparison surfaces), equal weighting per physical target arrival, reporting MAE, mean width, coverage, early/late misses, false-now, support and fallback. Report all available rows AND the changed subset with its paired baseline. Separate routes, days, pickup stops, wait/approach/released phases. Audit adjacent-stop ordering and changes on handoff; repeated snapshots and pickup stops from one bus/lap are dependent. Day-level uncertainty is limited by four test dates, and Weekend by two.
+
+Checks: input hashes; chronological prefix/future deletion invariance; no future departure knownAt; synthetic wraparound/multiple-wait/expiry/gap cases; outcome connectivity and route consistency; forecast freeze before test outcome scoring. All heavy computation runs on GitHub hosted runners. This experiment does not enable Blue in production.

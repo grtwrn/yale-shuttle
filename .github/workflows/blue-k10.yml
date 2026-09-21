@@ -1,0 +1,31 @@
+name: blue-k10-research
+on:
+  push:
+    branches: [research/blue-k10-2026-09-21]
+    paths: ['research/blue-k10/**', '.github/workflows/blue-k10.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - run: python3 research/blue-k10/prepare.py
+      - name: Causal replay and scoring when scripts are present
+        run: |
+          if test -f research/blue-k10/replay.ts; then
+            services/shuttle-v2/node_modules/.bin/tsx research/blue-k10/replay.ts
+            python3 research/blue-k10/evaluate.py
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blue-k10-results
+          path: research/blue-k10/results
+          retention-days: 90

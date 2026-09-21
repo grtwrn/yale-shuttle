@@ -1,0 +1,366 @@
+{
+  "sources": [
+    {
+      "path": "2026-09-03/raw_positions.jsonl.gz",
+      "bytes": 1170195,
+      "sha256": "81b274c19a4d4fa45d52583e6182b55e805fb42a2d91908333ca1ad440284f60"
+    },
+    {
+      "path": "2026-09-03/stop_visits.jsonl.gz",
+      "bytes": 350916,
+      "sha256": "0d1f0a7c1ad53df16732ada34d4c5eef947eed41408a0f0e227f9c49d1b9d294"
+    },
+    {
+      "path": "2026-09-03/legs.jsonl.gz",
+      "bytes": 147857,
+      "sha256": "38dcb034262812e5619f50f1c38371212b73923bf2aae5d7f89fa8f36a890ed1"
+    },
+    {
+      "path": "2026-09-03/predictions_log.jsonl.gz",
+      "bytes": 20,
+      "sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2"
+    },
+    {
+      "path": "2026-09-04/raw_positions.jsonl.gz",
+      "bytes": 1613158,
+      "sha256": "d191af25433cec60619b8ca5cb37ef525fa5bc4c7f434e60a73157cf6055cd67"
+    },
+    {
+      "path": "2026-09-04/stop_visits.jsonl.gz",
+      "bytes": 458166,
+      "sha256": "7132bb3b8361c0af7f1a521867b4b3c75f8c3185e5f9f62cbcbaf8acc2ead8e5"
+    },
+    {
+      "path": "2026-09-04/legs.jsonl.gz",
+      "bytes": 185475,
+      "sha256": "28c6a1a35dff409d8de52d7de48a0deceb530bba79ea27b5f06c71a833d902e7"
+    },
+    {
+      "path": "2026-09-04/predictions_log.jsonl.gz",
+      "bytes": 224667,
+      "sha256": "678db01d78ec9446ddd83b57ea732524ebc7963a7872dde4b66d99c589874300"
+    },
+    {
+      "path": "2026-09-05/raw_positions.jsonl.gz",
+      "bytes": 766545,
+      "sha256": "7d50ae7213741bd791e6dfa921bdd1660702a43fa52c9f1a669f5e2761096257"
+    },
+    {
+      "path": "2026-09-05/stop_visits.jsonl.gz",
+      "bytes": 177580,
+      "sha256": "f9de474c15202d7a53d083e9cdf198d9db94f057738621af56e3b65c93d48b82"
+    },
+    {
+      "path": "2026-09-05/legs.jsonl.gz",
+      "bytes": 72319,
+      "sha256": "8274dda39f5b269cf60f31cebfa7242301cd6cca946cc3025e9c731ed7af4ec3"
+    },
+    {
+      "path": "2026-09-05/predictions_log.jsonl.gz",
+      "bytes": 239316,
+      "sha256": "f6a69e75ce741be22d0b3407a3681a0b04fd9e6c9bd8c75f1f9e4d154f7c5681"
+    },
+    {
+      "path": "2026-09-06/raw_positions.jsonl.gz",
+      "bytes": 670112,
+      "sha256": "616828b9a2e8d6cf32345af07921d9c08845f119ab5fb74e3d5a4690b6cd5a9a"
+    },
+    {
+      "path": "2026-09-06/stop_visits.jsonl.gz",
+      "bytes": 157814,
+      "sha256": "1323ab7c8c67e35730b3e33358083636ee86411b9b12ed8546ef4ff5c6aced65"
+    },
+    {
+      "path": "2026-09-06/legs.jsonl.gz",
+      "bytes": 64023,
+      "sha256": "3a942c1b13441c31856e0f01f8ffa473619496dadb59b44c7b332c0fcf85cfcf"
+    },
+    {
+      "path": "2026-09-06/predictions_log.jsonl.gz",
+      "bytes": 212725,
+      "sha256": "f0bea5d8107d9ad04b7f9fd6680c6bd73a6d1ea2f6b942d2e162959712257bbb"
+    },
+    {
+      "path": "2026-09-07/raw_positions.jsonl.gz",
+      "bytes": 7086,
+      "sha256": "23bbccce18243e739402cc8a89676d06cc83a01c9e11318615e84070431b1242"
+    },
+    {
+      "path": "2026-09-07/stop_visits.jsonl.gz",
+      "bytes": 3014,
+      "sha256": "2f9265746a3d9cd3781fed2f9e8f4f28f1844c17ad140a072a369be94aa4c635"
+    },
+    {
+      "path": "2026-09-07/legs.jsonl.gz",
+      "bytes": 1424,
+      "sha256": "c288d1aef6fbf63edf4bca4b56b56b64a1a81240736f21bc61b54c4e300ae355"
+    },
+    {
+      "path": "2026-09-07/predictions_log.jsonl.gz",
+      "bytes": 2423,
+      "sha256": "a427ccc1fbafebc1ba6518a1253b9f1305a97957dd9dc7a9bde66f30c6e94dc4"
+    },
+    {
+      "path": "2026-09-08/raw_positions.jsonl.gz",
+      "bytes": 384999,
+      "sha256": "914974e556ed495fffacf0a881bbf0a7e5a033df4b3e355e27264a316a1e3f30"
+    },
+    {
+      "path": "2026-09-08/stop_visits.jsonl.gz",
+      "bytes": 450467,
+      "sha256": "921bcd271797ac9c304f69b362afab41de5ac9dd4f39b5184e46e550a396a044"
+    },
+    {
+      "path": "2026-09-08/legs.jsonl.gz",
+      "bytes": 191956,
+      "sha256": "ec8d1a0e8d84e8e30313bf6ee1bf96316ce71ddc6fe0ad55d16aab4e55906bed"
+    },
+    {
+      "path": "2026-09-08/predictions_log.jsonl.gz",
+      "bytes": 649105,
+      "sha256": "ea7fac0d518d4194c46aeea0f6ffd6ac3973c7d526899aca838a6bdb34ab56f0"
+    },
+    {
+      "path": "2026-09-09/raw_positions.jsonl.gz",
+      "bytes": 601484,
+      "sha256": "b04fbea91a064db9c221515cbd4c0fa5b614815b5ab96d7c721baf8559216ee0"
+    },
+    {
+      "path": "2026-09-09/stop_visits.jsonl.gz",
+      "bytes": 460929,
+      "sha256": "054d8a24de713586cd0bcb1a8434bd40eb5b7d108ef0972f86eb34004db12610"
+    },
+    {
+      "path": "2026-09-09/legs.jsonl.gz",
+      "bytes": 199812,
+      "sha256": "3420bf71a90837555dd2072dd7ac5fd832be1e008ee08c10b952cef61245302a"
+    },
+    {
+      "path": "2026-09-09/predictions_log.jsonl.gz",
+      "bytes": 499071,
+      "sha256": "c074d2b9578d54d29e67f7dc58a0b2d83afc9616a93959146d668a5b238e9612"
+    },
+    {
+      "path": "2026-09-10/raw_positions.jsonl.gz",
+      "bytes": 1886099,
+      "sha256": "bd4539cafaca1c9b0c8c89ccf3aa9c40fcb4da6e37885dd459dd5c937aab5821"
+    },
+    {
+      "path": "2026-09-10/stop_visits.jsonl.gz",
+      "bytes": 461463,
+      "sha256": "669e340f98b00a5644d47fa16c85f9c4e40deaad2ec7d70a6a0ca93bd8476e1d"
+    },
+    {
+      "path": "2026-09-10/legs.jsonl.gz",
+      "bytes": 197696,
+      "sha256": "b13316ff07997f5e01f40506b6c892ef43bef06f71b963677946725c85f7c70a"
+    },
+    {
+      "path": "2026-09-10/predictions_log.jsonl.gz",
+      "bytes": 732325,
+      "sha256": "c171b47282089ec55c79ac0684c2383081677ec14753759f3d682dfe562e4529"
+    },
+    {
+      "path": "2026-09-11/raw_positions.jsonl.gz",
+      "bytes": 117310,
+      "sha256": "d2017b5a34335caa0a6377dcd429864534fc09f412e93463a494646ba2fbc9b7"
+    },
+    {
+      "path": "2026-09-11/stop_visits.jsonl.gz",
+      "bytes": 449295,
+      "sha256": "e4e9213cf58ef52b909add44e4775bbb5c009b7ae1f9c471e1f22baafee879da"
+    },
+    {
+      "path": "2026-09-11/legs.jsonl.gz",
+      "bytes": 192083,
+      "sha256": "d91c59d3fd5045e7f6bbdba70ce9f801968a26889c9dc38f983f68adcac2abc6"
+    },
+    {
+      "path": "2026-09-11/predictions_log.jsonl.gz",
+      "bytes": 785135,
+      "sha256": "2516dc0e54c0729b3a12882d3364c745cea762c1200b180ae0b75a0a18e391be"
+    },
+    {
+      "path": "2026-09-12/raw_positions.jsonl.gz",
+      "bytes": 139382,
+      "sha256": "6232d7b0f8db5ffd909f982cf5100c5bb30323a2261087761af1db15c1934369"
+    },
+    {
+      "path": "2026-09-12/stop_visits.jsonl.gz",
+      "bytes": 175345,
+      "sha256": "b9241fdc978feb6c1545de9cf1c5ec9e3c5696d7c2d6fada8aaff3210a76f4ed"
+    },
+    {
+      "path": "2026-09-12/legs.jsonl.gz",
+      "bytes": 76560,
+      "sha256": "0769636497058863a119f05c35dadb8e5dfd4210f288b1ed8c849c4ccf4cdbb1"
+    },
+    {
+      "path": "2026-09-12/predictions_log.jsonl.gz",
+      "bytes": 149598,
+      "sha256": "6918990de0c7e17c8c8e063f3967de349bc8c592ebd7d38be240b183236671e2"
+    },
+    {
+      "path": "2026-09-13/raw_positions.jsonl.gz",
+      "bytes": 138668,
+      "sha256": "b12ac61860a1643c138bb6671897d71f282aaab9709cad4cdf7fb208480e941c"
+    },
+    {
+      "path": "2026-09-13/stop_visits.jsonl.gz",
+      "bytes": 150775,
+      "sha256": "fddb603a047b5ff7950be8dd1d9e00ca1419de58d392511213b8d3b6bb60889a"
+    },
+    {
+      "path": "2026-09-13/legs.jsonl.gz",
+      "bytes": 66216,
+      "sha256": "d7f95eff75d553166fc39b16d630d8379554e73dbb36b48e30ec31f7c28dda77"
+    },
+    {
+      "path": "2026-09-13/predictions_log.jsonl.gz",
+      "bytes": 246101,
+      "sha256": "e966d2a39384dd30b01f133212f9d3e384215b41bd1beb20de925c8005a952f3"
+    },
+    {
+      "path": "2026-09-14/raw_positions.jsonl.gz",
+      "bytes": 141906,
+      "sha256": "b29566295187107892aea9eca1eef02f8ece6956d7cb685affcaefa365b480be"
+    },
+    {
+      "path": "2026-09-14/stop_visits.jsonl.gz",
+      "bytes": 446199,
+      "sha256": "0d514eb3ebab192abb4cc01c653c301220e98fb67ee9da12f13ead67c108d53a"
+    },
+    {
+      "path": "2026-09-14/legs.jsonl.gz",
+      "bytes": 194852,
+      "sha256": "d4c7989f03ce09e5ceccd5e4279fd7cc3fa671b2d486b3dbe7799516228a0394"
+    },
+    {
+      "path": "2026-09-14/predictions_log.jsonl.gz",
+      "bytes": 606905,
+      "sha256": "cf905fe8d55c8eaaf3bc683aea89a795aff9b20931f6d3b0a4feac898f8e1daa"
+    },
+    {
+      "path": "2026-09-15/raw_positions.jsonl.gz",
+      "bytes": 141582,
+      "sha256": "3a3bc3fd73f7afb3ea5dc04059474d224df97424671021fbd4012de0bfa5b6f3"
+    },
+    {
+      "path": "2026-09-15/stop_visits.jsonl.gz",
+      "bytes": 451556,
+      "sha256": "b6d51430e64bdccf33e72a0ed98280e8d5daea51511487af268ea527c5305337"
+    },
+    {
+      "path": "2026-09-15/legs.jsonl.gz",
+      "bytes": 196975,
+      "sha256": "0cfae0f6bda4da4cfaf2fcbf8be2292d444cbb43a69d6ddd468e7ce8f6e89983"
+    },
+    {
+      "path": "2026-09-15/predictions_log.jsonl.gz",
+      "bytes": 647447,
+      "sha256": "f107f9266a38cff9ae0a0ec3beff53a17cdb8b346f68f97f7111603091c6a483"
+    },
+    {
+      "path": "2026-09-16/raw_positions.jsonl.gz",
+      "bytes": 1590796,
+      "sha256": "db97377f7a27145c9a7c905c4024f048bd521ae49324fc34ec0140528c7a27f9"
+    },
+    {
+      "path": "2026-09-16/stop_visits.jsonl.gz",
+      "bytes": 496874,
+      "sha256": "d7ec80d2b99b272e7f39327659d1a9428c42e189dc704a9b692a237f85945348"
+    },
+    {
+      "path": "2026-09-16/legs.jsonl.gz",
+      "bytes": 217135,
+      "sha256": "5f0ba086d1fc7cd8d57567fb27710c60e931db6c45ca2e1c6c0b2f8159f46198"
+    },
+    {
+      "path": "2026-09-16/predictions_log.jsonl.gz",
+      "bytes": 582270,
+      "sha256": "9dbf4af3b8c7e4f90938983507e62f0a42e1bdf112e64693cfa1762238fb51bb"
+    },
+    {
+      "path": "2026-09-17/raw_positions.jsonl.gz",
+      "bytes": 1682971,
+      "sha256": "fce2d8a919e5321d231a01ec03493f4aa8cbdef731658f10e9d916252a9f396a"
+    },
+    {
+      "path": "2026-09-17/stop_visits.jsonl.gz",
+      "bytes": 496881,
+      "sha256": "4fe45831f5c5be78af9cc415c3691acc11e5b20be518d22e36a19549f82eb306"
+    },
+    {
+      "path": "2026-09-17/legs.jsonl.gz",
+      "bytes": 213298,
+      "sha256": "e8a777a7bc584d01d4d2b16c9705ce0ded0c90672e691ad2a1cff0f4bc779d38"
+    },
+    {
+      "path": "2026-09-17/predictions_log.jsonl.gz",
+      "bytes": 767219,
+      "sha256": "1b1cd237e7ebff5881d46aae84f42c27a3f702927d9d736a6efa3078a97eaeb8"
+    },
+    {
+      "path": "2026-09-18/raw_positions.jsonl.gz",
+      "bytes": 1497680,
+      "sha256": "9e92290131a5c411fb29939775985136718c00f5836cf3945ced7b9a519782b5"
+    },
+    {
+      "path": "2026-09-18/stop_visits.jsonl.gz",
+      "bytes": 442094,
+      "sha256": "d02f2fcc8b6b0fb1b82ecd082f70c90bad075f155dae604400188ba800ff9b58"
+    },
+    {
+      "path": "2026-09-18/legs.jsonl.gz",
+      "bytes": 190588,
+      "sha256": "8411c659efc325eb9972a533c5f5559e91d33eedfcbb4e015ebcef5247ddeeb4"
+    },
+    {
+      "path": "2026-09-18/predictions_log.jsonl.gz",
+      "bytes": 621011,
+      "sha256": "e51049a0e2c9e47549c5afd18b852130bc8662cfae0b40c0ac86edb2b6cfdc6b"
+    },
+    {
+      "path": "2026-09-19/raw_positions.jsonl.gz",
+      "bytes": 781458,
+      "sha256": "307b469c2e7ef25e17f2c1143c93ae8862084eba9c0703f03812568f10f5a53f"
+    },
+    {
+      "path": "2026-09-19/stop_visits.jsonl.gz",
+      "bytes": 177564,
+      "sha256": "2f079dfa9d1e0de87b3e2015429da086ce9211a9987d7d2eaa86deecd2403877"
+    },
+    {
+      "path": "2026-09-19/legs.jsonl.gz",
+      "bytes": 77606,
+      "sha256": "43f6864f4bb315254b6d617c7910260e15e573d8b9ed67f942383d7718883061"
+    },
+    {
+      "path": "2026-09-19/predictions_log.jsonl.gz",
+      "bytes": 214399,
+      "sha256": "9926bf037bccbb7c247570911b670199d5eccd222abb47eda9ad745a3dcf8a6a"
+    },
+    {
+      "path": "2026-09-20/raw_positions.jsonl.gz",
+      "bytes": 749945,
+      "sha256": "0cc119a3c714df01aaea75c000ae16ae973aa256511daa418f60a775b867d8b3"
+    },
+    {
+      "path": "2026-09-20/stop_visits.jsonl.gz",
+      "bytes": 177535,
+      "sha256": "77d3b4aa77039f3e808acc06baa90caf452ee530bb3031199511a5b61fecdd9c"
+    },
+    {
+      "path": "2026-09-20/legs.jsonl.gz",
+      "bytes": 77321,
+      "sha256": "4e227de4691b647ca9f53a251bd866d34452a7cd64d04839f5fbb2585618c791"
+    },
+    {
+      "path": "2026-09-20/predictions_log.jsonl.gz",
+      "bytes": 258895,
+      "sha256": "4aaa5e1999b3445d114b41ed3324e9fb478c209972b47ffc6143d136327c1be7"
+    }
+  ],
+  "topologySha256": "f536b1c227a96daa544d19650e6e671366be2a42c69fc3adaebef10f4e198fe4",
+  "note": "Unmodified archives of public fleet tables only. No reports, rider IDs, IPs or rider coordinates. Blue selection and analysis run on hosted CI."
+}
