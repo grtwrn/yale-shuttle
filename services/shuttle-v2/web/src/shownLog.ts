@@ -203,8 +203,8 @@ export function noteShown(
     for (const a of arrivals) {
       if (pending.size >= SHOWN_MAX_BATCH) return;
       if (!Number.isFinite(a.eta) || a.eta < 0) continue;
-      // The new default belongs in ordinary accuracy. Only Red opt-outs are a
-      // separate population; Blue and other routes keep their ordinary logs.
+      // The new default belongs in ordinary accuracy. Opt-outs for the three
+      // trial routes are a separate population; other routes keep normal logs.
       const loggedSurface: LoggedSurface = K10_TRIAL_ROUTES.includes(a.routeLabel) && !k10TrialSelected() ? `${surface}-usual` : surface;
       const key = `${a.busName}:${a.stopId}:${at}:${loggedSurface}`;
       if (pending.has(key)) continue;

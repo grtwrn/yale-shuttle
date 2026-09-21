@@ -90,7 +90,7 @@ export function applyBlueK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<str
     if (!groups.has(bus[0])) groups.set(bus[0],blueK10GroupPredictions(model,e.origin.departed,wire.at));
     const p=groups.get(bus[0])?.get(r[1]);
     if (!p) return old;
-    changed++; changedByRoute[model.label]++;
+    changed++; changedByRoute[model.label]=(changedByRoute[model.label]??0)+1;
     return {row:[r[0],r[1],Math.round(p.eta),Math.round(p.low),Math.round(p.high),r[5],r[6],r[7],r[8]],
       distribution:p.distribution.map(Math.round)};
   }).sort((a,b)=>a.row[2]-b.row[2]);

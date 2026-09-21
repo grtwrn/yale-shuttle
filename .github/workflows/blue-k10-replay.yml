@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: 658fc41
+          ref: 658fc41b8d41d1aab3873307ce705ab02dcce870
           path: research-source
           sparse-checkout: research/blue-k10/data/topology.json
           sparse-checkout-cone-mode: false

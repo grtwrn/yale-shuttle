@@ -61,7 +61,7 @@ it('copies the entire live forecast after release and on stale, future, wrong-ro
 it('keeps the model out of other route topologies and later-lap arrivals', () => {
   const base=wire();
   expect(applyBlueK10Trial(base,evidence(),{...routes,'16':routes['16']!.slice(1)}).rows).toEqual(base.rows);
-  const later={...base,rows:base.rows.map(r=>r.map((v,i)=>i===5?v+11:v))} as ServerEtaWire;
+  const later:ServerEtaWire={...base,rows:base.rows.map(r=>[r[0],r[1],r[2],r[3],r[4],r[5]+11,r[6],r[7],r[8]])};
   expect(applyBlueK10Trial(later,evidence(),routes).rows).toEqual(later.rows);
   const expired={...base,at:models.get(16)!.validUntil};
   expect(applyBlueK10Trial(expired,evidence(),routes).rows).toEqual(expired.rows);
