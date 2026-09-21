@@ -155,18 +155,18 @@ async function browserSmoke(base, { markAsTest }) {
 
     // Red uses the trial by default. Exercise opting out and restoring the
     // default through the actual bundled frontend and its API requests.
-    await page.getByText('Red ETA trial', { exact: true }).waitFor();
+    await page.getByText('Updated estimates', { exact: true }).waitFor();
     const usualPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
       && new URL(r.url()).searchParams.get('eta_model') === 'usual');
     await page.getByRole('link', { name: 'Use previous estimates' }).click();
     await usualPoll;
-    await page.getByText('Previous Red estimates', { exact: true }).waitFor();
+    await page.getByText('Previous estimates', { exact: true }).waitFor();
     const defaultPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
       && !new URL(r.url()).searchParams.has('eta_model'));
     await page.getByRole('link', { name: 'Use updated estimates' }).click();
     await defaultPoll;
     if (new URL(page.url()).searchParams.has('eta_model')) fail('restoring Red default left an override');
-    await page.getByText('Red ETA trial', { exact: true }).waitFor();
+    await page.getByText('Updated estimates', { exact: true }).waitFor();
 
     const fatal = errors.filter((e) => !e.startsWith("console:"));
     if (fatal.length) fail(`browser smoke: page errors:\n  ${fatal.join("\n  ")}`);

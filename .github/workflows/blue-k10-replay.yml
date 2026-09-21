@@ -1,0 +1,41 @@
+name: blue-k10-production-replay
+on:
+  pull_request:
+    branches: [master]
+    paths: ['services/shuttle-v2/**', '.github/workflows/blue-k10-replay.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay:
+    # The frozen qualification artifacts have finite retention. They are a
+    # one-off rollout check, never a dependency of unrelated future changes.
+    if: github.head_ref == 'feat/blue-k10-default-2026-09-21'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 658fc41
+          path: research-source
+          sparse-checkout: research/blue-k10/data/topology.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: blue-k10-results
+          run-id: 35654869160
+          github-token: ${{ github.token }}
+          path: frozen-results
+      - name: Replay production clocks, restart recovery and forecast handoff
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx services/shuttle-v2/scripts/blue-k10-clock-replay.ts research-source/research/blue-k10/data/topology.json frozen-results
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blue-k10-production-audit
+          path: blue-k10-production-audit.json

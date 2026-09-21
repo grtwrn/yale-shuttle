@@ -1,11 +1,12 @@
 # Red K=10 trial
 
-K10 is the **default for Red's tested section**. The page shows **Red ETA trial**
+K10 is the **default for Red's tested section**. The page shows **Updated estimates**
 and a **Use previous estimates** link (`/?eta_model=usual`). **Use updated
 estimates** returns to the default. The original `/?eta_model=k10` link still
 selects K10. Disable the overlay globally with `SHUTTLE_K10_TRIAL=0`.
-Blue and other routes retain their current estimator. K10 historical backtests
-have covered Red only; ordinary application regression tests cover other routes.
+Blue Day and Blue West also use K10 after a separate backtest; see
+[Blue qualification and scope](blue-k10-trial.md). Other routes retain their
+current estimator. This document describes the Red model and its qualification.
 
 For this trial, the last major wait is 344 Winchester (Red index 14). The
 checkpoint is **Chapel / Church**, ten stops before it (index 4). Supported
@@ -88,7 +89,7 @@ the live collector clock against raw GPS/reference causal features, and exercise
 the default/opt-out/restore flow in a real browser. Heavy tests run on GitHub-hosted runners.
 
 New default readings use ordinary `trip`, `ride`, `card` surfaces and count in
-default accuracy. Explicit Red opt-outs use `trip-usual`, `ride-usual`,
+default accuracy. Explicit Red, Blue Day and Blue West opt-outs use `trip-usual`, `ride-usual`,
 `card-usual` and a `-usual` build suffix; other routes keep ordinary surfaces
 even on an opt-out page. These comparison rows and the earlier opt-in
 `*-k10` readings have independent dedup keys and stay excluded from default

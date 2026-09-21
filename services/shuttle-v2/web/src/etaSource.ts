@@ -17,7 +17,7 @@ export interface ServerEtaWire {
   /** Optional row-aligned 50-point quantile distributions; old readers ignore it. */
   distributions?: number[][];
   /** Present when K10 is selected (the Red default), including live fallbacks. */
-  trial?: { model: string; changedRows: number; validUntil: number };
+  trial?: { model: string; changedRows: number; validUntil: number; byRoute?: Record<string, number> };
 }
 interface Snapshot { at: number; rows: UpcomingArrival[]; valid: boolean }
 interface Track { snapshot: Snapshot; index: number; standing: StandingAnswer | null }
