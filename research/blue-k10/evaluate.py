@@ -4,7 +4,9 @@ from pathlib import Path
 from prepare import HERE, OUT, ROUTES, TZ, CUTOFF, read, date
 IN=OUT
 MODEL_CAP=int(os.environ.get('BLUE_MAX_PATH_SECONDS','2700'))
+ANCHOR=os.environ.get('BLUE_ANCHOR','logged')
 if MODEL_CAP!=2700:OUT=IN/'long90';OUT.mkdir(exist_ok=True)
+if ANCHOR=='nearest':OUT=IN/'legacy-nearest';OUT.mkdir(exist_ok=True)
 def write(name,rows):
     with gzip.open(OUT/(name+'.jsonl.gz'),'wt') as f:
         for row in rows:f.write(json.dumps(row,separators=(',',':'))+'\n')
@@ -117,7 +119,14 @@ class Models:
             return dict(base,reason='released/live')
         if index!=w and (distance(index,ti,n) or n)<=distance(index,w,n):return dict(base,reason='pickup before wait')
         # The logged estimate must refer to this same upcoming stop occurrence.
-        if not 0<r['stopsAhead']<n or r['stopsAhead']!=distance(r['nearest'],ti,n):return dict(base,reason='occurrence disagreement')
+        if not 0<r['stopsAhead']<n:return dict(base,reason='occurrence disagreement')
+        if ANCHOR=='nearest':
+            if r['stopsAhead']!=distance(r['nearest'],ti,n):return dict(base,reason='occurrence disagreement')
+        else:
+            anchor=(ti-r['stopsAhead'])%n
+            progress=distance((w-k)%n,anchor,n)
+            if progress>k or r['stopsAhead']!=k+distance(w,ti,n)-progress:
+                return dict(base,reason='occurrence disagreement')
         forecasts={};elapsed=(r['at']-origin['departed'])/1000
         for target in targets(rid,w,limit):
             f=self.fit(rid,k,w,target,origin['departed'])
@@ -185,7 +194,7 @@ def main():
         scored.append(dict(r,label=label,truth=(label['arrival']-r['at'])/1000))
     write('scored',scored)
     test=[r for r in scored if r['at']>=TEST]
-    result=dict(modelCapSeconds=MODEL_CAP,checks=checks,training=dict(model.audit),trainingByCell={str(k):len(v) for k,v in model.paths.items()},unmatched={str(k):v for k,v in unmatched.items()},routes={},days={},stops={},worst={})
+    result=dict(anchor=ANCHOR,modelCapSeconds=MODEL_CAP,checks=checks,training=dict(model.audit),trainingByCell={str(k):len(v) for k,v in model.paths.items()},unmatched={str(k):v for k,v in unmatched.items()},routes={},days={},stops={},worst={})
     for rid in ROUTES:
         rs=[r for r in test if r['route']==rid];result['routes'][rid]=summarize(rs)
         result['days'][rid]={d:summarize([r for r in rs if date(r['at'])==d]) for d in sorted({date(r['at']) for r in rs})}

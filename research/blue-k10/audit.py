@@ -36,7 +36,7 @@ def main():
     visits=read(OUT/'stop_visits.jsonl.gz');bybus=collections.defaultdict(list)
     for v in visits:bybus[v['bus_name'],v['route_id']].append(v)
     expected=json.loads((HERE/'reference-35651990480.json').read_text())
-    current=json.loads((OUT/'summary.json').read_text())
+    current=json.loads((OUT/'legacy-nearest/summary.json').read_text())
     for rid,arms in expected.items():
         for arm,sections in arms.items():
             for section,metrics in sections.items():

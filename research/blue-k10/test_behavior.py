@@ -15,6 +15,11 @@ class Behavior(unittest.TestCase):
         self.assertTrue(got['changed']);self.assertEqual(got['wait'],0);self.assertEqual(got['source'],1)
         before=dict(self.row,target=98,stopsAhead=1)
         self.assertEqual(self.model.predict(before,'K10')['reason'],'pickup before wait')
+    def test_logged_anchor_survives_nearest_stop_shuffle_but_rejects_the_wrong_lap(self):
+        holding=dict(self.row,index=0,nearest=1,phase='hold',stopsAhead=2)
+        self.assertTrue(self.model.predict(holding,'K10')['changed'])
+        wrong_lap=dict(holding,stopsAhead=1)
+        self.assertEqual(self.model.predict(wrong_lap,'K10')['reason'],'occurrence disagreement')
     def test_expiry_at_another_pickup_and_missing_far_support_switch_the_whole_group(self):
         fit=self.model.fit
         self.model.fit=lambda rid,k,w,ti,departure:dict(eta=659,low=620,high=800) if ti==1 else fit(rid,k,w,ti,departure)
