@@ -1,0 +1,258 @@
+{
+  "sources": [
+    {
+      "day": "2026-09-03",
+      "table": "stop_visits",
+      "sha256": "0d1f0a7c1ad53df16732ada34d4c5eef947eed41408a0f0e227f9c49d1b9d294",
+      "bytes": 350916
+    },
+    {
+      "day": "2026-09-04",
+      "table": "stop_visits",
+      "sha256": "7132bb3b8361c0af7f1a521867b4b3c75f8c3185e5f9f62cbcbaf8acc2ead8e5",
+      "bytes": 458166
+    },
+    {
+      "day": "2026-09-08",
+      "table": "stop_visits",
+      "sha256": "921bcd271797ac9c304f69b362afab41de5ac9dd4f39b5184e46e550a396a044",
+      "bytes": 450467
+    },
+    {
+      "day": "2026-09-09",
+      "table": "stop_visits",
+      "sha256": "054d8a24de713586cd0bcb1a8434bd40eb5b7d108ef0972f86eb34004db12610",
+      "bytes": 460929
+    },
+    {
+      "day": "2026-09-10",
+      "table": "stop_visits",
+      "sha256": "669e340f98b00a5644d47fa16c85f9c4e40deaad2ec7d70a6a0ca93bd8476e1d",
+      "bytes": 461463
+    },
+    {
+      "day": "2026-09-11",
+      "table": "stop_visits",
+      "sha256": "e4e9213cf58ef52b909add44e4775bbb5c009b7ae1f9c471e1f22baafee879da",
+      "bytes": 449295
+    },
+    {
+      "day": "2026-09-14",
+      "table": "stop_visits",
+      "sha256": "0d514eb3ebab192abb4cc01c653c301220e98fb67ee9da12f13ead67c108d53a",
+      "bytes": 446199
+    },
+    {
+      "day": "2026-09-15",
+      "table": "stop_visits",
+      "sha256": "b6d51430e64bdccf33e72a0ed98280e8d5daea51511487af268ea527c5305337",
+      "bytes": 451556
+    },
+    {
+      "day": "2026-09-16",
+      "table": "stop_visits",
+      "sha256": "d7ec80d2b99b272e7f39327659d1a9428c42e189dc704a9b692a237f85945348",
+      "bytes": 496874
+    },
+    {
+      "day": "2026-09-17",
+      "table": "stop_visits",
+      "sha256": "4fe45831f5c5be78af9cc415c3691acc11e5b20be518d22e36a19549f82eb306",
+      "bytes": 496881
+    },
+    {
+      "day": "2026-09-18",
+      "table": "stop_visits",
+      "sha256": "d02f2fcc8b6b0fb1b82ecd082f70c90bad075f155dae604400188ba800ff9b58",
+      "bytes": 442094
+    },
+    {
+      "day": "2026-09-21",
+      "table": "stop_visits",
+      "sha256": "f20eda048b4fe7f0864cebe56bf35d727fdb43950ad0fa52bf8bf72ddad7dbee",
+      "bytes": 1793327
+    },
+    {
+      "day": "2026-09-03",
+      "table": "legs",
+      "sha256": "38dcb034262812e5619f50f1c38371212b73923bf2aae5d7f89fa8f36a890ed1",
+      "bytes": 147857
+    },
+    {
+      "day": "2026-09-04",
+      "table": "legs",
+      "sha256": "28c6a1a35dff409d8de52d7de48a0deceb530bba79ea27b5f06c71a833d902e7",
+      "bytes": 185475
+    },
+    {
+      "day": "2026-09-08",
+      "table": "legs",
+      "sha256": "ec8d1a0e8d84e8e30313bf6ee1bf96316ce71ddc6fe0ad55d16aab4e55906bed",
+      "bytes": 191956
+    },
+    {
+      "day": "2026-09-09",
+      "table": "legs",
+      "sha256": "3420bf71a90837555dd2072dd7ac5fd832be1e008ee08c10b952cef61245302a",
+      "bytes": 199812
+    },
+    {
+      "day": "2026-09-10",
+      "table": "legs",
+      "sha256": "b13316ff07997f5e01f40506b6c892ef43bef06f71b963677946725c85f7c70a",
+      "bytes": 197696
+    },
+    {
+      "day": "2026-09-11",
+      "table": "legs",
+      "sha256": "d91c59d3fd5045e7f6bbdba70ce9f801968a26889c9dc38f983f68adcac2abc6",
+      "bytes": 192083
+    },
+    {
+      "day": "2026-09-14",
+      "table": "legs",
+      "sha256": "d4c7989f03ce09e5ceccd5e4279fd7cc3fa671b2d486b3dbe7799516228a0394",
+      "bytes": 194852
+    },
+    {
+      "day": "2026-09-15",
+      "table": "legs",
+      "sha256": "0cfae0f6bda4da4cfaf2fcbf8be2292d444cbb43a69d6ddd468e7ce8f6e89983",
+      "bytes": 196975
+    },
+    {
+      "day": "2026-09-16",
+      "table": "legs",
+      "sha256": "5f0ba086d1fc7cd8d57567fb27710c60e931db6c45ca2e1c6c0b2f8159f46198",
+      "bytes": 217135
+    },
+    {
+      "day": "2026-09-17",
+      "table": "legs",
+      "sha256": "e8a777a7bc584d01d4d2b16c9705ce0ded0c90672e691ad2a1cff0f4bc779d38",
+      "bytes": 213298
+    },
+    {
+      "day": "2026-09-18",
+      "table": "legs",
+      "sha256": "8411c659efc325eb9972a533c5f5559e91d33eedfcbb4e015ebcef5247ddeeb4",
+      "bytes": 190588
+    },
+    {
+      "day": "2026-09-21",
+      "table": "legs",
+      "sha256": "f9e58411cada46d04bddc015d7608422599db5f49c8c39974b25faca9563c67f",
+      "bytes": 1044572
+    },
+    {
+      "day": "2026-09-16",
+      "table": "raw_positions",
+      "sha256": "db97377f7a27145c9a7c905c4024f048bd521ae49324fc34ec0140528c7a27f9",
+      "bytes": 1590796
+    },
+    {
+      "day": "2026-09-17",
+      "table": "raw_positions",
+      "sha256": "fce2d8a919e5321d231a01ec03493f4aa8cbdef731658f10e9d916252a9f396a",
+      "bytes": 1682971
+    },
+    {
+      "day": "2026-09-18",
+      "table": "raw_positions",
+      "sha256": "9e92290131a5c411fb29939775985136718c00f5836cf3945ced7b9a519782b5",
+      "bytes": 1497680
+    },
+    {
+      "day": "2026-09-21",
+      "table": "raw_positions",
+      "sha256": "a789f2514ab0e8eb46b0c0f342beaacff28fbb89a1162925e440619c420a812b",
+      "bytes": 13870752
+    },
+    {
+      "day": "2026-09-16",
+      "table": "predictions_log",
+      "sha256": "9dbf4af3b8c7e4f90938983507e62f0a42e1bdf112e64693cfa1762238fb51bb",
+      "bytes": 582270
+    },
+    {
+      "day": "2026-09-17",
+      "table": "predictions_log",
+      "sha256": "1b1cd237e7ebff5881d46aae84f42c27a3f702927d9d736a6efa3078a97eaeb8",
+      "bytes": 767219
+    },
+    {
+      "day": "2026-09-18",
+      "table": "predictions_log",
+      "sha256": "e51049a0e2c9e47549c5afd18b852130bc8662cfae0b40c0ac86edb2b6cfdc6b",
+      "bytes": 621011
+    },
+    {
+      "day": "2026-09-21",
+      "table": "predictions_log",
+      "sha256": "0014fb97113e7e9bb2ac9668ea38a7dcb93f263f78d97023ceb827e38645e733",
+      "bytes": 7516585
+    }
+  ],
+  "outputs": {
+    "stop_visits.jsonl.gz": {
+      "sha256": "1609aa3cb17611101714c0dd7dca59911e991518b7605f8abb0e77ed4f3a575e",
+      "counts": {
+        "2026-09-03": 718,
+        "2026-09-04": 891,
+        "2026-09-08": 836,
+        "2026-09-09": 760,
+        "2026-09-10": 969,
+        "2026-09-11": 777,
+        "2026-09-14": 838,
+        "2026-09-15": 633,
+        "2026-09-16": 969,
+        "2026-09-17": 958,
+        "2026-09-18": 943,
+        "2026-09-21": 547
+      },
+      "bytes": 984334
+    },
+    "legs.jsonl.gz": {
+      "sha256": "e7f2224d9ba975bfd6544841aa678c8be343b9c347277097c18cb244e76ef4a5",
+      "counts": {
+        "2026-09-03": 714,
+        "2026-09-04": 832,
+        "2026-09-08": 819,
+        "2026-09-09": 742,
+        "2026-09-10": 929,
+        "2026-09-11": 752,
+        "2026-09-14": 825,
+        "2026-09-15": 628,
+        "2026-09-16": 959,
+        "2026-09-17": 940,
+        "2026-09-18": 929,
+        "2026-09-21": 560
+      },
+      "bytes": 401784
+    },
+    "raw_positions.jsonl.gz": {
+      "sha256": "b4e608570b0e8f8f8cae22a481e90ba0c1a421e56de5e5c62b8984e363a41140",
+      "counts": {
+        "2026-09-16": 23646,
+        "2026-09-17": 22977,
+        "2026-09-18": 22917,
+        "2026-09-21": 13294
+      },
+      "bytes": 867808
+    },
+    "predictions_log.jsonl.gz": {
+      "sha256": "f7386503e2640c9ccb89039f21c9de4f383ed09667fb491b6b457f76bb199796",
+      "counts": {
+        "2026-09-16": 1001,
+        "2026-09-17": 2966,
+        "2026-09-18": 1375,
+        "2026-09-21": 1256
+      },
+      "bytes": 142864
+    },
+    "topology.json": {
+      "sha256": "be9309ce960876c6cde9e389a03c297da48b0f5d1602971da31dfb4c400f9277"
+    }
+  },
+  "privacy": "Only allowlisted public transit vehicle observations, stop visits, legs, and vehicle forecasts. No rider submissions, IPs, anonymous IDs, screenshots or journey origins."
+}

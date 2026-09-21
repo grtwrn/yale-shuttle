@@ -1,0 +1,50 @@
+name: earlier-checkpoint-research
+on:
+  push:
+    branches: [research/earlier-checkpoint-2026-09-21]
+    paths:
+      - 'research/earlier-checkpoint/**'
+      - '.github/workflows/earlier-checkpoint-research.yml'
+permissions:
+  contents: read
+concurrency:
+  group: earlier-checkpoint-research
+  cancel-in-progress: false
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/shuttle-v2/package-lock.json
+      - name: Install replay dependencies
+        run: npm ci --prefix services/shuttle-v2
+      - name: Verify frozen input hashes
+        working-directory: research/earlier-checkpoint
+        run: |
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          p=pathlib.Path('data')
+          for name,meta in json.loads((p/'manifest.json').read_text())['outputs'].items():
+              assert hashlib.sha256((p/name).read_bytes()).hexdigest()==meta['sha256'],name
+          print('All frozen input hashes match.')
+          PY
+      - name: Check statistical and causal invariants
+        working-directory: research/earlier-checkpoint
+        run: python3 -m unittest -v test_experiment.py
+      - name: Reconstruct current states without future observations
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx research/earlier-checkpoint/replay.ts
+      - name: Evaluate frozen chronological candidates
+        run: python3 research/earlier-checkpoint/evaluate.py > research/earlier-checkpoint/results/evaluation.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earlier-checkpoint-results
+          path: research/earlier-checkpoint/results/
+          retention-days: 30

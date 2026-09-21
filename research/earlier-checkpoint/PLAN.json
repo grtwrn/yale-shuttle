@@ -1,0 +1,48 @@
+{
+  "createdAt": "2026-09-21T17:37:33.278214+00:00",
+  "question": "Does using a historical complete earlier-checkpoint-to-pickup duration improve Red forecasts, particularly when the northern layover is split between Canal/Munson and Winchester?",
+  "scope": "Offline research only. No deployment, app coefficient changes or rider messages. Heavy replay/scoring runs on GitHub hosted runners.",
+  "sourceCommit": "bceae48f21f905aa4bb423525448c23ff42152ba",
+  "train": "Completed journeys on September 3,4,8,9,10,11,14,15; frozen before September 16. No per-bus fitting.",
+  "calibration": "September 16 only. No candidate or bandwidth selection. Report raw empirical intervals and calibrated intervals separately.",
+  "evaluation": "September 17,18,21 through initial capture, separately by date. These dates were investigated for earlier work; they are chronological held-out data for this algorithm, not untouched research dates. A subsequent capture after plan creation is a small prospective extension, never refit.",
+  "anchors": {
+    "fixed_primary": 128,
+    "fixed_five_before_pickup_sensitivity": 147,
+    "trailing_five": "Canonical current nearest route index minus five. If that starts at/between Canal and Winchester, move back to Winchester/Sachem (index12). No circular extrapolation; target must be forward before loop wrap."
+  },
+  "arms": [
+    "logged_production",
+    "current_suffix",
+    "fixed_mean",
+    "fixed_survival",
+    "fixed_progress",
+    "five_before_mean",
+    "five_before_progress",
+    "trailing_five_mean"
+  ],
+  "forecast_rules": {
+    "fixed_mean": "Mean completed full-trip duration from confirmed source departure to pickup, minus already elapsed seconds; nonnegative. Empirical p10/p90 shifted by the same elapsed. Out-of-order mean vs empirical quantiles widens bounds to contain mean.",
+    "fixed_survival": "Same origin and total historical durations, conditioning on total duration exceeding elapsed. Median/p10/p90 of remaining duration.",
+    "current_suffix": "Historical complete suffix from the observed current stage to pickup, conditional on still being in that stage at the observed elapsed stage age. No earlier-checkpoint timing match.",
+    "fixed_progress": "Same whole-trip histories and stage survivors as current_suffix, weighted by Gaussian difference between historical and current elapsed origin-to-stage time (bandwidth180s), plus Gaussian difference in prior completed Canal duration when known (bandwidth120s). Report this additional feature explicitly; not just an earlier average.",
+    "stage": "Production detector and departure reducers replayed chronologically from raw positions. Current active pass means standing stage after first rest, otherwise approaching; known confirmed departures identify drive stages. Use actual event emission time; future finalized visits never feed live features.",
+    "support": "At least12 effective historical journeys from3 dates. Unsupported models fall back exactly to logged production when available; otherwise no forecast. Report support-only and fallback-inclusive cohorts. No fixed tail truncation or hard subtraction of Canal duration.",
+    "calibration": "Only widen p10/p90 by the weighted80th percentile of max(low-truth, truth-high,0) on September16, equal weight per target journey. This is empirical calibration on dependent data, not a formal coverage guarantee. Points unchanged.",
+    "hour": "Gaussian local clock weighting, bandwidth120min, common to all historical arms. No weekday/weekend mixing; Red weekday samples only."
+  },
+  "labels": "First physically connected forward target occurrence, stop48 primary and stop4 secondary. Strict leg/visit endpoint joins where possible; also allow paths independently verified by continuous raw Red observations (max gap60s, stable physical bus, no intervening target/loop crossing). Keep repeated Winchester encounters and their elapsed time. Missing/unresolved/ambiguous outcomes remain counted separately. No removal based on error.",
+  "validation": [
+    "Archive hashes and completion trailers",
+    "No future events or test outcomes in predictor inputs",
+    "Prefix replay invariance",
+    "Forecast ordering/finite values/support/fallback invariants",
+    "Exact source-departure identity and first target occurrence",
+    "Sensitivity to 15s additional input delay and raw gaps",
+    "Per-day, target, current phase, forecast horizon and long-Canal strata",
+    "Largest point and early-bound regressions inspected against raw tracks",
+    "Real production logged forecasts compared at common origins; this is not constant-coefficient historical production replay"
+  ],
+  "metrics": "Equal weight per physical target journey; report MAE, RMSE, bias, width, p10/p90 coverage, WIS80, lower/upper misses and severity, lower bound after observed pickup departure, per-day and support counts. Repeated snapshots are not independent rides. Absolute-arrival jumps on adjacent30s origins. Paired journey bootstrap and day-block sensitivity for effect uncertainty.",
+  "promotion": "Testing authorization does not imply deployment. A candidate needs material interval/accuracy benefit that survives later dates without increased early-arrival/departure risk, adequate live support and clean causal inputs. Otherwise report negative evidence and retain production."
+}
