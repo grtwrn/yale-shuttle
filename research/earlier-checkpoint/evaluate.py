@@ -48,7 +48,8 @@ def clock(ms):
     return t.hour*60+t.minute+t.second/60
 
 class Labels:
-    def __init__(self):
+    def __init__(self,source_indices=None):
+        source_indices=set(range(4,13) if source_indices is None else source_indices)
         self.seq=json.loads((HERE/'data/topology.json').read_text())['route']['stops']
         self.visits=read(HERE/'data/stop_visits.jsonl.gz')
         self.legs=read(HERE/'data/legs.jsonl.gz')
@@ -69,7 +70,7 @@ class Labels:
         self.audit=collections.Counter();self.episodes=[];self.by_origin=collections.defaultdict(list)
         self.raw_audits={}
         for s in self.visits:
-            if not (4<=s['stop_index']<=12 and s['departed_at'] is not None and s['arrived_at'] is not None and s['how']!='gap' and s['outcome'] in ('passed','stopped')):continue
+            if not (s['stop_index'] in source_indices and s['departed_at'] is not None and s['arrived_at'] is not None and s['how']!='gap' and s['outcome'] in ('passed','stopped')):continue
             for target in (48,4):
                 ep,reason=self.episode(s,target)
                 self.audit[reason]+=1

@@ -35,7 +35,7 @@ jobs:
           PY
       - name: Check statistical and causal invariants
         working-directory: research/earlier-checkpoint
-        run: python3 -m unittest -v test_experiment.py
+        run: python3 -m unittest -v test_experiment.py test_followup.py
       - name: Reconstruct current states without future observations
         env:
           TZ: America/New_York
@@ -46,6 +46,8 @@ jobs:
         run: python3 research/earlier-checkpoint/rolling.py > research/earlier-checkpoint/results/rolling.log
       - name: Audit paired subgroups and the largest physical cases
         run: python3 research/earlier-checkpoint/audit.py > research/earlier-checkpoint/results/audit.log
+      - name: Compare ten-stop and wait-relative anchors
+        run: python3 research/earlier-checkpoint/followup.py > research/earlier-checkpoint/results/followup.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

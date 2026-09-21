@@ -79,8 +79,20 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
           ? {eta:base.predicted_sec,low:base.predicted_low_sec,high:base.predicted_high_sec,stopsAhead:base.stops_ahead,build:base.client_build,surface:base.surface} : null;
         const targetDeparture=h.get(ti);
         const currentOrigins=Object.fromEntries(Object.entries(origins).filter(([,e]:any)=>!targetDeparture || targetDeparture.departed<e.departed));
+        // Follow-up anchors are separate: preserve the original outcome-matching
+        // origins and all existing model inputs. These remain causal observations.
+        const checkpointOrigins:any={},checkpointArrivals:any={};
+        for(const [i,e]of h){
+          if(i<0 || i>13 || i>index || e.departed>began || e.knownAt>asof || at-e.departed>2700000)continue;
+          if(targetDeparture && targetDeparture.departed>=e.arrived)continue;
+          checkpointOrigins[i]=e;
+          checkpointArrivals[i]={...e,departed:e.arrived};
+        }
+        if(pass && pass.arrivedAt!==null && pass.stopIndex<=13 && pass.arrivedAt<=asof && at-pass.arrivedAt<=2700000 && (!targetDeparture || targetDeparture.departed<pass.arrivedAt)){
+          checkpointArrivals[pass.stopIndex]={stop:pass.stopId,index:pass.stopIndex,arrived:pass.arrivedAt,departed:pass.arrivedAt,knownAt:s.lastObservedAt,active:true};
+        }
         out.push({at,asof,day,bus:s.busName,busId:s.busId,target,index,nearestIndex:s.nearestIndex,phase,began,age:(at-began)/1000,observedAt:s.lastObservedAt,
-          lat:s.lat,lon:s.lon,origins:currentOrigins,canal:canal && canal.knownAt<=asof?canal:null,baseline:b,dense:at%30000===0});
+          lat:s.lat,lon:s.lon,origins:currentOrigins,checkpointOrigins,checkpointArrivals,canal:canal && canal.knownAt<=asof?canal:null,baseline:b,dense:at%30000===0});
       }
     }
   }
@@ -95,7 +107,7 @@ for(const[day,rows]of byDay){
   const expected=a.rows.filter(r=>r.at<=midpoint);
   // Input prefix may end before a scheduled origin; use its last observed clock.
   assert.deepEqual(prefix.rows,expected.filter(r=>r.at<=rows.filter(r=>r.collected_at<=midpoint).at(-1).collected_at));
-  for(const r of a.rows)for(const e of Object.values(r.origins) as any[])assert(e.knownAt<=r.asof && e.departed<=r.asof);
+  for(const r of a.rows)for(const group of [r.origins,r.checkpointOrigins,r.checkpointArrivals])for(const e of Object.values(group) as any[])assert(e.knownAt<=r.asof && e.departed<=r.asof);
   out.push(...a.rows);delayed.push(...b.rows);
   audits.push({day,rawRows:rows.length,features:a.rows.length,delayedFeatures:b.rows.length,emittedVisits:a.emittedVisits,prefixRows:prefix.rows.length,prefixInvariant:true});
 }
