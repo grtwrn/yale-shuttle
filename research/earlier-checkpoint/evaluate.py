@@ -166,7 +166,7 @@ class Predictor:
         assert r['asof']<=r['at']
         source_index=12 if arm.startswith('five_before') else 9
         if arm=='trailing_five_mean':
-            source_index=r['index']-5
+            source_index=r.get('nearestIndex',r['index'])-5
             if source_index>=13:source_index=12
         origin=r['origins'].get(str(source_index))
         if arm!='current_suffix' and origin is None:return self.fallback(r,'origin not yet confirmed')
@@ -298,7 +298,7 @@ def main():
     summary={'labelCounts':dict(labels.audit),'featureCount':len(features),'scored':len(scored),'unmatched':unmatched,'calibration':calibration_audit,'pairs':{},'dense':{},'strata':{},'support':{},'jumps':{},'tests':{'futureTrainingDeletionInvariant':True,'orderedForecasts':True,'noOutcomeInput':True}}
     regressions=[]
     for arm in ARMS:
-        paired=[r for r in test if r['baseline'] and r['forecasts'][arm]['forecast']]
+        paired=[r for r in test if r['forecasts']['logged_production']['forecast'] and r['forecasts'][arm]['forecast']]
         supported=[r for r in paired if r['forecasts'][arm]['supported']]
         summary['support'][arm]={'allTestFeatures':len([r for r in generated if r['day']>'2026-09-16']),'supportedFeatures':sum(r['forecasts'][arm]['supported'] for r in generated if r['day']>'2026-09-16'),'paired':len(paired),'supportedPaired':len(supported),'fallbackReasons':dict(collections.Counter(r['forecasts'][arm].get('reason','supported') for r in generated if r['day']>'2026-09-16'))}
         for label,rs in [('all',paired),('supported',supported)]:
@@ -332,7 +332,7 @@ def main():
     _,delay_rows,delay_unmatched=evaluate(read(OUT/'features-delay15.jsonl.gz'),predictor,labels,'delay15')
     summary['delay15']={'unmatched':delay_unmatched,'arms':{}}
     for arm in ARMS:
-        rs=[r for r in delay_rows if r['day']>'2026-09-16' and r['baseline'] and r['forecasts'][arm]['forecast']]
+        rs=[r for r in delay_rows if r['day']>'2026-09-16' and r['forecasts']['logged_production']['forecast'] and r['forecasts'][arm]['forecast']]
         summary['delay15']['arms'][arm]={'production':metrics(rs,'logged_production'),'raw':metrics(rs,arm),'calibrated':metrics(rs,arm,True,pads)}
     (OUT/'summary.json').write_text(json.dumps(summary,indent=2))
     worst={'mae':sorted(regressions,key=lambda r:r['maeRegression'],reverse=True)[:40],'early':sorted(regressions,key=lambda r:r['earlyExcess'],reverse=True)[:40]}

@@ -77,8 +77,10 @@ function replay(rows:any[], day:string, delay=0, end=Infinity) {
         const base=preds.get(`${at}|${s.busName}|${target}`);
         const b=base && base.stops_ahead>0 && base.stops_ahead<seq.length
           ? {eta:base.predicted_sec,low:base.predicted_low_sec,high:base.predicted_high_sec,stopsAhead:base.stops_ahead,build:base.client_build,surface:base.surface} : null;
-        out.push({at,asof,day,bus:s.busName,busId:s.busId,target,index,phase,began,age:(at-began)/1000,observedAt:s.lastObservedAt,
-          lat:s.lat,lon:s.lon,origins,canal:canal && canal.knownAt<=asof?canal:null,baseline:b,dense:at%30000===0});
+        const targetDeparture=h.get(ti);
+        const currentOrigins=Object.fromEntries(Object.entries(origins).filter(([,e]:any)=>!targetDeparture || targetDeparture.departed<e.departed));
+        out.push({at,asof,day,bus:s.busName,busId:s.busId,target,index,nearestIndex:s.nearestIndex,phase,began,age:(at-began)/1000,observedAt:s.lastObservedAt,
+          lat:s.lat,lon:s.lon,origins:currentOrigins,canal:canal && canal.knownAt<=asof?canal:null,baseline:b,dense:at%30000===0});
       }
     }
   }
