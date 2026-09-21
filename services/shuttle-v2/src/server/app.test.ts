@@ -16,7 +16,7 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 import { buildApp } from "./app.js";
 import { PACE_KEY } from "./v1compat.js";
 import { resetRateLimits } from "./reports.js";
-import { ServerEta } from './serverEta.js';
+import { ServerEta, type ServerEtaWire } from './serverEta.js';
 
 // A fake upstream that returns a fixed snapshot. The collector contract
 // is just "give me these three methods" so we don't need network access.
@@ -104,10 +104,10 @@ it('serves K10 on the default API and keeps an explicit previous-estimator overr
   }));
   const testApp = buildApp({ collector, bundle, serverEta: engine, adminToken: TEST_ADMIN_TOKEN });
   for (const query of ['', '?eta_model=k10', '?eta_model=unknown']) {
-    const body = await (await testApp.request('/api/buses'+query)).json();
-    expect(body.server_eta.trial.model).toBe('k10-test');
+    const body = await (await testApp.request('/api/buses'+query)).json() as { server_eta: ServerEtaWire };
+    expect(body.server_eta.trial?.model).toBe('k10-test');
   }
-  const previous = await (await testApp.request('/api/buses?eta_model=usual')).json();
+  const previous = await (await testApp.request('/api/buses?eta_model=usual')).json() as { server_eta: ServerEtaWire };
   expect(previous.server_eta.trial).toBeUndefined();
   const history = vi.spyOn(engine,'historyPosition').mockReturnValue(null);
   await testApp.request('/api/journey-history?route=Red&bus=309&stop=48&eta=300');
