@@ -141,7 +141,7 @@ export const STANDING_LOOKBACK_MS = 2 * 60 * 60 * 1000;
  * dropped by `parseShownBatch`.
  */
 export const SHOWN_SURFACES = ["trip", "ride", "card"] as const;
-export const TRIAL_SURFACES = ['trip-k10', 'ride-k10', 'card-k10'] as const;
+export const TRIAL_SURFACES = ['trip-k10', 'ride-k10', 'card-k10', 'trip-usual', 'ride-usual', 'card-usual'] as const;
 export type ShownSurface = (typeof SHOWN_SURFACES)[number] | (typeof TRIAL_SURFACES)[number];
 export function isShownSurface(x: unknown): x is ShownSurface {
   return typeof x === "string" && ([...SHOWN_SURFACES, ...TRIAL_SURFACES] as readonly string[]).includes(x);
@@ -187,7 +187,7 @@ export function isPredictionSurface(x: unknown): x is PredictionSurface {
  * A reader that genuinely wants the operator's arm asks for it explicitly.
  */
 // Trial rows have their own dedup population and never enter default accuracy.
-export const RIDER_SURFACES_SQL = "surface <> 'upstream' AND surface NOT IN ('trip-k10', 'ride-k10', 'card-k10')";
+export const RIDER_SURFACES_SQL = "surface <> 'upstream' AND surface NOT IN ('trip-k10', 'ride-k10', 'card-k10', 'trip-usual', 'ride-usual', 'card-usual')";
 
 export interface ShownReading {
   /** As displayed, `#` optional. Resolved against the live fleet server-side. */

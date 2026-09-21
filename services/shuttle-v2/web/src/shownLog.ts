@@ -91,7 +91,8 @@ export type ShownSurface = "trip" | "ride" | "card";
  * whose instant is wrong cannot be paired with an arrival, which is the whole
  * point of the table.
  */
-export type ShownTuple = [string, number, number, number, number, number, number, ShownSurface | `${ShownSurface}-k10`];
+type LoggedSurface = ShownSurface | `${ShownSurface}-usual`;
+export type ShownTuple = [string, number, number, number, number, number, number, LoggedSurface];
 
 interface Pending {
   busName: string;
@@ -100,7 +101,7 @@ interface Pending {
   lowSec: number;
   highSec: number;
   stopsAhead: number;
-  surface: ShownSurface;
+  surface: LoggedSurface;
   /** Bucket start, epoch ms on THIS browser's clock — converted to an age on send. */
   at: number;
 }
@@ -122,7 +123,7 @@ let installed = false;
 export function clientBuild(): string {
   try {
     const url = typeof import.meta !== "undefined" ? String(import.meta.url ?? "") : "";
-    return buildFromModuleUrl(url) + (k10TrialSelected() ? '-k10' : '');
+    return buildFromModuleUrl(url) + (k10TrialSelected() ? '' : '-usual');
   } catch {
     return "dev";
   }
@@ -202,7 +203,10 @@ export function noteShown(
     for (const a of arrivals) {
       if (pending.size >= SHOWN_MAX_BATCH) return;
       if (!Number.isFinite(a.eta) || a.eta < 0) continue;
-      const key = `${a.busName}:${a.stopId}:${at}:${surface}`;
+      // The new default belongs in ordinary accuracy. Only Red opt-outs are a
+      // separate population; Blue and other routes keep their ordinary logs.
+      const loggedSurface: LoggedSurface = a.routeLabel === 'Red' && !k10TrialSelected() ? `${surface}-usual` : surface;
+      const key = `${a.busName}:${a.stopId}:${at}:${loggedSurface}`;
       if (pending.has(key)) continue;
       pending.set(key, {
         busName: a.busName,
@@ -211,7 +215,7 @@ export function noteShown(
         lowSec: Math.round(Math.max(0, a.low)),
         highSec: Math.round(Math.max(0, a.high)),
         stopsAhead: a.stopsAhead,
-        surface,
+        surface: loggedSurface,
         at,
       });
     }
@@ -230,8 +234,7 @@ export function drainBatch(now = Date.now()): ShownTuple[] {
     // Negative would mean the clock went backwards mid-batch; drop rather than
     // post a reading the server will reject anyway.
     if (ageMs < 0 || ageMs > SHOWN_MAX_AGE_MS) continue;
-    const surface = k10TrialSelected() ? `${r.surface}-k10` as const : r.surface;
-    out.push([r.busName, r.stopId, r.etaSec, r.lowSec, r.highSec, r.stopsAhead, ageMs, surface]);
+    out.push([r.busName, r.stopId, r.etaSec, r.lowSec, r.highSec, r.stopsAhead, ageMs, r.surface]);
   }
   return out.slice(0, SHOWN_MAX_BATCH);
 }

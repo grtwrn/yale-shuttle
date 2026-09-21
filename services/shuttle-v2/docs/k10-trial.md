@@ -1,8 +1,11 @@
 # Red K=10 trial
 
-Open `/?eta_model=k10` to opt in. The page shows **Red ETA trial** and a
-**Use usual estimates** link. Other riders keep the existing forecast. Disable
-the overlay globally with `SHUTTLE_K10_TRIAL=0`.
+K10 is the **default for Red's tested section**. The page shows **Red ETA trial**
+and a **Use previous estimates** link (`/?eta_model=usual`). **Use updated
+estimates** returns to the default. The original `/?eta_model=k10` link still
+selects K10. Disable the overlay globally with `SHUTTLE_K10_TRIAL=0`.
+Blue and other routes retain their current estimator. K10 historical backtests
+have covered Red only; ordinary application regression tests cover other routes.
 
 For this trial, the last major wait is 344 Winchester (Red index 14). The
 checkpoint is **Chapel / Church**, ten stops before it (index 4). Supported
@@ -74,10 +77,14 @@ disagreement falls back and can change the live mixture relative to research.
 Tests compare the TypeScript prior against 7,425 Python reference forecasts
 across 14 pickups, verify exact handoff/fallback rows and distributions, replay
 the live collector clock against raw GPS/reference causal features, and exercise
-the opt-in/rollback in a real browser. Heavy tests run on GitHub-hosted runners.
+the default/opt-out/restore flow in a real browser. Heavy tests run on GitHub-hosted runners.
 
-Trial readings use `trip-k10`, `ride-k10`, `card-k10` surfaces and a `-k10` build
-suffix. They have independent dedup keys and are excluded from default accuracy
-and the usual-versus-upstream comparison. Query these surfaces explicitly for
-trial evaluation. `/api/buses?eta_model=k10` includes `server_eta.trial` with the
-prior version, expiry and number of rows replaced in that forecast snapshot.
+New default readings use ordinary `trip`, `ride`, `card` surfaces and count in
+default accuracy. Explicit Red opt-outs use `trip-usual`, `ride-usual`,
+`card-usual` and a `-usual` build suffix; other routes keep ordinary surfaces
+even on an opt-out page. These comparison rows and the earlier opt-in
+`*-k10` readings have independent dedup keys and stay excluded from default
+accuracy and the usual-versus-upstream comparison. Query comparison surfaces
+explicitly when evaluating the trial. Default `/api/buses` includes
+`server_eta.trial` with the prior version, expiry and count of replaced rows;
+`/api/buses?eta_model=usual` returns the previous estimator without that marker.
