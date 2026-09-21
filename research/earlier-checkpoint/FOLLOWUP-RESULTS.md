@@ -1,5 +1,7 @@
 # Ten stops back and K stops before the wait stop
 
+**Further follow-up:** [K=5/K=10, departure switching, and14 downstream pickup stops](HYBRID-MULTISTOP-RESULTS.md) test the user's concern about a cutoff crossing the wait. That concern appears in the replay; the earlier results below remain unchanged.
+
 **Ten stops behind the bus is the most promising of these alternatives for narrower windows.** Its average window is 3:41 narrower than production's, with essentially unchanged average point error. A modestly padded version retains a 3:12 reduction while covering 88.7% of observed arrivals. The K=1 and K=2 alternatives do less well. These results support continuing with the ten-stop idea, while its overdue countdowns and poor response to fast approaches still need attention.
 
 The user explicitly values reducing window width even at a modest point-error cost. That is a valid tradeoff; point error alone is not the decision criterion. The table includes actual coverage so the cost of a tighter window is visible.

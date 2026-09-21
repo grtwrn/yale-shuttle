@@ -2,6 +2,8 @@
 
 **Follow-up:** the user requested ten-stop and wait-relative anchors after these results. [The additional experiment](FOLLOWUP-RESULTS.md) finds a more promising width/accuracy tradeoff for ten stops behind the bus. The original results below remain unchanged.
 
+**Latest:** [Wait-relative K, departure switching, and other pickups](HYBRID-MULTISTOP-RESULTS.md) confirms the cutoff concern and compares K=5/K=10 across Red's downstream section.
+
 **The earlier-checkpoint idea narrows Red's arrival windows, but the tested versions do not earn a production replacement.** The simple average is less accurate and can count down to zero while the bus remains several minutes away. Conditioning on unfinished journeys helps with that failure, but its aggregate point error is still slightly worse than production, with inconsistent results across dates. Matching the current phase introduces sparse-history fallbacks and additional jumps.
 
 All work is offline. Application code, model parameters, deployed service and watcher behavior are unchanged. The hosted calculations and checks passed; the candidate performance criteria did not. [Hosted evaluation](https://github.com/grtwrn/yale-shuttle/actions/runs/35635235179), [compact numerical results](published/findings.json), [four vehicle-case traces](published/case-audits.json), [frozen plan](PLAN.json), and [amendment trail](AMENDMENTS.md) preserve the evidence.
