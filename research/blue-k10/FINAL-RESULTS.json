@@ -1,0 +1,2926 @@
+{
+  "run": 35653327666,
+  "codeCommit": "05e3983298dc86a3595128de3f63a9a8c1ea11dd",
+  "warmupLive": {
+    "at": "2026-09-21T20:43:17.707055+00:00",
+    "build": "50df98022461",
+    "warmup": {
+      "attempts": 3,
+      "replayedSamples": 2118,
+      "recovered": 2,
+      "cold": 1,
+      "rejected": 0,
+      "errors": 0,
+      "maxReplayMs": 101.21888000000035
+    },
+    "trial": {
+      "model": "k10-20260921",
+      "changedRows": 14,
+      "validUntil": 1790568000000
+    },
+    "rows": 696,
+    "unchangedNonRed": 553,
+    "unchangedBlue": 166,
+    "changedRed": 14,
+    "sameSnapshot": 1790023395529
+  },
+  "primary45": {
+    "training": {
+      "paths": 4213,
+      "unreached_or_overCap": 15077,
+      "disconnected_path": 6308,
+      "invalid_target": 38
+    },
+    "routes": {
+      "1": {
+        "K10": {
+          "all": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "usual": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "released/live": 2030,
+            "group lacks historical support": 2210,
+            "source departure unavailable": 441,
+            "group countdown expired": 356,
+            "not warm/fresh": 198,
+            "pickup before wait": 199,
+            "outside target group": 186
+          }
+        },
+        "K5": {
+          "all": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "usual": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "released/live": 2815,
+            "group lacks historical support": 1405,
+            "source departure unavailable": 579,
+            "group countdown expired": 361,
+            "not warm/fresh": 198,
+            "pickup before wait": 76,
+            "outside target group": 186
+          }
+        },
+        "K10_first10": {
+          "all": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 171.13041589795975,
+            "width": 617.1913665421524,
+            "coverage": 0.8018547966262141,
+            "bias": 2.321298911426955,
+            "early": 0.09662201232390755,
+            "late": 0.10152319104987843,
+            "falseNow": 0.00015269506794930525
+          },
+          "usual": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "changed": {
+            "snapshots": 255,
+            "visits": 31,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 383.66927090599455,
+            "width": 723.0542580645161,
+            "coverage": 0.3870967741935484,
+            "bias": -331.45858052506003,
+            "early": 0.03225806451612903,
+            "late": 0.5806451612903226,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 255,
+            "visits": 31,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 334.7075677018813,
+            "width": 903.6400673385032,
+            "coverage": 0.7258064516129032,
+            "bias": -228.22249857745732,
+            "early": 0.016129032258064516,
+            "late": 0.25806451612903225,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "outside target group": 4864,
+            "checkpoint": 255,
+            "released/live": 125,
+            "source departure unavailable": 51,
+            "group countdown expired": 127,
+            "not warm/fresh": 198
+          }
+        },
+        "K5_first10": {
+          "all": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.51743661448026,
+            "width": 623.2537930534064,
+            "coverage": 0.8357103321766648,
+            "bias": 12.33959702595767,
+            "early": 0.09662201232390755,
+            "late": 0.06766765549942763,
+            "falseNow": 0.00015269506794930525
+          },
+          "usual": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "changed": {
+            "snapshots": 152,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 204.06449640293673,
+            "width": 578.1831666666667,
+            "coverage": 0.8333333333333334,
+            "bias": -50.241785528639795,
+            "early": 0.08333333333333333,
+            "late": 0.08333333333333333,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 152,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 202.27418342151677,
+            "width": 913.4545194003528,
+            "coverage": 0.9583333333333334,
+            "bias": 13.63707848324516,
+            "early": 0.041666666666666664,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "outside target group": 4864,
+            "checkpoint": 152,
+            "source departure unavailable": 65,
+            "released/live": 207,
+            "group countdown expired": 134,
+            "not warm/fresh": 198
+          }
+        }
+      },
+      "4": {
+        "K10": {
+          "all": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 270,
+            "released/live": 36,
+            "source departure unavailable": 73,
+            "pickup before wait": 27
+          }
+        },
+        "K5": {
+          "all": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "source departure unavailable": 44,
+            "group lacks historical support": 276,
+            "released/live": 86
+          }
+        },
+        "K10_first10": {
+          "all": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "outside target group": 212,
+            "group lacks historical support": 141,
+            "source departure unavailable": 40,
+            "released/live": 13
+          }
+        },
+        "K5_first10": {
+          "all": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "outside target group": 212,
+            "group lacks historical support": 157,
+            "released/live": 30,
+            "source departure unavailable": 7
+          }
+        }
+      },
+      "13": {
+        "K10": {
+          "all": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 1029,
+            "released/live": 333,
+            "source departure unavailable": 257,
+            "pickup before wait": 50,
+            "occurrence disagreement": 10,
+            "not warm/fresh": 1
+          }
+        },
+        "K5": {
+          "all": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "released/live": 583,
+            "group lacks historical support": 661,
+            "source departure unavailable": 425,
+            "occurrence disagreement": 10,
+            "not warm/fresh": 1
+          }
+        },
+        "K10_first10": {
+          "all": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 1028,
+            "released/live": 333,
+            "source departure unavailable": 198,
+            "outside target group": 110,
+            "occurrence disagreement": 10,
+            "not warm/fresh": 1
+          }
+        },
+        "K5_first10": {
+          "all": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "released/live": 544,
+            "group lacks historical support": 661,
+            "source departure unavailable": 354,
+            "outside target group": 110,
+            "occurrence disagreement": 10,
+            "not warm/fresh": 1
+          }
+        }
+      },
+      "16": {
+        "K10": {
+          "all": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "usual": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 585,
+            "released/live": 31,
+            "pickup before wait": 255,
+            "group countdown expired": 28,
+            "source departure unavailable": 18,
+            "occurrence disagreement": 2,
+            "not warm/fresh": 1
+          }
+        },
+        "K5": {
+          "all": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "usual": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 526,
+            "group countdown expired": 57,
+            "released/live": 266,
+            "pickup before wait": 57,
+            "source departure unavailable": 13,
+            "not warm/fresh": 1
+          }
+        },
+        "K10_first10": {
+          "all": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "usual": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 585,
+            "released/live": 31,
+            "pickup before wait": 255,
+            "group countdown expired": 28,
+            "source departure unavailable": 18,
+            "occurrence disagreement": 2,
+            "not warm/fresh": 1
+          }
+        },
+        "K5_first10": {
+          "all": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "usual": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 526,
+            "group countdown expired": 57,
+            "released/live": 266,
+            "pickup before wait": 57,
+            "source departure unavailable": 13,
+            "not warm/fresh": 1
+          }
+        }
+      }
+    },
+    "checks": {
+      "wraparound": true,
+      "multipleWaits": true,
+      "overnightClock": true,
+      "futureTrainingDeletion": true
+    }
+  },
+  "diagnostic90": {
+    "training": {
+      "paths": 6593,
+      "unreached_or_overCap": 8914,
+      "disconnected_path": 10080,
+      "invalid_target": 49
+    },
+    "routes": {
+      "1": {
+        "K10": {
+          "all": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 162.0158826559537,
+            "width": 613.9926919503997,
+            "coverage": 0.8339908827139844,
+            "bias": 4.29699425890177,
+            "early": 0.09529930620205952,
+            "late": 0.0707098110839561,
+            "falseNow": 0.00015269506794930525
+          },
+          "usual": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "changed": {
+            "snapshots": 1037,
+            "visits": 30,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 174.5960850263608,
+            "width": 685.8449666666668,
+            "coverage": 0.8666666666666667,
+            "bias": 57.92286597882388,
+            "early": 0.1,
+            "late": 0.03333333333333333,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 1037,
+            "visits": 30,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 215.02551784860557,
+            "width": 888.9711574527503,
+            "coverage": 0.8857634401502589,
+            "bias": 152.6917635472326,
+            "early": 0.11423655984974117,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "released/live": 2030,
+            "checkpoint": 1037,
+            "source departure unavailable": 441,
+            "group countdown expired": 356,
+            "not warm/fresh": 198,
+            "group lacks historical support": 1173,
+            "pickup before wait": 199,
+            "outside target group": 186
+          }
+        },
+        "K5": {
+          "all": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 161.6616880241997,
+            "width": 615.7113048315033,
+            "coverage": 0.8345581365419654,
+            "bias": 8.933512988598858,
+            "early": 0.09458872893468578,
+            "late": 0.07085313452334878,
+            "falseNow": 0.00015269506794930525
+          },
+          "usual": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "changed": {
+            "snapshots": 665,
+            "visits": 23,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 169.95326977557713,
+            "width": 629.8005217391304,
+            "coverage": 0.8260869565217391,
+            "bias": 64.3455655730364,
+            "early": 0.08695652173913043,
+            "late": 0.08695652173913043,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 665,
+            "visits": 23,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 227.01658918275098,
+            "width": 901.4146804070988,
+            "coverage": 0.8736734805595944,
+            "bias": 159.66759743315217,
+            "early": 0.1263265194404056,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "released/live": 2815,
+            "checkpoint": 665,
+            "source departure unavailable": 579,
+            "group countdown expired": 361,
+            "not warm/fresh": 198,
+            "group lacks historical support": 740,
+            "pickup before wait": 76,
+            "outside target group": 186
+          }
+        },
+        "K10_first10": {
+          "all": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 169.2267119664078,
+            "width": 623.1974759000576,
+            "coverage": 0.8188039491685869,
+            "bias": 4.997397970326699,
+            "early": 0.09662201232390755,
+            "late": 0.08457403850750556,
+            "falseNow": 0.00015269506794930525
+          },
+          "usual": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "changed": {
+            "snapshots": 255,
+            "visits": 31,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 371.40132198047655,
+            "width": 763.040870967742,
+            "coverage": 0.4838709677419355,
+            "bias": -312.47667994985494,
+            "early": 0.03225806451612903,
+            "late": 0.4838709677419355,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 255,
+            "visits": 31,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 334.7075677018813,
+            "width": 903.6400673385032,
+            "coverage": 0.7258064516129032,
+            "bias": -228.22249857745732,
+            "early": 0.016129032258064516,
+            "late": 0.25806451612903225,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "outside target group": 4864,
+            "checkpoint": 255,
+            "released/live": 125,
+            "source departure unavailable": 51,
+            "group countdown expired": 127,
+            "not warm/fresh": 198
+          }
+        },
+        "K5_first10": {
+          "all": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.51243570809405,
+            "width": 623.2537930534064,
+            "coverage": 0.8357103321766648,
+            "bias": 12.34531817012462,
+            "early": 0.09662201232390755,
+            "late": 0.06766765549942763,
+            "falseNow": 0.00015269506794930525
+          },
+          "usual": {
+            "snapshots": 5620,
+            "visits": 177,
+            "falseNowSnapshots": 1,
+            "days": 2,
+            "mae": 165.8541685422741,
+            "width": 640.3356604524439,
+            "coverage": 0.8394478376090855,
+            "bias": 15.5347728748306,
+            "early": 0.09549206882108269,
+            "late": 0.0650600935698318,
+            "falseNow": 0.00015269506794930525
+          },
+          "changed": {
+            "snapshots": 152,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 203.9969899409741,
+            "width": 578.1831666666667,
+            "coverage": 0.8333333333333334,
+            "bias": -50.15114174494333,
+            "early": 0.08333333333333333,
+            "late": 0.08333333333333333,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 152,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 202.27418342151677,
+            "width": 913.4545194003528,
+            "coverage": 0.9583333333333334,
+            "bias": 13.63707848324516,
+            "early": 0.041666666666666664,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "outside target group": 4864,
+            "checkpoint": 152,
+            "source departure unavailable": 65,
+            "released/live": 207,
+            "group countdown expired": 134,
+            "not warm/fresh": 198
+          }
+        }
+      },
+      "4": {
+        "K10": {
+          "all": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 270,
+            "released/live": 36,
+            "source departure unavailable": 73,
+            "pickup before wait": 27
+          }
+        },
+        "K5": {
+          "all": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "source departure unavailable": 44,
+            "group lacks historical support": 276,
+            "released/live": 86
+          }
+        },
+        "K10_first10": {
+          "all": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "outside target group": 212,
+            "group lacks historical support": 141,
+            "source departure unavailable": 40,
+            "released/live": 13
+          }
+        },
+        "K5_first10": {
+          "all": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 406,
+            "visits": 43,
+            "falseNowSnapshots": 0,
+            "days": 2,
+            "mae": 223.32424066856754,
+            "width": 946.8381977486708,
+            "coverage": 0.8831782945736434,
+            "bias": -121.9295672577148,
+            "early": 0.046511627906976744,
+            "late": 0.07031007751937984,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "outside target group": 212,
+            "group lacks historical support": 157,
+            "released/live": 30,
+            "source departure unavailable": 7
+          }
+        }
+      },
+      "13": {
+        "K10": {
+          "all": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 1029,
+            "released/live": 333,
+            "source departure unavailable": 257,
+            "pickup before wait": 50,
+            "occurrence disagreement": 10,
+            "not warm/fresh": 1
+          }
+        },
+        "K5": {
+          "all": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "released/live": 583,
+            "group lacks historical support": 661,
+            "source departure unavailable": 425,
+            "occurrence disagreement": 10,
+            "not warm/fresh": 1
+          }
+        },
+        "K10_first10": {
+          "all": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 1028,
+            "released/live": 333,
+            "source departure unavailable": 198,
+            "outside target group": 110,
+            "occurrence disagreement": 10,
+            "not warm/fresh": 1
+          }
+        },
+        "K5_first10": {
+          "all": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 1680,
+            "visits": 61,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 172.11643027986062,
+            "width": 761.0544108242383,
+            "coverage": 0.9216359345680911,
+            "bias": 65.39567708905672,
+            "early": 0.03373755919763679,
+            "late": 0.04462650623427208,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "released/live": 544,
+            "group lacks historical support": 661,
+            "source departure unavailable": 354,
+            "outside target group": 110,
+            "occurrence disagreement": 10,
+            "not warm/fresh": 1
+          }
+        }
+      },
+      "16": {
+        "K10": {
+          "all": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 88.02346372937683,
+            "width": 399.66550239104,
+            "coverage": 0.9260352667661335,
+            "bias": 39.83726620687286,
+            "early": 0.037039749636870144,
+            "late": 0.036924983596996426,
+            "falseNow": 0.001795760758994374
+          },
+          "usual": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "changed": {
+            "snapshots": 582,
+            "visits": 22,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 92.76812850440723,
+            "width": 337.6083818181819,
+            "coverage": 0.9090909090909091,
+            "bias": 15.470053491174232,
+            "early": 0.0,
+            "late": 0.09090909090909091,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 582,
+            "visits": 22,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 198.67185463075666,
+            "width": 1637.4342312590802,
+            "coverage": 0.9937520411144914,
+            "bias": 119.76867147075451,
+            "early": 0.006247958885508517,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "checkpoint": 582,
+            "released/live": 31,
+            "pickup before wait": 255,
+            "group countdown expired": 28,
+            "group lacks historical support": 3,
+            "source departure unavailable": 18,
+            "occurrence disagreement": 2,
+            "not warm/fresh": 1
+          }
+        },
+        "K5": {
+          "all": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 142.01145552315418,
+            "width": 891.6891880943587,
+            "coverage": 0.9213482937551829,
+            "bias": 110.20201980345242,
+            "early": 0.07303823391121649,
+            "late": 0.005613472333600642,
+            "falseNow": 0.001795760758994374
+          },
+          "usual": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "changed": {
+            "snapshots": 526,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 130.2966162102583,
+            "width": 362.4221518691589,
+            "coverage": 0.8333333333333334,
+            "bias": 27.48947024836876,
+            "early": 0.08333333333333333,
+            "late": 0.08333333333333333,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 526,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 199.96860083183302,
+            "width": 1705.596603335038,
+            "coverage": 0.9961836836836837,
+            "bias": 61.49636914748833,
+            "early": 0.003816316316316316,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "checkpoint": 526,
+            "group countdown expired": 57,
+            "released/live": 266,
+            "pickup before wait": 57,
+            "source departure unavailable": 13,
+            "not warm/fresh": 1
+          }
+        },
+        "K10_first10": {
+          "all": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 88.02346372937683,
+            "width": 399.66550239104,
+            "coverage": 0.9260352667661335,
+            "bias": 39.83726620687286,
+            "early": 0.037039749636870144,
+            "late": 0.036924983596996426,
+            "falseNow": 0.001795760758994374
+          },
+          "usual": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "changed": {
+            "snapshots": 582,
+            "visits": 22,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 92.76812850440723,
+            "width": 337.6083818181819,
+            "coverage": 0.9090909090909091,
+            "bias": 15.470053491174232,
+            "early": 0.0,
+            "late": 0.09090909090909091,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 582,
+            "visits": 22,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 198.67185463075666,
+            "width": 1637.4342312590802,
+            "coverage": 0.9937520411144914,
+            "bias": 119.76867147075451,
+            "early": 0.006247958885508517,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "checkpoint": 582,
+            "released/live": 31,
+            "pickup before wait": 255,
+            "group countdown expired": 28,
+            "group lacks historical support": 3,
+            "source departure unavailable": 18,
+            "occurrence disagreement": 2,
+            "not warm/fresh": 1
+          }
+        },
+        "K5_first10": {
+          "all": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 142.01145552315418,
+            "width": 891.6891880943587,
+            "coverage": 0.9213482937551829,
+            "bias": 110.20201980345242,
+            "early": 0.07303823391121649,
+            "late": 0.005613472333600642,
+            "falseNow": 0.001795760758994374
+          },
+          "usual": {
+            "snapshots": 920,
+            "visits": 29,
+            "falseNowSnapshots": 2,
+            "days": 4,
+            "mae": 169.65499362928108,
+            "width": 1283.4343341319102,
+            "coverage": 0.9606088680163147,
+            "bias": 111.6211248834998,
+            "early": 0.03939113198368524,
+            "late": 0.0,
+            "falseNow": 0.001795760758994374
+          },
+          "changed": {
+            "snapshots": 526,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 130.2966162102583,
+            "width": 362.4221518691589,
+            "coverage": 0.8333333333333334,
+            "bias": 27.48947024836876,
+            "early": 0.08333333333333333,
+            "late": 0.08333333333333333,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 526,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 4,
+            "mae": 199.96860083183302,
+            "width": 1705.596603335038,
+            "coverage": 0.9961836836836837,
+            "bias": 61.49636914748833,
+            "early": 0.003816316316316316,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "checkpoint": 526,
+            "group countdown expired": 57,
+            "released/live": 266,
+            "pickup before wait": 57,
+            "source departure unavailable": 13,
+            "not warm/fresh": 1
+          }
+        }
+      }
+    },
+    "days": {
+      "1": {
+        "2026-09-17": {
+          "all": {
+            "snapshots": 3576,
+            "visits": 58,
+            "falseNowSnapshots": 1,
+            "days": 1,
+            "mae": 175.97344634568867,
+            "width": 542.340366540628,
+            "coverage": 0.8033867995042399,
+            "bias": 93.20818361389433,
+            "early": 0.16827245288049913,
+            "late": 0.028340747615261078,
+            "falseNow": 0.0004659832246039143
+          },
+          "usual": {
+            "snapshots": 3576,
+            "visits": 58,
+            "falseNowSnapshots": 1,
+            "days": 1,
+            "mae": 175.66183188435969,
+            "width": 597.1832713605089,
+            "coverage": 0.8206281788145846,
+            "bias": 115.4777797239566,
+            "early": 0.16827245288049913,
+            "late": 0.011099368304916249,
+            "falseNow": 0.0004659832246039143
+          },
+          "changed": {
+            "snapshots": 448,
+            "visits": 16,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 150.72932456291556,
+            "width": 645.9165,
+            "coverage": 0.9375,
+            "bias": -68.0329611512162,
+            "early": 0.0,
+            "late": 0.0625,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 448,
+            "visits": 16,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 154.21710871431372,
+            "width": 902.8714175598114,
+            "coverage": 1.0,
+            "bias": 37.341319399239396,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "released/live": 1424,
+            "checkpoint": 448,
+            "source departure unavailable": 243,
+            "group countdown expired": 71,
+            "not warm/fresh": 51,
+            "group lacks historical support": 1075,
+            "pickup before wait": 140,
+            "outside target group": 124
+          }
+        },
+        "2026-09-18": {
+          "all": {
+            "snapshots": 2044,
+            "visits": 119,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 155.21303648784757,
+            "width": 648.9156740828935,
+            "coverage": 0.848907158564112,
+            "bias": -39.03787114101058,
+            "early": 0.05973256244282006,
+            "late": 0.09136027899306795,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 2044,
+            "visits": 119,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 161.07396287974498,
+            "width": 661.3679173207819,
+            "coverage": 0.8486204444164893,
+            "bias": -33.17694474911317,
+            "early": 0.06001927659044275,
+            "late": 0.09136027899306795,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 589,
+            "visits": 14,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 201.87238269886967,
+            "width": 731.4775000000001,
+            "coverage": 0.7857142857142857,
+            "bias": 201.87238269886967,
+            "early": 0.21428571428571427,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 589,
+            "visits": 14,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 284.5208425735105,
+            "width": 873.0851459018231,
+            "coverage": 0.7552073717505546,
+            "bias": 284.5208425735105,
+            "early": 0.24479262824944534,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "released/live": 606,
+            "checkpoint": 589,
+            "source departure unavailable": 198,
+            "pickup before wait": 59,
+            "group countdown expired": 285,
+            "not warm/fresh": 147,
+            "outside target group": 62,
+            "group lacks historical support": 98
+          }
+        }
+      },
+      "4": {
+        "2026-09-19": {
+          "all": {
+            "snapshots": 116,
+            "visits": 11,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 428.9917831185417,
+            "width": 1009.5137292464879,
+            "coverage": 0.7525252525252525,
+            "bias": -428.7214194821781,
+            "early": 0.0,
+            "late": 0.24747474747474746,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 116,
+            "visits": 11,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 428.9917831185417,
+            "width": 1009.5137292464879,
+            "coverage": 0.7525252525252525,
+            "bias": -428.7214194821781,
+            "early": 0.0,
+            "late": 0.24747474747474746,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 44,
+            "released/live": 23,
+            "source departure unavailable": 49
+          }
+        },
+        "2026-09-20": {
+          "all": {
+            "snapshots": 290,
+            "visits": 32,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 152.6260229513889,
+            "width": 925.2934837962963,
+            "coverage": 0.9280902777777778,
+            "bias": -16.469868055555548,
+            "early": 0.0625,
+            "late": 0.009409722222222222,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 290,
+            "visits": 32,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 152.6260229513889,
+            "width": 925.2934837962963,
+            "coverage": 0.9280902777777778,
+            "bias": -16.469868055555548,
+            "early": 0.0625,
+            "late": 0.009409722222222222,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "pickup before wait": 27,
+            "group lacks historical support": 226,
+            "released/live": 13,
+            "source departure unavailable": 24
+          }
+        }
+      },
+      "13": {
+        "2026-09-17": {
+          "all": {
+            "snapshots": 99,
+            "visits": 29,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 187.94518752052542,
+            "width": 756.1,
+            "coverage": 0.8931034482758621,
+            "bias": 95.56251888341541,
+            "early": 0.0367816091954023,
+            "late": 0.07011494252873564,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 99,
+            "visits": 29,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 187.94518752052542,
+            "width": 756.1,
+            "coverage": 0.8931034482758621,
+            "bias": 95.56251888341541,
+            "early": 0.0367816091954023,
+            "late": 0.07011494252873564,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 80,
+            "released/live": 6,
+            "source departure unavailable": 12,
+            "pickup before wait": 1
+          }
+        },
+        "2026-09-18": {
+          "all": {
+            "snapshots": 427,
+            "visits": 6,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 116.7564299932541,
+            "width": 950.324898793416,
+            "coverage": 1.0,
+            "bias": -67.0001631091344,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 427,
+            "visits": 6,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 116.7564299932541,
+            "width": 950.324898793416,
+            "coverage": 1.0,
+            "bias": -67.0001631091344,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "released/live": 98,
+            "group lacks historical support": 294,
+            "source departure unavailable": 35
+          }
+        },
+        "2026-09-19": {
+          "all": {
+            "snapshots": 520,
+            "visits": 15,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 197.49048509927897,
+            "width": 664.1449566001403,
+            "coverage": 0.917153490790083,
+            "bias": 91.72212744022036,
+            "early": 0.054275106452467664,
+            "late": 0.02857140275744927,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 520,
+            "visits": 15,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 197.49048509927897,
+            "width": 664.1449566001403,
+            "coverage": 0.917153490790083,
+            "bias": 91.72212744022036,
+            "early": 0.054275106452467664,
+            "late": 0.02857140275744927,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "group lacks historical support": 282,
+            "released/live": 141,
+            "source departure unavailable": 74,
+            "pickup before wait": 19,
+            "occurrence disagreement": 4
+          }
+        },
+        "2026-09-20": {
+          "all": {
+            "snapshots": 634,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 121.56374675776732,
+            "width": 774.6205004487185,
+            "coverage": 0.9593320496914385,
+            "bias": 14.392807966857289,
+            "early": 0.014766487300180224,
+            "late": 0.025901463008381247,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 634,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 121.56374675776732,
+            "width": 774.6205004487185,
+            "coverage": 0.9593320496914385,
+            "bias": 14.392807966857289,
+            "early": 0.014766487300180224,
+            "late": 0.025901463008381247,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "usualOnChanged": {
+            "snapshots": 0,
+            "visits": 0
+          },
+          "fallbacks": {
+            "released/live": 88,
+            "group lacks historical support": 373,
+            "source departure unavailable": 136,
+            "not warm/fresh": 1,
+            "pickup before wait": 30,
+            "occurrence disagreement": 6
+          }
+        }
+      },
+      "16": {
+        "2026-09-17": {
+          "all": {
+            "snapshots": 63,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 51.78196644170024,
+            "width": 342.06075000000016,
+            "coverage": 1.0,
+            "bias": 16.422697299899383,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 63,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 231.78312626262627,
+            "width": 1613.15386002886,
+            "coverage": 1.0,
+            "bias": 231.78312626262627,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 63,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 51.78196644170024,
+            "width": 342.06075000000016,
+            "coverage": 1.0,
+            "bias": 16.422697299899383,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 63,
+            "visits": 12,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 231.78312626262627,
+            "width": 1613.15386002886,
+            "coverage": 1.0,
+            "bias": 231.78312626262627,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "checkpoint": 63
+          }
+        },
+        "2026-09-18": {
+          "all": {
+            "snapshots": 318,
+            "visits": 6,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 120.73103708111353,
+            "width": 398.1617472513048,
+            "coverage": 0.9274136715997181,
+            "bias": 102.57583851062086,
+            "early": 0.07258632840028188,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 318,
+            "visits": 6,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 116.72392237404894,
+            "width": 810.8466519294153,
+            "coverage": 0.918256162442209,
+            "bias": 90.0452031063885,
+            "early": 0.08174383755779105,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 147,
+            "visits": 3,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 105.67841631774023,
+            "width": 514.6710000000003,
+            "coverage": 1.0,
+            "bias": 105.67841631774023,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 147,
+            "visits": 3,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 133.02553131431665,
+            "width": 1647.2081133182467,
+            "coverage": 0.959349593495935,
+            "bias": 106.13689901191114,
+            "early": 0.04065040650406504,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "released/live": 13,
+            "pickup before wait": 156,
+            "checkpoint": 147,
+            "group countdown expired": 2
+          }
+        },
+        "2026-09-19": {
+          "all": {
+            "snapshots": 302,
+            "visits": 8,
+            "falseNowSnapshots": 2,
+            "days": 1,
+            "mae": 119.56904671509614,
+            "width": 531.7294708694639,
+            "coverage": 0.7863175883274451,
+            "bias": 11.769878034169214,
+            "early": 0.07982934613344285,
+            "late": 0.13385306553911205,
+            "falseNow": 0.006509632751354606
+          },
+          "usual": {
+            "snapshots": 302,
+            "visits": 8,
+            "falseNowSnapshots": 2,
+            "days": 1,
+            "mae": 140.43707367481608,
+            "width": 1091.7778635928046,
+            "coverage": 0.9185150247274843,
+            "bias": -7.424467192135415,
+            "early": 0.0814849752725157,
+            "late": 0.0,
+            "falseNow": 0.006509632751354606
+          },
+          "changed": {
+            "snapshots": 188,
+            "visits": 4,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 204.2261302021938,
+            "width": 242.50384999999983,
+            "coverage": 0.5,
+            "bias": -114.83547494518515,
+            "early": 0.0,
+            "late": 0.5,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 188,
+            "visits": 4,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 205.8635860012081,
+            "width": 1769.486308265378,
+            "coverage": 0.9961240310077519,
+            "bias": -107.46860674015903,
+            "early": 0.003875968992248062,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "group lacks historical support": 3,
+            "pickup before wait": 58,
+            "checkpoint": 188,
+            "group countdown expired": 26,
+            "source departure unavailable": 18,
+            "occurrence disagreement": 2,
+            "released/live": 7
+          }
+        },
+        "2026-09-20": {
+          "all": {
+            "snapshots": 237,
+            "visits": 3,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 83.45275154802496,
+            "width": 280.92143962553945,
+            "coverage": 1.0,
+            "bias": 82.86476568781384,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "usual": {
+            "snapshots": 237,
+            "visits": 3,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 104.91905881827118,
+            "width": 1420.815516386715,
+            "coverage": 1.0,
+            "bias": -8.420124877089513,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "changed": {
+            "snapshots": 184,
+            "visits": 3,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 95.19182001152015,
+            "width": 269.5423333333334,
+            "coverage": 1.0,
+            "bias": 95.19182001152015,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "usualOnChanged": {
+            "snapshots": 184,
+            "visits": 3,
+            "falseNowSnapshots": 0,
+            "days": 1,
+            "mae": 122.28411625911622,
+            "width": 1548.7123981123982,
+            "coverage": 1.0,
+            "bias": -11.674337623337658,
+            "early": 0.0,
+            "late": 0.0,
+            "falseNow": 0.0
+          },
+          "fallbacks": {
+            "checkpoint": 184,
+            "not warm/fresh": 1,
+            "released/live": 11,
+            "pickup before wait": 41
+          }
+        }
+      }
+    },
+    "delay15": {
+      "1": {
+        "all": {
+          "snapshots": 5620,
+          "visits": 177,
+          "falseNowSnapshots": 1,
+          "days": 2,
+          "mae": 162.0770433041231,
+          "width": 614.2015704778099,
+          "coverage": 0.8339906992815975,
+          "bias": 4.405006873548199,
+          "early": 0.09529948963444636,
+          "late": 0.0707098110839561,
+          "falseNow": 0.00015269506794930525
+        },
+        "usual": {
+          "snapshots": 5620,
+          "visits": 177,
+          "falseNowSnapshots": 1,
+          "days": 2,
+          "mae": 165.8541685422741,
+          "width": 640.3356604524439,
+          "coverage": 0.8394478376090855,
+          "bias": 15.5347728748306,
+          "early": 0.09549206882108269,
+          "late": 0.0650600935698318,
+          "falseNow": 0.00015269506794930525
+        },
+        "changed": {
+          "snapshots": 1039,
+          "visits": 30,
+          "falseNowSnapshots": 0,
+          "days": 2,
+          "mae": 174.5960850263608,
+          "width": 685.8449666666668,
+          "coverage": 0.8666666666666667,
+          "bias": 57.92286597882388,
+          "early": 0.1,
+          "late": 0.03333333333333333,
+          "falseNow": 0.0
+        },
+        "usualOnChanged": {
+          "snapshots": 1039,
+          "visits": 30,
+          "falseNowSnapshots": 0,
+          "days": 2,
+          "mae": 214.3635622472187,
+          "width": 886.5461171878546,
+          "coverage": 0.8833118639486827,
+          "bias": 152.03630288555289,
+          "early": 0.11668813605131736,
+          "late": 0.0,
+          "falseNow": 0.0
+        },
+        "fallbacks": {
+          "released/live": 2005,
+          "checkpoint": 1039,
+          "source departure unavailable": 458,
+          "group countdown expired": 363,
+          "not warm/fresh": 199,
+          "group lacks historical support": 1174,
+          "pickup before wait": 196,
+          "outside target group": 186
+        }
+      },
+      "4": {
+        "all": {
+          "snapshots": 406,
+          "visits": 43,
+          "falseNowSnapshots": 0,
+          "days": 2,
+          "mae": 223.32424066856754,
+          "width": 946.8381977486708,
+          "coverage": 0.8831782945736434,
+          "bias": -121.9295672577148,
+          "early": 0.046511627906976744,
+          "late": 0.07031007751937984,
+          "falseNow": 0.0
+        },
+        "usual": {
+          "snapshots": 406,
+          "visits": 43,
+          "falseNowSnapshots": 0,
+          "days": 2,
+          "mae": 223.32424066856754,
+          "width": 946.8381977486708,
+          "coverage": 0.8831782945736434,
+          "bias": -121.9295672577148,
+          "early": 0.046511627906976744,
+          "late": 0.07031007751937984,
+          "falseNow": 0.0
+        },
+        "changed": {
+          "snapshots": 0,
+          "visits": 0
+        },
+        "usualOnChanged": {
+          "snapshots": 0,
+          "visits": 0
+        },
+        "fallbacks": {
+          "group lacks historical support": 273,
+          "released/live": 33,
+          "source departure unavailable": 73,
+          "pickup before wait": 27
+        }
+      },
+      "13": {
+        "all": {
+          "snapshots": 1680,
+          "visits": 61,
+          "falseNowSnapshots": 0,
+          "days": 4,
+          "mae": 172.11643027986062,
+          "width": 761.0544108242383,
+          "coverage": 0.9216359345680911,
+          "bias": 65.39567708905672,
+          "early": 0.03373755919763679,
+          "late": 0.04462650623427208,
+          "falseNow": 0.0
+        },
+        "usual": {
+          "snapshots": 1680,
+          "visits": 61,
+          "falseNowSnapshots": 0,
+          "days": 4,
+          "mae": 172.11643027986062,
+          "width": 761.0544108242383,
+          "coverage": 0.9216359345680911,
+          "bias": 65.39567708905672,
+          "early": 0.03373755919763679,
+          "late": 0.04462650623427208,
+          "falseNow": 0.0
+        },
+        "changed": {
+          "snapshots": 0,
+          "visits": 0
+        },
+        "usualOnChanged": {
+          "snapshots": 0,
+          "visits": 0
+        },
+        "fallbacks": {
+          "group lacks historical support": 1032,
+          "released/live": 324,
+          "source departure unavailable": 264,
+          "pickup before wait": 49,
+          "occurrence disagreement": 10,
+          "not warm/fresh": 1
+        }
+      },
+      "16": {
+        "all": {
+          "snapshots": 920,
+          "visits": 29,
+          "falseNowSnapshots": 2,
+          "days": 4,
+          "mae": 88.09472762433728,
+          "width": 399.6968979407981,
+          "coverage": 0.9260352667661335,
+          "bias": 39.92076514863406,
+          "early": 0.037039749636870144,
+          "late": 0.036924983596996426,
+          "falseNow": 0.001795760758994374
+        },
+        "usual": {
+          "snapshots": 920,
+          "visits": 29,
+          "falseNowSnapshots": 2,
+          "days": 4,
+          "mae": 169.65499362928108,
+          "width": 1283.4343341319102,
+          "coverage": 0.9606088680163147,
+          "bias": 111.6211248834998,
+          "early": 0.03939113198368524,
+          "late": 0.0,
+          "falseNow": 0.001795760758994374
+        },
+        "changed": {
+          "snapshots": 586,
+          "visits": 22,
+          "falseNowSnapshots": 0,
+          "days": 4,
+          "mae": 92.76812850440723,
+          "width": 337.60724829545467,
+          "coverage": 0.9090909090909091,
+          "bias": 15.470053491174232,
+          "early": 0.0,
+          "late": 0.09090909090909091,
+          "falseNow": 0.0
+        },
+        "usualOnChanged": {
+          "snapshots": 586,
+          "visits": 22,
+          "falseNowSnapshots": 0,
+          "days": 4,
+          "mae": 198.4432672423729,
+          "width": 1635.29366824335,
+          "coverage": 0.993757462050145,
+          "bias": 119.7610505208407,
+          "early": 0.006242537949855023,
+          "late": 0.0,
+          "falseNow": 0.0
+        },
+        "fallbacks": {
+          "checkpoint": 586,
+          "released/live": 31,
+          "pickup before wait": 249,
+          "group countdown expired": 29,
+          "group lacks historical support": 3,
+          "source departure unavailable": 19,
+          "occurrence disagreement": 2,
+          "not warm/fresh": 1
+        }
+      }
+    },
+    "ordering": {
+      "pairs": 1222,
+      "reversalsOver30": 0,
+      "introduced": 0,
+      "examples": []
+    },
+    "boundaries": {
+      "changes": 34,
+      "upOver60": 11,
+      "downOver60": 17,
+      "observedReleaseHandoffs": 13,
+      "maxReleaseAbsJump": 129.3666266520604,
+      "worst": [
+        {
+          "bus": "#38",
+          "route": 1,
+          "target": 129,
+          "at": 1789743660000,
+          "jump": 326.5137910139438,
+          "fromReason": "checkpoint",
+          "toReason": "group countdown expired"
+        },
+        {
+          "bus": "#38",
+          "route": 1,
+          "target": 100,
+          "at": 1789657125000,
+          "jump": 318.6528333114188,
+          "fromReason": "checkpoint",
+          "toReason": "group countdown expired"
+        },
+        {
+          "bus": "#40",
+          "route": 1,
+          "target": 129,
+          "at": 1789738860000,
+          "jump": 307.08597752831224,
+          "fromReason": "checkpoint",
+          "toReason": "group countdown expired"
+        },
+        {
+          "bus": "#38",
+          "route": 1,
+          "target": 41,
+          "at": 1789657125000,
+          "jump": 252.0759787331292,
+          "fromReason": "checkpoint",
+          "toReason": "group countdown expired"
+        },
+        {
+          "bus": "#300",
+          "route": 16,
+          "target": 153,
+          "at": 1789859985000,
+          "jump": 235.502652710059,
+          "fromReason": "checkpoint",
+          "toReason": "group countdown expired"
+        },
+        {
+          "bus": "#38",
+          "route": 1,
+          "target": 129,
+          "at": 1789740720000,
+          "jump": 197.1724872126456,
+          "fromReason": "checkpoint",
+          "toReason": "not warm/fresh"
+        },
+        {
+          "bus": "#38",
+          "route": 1,
+          "target": 129,
+          "at": 1789740735000,
+          "jump": -197.1724872126456,
+          "fromReason": "not warm/fresh",
+          "toReason": "checkpoint"
+        },
+        {
+          "bus": "#44",
+          "route": 1,
+          "target": 129,
+          "at": 1789744125000,
+          "jump": -171.5292111142444,
+          "fromReason": "source departure unavailable",
+          "toReason": "checkpoint"
+        }
+      ]
+    },
+    "tripAudit": {
+      "1": {
+        "changedSnapshots": 1037,
+        "physicalTargetVisits": 30,
+        "sourceDepartures": 21,
+        "sourceToTargetOver45min": 5,
+        "unsupportedTargets": {
+          "Whitney / Huntington": 1173
+        },
+        "tripDeltas": [
+          {
+            "bus": "#38",
+            "origin": 1789646741678,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": 46.61866570360831,
+            "widthDelta": -143.51738461538466,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#44",
+            "origin": 1789647584983,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": 59.124361671614686,
+            "widthDelta": -59.74602325581352,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#46",
+            "origin": 1789648783162,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": -175.66683158192956,
+            "widthDelta": -232.91899999999995,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#38",
+            "origin": 1789649748280,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": 50.620159414454065,
+            "widthDelta": -214.11899999999977,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#44",
+            "origin": 1789650831796,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": -89.62679776119444,
+            "widthDelta": -377.1569999999999,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#46",
+            "origin": 1789651776458,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": -79.6854420879813,
+            "widthDelta": -232.10299999999984,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#44",
+            "origin": 1789653817500,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": -128.35621246403366,
+            "widthDelta": -351.38700000000017,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#46",
+            "origin": 1789654754288,
+            "day": "2026-09-17",
+            "visits": 3,
+            "maeDelta": -128.32281969641855,
+            "widthDelta": -216.55595604395614,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#38",
+            "origin": 1789655671304,
+            "day": "2026-09-17",
+            "visits": 2,
+            "maeDelta": 59.47181001612965,
+            "widthDelta": -283.0826221198156,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#44",
+            "origin": 1789656812841,
+            "day": "2026-09-17",
+            "visits": 2,
+            "maeDelta": 142.16423565692162,
+            "widthDelta": -283.9010803571429,
+            "coverageDelta": -0.5
+          },
+          {
+            "bus": "#46",
+            "origin": 1789657843809,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": 71.78620781641303,
+            "widthDelta": -218.40599999999972,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#38",
+            "origin": 1789658766174,
+            "day": "2026-09-17",
+            "visits": 1,
+            "maeDelta": 171.07771060983154,
+            "widthDelta": -498.2890000000002,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#40",
+            "origin": 1789731070807,
+            "day": "2026-09-18",
+            "visits": 2,
+            "maeDelta": -9.141225548652752,
+            "widthDelta": -49.25325641025624,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#40",
+            "origin": 1789737382157,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": -237.37169181402652,
+            "widthDelta": -83.605,
+            "coverageDelta": 0.5714285714285714
+          },
+          {
+            "bus": "#44",
+            "origin": 1789738532340,
+            "day": "2026-09-18",
+            "visits": 3,
+            "maeDelta": -51.71560446573553,
+            "widthDelta": -180.6450086580085,
+            "coverageDelta": -0.05844155844155844
+          },
+          {
+            "bus": "#38",
+            "origin": 1789739352313,
+            "day": "2026-09-18",
+            "visits": 3,
+            "maeDelta": -59.02962401020258,
+            "widthDelta": -125.7347878787877,
+            "coverageDelta": 0.03787878787878788
+          },
+          {
+            "bus": "#40",
+            "origin": 1789740382388,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": -95.50484907943635,
+            "widthDelta": -141.71609090909115,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#44",
+            "origin": 1789741225587,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": -19.453886168452417,
+            "widthDelta": -153.65315384615408,
+            "coverageDelta": 0.15384615384615385
+          },
+          {
+            "bus": "#38",
+            "origin": 1789742205884,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": -128.82561897093302,
+            "widthDelta": -173.51584946236554,
+            "coverageDelta": 0.06451612903225806
+          },
+          {
+            "bus": "#40",
+            "origin": 1789742930969,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": -179.3125445727592,
+            "widthDelta": -184.02604597701142,
+            "coverageDelta": 0.011494252873563218
+          },
+          {
+            "bus": "#44",
+            "origin": 1789744086102,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": -146.0917111142444,
+            "widthDelta": -228.3449999999998,
+            "coverageDelta": -0.3125
+          }
+        ]
+      },
+      "4": {
+        "changedSnapshots": 0,
+        "physicalTargetVisits": 0,
+        "sourceDepartures": 0,
+        "sourceToTargetOver45min": 0,
+        "unsupportedTargets": {
+          "Elm / York (TYCO)": 198,
+          "129 York": 72
+        },
+        "tripDeltas": []
+      },
+      "13": {
+        "changedSnapshots": 0,
+        "physicalTargetVisits": 0,
+        "sourceDepartures": 0,
+        "sourceToTargetOver45min": 0,
+        "unsupportedTargets": {
+          "129 York": 846,
+          "Congress / Cedar": 183
+        },
+        "tripDeltas": []
+      },
+      "16": {
+        "changedSnapshots": 582,
+        "physicalTargetVisits": 22,
+        "sourceDepartures": 12,
+        "sourceToTargetOver45min": 13,
+        "unsupportedTargets": {
+          "Howard / Park": 3
+        },
+        "tripDeltas": [
+          {
+            "bus": "#304",
+            "origin": 1789694623381,
+            "day": "2026-09-17",
+            "visits": 2,
+            "maeDelta": -231.66874434770932,
+            "widthDelta": -1685.1306601731599,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#304",
+            "origin": 1789699344483,
+            "day": "2026-09-17",
+            "visits": 10,
+            "maeDelta": -169.66764291556936,
+            "widthDelta": -1188.2856,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#329",
+            "origin": 1789780982915,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": 129.85034046404442,
+            "widthDelta": -1366.3289999999997,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#329",
+            "origin": 1789783306287,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": -155.52387064147672,
+            "widthDelta": -970.4997317073168,
+            "coverageDelta": 0.12195121951219512
+          },
+          {
+            "bus": "#329",
+            "origin": 1789785719105,
+            "day": "2026-09-18",
+            "visits": 1,
+            "maeDelta": -56.36781481229698,
+            "widthDelta": -1060.7826082474223,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#300",
+            "origin": 1789857661894,
+            "day": "2026-09-19",
+            "visits": 1,
+            "maeDelta": 190.702652710059,
+            "widthDelta": -1507.3856,
+            "coverageDelta": -1
+          },
+          {
+            "bus": "#300",
+            "origin": 1789867303017,
+            "day": "2026-09-19",
+            "visits": 1,
+            "maeDelta": -82.68129545849769,
+            "widthDelta": -1517.322635658915,
+            "coverageDelta": 0.015503875968992248
+          },
+          {
+            "bus": "#300",
+            "origin": 1789869658213,
+            "day": "2026-09-19",
+            "visits": 1,
+            "maeDelta": 86.08046234660365,
+            "widthDelta": -1636.0874761904765,
+            "coverageDelta": -1
+          },
+          {
+            "bus": "#300",
+            "origin": 1789872199048,
+            "day": "2026-09-19",
+            "visits": 1,
+            "maeDelta": -200.6516427942222,
+            "widthDelta": -1447.1341212121213,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#325",
+            "origin": 1789946620277,
+            "day": "2026-09-20",
+            "visits": 1,
+            "maeDelta": -37.92196089762951,
+            "widthDelta": -938.7704285714285,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#325",
+            "origin": 1789948970816,
+            "day": "2026-09-20",
+            "visits": 1,
+            "maeDelta": 7.17474657168206,
+            "widthDelta": -1647.3853333333332,
+            "coverageDelta": 0
+          },
+          {
+            "bus": "#325",
+            "origin": 1789953811943,
+            "day": "2026-09-20",
+            "visits": 1,
+            "maeDelta": -50.5296744168408,
+            "widthDelta": -1251.3544324324325,
+            "coverageDelta": 0
+          }
+        ]
+      }
+    }
+  }
+}
