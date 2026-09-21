@@ -17,7 +17,7 @@ const net = TransitNetwork.build(top.stops, [top.route]);
 const states = new Map<string, BusState>(), visits = new Map<string, VisitState>();
 let tracker = new K10Tracker(), clock = new K10Clock(), cursor = 0, day = '', compared = 0, active = 0, released = 0;
 let restarts = 0, recovered = 0, maxReplayMs = 0;
-let latest: BusObservation[] = [];
+let currentBatch: BusObservation[] = [];
 for (const f of features) {
   while (cursor < raw.length && raw[cursor].collected_at <= f.asof) {
     const time = raw[cursor].collected_at, group = [];
@@ -33,13 +33,13 @@ for (const f of features) {
     reconcileTracks(states,plan); reconcileTracks(visits,plan); pruneVisits(visits,states);
     const stepped = stepManyWithVisits(net,states,visits,observations,plan);
     clock.update(observations,stepped.visits,states,visits,plan);
-    tracker.update(net, observations); latest = observations;
+    tracker.update(net, observations); currentBatch = observations;
   }
   const e = clock.snapshot(f.asof).get(f.bus.replace(/^#/,''));
   assert.deepEqual(tracker.snapshot(f.asof), clock.snapshot(f.asof));
   if (!e) continue;
   if (compared % 35 === 0) {
-    const current = latest.find(o => o.busName === f.bus);
+    const current = currentBatch.find(o => o.busName === f.bus);
     if (current) {
       const restarted = new K10Tracker();
       restarted.update(net, [current], o => raw.filter(r => r.bus_name === o.busName

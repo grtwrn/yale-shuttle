@@ -1,3 +1,10 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { openDb } from '../db/client.js';
+import { Collector } from './collector.js';
+import { UpstreamClient, type RawBus } from './upstream.js';
 import { describe, expect, it, vi } from 'vitest';
 import { TransitNetwork } from '../network/TransitNetwork.js';
 import type { BusObservation } from './detector.js';
@@ -74,4 +81,38 @@ describe('GPS history warmup', () => {
     expect(tracker.stats()).toMatchObject({ attempts: 1, errors: 1, cold: 1 });
     expect(query).toHaveBeenCalledTimes(1);
   });
+});
+
+it('restores through the real collector query without inserting historical events', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'k10-warmup-'));
+  const bundle = openDb(path.join(dir, 'test.db'));
+  migrate(bundle.db, { migrationsFolder: './drizzle' });
+  class Stub extends UpstreamClient {
+    constructor() { super({ baseUrl: 'http://invalid.test' }); }
+    override async stops() { return stops; }
+    override async routes() { return [route]; }
+    override async buses(): Promise<RawBus[]> {
+      return [{ id: current.busId, name: current.busName, route: current.routeId,
+        lat: current.lat, lon: current.lon, heading: current.heading, lastStop: current.lastStopId } as RawBus];
+    }
+  }
+  const insert = bundle.sqlite.prepare('INSERT INTO raw_positions (bus_id,bus_name,route_id,lat,lon,heading,last_stop_id,collected_at) VALUES (@busId,@busName,@routeId,@lat,@lon,@heading,@lastStopId,@collectedAt)');
+  bundle.sqlite.transaction(() => { for (const o of history) insert.run(o); })();
+  let collector: Collector | undefined;
+  type Inner = { runPoll(): Promise<void>; refreshStaticIfNeeded(force: boolean): Promise<void> };
+  vi.useFakeTimers(); vi.setSystemTime(current.collectedAt);
+  try {
+    collector = await Collector.create(bundle, { upstream: new Stub() });
+    await (collector as unknown as Inner).refreshStaticIfNeeded(true);
+    await (collector as unknown as Inner).runPoll();
+    const expected = replay([...history,current]).snapshot(current.collectedAt);
+    expect(expected.size).toBe(1);
+    expect(collector.k10Evidence(current.collectedAt)).toEqual(expected);
+    expect(collector.pollStats().k10History).toMatchObject({ recovered: 1, errors: 0 });
+    expect(bundle.sqlite.prepare('SELECT COUNT(*) AS n FROM arrivals WHERE arrived_at < ?').get(current.collectedAt)).toEqual({ n: 0 });
+    expect(bundle.sqlite.prepare('SELECT COUNT(*) AS n FROM stop_visits').get()).toEqual({ n: 0 });
+    expect(bundle.sqlite.prepare('SELECT COUNT(*) AS n FROM raw_positions').get()).toEqual({ n: history.length + 1 });
+  } finally {
+    collector?.stop(); vi.useRealTimers(); bundle.sqlite.close(); rmSync(dir, { recursive: true, force: true });
+  }
 });
