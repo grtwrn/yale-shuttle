@@ -6,11 +6,12 @@ import json
 import statistics
 from evaluate import HERE, OUT, TRAIN_END, Predictor, metrics, read
 from followup import FollowupLabels, FollowupPredictor, TARGET_INDEX, adjusted, calibration_pad
-from hybrid import release_gate
+from hybrid import release_gate,observed_exit_gate
 
 DIR=OUT/'multistop'
 BASES=['wait_minus5_departure_mean','wait_minus10_departure_mean','trailing_ten_mean','ten_before_pickup_mean']
-ARMS=[base+'/'+mode for base in BASES for mode in ['no_switch','after_344']]
+MODES=['no_switch','after_344','after_observed_exit']
+ARMS=[base+'/'+mode for base in BASES for mode in MODES]
 TOPOLOGY=json.loads((HERE/'data/topology.json').read_text())
 TARGETS=TOPOLOGY['route']['stops'][15:]
 NAMES={s['id']:s['name'] for s in TOPOLOGY['stops']}
@@ -30,6 +31,9 @@ def forecasts(row,model):
         output[base+'/no_switch']=original
         output[base+'/after_344']=(dict(production,switched=True,release=event,
             reason='confirmed wait departure: production') if event else original)
+        observed=observed_exit_gate(row)
+        output[base+'/after_observed_exit']=(dict(production,switched=True,release=observed,
+            reason='observed wait exit: production') if observed else original)
     return output
 
 
@@ -89,7 +93,7 @@ def main():
     for probability in [.8,.9]:
         key=str(int(probability*100))
         calibration_audit[key]={base:calibration_pad(calibration,base+'/no_switch',probability) for base in BASES}
-        pads[key]={base+'/'+mode:calibration_audit[key][base]['seconds'] for base in BASES for mode in ['no_switch','after_344']}
+        pads[key]={base+'/'+mode:calibration_audit[key][base]['seconds'] for base in BASES for mode in MODES}
     test=[r for r in scored if r['day']>'2026-09-16']
     versions={key:adjusted(test,value) for key,value in pads.items()}
     paired=[r for r in versions['80'] if r['forecasts']['logged_production']['forecast']]
@@ -153,6 +157,7 @@ def main():
             rec={'day':b['day'],'bus':b['bus'],'at':b['at'],'target':b['target'],
                 'targetId':b['episode']['targetId'],'oldOrigin':old,'newOrigin':new,
                 'releaseActiveBefore':release_gate(a) is not None,'releaseActiveAfter':release_gate(b) is not None,
+                'observedExitBefore':observed_exit_gate(a) is not None,'observedExitAfter':observed_exit_gate(b) is not None,
                 'actualRemaining':b['truth'],'arms':{}}
             for arm in ['logged_production']+ARMS:
                 p,q=a['forecasts'][arm],b['forecasts'][arm]
@@ -164,6 +169,7 @@ def main():
         numeric=[r for r in crossings if r['arms'][arm]['jump'] is not None]
         result['movingBoundaries'][arm]={'crossings':len(crossings),'numericComparisons':len(numeric),
             'releaseAlreadyActive':sum(r['releaseActiveBefore'] for r in crossings),
+            'observedExitAlreadyActive':sum(r['observedExitBefore'] for r in crossings),
             'upJumpsOver60':sum(r['arms'][arm]['jump']>60 for r in numeric),
             'downJumpsOver60':sum(r['arms'][arm]['jump']<-60 for r in numeric),
             'largest':sorted(numeric,key=lambda r:abs(r['arms'][arm]['jump']),reverse=True)[:6]}

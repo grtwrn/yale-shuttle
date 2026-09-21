@@ -10,7 +10,7 @@ from followup import (
 )
 
 BASES = ['wait_minus5_departure_mean','wait_minus10_departure_mean','trailing_ten_mean']
-MODES = ['no_switch','after_344','after_344_or_long_canal']
+MODES = ['no_switch','after_344','after_344_or_long_canal','after_observed_exit']
 ARMS = [base+'/'+mode for base in BASES for mode in MODES]
 
 
@@ -38,7 +38,8 @@ def forecast_modes(row, base_forecasts):
     production = Predictor.fallback(row,'actual logged production')
     forecasts = {'logged_production':production}
     gates = {'no_switch':None,'after_344':release_gate(row),
-             'after_344_or_long_canal':release_gate(row,True)}
+             'after_344_or_long_canal':release_gate(row,True),
+             'after_observed_exit':observed_exit_gate(row)}
     for base in BASES:
         for mode in MODES:
             event = gates[mode]
@@ -49,6 +50,24 @@ def forecast_modes(row, base_forecasts):
                 candidate = dict(base_forecasts[base],switched=False,release=None)
             forecasts[base+'/'+mode] = candidate
     return forecasts
+
+
+def observed_exit_gate(row):
+    """A downstream causal phase also proves the wait has been passed.
+
+    This evidence clock is NOT represented as Winchester's departure time.
+    """
+    event=release_gate(row)
+    if event:return event
+    beyond=row['index']>14 or (row['index']==14 and row.get('phase')=='drive')
+    known=row.get('observedAt',row['asof'])
+    if beyond and known<=row['asof'] and any(
+        int(i)<14 and e['departed']<=e['knownAt']<=known
+        for i,e in row.get('origins',{}).items()
+    ):
+        return {'index':14,'knownAt':known,'departed':None,
+                'evidence':'observed causal drive or downstream phase'}
+    return None
 
 
 def generate(features, models):
@@ -93,7 +112,7 @@ def switch_diagnostics(rows, arm):
             if p['switched'] or not q['switched'] or not p['forecast'] or not q['forecast']:continue
             event = q['release']
             transitions.append({'day':b['day'],'bus':b['bus'],'targetId':b['episode']['targetId'],
-                'at':b['at'],'release':event,'secondsToConfirm':(event['knownAt']-event['departed'])/1000,
+                'at':b['at'],'release':event,'secondsToConfirm':(event['knownAt']-event['departed'])/1000 if event.get('departed') is not None else None,
                 'jumpSeconds':(b['at']-a['at'])/1000+q['forecast']['eta']-p['forecast']['eta'],
                 'before':p['forecast'],'after':q['forecast'],'truthAtSwitch':b['truth']})
     result['transitions'] = transitions

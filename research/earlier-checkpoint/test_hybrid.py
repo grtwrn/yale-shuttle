@@ -1,6 +1,6 @@
 import unittest
 from followup import FollowupPredictor, adjusted
-from hybrid import BASES, release_gate, forecast_modes
+from hybrid import BASES, release_gate, forecast_modes,observed_exit_gate
 
 
 class HybridTests(unittest.TestCase):
@@ -60,6 +60,19 @@ class HybridTests(unittest.TestCase):
         row = self.row();row['baseline'] = None
         forecasts = forecast_modes(row,self.bases())
         self.assertIsNone(forecasts[BASES[0]+'/after_344']['forecast'])
+
+    def test_downstream_phase_switches_without_completed_visit_record(self):
+        row=self.row();row['releaseEvents']=[]
+        self.assertIsNone(release_gate(row))
+        self.assertIsNotNone(observed_exit_gate(row))
+        row['index']=14;row['phase']='hold'
+        self.assertIsNone(observed_exit_gate(row))
+        row['phase']='drive'
+        self.assertIsNotNone(observed_exit_gate(row))
+
+    def test_future_position_cannot_prove_wait_exit(self):
+        row=self.row();row['releaseEvents']=[];row['observedAt']=row['asof']+1
+        self.assertIsNone(observed_exit_gate(row))
 
 
 if __name__=='__main__':
