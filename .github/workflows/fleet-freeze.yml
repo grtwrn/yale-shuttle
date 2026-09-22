@@ -1,0 +1,15 @@
+name: fleet-freeze-validation
+on:
+  push:
+    branches: [research/fleet-freeze-2026-09-22]
+    paths: ['research/fleet-freeze/**', '.github/workflows/fleet-freeze.yml']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Immutable export and open-day framing fixtures
+        run: python3 -m unittest discover -s research/fleet-freeze -p 'test_*.py' -v
