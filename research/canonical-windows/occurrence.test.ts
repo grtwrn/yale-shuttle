@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { resolveOccurrence } from './occurrence.ts';
+const seq=[11,22,33,22,44];
+assert.equal(resolveOccurrence(seq,33,2,0,0,true).targetIndex,2);
+assert.equal(resolveOccurrence(seq,22,1,0,0,true).targetIndex,1);
+assert.equal(resolveOccurrence(seq,22,1,2,2,true).targetIndex,3);
+assert.equal(resolveOccurrence(seq,22,1,0,2,true).targetIndex,null);
+assert.equal(resolveOccurrence(seq,22,1,0,1,true).targetIndex,null);
+assert.equal(resolveOccurrence(seq,22,2,4,4,true).targetIndex,1);
+assert.equal(resolveOccurrence(seq,22,1,0,0,false).targetIndex,null);
+assert.equal(resolveOccurrence(seq,22,6,0,0,true).targetIndex,null);
+assert.equal(resolveOccurrence(seq,99,1,0,0,true).targetIndex,null);
+console.log('9 canonical occurrence cases passed');

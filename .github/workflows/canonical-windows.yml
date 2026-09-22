@@ -1,0 +1,67 @@
+name: canonical-window-experiments
+on:
+  push:
+    branches: [research/canonical-windows-2026-09-21]
+    paths: ['research/canonical-windows/**', '.github/workflows/canonical-windows.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - name: Freeze input byte identity and check focused fixtures
+        env:
+          BLUE_MAX_PATH_SECONDS: '5400'
+        run: |
+          mkdir -p research/canonical-windows/results
+          sha256sum research/k-sweep/results/raw_positions.jsonl.gz research/k-sweep/results/predictions_log.jsonl.gz > research/canonical-windows/results/immutable-inputs.sha256
+          services/shuttle-v2/node_modules/.bin/tsx research/canonical-windows/occurrence.test.ts
+          python3 -m unittest discover -s research/canonical-windows -p 'test_*.py' -v
+          python3 research/useful-windows/rider_risk.py --self-test
+      - name: Preserve current deployed overlay comparator
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/baseline.ts
+      - name: Reconstruct canonical visits with causal emission timestamps
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx research/canonical-windows/training-visits.ts
+      - name: Freeze canonical waits and regenerate occurrence features
+        env:
+          BLUE_MAX_PATH_SECONDS: '5400'
+          TZ: America/New_York
+        run: |
+          python3 research/canonical-windows/study.py --prepare
+          services/shuttle-v2/node_modules/.bin/tsx research/canonical-windows/replay.ts
+      - name: Fit embargoed controls and attach canonical physical outcomes
+        env:
+          BLUE_MAX_PATH_SECONDS: '5400'
+        run: python3 research/canonical-windows/study.py
+      - name: Replay fixed-visit rider actions and verify renderer
+        run: |
+          ln -s ../../k-sweep/results/raw_positions.jsonl.gz research/canonical-windows/results/raw_positions.jsonl.gz
+          python3 research/useful-windows/rider_risk.py research/canonical-windows/results
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/canonical-windows/results/rider-risk
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canonical-window-results
+          path: |
+            research/canonical-windows/results/**
+            !research/canonical-windows/results/raw_positions.jsonl.gz
+            research/useful-windows/results/baseline-audit.json
+          retention-days: 90
