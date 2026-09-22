@@ -1,0 +1,32 @@
+name: research-e778-source-proof
+on:
+  push:
+    branches: [research/synthetic-selection-e778-2026-09-22]
+    paths: [.github/workflows/synthetic-selection-e778-proof.yml, research/synthetic-selection/verify_e778_bundle.py]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Stage exact production source in ephemeral hosted checkout
+        run: git restore --source=e7784c03b8c739eaa603fb231fe5ce80d2d71e82 -- services/shuttle-v2
+      - name: Build exact frontend
+        run: |
+          docker build --target web --tag e778-proof services/shuttle-v2
+          docker create --name e778-proof-files e778-proof
+          mkdir -p research/synthetic-selection/results
+          docker cp e778-proof-files:/app/web/dist research/synthetic-selection/results/rebuilt
+          docker rm e778-proof-files
+      - name: Compare bounded public snapshots with rebuilt bytes
+        run: python3 research/synthetic-selection/verify_e778_bundle.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e778-source-proof
+          path: research/synthetic-selection/results/
