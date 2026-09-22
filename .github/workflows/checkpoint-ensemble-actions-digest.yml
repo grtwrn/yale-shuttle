@@ -1,0 +1,39 @@
+name: checkpoint-ensemble-action-digest
+on:
+  push:
+    branches: [research/checkpoint-ensemble-2026-09-22]
+    paths: ['research/checkpoint-ensemble/action_digest.py', '.github/workflows/checkpoint-ensemble-actions-digest.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: checkpoint-ensemble-summary-highway25
+          run-id: 35743388426
+          github-token: ${{ github.token }}
+          path: research/checkpoint-ensemble/action-digest-input/highway25
+      - uses: actions/download-artifact@v4
+        with:
+          name: checkpoint-ensemble-summary-highway50
+          run-id: 35743388426
+          github-token: ${{ github.token }}
+          path: research/checkpoint-ensemble/action-digest-input/highway50
+      - name: Summarize unchanged paired grids without new scoring
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/grtwrn/yale-shuttle/actions/runs/35743388426/artifacts > research/checkpoint-ensemble/action-digest-input/artifacts.json
+          python3 research/checkpoint-ensemble/action_digest.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-ensemble-action-digest
+          path: research/checkpoint-ensemble/action-digest.json
+          retention-days: 90
