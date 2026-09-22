@@ -14,6 +14,8 @@ import { parseOptions, hasArrivalClock } from './canary-metrics.mjs';
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.resolve(process.env.TRIP_SCHEDULING_OUT ?? path.resolve(service, '../../pr-preview/trip-scheduling')) + path.sep;
 const androidReview = process.env.TRIP_UI_ANDROID === '1';
+const androidNoMobile = process.env.TRIP_UI_ANDROID_NO_MOBILE === '1';
+const androidUserAgent = `Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 ${androidNoMobile ? '' : 'Mobile '}Safari/537.36`;
 await fs.mkdir(out, { recursive: true });
 const now = Date.parse('2026-09-18T10:00:00-04:00');
 const feed = JSON.parse(await fs.readFile(service + '/web/src/__fixtures__/buses-payload.json', 'utf8'));
@@ -32,11 +34,13 @@ feed.server_eta = { v: 2, at: now, servedAt: now, buses: ['307', '309'].map(b =>
 const report = { scope: 'Built SPA, isolated synthetic API fixture; external network blocked; browser closed on exit', runs: [], errors: [] };
 const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH ?? '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
 try {
-  for (const width of androidReview ? [320, 368, 430] : [320, 390, 1280]) {
-    const run = { width, errors: [], requests: [] };
+  for (const width of androidReview ? (androidNoMobile ? [307, 368, 1280] : [320, 368, 430]) : [320, 390, 1280]) {
+    const height = androidNoMobile && width === 307 ? 711 : 844;
+    const expectedCompact = androidReview && width < 600;
+    const run = { width, height, userAgent: androidReview ? androidUserAgent : 'browser default', errors: [], requests: [] };
     report.runs.push(run);
-    const context = await browser.newContext({ viewport: { width, height: 844 }, isMobile: width < 600, hasTouch: width < 600,
-      ...(androidReview ? { userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36' } : {}),
+    const context = await browser.newContext({ viewport: { width, height }, isMobile: width < 600, hasTouch: width < 600,
+      ...(androidReview ? { userAgent: androidUserAgent } : {}),
       timezoneId: 'America/New_York', serviceWorkers: 'block' });
     await seedTestId(context);
     await context.addInitScript(({ now, fromLL, toLL }) => {
@@ -44,6 +48,11 @@ try {
       if (window.top !== window) return;
       const D = Date;
       window.Date = class extends D { constructor(...a) { super(...(a.length ? a : [now])); } static now() { return now; } };
+      if (location.search === '?layout-home') {
+        sessionStorage.removeItem('shuttle-trip-draft');
+        localStorage.removeItem('shuttle-boarded-ride');
+        return;
+      }
       sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({ fromText: 'Division / Prospect', fromLL,
         toText: 'Union Station', toLL, tripTime: '', expandedKey: null, savedAt: now,
         arriveBy: '2026-09-18T10:45', classBufferMin: 10 }));
@@ -73,9 +82,9 @@ try {
         compact: document.documentElement.dataset.androidCompact === 'true' };
     });
     run.viewport = viewport;
-    assert.equal(viewport.compact, androidReview);
+    assert.equal(viewport.compact, expectedCompact);
     assert(Math.abs(viewport.scale - 1) < 0.01, 'browser viewport scale should remain normal');
-    assert(Math.abs(viewport.renderedPx - (androidReview ? 85 : 100)) < 0.1, 'layout did not render at the requested density');
+    assert(Math.abs(viewport.renderedPx - (expectedCompact ? 85 : 100)) < 0.1, 'layout did not render at the requested density');
     const card = page.getByRole('button', { name: 'View Red trip details', exact: true });
     const table = page.getByTestId('route-timing-table');
     const row = table.locator('[data-route="Red"]');
@@ -238,6 +247,26 @@ try {
     assert.equal(ride.boardStopId, 48);
     assert.equal(ride.alightStopId, 121);
     run.actions = { directions: true, reminder: true, reportCancelled: true, tracker: true, boarding: true };
+    if (androidNoMobile && width === 307) {
+      await page.goto('https://trip-ui.test/?layout-home', { waitUntil: 'domcontentloaded' });
+      const search = page.getByPlaceholder('Where do you want to go?', { exact: true });
+      await search.waitFor();
+      const heading = page.getByRole('heading', { name: 'Yale Shuttle Tracker', exact: true });
+      const compactHeading = await heading.boundingBox();
+      await page.screenshot({ path: `${out}home-compact-${width}.png` });
+      // Compare real home text, not only a blank probe, against the skipped
+      // density in report #128. Toggling only this flag reproduces that layout.
+      await page.evaluate(() => delete document.documentElement.dataset.androidCompact);
+      const originalHeading = await heading.boundingBox();
+      await page.screenshot({ path: `${out}home-before-${width}.png` });
+      assert(Math.abs(compactHeading.width / originalHeading.width - 0.85) < 0.02, 'home title did not shrink');
+      assert(Math.abs(compactHeading.height / originalHeading.height - 0.85) < 0.02, 'home title height did not shrink');
+      run.home = { compactHeading, originalHeading };
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await search.waitFor();
+      assert.equal(await page.evaluate(() => document.documentElement.dataset.androidCompact), 'true', 'compact layout lost after refresh');
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'home page overflow');
+    }
     assert.deepEqual(run.errors, []);
     assert(!run.requests.some(r => r.path === '/api/report'));
     await context.close();

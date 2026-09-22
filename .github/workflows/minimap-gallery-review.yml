@@ -46,6 +46,8 @@ jobs:
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" TRIP_SCHEDULING_OUT=gallery-review/cards node scripts/trip-scheduling-check.mjs
       - name: Check the smaller Android phone layout
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" TRIP_UI_ANDROID=1 TRIP_SCHEDULING_OUT=gallery-review/android node scripts/trip-scheduling-check.mjs
+      - name: Check Android without the Mobile browser marker (report 128)
+        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" TRIP_UI_ANDROID=1 TRIP_UI_ANDROID_NO_MOBILE=1 TRIP_SCHEDULING_OUT=gallery-review/android-no-mobile node scripts/trip-scheduling-check.mjs
       - name: Inspect recorded Red hold and the timing key
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-key-check.mjs
       - name: Inspect Orange East from Division / Prospect to YSPH
