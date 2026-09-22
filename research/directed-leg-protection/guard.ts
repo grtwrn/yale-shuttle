@@ -102,7 +102,8 @@ export class DirectedGuard {
       if(advance>max || displacement>max)return fail('implausible_motion');
     }
     const end=(index+1)%n;
-    if(ordinary.index===index || ordinary.index===end) {
+    const wouldRewindEndpoint=prev.nearestIndex===end&&ordinary.index===index;
+    if((ordinary.index===index || ordinary.index===end)&&!wouldRewindEndpoint) {
       if(previousCertificate){this.certificates.set(key,previousCertificate);d.retained=true;}
       d.reason='ordinary_endpoint';return d;
     }
