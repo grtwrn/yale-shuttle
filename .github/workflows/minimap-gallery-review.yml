@@ -2,6 +2,7 @@ name: minimap-gallery-review
 on:
   pull_request:
     paths:
+      - 'services/shuttle-v2/web/index.html'
       - 'services/shuttle-v2/web/public/minimap-options/**'
       - 'services/shuttle-v2/scripts/minimap-gallery-check.mjs'
       - 'services/shuttle-v2/scripts/minimap-label-render.mjs'
@@ -41,6 +42,8 @@ jobs:
       - run: npm run build --prefix web
       - name: Check compact route cards at phone and desktop sizes
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" TRIP_SCHEDULING_OUT=gallery-review/cards node scripts/trip-scheduling-check.mjs
+      - name: Check the smaller Android phone layout
+        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" TRIP_UI_ANDROID=1 TRIP_SCHEDULING_OUT=gallery-review/android node scripts/trip-scheduling-check.mjs
       - name: Inspect recorded Red hold and the timing key
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-key-check.mjs
       - name: Inspect Orange East from Division / Prospect to YSPH

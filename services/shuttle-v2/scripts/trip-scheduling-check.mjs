@@ -13,6 +13,7 @@ import { parseOptions, hasArrivalClock } from './canary-metrics.mjs';
 
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.resolve(process.env.TRIP_SCHEDULING_OUT ?? path.resolve(service, '../../pr-preview/trip-scheduling')) + path.sep;
+const androidReview = process.env.TRIP_UI_ANDROID === '1';
 await fs.mkdir(out, { recursive: true });
 const now = Date.parse('2026-09-18T10:00:00-04:00');
 const feed = JSON.parse(await fs.readFile(service + '/web/src/__fixtures__/buses-payload.json', 'utf8'));
@@ -31,10 +32,11 @@ feed.server_eta = { v: 2, at: now, servedAt: now, buses: ['307', '309'].map(b =>
 const report = { scope: 'Built SPA, isolated synthetic API fixture; external network blocked; browser closed on exit', runs: [], errors: [] };
 const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH ?? '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
 try {
-  for (const width of [320, 390, 1280]) {
+  for (const width of androidReview ? [320, 368, 430] : [320, 390, 1280]) {
     const run = { width, errors: [], requests: [] };
     report.runs.push(run);
     const context = await browser.newContext({ viewport: { width, height: 844 }, isMobile: width < 600, hasTouch: width < 600,
+      ...(androidReview ? { userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36' } : {}),
       timezoneId: 'America/New_York', serviceWorkers: 'block' });
     await seedTestId(context);
     await context.addInitScript(({ now, fromLL, toLL }) => {
@@ -61,6 +63,11 @@ try {
       catch { return route.fulfill({ status: 404 }); }
     });
     await page.goto('https://trip-ui.test', { waitUntil: 'domcontentloaded' });
+    const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scale: visualViewport?.scale ?? 1,
+      compact: document.documentElement.dataset.androidCompact === 'true' }));
+    run.viewport = viewport;
+    assert.equal(viewport.compact, androidReview);
+    assert(Math.abs(viewport.scale - (androidReview ? 0.9 : 1)) < 0.01, 'unexpected initial page scale');
     const card = page.getByRole('button', { name: 'View Red trip details', exact: true });
     const table = page.getByTestId('route-timing-table');
     const row = table.locator('[data-route="Red"]');
@@ -82,7 +89,7 @@ try {
         assert(pickupBox.x + pickupBox.width <= box.x, 'pickup overlaps destination');
         assert(await pickup.evaluate(e => e.scrollWidth <= e.clientWidth), 'pickup text clipped');
       }
-      assert(box.x >= 0 && box.x + box.width <= width, 'destination range outside viewport');
+      assert(box.x >= 0 && box.x + box.width <= viewport.width, 'destination range outside viewport');
       assert(await destination.evaluate(e => e.scrollWidth <= e.clientWidth), 'clipped destination range');
       assert(await destination.locator('span[style*="white-space"]').evaluateAll(es => es.every(e => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects().length === 1; })), 'clock digits wrap');
       await fs.writeFile(`${out}${state}-${width}.txt`, text + '\n');
@@ -117,12 +124,12 @@ try {
     assert.equal(await page.locator('.trip-map-canvas').count(), 0);
     await page.getByRole('button', { name: 'Expand map', exact: true }).click();
     await page.locator('.trip-map-canvas').waitFor();
-    if (width === 390) {
+    if (width === 390 || androidReview) {
       await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
       await page.locator('.trip-map-wrap.map-fs').waitFor();
       const keyBox = await table.boundingBox(), mapBox = await page.locator('.trip-map-canvas').boundingBox();
       assert(keyBox.y >= mapBox.y + mapBox.height, 'fullscreen key covers the map');
-      assert(keyBox.y + keyBox.height <= 844, 'fullscreen key leaves the viewport');
+      assert(keyBox.y + keyBox.height <= viewport.height, 'fullscreen key leaves the viewport');
       await page.screenshot({ path: `${out}fullscreen-${width}.png` });
       await page.getByRole('button', { name: 'Back', exact: true }).click();
     }
@@ -209,7 +216,8 @@ try {
     }
     for (const button of await actions.getByRole('button').all()) {
       const box = await button.boundingBox();
-      assert(box.width >= 44 && box.height >= 44, 'action has a small touch target');
+      assert(box.width * viewport.scale >= 44 && box.height * viewport.scale >= 44,
+        `action has a small touch target: ${await button.innerText()} (${box.width} x ${box.height}, scale ${viewport.scale})`);
       assert(await button.evaluate(e => e.scrollWidth <= e.clientWidth), 'action text clips');
     }
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
