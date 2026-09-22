@@ -16,7 +16,9 @@ GPS context unavailable from the present36-hour-retention API. It lacks original
 API wrappers; that difference must remain explicit. Current fleet snapshots and
 checkpoint model files describe extraction-time configuration, not every
 historical prediction. The canonical reference topology provides route names
-only; compare its sequences with the new live snapshot before future replay.
+only. The API exports published stop order (v1compat.ts), so compare the
+reference publishedStops to the captured routes. Differences between canonical
+repaired order and published order are not evidence of a new topology change.
 
 Audit original byte identities, wrappers/counts/schema, duplicates/conflicts,
 observed-service GPS buckets, visit continuity and rider-vs-upstream surfaces

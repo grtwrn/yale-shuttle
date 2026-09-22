@@ -49,9 +49,11 @@ def main():
     for route in topology['routes']:
         rid = str(route['id'])
         topology_comparison.append(dict(route=route['name'], id=route['id'],
-            reference=route['stops'], capturedBefore=before['routes'].get(rid),
+            referenceCanonical=route['stops'], referencePublished=route.get('publishedStops', route['stops']),
+            capturedBefore=before['routes'].get(rid),
             capturedAfter=after['routes'].get(rid),
-            referenceEqualsCaptured=route['stops'] == before['routes'].get(rid),
+            publishedReferenceEqualsCaptured=route.get('publishedStops', route['stops']) == before['routes'].get(rid),
+            canonicalEqualsPublished=route['stops'] == before['routes'].get(rid),
             stableDuringCapture=before['routes'].get(rid) == after['routes'].get(rid)))
     result = cov.audit(staged, topology, freeze['finishedAt'], ['2026-09-20','2026-09-21'])
     result['captureProvenance'] = provenance
@@ -60,6 +62,7 @@ def main():
         'Closed finality means calendar boundary only; Sep21 early export is explicitly unsettled.',
         'No ETA errors or candidate performance were scored. Sep21 is partially inspected development evidence.',
         'Use separately captured settlement/adjacent-day evidence for later causal reconstruction.',
+        'Fleet routes are published order (v1compat.ts), whereas the canonical reference includes runtime repairs; compare publishedStops before claiming a topology change.',
     ]
     errors = [x for x in result['sources'] if x['errors']]
     assert len(result['sources']) == 14
