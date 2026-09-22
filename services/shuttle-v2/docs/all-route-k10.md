@@ -77,3 +77,17 @@ full-ETA gains from causal upstream standing time/location, driving pace and
 peer spacing. Training, feature selection and calibration must precede scoring;
 actual future holds, future neighbors and selected early cases cannot serve as
 features. This rollout includes no new fitted covariate coefficients.
+
+## Orange integrity audit
+
+[Detailed reconstruction and coverage findings](orange-data-integrity.md) show
+that rebuilding all Orange visits preserves Night's qualification and Day's
+wider-window result. A discarded-record K8 sensitivity improvement does not
+reproduce under full reconstruction and is not deployed. The older archive lacks
+Orange Day GPS on September11,14,15 because six-hour retention preceded nightly
+export and no Pi capture filled those days. PR266 already changed retention to
+36h on September16; missing days remain excluded, not treated as observations.
+
+Hosted production parity checked 2,654 clocks, 129 restart recoveries and 1,064
+changed forecasts (806 Night, 258 Gold, including diagnostic September16) with
+zero differences. The full application gate passed 2,880 tests and browser smoke.
