@@ -7123,8 +7123,11 @@ const TransitMap: FC = () => {
         />
       )}
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 14 }}>
-        <span>{k10TrialSelected() ? 'Red ETA trial' : 'Previous Red estimates'}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '0 12px', padding: '0 12px', fontSize: 14 }}>
+        <div>
+          <span>{k10TrialSelected() ? 'Updated estimates' : 'Previous estimates'}</span>
+          <div style={{ fontSize: 11 }}>Red · Blue Day · Blue West</div>
+        </div>
         <a href={etaChoiceUrl(window.location.href, k10TrialSelected())} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>
           {k10TrialSelected() ? 'Use previous estimates' : 'Use updated estimates'}
         </a>

@@ -61,14 +61,14 @@ afterEach(() => {
 });
 
 describe("what leaves the browser", () => {
-  it('separates previous Red estimates while keeping Blue in ordinary accuracy', async () => {
+  it('separates previous trial-route estimates while keeping other lines in ordinary accuracy', async () => {
     vi.stubGlobal('window', { location: { search: '?eta_model=usual' } });
     alwaysSampled();
-    noteShown([arrival(), arrival({ routeLabel:'Blue Day',busName:'99' })], 'trip', T);
+    noteShown([arrival(), ...['Blue Day','Blue West','Blue Night','Blue Weekend','Green'].map((routeLabel,i)=>arrival({routeLabel,busName:String(90+i)}))], 'trip', T);
     await flushShown(T);
     const body = JSON.parse(String(posts[0]!.init.body));
     expect(body.b).toMatch(/-usual$/);
-    expect(body.p.map((r: ShownTuple) => r[7])).toEqual(['trip-usual','trip']);
+    expect(body.p.map((r: ShownTuple) => r[7])).toEqual(['trip-usual','trip-usual','trip-usual','trip','trip','trip']);
   });
   it("sends the reading and nothing about the reader", async () => {
     alwaysSampled();

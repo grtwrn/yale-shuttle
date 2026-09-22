@@ -9,3 +9,5 @@ export function etaChoiceUrl(href: string, usual: boolean): string {
   else url.searchParams.delete('eta_model');
   return url.pathname + url.search + url.hash;
 }
+
+export const K10_TRIAL_ROUTES = ['Red', 'Blue Day', 'Blue West'] as readonly string[];

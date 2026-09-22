@@ -10,6 +10,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { gunzipSync } from 'node:zlib';
 
 import { Collector } from "../collector/collector.js";
 import type { RawBus, UpstreamClient } from "../collector/upstream.js";
@@ -25,6 +26,8 @@ import {
   type EtaPayloadView,
 } from "./serverEta.js";
 import { buildBusesPayload, createBusesPayloadCache } from "./v1compat.js";
+import { BLUE_K10_MODELS, blueK10GroupPredictions } from './blueK10Trial.js';
+import type { K10Evidence } from '../collector/k10Clock.js';
 
 // Read rather than `import ... from`: `resolveJsonModule` would have tsc infer
 // a literal type for a quarter-megabyte of captured JSON on every typecheck.
@@ -98,6 +101,37 @@ describe("the flag", () => {
 describe("the served answer", () => {
   beforeEach(() => registerRoutePaths(CAP.static.route_paths));
   afterEach(() => registerRoutePaths(null));
+
+  for (const model of BLUE_K10_MODELS) it(`serves ${model.label}'s updated and usual forecasts from one live step`, () => {
+    // Use an observed, supported service-time clock. An arbitrary midday
+    // departure is not representative of Blue West's operating history.
+    const cases = JSON.parse(gunzipSync(fs.readFileSync(new URL('./__fixtures__/blue-k10-parity.json.gz', import.meta.url))).toString()) as
+      { route: number; now: number; evidence: K10Evidence | null; expected: { changed: boolean } }[];
+    const sample = cases.find(f => f.route === model.routeId && f.expected.changed
+      && f.evidence?.index === model.waitIndex && f.evidence.phase === 'hold')!;
+    expect(sample).toBeDefined();
+    const now = sample.now, stopId = model.sequence[model.waitIndex]!;
+    expect(blueK10GroupPredictions(model, sample.evidence!.origin.departed, now)).not.toBeNull();
+    const bus: BusData = { bus_id: 99, bus_name: '#306', route_id: model.routeId,
+      ...CAP.static.stop_coords[stopId]!, heading: 0, last_stop_id: stopId, observed_at: now,
+      stationary: true, at_stop_id: stopId, at_stop_since: new Date(now - 60_000).toISOString(),
+      stationary_since: new Date(now - 60_000).toISOString(), last_moved_at: new Date(now - 60_000).toISOString() };
+    const payload = { ...payloadFor(0), routes: { ...CAP.static.routes, [model.routeId]: model.sequence }, buses: [bus] };
+    const engine = new ServerEta({ routes: [model.label] });
+    let released = false;
+    engine.useK10Trial(at => new Map([['306', { routeId: model.routeId, index: model.waitIndex,
+      phase: 'hold' as const, observedAt: at, origin: sample.evidence!.origin, released }]]));
+    const usual = engine.contribute(payload, 1, now)!, updated = engine.contribute(payload, 1, now, true)!;
+    expect(updated.trial!.byRoute![model.label]).toBeGreaterThan(0);
+    expect(usual.trial).toBeUndefined(); expect(engine.stats().steps).toBe(1);
+    const row = updated.rows.find(r => r[2] !== usual.rows.find(c => c[0] === r[0] && c[1] === r[1] && c[5] === r[5])![2])!;
+    expect(engine.historyPosition(model.label, '306', row[1], row[2], now, true)).not.toBeNull();
+    released = true;
+    const next = { ...payload, buses: [{ ...bus, observed_at: now + 5000 }] };
+    const live = engine.contribute(next, 2, now + 5000)!, handedOff = engine.contribute(next, 2, now + 5000, true)!;
+    expect(handedOff.rows).toEqual(live.rows); expect(handedOff.distributions).toEqual(live.distributions);
+    expect(engine.stats().steps).toBe(2);
+  });
 
   it('serves both variants from one warm step and hands the trial back to the exact live wire', () => {
     const now = Date.parse('2026-09-21T16:00:00Z');

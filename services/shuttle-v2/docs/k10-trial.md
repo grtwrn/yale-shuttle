@@ -1,11 +1,12 @@
 # Red K=10 trial
 
-K10 is the **default for Red's tested section**. The page shows **Red ETA trial**
+K10 is the **default for Red's tested section**. The page shows **Updated estimates**
 and a **Use previous estimates** link (`/?eta_model=usual`). **Use updated
 estimates** returns to the default. The original `/?eta_model=k10` link still
 selects K10. Disable the overlay globally with `SHUTTLE_K10_TRIAL=0`.
-Blue and other routes retain their current estimator. K10 historical backtests
-have covered Red only; ordinary application regression tests cover other routes.
+Blue Day and Blue West also use K10 after a separate backtest; see
+[Blue qualification and scope](blue-k10-trial.md). Other routes retain their
+current estimator. This document describes the Red model and its qualification.
 
 For this trial, the last major wait is 344 Winchester (Red index 14). The
 checkpoint is **Chapel / Church**, ten stops before it (index 4). Supported
@@ -35,8 +36,16 @@ could make a later stop appear to arrive before an earlier stop. The shared
 guard prevents both that mixed-model boundary and reaching the UI's 15-second
 “now” threshold during a 45-second snapshot lifetime. This is a fallback, not
 a claim that the bus must arrive within one minute. Source clocks clear on a gap over 60 seconds,
-route change, new lap or restart; the trial requires ten minutes of continuous
-observations and a newly observed source departure. Unknown or stale evidence,
+route change or new lap. On restart, the server replays up to one hour (at most
+1,500 samples per bus) of its recorded GPS, then continues those same reducers
+with live observations. Ten minutes of continuous observations and a confirmed
+source departure are still required; historical GPS can now supply both.
+Only observations before the current poll enter recovery, never finalized visit
+rows. Ambiguous bus names, route changes and gaps break the recovered clock.
+Historical replay is isolated from arrival and calibration persistence.
+Missing or stale history falls back to ordinary live warmup. `/healthz`
+reports attempts, samples replayed, immediately recovered clocks and replay cost
+under `k10History`. Unknown or stale evidence,
 route-order changes and insufficient history also select the usual forecast.
 
 The historical prior is deliberately frozen for this bounded trial. It contains
@@ -80,7 +89,7 @@ the live collector clock against raw GPS/reference causal features, and exercise
 the default/opt-out/restore flow in a real browser. Heavy tests run on GitHub-hosted runners.
 
 New default readings use ordinary `trip`, `ride`, `card` surfaces and count in
-default accuracy. Explicit Red opt-outs use `trip-usual`, `ride-usual`,
+default accuracy. Explicit Red, Blue Day and Blue West opt-outs use `trip-usual`, `ride-usual`,
 `card-usual` and a `-usual` build suffix; other routes keep ordinary surfaces
 even on an opt-out page. These comparison rows and the earlier opt-in
 `*-k10` readings have independent dedup keys and stay excluded from default
