@@ -1,0 +1,31 @@
+name: fresh-fleet-coverage
+on:
+  push:
+    branches: [research/fresh-coverage-2026-09-22]
+    paths: ['research/fresh-coverage/**', '.github/workflows/fresh-coverage.yml']
+permissions:
+  contents: read
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check immutable inputs and coverage fixtures
+        run: |
+          sha256sum --check research/fresh-coverage/inputs.sha256
+          python3 -m unittest discover -s research/archive-coverage -p 'test_*.py' -v
+      - name: Audit closed-calendar and unsettled evidence
+        run: python3 research/fresh-coverage/audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fresh-fleet-coverage
+          path: |
+            research/fresh-coverage/results/*.json
+            research/fresh-coverage/results/*.md
+            research/fresh-coverage/results/*.jsonl.gz
+          retention-days: 90

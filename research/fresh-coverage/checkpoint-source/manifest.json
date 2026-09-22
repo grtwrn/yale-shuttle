@@ -1,0 +1,18 @@
+{
+  "commit": "86cb499a4e28b0577b55c19162a8d4b9f673abc5",
+  "role": "Current checkpoint layer unchanged by reminder PR319; not the historical production version for every observation.",
+  "files": {
+    "k10-model.json": {
+      "sourcePath": "services/shuttle-v2/src/server/data/k10-model.json",
+      "sha256": "6460914a5a8c17c8fa5704a85b85c7b22c1c7753aa51d6fa562d74e5aade17c7"
+    },
+    "blue-k10-models.json": {
+      "sourcePath": "services/shuttle-v2/src/server/data/blue-k10-models.json",
+      "sha256": "704da0047363218f22ce4062fb134adbe2e9aabbcfc7a8a5951dbd19b5e778cf"
+    },
+    "route-k10-models.json": {
+      "sourcePath": "services/shuttle-v2/src/server/data/route-k10-models.json",
+      "sha256": "f51a65df2e64d61d3f9452fe2d5f1a833833cbe19882270253b884591b0c635a"
+    }
+  }
+}
