@@ -66,9 +66,10 @@ def inspect_day(day,archive_root,at_ms):
     return dict(schedule=c,at=at_ms,raw=rows,bodyDecoded=False)
 
 def publish_day(args,state,at_ms):
-    c=schedule(args.forecast_day);require(c['trainBefore']<=at_ms<c['validUntil'],'forecast day not ready or expired')
+    c=schedule(args.forecast_day)
     result=may_attempt(state,c['day'])
     if result!='attempt':return dict(status=result,day=c['day'])
+    require(c['trainBefore']<=at_ms<c['validUntil'],'forecast day not ready or expired')
     verify_code(args.implementation,args.request_branch)
     selections=[]
     for day in c['rawDays']:
@@ -86,14 +87,16 @@ def publish_day(args,state,at_ms):
             else:selected=package(args.archive_root,day,dest,at_ms)
             state['selections'][day]=selected;save_state(args.state_root,state)
         selections.append(dict(selected,directory=directory))
-    identity=c['day']+'-'+str(at_ms)+'-'+uuid.uuid4().hex
-    request=dict(schema=1,requestId=identity,day=c['day'],createdAt=at_ms,implementation=args.implementation,
+    created=now_ms();require(created>=at_ms and created<c['validUntil'],'publisher clock regressed or request expired')
+    for selection in selections:verify_package(ROOT/selection['directory'],selection['packageSha256'],created)
+    identity=c['day']+'-'+str(created)+'-'+uuid.uuid4().hex
+    request=dict(schema=1,requestId=identity,day=c['day'],createdAt=created,implementation=args.implementation,
         implementationManifestSha256=file_sha(HERE/'IMPLEMENTATION.json'),inputs=selections)
     relative='research/brown-daily-seals/requests/'+identity+'.json';path=ROOT/relative
     write_json(path,request,True);digest=file_sha(path)
     previous=state['days'].get(c['day'])
     entry=dict(status='queued',requestId=identity,requestPath=relative,requestSha256=digest,requestCommit=None,
-        createdAt=at_ms,day=c['day'],previousAttempt=previous)
+        createdAt=created,day=c['day'],previousAttempt=previous)
     state['days'][c['day']]=entry;save_state(args.state_root,state)
     paths=[relative,*[x['directory'] for x in selections]]
     subprocess.run(['git','add','--',*paths],cwd=ROOT,check=True)
@@ -146,7 +149,8 @@ def reconcile(args,state,at_ms):
         run=runs[0];results=results_for(run['id']) if run['status']=='completed' else []
         publications=[r for r in results if 'publishedAt' in r]
         artifact=api('actions/artifacts/'+str(publications[0]['artifactId'])) if len(publications)==1 else None
-        updated=apply_run(entry,run,results,artifact,at_ms)
+        receipt_at=now_ms();require(receipt_at>=at_ms,'publisher clock regressed while reading publication')
+        updated=apply_run(entry,run,results,artifact,receipt_at)
         state['days'][day]=updated
         if updated['status'] in ('available','available_late','expired'):
             catalog=Path(args.state_root)/'catalog'/f"{day}-{updated['requestId']}.json"

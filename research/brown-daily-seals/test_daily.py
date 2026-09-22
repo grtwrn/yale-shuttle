@@ -40,7 +40,7 @@ class Fixtures(unittest.TestCase):
     @contextlib.contextmanager
     def packaged(self,rows=None):
         root,m,archiver=self.archive(rows)
-        with patch.object(inp,'ARCHIVER_SHA',c.file_sha(archiver)):
+        with patch.object(inp,'ARCHIVER_SHA',c.file_sha(archiver)),patch.object(inp,'now_ms',return_value=self.at):
             dest=self.root/'package';record=inp.package(root.parent,self.day,dest,self.at,archiver)
             yield dest,record,m
 
@@ -129,6 +129,49 @@ class Fixtures(unittest.TestCase):
         state['days']['2026-09-24']={'status':'running'}
         with self.assertRaises(c.InputError):ctl.may_attempt(state,'2026-09-25')
         state['days']['2026-09-24']={'status':'operational_failure'};self.assertEqual(ctl.may_attempt(state,'2026-09-24'),'attempt')
+    def test_publish_fake_controller_commit_push_and_no_refit(self):
+        repo=self.root/'repo';here=repo/'research/brown-daily-seals';here.mkdir(parents=True)
+        (here/'IMPLEMENTATION.json').write_text('{}')
+        state=dict(schema=1,days={},selections={});calls=[]
+        args=SimpleNamespace(forecast_day='2026-09-24',archive_root=str(self.root/'unused'),implementation='a'*40,
+            request_branch=ctl.BRANCH,state_root=str(self.root/'state'))
+        def fake_package(archive,day,dest,at):
+            dest.mkdir(parents=True);c.write_json(dest/'package.json',{'fixture':True});return dict(day=day,packageSha256=c.file_sha(dest/'package.json'))
+        with patch.object(ctl,'ROOT',repo),patch.object(ctl,'HERE',here),patch.object(ctl,'verify_code'),patch.object(ctl,'verify_package'), \
+             patch.object(ctl,'package',side_effect=fake_package),patch.object(ctl,'command',return_value='b'*40), \
+             patch.object(ctl,'now_ms',return_value=self.at+7),patch.object(ctl.subprocess,'run',side_effect=lambda *a,**k:calls.append(a[0])):
+            first=ctl.publish_day(args,state,self.at)
+            self.assertEqual(first['requestCommit'],'b'*40);self.assertEqual(first['createdAt'],self.at+7)
+            self.assertEqual([x[:2] for x in calls],[['git','add'],['git','commit'],['git','push']])
+            request=c.strict_json((repo/first['requestPath']).read_bytes());self.assertEqual([x['day'] for x in request['inputs']],['2026-09-22'])
+            self.assertEqual(c.file_sha(repo/first['requestPath']),first['requestSha256'])
+            with self.assertRaises(c.InputError):ctl.publish_day(args,state,self.at+1)
+            state['days'][args.forecast_day]['status']='available';self.assertEqual(ctl.publish_day(args,state,c.day_start('2026-10-01'))['status'],'already_sealed')
+            self.assertEqual(len(calls),3)
+    def test_missing_admission_remains_queued_without_second_push(self):
+        state=dict(schema=1,selections={},days={'2026-09-24':dict(status='queued',requestCommit='a'*40)})
+        args=SimpleNamespace(state_root=str(self.root/'state'))
+        with patch.object(ctl,'api',return_value={'workflow_runs':[]}):
+            self.assertEqual(ctl.reconcile(args,state,self.at)['days']['2026-09-24']['status'],'queued')
+        with self.assertRaises(c.InputError):ctl.may_attempt(state,'2026-09-24')
+    def test_reconcile_acceptance_uses_receipt_clock_and_preserves_catalog_after_crash(self):
+        config=c.schedule('2026-09-24');start=config['validFrom'];repo=self.root/'repo';repo.mkdir()
+        request={'day':config['day'],'requestId':'id','createdAt':config['trainBefore']+1};c.write_json(repo/'request.json',request)
+        entry=dict(day=config['day'],status='running',requestCommit='a'*40,requestId='id',requestPath='request.json',requestSha256=c.file_sha(repo/'request.json'))
+        run=dict(id=2,name=ctl.WORKFLOW,head_sha='a'*40,run_attempt=1,status='completed',conclusion='success')
+        catalog=dict(status='sealed_pending_publish',requestId='id',requestSha256=entry['requestSha256'],builtAt=start-10000,
+            publishedAt=start-9000,artifactId=1,artifactDigest='sha256:test',runId=2,runAttempt=1,requestCommit='a'*40,
+            validFrom=start,validUntil=config['validUntil'],contextOnly=False)
+        artifact=dict(id=1,digest='sha256:test',expired=False,workflow_run={'id':2},created_at=c.utc(start-9500))
+        args=SimpleNamespace(state_root=str(self.root/'state'));state=dict(schema=1,selections={},days={config['day']:entry})
+        def api(path):return {'workflow_runs':[run]} if path.startswith('actions/runs?') else artifact
+        with patch.object(ctl,'ROOT',repo),patch.object(ctl,'api',side_effect=api),patch.object(ctl,'results_for',return_value=[catalog]),patch.object(ctl,'now_ms',return_value=start+50):
+            result=ctl.reconcile(args,state,start)
+            self.assertEqual(result['days'][config['day']]['publication']['acceptedAt'],start+50)
+            state['days'][config['day']]=dict(entry)  # crash before state write, durable catalog survived
+            with patch.object(ctl,'now_ms',return_value=start+100):
+                result=ctl.reconcile(args,state,start)
+                self.assertEqual(result['days'][config['day']]['publication']['acceptedAt'],start+50)
     def test_publication_cannot_backdate_or_extend(self):
         config=c.schedule('2026-09-24');start=config['validFrom'];r={'day':config['day'],'requestId':'id','createdAt':config['trainBefore']+1}
         cat=dict(status='sealed_pending_publish',requestId='id',requestSha256=c.sha(c.canonical(r)+b'\n'),builtAt=start+1000,publishedAt=start+2000,

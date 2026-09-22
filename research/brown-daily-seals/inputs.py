@@ -18,7 +18,8 @@ def package(archive_root,day,destination,at_ms,archiver=ARCHIVER):
         (dest/'selected-manifest.json').write_bytes(selected['manifestBytes'])
         (dest/'snapshot-manifest.json').write_bytes(selected['snapshotBytes'])
         shutil.copyfile(archiver,dest/'archive-day.mjs')
-        record=dict(schema=1,format='archive-v2-normalized-raw-v1',day=day,packagedAt=at_ms,
+        finished=now_ms();require(finished>=at_ms,'publisher clock regressed during copy')
+        record=dict(schema=1,format='archive-v2-normalized-raw-v1',day=day,packagedAt=finished,
             archiveScriptSha256=ARCHIVER_SHA,archiveScriptProvenance='source observed at packaging; manifest metadata attests the selected export',
             files={p.name:file_sha(p) for p in sorted(dest.iterdir())},table=selected['table'])
         write_json(dest/'package.json',record,True)
@@ -32,7 +33,7 @@ def verify_package(root,expected,at_ms):
     root=Path(root);require(file_sha(root/'package.json')==expected,'changed input package')
     p=strict_json((root/'package.json').read_bytes())
     require(p.get('schema')==1 and p.get('format')=='archive-v2-normalized-raw-v1','unknown input format')
-    require(p['packagedAt']<=at_ms and p['archiveScriptSha256']==ARCHIVER_SHA,'future/unrecognized package')
+    require(type(p['packagedAt']) is int and p['packagedAt']<=at_ms and p['archiveScriptSha256']==ARCHIVER_SHA,'future/unrecognized package')
     require(set(p['files'])=={'raw_positions.jsonl.gz','selected-manifest.json','snapshot-manifest.json','archive-day.mjs'},'unexpected package files')
     require(p['files']['archive-day.mjs']==ARCHIVER_SHA,'archive implementation hash mismatch')
     for name,digest in p['files'].items():require(file_sha(safe_file(root,name))==digest,'changed packaged file')
@@ -44,6 +45,8 @@ def verify_package(root,expected,at_ms):
     require(m['tables']['raw_positions']==s['tables']['raw_positions']==t,'package selected-table mismatch')
     require(t.get('complete') is True and not any(t.get(k) for k in ('error','integrityError','replacementError')),'raw transport unavailable')
     require(t.get('columns')==COLS and t.get('source') in ('server','server+capture'),'unsupported normalized raw')
+    require(type(t.get('rows')) is int and t['rows']>=0 and type(t.get('rawBytes')) is int and 0<=t['rawBytes']<=512*1024**2,'invalid row/byte bound')
+    require(type(t.get('bytes')) is int and 0<t['bytes']<=32*1024**2,'invalid gzip byte bound')
     require(pos.get('server')==pos.get('merged')==t.get('rows'),'capture-only provenance')
     require(start+86400000<=time_ms(t['capturedAt'])<start+36*3600000 and time_ms(t['capturedAt'])<=p['packagedAt'],'capture clock/retention')
     require(t['sha256']==p['files']['raw_positions.jsonl.gz'] and (root/'raw_positions.jsonl.gz').stat().st_size==t['bytes'],'raw descriptor mismatch')

@@ -1,6 +1,7 @@
 """Hosted orchestration; no fit command is reachable by metadata publishers."""
 import argparse
 import gzip
+import hashlib
 import importlib.util
 import os
 import shutil
@@ -90,8 +91,20 @@ def normalization_fixture():
     invoke(['services/shuttle-v2/node_modules/.bin/tsx',str(replay)],'Sep21 normalization reducer parity')
     summary=strict_json((ROLLING/'replay-results/parity-summary.json').read_bytes())
     require(summary['Brown']['discrepancyKeys']==0,'Sep21 physical discrepancy')
+    reference=HERE/'work/sep23-reference/replay-results'
+    def unpacked_hash(path):
+        h=hashlib.sha256()
+        with gzip.open(path,'rb') as stream:
+            for chunk in iter(lambda:stream.read(1024*1024),b''):h.update(chunk)
+        return h.hexdigest()
+    equality={}
+    for name in ('baseline-visits.jsonl.gz','candidate-visits.jsonl.gz','baseline-events.jsonl.gz','candidate-events.jsonl.gz'):
+        current=unpacked_hash(ROLLING/'replay-results'/name);old=unpacked_hash(reference/name)
+        require(current==old,'Sep21 normalized replay changed saved original event/visit stream: '+name)
+        equality[name]=current
     result=dict(status='passed',normalizationRows=len(normalized),sameReducerInputs=True,
-        newModelsFitted=0,newRawDaysRead=[],forecastOutcomeScores=0,gate=summary)
+        newModelsFitted=0,newRawDaysRead=[],forecastOutcomeScores=0,gate=summary,
+        originalReplayRun=35696391115,originalReplayArtifactId=10680881133,originalStreamEquality=equality)
     write_json(HERE/'results/normalization.json',result)
     return result
 

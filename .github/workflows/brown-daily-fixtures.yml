@@ -43,6 +43,12 @@ jobs:
           run-id: 35677536788
           github-token: ${{ github.token }}
           path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: rolling-brown-seal-diagnostics
+          run-id: 35696391115
+          github-token: ${{ github.token }}
+          path: research/brown-daily-seals/work/sep23-reference
       - name: Opened Sep21 normalization and full reducer prefix gates only
         run: python3 research/brown-daily-seals/run_daily.py --normalization-fixture
       - name: Verify original scripts and production tree unchanged
