@@ -89,7 +89,6 @@ it('uses Gold K8 instead of allowing a K10 occurrence or clock', () => {
   expect(applyRouteK10Trial(base,evidence(f),routes).trial!.changedRows).toBe(1);
   const beyond={...e,index:(m.sourceIndex+9)%m.sequence.length,phase:'hold' as const};
   expect(applyRouteK10Trial(base,new Map([['42',beyond]]),routes).rows).toEqual(base.rows);
-  const later={...base,rows:base.rows.map(r=>[...r] as typeof r)};
-  later.rows[0]![5]+=2;
+  const later:ServerEtaWire={...base,rows:base.rows.map(r=>[r[0],r[1],r[2],r[3],r[4],r[5]+2,r[6],r[7],r[8]])};
   expect(applyRouteK10Trial(later,evidence(f),routes).rows).toEqual(later.rows);
 });
