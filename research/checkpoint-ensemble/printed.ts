@@ -3,9 +3,9 @@ import fs from 'node:fs';import zlib from 'node:zlib';import readline from 'node
 import {once} from 'node:events';import {finished} from 'node:stream/promises';import assert from 'node:assert/strict';
 import {predictionWindow} from '../../services/shuttle-v2/web/src/arrivalDetails.ts';
 function printed(f:any,at:number){
- const w=predictionWindow(f.low,f.high,at,at);if(!w)return{basis:'point',text:null,spanSec:null};
+ const w=predictionWindow(f.low,f.high,at,at);if(!w)return{basis:'point',text:null,spanSec:null,lowSec:null,highSec:null};
  const parts=w.text.replace(/ min$/,'').split('–');const low=parts[0]==='<1'?0:Number(parts[0])*60,high=Number(parts.at(-1))*60;
- assert(Number.isFinite(low)&&Number.isFinite(high)&&low<=high);return{basis:'window',text:w.text,spanSec:high-low};
+ assert(Number.isFinite(low)&&Number.isFinite(high)&&low<=high);return{basis:'window',text:w.text,spanSec:high-low,lowSec:low,highSec:high};
 }
 async function main(){
  const dir=process.argv[2];const zip=zlib.createGzip(),file=fs.createWriteStream(dir+'/printed.jsonl.gz');zip.pipe(file);let count=0;

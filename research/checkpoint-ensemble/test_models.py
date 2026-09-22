@@ -1,6 +1,6 @@
 import datetime as dt
 import unittest
-from models import Paths,TZ,available,strict
+from models import Paths,TZ,available,strict,group_prediction,CountdownLatch
 
 class Quality:
     def ok(self,bus,rid,start,end):return end>start
@@ -58,5 +58,33 @@ class PathTests(unittest.TestCase):
         proof={r['id']:dict(epoch='one',progress=r['stop_index']+(6 if r['stop_index'] else 0)) for r in rows}
         m=Paths(top,{1:[2]},rows,Quality(),cut,proof)
         self.assertFalse(m.paths[1,2,2,3]);self.assertGreater(m.audit['unwrapped same-traversal proof unavailable'],0)
+
+class GroupTests(unittest.TestCase):
+    def setup_group(self):
+        class Model:
+            top={1:{'stops':list(range(6))}};waits={1:[2]}
+            bad=None;remaining=120
+            def fit(self,rid,j,w,t,departure):return dict(supported=(j,t)!=self.bad,mean=self.remaining+100-departure/1000)
+            def joint(self,*args):return dict(supported=True)
+        model=Model();row=dict(route=1,bus='A',asof=100000,at=100000,targetIndex=4)
+        sources={str(j):dict(name='A',route=1,index=(2-j)%6,departed=j*1000,knownAt=5000,epoch=1,provider=7) for j in (1,2)}
+        membership=dict(supported=True,wait=2,k=2,offsets=[1,2],targetGroup=[3,4,5,0,1],sourceIds={j:str(j) for j in (1,2)},journey='physical-journey',regime='pre-wait')
+        return model,row,membership,sources
+    def test_whole_group_support_requires_each_offset_and_earlier_target(self):
+        model,row,m,sources=self.setup_group();self.assertTrue(group_prediction(model,row,m,sources)['supported'])
+        model.bad=(1,3);result=group_prediction(model,row,m,sources)
+        self.assertFalse(result['supported']);self.assertEqual(result['unsupportedTarget'],3)
+        self.assertEqual(result['reason'],'whole-group constituent support')
+    def test_target_outside_group(self):
+        model,row,m,sources=self.setup_group();row['targetIndex']=2
+        self.assertEqual(group_prediction(model,row,m,sources)['reason'],'target outside fixed downstream group')
+    def test_countdown_exact_boundary_and_irreversible_refresh_mask(self):
+        model,row,m,sources=self.setup_group();latch=CountdownLatch()
+        model.remaining=60.001;self.assertTrue(latch.predict('rolling',2,model,row,m,sources)['supported'])
+        model.remaining=60;self.assertFalse(latch.predict('rolling',2,model,row,m,sources)['supported'])
+        refreshed,_,_,_=self.setup_group();m=dict(m,offsets=[2],sourceIds={2:'2'},regime='post-wait')
+        result=latch.predict('rolling',2,refreshed,row,m,sources)
+        self.assertEqual(result['reason'],'whole-group countdown previously expired')
+        self.assertTrue(latch.predict('frozen',2,refreshed,row,m,sources)['supported'])
 
 if __name__=='__main__':unittest.main()

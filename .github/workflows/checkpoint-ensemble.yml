@@ -9,6 +9,10 @@ on:
         description: Run only the small independent validity fixtures
         type: boolean
         default: true
+      feature_run:
+        description: Reuse a completed schema-2 feature run; blank regenerates causal evidence
+        type: string
+        default: ''
 permissions:
   contents: read
   actions: read
@@ -33,7 +37,7 @@ jobs:
           fi
   materialize:
     needs: fixtures
-    if: github.event_name == 'push' || inputs.fixtures_only == false
+    if: github.event_name == 'workflow_dispatch' && inputs.fixtures_only == false && inputs.feature_run == ''
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -65,4 +69,115 @@ jobs:
         with:
           name: checkpoint-ensemble-features
           path: research/checkpoint-ensemble/results/**
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-ensemble-source-summary
+          path: research/checkpoint-ensemble/results/materialization-audit.json
+          retention-days: 90
+  joint-study:
+    needs: [fixtures, materialize]
+    if: always() && needs.fixtures.result == 'success' && inputs.fixtures_only == false && (inputs.feature_run != '' || needs.materialize.result == 'success')
+    strategy:
+      fail-fast: false
+      matrix:
+        policy: [highway25, highway50]
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+      TZ: America/New_York
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - run: python3 -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: checkpoint-ensemble-features
+          run-id: ${{ inputs.feature_run || github.run_id }}
+          github-token: ${{ github.token }}
+          path: research/checkpoint-ensemble/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/highway-frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-route-context
+          run-id: 35686813146
+          github-token: ${{ github.token }}
+          path: research/highway-geometry
+      - uses: actions/download-artifact@v4
+        with:
+          name: protected-highway-window-results
+          run-id: 35690386363
+          github-token: ${{ github.token }}
+          path: research/checkpoint-ensemble/reference
+      - name: Pin original comparator and causal evidence provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FEATURE_RUN: ${{ inputs.feature_run || github.run_id }}
+        run: |
+          ln -s "$GITHUB_WORKSPACE/research/highway-frozen/canonical-windows/results" research/canonical-windows/results
+          gh api repos/grtwrn/yale-shuttle/actions/artifacts/10678003242 > research/checkpoint-ensemble/reference/artifact-metadata.json
+          gh api "repos/grtwrn/yale-shuttle/actions/runs/$FEATURE_RUN" > research/checkpoint-ensemble/results/feature-run-metadata.json
+          gh api "repos/grtwrn/yale-shuttle/actions/runs/$FEATURE_RUN/artifacts" > research/checkpoint-ensemble/results/feature-artifact-metadata.json
+      - name: Fit fixed arms, prove original controls and freeze unscored forecasts before joining outcomes
+        run: python3 research/checkpoint-ensemble/study.py --policy ${{ matrix.policy }}
+      - name: Render actual app windows and report all fixed route and support cells
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/printed.ts research/checkpoint-ensemble/results/${{ matrix.policy }}
+          python3 research/checkpoint-ensemble/report.py --policy ${{ matrix.policy }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-ensemble-pre-action-summary-${{ matrix.policy }}
+          path: |
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/REPORT.md
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/summary.json
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/verification.json
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/covariance.json
+            research/checkpoint-ensemble/results/materialization-audit.json
+          retention-days: 90
+      - name: Replay every fixed physical-visit action with exact deployed controls
+        run: python3 research/checkpoint-ensemble/actions.py --policy ${{ matrix.policy }}
+      - name: Prove rendering parity on both fixed action cohorts
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/checkpoint-ensemble/results/${{ matrix.policy }}/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/checkpoint-ensemble/results/${{ matrix.policy }}/original-cohort/rider-risk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-ensemble-summary-${{ matrix.policy }}
+          path: |
+            research/checkpoint-ensemble/PLAN.md
+            research/checkpoint-ensemble/SCHEMA.md
+            research/checkpoint-ensemble/results/materialization-audit.json
+            research/checkpoint-ensemble/results/feature-*-metadata.json
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/REPORT.md
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/summary.json
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/verification.json
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/covariance.json
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/action-comparisons.json
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/**/rendered-parity.json
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-ensemble-complete-${{ matrix.policy }}
+          path: |
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/**
+            !research/checkpoint-ensemble/results/**/raw_positions.jsonl.gz
           retention-days: 90

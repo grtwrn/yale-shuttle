@@ -8,7 +8,7 @@ import json
 import math
 from pathlib import Path
 import sys
-from models import Paths,group_prediction,joint_forecast,date,available
+from models import Paths,CountdownLatch,joint_forecast,date,available
 from identity_quality import IdentityQuality
 
 HERE=Path(__file__).resolve().parent;OUT=HERE/'results';REFERENCE=HERE/'reference'
@@ -64,6 +64,10 @@ def generate(policy):
     features={key(r):r for r in stream(OUT/'features.jsonl.gz') if r['at']>=ev.TEST}
     sources={r['id']:r for r in stream(OUT/'physical-sources.jsonl.gz')}
     prior=read(REFERENCE/policy/'unscored.jsonl.gz');assert set(features)=={key(r) for r in prior}
+    assert len(prior)==len(features) and all(a['at']<=b['at'] for a,b in zip(prior,prior[1:])), 'Stateful forecast stream must be unique and chronological'
+    assert all(not({'label','truth','originalCohort','outcomeReason'}&r.keys()) for r in prior), 'Unscored input contains outcomes'
+    reference_meta=json.loads((REFERENCE/'artifact-metadata.json').read_text())
+    assert reference_meta['id']==10678003242 and reference_meta['digest']=='sha256:3d9efacd609484fce0691deb4074b4c8139018a632f15586cac709342131e63e'
     assert all('2026-09-17'<=date(r['at'])<='2026-09-20' for r in prior)
     immutable={str(p):sha(p) for p in (ev.IN/'raw_positions.jsonl.gz',ev.IN/'predictions_log.jsonl.gz',canonical.OUT/'training-visits.jsonl.gz',canonical.OUT/'preparation.json',REFERENCE/policy/'unscored.jsonl.gz',REFERENCE/policy/'enriched.jsonl.gz')}
     raw=read(ev.IN/'raw_positions.jsonl.gz');visits=read(canonical.OUT/'training-visits.jsonl.gz')
@@ -81,7 +85,7 @@ def generate(policy):
         b,_=fit(top,waits,pv,pr,cutoff,policy,fresh,po)
         assert dict(a.paths)==dict(b.paths)
         audit['prefixChecks'].append(dict(cutoff=cutoff,exact=True,paths=sum(map(len,a.paths.values()))));del a,b,pr,pv,fresh
-    generated=[];expired=set()
+    generated=[];countdown=CountdownLatch()
     def save_model(model,mode,day):
         write(directory/f'training-paths-{mode}-{day}.jsonl.gz',
             (dict(mode=mode,day=day,cutoff=model.cutoff,cell=cell,**p) for cell,paths in model.paths.items() for p in paths))
@@ -106,9 +110,7 @@ def generate(policy):
                     row['candidates'][arm]=cf;row['candidateReasons'][arm]=control['reason'];row['candidateEvidence'][arm]={name:v for name,v in control.items() if name!='forecast'}
                     for regime in REGIMES:
                         base=f'{mode}_K{k}_{regime}';m=f['ensemble'][f'K{k}_{regime}']
-                        expiry=(mode,k,m.get('journey'))
-                        g=dict(supported=False,reason='whole-group countdown previously expired') if m.get('journey') and expiry in expired else group_prediction(model,f,m,sources)
-                        if g['reason']=='whole-group component countdown expired':expired.add(expiry)
+                        g=countdown.predict(mode,k,model,f,m,sources)
                         row['pointDiagnostics'][base]=slim_result(g,f)
                         for estimator in ESTIMATORS:
                             pbase=f'{base}_{estimator}'
@@ -148,7 +150,7 @@ def generate(policy):
         if cohort!='all':write(dest/'forecasts.jsonl.gz',rows)
         rawlink=dest/'raw_positions.jsonl.gz'
         if not rawlink.exists():rawlink.symlink_to((ev.IN/'raw_positions.jsonl.gz').resolve())
-        pointdir=dest/'point-only';write(pointdir/'forecasts.jsonl.gz',(dict(r,candidates=r['pointCandidates']) for r in rows))
+        pointdir=dest/'point-only';write(pointdir/'forecasts.jsonl.gz',(dict(r,candidates={**r['pointCandidates'],**{a:r['candidates'][a] for a in OLD_ARMS}}) for r in rows))
         if not(pointdir/'raw_positions.jsonl.gz').exists():(pointdir/'raw_positions.jsonl.gz').symlink_to((ev.IN/'raw_positions.jsonl.gz').resolve())
     assert immutable=={name:sha(Path(name)) for name in immutable}
     (directory/'verification.json').write_text(json.dumps(audit,indent=2)+'\n')

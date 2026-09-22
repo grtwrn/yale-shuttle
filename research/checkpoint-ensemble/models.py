@@ -168,6 +168,17 @@ def group_prediction(model,row,m,source_map):
     result['jointSupported']=all(t['joint']['supported'] for t in result['targets'].values())
     return result
 
+class CountdownLatch:
+    """One irreversible constituent-group expiry, shared across masks/refreshes."""
+    def __init__(self):self.expired=set()
+    def predict(self,mode,k,model,row,m,source_map):
+        key=mode,k,m.get('journey')
+        if m.get('journey') and key in self.expired:
+            return dict(supported=False,reason='whole-group countdown previously expired')
+        result=group_prediction(model,row,m,source_map)
+        if result['reason']=='whole-group component countdown expired':self.expired.add(key)
+        return result
+
 def joint_forecast(result,row,estimator,protected):
     target=result['targets'][row['targetIndex']];point=target['pointAbs' if estimator=='ensemble' else 'singleAbs']
     q=target['joint'][estimator]

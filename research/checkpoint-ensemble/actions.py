@@ -40,7 +40,20 @@ def pair_summary(records):
         comparisons.append(dict(route=cell[0],arm=cell[1],policy=cell[2],walkSec=cell[3],responseSec=cell[4],attempts=len(pairs),scoredPairs=len(scored),
             newlyMissed=sum(not a['hypotheticalMissedBoarding'] and b['hypotheticalMissedBoarding'] for a,b in scored),rescued=sum(a['hypotheticalMissedBoarding'] and not b['hypotheticalMissedBoarding'] for a,b in scored),
             single=risk.summary([a for a,b in pairs]),ensemble=risk.summary([b for a,b in pairs]),waitDelta=distribution([b['waitAtStopSec']-a['waitAtStopSec'] for a,b in triggered])))
-    return dict(againstDeployed=result,againstMatchedSingle=comparisons)
+    original_groups=collections.defaultdict(list)
+    for k,r in index.items():
+        if '_ensemble' not in r['arm']:continue
+        other='original_'+'_'.join(r['arm'].split('_')[:2]);a=index[(*k[:-2],other,k[-1])]
+        original_groups[(r['route'],r['arm'],r['policy'],r['walkSec'],r['responseSec'])].append((a,r))
+    originals=[]
+    for cell,pairs in sorted(original_groups.items()):
+        scored=[(a,b) for a,b in pairs if a['status'] in ('triggered','no-timely-reminder') and b['status'] in ('triggered','no-timely-reminder')]
+        triggered=[(a,b) for a,b in scored if a['status']==b['status']=='triggered']
+        originals.append(dict(route=cell[0],arm=cell[1],policy=cell[2],walkSec=cell[3],responseSec=cell[4],attempts=len(pairs),scoredPairs=len(scored),
+            newlyMissed=sum(not a['hypotheticalMissedBoarding'] and b['hypotheticalMissedBoarding'] for a,b in scored),rescued=sum(a['hypotheticalMissedBoarding'] and not b['hypotheticalMissedBoarding'] for a,b in scored),
+            originalSingle=risk.summary([a for a,b in pairs]),ensemble=risk.summary([b for a,b in pairs]),
+            waitDelta=distribution([b['waitAtStopSec']-a['waitAtStopSec'] for a,b in triggered]),leaveDelta=distribution([(b['leaveNowAt']-a['leaveNowAt'])/1000 for a,b in triggered])))
+    return dict(againstDeployed=result,againstMatchedSingle=comparisons,againstOriginalSingle=originals)
 
 def main(policy):
     clause=prior_risk.hp.HighwayClause();result={}
