@@ -1,0 +1,10 @@
+{
+  "stage": "pilot",
+  "syntheticOnly": true,
+  "outcomes": false,
+  "fixtureGateRun": 35737235989,
+  "fixtureImplementation": "edc6426",
+  "profiles": 84,
+  "start": "2026-09-23T12:00:00-04:00",
+  "planCommit": "ccb50a3"
+}

@@ -1,5 +1,8 @@
 name: research-synthetic-selection-scale
 on:
+  push:
+    branches: [research/synthetic-selection-baseline-2026-09-22]
+    paths: [research/synthetic-selection/BENCHMARK-REQUEST.json]
   workflow_dispatch:
     inputs:
       stage:
@@ -9,20 +12,45 @@ on:
 permissions:
   contents: read
 jobs:
+  assignment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      stage: ${{ steps.assignment.outputs.stage }}
+      routes: ${{ steps.assignment.outputs.routes }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: assignment
+        env:
+          DISPATCH_STAGE: ${{ inputs.stage }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          request=json.loads(Path('research/synthetic-selection/BENCHMARK-REQUEST.json').read_text())
+          assert request['syntheticOnly'] is True and request['outcomes'] is False
+          stage=os.environ.get('DISPATCH_STAGE') or request['stage']
+          assert stage in ('pilot','full')
+          routes=[1,2,3,4,8,9,10,13,14,15,16,17,18,19] if stage=='full' else [0]
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
+            output.write('stage='+stage+'\n')
+            output.write('routes='+json.dumps(routes)+'\n')
+          PY
   benchmark:
+    needs: assignment
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
-        route: ${{ fromJSON(inputs.stage == 'full' && '[1,2,3,4,8,9,10,13,14,15,16,17,18,19]' || '[0]') }}
+        route: ${{ fromJSON(needs.assignment.outputs.routes) }}
     env:
       TZ: America/New_York
     steps:
       - uses: actions/checkout@v4
       - name: Retain every assigned denominator before setup or execution
-        run: python3 research/synthetic-selection/benchmark.py declare '${{ inputs.stage }}' '${{ matrix.route }}'
+        run: python3 research/synthetic-selection/benchmark.py declare '${{ needs.assignment.outputs.stage }}' '${{ matrix.route }}'
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -47,38 +75,38 @@ jobs:
           docker cp synthetic-shuttle-web-files:/app/web/dist research/synthetic-selection/results/baseline-assets
           docker rm synthetic-shuttle-web-files
       - name: Run bounded synthetic benchmark with sequential daily workers
-        run: python3 research/synthetic-selection/benchmark.py '${{ inputs.stage }}' '${{ matrix.route }}'
+        run: python3 research/synthetic-selection/benchmark.py '${{ needs.assignment.outputs.stage }}' '${{ matrix.route }}'
       - name: Reconcile missing keys even after an earlier failure
         if: always()
-        run: python3 research/synthetic-selection/benchmark.py reconcile '${{ inputs.stage }}' '${{ matrix.route }}'
+        run: python3 research/synthetic-selection/benchmark.py reconcile '${{ needs.assignment.outputs.stage }}' '${{ matrix.route }}'
       - name: Assert production source unchanged
         if: always()
         run: git diff --exit-code -- services/shuttle-v2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: selection-scale-${{ inputs.stage }}-${{ matrix.route }}
+          name: selection-scale-${{ needs.assignment.outputs.stage }}-${{ matrix.route }}
           path: |
-            research/synthetic-selection/results/benchmark-${{ inputs.stage }}-${{ matrix.route }}/
-            !research/synthetic-selection/results/benchmark-${{ inputs.stage }}-${{ matrix.route }}/capture-*/**
+            research/synthetic-selection/results/benchmark-${{ needs.assignment.outputs.stage }}-${{ matrix.route }}/
+            !research/synthetic-selection/results/benchmark-${{ needs.assignment.outputs.stage }}-${{ matrix.route }}/capture-*/**
           retention-days: 90
   reconcile:
-    if: always()
-    needs: benchmark
+    if: always() && needs.assignment.result == 'success'
+    needs: [assignment, benchmark]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: selection-scale-${{ inputs.stage }}-*
+          pattern: selection-scale-${{ needs.assignment.outputs.stage }}-*
           path: /tmp/selection-scale-artifacts
       - name: Preserve all scheduled keys and report full benchmark completion
         if: always()
-        run: python3 research/synthetic-selection/aggregate_benchmark.py '${{ inputs.stage }}' /tmp/selection-scale-artifacts research/synthetic-selection/results/scale-${{ inputs.stage }}-combined
+        run: python3 research/synthetic-selection/aggregate_benchmark.py '${{ needs.assignment.outputs.stage }}' /tmp/selection-scale-artifacts research/synthetic-selection/results/scale-${{ needs.assignment.outputs.stage }}-combined
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: selection-scale-${{ inputs.stage }}-combined
-          path: research/synthetic-selection/results/scale-${{ inputs.stage }}-combined/
+          name: selection-scale-${{ needs.assignment.outputs.stage }}-combined
+          path: research/synthetic-selection/results/scale-${{ needs.assignment.outputs.stage }}-combined/
           retention-days: 90
