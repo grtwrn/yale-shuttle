@@ -37,6 +37,7 @@ export async function mountSelection({reference=false, scenario, payload, clock,
   let priorReminder:any=null;
   let priorFired={headsUp:false,leaveNow:false};
   let signalIndex=0;
+  let priorOptions:any=undefined,priorPlan:any=undefined,priorOrdered:any=undefined,priorVisible:any=undefined;
   const setterNames={setLastBusUpdateAt:'lastBusUpdateAt',setBusUpdateFailed:'busUpdateFailed',
     setBusSnapshotFailed:'busSnapshotFailed',setBuses:'buses',setRouteStops:'routeStops',
     setStopNames:'stopNames',setSegmentTimes:'segmentTimes',setDwellTimes:'dwellTimes',
@@ -60,6 +61,12 @@ export async function mountSelection({reference=false, scenario, payload, clock,
   // ref through the probe needs no extra render and cannot refresh its memo.
   const collect=()=>{
     const s=state();
+    if(s.options!==priorOptions || s.stableOptions!==priorPlan || s.orderedOptions!==priorOrdered || s.visibleOptions!==priorVisible){
+      events.push({at:clock.now(),type:'selection_update',planChanged:s.stableOptions!==priorPlan,
+        options:s.options,orderedOptions:s.orderedOptions,visibleOptions:s.visibleOptions,
+        refreshKey:s.refreshKey,rank:structuredClone(s.rank),third:s.third,desiredOrder:s.desiredOrder});
+      priorOptions=s.options;priorPlan=s.stableOptions;priorOrdered=s.orderedOptions;priorVisible=s.visibleOptions;
+    }
     if (!priorFired.headsUp && s.fired.headsUp || !priorFired.leaveNow && s.fired.leaveNow) {
       const kind=!priorFired.leaveNow && s.fired.leaveNow?'leave_now':'heads_up';
       const delivery=boundary.signals[signalIndex++];
@@ -84,7 +91,9 @@ export async function mountSelection({reference=false, scenario, payload, clock,
     events.push({at:clock.now(),type:'arm_attempt',accepted:armed,routeLabel:top.routeLabel,boardStopId:top.boardStopId,alightStopId:top.alightStopId});
     if(armed && !coord) interpretationUnresolved=true;
     collect();
+    if(armed && !state().reminder)events.push({at:clock.now(),type:'disarm',reason:state().fired.leaveNow?'leave_now':'invalid_input',immediate:true});
   };
+  collect();
   await chooseInitial();
   function checkBoard() {
     if(!frozenBoard || interpretationUnresolved) return;
@@ -126,6 +135,8 @@ export async function mountSelection({reference=false, scenario, payload, clock,
     },
     async fail(){props.busUpdateFailed=true;props.busSnapshotFailed=true;events.push({at:clock.now(),type:'feed_failed'});await act(async()=>{root.update(element());});collect();},
     async locate(ll:LL){props.userLatLon={...ll};await act(async()=>{root.update(element());});collect();},
+    // Component reset parity only; the fixed prospective policy never invokes it.
+    async testOnlySetDestination(ll:LL){await act(async()=>{actions.testOnlySetDestination({...ll});});collect();},
     async arm(routeLabel:string){let accepted=false;await act(async()=>{accepted=actions.arm(routeLabel);});collect();return accepted;},
     async close(){await act(async()=>{root.unmount();});},
   };

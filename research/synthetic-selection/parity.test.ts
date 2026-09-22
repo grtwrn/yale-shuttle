@@ -146,6 +146,9 @@ describe('exact TripPlanner hook extraction versus complete original component',
       await s.locate(interpolate(0));expect(s.state().third).toBeNull();c('outside keep band');
       await s.locate(interpolate(.28));expect(s.state().third).toBeNull();c('no reappearance inside retain-only band');
       await s.locate(interpolate(.5));expect(s.state().third).toBe('Orange Day');c('appears inside entry band');
+      await s.locate(interpolate(.28));expect(s.state().third).toBe('Orange Day');
+      await s.testOnlySetDestination({...scenario.destination,lat:scenario.destination.lat+.000001});
+      expect(s.state().third).toBeNull();expect(s.state().rank.pending).toBeUndefined();c('destination reset forgets retained third');
     },'A',{origin:interpolate(.5),destination:scenario.destination});
   });
   it('walk profile uses the real frozen origin and never fabricates a ride',async()=>{
@@ -163,5 +166,13 @@ describe('exact TripPlanner hook extraction versus complete original component',
       await s.advanceTo(NOW+5000);await s.fail();expect(s.state().busRoster).toBe(before);expect(s.snapshot().feed.busSnapshotFailed).toBe(true);c('failed retained roster');
       await s.receive(feed(NOW+5000,[]));expect(s.state().busRoster).not.toBe(before);expect(s.snapshot().feed.busSnapshotFailed).toBe(false);c('successful empty');
     });
+  });
+  it('records missing/changed armed board geometry as unresolved',async()=>{
+    await parity('board geometry unresolved',feed(NOW,[{name:'301',pickup:900,low:780}]),async(s,c)=>{
+      await s.advanceTo(NOW+5000);const changed=feed(NOW+5000);changed.stop_coords[board].lat+=.001;
+      await s.receive(changed);expect(s.snapshot().interpretationUnresolved).toBe(true);c('changed coordinate');
+      await s.advanceTo(NOW+15_000);await s.receive(feed(NOW+15_000,[{name:'301',pickup:350,low:239}]));
+      await s.advanceTo(NOW+16_000);expect(s.snapshot().movement).toBeNull();c('no invented reroute');
+    },'B');
   });
 });

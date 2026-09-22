@@ -3,13 +3,18 @@ import ts from '../../services/shuttle-v2/node_modules/typescript/lib/typescript
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const path = root + 'services/shuttle-v2/web/src/TransitMap.tsx';
-const source = readFileSync(path, 'utf8');
+const override = process.argv[2];
+const source = readFileSync(override ?? path, 'utf8');
 const hash = s => createHash('sha256').update(s).digest('hex');
 if (hash(source) !== '8e89152f7af5589c0451b343ab3b85f1210eb3013df2cad537cc8d4a5d3432be') throw Error('Unsupported TransitMap source');
+const webTree = execFileSync('git',['rev-parse','HEAD:services/shuttle-v2/web'],{cwd:root,encoding:'utf8'}).trim();
+if(webTree!=='39e7e9738975f45dfb5c443cc99961a39e9aa4ef') throw Error('Unsupported complete frontend source tree');
+execFileSync('git',['diff','--exit-code','HEAD','--','services/shuttle-v2/web'],{cwd:root});
 const sf = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const manifest = { sourceSha256: hash(source), ranges: [] };
+const manifest = { sourceSha256: hash(source), webTree, ranges: [] };
 const all = [];
 function visit(n) { all.push(n); ts.forEachChild(n, visit); }
 visit(sf);
@@ -68,7 +73,7 @@ const probe = `
     rank: displayOrderRef.current, orderDest: orderDestRef.current,
     third: thirdShownRef.current, thirdDest: thirdDestRef.current,
     desiredOrder: options ? preferredTripOrder(options, displayOrderRef.current?.order ?? []).map(o => o.routeLabel) : null,
-    userLatLon, fromLL, toLL, showAllOptions}), {arm: __arm});
+    userLatLon, fromLL, toLL, showAllOptions}), {arm: __arm, testOnlySetDestination:setToLL});
   return null;
 `;
 const props = text(trip.parameters[0].name).replace(/}$/, ', __research }');
