@@ -2,7 +2,7 @@ name: sealed-rolling-brown-model
 on:
   push:
     branches: [research/brown-rolling-seal-2026-09-22]
-    paths: ['research/brown-rolling-seal/*.py', 'research/brown-rolling-seal/*.ts', 'research/brown-rolling-seal/data/**', 'research/brown-model-seal/runtime.py', '.github/workflows/brown-rolling-seal.yml']
+    paths: ['research/brown-rolling-seal/*.py', 'research/brown-rolling-seal/*.ts', 'research/brown-rolling-seal/package.json', 'research/brown-rolling-seal/data/**', 'research/brown-model-seal/runtime.py', '.github/workflows/brown-rolling-seal.yml']
 permissions:
   contents: read
   actions: read
