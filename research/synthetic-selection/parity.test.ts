@@ -94,6 +94,7 @@ describe('exact TripPlanner hook extraction versus complete original component',
       expect(option(s.state()).walkToSec).toBe(0);expect(s.state().reminder).toBeNull();
       await s.advanceTo(NOW+20_000);c('still at actual origin');
       expect(s.snapshot().movement).toBeNull();expect(s.state().userLatLon).toEqual(s.state().fromLL);
+      expect(s.snapshot().events.find((e:any)=>e.type==='arm_attempt').result).toBe('at_stop_no_ping');
       expect(s.snapshot().events.filter((e:any)=>e.type==='would_signal')).toHaveLength(0);
     },'B',{origin:{...feed().stop_coords[board],lat:feed().stop_coords[board].lat+.0002},destination:scenario.destination});
   });

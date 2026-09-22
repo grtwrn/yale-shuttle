@@ -89,7 +89,9 @@ export async function mountSelection({reference=false, scenario, payload, clock,
     if(coord) frozenBoard={id:top.boardStopId,coord:{...coord}};
     let armed=false;
     await act(async()=>{armed=actions.arm(top.routeLabel);});
-    events.push({at:clock.now(),type:'arm_attempt',accepted:armed,routeLabel:top.routeLabel,boardStopId:top.boardStopId,alightStopId:top.alightStopId});
+    events.push({at:clock.now(),type:'arm_attempt',accepted:armed,
+      result:armed?'armed':top.walkToSec<60?'at_stop_no_ping':top.departed?'departed':top.etaUnavailable?'eta_unavailable':'invalid_live_input',
+      routeLabel:top.routeLabel,boardStopId:top.boardStopId,alightStopId:top.alightStopId});
     if(armed && !coord) interpretationUnresolved=true;
     collect();
     if(armed && !state().reminder)events.push({at:clock.now(),type:'disarm',reason:state().fired.leaveNow?'leave_now':'invalid_input',immediate:true});
