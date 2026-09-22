@@ -49,8 +49,10 @@ const button = one(all.filter(n => ts.isJsxElement(n) && text(n.openingElement.t
   && n.openingElement.attributes.properties.some(a => ts.isJsxAttribute(a) && text(a.name) === 'aria-pressed' && text(a.initializer) === '{reminderActive}')), 'reminder button');
 const onClick = one(button.openingElement.attributes.properties.filter(a => ts.isJsxAttribute(a) && text(a.name) === 'onClick'), 'reminder click');
 const armHandler = take(onClick.initializer.expression, 'reminder:original-onClick');
-if (!ts.isBinaryExpression(button.parent)) throw Error('Unexpected reminder button guard');
-const armCondition = take(button.parent.left, 'reminder:original-button-condition');
+let guardedButton = button;
+while (ts.isParenthesizedExpression(guardedButton.parent)) guardedButton = guardedButton.parent;
+if (!ts.isBinaryExpression(guardedButton.parent)) throw Error('Unexpected reminder button guard');
+const armCondition = take(guardedButton.parent.left, 'reminder:original-button-condition');
 const probe = `
   const __arm = (routeLabel: string) => {
     const o = options?.find(x => x.routeLabel === routeLabel);
