@@ -63,7 +63,7 @@ try {
       catch { return route.fulfill({ status: 404 }); }
     });
     await page.goto('https://trip-ui.test', { waitUntil: 'domcontentloaded' });
-    const viewport = await page.evaluate(() => ({ width: innerWidth, scale: visualViewport?.scale ?? 1,
+    const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scale: visualViewport?.scale ?? 1,
       compact: document.documentElement.dataset.androidCompact === 'true' }));
     run.viewport = viewport;
     assert.equal(viewport.compact, androidReview);
@@ -124,12 +124,12 @@ try {
     assert.equal(await page.locator('.trip-map-canvas').count(), 0);
     await page.getByRole('button', { name: 'Expand map', exact: true }).click();
     await page.locator('.trip-map-canvas').waitFor();
-    if (width === 390) {
+    if (width === 390 || androidReview) {
       await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
       await page.locator('.trip-map-wrap.map-fs').waitFor();
       const keyBox = await table.boundingBox(), mapBox = await page.locator('.trip-map-canvas').boundingBox();
       assert(keyBox.y >= mapBox.y + mapBox.height, 'fullscreen key covers the map');
-      assert(keyBox.y + keyBox.height <= 844, 'fullscreen key leaves the viewport');
+      assert(keyBox.y + keyBox.height <= viewport.height, 'fullscreen key leaves the viewport');
       await page.screenshot({ path: `${out}fullscreen-${width}.png` });
       await page.getByRole('button', { name: 'Back', exact: true }).click();
     }
