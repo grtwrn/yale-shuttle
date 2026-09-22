@@ -5,6 +5,7 @@ import {planTracks,reconcileTracks} from '../../services/shuttle-v2/src/collecto
 import {stepManyWithVisits} from '../../services/shuttle-v2/src/collector/departure.ts';
 import {resolveOccurrence} from '../canonical-windows/occurrence.ts';
 import {Families} from './membership.ts';
+import {replay as legacyReplay} from '../source-retention/replay.ts';
 const here=new URL('.',import.meta.url).pathname,out=here+'results/';
 const rawDir=here+'../k-sweep/results/',canon=here+'../canonical-windows/results/';
 const read=(p:string)=>zlib.gunzipSync(fs.readFileSync(p)).toString().trim().split('\n').filter(Boolean).map(s=>JSON.parse(s));
@@ -28,7 +29,6 @@ const predictions=read(rawDir+'predictions_log.jsonl.gz').sort((a,b)=>a.predicte
 const raw=read(rawDir+'raw_positions.jsonl.gz').sort((a,b)=>a.collected_at-b.collected_at||a.bus_id-b.bus_id);
 const dedup=new Map<string,any>();for(const p of predictions){const key=[p.predicted_at,p.bus_name,p.route_id,p.to_stop_id].join('|');if(!dedup.has(key)||p.surface==='trip')dedup.set(key,p);}
 const preds=[...dedup.values()].sort((a,b)=>a.predicted_at-b.predicted_at);
-const names=new Set(preds.filter(p=>p.predicted_at>=cutoff).map(p=>p.bus_name));
 
 function replay(raw:any[],preds:any[]){
  const states:any=new Map(),visits:any=new Map(),histories=new Map<string,Map<number,any>>(),warm=new Map<string,any>(),latches=new Map<string,Map<string,number>>();
@@ -44,7 +44,7 @@ function replay(raw:any[],preds:any[]){
     for(const name of warm.keys())ledger.reset(name,time,'original evaluation lead-in boundary');
     states.clear();visits.clear();histories.clear();warm.clear();latches.clear();didBoundaryReset=true;
    }
-   const obs=group.filter(r=>time<lead||names.has(r.bus_name)).map(r=>({busId:r.bus_id,busName:r.bus_name,routeId:r.route_id,lat:r.lat,lon:r.lon,heading:r.heading,lastStopId:r.last_stop_id??null,collectedAt:time}));
+   const obs=group.map(r=>({busId:r.bus_id,busName:r.bus_name,routeId:r.route_id,lat:r.lat,lon:r.lon,heading:r.heading,lastStopId:r.last_stop_id??null,collectedAt:time}));
    const plan=planTracks(obs);
    const providerNames=new Map<number,Set<string>>();
    for(const o of obs){let ns=providerNames.get(o.busId);if(!ns)providerNames.set(o.busId,ns=new Set());ns.add(o.busName);}
@@ -71,8 +71,8 @@ function replay(raw:any[],preds:any[]){
     const index=phase==='hold'?v.pass.stopIndex:v?.transit?.fromIndex??-1;
     const began=phase==='hold'?v.pass.arrivedAt:v?.transit?.departedAt??Infinity;
     const n=routes.get(s.routeId)?.stops.length??0;
+    if(phase&&index>=0)ledger.state(s.busName,index,phase,time);
     if(!phase||index<0||!h||!w||time-w.first<600000)continue;
-    ledger.state(s.busName,index,phase,time);
     let ls=latches.get(name);if(!ls)latches.set(name,ls=new Map());
     for(const wait of waits[s.routeId]??[])for(const k of ks){
      if(k>=n)continue;const source=(wait-k+n)%n,origin=h.get(source),release=h.get(wait);
@@ -94,8 +94,14 @@ function replay(raw:any[],preds:any[]){
  }
  return{rows,ledger,consumed:cursor};
 }
-const full=replay(raw,preds),expected=read(canon+'features.jsonl.gz');
-const controls=full.rows.filter(r=>r.at>=cutoff).map(({families,...row})=>row);assert.deepEqual(controls,expected);
+const expected=read(canon+'features.jsonl.gz');
+function validateLegacy(){
+ const pp=preds.filter(p=>p.predicted_at>=cutoff),names=new Set(pp.map(p=>p.bus_name));
+ const pr=raw.filter(r=>r.collected_at>=lead&&names.has(r.bus_name));
+ const control=legacyReplay(net,top,waits,pr,pp,45);assert.deepEqual(control.rows,expected);return control.rows.length;
+}
+const exactOriginalFeatures=validateLegacy(),full=replay(raw,preds);
+const experimentalChanges=full.rows.filter(r=>r.at>=cutoff).reduce((n,{families,...row},i)=>n+Number(JSON.stringify(row)!==JSON.stringify(expected[i])),0);
 const checks:any[]=[];
 for(const fraction of [.25,.5,.75]){
  const end=expected[Math.floor(expected.length*fraction)].at;
@@ -105,6 +111,7 @@ for(const fraction of [.25,.5,.75]){
 }
 write('features',full.rows);write('physical-sources',full.ledger.events);write('source-rejections',full.ledger.rejected);write('source-resets',full.ledger.resets);
 for(const[p,h]of Object.entries(pins))assert.equal(sha(p),h);
-const audit={planSha256:sha(here+'PLAN.md'),pins,exactOriginalFeatures:controls.length,allSampledFeatures:full.rows.length,consumed:full.consumed,
+const audit={planSha256:sha(here+'PLAN.md'),pins,exactOriginalFeatures,experimentalFullPollFeatureDifferences:experimentalChanges,
+ allSampledFeatures:full.rows.length,consumed:full.consumed,
  strictPhysicalSources:full.ledger.events.length,prefixChecks:checks,eofClosures:0,providerInterpretation:'Observed IDs only, not proven physical vehicle identity'};
 fs.writeFileSync(out+'materialization-audit.json',JSON.stringify(audit,null,2)+'\n');console.log(JSON.stringify(audit));

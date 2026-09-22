@@ -21,6 +21,8 @@ export class Families {
     const reasons=physicalReasons(e,at,this.routes);
     if(!accepted)reasons.push('not inserted into causal model history');
     if(e.anchorBusId!==e.busId)reasons.push('source anchor/emission provider differs');
+    const epochBegan=this.epochBegan.get(e.busName)??at;
+    if([e.pinnedAt,e.arrivedAt,e.departedAt].some(t=>t<epochBegan))reasons.push('physical source begins before experimental continuity epoch');
     if(reasons.length){this.rejected.push({name:e.busName,route:e.routeId,index:e.stopIndex,at,reasons});return;}
     const n=this.routes.get(e.routeId).stops.length;
     const event={id:sourceId(e,at),name:e.busName,route:e.routeId,index:e.stopIndex,stop:e.stopId,
@@ -45,7 +47,8 @@ export class Families {
       // Multiple same-index departures remain separately identified. The query
       // resolver must prove the unique upcoming target, never pick latest index.
       fs.push({id:JSON.stringify([event.id,k,wait]),route:e.routeId,k,wait,epoch:event.epoch,
-        epochBegan:this.epochBegan.get(e.busName)??at,sources:{[k]:event},progress:0,last:event,releasedAt:null,invalid:null});
+        epochBegan:this.epochBegan.get(e.busName)??at,sources:{[k]:event},progress:0,last:event,
+        phaseProgress:0,phaseIndex:event.index,releasedAt:null,invalid:null});
     }
     // Expired families never revive. Keep the latest rejected family per cell
     // for honest fallback reasons while preserving every still-live traversal.
@@ -59,6 +62,12 @@ export class Families {
       if(f.invalid)continue;
       if(at-f.sources[f.k].departed>2700000){f.invalid='required source expired45min';continue;}
       const n=this.routes.get(f.route).stops.length;
+      const hop=dist(f.phaseIndex,index,n);
+      if(hop>5){f.invalid='ambiguous causal phase progression';continue;}
+      f.phaseProgress+=hop;f.phaseIndex=index;
+      // A fixed whole group cannot continue after its first physical pickup.
+      // Raw phase evidence retires it even if no strict departure is emitted.
+      if(f.phaseProgress>=f.k+1){f.invalid='first fixed-group pickup reached';continue;}
       if(!f.releasedAt&&(dist(f.sources[f.k].index,index,n)>f.k||index===f.wait&&phase==='drive'))f.releasedAt=at;
     }
   }

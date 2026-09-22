@@ -16,6 +16,9 @@ f.state('public',10,'drive',100000);assert.equal(membership(row(10,100000),f.sna
 assert.equal(membership(row(10,100000),f.snapshot('public'),10,5,20,true).reason,'release known; wait departure not strictly confirmed');
 f.emission(event(10,100000),101000,true);r=membership(row(10,101000),f.snapshot('public'),10,5,20,true);assert(r.supported);assert.deepEqual(r.offsets,[0,1,2,3,4,5]);
 f.state('public',10,'hold',102000);assert.equal(membership(row(10,102000,'hold'),f.snapshot('public'),10,5,20).supported,false);
+for(let i=11;i<20;i++)f.state('public',i,'drive',102000+i*1000);
+for(let i=0;i<=10;i++)f.state('public',i,'drive',122000+i*1000);
+assert.equal(membership(row(10,140000),f.snapshot('public'),10,5,20,true).reason,'first fixed-group pickup reached');
 f.state('public',11,'drive',2800000);assert.equal(membership(row(11,2800000),f.snapshot('public'),10,5,20,true).supported,false);
 f=build();f.emission(event(5,10000),11000,true);f.emission(event(7,20000),21000,true);
 assert.equal(membership(row(7,22000),f.snapshot('public'),10,5,20).reason,'missing middle physical source');
@@ -29,4 +32,5 @@ assert.equal(membership({...row(5,12000),anchorIndex:7,stopsAhead:5},fs,10,5,20)
 assert.equal(membership(row(5,12000),[{...fs[0],epochBegan:10000}],10,5,20).reason,'experimental continuity epoch below10min');
 assert.equal(membership(row(5,10500),fs,10,5,20).supported,false);
 f.reset('public',12000,'gap');assert.equal(f.snapshot('public').length,0);
+f.emission(event(5,11000),14000,true);assert.equal(f.snapshot('public').length,0);
 console.log('Causal source membership fixtures passed; no EOF closure method exists');
