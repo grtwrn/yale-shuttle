@@ -27,6 +27,11 @@ initially and when health build changes. A health bracket is evidence, not proof
 that no intermediate deploy occurred. Record exact URLs and hashes; do not infer
 an unrecorded client bundle or splice old/new server responses into one poll.
 Slow requests cause explicit missed scheduled ticks, not fabricated snapshots.
+Release metadata is fetched serially before that tick's fleet request. Its
+bounded asset work can cause missing fleet ticks; these gaps remain unknown in
+the replay, including missing scenario starts. Failed HTML/module capture is
+retried on later health checks for the same build. No missing asset is assumed
+to equal the repository source or an older captured bundle.
 
 An invocation requires a new output directory and explicit UTC end time. Initial
 recording will end at2026-09-30T04:30Z, with3GiB maximum stored capture bytes and a

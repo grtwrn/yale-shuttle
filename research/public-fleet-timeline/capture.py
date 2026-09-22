@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Bounded, read-only public response capture; never computes an ETA or outcome."""
 import argparse
+from contextlib import contextmanager
 import datetime as dt
 import gzip
 import hashlib
+import http.client
 from html.parser import HTMLParser
 import json
 import math
@@ -66,6 +68,33 @@ class StopCapture(Exception):
     pass
 
 
+class RequestDeadlineExceeded(TimeoutError):
+    pass
+
+
+class RequestCancelled(Exception):
+    pass
+
+
+@contextmanager
+def request_budget(seconds):
+    """Standalone Unix process: interrupt slow DNS/connect/body I/O as well."""
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    previous_timer = signal.getitimer(signal.ITIMER_REAL)
+    began = time.monotonic()
+    def expired(_signal, _frame):
+        raise RequestDeadlineExceeded()
+    signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, max(0.000001, seconds))
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_timer[0] > 0:
+            signal.setitimer(signal.ITIMER_REAL, max(0.000001, previous_timer[0] - (time.monotonic() - began)), previous_timer[1])
+
+
 class NoRedirects(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -86,6 +115,7 @@ class Capture:
         self.release_checks = 0
         self.release_retry = True
         self.stop_requested = False
+        self.in_request = False
         self.opener = urllib.request.build_opener(NoRedirects())
         self.manifest = dict(schema=1, base=BASE, startedAt=utc(), until=until.isoformat(),
                              status='running', transportOnly=True, outcomesEvaluated=False,
@@ -138,29 +168,49 @@ class Capture:
         record = dict(kind=kind, url=url, requestedAt=utc(), requestMonotonic=time.monotonic(),
                       transportComplete=False, status=None, headers={}, readComplete=False)
         chunks, count, response, error_type = [], 0, None, None
+        budget = min(10, (self.until - dt.datetime.now(UTC)).total_seconds())
+        expires = record['requestMonotonic'] + budget
         try:
             req = urllib.request.Request(url, headers={'Accept-Encoding': 'identity',
                                                        'User-Agent': 'Yale-shuttle-window-research/1'})
-            try:
-                response = self.opener.open(req, timeout=10)
-            except urllib.error.HTTPError as error:
-                response = error
-            with response:
-                record['status'] = response.getcode()
-                record['headers'] = {k: response.headers.get(k) for k in
-                    ('Date', 'Content-Type', 'Content-Encoding', 'Content-Length', 'ETag', 'Cache-Control')}
-                while count <= BODY_LIMIT:
-                    chunk = response.read(min(65536, BODY_LIMIT + 1 - count))
-                    if not chunk:
-                        record['readComplete'] = True
-                        break
-                    chunks.append(chunk)
-                    count += len(chunk)
-                if count > BODY_LIMIT:
-                    error_type = 'BodyLimitExceeded'
+            self.in_request = True
+            with request_budget(budget):
+                try:
+                    response = self.opener.open(req, timeout=max(0.000001, budget))
+                except urllib.error.HTTPError as error:
+                    response = error
+                with response:
+                    record['status'] = response.getcode()
+                    record['headers'] = {k: response.headers.get(k) for k in
+                        ('Date', 'Content-Type', 'Content-Encoding', 'Content-Length', 'ETag', 'Cache-Control')}
+                    read = getattr(response, 'read1', response.read)
+                    while count <= BODY_LIMIT:
+                        if self.stop_requested:
+                            raise RequestCancelled()
+                        if time.monotonic() >= expires or dt.datetime.now(UTC) >= self.until:
+                            raise RequestDeadlineExceeded()
+                        try:
+                            chunk = read(min(65536, BODY_LIMIT + 1 - count))
+                        except http.client.IncompleteRead as error:
+                            chunks.append(error.partial)
+                            count += len(error.partial)
+                            raise
+                        if not chunk:
+                            record['readComplete'] = True
+                            break
+                        chunks.append(chunk)
+                        count += len(chunk)
+                    if count > BODY_LIMIT:
+                        error_type = 'BodyLimitExceeded'
+                    length = record['headers'].get('Content-Length')
+                    if record['readComplete'] and length is not None:
+                        if not length.isdecimal() or int(length) != count:
+                            record['readComplete'] = False
+                            error_type = 'ContentLengthMismatch'
         except Exception as error:
             error_type = type(error).__name__
         finally:
+            self.in_request = False
             record.update(receivedAt=utc(), receivedMonotonic=time.monotonic())
         body = b''.join(chunks)[:BODY_LIMIT]
         record.update(bodyBytes=len(body), bodySha256=digest(body), errorType=error_type)
@@ -271,6 +321,8 @@ def main(argv=None):
     capture = Capture(args.output, args.until, args.max_bytes, args.minimum_free_bytes)
     def stop(_signal, _frame):
         capture.stop_requested = True
+        if capture.in_request:
+            raise RequestCancelled()
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     capture.run()

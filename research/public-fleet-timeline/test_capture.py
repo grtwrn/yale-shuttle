@@ -1,6 +1,7 @@
 import datetime as dt
 import gzip
 import hashlib
+import http.client
 import importlib.util
 import io
 import json
@@ -92,7 +93,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(entry['errorType'], 'TimeoutError')
         self.assertEqual(body, b'')
         response = Response(b'')
-        with patch.object(response, 'read', side_effect=[b'first', TimeoutError()]), patch.object(self.cap.opener, 'open', return_value=response):
+        with patch.object(response, 'read1', side_effect=[b'first', TimeoutError()]), patch.object(self.cap.opener, 'open', return_value=response):
             entry, body, _ = self.cap.request(c.BASE + '/api/buses', 'fleet')
         self.assertEqual(body, b'first')
         self.assertFalse(entry['readComplete'])
@@ -103,6 +104,39 @@ class Tests(unittest.TestCase):
         self.assertEqual(body, b'12345')
         self.assertEqual(entry['errorType'], 'BodyLimitExceeded')
         self.assertFalse(entry['transportComplete'])
+
+    def test_content_length_and_incomplete_read_partial_are_not_successful(self):
+        entry, body, _ = self.request(b'{"buses":[]}', headers={'Content-Length': '100'})
+        self.assertFalse(entry['transportComplete'])
+        self.assertEqual(entry['errorType'], 'ContentLengthMismatch')
+        response = Response(b'')
+        with patch.object(response, 'read1', side_effect=[b'first', http.client.IncompleteRead(b'partial', 40)]), \
+             patch.object(self.cap.opener, 'open', return_value=response):
+            entry, body, _ = self.cap.request(c.BASE + '/api/buses', 'fleet')
+        self.assertEqual(body, b'firstpartial')
+        self.assertFalse(entry['transportComplete'])
+        self.assertEqual(entry['errorType'], 'IncompleteRead')
+
+    def test_slow_chunks_and_stop_request_preserve_partial_evidence(self):
+        state = {'mono': 0.0}
+        response = Response(b'')
+        def slow_read(size):
+            state['mono'] += 4
+            return b'part'
+        with patch.object(c.time, 'monotonic', side_effect=lambda: state['mono']), \
+             patch.object(response, 'read1', side_effect=slow_read), patch.object(self.cap.opener, 'open', return_value=response):
+            entry, body, _ = self.cap.request(c.BASE + '/api/buses', 'fleet')
+        self.assertEqual(body, b'partpartpart')
+        self.assertEqual(entry['errorType'], 'RequestDeadlineExceeded')
+        self.assertFalse(entry['transportComplete'])
+        response = Response(b'')
+        def stopping(size):
+            self.cap.stop_requested = True
+            return b'part'
+        with patch.object(response, 'read1', side_effect=stopping), patch.object(self.cap.opener, 'open', return_value=response):
+            entry, body, _ = self.cap.request(c.BASE + '/api/buses', 'fleet')
+        self.assertEqual(body, b'part')
+        self.assertEqual(entry['errorType'], 'RequestCancelled')
 
     def test_encoding_is_preserved_not_silently_decoded(self):
         wire = gzip.compress(b'{"buses":[]}', mtime=0)
@@ -141,6 +175,10 @@ class Tests(unittest.TestCase):
     def test_storage_and_free_space_limits_stop_before_request(self):
         self.cap.max_bytes = c.RESERVE - 1
         with patch.object(self.cap.opener, 'open') as op, self.assertRaisesRegex(c.StopCapture, 'capture-byte-limit'):
+            self.cap.request(c.BASE + '/api/buses', 'fleet')
+        op.assert_not_called()
+        self.cap.max_bytes = 2**25
+        with patch.object(c.shutil, 'disk_usage', return_value=SimpleNamespace(free=0)), self.assertRaisesRegex(c.StopCapture, 'filesystem-free-limit'):
             self.cap.request(c.BASE + '/api/buses', 'fleet')
 
     def test_failed_module_capture_retries_same_build_on_next_health_check(self):
@@ -207,10 +245,6 @@ class Tests(unittest.TestCase):
         self.assertEqual(sum(r['kind'] == 'fleet' for r in records), 1)
         self.assertEqual(slow.manifest['skippedTicks'], 2)
         self.assertEqual([r['skippedTicks'] for r in records if r['kind'] == 'schedule-gap'], [2])
-        op.assert_not_called()
-        self.cap.max_bytes = 2**25
-        with patch.object(c.shutil, 'disk_usage', return_value=SimpleNamespace(free=0)), self.assertRaisesRegex(c.StopCapture, 'filesystem-free-limit'):
-            self.cap.request(c.BASE + '/api/buses', 'fleet')
 
     def test_response_that_exceeds_remaining_storage_leaves_explicit_metadata(self):
         self.cap.max_bytes = c.RESERVE + 100
