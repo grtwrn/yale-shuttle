@@ -41,3 +41,11 @@ the separate archive-coverage gate characterizes GPS availability, prediction
 sampling and unknown service. No day is discarded because its outcome is poor.
 All promotion gates in PLAN.md remain in force, including subsequent unseen
 dates. No production parameter or UI change is made by this workflow.
+
+Pre-score audit: production repairs some published route sequences. The
+generator quarantines entire routes with any frozen/runtime sequence mismatch,
+preserving the rejected rows and both sequences for investigation. This run
+also keeps deployed fallback for any route with repeated stop IDs because the
+inherited target lookup chooses the first occurrence. Those routes are
+**untested**, not negative K results. A subsequent study must use canonical
+runtime topology and occurrence identities consistently throughout the pipeline.

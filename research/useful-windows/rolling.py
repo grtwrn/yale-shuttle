@@ -18,6 +18,8 @@ OUT = HERE / 'rolling-results'
 FROZEN = ev.CUTOFF
 KS = ev.KS
 ARMS = [f'{mode}_K{k}' for mode in ('frozen', 'rolling') for k in KS]
+REPEATED_STOP_ROUTES = {rid: route.get('name', str(rid)) for rid, route in ev.ROUTES.items()
+    if len(set(route['stops'])) != len(route['stops'])}
 
 
 def cutoff_for(day):
@@ -223,7 +225,11 @@ def main():
             for mode, model in (('frozen', frozen), ('rolling', rolling)):
                 for k in KS:
                     arm = f'{mode}_K{k}'
-                    result = model.predict(feature, f'K{k}')
+                    if r['route'] in REPEATED_STOP_ROUTES:
+                        result = dict(forecast=r['deployed'], changed=False,
+                            reason='repeated-stop occurrences not yet supported')
+                    else:
+                        result = model.predict(feature, f'K{k}')
                     f = result['forecast']
                     if result['changed']:
                         # Match the production wire's Math.round for nonnegative
@@ -248,7 +254,9 @@ def main():
     scored = [dict(r, label=labels[key(r)]['label'], truth=labels[key(r)]['truth']) for r in generated if key(r) in labels]
     enriched = [dict(r, label=labels[key(r)]['label'] if key(r) in labels else None) for r in generated]
     write('forecasts', scored)
-    summary = dict(training=training, routes={}, refreshComparisons={}, note='Reused diagnostic dates; no automatic promotion',
+    summary = dict(training=training, routes={}, refreshComparisons={},
+        unsupportedRepeatedStopRoutes=REPEATED_STOP_ROUTES,
+        note='Reused diagnostic dates; no automatic promotion. Quarantined/repeated-stop routes are untested, not failed models.',
         snapshots=len(generated), scoredSnapshots=len(scored), unmatchedSnapshots=len(generated)-len(scored))
     for rid in ev.ROUTES:
         rs = [r for r in scored if r['route'] == rid]
