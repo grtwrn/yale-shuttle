@@ -80,3 +80,12 @@ The next attempt records progress/memory and streams complete event lines to
 disk, comparing them exactly (including four future-prefix checks) before
 compression. This changes storage and observability only; all scientific
 inputs, adapter bytes, cohorts and halt gates remain fixed.
+
+Instrumented run35690278294 finished both replays at roughly625MB RSS, then
+was cancelled during the whole-stream baseline assertion, again without an
+assertion report/artifact. Static inspection found this workflow omitted the
+original canonical workflow's TZ=America/New_York. visitRowsOf derives dow/hour
+from process TZ. Restore that exact original execution contract and assert it
+explicitly; compare rows individually to bound any mismatch diagnostics. The
+physical guard and its gates are unchanged. Runner cancellation itself does not
+establish the asserted cause; the corrected hosted control must still pass.

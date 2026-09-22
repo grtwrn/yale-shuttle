@@ -18,10 +18,11 @@ const topology=JSON.parse(fs.readFileSync(frozen+'canonical-topology.json','utf8
 const network=TransitNetwork.build(topology.stops,topology.routes);
 const windows:any[]=[];
 function progress(stage:string,detail:Record<string,unknown>={}){
- const entry={at:new Date().toISOString(),stage,...detail,memory:process.memoryUsage()};
+ const entry={loggedAt:new Date().toISOString(),stage,...detail,memory:process.memoryUsage()};
  console.log(JSON.stringify(entry));
  fs.appendFileSync(out+'execution-progress.jsonl',JSON.stringify(entry)+'\n');
 }
+assert.equal(process.env.TZ,'America/New_York','Replay must match the canonical ET visit-row contract');
 progress('loading-inputs');
 const hash=(p:string)=>createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 assert.equal(hash('research/brown-directed/guard.ts'),'472c2e7a5babebcb3e2d31736aa4d3ddb013d11bb73ebd157d3daf65719719f6');
@@ -68,7 +69,11 @@ async function compressEvents(log:EventLog){
 }
 function emit(name:string,rows:any[]){fs.writeFileSync(out+name+'.jsonl.gz',zlib.gzipSync(rows.map(r=>JSON.stringify(r)).join('\n')+(rows.length?'\n':'')));}
 function signature(r:any){return Object.fromEntries(Object.entries(r).filter(([k])=>k!=='id'&&!k.startsWith('replay_')));}
-function visitKey(r:any){return [r.bus_name,r.route_id,r.stop_index,r.anchored_at].join('|');}
+// Bound assertion diagnostics to one record, never an entire archived stream.
+function assertRows(actual:any[],expected:any[],label:string,project=(r:any)=>r){
+ assert.equal(actual.length,expected.length,label+' row count');
+ for(let i=0;i<actual.length;i++)assert.deepEqual(project(actual[i]),project(expected[i]),`${label} row ${i}`);
+}
 function replay(observations:BusObservation[],protectedArm:boolean,name:string,diagnostic=true) {
   progress('replay-start',{name,observations:observations.length});
   const states=new Map<string,BusState>(),visits=new Map<string,VisitState>();
@@ -139,7 +144,7 @@ function replay(observations:BusObservation[],protectedArm:boolean,name:string,d
   return {rows,decisions,traces,events,audit:{polls,observations:observations.length,duplicates,perRoute,eofClosures:0}};
 }
 const baseline=replay(raw,false,'baseline'),candidate=replay(raw,true,'candidate');
-assert.deepEqual(baseline.rows.map(signature),frozenRows.map(signature),'Baseline differs from frozen canonical visits');
+assertRows(baseline.rows,frozenRows,'Baseline differs from frozen canonical visits',signature);
 emit('baseline-visits',baseline.rows);emit('candidate-visits',candidate.rows);
 progress('baseline-canonical-identity-passed');
 emit('guard-decisions',candidate.decisions);
@@ -180,7 +185,7 @@ const prefixes=[];
 for(const cutoff of [Date.parse('2026-09-16T04:00:00Z'),Date.parse('2026-09-19T04:00:00Z'),
  Date.parse('2026-09-18T10:14:45-04:00'),Date.parse('2026-09-18T10:17:15-04:00')]){
  const prefix=replay(raw.filter(o=>o.collectedAt<cutoff),true,'prefix-'+cutoff,false);
- assert.deepEqual(prefix.rows,candidate.rows.filter(r=>r.known_at<cutoff));
+ assertRows(prefix.rows,candidate.rows.filter(r=>r.known_at<cutoff),'Future-prefix visits');
  const eventCheck=await compareEvents(prefix.events,candidate.events,false,cutoff);
  prefixes.push({cutoff,visits:prefix.rows.length,events:eventCheck.count,eventSha256:eventCheck.sha256});
  await compressEvents(prefix.events);
