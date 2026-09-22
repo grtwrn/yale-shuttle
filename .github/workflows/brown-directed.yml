@@ -1,0 +1,38 @@
+name: brown-directed-physical-parity
+on:
+  push:
+    branches: [research/brown-directed-parity-2026-09-22]
+    paths: ['research/brown-directed/**', '.github/workflows/brown-directed.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/brown-directed/input/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - name: Brown-only physical parity gates; halt before scoring on discrepancy
+        run: services/shuttle-v2/node_modules/.bin/tsx research/brown-directed/parity.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brown-directed-parity
+          path: research/brown-directed/results/**
+          retention-days: 90
