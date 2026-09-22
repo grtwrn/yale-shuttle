@@ -34,7 +34,8 @@ export class Families {
     const event={id:sourceId(e,at),name:e.busName,route:e.routeId,index:e.stopIndex,stop:e.stopId,
       provider:e.busId,departed:e.departedAt,knownAt:at,arrived:e.arrivedAt,pinned:e.pinnedAt,
       epoch:this.epochs.get(e.busName)??0,occurrenceProof};
-    this.events.push(event);let fs=this.current.get(e.busName)??[];
+    if(occurrenceProof)Object.freeze(occurrenceProof);
+    Object.freeze(event);this.events.push(event);let fs=this.current.get(e.busName)??[];
     for(const f of fs){
       if(f.invalid||f.route!==e.routeId)continue;
       if(at-f.sources[f.k].departed>2700000){f.invalid='required source expired45min';continue;}
@@ -77,7 +78,8 @@ export class Families {
       if(!f.releasedAt&&(dist(f.sources[f.k].index,index,n)>f.k||index===f.wait&&phase==='drive'))f.releasedAt=at;
     }
   }
-  snapshot(name:string){return JSON.parse(JSON.stringify(this.current.get(name)??[]));}
+  // Source records never mutate; copy only mutable family state/membership.
+  snapshot(name:string){return(this.current.get(name)??[]).map(f=>({...f,sources:{...f.sources}}));}
 }
 
 export function membership(row:any,families:any[],wait:number,k:number,n:number,extension=false){

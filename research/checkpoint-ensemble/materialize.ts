@@ -34,7 +34,7 @@ const preds=[...dedup.values()].sort((a,b)=>a.predicted_at-b.predicted_at);
 
 function replay(raw:any[],preds:any[]){
  const states:any=new Map(),visits:any=new Map(),histories=new Map<string,Map<number,any>>(),warm=new Map<string,any>(),latches=new Map<string,Map<string,number>>();
- const ledger=new Families(routes,waits),progress=new ProgressLedger(routes),progressTimes=new Map<string,number>();
+ const ledger=new Families(routes,waits),progress=new ProgressLedger(routes),progressTimes=new Map<string,number>(),observedSignatures=new Map<string,string>();
  ledger.onReset=(name,at,epoch)=>{progress.reset(name,at,epoch);progressTimes.set(name,at);};
  const rows:any[]=[];let cursor=0,didBoundaryReset=false;
  const observe=(key:string,s:any)=>{
@@ -42,6 +42,10 @@ function replay(raw:any[],preds:any[]){
   // reset. It is no observation in the new epoch, not evidence to retimestamp.
   if(s.lastObservedAt<(progressTimes.get(s.busName)??-Infinity))return;
   const v=visits.get(key),pass=v?.pass??null,index=pass?.stopIndex??v?.transit?.fromIndex??-1;
+  const observerKey=JSON.stringify([s.busName,s.busId]),signature=JSON.stringify([ledger.epochs.get(s.busName),s.routeId,s.lastObservedAt,index,
+   pass?.anchoredAt,pass?.pinnedAt,pass?.arrivedAt,pass?.closestAt,pass?.anchorBusId]);
+  if(observedSignatures.get(observerKey)===signature)return;
+  observedSignatures.set(observerKey,signature);
   progress.observe(s.busName,s.routeId,s.busId,index,pass?'pass':v?.transit?'drive':'unknown',s.lastObservedAt,pass);
   progressTimes.set(s.busName,s.lastObservedAt);
  };
@@ -130,11 +134,19 @@ function validateLegacy(){
 const exactOriginalFeatures=validateLegacy(),full=replay(raw,preds);
 const experimentalChanges=full.rows.filter(r=>r.at>=cutoff).reduce((n,{families,ensemble,...row},i)=>n+Number(JSON.stringify(row)!==JSON.stringify(expected[i])),0);
 const checks:any[]=[];
+function exactRows(a:any[],b:Iterable<any>,label:string){
+ let i=0;for(const row of b){assert(i<a.length,`${label}: extra full-prefix record`);assert.deepEqual(a[i],row,`${label} record ${i}`);i++;}
+ assert.equal(i,a.length,`${label}: prefix length`);
+}
+function* before(rows:any[],field:string,end:number){for(const row of rows)if(row[field]<=end)yield row;}
 for(const fraction of [.25,.5,.75]){
  const end=expected[Math.floor(expected.length*fraction)].at;
  const pr=raw.filter(r=>r.collected_at<=end),pp=preds.filter(p=>p.predicted_at<=end),prefix=replay(pr,pp);
- assert.deepEqual(prefix.rows,full.rows.filter(r=>r.at<=end));
- assert.deepEqual(prefix.ledger.events,full.ledger.events.filter(e=>e.knownAt<=end));
+ exactRows(prefix.rows,before(full.rows,'at',end),'forecast features');
+ exactRows(prefix.ledger.events,before(full.ledger.events,'knownAt',end),'physical sources');
+ exactRows(prefix.progress.records,before(full.progress.records,'observedAt',end),'observed pins');
+ exactRows(prefix.progress.resets,before(full.progress.resets,'at',end),'occurrence resets');
+ exactRows(prefix.progress.rejections,before(full.progress.rejections,'at',end),'occurrence rejections');
  checks.push({end,rows:prefix.rows.length,raw:pr.length,exact:true});
 }
 for(const[p,h]of Object.entries(pins))assert.equal(sha(p),h);
