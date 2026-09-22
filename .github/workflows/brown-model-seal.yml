@@ -6,6 +6,9 @@ on:
 permissions:
   contents: read
   actions: read
+concurrency:
+  group: sealed-frozen-brown-model
+  cancel-in-progress: true
 jobs:
   seal:
     runs-on: ubuntu-latest

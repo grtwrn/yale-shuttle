@@ -168,7 +168,7 @@ def main():
           exactReloadedFit=True, deletedFuturePrefixExact=True,
           prospectiveObservationsRead=0, performanceLabelsRead=0, newParameters=0))
     sealed_files = {str(p.relative_to(OUT)): file_sha(p) for p in sorted(OUT.rglob('*')) if p.is_file()}
-    manifest = dict(schema=1, training='frozen', K=8, trainBefore=FROZEN,
+    manifest = dict(schema=1, kind='sealed', training='frozen', K=8, trainBefore=FROZEN,
         builtAt=int(dt.datetime.now(dt.timezone.utc).timestamp()*1000), validFrom=VALID_FROM, validUntil=VALID_UNTIL,
         protocolSha256=PROTOCOL_SHA, topologySha256=TOPOLOGY_SHA, pathsSha256=sealed_files['paths.json'],
         rawPrefixSha256=raw_hash, knownAtPrefixSha256=known_hash,

@@ -9,7 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 TOPOLOGY_SHA = 'eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc'
-PROTOCOL_SHA = 'dab34ef70d12d90ea61a2cd44a58b130ad512e0b010cba4cc332005937b2518b'
+PROTOCOL_SHA = '4d1e09bd3cb41762a11e19a7de49bcfb8d8c479b44b3354a845df1b6c8f82742'
 FROZEN = 1789531200000
 VALID_FROM = 1790136000000
 VALID_UNTIL = 1790742600000
@@ -77,7 +77,7 @@ def load(directory, expected_artifact_id):
     identity = dict(manifest)
     artifact_id = identity.pop('artifactId')
     assert artifact_id == expected_artifact_id == sha(canonical(identity))
-    assert manifest['schema'] == 1 and manifest['training'] == 'frozen' and manifest['K'] == 8
+    assert manifest['schema'] == 1 and manifest['kind'] == 'sealed' and manifest['training'] == 'frozen' and manifest['K'] == 8
     assert manifest['trainBefore'] == FROZEN
     assert manifest['validFrom'] == VALID_FROM and manifest['validUntil'] == VALID_UNTIL
     assert isinstance(manifest['builtAt'], int) and not isinstance(manifest['builtAt'], bool)
