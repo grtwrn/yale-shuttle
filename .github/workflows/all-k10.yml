@@ -1,0 +1,32 @@
+name: all-route-k10-research
+on:
+  push:
+    branches: [research/all-k10-2026-09-21]
+    paths: ['research/all-k10/**', '.github/workflows/all-k10.yml']
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - run: python3 research/all-k10/prepare.py
+      - name: Recover causal states on every published route
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx research/all-k10/replay.ts
+      - name: Evaluate the fixed broad K10 arm
+        env:
+          BLUE_MAX_PATH_SECONDS: '5400'
+        run: python3 research/all-k10/evaluate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: all-k10-results
+          path: research/all-k10/results
+          retention-days: 90
