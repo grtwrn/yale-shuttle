@@ -55,3 +55,25 @@ with the response adapter and retain all hashes, source code, exclusions and
 gate evidence. Rolling exports for later days require separately sealed raw
 inputs and the same predeclared daily embargo; this first build is not a claim
 that a daily schedule or the prospective end-to-end pipeline is already running.
+
+## Pre-seal provider-field correction, September22
+
+The input-only gate at318be10 found one original K5 path, already from September16:
+#126 leaves Science Park at11:04:19ET and arrives again11:46:34ET. All504 raw
+observations in the original training-quality bracket use provider66423. Its
+target arrival/anchor also uses66423, but the closing visit is emitted at12:03:59
+under66443. The collector explicitly retains `anchor_bus_id` across an ID
+reissue; `visit.bus_id` is the provider at closing/emission, not necessarily at
+arrival. An extra equality assertion between closing row IDs therefore tested
+the wrong time span. Diagnostic run35695968897 preserves the failure and data.
+
+Before sealing, replace that extra assertion with explicit verification of the
+unchanged original quality interval: source departure through target arrival.
+For every mismatch require one raw provider over that bracket, matching the
+source ID and target anchor ID, and prove all observed transitions to the target
+closing ID occur after target arrival. Otherwise halt. Preserve the entire
+original physical/knownAt multiset, source/target IDs, pools, fits, cutoffs and
+post-arrival transition evidence; discard or relabel nothing. Do not claim the
+later wait stayed under one provider or infer physical vehicle identity from
+the service identifier. Rider boarding outcomes still need their own continuity
+through departure; this training-input clarification does not relax that gate.

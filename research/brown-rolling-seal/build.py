@@ -80,7 +80,6 @@ def evidence(model, visits):
             assert a < b
             middle = grouped[key][a+1:b]
             assert all(v['arrived_at'] <= v['departed_at'] <= v['known_at'] < CUTOFF for v in [s,*middle,t])
-            assert s['bus_id'] == t['bus_id']
             row = {k:v for k,v in p.items() if k not in ('sourceId','targetId')}
             row.update(cell=cell, source=physical(s), target=physical(t))
             identities.append(row)
@@ -89,13 +88,14 @@ def evidence(model, visits):
     return sorted(map(canonical,identities)),full
 
 
-def audit_provider_rows(model, visits, raw):
-    """Expose an identity gate failure; never repair paths or infer continuity."""
+def audit_provider_rows(model, visits, raw, quality):
+    """Prove original path-span continuity; closing IDs are not arrival IDs."""
     by_id={v['id']:v for v in visits}
     mismatches=[]
     for cell in CELLS:
         for p in model.paths.get(cell,[]):
             s,t=by_id[p['sourceId']],by_id[p['targetId']]
+            assert quality.ok(p['bus'],19,p['start'],p['end']), 'Original provider/route/gap/speed gate failed'
             if s['bus_id'] != t['bus_id']:
                 mismatches.append(dict(cell=cell,path=p,source=s,target=t))
     mismatches.sort(key=lambda r:(r['path']['start'],r['path']['end'],r['cell']))
@@ -103,7 +103,8 @@ def audit_provider_rows(model, visits, raw):
     tracks={name:sorted((r for r in raw if r['bus_name']==name),key=lambda r:r['collected_at']) for name in names}
     times={name:[r['collected_at'] for r in rows] for name,rows in tracks.items()}
     examples=[]
-    for row in mismatches[:25]:
+    unresolved=[]
+    for row in mismatches:
         name=row['path']['bus'];rows,ts=tracks[name],times[name]
         clocks=dict(sourceDeparture=row['source']['departed_at'],targetArrival=row['target']['arrived_at'],
                     targetDeparture=row['target']['departed_at'],targetKnownAt=row['target']['known_at'])
@@ -111,17 +112,29 @@ def audit_provider_rows(model, visits, raw):
         lo=max(0,bisect.bisect_right(ts,clocks['sourceDeparture'])-1)
         hi=min(len(rows)-1,bisect.bisect_left(ts,clocks['targetArrival']))
         quality_span=rows[lo:hi+1]
-        examples.append(dict(row,rawWindows=windows,originalQualityBracket=dict(
+        known_hi=min(len(rows)-1,bisect.bisect_left(ts,clocks['targetKnownAt']))
+        transitions=[dict(previous=a,current=b) for a,b in zip(rows[lo:known_hi+1],rows[lo+1:known_hi+1]) if a['bus_id']!=b['bus_id']]
+        providers={r['bus_id'] for r in quality_span}
+        resolved=(len(providers)==1 and row['source']['bus_id'] in providers
+                  and row['target']['anchor_bus_id'] in providers
+                  and rows[known_hi]['bus_id']==row['target']['bus_id']
+                  and bool(transitions)
+                  and all(change['previous']['collected_at']>=clocks['targetArrival'] for change in transitions))
+        if not resolved:unresolved.append(dict(cell=row['cell'],source=row['source']['id'],target=row['target']['id']))
+        examples.append(dict(row,rawWindows=windows,postArrivalProviderTransitions=transitions,
+            pathSpanProviderContinuous=resolved,originalQualityBracket=dict(
             first=quality_span[0],last=quality_span[-1],rows=len(quality_span),
-            providerIds=sorted({r['bus_id'] for r in quality_span}),routes=sorted({r['route_id'] for r in quality_span}))))
+            providerIds=sorted(providers),routes=sorted({r['route_id'] for r in quality_span}))))
     result=dict(pathMismatches=len(mismatches),uniquePairs=len({(r['source']['id'],r['target']['id']) for r in mismatches}),
                 allPairs=[dict(cell=r['cell'],source=r['source']['id'],target=r['target']['id'],
                                sourceProvider=r['source']['bus_id'],targetProvider=r['target']['bus_id']) for r in mismatches],
-                examples=examples,exampleRule='first25chronological mismatched paths; no performance labels',
-                modelSealed=False,gateUnchanged=True)
+                examples=examples[:25],exampleRule='first25chronological mismatched paths; every mismatch checked; no performance labels',
+                unresolved=unresolved,originalPathQualityUnchanged=True,
+                identityContract='raw provider continuity from source departure through target arrival; target closing ID may change afterward',
+                modelSealed=False)
     write('provider-identity-audit.json',result)
     print(json.dumps(dict(providerPathMismatches=len(mismatches),uniquePairs=result['uniquePairs'])))
-    assert not mismatches, 'HALT: inspect provider-identity-audit.json; no model sealed'
+    assert not unresolved, 'HALT: unresolved path provider evidence; no model sealed'
 
 
 def main():
@@ -151,7 +164,7 @@ def main():
     admitted = [v for v in old if c.rr.available(v,CUTOFF)]
     guard_admitted = [v for v in new if c.rr.available(v,CUTOFF)]
     raw_prefix = [r for r in raw if r['collected_at'] < CUTOFF]
-    audit_provider_rows(original,admitted,raw_prefix)
+    audit_provider_rows(original,admitted,raw_prefix,c.rr.TrainingQuality(raw_prefix))
     a,full_evidence = evidence(original,admitted)
     b,_ = evidence(guarded,guard_admitted)
     assert a == b, 'HALT: original and guarded physical path identities differ'
