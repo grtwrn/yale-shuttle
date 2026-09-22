@@ -31,6 +31,12 @@ jobs:
           run-id: 35677536788
           github-token: ${{ github.token }}
           path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: window-only-results
+          run-id: 35685527686
+          github-token: ${{ github.token }}
+          path: research/brown-directed/input/window
       - name: Brown-only physical parity gates; halt before scoring on discrepancy
         run: /usr/bin/time -v services/shuttle-v2/node_modules/.bin/tsx research/brown-directed/parity.ts
         env:
@@ -41,9 +47,28 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
       - name: Exact physical training paths and fits before any scoring
         run: /usr/bin/time -v python3 research/brown-directed/model-parity.py
+      - name: Existing window and reminder invariants
+        run: |
+          python3 -m unittest discover -s research/window-only -p 'test_*.py' -v
+          python3 research/useful-windows/rider_risk.py --self-test
+      - name: Original lead controls then persist forecasts before frozen labels
+        run: python3 research/brown-directed/study.py
+      - name: Production rendering and causal handoffs
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/brown-directed/printed.ts
+          python3 research/brown-directed/handoffs.py
+      - name: Same-visit actions and reminder rendering parity
+        run: |
+          ln -s ../../k-sweep/results/raw_positions.jsonl.gz research/brown-directed/results/raw_positions.jsonl.gz
+          python3 research/useful-windows/rider_risk.py research/brown-directed/results
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/brown-directed/results/rider-risk
+          python3 research/brown-directed/actions.py
+          sha256sum --check research/brown-directed/results/immutable-inputs.sha256
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: brown-directed-parity
-          path: research/brown-directed/results/**
+          path: |
+            research/brown-directed/results/**
+            !research/brown-directed/results/raw_positions.jsonl.gz
           retention-days: 90

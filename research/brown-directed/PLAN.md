@@ -103,3 +103,15 @@ stage1, before feature evaluation begins. Compare normalized physical training
 paths at every original frozen/daily cutoff and numerical fit/support outputs
 for both fixed Ks over all target groups. No outcome labels or scores are read
 in either feature or model-parity stage.
+
+Hosted stage2 run35691066135 at1f9a334 passed:2032 original Brown evaluation
+features,42193 non-Brown features,343 actual Brown source emissions and four
+source/feature-prefix checks; normalized physical paths and1352 numerical
+fit/support comparisons at all four original cutoffs are identical. The final
+stage first reproduces original forecasts/evidence/hybrids, persists all four
+unscored arms, and only then attaches byte-identical original label/baseline
+projections. It preserves every original input artifact hash, compares the
+shared four-arm union/full Brown denominator/original lead union, and retains
+raw, production-printed, fixed-visit action and causal-handoff checks. Same-point
+and same-visit action parity does not establish app route-ranking or selection
+invariance; the root agent audits that separate limitation. No new dates.
