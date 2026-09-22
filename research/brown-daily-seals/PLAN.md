@@ -1,7 +1,8 @@
 # Daily Brown K5 sealing: implementation and execution prespec
 
-Pinned September22,2026, before new fitting or scheduling. This is a review
-plan; the generic daily builder/controller is not implemented or launched.
+Pinned September22,2026, before new fitting or scheduling. This was the review
+plan at e42bb7b/b7a823c. Implementation and hosted-only gates are now described
+in RESULTS.md; no new-day request, fit or timer has been launched.
 Branch `research/brown-daily-seals-2026-09-22` starts at the immutable Sep23
 seal report `6546241`. Root requested this scope and commands before new fits.
 

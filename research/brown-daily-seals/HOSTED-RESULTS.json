@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "implementation": "51adecc7bc580deab59695cc1583c61ecb3bdccf",
+  "runId": 35784902440,
+  "runConclusion": "success",
+  "resultsArtifact": {
+    "id": 10719178205,
+    "bytes": 8922,
+    "digest": "sha256:830ca641e844856e01f006e8af06158d91720a5a3d0466aba181facdf756c628",
+    "createdAt": "2026-09-22T21:13:15Z"
+  },
+  "implementationManifestSha256": "b4de2cb36da836217bb3687f8049505bb79cdf1002d599b5187acb9b44030d0c",
+  "pinnedFiles": 106,
+  "fixtureCount": 21,
+  "fixtureSeconds": 2.35,
+  "calendarExpressionsPassed": 2,
+  "normalizationRows": 179751,
+  "sameReducerInputs": true,
+  "rawObservations": 1667721,
+  "fixturePackageSha256": "d91f4b12c6a4b443ed315dbb99d696cfa4772a731a4a2ada4b32fba10fb6f78d",
+  "normalizedInputSha256": "3acb7d8586d38ffd08b96e4cb152a0e9dcc7dbf95dece1d16a32289aab7afb4a",
+  "brown": {
+    "anchorOnly": 145,
+    "baselineByStop": {
+      "0": 101,
+      "1": 92,
+      "2": 92,
+      "3": 93,
+      "4": 93,
+      "5": 94,
+      "6": 94,
+      "7": 92,
+      "8": 88
+    },
+    "baselinePhysical": 839,
+    "baselineTotal": 991,
+    "candidateByStop": {
+      "0": 101,
+      "1": 92,
+      "2": 92,
+      "3": 93,
+      "4": 93,
+      "5": 94,
+      "6": 94,
+      "7": 92,
+      "8": 88
+    },
+    "candidatePhysical": 839,
+    "candidateTotal": 845,
+    "discrepancyByStop": {},
+    "discrepancyKeys": 0,
+    "firstDiscrepancy": null,
+    "matchedPhysical": 839,
+    "metadataDifferences": 0
+  },
+  "nonBrownEventCount": 274800,
+  "nonBrownEventIdentity": true,
+  "nonBrownEventSha256": "36344a17f9eefdb4914ae238773a5161db074e0826b2aecd51f40b9dc2a515cc",
+  "prefixChecks": [
+    {
+      "cutoff": 1789531200000,
+      "eventSha256": "3e32756e9243481b27869ddbe888b3781cf2a731c3c41c3dfc81ec1c0d7a0b8c",
+      "events": 132501,
+      "protectedArm": false,
+      "visits": 27743
+    },
+    {
+      "cutoff": 1789963200000,
+      "eventSha256": "a5edf80a88f5ebd557c1b77df49e322d71bd82bac3616bdf48029338df49fe7d",
+      "events": 246807,
+      "protectedArm": false,
+      "visits": 51581
+    },
+    {
+      "cutoff": 1790006400000,
+      "eventSha256": "c4d12a8baee8b29b4de7b6b2a29f8828f2541aefb271ba87c6d12837f10951d9",
+      "events": 260425,
+      "protectedArm": false,
+      "visits": 54388
+    },
+    {
+      "cutoff": 1789531200000,
+      "eventSha256": "0a63468bd186aa33c513494dce37287eedc0a9db2a2571431b4d99491f623a39",
+      "events": 132461,
+      "protectedArm": true,
+      "visits": 27684
+    },
+    {
+      "cutoff": 1789963200000,
+      "eventSha256": "05d3a91279549a549418e34f8d5f2db663b4042aa58df64e676fa08774b0008d",
+      "events": 246719,
+      "protectedArm": true,
+      "visits": 51460
+    },
+    {
+      "cutoff": 1790006400000,
+      "eventSha256": "b62b2d8c1461c903ede186cfa2a24a66c325baa9660ee7f479475ca64b7bc505",
+      "events": 260325,
+      "protectedArm": true,
+      "visits": 54255
+    }
+  ],
+  "strictPhysicalSourceParity": true,
+  "sourceLedgerCount": 830,
+  "guardSha256": "472c2e7a5babebcb3e2d31736aa4d3ddb013d11bb73ebd157d3daf65719719f6",
+  "originalReplayRun": 35696391115,
+  "originalReplayArtifactId": 10680881133,
+  "originalStreamEquality": {
+    "baseline-events.jsonl.gz": "7697f17205500d7ec0d328c41e7720fa16e75e5948e87691fabbffccf002ab71",
+    "baseline-visits.jsonl.gz": "762c7b03d1685de90ea3f71d5a0e6a5e09b881fa3d2ff32527db96ec144a7e7b",
+    "candidate-events.jsonl.gz": "e50f984a8c81d4aca9e28d273dd6a79bb258b5547bf10b954edc9a1dd3440a1e",
+    "candidate-visits.jsonl.gz": "5ea3d0737eeb726d862d120a12e0a1a60d5a9ebd5bb92fac91d68dccad573fcb"
+  },
+  "resources": {
+    "command": [
+      "/opt/hostedtoolcache/Python/3.12.14/x64/bin/python3",
+      "/home/runner/work/yale-shuttle/yale-shuttle/research/brown-daily-seals/sealing.py",
+      "--normalization-fixture"
+    ],
+    "peakAggregateRssBytes": 1465483264,
+    "peakProcesses": 5,
+    "peakScratchBytes": 974446592,
+    "rssLimit": 6442450944,
+    "scratchLimit": 12884901888,
+    "deadlineSeconds": 3300,
+    "rssSamplingSeconds": 0.1,
+    "scratchSamplingSeconds": 2,
+    "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+    "limitViolation": null,
+    "exitCode": 0,
+    "elapsedSeconds": 132.675140488,
+    "waitedChildCpuSeconds": {
+      "user": 134.925068,
+      "system": 3.450225
+    }
+  },
+  "transport": {
+    "actualSealPublished": false,
+    "artifactCreatedAt": "2026-09-22T21:10:55Z",
+    "artifactDigest": "sha256:d327369c798cb72023ad41bae8e705cb959d9a9339f0f55d0ad20e158759ae46",
+    "artifactId": 10718914351,
+    "bodySha256": "53a061a91ac3dabe871f31cedfbcb047d732a8ba6f94b4befecd6acd4eebbe2c",
+    "kind": "synthetic-not-a-model",
+    "modelFitted": false,
+    "preparedAt": 1790111454518,
+    "runAttempt": 1,
+    "runId": 35784902440,
+    "status": "passed",
+    "verifiedReceiptAt": 1790111456493
+  },
+  "newModelsFitted": 0,
+  "newRawDaysRead": [],
+  "forecastOutcomeScores": 0,
+  "realRequestsCreated": 0,
+  "timersActivated": 0
+}
