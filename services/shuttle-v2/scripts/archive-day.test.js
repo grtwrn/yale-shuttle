@@ -199,7 +199,7 @@ describe("stream framing", () => {
     trailers.raw_positions = trailer;
     expect((await fetchTable(opts.base, opts.token, day, "raw_positions")).complete).toBe(false);
   });
-  it.each([[gps(3)], [{ end: true, rows: 2 }]])("rejects any data after the trailer: %j", async suffix => {
+  it.each([{ suffix: [gps(3)] }, { suffix: [{ end: true, rows: 2 }] }])("rejects any data after the trailer: %j", async ({ suffix }) => {
     extra.raw_positions = suffix;
     await expect(fetchTable(opts.base, opts.token, day, "raw_positions")).rejects.toThrow("data after trailer");
   });
