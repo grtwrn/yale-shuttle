@@ -57,10 +57,16 @@ def spool(prefix, seal, output, proofs):
                 utc = event['record']['at']
             else:
                 utc = event.get('receivedAtUtc', event.get('observedReceiptUtc'))
+            # iter_capture only yields timestamps already parsed as explicit UTC
+            # by iter_verified. Missing/malformed UTC is an integrity failure,
+            # whereas clockUnsafe is parseable but noncausal wall ordering.
             at = micros(utc)
             safe = not event.get('clockUnsafe', event.get('releaseEvidence', {}).get('status') == 'clock_unsafe')
             if unsafe is None and not safe:
                 unsafe = dict(sequence=event['sequence'], lastSafe=coverage, observedUtc=utc)
+            # The decoder is sticky too; enforce a permanent frontier here so
+            # no later restored-looking timestamp can extend causal coverage.
+            safe = safe and unsafe is None
             if safe:
                 coverage = dict(sequence=event['sequence'], atUs=at, atUtc=utc)
             if 'id' in event:
@@ -87,6 +93,7 @@ def spool(prefix, seal, output, proofs):
         database.close()
     result = dict(schema=1, syntheticOnly=True, outcomes=False, captureId=capture_id,
                   identity=identity, prefixSha256=seal, verification=complete,
+                  coverageStart=dict(atUtc=manifest['startedAt'], atUs=micros(manifest['startedAt'])),
                   coverage=coverage, clockUnsafeBoundary=unsafe, events=count,
                   distinctFleetBodies=len(bodies), syntheticGenerator=marker)
     result['databaseSha256'], result['databaseBytes'] = file_hash(output/'events.sqlite')

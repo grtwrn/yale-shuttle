@@ -97,7 +97,15 @@ def make(output, assets, start, seconds):
                 at = int(epoch.timestamp()*1000)+tick*15000+700
                 if tick%4 == 0:
                     capture.release()
-                state['fleet'] = encoded(payload(topology,tick,at))
+                data = payload(topology,tick,at)
+                if seconds == 60 and tick == 2:
+                    # Fixed large-legal-body integration stress, never used to
+                    # change the full-schedule workload or physical forecasts.
+                    data['research_synthetic_padding'] = ''
+                    padding = 15*1024**2//2-len(encoded(data))
+                    d.require(padding > 0, 'Static workload exceeds stress target')
+                    data['research_synthetic_padding'] = 'x'*padding
+                state['fleet'] = encoded(data)
                 d.require(len(state['fleet']) <= d.BODY_LIMIT, 'Synthetic body exceeds recorder bound')
                 capture.request(c.BASE+'/api/buses','fleet')
             capture.manifest.update(status='stopped',stopReason='synthetic-end',finishedAt=utc())

@@ -416,6 +416,22 @@ class CaptureInputTests(unittest.TestCase):
         with self.assertRaises(d.IntegrityError):si.spool(*prefix,out,[])
         self.assertFalse((out/'ready.json').exists())
 
+    def test_spool_clock_unsafe_is_parseable_and_permanent(self):
+        self.request();self.t=15;self.request();self.t=30;self.request()
+        prior=(EPOCH-dt.timedelta(seconds=1)).isoformat()
+        prefix=self.rewrite(self.freeze(),lambda rows:rows[1].update(requestedAt=prior,receivedAt=prior))
+        (prefix[0]/'synthetic-input.json').write_text('{"syntheticOnly":true,"outcomes":false}')
+        result=si.spool(*prefix,self.root/'unsafe-spool',[])
+        self.assertEqual(result['clockUnsafeBoundary']['sequence'],1)
+        self.assertEqual(result['coverage']['sequence'],0)
+        self.assertEqual(result['coverage'],result['clockUnsafeBoundary']['lastSafe'])
+        for bad in [None,'not a UTC clock']:
+            malformed=self.rewrite(self.freeze(),lambda rows:rows[1].update(receivedAt=bad))
+            (malformed[0]/'synthetic-input.json').write_text('{"syntheticOnly":true,"outcomes":false}')
+            out=self.root/f'malformed-spool-{self.counter}'
+            with self.assertRaises(d.IntegrityError):si.spool(*malformed,out,[])
+            self.assertFalse((out/'ready.json').exists())
+
 
 if __name__ == '__main__':
     suite=unittest.defaultTestLoader.loadTestsFromTestCase(CaptureInputTests)

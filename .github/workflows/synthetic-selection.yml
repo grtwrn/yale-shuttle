@@ -34,9 +34,19 @@ jobs:
           git show bae23b33211c73589ede784bf32d3485124874d1:research/public-fleet-timeline/capture.py > research/synthetic-selection/results/recorder.py
       - name: Verify synthetic immutable prefixes and causal release knowledge
         run: python3 research/synthetic-selection/test_capture_input.py
+      - name: Verify aggregate child resource enforcement and failed-shard denominators
+        run: python3 research/synthetic-selection/test_resource_guard.py
       - name: Component and policy parity (synthetic only)
         working-directory: services/shuttle-v2
         run: npx vitest run --config ../../research/synthetic-selection/vitest.config.ts
+      - name: Rebuild the exact proven frontend assets for synthetic capture integration
+        run: |
+          docker build --target web --tag synthetic-shuttle-web services/shuttle-v2
+          docker create --name synthetic-shuttle-web-files synthetic-shuttle-web
+          docker cp synthetic-shuttle-web-files:/app/web/dist research/synthetic-selection/results/baseline-assets
+          docker rm synthetic-shuttle-web-files
+      - name: Exact recorder to spool to component integration with large legal body
+        run: python3 research/synthetic-selection/benchmark.py integration 0
       - name: Assert production source unchanged
         if: always()
         run: git diff --exit-code -- services/shuttle-v2

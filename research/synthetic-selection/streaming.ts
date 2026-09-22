@@ -46,6 +46,7 @@ export interface Timeline {
   fleets:(startUs:number,endUs:number)=>Iterable<any>;
   release:(id:string)=>any;
   body:(receipt:any)=>any;
+  observations?:(startUs:number,endUs:number)=>Iterable<any>;
 }
 export class DiskTimeline implements Timeline {
   metadata:any;database:any;root:string;
@@ -60,6 +61,10 @@ export class DiskTimeline implements Timeline {
   *fleets(startUs:number,endUs:number){
     const stop=this.metadata.clockUnsafeBoundary?.sequence??Number.MAX_SAFE_INTEGER;
     for(const row of this.database.prepare("SELECT event_json FROM events WHERE kind='fleet-receipt' AND at_us>=? AND at_us<=? AND sequence<? ORDER BY sequence").iterate(startUs,endUs,stop))yield JSON.parse(row.event_json);
+  }
+  *observations(startUs:number,endUs:number){
+    const stop=this.metadata.clockUnsafeBoundary?.sequence??Number.MAX_SAFE_INTEGER;
+    for(const row of this.database.prepare("SELECT event_json FROM events WHERE kind IN ('fleet-receipt','schedule-gap') AND at_us>=? AND at_us<=? AND sequence<? ORDER BY sequence").iterate(startUs,endUs,stop))yield JSON.parse(row.event_json);
   }
   release(id:string){const row=this.database.prepare('SELECT event_json FROM releases WHERE id=?').get(id);return row?JSON.parse(row.event_json):null;}
   body(receipt:any){
@@ -108,7 +113,7 @@ export function encode(value:any):any {
 }
 export class JsonlSink implements EventSink {
   rawBytes=0;rows=0;maxBuffered=0;maxRowBytes=0;failed:any=null;
-  rawHash=createHash('sha256');gzip=createGzip({level:6});file:any;done:Promise<void>;path:string;
+  rawHash=createHash('sha256');gzip=createGzip({level:6,highWaterMark:16384});file:any;done:Promise<void>;path:string;
   constructor(path:string,readonly context:any,readonly maxBytes=512*1024*1024){
     this.path=path;this.file=createWriteStream(path,{flags:'wx',highWaterMark:65536});
     this.done=pipeline(this.gzip,this.file).catch(error=>{this.failed=error;});
@@ -134,11 +139,16 @@ export async function runStreamingEpisode(episode:Episode,timeline:Timeline,cloc
   const unsafeUs=unsafe?.lastSafe?.atUs??(unsafe?-Infinity:Infinity);
   const limitUs=Math.min(horizonUs,coverage,unsafeUs);
   const base:any={...episode,scenarioId:episode.scenario.id,captureId:timeline.metadata.captureId,prefixSha256:timeline.metadata.prefixSha256,
+    generatingRouteId:episode.scenario.generatingRouteId,generatingRouteName:episode.scenario.generatingRouteName,
     initialStatus:'unselected',versionStatus:'not_evaluated',executionStatus:'not_started',
     coverageStatus:unsafeUs<=horizonUs?'clock_unknown':coverage<horizonUs?'unfinished_horizon':'complete',
-    scheduledHorizon:episode.horizon,knownThrough:null,strictIdentityKnown:false,assumptionRequired:true};
+    scheduledHorizon:episode.horizon,knownThrough:null,strictIdentityKnown:false,assumptionRequired:true,
+    inputCounts:{applied:0,failed:0,skippedSlots:0,emptyFleet:0,missingServerEta:0,modelParamsMissing:0}};
   delete base.scenario;
   const done=async()=>{sink.event({type:'episode_terminal',...base});await sink.flush();return base;};
+  if(!Number.isSafeInteger(timeline.metadata.coverageStart?.atUs)||timeline.metadata.coverageStart.atUs>startUs){
+    base.initialStatus='initial_window_uncovered';base.initialCoverageReason='capture_started_after_scheduled_start_or_unknown';return done();
+  }
   if(limitUs<startUs){base.initialStatus=unsafeUs<startUs?'initial_input_unknown':'initial_window_uncovered';return done();}
   let initial:any,payload:any;
   for(const receipt of timeline.fleets(startUs,Math.min(startUs+30_000_000,limitUs))){
@@ -157,11 +167,20 @@ export async function runStreamingEpisode(episode:Episode,timeline:Timeline,cloc
   const initialAt=utcClock(initial.receivedAtUtc).ms;
   await clock.advance(initialAt-clock.now());
   const session=await mountSelection({reference,scenario:episode.scenario,payload,clock,profile:episode.profile,sink,retainEvents:false});
+  const countBody=(body:any)=>{base.inputCounts.applied++;if(body.buses.length===0)base.inputCounts.emptyFleet++;
+    if(!body.server_eta)base.inputCounts.missingServerEta++;if(body.model_params==null)base.inputCounts.modelParamsMissing++;};
+  countBody(payload);
   base.executionStatus='running';base.knownThrough={sequence:initial.sequence,originalUtc:initial.receivedAtUtc,at:initialAt};
   sink.event({type:'episode_initial',receipt:initial.id,at:clock.now(),snapshot:session.snapshot()});await sink.flush();
   try{
-    for(const receipt of timeline.fleets(initial.atUs,limitUs)){
+    const observations=timeline.observations?timeline.observations(initial.atUs,limitUs):timeline.fleets(initial.atUs,limitUs);
+    for(const receipt of observations){
       if(receipt.sequence<=initial.sequence)continue;
+      if(receipt.event==='schedule-gap'){
+        const at=utcClock(receipt.originalAtUtc).ms;await session.advanceTo(at);
+        base.inputCounts.skippedSlots+=receipt.record.skippedTicks;
+        sink.event({type:'schedule_gap',sequence:receipt.sequence,originalUtc:receipt.originalAtUtc,at,skippedSlots:receipt.record.skippedTicks});await sink.flush();continue;
+      }
       const at=utcClock(receipt.receivedAtUtc).ms;
       await session.advanceTo(at);
       if(receipt.status==='unknown'||receipt.replayAdmissible===false){
@@ -171,7 +190,8 @@ export async function runStreamingEpisode(episode:Episode,timeline:Timeline,cloc
         sink.event({type:'episode_known_prefix',at:clock.now(),snapshot:session.snapshot()});return await done();
       }
       sink.event({type:'receipt',id:receipt.id,originalUtc:receipt.receivedAtUtc,at,releaseStateId:receipt.releaseStateId,status:receipt.status,bodySha256:receipt.bodySha256});
-      if(receipt.status==='failure'||!receipt.complete)await session.fail();else await session.receive(timeline.body(receipt));
+      if(receipt.status==='failure'||!receipt.complete){base.inputCounts.failed++;await session.fail();}
+      else{const body=timeline.body(receipt);countBody(body);await session.receive(body);}
       base.knownThrough={sequence:receipt.sequence,originalUtc:receipt.receivedAtUtc,at};
     }
     const terminalAt=Math.floor(limitUs/1000);

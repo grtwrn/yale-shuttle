@@ -23,7 +23,7 @@ function frame(sequence:number,utc:string,body=feed(utcClock(utc).ms)){
   return {receipt,state};
 }
 function timeline(frames:any[],coverageUs=HORIZON*1000,unsafe:any=null):Timeline{
-  return {metadata:{captureId:capture,prefixSha256:'d'.repeat(64),coverage:{atUs:coverageUs},clockUnsafeBoundary:unsafe},
+  return {metadata:{captureId:capture,prefixSha256:'d'.repeat(64),coverageStart:{atUs:START*1000-1_000_000},coverage:{atUs:coverageUs},clockUnsafeBoundary:unsafe},
     *fleets(a,b){for(const f of frames)if(f.receipt.atUs>=a&&f.receipt.atUs<=b&&f.receipt.sequence<(unsafe?.sequence??Infinity))yield f.receipt;},
     release:id=>frames.find(f=>f.state.id===id)?.state,body:r=>r.body};
 }
@@ -66,6 +66,12 @@ describe('streaming baseline schedule, clocks, uncertainty and component parity'
   it('distinguishes uncovered initial windows from observed missing starts',async()=>{
     expect((await runStreamingEpisode(episode,timeline([],START*1000+10_000_000),clock,sink())).initialStatus).toBe('initial_window_uncovered');
     expect((await runStreamingEpisode(episode,timeline([]),clock,sink())).initialStatus).toBe('missing_initial_response');
+  });
+  it('cannot infer the first initial receipt from a capture that began after the scheduled start',async()=>{
+    const input=timeline([frame(0,'2026-09-23T16:00:15Z')]);input.metadata.coverageStart={atUs:START*1000+5_000_000};
+    const result=await runStreamingEpisode(episode,input,clock,sink());
+    expect(result.initialStatus).toBe('initial_window_uncovered');expect(result.initialReceipt).toBeUndefined();
+    expect(result.scheduledHorizon).toBe(HORIZON);expect(result.id).toBe(episode.id);
   });
   it('stops unknown input without failure, continuation or a second arm',async()=>{
     const first=frame(0,'2026-09-23T16:00:00.000777Z'),unknown=frame(1,'2026-09-23T16:00:15.000777Z'),later=frame(2,'2026-09-23T16:00:30Z');
