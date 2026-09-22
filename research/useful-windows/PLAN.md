@@ -31,7 +31,7 @@ agreement filtering alone already produced a misleading Orange K8 gain.
 
 Selection and promotion must separately evaluate width, MAE, early-bound misses
 (any, >30/>60/>120 seconds), late-tail misses, total coverage, false-now,
-adjacent-stop ordering and handoff jumps. Candidate must narrow mean width at
+adjacent-stop ordering of point and both bounds, and handoff jumps. Candidate must narrow mean width at
 least 60 seconds, worsen MAE by no more than20 seconds, retain >=80% total
 coverage with <=2 percentage points loss, introduce no early miss >60 seconds,
 raise overall early-miss rate by no more than1 percentage point, and introduce

@@ -2,7 +2,7 @@
 import collections,gzip,json,math,statistics as st,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'k-sweep'))
-from evaluate import IN,ROUTES,Models,Quality,read,clock,weekend,q,TEST,date,CUTOFF
+from evaluate import IN,ROUTES,Models,Quality,read,clock,weekend,q,TEST,date,CUTOFF,valid
 DEST=Path(__file__).resolve().parent/'results';DEST.mkdir(exist_ok=True)
 SCOPES={3:(10,14,list(range(15,29))),1:(10,24,None),16:(10,0,None),14:(10,0,None),15:(8,0,None)}
 ARMS=['checkpoint_refit','hold_survival','hold_pace120','hold_pace240','hold_pace120_keep_early']
@@ -18,7 +18,7 @@ for rid,(k,w,targets) in SCOPES.items():
  common=set.intersection(*(set(es) for es in cells.values()));trips=[]
  for sid in sorted(common):
   source=by_id[sid];start=source['departed_at'];first_end=min(cells[ti][sid]['end'] for ti in targets)
-  waits=[v for v in by_bus[source['bus_name'],rid] if v['stop_index']==w and v['arrived_at']>=start and v['departed_at'] is not None and v['departed_at']<=first_end and v['how']!='gap' and v['outcome'] in ('passed','stopped')]
+  waits=[v for v in by_bus[source['bus_name'],rid] if v['stop_index']==w and valid(v) and v['arrived_at']>=start and v['departed_at'] is not None and v['departed_at']<=first_end and v['how']!='gap' and v['outcome'] in ('passed','stopped')]
   if len(waits)!=1:continue
   wait=waits[0];elapsed=(wait['arrived_at']-start)/1000;hold=(wait['departed_at']-wait['arrived_at'])/1000
   if hold<0:continue
@@ -54,11 +54,11 @@ def group(r,arm):
  forecasts={}
  for ti in targets:
   target=ROUTES[rid]['stops'][ti]
-  values=[max(0,t['total'][target]-elapsed) if mode=='checkpoint_refit' else max(0,t['hold']-held+t['post'][target]) for t in endpoints]
-  mean=sum(v*weight for v,weight in zip(values,weights))/total
+  values=[t['total'][target]-elapsed if mode=='checkpoint_refit' else t['hold']-held+t['post'][target] for t in endpoints]
+  mean=max(0,sum(v*weight for v,weight in zip(values,weights))/total)
   if mean<=60:
    cache[key]=(None,'whole group near expiry');return cache[key]
-  forecasts[target]=dict(eta=mean,low=min(mean,q(values,.1,weights)),high=max(mean,q(values,.9,weights)))
+  forecasts[target]=dict(eta=mean,low=min(mean,max(0,q(values,.1,weights))),high=max(mean,q(values,.9,weights)))
  cache[key]=(forecasts,'conditional wait');return cache[key]
 def predict(r,arm):
  old=r['deployed'];e=r['deployedEvidence'];rid=r['route']
@@ -98,14 +98,14 @@ def metrics(rows,arm):
 def ordering(rows,arm):
  groups=collections.defaultdict(list)
  for r in rows:groups[r['at'],r['bus'],r['route']].append(r)
- pairs=0;new=0
+ pairs=0;new={field:0 for field in ('eta','low','high')}
  for rs in groups.values():
   rs=sorted(rs,key=lambda r:r['stopsAhead'])
   for a,b in zip(rs,rs[1:]):
    if not 0<a['stopsAhead']<b['stopsAhead']:continue
    pairs+=1
-   new+=forecast(a,arm)['eta']>forecast(b,arm)['eta']+30 and a['deployed']['eta']<=b['deployed']['eta']+30
- return dict(pairs=pairs,introducedReversals=int(new))
+   for field in new:new[field]+=forecast(a,arm)[field]>forecast(b,arm)[field]+30 and a['deployed'][field]<=b['deployed'][field]+30
+ return dict(pairs=pairs,introducedReversals={field:int(count) for field,count in new.items()})
 summary=dict(training=support,routes={},note='Diagnostic reused dates; promotion requires new temporal data and action-risk checks')
 for rid in ROUTES:
  rs=[r for r in scored if r['route']==rid];arms={}
