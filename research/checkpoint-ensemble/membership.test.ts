@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {Families,membership} from './membership.ts';
+const routes=new Map([[1,{stops:Array.from({length:20},(_,i)=>100+i)}]]),waits={1:[10]};
+const event=(i:number,t:number)=>({kind:'visit',busName:'public',routeId:1,busId:1,anchorBusId:1,stopIndex:i,stopId:100+i,
+  pinnedAt:t-2000,arrivedAt:t-2000,departedAt:t,outcome:'stopped',how:'departed'});
+const row=(index:number,t:number,phase='drive')=>({ready:true,targetIndex:12,anchorIndex:index,stopsAhead:12-index,
+  route:1,at:t,asof:t,began:t,index,nearest:index,phase});
+const build=()=>{const f=new Families(routes,waits);f.reset('public',-600000,'fixture warm epoch');f.identity('public',1,0);return f;};
+let f=build();f.emission(event(5,10000),11000,true);
+let r=membership(row(5,11000),f.snapshot('public'),10,5,20);assert(r.supported);assert.deepEqual(r.offsets,[5]);
+f.emission(event(6,20000),21000,true);r=membership(row(6,21000),f.snapshot('public'),10,5,20);assert.deepEqual(r.offsets,[4,5]);
+assert.equal(membership(row(7,22000),f.snapshot('public'),10,5,20).supported,false);
+assert.equal(membership(row(7,22000,'hold'),f.snapshot('public'),10,5,20).supported,true);
+for(let i=7;i<=9;i++)f.emission(event(i,i*10000),i*10000+1000,true);
+f.state('public',10,'drive',100000);assert.equal(membership(row(10,100000),f.snapshot('public'),10,5,20).reason,'released/live');
+assert.equal(membership(row(10,100000),f.snapshot('public'),10,5,20,true).reason,'release known; wait departure not strictly confirmed');
+f.emission(event(10,100000),101000,true);r=membership(row(10,101000),f.snapshot('public'),10,5,20,true);assert(r.supported);assert.deepEqual(r.offsets,[0,1,2,3,4,5]);
+f.state('public',10,'hold',102000);assert.equal(membership(row(10,102000,'hold'),f.snapshot('public'),10,5,20).supported,false);
+f.state('public',11,'drive',2800000);assert.equal(membership(row(11,2800000),f.snapshot('public'),10,5,20,true).supported,false);
+f=build();f.emission(event(5,10000),11000,true);f.emission(event(7,20000),21000,true);
+assert.equal(membership(row(7,22000),f.snapshot('public'),10,5,20).reason,'missing middle physical source');
+f=build();f.emission({...event(5,10000),departedAt:null},11000,true);assert.equal(f.snapshot('public').length,0);
+f.emission(event(5,12000),13000,false);assert.equal(f.snapshot('public').length,0);
+f.emission(event(5,14000),15000,true);f.identity('public',2,16000);assert.equal(f.snapshot('public').length,0);
+f=build();f.emission(event(5,10000),11000,true);const fs=f.snapshot('public');
+assert.equal(membership(row(5,12000),[fs[0],{...fs[0],id:'ambiguous-other'}],10,5,20).reason,'ambiguous overlapping physical traversals');
+assert.equal(membership({...row(5,12000),targetIndex:null},fs,10,5,20).supported,false);
+assert.equal(membership({...row(5,12000),anchorIndex:7,stopsAhead:5},fs,10,5,20).reason,'phase/nearest/logged target anchors disagree');
+assert.equal(membership(row(5,12000),[{...fs[0],epochBegan:10000}],10,5,20).reason,'experimental continuity epoch below10min');
+assert.equal(membership(row(5,10500),fs,10,5,20).supported,false);
+f.reset('public',12000,'gap');assert.equal(f.snapshot('public').length,0);
+console.log('Causal source membership fixtures passed; no EOF closure method exists');
