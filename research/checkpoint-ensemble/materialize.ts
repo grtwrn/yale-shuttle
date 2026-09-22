@@ -7,6 +7,7 @@ import {stepManyWithVisits} from '../../services/shuttle-v2/src/collector/depart
 import {resolveOccurrence} from '../canonical-windows/occurrence.ts';
 import {Families,membership,SIZES} from './membership.ts';
 import {replay as legacyReplay} from '../source-retention/replay.ts';
+import {ProgressLedger} from './progress.ts';
 const here=new URL('.',import.meta.url).pathname,out=here+'results/';
 const rawDir=here+'../k-sweep/results/',canon=here+'../canonical-windows/results/';
 const read=(p:string)=>zlib.gunzipSync(fs.readFileSync(p)).toString().trim().split('\n').filter(Boolean).map(s=>JSON.parse(s));
@@ -33,12 +34,25 @@ const preds=[...dedup.values()].sort((a,b)=>a.predicted_at-b.predicted_at);
 
 function replay(raw:any[],preds:any[]){
  const states:any=new Map(),visits:any=new Map(),histories=new Map<string,Map<number,any>>(),warm=new Map<string,any>(),latches=new Map<string,Map<string,number>>();
- const ledger=new Families(routes,waits);const rows:any[]=[];let cursor=0,didBoundaryReset=false;
+ const ledger=new Families(routes,waits),progress=new ProgressLedger(routes),progressTimes=new Map<string,number>();
+ ledger.onReset=(name,at,epoch)=>{progress.reset(name,at,epoch);progressTimes.set(name,at);};
+ const rows:any[]=[];let cursor=0,didBoundaryReset=false;
+ const observe=(key:string,s:any)=>{
+  // A renamed/inactive retained legacy state may predate an explicit observer
+  // reset. It is no observation in the new epoch, not evidence to retimestamp.
+  if(s.lastObservedAt<(progressTimes.get(s.busName)??-Infinity))return;
+  const v=visits.get(key),pass=v?.pass??null,index=pass?.stopIndex??v?.transit?.fromIndex??-1;
+  progress.observe(s.busName,s.routeId,s.busId,index,pass?'pass':v?.transit?'drive':'unknown',s.lastObservedAt,pass);
+  progressTimes.set(s.busName,s.lastObservedAt);
+ };
  for(const p of preds){
   const asof=p.predicted_at;
   while(cursor<raw.length&&raw[cursor].collected_at<=asof){
    const time=raw[cursor].collected_at,group:any[]=[];
    while(cursor<raw.length&&raw[cursor].collected_at===time)group.push(raw[cursor++]);
+   // Inspect retained active pins at their actual old observation time before
+   // this poll can reset/reconcile/close them; never stamp stale state as fresh.
+   for(const [key,s]of states)observe(key,s);
    if(time>=lead&&!didBoundaryReset){
     // Preserve the exact original evaluation replay boundary. Earlier rows exist
     // only for prequential calibration; no earlier history seeds evaluation.
@@ -60,11 +74,12 @@ function replay(raw:any[],preds:any[]){
    }
    reconcileTracks(states,plan);reconcileTracks(visits,plan);
    const stepped=stepManyWithVisits(net,states,visits,obs.filter(o=>routes.has(o.routeId)),plan);
+   for(const [key,s]of states)if(s.lastObservedAt===time)observe(key,s);
    for(const e of stepped.visits){
     if(e.kind!=='visit')continue;
     const w=warm.get(e.busName),accepted=Boolean(e.how!=='gap'&&e.outcome!=='unresolved'&&e.arrivedAt!==null&&e.departedAt!==null&&w&&e.departedAt>=w.first);
     if(accepted){let h=histories.get(e.busName);if(!h)histories.set(e.busName,h=new Map());h.set(e.stopIndex,{departed:e.departedAt,knownAt:time,route:e.routeId});}
-    ledger.emission(e,time,accepted);
+    ledger.emission(e,time,accepted,progress.proof(e,time));
    }
    for(const[name,s]of states){
     if(s.lastObservedAt!==time)continue;const v=visits.get(name),w=warm.get(name),h=histories.get(name);
@@ -104,7 +119,7 @@ function replay(raw:any[],preds:any[]){
   }
   rows.push({...row,families,ensemble});
  }
- return{rows,ledger,consumed:cursor};
+ return{rows,ledger,progress,consumed:cursor};
 }
 const expected=read(canon+'features.jsonl.gz');
 function validateLegacy(){
@@ -119,6 +134,7 @@ for(const fraction of [.25,.5,.75]){
  const end=expected[Math.floor(expected.length*fraction)].at;
  const pr=raw.filter(r=>r.collected_at<=end),pp=preds.filter(p=>p.predicted_at<=end),prefix=replay(pr,pp);
  assert.deepEqual(prefix.rows,full.rows.filter(r=>r.at<=end));
+ assert.deepEqual(prefix.ledger.events,full.ledger.events.filter(e=>e.knownAt<=end));
  checks.push({end,rows:prefix.rows.length,raw:pr.length,exact:true});
 }
 for(const[p,h]of Object.entries(pins))assert.equal(sha(p),h);
@@ -147,6 +163,8 @@ async function save(){
  await write('physical-sources',full.ledger.events);await write('features',compact());
  await write('traversal-history',(function*(){for(const r of full.rows)yield{at:r.at,bus:r.bus,route:r.route,target:r.target,families:r.families};})());
  await write('source-rejections',full.ledger.rejected);await write('source-resets',full.ledger.resets);
- fs.writeFileSync(out+'materialization-audit.json',JSON.stringify({...audit,schemaVersion:1,sourceReferenceRoundtrip:true,availability},null,2)+'\n');console.log(JSON.stringify(audit));
+ await write('observed-occurrences',full.progress.records);await write('occurrence-resets',full.progress.resets);await write('occurrence-rejections',full.progress.rejections);
+ const occurrenceProofs:any={};for(const e of full.ledger.events){const reason=e.occurrenceProof.supported?'supported':e.occurrenceProof.reason;occurrenceProofs[reason]=(occurrenceProofs[reason]??0)+1;}
+ fs.writeFileSync(out+'materialization-audit.json',JSON.stringify({...audit,schemaVersion:2,sourceReferenceRoundtrip:true,availability,occurrenceProofs},null,2)+'\n');console.log(JSON.stringify({...audit,occurrenceProofs}));
 }
 save().catch(e=>{console.error(e);process.exitCode=1;});

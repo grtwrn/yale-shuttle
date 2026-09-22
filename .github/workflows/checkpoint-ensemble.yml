@@ -28,6 +28,9 @@ jobs:
           if test -f research/checkpoint-ensemble/membership.test.ts; then
             services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/membership.test.ts
           fi
+          if test -f research/checkpoint-ensemble/progress.test.ts; then
+            services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/progress.test.ts
+          fi
   materialize:
     needs: fixtures
     if: github.event_name == 'push' || inputs.fixtures_only == false

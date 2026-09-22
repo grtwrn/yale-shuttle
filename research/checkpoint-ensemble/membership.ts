@@ -7,9 +7,11 @@ export class Families {
   current=new Map<string,any[]>(); epochs=new Map<string,number>(); providers=new Map<string,number>();epochBegan=new Map<string,number>();
   providerNames=new Map<number,string>();
   events:any[]=[]; resets:any[]=[]; rejected:any[]=[];
+  onReset:((name:string,at:number,epoch:number)=>void)|undefined;
   constructor(readonly routes:Map<number,any>,readonly waits:any){}
   reset(name:string,at:number,reason:string){
     this.epochs.set(name,(this.epochs.get(name)??0)+1);this.epochBegan.set(name,at);this.current.delete(name);
+    this.onReset?.(name,at,this.epochs.get(name)!);
     this.resets.push({name,at,reason,epoch:this.epochs.get(name)});
   }
   identity(name:string,provider:number,at:number){
@@ -21,7 +23,7 @@ export class Families {
     if(prior!==undefined&&prior!==provider)this.reset(name,at,'observed provider ID changed; physical identity unknown');
     this.providers.set(name,provider);
   }
-  emission(e:any,at:number,accepted:boolean){
+  emission(e:any,at:number,accepted:boolean,occurrenceProof:any=undefined){
     const reasons=physicalReasons(e,at,this.routes);
     if(!accepted)reasons.push('not inserted into causal model history');
     if(e.anchorBusId!==e.busId)reasons.push('source anchor/emission provider differs');
@@ -31,7 +33,7 @@ export class Families {
     const n=this.routes.get(e.routeId).stops.length;
     const event={id:sourceId(e,at),name:e.busName,route:e.routeId,index:e.stopIndex,stop:e.stopId,
       provider:e.busId,departed:e.departedAt,knownAt:at,arrived:e.arrivedAt,pinned:e.pinnedAt,
-      epoch:this.epochs.get(e.busName)??0};
+      epoch:this.epochs.get(e.busName)??0,occurrenceProof};
     this.events.push(event);let fs=this.current.get(e.busName)??[];
     for(const f of fs){
       if(f.invalid||f.route!==e.routeId)continue;
