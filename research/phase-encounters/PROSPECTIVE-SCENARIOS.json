@@ -1,0 +1,892 @@
+{
+  "schema": 1,
+  "protocol": "prospective-synthetic-selection-v1",
+  "topologySourceRun": 35684356219,
+  "topologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+  "coordinatePolicy": "Exact static physical stop coordinates; no rider locations, geocoder, outcome-selected offsets or chosen-route filter.",
+  "generationRule": "For every canonical route, j=0,1,2: origin=floor(j*n/3); initial destination=(origin+ceil(n/3)) mod n; advance destination only until distinct stop ID and coordinates. Retain duplicate O/D across generating routes.",
+  "scenarios": [
+    {
+      "id": "route-1-sector-0",
+      "generatingRouteId": 1,
+      "generatingRouteName": "Blue Day",
+      "canonicalRouteLength": 31,
+      "originIndex": 0,
+      "destinationIndex": 11,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 106,
+        "name": "Prospect / Sachem (N)",
+        "lat": 41.315749,
+        "lon": -72.924393
+      },
+      "destination": {
+        "id": 129,
+        "name": "Whitney / Canner",
+        "lat": 41.324692,
+        "lon": -72.916817
+      }
+    },
+    {
+      "id": "route-1-sector-1",
+      "generatingRouteId": 1,
+      "generatingRouteName": "Blue Day",
+      "canonicalRouteLength": 31,
+      "originIndex": 10,
+      "destinationIndex": 21,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 130,
+        "name": "Whitney / Cold Spring (S)",
+        "lat": 41.326294,
+        "lon": -72.915854
+      },
+      "destination": {
+        "id": 39,
+        "name": "College / George",
+        "lat": 41.305293,
+        "lon": -72.930255
+      }
+    },
+    {
+      "id": "route-1-sector-2",
+      "generatingRouteId": 1,
+      "generatingRouteName": "Blue Day",
+      "canonicalRouteLength": 31,
+      "originIndex": 20,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 38,
+        "name": "College / Crown",
+        "lat": 41.306177,
+        "lon": -72.929592
+      },
+      "destination": {
+        "id": 106,
+        "name": "Prospect / Sachem (N)",
+        "lat": 41.315749,
+        "lon": -72.924393
+      }
+    },
+    {
+      "id": "route-2-sector-0",
+      "generatingRouteId": 2,
+      "generatingRouteName": "Orange Day",
+      "canonicalRouteLength": 33,
+      "originIndex": 0,
+      "destinationIndex": 11,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 29,
+        "name": "Canner / Whitney (N)",
+        "lat": 41.32462,
+        "lon": -72.916166
+      },
+      "destination": {
+        "id": 88,
+        "name": "Orange / Humphrey (S)",
+        "lat": 41.316338,
+        "lon": -72.916176
+      }
+    },
+    {
+      "id": "route-2-sector-1",
+      "generatingRouteId": 2,
+      "generatingRouteName": "Orange Day",
+      "canonicalRouteLength": 33,
+      "originIndex": 11,
+      "destinationIndex": 22,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 88,
+        "name": "Orange / Humphrey (S)",
+        "lat": 41.316338,
+        "lon": -72.916176
+      },
+      "destination": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      }
+    },
+    {
+      "id": "route-2-sector-2",
+      "generatingRouteId": 2,
+      "generatingRouteName": "Orange Day",
+      "canonicalRouteLength": 33,
+      "originIndex": 22,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "destination": {
+        "id": 29,
+        "name": "Canner / Whitney (N)",
+        "lat": 41.32462,
+        "lon": -72.916166
+      }
+    },
+    {
+      "id": "route-3-sector-0",
+      "generatingRouteId": 3,
+      "generatingRouteName": "Red",
+      "canonicalRouteLength": 29,
+      "originIndex": 0,
+      "destinationIndex": 10,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 121,
+        "name": "Union Station (N)",
+        "lat": 41.297857,
+        "lon": -72.926763
+      },
+      "destination": {
+        "id": 120,
+        "name": "Trumbull / Hillhouse",
+        "lat": 41.3135,
+        "lon": -72.923286
+      }
+    },
+    {
+      "id": "route-3-sector-1",
+      "generatingRouteId": 3,
+      "generatingRouteName": "Red",
+      "canonicalRouteLength": 29,
+      "originIndex": 9,
+      "destinationIndex": 19,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 128,
+        "name": "Whitney / Audubon",
+        "lat": 41.311557,
+        "lon": -72.922197
+      },
+      "destination": {
+        "id": 113,
+        "name": "SCL",
+        "lat": 41.318189,
+        "lon": -72.923912
+      }
+    },
+    {
+      "id": "route-3-sector-2",
+      "generatingRouteId": 3,
+      "generatingRouteName": "Red",
+      "canonicalRouteLength": 29,
+      "originIndex": 19,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 113,
+        "name": "SCL",
+        "lat": 41.318189,
+        "lon": -72.923912
+      },
+      "destination": {
+        "id": 121,
+        "name": "Union Station (N)",
+        "lat": 41.297857,
+        "lon": -72.926763
+      }
+    },
+    {
+      "id": "route-4-sector-0",
+      "generatingRouteId": 4,
+      "generatingRouteName": "Blue Weekend",
+      "canonicalRouteLength": 31,
+      "originIndex": 0,
+      "destinationIndex": 11,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 100,
+        "name": "Prospect / Canner",
+        "lat": 41.325351,
+        "lon": -72.922891
+      },
+      "destination": {
+        "id": 86,
+        "name": "Orange / Grove",
+        "lat": 41.310003,
+        "lon": -72.920939
+      }
+    },
+    {
+      "id": "route-4-sector-1",
+      "generatingRouteId": 4,
+      "generatingRouteName": "Blue Weekend",
+      "canonicalRouteLength": 31,
+      "originIndex": 10,
+      "destinationIndex": 21,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 93,
+        "name": "Orange / Trumbull",
+        "lat": 41.312323,
+        "lon": -72.919177
+      },
+      "destination": {
+        "id": 150,
+        "name": "York / Chapel",
+        "lat": 41.308511,
+        "lon": -72.931505
+      }
+    },
+    {
+      "id": "route-4-sector-2",
+      "generatingRouteId": 4,
+      "generatingRouteName": "Blue Weekend",
+      "canonicalRouteLength": 31,
+      "originIndex": 20,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 2,
+        "name": "129 York",
+        "lat": 41.306539,
+        "lon": -72.933001
+      },
+      "destination": {
+        "id": 100,
+        "name": "Prospect / Canner",
+        "lat": 41.325351,
+        "lon": -72.922891
+      }
+    },
+    {
+      "id": "route-8-sector-0",
+      "generatingRouteId": 8,
+      "generatingRouteName": "Pink",
+      "canonicalRouteLength": 16,
+      "originIndex": 0,
+      "destinationIndex": 6,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 149,
+        "name": "York / Cedar",
+        "lat": 41.303784,
+        "lon": -72.935017
+      },
+      "destination": {
+        "id": 110,
+        "name": "Quigley Stadium Outbound",
+        "lat": 41.293438,
+        "lon": -72.954994
+      }
+    },
+    {
+      "id": "route-8-sector-1",
+      "generatingRouteId": 8,
+      "generatingRouteName": "Pink",
+      "canonicalRouteLength": 16,
+      "originIndex": 5,
+      "destinationIndex": 11,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 109,
+        "name": "Quigley Stadium Inbound",
+        "lat": 41.293932,
+        "lon": -72.955238
+      },
+      "destination": {
+        "id": 124,
+        "name": "VA Entrance Outbound",
+        "lat": 41.284845,
+        "lon": -72.957845
+      }
+    },
+    {
+      "id": "route-8-sector-2",
+      "generatingRouteId": 8,
+      "generatingRouteName": "Pink",
+      "canonicalRouteLength": 16,
+      "originIndex": 10,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 123,
+        "name": "VA Entrance Inbound",
+        "lat": 41.284966,
+        "lon": -72.958144
+      },
+      "destination": {
+        "id": 149,
+        "name": "York / Cedar",
+        "lat": 41.303784,
+        "lon": -72.935017
+      }
+    },
+    {
+      "id": "route-9-sector-0",
+      "generatingRouteId": 9,
+      "generatingRouteName": "Green",
+      "canonicalRouteLength": 24,
+      "originIndex": 0,
+      "destinationIndex": 8,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 78,
+        "name": "Orange / Bishop (N)",
+        "lat": 41.316978,
+        "lon": -72.915521
+      },
+      "destination": {
+        "id": 88,
+        "name": "Orange / Humphrey (S)",
+        "lat": 41.316338,
+        "lon": -72.916176
+      }
+    },
+    {
+      "id": "route-9-sector-1",
+      "generatingRouteId": 9,
+      "generatingRouteName": "Green",
+      "canonicalRouteLength": 24,
+      "originIndex": 8,
+      "destinationIndex": 16,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 88,
+        "name": "Orange / Humphrey (S)",
+        "lat": 41.316338,
+        "lon": -72.916176
+      },
+      "destination": {
+        "id": 23,
+        "name": "Building 600",
+        "lat": 41.256341,
+        "lon": -72.99019
+      }
+    },
+    {
+      "id": "route-9-sector-2",
+      "generatingRouteId": 9,
+      "generatingRouteName": "Green",
+      "canonicalRouteLength": 24,
+      "originIndex": 16,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 23,
+        "name": "Building 600",
+        "lat": 41.256341,
+        "lon": -72.99019
+      },
+      "destination": {
+        "id": 78,
+        "name": "Orange / Bishop (N)",
+        "lat": 41.316978,
+        "lon": -72.915521
+      }
+    },
+    {
+      "id": "route-10-sector-0",
+      "generatingRouteId": 10,
+      "generatingRouteName": "Purple",
+      "canonicalRouteLength": 16,
+      "originIndex": 0,
+      "destinationIndex": 6,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "destination": {
+        "id": 25,
+        "name": "Building 800",
+        "lat": 41.257929,
+        "lon": -72.989021
+      }
+    },
+    {
+      "id": "route-10-sector-1",
+      "generatingRouteId": 10,
+      "generatingRouteName": "Purple",
+      "canonicalRouteLength": 16,
+      "originIndex": 5,
+      "destinationIndex": 11,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 26,
+        "name": "Building 900",
+        "lat": 41.260015,
+        "lon": -72.986981
+      },
+      "destination": {
+        "id": 24,
+        "name": "Building 750",
+        "lat": 41.256796,
+        "lon": -72.988118
+      }
+    },
+    {
+      "id": "route-10-sector-2",
+      "generatingRouteId": 10,
+      "generatingRouteName": "Purple",
+      "canonicalRouteLength": 16,
+      "originIndex": 10,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 23,
+        "name": "Building 600",
+        "lat": 41.256341,
+        "lon": -72.99019
+      },
+      "destination": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      }
+    },
+    {
+      "id": "route-13-sector-0",
+      "generatingRouteId": 13,
+      "generatingRouteName": "Blue Night",
+      "canonicalRouteLength": 20,
+      "originIndex": 0,
+      "destinationIndex": 7,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "destination": {
+        "id": 106,
+        "name": "Prospect / Sachem (N)",
+        "lat": 41.315749,
+        "lon": -72.924393
+      }
+    },
+    {
+      "id": "route-13-sector-1",
+      "generatingRouteId": 13,
+      "generatingRouteName": "Blue Night",
+      "canonicalRouteLength": 20,
+      "originIndex": 6,
+      "destinationIndex": 13,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 41,
+        "name": "College / Wall (N)",
+        "lat": 41.310583,
+        "lon": -72.926188
+      },
+      "destination": {
+        "id": 9,
+        "name": "300 George St",
+        "lat": 41.305166,
+        "lon": -72.930745
+      }
+    },
+    {
+      "id": "route-13-sector-2",
+      "generatingRouteId": 13,
+      "generatingRouteName": "Blue Night",
+      "canonicalRouteLength": 20,
+      "originIndex": 13,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 9,
+        "name": "300 George St",
+        "lat": 41.305166,
+        "lon": -72.930745
+      },
+      "destination": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      }
+    },
+    {
+      "id": "route-14-sector-0",
+      "generatingRouteId": 14,
+      "generatingRouteName": "Orange Night",
+      "canonicalRouteLength": 26,
+      "originIndex": 0,
+      "destinationIndex": 9,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "destination": {
+        "id": 134,
+        "name": "Whitney / Edwards (N)",
+        "lat": 41.31976,
+        "lon": -72.918722
+      }
+    },
+    {
+      "id": "route-14-sector-1",
+      "generatingRouteId": 14,
+      "generatingRouteName": "Orange Night",
+      "canonicalRouteLength": 26,
+      "originIndex": 8,
+      "destinationIndex": 17,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 137,
+        "name": "Whitney / Humphrey (N)",
+        "lat": 41.317542,
+        "lon": -72.919779
+      },
+      "destination": {
+        "id": 64,
+        "name": "Grove / Whitney",
+        "lat": 41.310421,
+        "lon": -72.922331
+      }
+    },
+    {
+      "id": "route-14-sector-2",
+      "generatingRouteId": 14,
+      "generatingRouteName": "Orange Night",
+      "canonicalRouteLength": 26,
+      "originIndex": 17,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 64,
+        "name": "Grove / Whitney",
+        "lat": 41.310421,
+        "lon": -72.922331
+      },
+      "destination": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      }
+    },
+    {
+      "id": "route-15-sector-0",
+      "generatingRouteId": 15,
+      "generatingRouteName": "Gold",
+      "canonicalRouteLength": 11,
+      "originIndex": 0,
+      "destinationIndex": 4,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "destination": {
+        "id": 156,
+        "name": "Elm / Lynwood",
+        "lat": 41.31162,
+        "lon": -72.9328
+      }
+    },
+    {
+      "id": "route-15-sector-1",
+      "generatingRouteId": 15,
+      "generatingRouteName": "Gold",
+      "canonicalRouteLength": 11,
+      "originIndex": 3,
+      "destinationIndex": 7,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 155,
+        "name": "Howe / Edgewood",
+        "lat": 41.31082,
+        "lon": -72.93426
+      },
+      "destination": {
+        "id": 159,
+        "name": "Olive / Greene",
+        "lat": 41.30595,
+        "lon": -72.91974
+      }
+    },
+    {
+      "id": "route-15-sector-2",
+      "generatingRouteId": 15,
+      "generatingRouteName": "Gold",
+      "canonicalRouteLength": 11,
+      "originIndex": 7,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 159,
+        "name": "Olive / Greene",
+        "lat": 41.30595,
+        "lon": -72.91974
+      },
+      "destination": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      }
+    },
+    {
+      "id": "route-16-sector-0",
+      "generatingRouteId": 16,
+      "generatingRouteName": "Blue West",
+      "canonicalRouteLength": 11,
+      "originIndex": 0,
+      "destinationIndex": 4,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "destination": {
+        "id": 156,
+        "name": "Elm / Lynwood",
+        "lat": 41.31162,
+        "lon": -72.9328
+      }
+    },
+    {
+      "id": "route-16-sector-1",
+      "generatingRouteId": 16,
+      "generatingRouteName": "Blue West",
+      "canonicalRouteLength": 11,
+      "originIndex": 3,
+      "destinationIndex": 7,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 155,
+        "name": "Howe / Edgewood",
+        "lat": 41.31082,
+        "lon": -72.93426
+      },
+      "destination": {
+        "id": 27,
+        "name": "Canal / Munson",
+        "lat": 41.321292,
+        "lon": -72.929656
+      }
+    },
+    {
+      "id": "route-16-sector-2",
+      "generatingRouteId": 16,
+      "generatingRouteName": "Blue West",
+      "canonicalRouteLength": 11,
+      "originIndex": 7,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 27,
+        "name": "Canal / Munson",
+        "lat": 41.321292,
+        "lon": -72.929656
+      },
+      "destination": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      }
+    },
+    {
+      "id": "route-17-sector-0",
+      "generatingRouteId": 17,
+      "generatingRouteName": "Orange East",
+      "canonicalRouteLength": 12,
+      "originIndex": 0,
+      "destinationIndex": 4,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "destination": {
+        "id": 166,
+        "name": "Nash / Willow",
+        "lat": 41.32007,
+        "lon": -72.90738
+      }
+    },
+    {
+      "id": "route-17-sector-1",
+      "generatingRouteId": 17,
+      "generatingRouteName": "Orange East",
+      "canonicalRouteLength": 12,
+      "originIndex": 4,
+      "destinationIndex": 8,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 166,
+        "name": "Nash / Willow",
+        "lat": 41.32007,
+        "lon": -72.90738
+      },
+      "destination": {
+        "id": 75,
+        "name": "Olive / Chapel",
+        "lat": 41.304125,
+        "lon": -72.920274
+      }
+    },
+    {
+      "id": "route-17-sector-2",
+      "generatingRouteId": 17,
+      "generatingRouteName": "Orange East",
+      "canonicalRouteLength": 12,
+      "originIndex": 8,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 75,
+        "name": "Olive / Chapel",
+        "lat": 41.304125,
+        "lon": -72.920274
+      },
+      "destination": {
+        "id": 10,
+        "name": "333 Cedar",
+        "lat": 41.303254,
+        "lon": -72.934247
+      }
+    },
+    {
+      "id": "route-18-sector-0",
+      "generatingRouteId": 18,
+      "generatingRouteName": "Grocery Ham",
+      "canonicalRouteLength": 6,
+      "originIndex": 0,
+      "destinationIndex": 2,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 53,
+        "name": "Elm / York (TYCO)",
+        "lat": 41.31086,
+        "lon": -72.93054
+      },
+      "destination": {
+        "id": 137,
+        "name": "Whitney / Humphrey (N)",
+        "lat": 41.317542,
+        "lon": -72.919779
+      }
+    },
+    {
+      "id": "route-18-sector-1",
+      "generatingRouteId": 18,
+      "generatingRouteName": "Grocery Ham",
+      "canonicalRouteLength": 6,
+      "originIndex": 2,
+      "destinationIndex": 4,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 137,
+        "name": "Whitney / Humphrey (N)",
+        "lat": 41.317542,
+        "lon": -72.919779
+      },
+      "destination": {
+        "id": 170,
+        "name": "Aldi/Walmart",
+        "lat": 41.37512,
+        "lon": -72.91709
+      }
+    },
+    {
+      "id": "route-18-sector-2",
+      "generatingRouteId": 18,
+      "generatingRouteName": "Grocery Ham",
+      "canonicalRouteLength": 6,
+      "originIndex": 4,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 170,
+        "name": "Aldi/Walmart",
+        "lat": 41.37512,
+        "lon": -72.91709
+      },
+      "destination": {
+        "id": 53,
+        "name": "Elm / York (TYCO)",
+        "lat": 41.31086,
+        "lon": -72.93054
+      }
+    },
+    {
+      "id": "route-19-sector-0",
+      "generatingRouteId": 19,
+      "generatingRouteName": "Brown",
+      "canonicalRouteLength": 9,
+      "originIndex": 0,
+      "destinationIndex": 3,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 145,
+        "name": "Science Park Garage",
+        "lat": 41.323328,
+        "lon": -72.928795
+      },
+      "destination": {
+        "id": 42,
+        "name": "College / Wall (S)",
+        "lat": 41.310836,
+        "lon": -72.926148
+      }
+    },
+    {
+      "id": "route-19-sector-1",
+      "generatingRouteId": 19,
+      "generatingRouteName": "Brown",
+      "canonicalRouteLength": 9,
+      "originIndex": 3,
+      "destinationIndex": 6,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 42,
+        "name": "College / Wall (S)",
+        "lat": 41.310836,
+        "lon": -72.926148
+      },
+      "destination": {
+        "id": 115,
+        "name": "State St Station",
+        "lat": 41.30443,
+        "lon": -72.92164
+      }
+    },
+    {
+      "id": "route-19-sector-2",
+      "generatingRouteId": 19,
+      "generatingRouteName": "Brown",
+      "canonicalRouteLength": 9,
+      "originIndex": 6,
+      "destinationIndex": 0,
+      "identicalEndpointAdvance": 0,
+      "origin": {
+        "id": 115,
+        "name": "State St Station",
+        "lat": 41.30443,
+        "lon": -72.92164
+      },
+      "destination": {
+        "id": 145,
+        "name": "Science Park Garage",
+        "lat": 41.323328,
+        "lon": -72.928795
+      }
+    }
+  ]
+}

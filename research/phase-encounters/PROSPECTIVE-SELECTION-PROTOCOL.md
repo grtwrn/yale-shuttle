@@ -1,0 +1,64 @@
+# Prospective synthetic selection protocol v1
+
+Pinned September22,2026,05:39UTC, before the proposed September23–29 observations exist. This is a scenario/state protocol, not an implemented replay, approved label cohort, or instruction to launch collection. Root separately owns bounded15-second full-public-response capture. No real rider location, geocoder, browser, notification, fitting or production change is part of this protocol.
+
+## Frozen scope and static geometry
+
+Use the42 exact O/D entries in `PROSPECTIVE-SCENARIOS.json`, SHA256 `265ecc5b1bf189f995f8272805b658dc28c63f991e7a724a54e2e8e1b4699af9`. Its source is the14-route canonical topology from run35684356219, SHA256 `eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc`.
+
+Each route supplies three pairs solely by static index geometry: origin=floor(j*n/3), j=0,1,2; destination=(origin+ceil(n/3)) mod n. A destination would advance only if physically identical to the origin; no such advance was needed. Coordinates are the exact frozen stop coordinates. Retain all pairs, including short, poor, empty-service, duplicate-across-route or walk-dominated cases. No outcome or expected advantage selected an offset or endpoint.
+
+The generating route labels a geometry stratum; it does **not** force the chosen line. At every scenario, the actual planner considers the complete captured fleet and every eligible route/stop-pair, including competitors, walk and unknown options. All14 source lines remain in scope, including Brown and folded/repeated-stop routes. This bounded set is not exhaustive citywide O/D coverage; report which lines are generated, available and selected separately.
+
+Prospective plan starts are every ET half-hour,00:00 through23:30, September23–29 inclusive. Each has a45-minute fixed horizon. There are14,112 geometry/start episodes and two policy profiles per episode,28,224 profile episodes before any unavailable-input accounting. Late September29 plans require September30 context through00:15ET; retain that adjacent context without treating it as another evaluation day. Do not shift starts or extend horizons in response to favorable arrivals or missing service.
+
+## Capture clocks and scenario starts
+
+The immutable input is the complete public `/api/buses` response with its original request/receipt envelope, not a join of `predictions_log` rows. Keep response IDs/hashes, failures, server_eta.at/servedAt, per-bus observed_at, model/topology/calibration fields and release metadata. Preserve row order, repeated stop occurrences and row-aligned distributions. The recorder's15-second cadence defines this synthetic observer; it does not establish what a5-second browser saw between samples.
+
+A scenario's initial plan uses the first structurally complete response received at or after its scheduled start and no later than start+30s. Its computation time is that response's recorded receipt time. Empty fleet, missing/stale ETA and malformed ETA are retained states, not reasons to search forward for a better start. If there is no structurally complete response in30s, mark the entire profile `missing_initial_response`; retain its scheduled key and do not restart it later. The horizon always ends at scheduled start+45min.
+
+Use the actual attachment clock: effective forecast time=receivedAt−(servedAt−at). Fix the execution timezone to America/New_York, inject the recorded synthetic wall clock consistently into all Date/Date.now consumers, and retain monotonic request durations separately. No arrival/visit/outcome clock may become an input. Responses received after a decision are future information even when their server forecast time is earlier.
+
+Feed events occur at recorded receipt/failure times. Subsequent real frontend timer decisions use the pinned frontend's cadence; one-second reminder decisions may age the last selected option without fabricating new observations or a freshly computed option. Run ranking/live recomputation only for the same input/state dependencies as the actual component. Do not recompute the complete plan or refresh source freshness every second.
+
+## Shared planner, selection and visibility state
+
+Live mode only: targetDate=null. Initialize an explicit current-location origin at the frozen O/D origin and freeze the plan's captured origin coordinate. A policy's later synthetic movement updates only its live position, following the real component's distinction between planned origin and remaining walk. Destination never changes within the episode.
+
+Use the actual source exports and actual shared live-update path; implementation must pass a separate hosted parity gate before outcomes are opened. A hand-written approximation of `TransitMap` is insufficient. Apply service filtering, route paths/model parameters and `attachServerEta` to the same bus-array instance used by `liveArrivals`; an unattached replay array would silently select the offline estimator.
+
+- **Planning:** call `planTrip` once at the initial response. Preserve the returned stableOptions, planned ride durations, per-route stop pairs and initial bus pins. Its ordinary per-route choice, six-shuttle cap and walk inclusion are part of the behavior. Keep pre-cap diagnostics if available, but do not insert excluded options into the UI set.
+- **Refresh:** no manual refresh. Preserve the component's existing automatic replan only when the in-service roster/freshness signature changes and the current stableOptions contains no shuttle. Record every such replan and the exact trigger. A normal poll, ranking change or missed opportunity cannot request a new plan.
+- **Live reselection:** use the actual raw at-stop gate, `rideBoardArrivals`, `pickLiveArrival`, `forecastPickupSelection` and `journeyArrival` behavior. Preserve countdown and boardable identities independently, including different-bus and same-bus-later-visit cases. Do not manually transfer the initial route pin to last poll's chosen bus if the frontend does not do so.
+- **Ranking:** preserve `stableTripOrder` order, tier signature and pending order/since. The30-second hold advances only through actual applicable computation events. Preserve plan/destination resets. Record desired order and shown order separately.
+- **Visibility:** initial collapsed list, no expansion or user clicks. Use actual `topVisibleOptions`/kept-third hysteresis and its reset rules. Record the full ordered list, visible subset and visibility reason separately. A hidden route remains in the all-option audit.
+- **Missing data:** preserve actual unavailable/departed outcomes and prior plan state; do not carry a forecast forward as fresh, borrow another provider's ETA, or treat a failed request as an empty successful fleet. Unknowns remain explicit.
+
+## Two fixed behavior profiles
+
+**A. Stationary observer.** The synthetic origin stays at its frozen coordinate for45min. There is no arming, walking, manual reselection, boarding or alighting. This isolates changes to all-option recommendations, countdown/boardable choice, ranking and visibility under a fixed trip request.
+
+**B. Initial-choice immediate-response walking proxy.** At the first successfully computed initial ordered list, choose its highest-ranked option once. This is the displayed first option, not the generating route or whichever shuttle later performs best.
+
+- If it is walk, start walking directly toward the frozen destination at that initial computation time; never arm a shuttle reminder or switch to a later-ranked shuttle.
+- If it is an eligible live shuttle, make exactly one synthetic arming attempt using the actual deployed reminder eligibility/input helper. Freeze that route and board/alight stop pair. Capture the board coordinate then; if that marker later disappears or its coordinate changes, mark the walking/boarding interpretation unresolved instead of silently rerouting. Rank changes cannot switch the armed route/pair. Selected bus changes *within* that armed option follow the actual helper and remain explicit.
+- If the initial top option is unavailable, departed, invalid for arming, or absent, record that initial-choice result. Do not wait until a more favorable candidate becomes armable, select a lower-ranked option, or rearm later. The option observer can continue producing descriptive rows.
+- Feed the actual one-shot reminder state machine at its normal clock. Record only a pure `would_signal`/state transition. Never call notification, audio, browser delivery, geolocation, `/api/shown`, reports or boarding APIs. Invalid/missing input suspends decisions under actual behavior; it cannot finish or silently clear an earlier possible-pickup barrier.
+- Start the synthetic walk on the first valid `would_signal`, with zero reaction delay. Zero delay is an explicitly optimistic immediate-response proxy, not a human behavior claim. No second signal/rearm or route-switch response is permitted. If none occurs, the rider remains at origin through the fixed horizon.
+- Walking follows a deterministic straight-line interpolation in latitude/longitude between the captured endpoints, duration=haversine distance/1.1m/s, matching the current effective crow-flies walk model. Position is clamped at the endpoint. Preserve the actual80m at-place eligibility threshold in UI decisions; reaching that threshold is not observed boarding. If an implementation/source release changes these frozen constants, retain a version incompatibility rather than silently changing this policy.
+- At the board marker, remain there. Do not automatically board on GPS proximity, raw at_stop_id, a stationary plateau, forecast zero or inferred service. No synthetic ride/alight outcome is claimed. Walking and all-option records continue until the45-minute horizon; direct walkers remain at destination after arrival.
+
+These profiles may diverge in selected route, remaining walk, future options and action time across candidate arms. Preserve those divergences rather than forcing the same post-selection rider path. The stationary profile supplies a common-location diagnostic alongside that policy feedback. Repeated starts/pairs/profiles are dependent scenarios, not independent riders.
+
+## Version locks, arms and unopened outcomes
+
+At each scenario's start, bind the baseline to a captured deployed rider-bundle/source identity known then. Retain that frontend identity for the episode, as a page keeps its loaded bundle; a new server response may carry a later server/model build and must be recorded as such. No automatic frontend reload is part of a run. A deployment whose frontend/source mapping or bracketed identity is ambiguous remains an explicit unavailable-version case. New scenarios may use a new documented deployed bundle in a separate stratum. Before evaluating it, that implementation must have been archived and parity checked without viewing the relevant outcomes.
+
+The server ETA baseline is the complete **actually served** response. Do not regenerate it from a retrospective fit. Required code/build/model/topology/response manifests and all input hashes are recorded separately from outputs. A later observed release must not retroactively label an earlier response.
+
+**No candidate arm is authorized or activated by this document.** Each candidate requires its own immutable pre-outcome lock: source/export/model hashes, train/selection cutoff, supported routes and occurrences, validUntil, all-target/group fallback policy, fields allowed to change, and unchanged comparator. Materially different quality, phase, interval or timing repairs remain separate arms. Do not fill an unlogged/missing destination forecast from sampled K rows. Candidate arms must receive the same complete captured inputs and the same protocol, with independent per-profile state.
+
+Brown September23–29 remains unopened. This assessment reads no prospective outcomes, and no later failed result may be repaired and still called this protocol's untouched validation. All other September23–29 outcome use likewise waits for arm and outcome-protocol locks. The previously inspected September3–20 research is development evidence; September21 is exploratory/context as already recorded.
+
+The present protocol permits only a future **decision/selection diagnostic**. No arrival-error, missed-bus or boarding-safety score is defined here. Any later outcome adapter must preserve independent physical encounters, open-at-asof and provider/route/gap ambiguity, and the32 existing earlier-pickup barriers. The230 censor-only Blue additions are not cleared, and the643 without an identified earlier encounter are not validated. Capture gaps, unsupported versions, empty service, unknown destination windows, same-marker occurrence ambiguity, censored encounters and unfinished horizons require explicit counts rather than deletion or invented success.
