@@ -1,0 +1,38 @@
+name: directed-leg-physical-diagnostics
+on:
+  push:
+    branches: [research/directed-leg-protection-2026-09-22]
+    paths: ['research/directed-leg-diagnostics/**', '.github/workflows/directed-leg-diagnostics.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: directed-leg-protection
+          run-id: 35687909547
+          github-token: ${{ github.token }}
+          path: research/directed-leg-protection/results
+      - name: Preserve original reconstruction artifact
+        run: find research/directed-leg-protection/results -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/reconstruction-before.sha256
+      - name: Audit every earlier pickup and all route physical changes
+        run: |
+          python3 research/directed-leg-diagnostics/audit.py
+          sha256sum --check /tmp/reconstruction-before.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: directed-leg-physical-diagnostics
+          path: research/directed-leg-diagnostics/results/**
+          retention-days: 90
