@@ -125,8 +125,17 @@ def main():
   action_report={}
   for cohort,a in actions[policy].items():
    cells=[c for c in a['againstDeployed'] if c['candidatePolicy']==c['baselinePolicy']]
+   riskpath=IN/policy/('rider-risk' if cohort=='all' else 'original-cohort/rider-risk')/'rider-risk-summary.json'
+   statusgroups={}
+   for cell in json.loads(riskpath.read_text())['cells']:
+    if cell['route'] not in (9,10):continue
+    group=tuple(cell[k] for k in ('route','arm','policy','walkSec','responseSec'))
+    if group not in statusgroups:statusgroups[group]=dict(records=0,scored=0,missed=0,statuses=collections.Counter(),censorReasons=collections.Counter())
+    aggregate=statusgroups[group];aggregate['records']+=cell['records'];aggregate['scored']+=cell['scored'];aggregate['missed']+=cell['hypotheticalMissedBoardings']
+    aggregate['statuses'].update(cell['statuses']);aggregate['censorReasons'].update(cell['censorReasons'])
+   statuses=[dict(route=k[0],arm=k[1],policy=k[2],walkSec=k[3],responseSec=k[4],**v) for k,v in sorted(statusgroups.items())]
    action_report[cohort]=dict(allSamePolicyCells=cells,positiveExtraWaitingCells=[c for c in cells if c['pairedWaitDeltaSeconds'].get('max',0)>0],
-    newMissCells=[c for c in cells if c['newlyMissed']],cohort=a['actionSummary'])
+    newMissCells=[c for c in cells if c['newlyMissed']],fullActionStatusCells=statuses,cohort=a['actionSummary'])
   output['policies'][policy]=dict(routes=report,action=action_report)
  assert hashes=={str(p.relative_to(IN)):sha(p) for p in IN.rglob('*') if p.is_file() and p.name in ('unscored.jsonl.gz','forecasts.jsonl.gz','action-comparisons.json','summary.json','verification.json')}
  (OUT/'diagnostic.json').write_text(json.dumps(output,indent=2)+'\n')
