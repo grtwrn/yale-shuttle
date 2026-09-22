@@ -56,6 +56,7 @@ jobs:
           python3 research/useful-windows/rider_risk.py research/canonical-windows/results
           services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/canonical-windows/results/rider-risk
           sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+          python3 research/canonical-windows/report.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
