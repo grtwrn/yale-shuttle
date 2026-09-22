@@ -6,10 +6,12 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import sqlite3
 import unittest
 from unittest.mock import patch
 
 import capture_input as d
+import streaming_input as si
 
 HERE = Path(__file__).resolve().parent
 RESULTS = HERE / 'results'
@@ -383,6 +385,36 @@ class CaptureInputTests(unittest.TestCase):
         events=self.events([proof]);fleet=self.fleets(events)
         self.assertTrue(all(f['replayAdmissible'] and f['complete'] for f in fleet))
         (RESULTS/'verified-synthetic-receipts.json').write_text(json.dumps(fleet,indent=2)+'\n')
+
+    def test_spool_identity_is_prefix_stable_and_retains_original_clock(self):
+        proof=self.bundle();self.request()
+        first=self.freeze()
+        self.t=15;self.request()
+        second=self.freeze()
+        results=[]
+        for i,prefix in enumerate([first,second]):
+            (prefix[0]/'synthetic-input.json').write_text('{"syntheticOnly":true,"outcomes":false}')
+            out=self.root/f'spool-{i}'
+            result=si.spool(*prefix,out,[proof])
+            with sqlite3.connect(out/'events.sqlite') as db:
+                fleets=[json.loads(row[0]) for row in db.execute("SELECT event_json FROM events WHERE kind='fleet-receipt' ORDER BY sequence")]
+            self.assertTrue(fleets[0]['id'].startswith(result['captureId']+':'))
+            self.assertIn('receivedAtUtc',fleets[0]);self.assertNotIn('body',fleets[0])
+            self.assertEqual(si.micros(fleets[0]['receivedAtUtc']),fleets[0]['atUs'])
+            self.assertEqual(d.digest((out/'events.sqlite').read_bytes()),result['databaseSha256'])
+            results.append((result,fleets))
+        self.assertEqual(results[0][0]['captureId'],results[1][0]['captureId'])
+        self.assertNotEqual(results[0][0]['prefixSha256'],results[1][0]['prefixSha256'])
+        self.assertEqual(results[0][1][0]['id'],results[1][1][0]['id'])
+
+    def test_spool_cannot_publish_a_failed_prefix_or_open_unmarked_input(self):
+        self.request();prefix=self.freeze();out=self.root/'spool-failed'
+        with self.assertRaises(d.IntegrityError):si.spool(*prefix,out,[])
+        self.assertFalse(out.exists())
+        (prefix[0]/'synthetic-input.json').write_text('{"syntheticOnly":true,"outcomes":false}')
+        with (prefix[0]/'records.jsonl').open('ab') as f:f.write(b'{}\n')
+        with self.assertRaises(d.IntegrityError):si.spool(*prefix,out,[])
+        self.assertFalse((out/'ready.json').exists())
 
 
 if __name__ == '__main__':

@@ -270,7 +270,7 @@ def iter_verified(prefix, expected_seal_sha256):
                 unsafe = unsafe or (last_wall is not None and at < last_wall)
                 last_wall = at
                 gaps += entry['skippedTicks']
-                result = dict(event='schedule-gap', record=entry, clockUnsafe=unsafe)
+                result = dict(event='schedule-gap', record=entry, journalRecordSha256=previous, clockUnsafe=unsafe)
             else:
                 request_url(entry)
                 required_fields = {'sequence','previousRecordSha256','kind','url','requestedAt','requestMonotonic',
@@ -329,7 +329,7 @@ def iter_verified(prefix, expected_seal_sha256):
                     complete += 1
                 else:
                     incomplete += 1
-                result = dict(event='response', record=entry, rawBody=raw, body=parsed,
+                result = dict(event='response', record=entry, journalRecordSha256=previous, rawBody=raw, body=parsed,
                               duplicateBodyKeys=duplicates, clockUnsafe=unsafe,
                               fleetUsable=ready and not unsafe,
                               unusableReason='clock_unsafe' if unsafe else reason,
@@ -508,6 +508,8 @@ class ReleaseEvidence:
             admissible = not verified['clockUnsafe'] and not verified['duplicateBodyKeys']
             events.append(dict(event='fleet-receipt', id=f"{r['sequence']}:{r['bodySha256']}", sequence=r['sequence'],
                                receivedAt=at, requestStartedAt=verified['requestMs'], requestDurationMs=verified['requestDurationMs'],
+                               receivedAtUtc=r['receivedAt'], requestStartedAtUtc=r['requestedAt'],
+                               journalRecordSha256=verified['journalRecordSha256'],
                                bodySha256=r['bodySha256'], status=('ok' if verified['fleetUsable'] else 'failure') if admissible else 'unknown',
                                complete=verified['fleetUsable'], transportComplete=r['transportComplete'],
                                replayAdmissible=admissible,
@@ -515,6 +517,7 @@ class ReleaseEvidence:
                                releaseEvidence=self.candidate(at, verified['clockUnsafe'])))
         evidence = self.candidate(at, verified['clockUnsafe'])
         state = self.state_event(r['sequence'], kind, at, verified['clockUnsafe'], evidence, r['bodySha256'])
+        state.update(observedReceiptUtc=r['receivedAt'], journalRecordSha256=verified['journalRecordSha256'])
         # Every observation has an explicit state, even unsupported/unknown ones.
         # Consumers must not filter unknown states and reuse an older candidate.
         for event in events:
@@ -543,8 +546,9 @@ class ReleaseEvidence:
                                htmlSequence=pending['htmlSequence'], reason='gap_before_resource_completion'
                                if gap else 'prefix_ended_before_resource_completion'))
         if gap:
-            events.append(self.state_event(record['record']['sequence'], 'schedule-gap', at, unsafe,
-                                           self.candidate(at, unsafe)))
+            state = self.state_event(record['record']['sequence'], 'schedule-gap', at, unsafe, self.candidate(at, unsafe))
+            state.update(observedReceiptUtc=record['record']['at'], journalRecordSha256=record['journalRecordSha256'])
+            events.append(state)
         return events
 
 
