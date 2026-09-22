@@ -1,0 +1,84 @@
+name: causal-source-retention-study
+on:
+  push:
+    branches: [research/source-retention-2026-09-22]
+    paths: ['research/source-retention/**', '.github/workflows/source-retention.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+      TZ: America/New_York
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - run: python3 -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/highway-frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-route-context
+          run-id: 35686813146
+          github-token: ${{ github.token }}
+          path: research/highway-geometry
+      - uses: actions/download-artifact@v4
+        with:
+          name: protected-highway-window-results
+          run-id: 35690386363
+          github-token: ${{ github.token }}
+          path: research/source-retention/protected
+      - name: Link immutable canonical inputs and pin protected reference
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ln -s "$GITHUB_WORKSPACE/research/highway-frozen/canonical-windows/results" research/canonical-windows/results
+          gh api repos/grtwrn/yale-shuttle/actions/artifacts/10678003242 > research/source-retention/protected/artifact-metadata.json
+      - name: Focused chronology, physical-source, cap, release and protection fixtures
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/source-discard/observer.test.ts
+          services/shuttle-v2/node_modules/.bin/tsx research/source-retention/rules.test.ts
+          python3 -m unittest discover -s research/highway-protected -p 'test_*.py' -v
+      - name: Reconstruct both causal retention streams with exact control and prefix gates
+        run: services/shuttle-v2/node_modules/.bin/tsx research/source-retention/features.ts
+      - name: Freeze all candidates and gate ledgers; prove controls; join immutable outcomes
+        run: python3 research/source-retention/retention.py --generate
+      - name: Evaluate unchanged full-route and matched-union physical cohorts
+        run: python3 research/source-retention/retention.py --score
+      - name: Replay every fixed-visit action and prove original controls
+        run: python3 research/source-retention/actions.py
+      - name: Verify actual renderer and report gates before gains
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/source-retention/results/highway25/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/source-retention/results/highway25/original-cohort/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/source-retention/results/highway50/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/source-retention/results/highway50/original-cohort/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/highway-availability/printed.ts research/source-retention/results research/source-retention/results
+          python3 research/source-retention/report.py
+          cp research/source-retention/PLAN.md research/source-retention/results/
+          cp research/highway-protected-app-scope.md research/source-retention/results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: causal-source-retention-results
+          path: |
+            research/source-retention/results/**
+            !research/source-retention/results/**/raw_positions.jsonl.gz
+          retention-days: 90
