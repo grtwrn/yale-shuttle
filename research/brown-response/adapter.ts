@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {ROUTE_LISTS} from '../../services/shuttle-v2/web/src/routes.ts';
 import {featureForRow,type ClockSnapshot} from './clock.ts';
-import {SEQUENCE,modelUnavailable,predictCheckpoint,type Arm,type ModelHandle} from './model.ts';
+import {SEQUENCE,modelUnavailable,predictCheckpoint,requiredQueries,type Arm,type ModelHandle,type Feature,type Query} from './model.ts';
 
 type ObjectMap=Record<string,any>;
 const object=(v:unknown):v is ObjectMap=>v!==null&&typeof v==='object'&&!Array.isArray(v);
@@ -16,6 +16,8 @@ export interface AdapterContext {
   snapshot:(bus:string,route:number,asof:number)=>ClockSnapshot|null;
   /** Test fixtures only. Never enable for captured prospective responses. */
   allowFixtureArtifacts?:boolean;
+  /** Read-only research request observer; never changes eligibility or fields. */
+  onQueries?:(ordinal:number,feature:Feature,queries:Query[])=>void;
 }
 export interface RowAudit {
   ordinal:number;key:Record<string,unknown>;reason:string;changedCells:number[];
@@ -99,6 +101,7 @@ export function adaptResponse<T>(original:T,ctx:AdapterContext) {
     const unavailable=modelUnavailable(ctx.model,ctx.arm,w.at,ctx.allowFixtureArtifacts);
     if(unavailable){a.reason=unavailable;continue;}
     a.modelId=ctx.model!.manifest.artifactId;
+    ctx.onQueries?.(i,feature,requiredQueries(feature,ctx.model!.manifest.K));
     const prediction=predictCheckpoint(feature,ctx.model!.manifest.K,ctx.model!.fit);
     const {forecast,changed,...evidence}=prediction;Object.assign(a,evidence);
     if(!changed)continue;

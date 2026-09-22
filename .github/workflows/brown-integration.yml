@@ -1,0 +1,90 @@
+name: brown-response-selection-integration
+on:
+  push:
+    branches: [research/brown-selection-integration-2026-09-22]
+    paths: ['research/brown-integration/**', 'research/brown-response/**', '.github/workflows/brown-integration.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: America/New_York
+      BLUE_MAX_PATH_SECONDS: '5400'
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 4f5d261bb119093dec724afc00411808b685d251
+          path: deps/selection
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install unchanged app locks and pinned React renderer
+        run: |
+          npm ci --prefix services/shuttle-v2
+          npm ci --prefix deps/selection/services/shuttle-v2
+          npm ci --prefix deps/selection/services/shuttle-v2/web
+          npm install --prefix deps/selection/services/shuttle-v2/web --no-save --package-lock=false react-test-renderer@19.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: brown-directed-parity
+          run-id: 35691411464
+          github-token: ${{ github.token }}
+          path: research/brown-response/input/development
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/brown-response/input/raw
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/brown-integration/input/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: sealed-frozen-brown-k8
+          run-id: 35694227486
+          github-token: ${{ github.token }}
+          path: research/brown-response/input/sealed
+      - name: Preserve complete-response controls and causal prefix invariance
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/brown-response/synthetic.ts
+          python3 research/brown-response/sealed-query.py
+          services/shuttle-v2/node_modules/.bin/tsx research/brown-response/development.ts
+      - name: Build explicit development-only fixture pools and exact fit controls
+        run: |
+          ln -s ../brown-response/input/raw research/k-sweep/results
+          python3 research/brown-integration/models.py
+      - name: Collect all-target requests then execute bound original-Python queries
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/brown-integration/prepare.ts
+          python3 research/brown-integration/query.py
+      - name: Extract exact captured frontend component bodies
+        run: node deps/selection/research/synthetic-selection/extract.mjs
+      - name: Preserve original synthetic-selection component and envelope parity
+        working-directory: deps/selection/services/shuttle-v2
+        run: npx vitest run --config ../../research/synthetic-selection/vitest.config.ts
+      - name: Complete-response and actual-frontend integration gates
+        working-directory: deps/selection/services/shuttle-v2
+        run: npx vitest run --config ../../../../research/brown-integration/vitest.config.ts
+      - name: Assert both production trees remain unchanged
+        if: always()
+        run: |
+          git diff --exit-code HEAD -- services/shuttle-v2
+          git -C deps/selection diff --exit-code HEAD -- services/shuttle-v2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brown-response-selection-integration
+          path: |
+            research/brown-integration/results/**
+            research/brown-response/results/**
+            deps/selection/research/synthetic-selection/results/**
+          retention-days: 90
