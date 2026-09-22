@@ -1,0 +1,54 @@
+name: canonical-route-context
+on:
+  push:
+    branches: [research/canonical-windows-2026-09-21]
+    paths: ['research/canonical-route-context/**', '.github/workflows/canonical-route-context.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  geography:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - run: python3 -m pip install matplotlib==3.10.1
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/geography-frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-speed-diagnostics
+          run-id: 35686126638
+          github-token: ${{ github.token }}
+          path: research/speed-frozen
+      - run: ln -s "$GITHUB_WORKSPACE/research/geography-frozen/canonical-windows/results" research/canonical-windows/results
+      - name: Test geometry and pin occurrence-specific published legs
+        run: |
+          python3 -m unittest discover -s research/canonical-route-context -p 'test_*.py' -v
+          services/shuttle-v2/node_modules/.bin/tsx research/canonical-route-context/geometry.ts
+      - name: Locate the unchanged speed sample
+        run: |
+          python3 research/canonical-route-context/localize.py
+          cp research/canonical-route-context/PLAN.md research/canonical-route-context/results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canonical-route-context
+          path: research/canonical-route-context/results/**
+          retention-days: 90

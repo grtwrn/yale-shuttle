@@ -1,0 +1,9 @@
+# Route context for the already selected speed observations
+
+Use unchanged raw SHA2563990d06ebdab596cfebdd7f03c528f7efcbb46fd3f6af68a9d64ede648e220b9 and canonical topology SHA256eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc from canonical run35684356219. Preserve the same stable-identity >22m/s edges and first/median/max examples from speed audit35686126638. Hosted computation only, no estimation/admission changes.
+
+Before localization, identify intercampus transfer legs by the canonical stop occurrence sequence: Green from indices10,11,19,20 (Orange/Bradley↔West Haven Train Station↔Building900); Purple from3,4,13,14 (Union Station↔West Haven Train Station↔Building900 and return to LEPH). These are stop-to-stop geography categories, not an assertion of a road's legal speed or precise highway assignment. Root is independently checking the official Yale maps.
+
+Export each occurrence's traced published polyline using the same pure geometry functions as the network and assert its length agrees with routeLegMeters. Preserve bridged/unavailable geometry; do not manufacture a road segment. For every already-selected high-speed edge, project its midpoint onto all available leg segments. Report perpendicular distance, nearest leg(s), and movement alignment. Candidate legs are all within10m of the nearest projection, retaining outbound/inbound ambiguity. Report distance bands25/75/150m; none changes a quality gate. Classify intercampus only when every candidate leg belongs to the predeclared transfer set; mixed candidates remain mixed. Report opposite-direction candidates rather than forcing a phase assignment.
+
+Produce maps of the public route geometry, high-speed edge midpoints, published stops and predeclared first/median/maximum observations. This geography diagnosis does not establish GPS correctness, sensor timestamp semantics, a legal speed limit, or an ETA quality-policy change.
