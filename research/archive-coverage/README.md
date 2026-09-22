@@ -15,13 +15,16 @@ archived days qualify as complete training or evaluation inputs.
 Run `coverage.py --help` on a hosted runner for arguments. Inputs support either
 a research `manifest.json` with `sources:[{path,bytes,sha256,...}]` or original
 per-day `YYYY-MM-DD/manifest.json` files with the archive's `tables` mapping.
-Required files for a complete-day comparison are GPS, visits, arrivals and
+Required files for the observed-evidence gate are GPS, visits, arrivals and
 predictions. Extra fleet tables are accepted only from the archive allowlist.
-The `--require-complete` option fails when any audited route/day cannot support
-a complete-day comparison. Without it, the command produces diagnostics; the
+The `--require-observed-coverage` option fails when any audited route/day has
+unresolved problems relative to its recorded evidence. Without it, the command produces diagnostics; the
 JSON flags remain authoritative. Scope a proposed route/day separately before
 using this conservative gate; an unpublished or non-operating route with no
 independent service evidence is **unknown**, not a failed prediction model.
+Even a passing observed-evidence gate leaves absolute service-day completeness
+unproven, because jointly missing collection cannot be detected, and it labels
+rider prediction coverage as sampled viewed stops rather than a census.
 
 For each file the audit verifies SHA256, declared byte and row counts where
 present, gzip/JSON readability, original column sets where recorded, timestamp

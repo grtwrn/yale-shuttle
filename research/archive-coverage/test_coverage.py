@@ -51,10 +51,12 @@ class CoverageTest(unittest.TestCase):
             fixture(root)
             result = audit(root, TOP)
             orange, night = result['routes']
-            self.assertTrue(orange['readyForCompleteDayComparison'])
+            self.assertTrue(orange['observedEvidenceChecksPass'])
+            self.assertEqual(orange['serviceDayCompleteness'], 'unproven_without_independent_service_record')
+            self.assertEqual(orange['predictionCoverage'], 'sampled_viewed_stops')
             self.assertEqual(orange['gpsSupportedVisitIntervals'], 1)
             self.assertEqual(night['status'], 'unknown_service')
-            self.assertFalse(night['readyForCompleteDayComparison'])
+            self.assertFalse(night['observedEvidenceChecksPass'])
 
     def test_successful_empty_gps_export_fails_service_coverage(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -126,7 +128,7 @@ class CoverageTest(unittest.TestCase):
             result = audit(root, TOP, frozen_at='2026-09-21T00:00:00Z')
             self.assertEqual(result['days'][0]['finality'], 'unknown_export_finality')
             self.assertTrue(all(s['stream'] == 'not_preserved' for s in result['sources']))
-            self.assertFalse(result['routes'][0]['readyForCompleteDayComparison'])
+            self.assertFalse(result['routes'][0]['observedEvidenceChecksPass'])
 
 
 if __name__ == '__main__':

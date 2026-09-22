@@ -63,7 +63,8 @@ def inspect_file(file, entry, table, day):
     """Return rows plus independent byte/stream/row/schema evidence."""
     problems = []
     info = {'table': table, 'day': day, 'path': entry['path'],
-            'stream': 'not_preserved', 'errors': problems}
+            'stream': 'not_preserved', 'originalDeclaredRows': entry.get('rows'),
+            'originalCompleteFlag': entry.get('complete'), 'errors': problems}
     if not file.is_file():
         problems.append('missing_file')
         return [], info
@@ -105,6 +106,7 @@ def inspect_file(file, entry, table, day):
     if entry.get('complete') is False:
         problems.append('original_manifest_incomplete')
     lo, hi = bounds(day)
+    expected_columns = entry.get('columns') or (header or {}).get('columns')
     seen = {}
     duplicates = conflicts = 0
     for row in rows:
@@ -112,7 +114,7 @@ def inspect_file(file, entry, table, day):
             at = row.get(TABLE_TIME[table])
             if not isinstance(at, (int, float)) or not lo <= at < hi:
                 problems.append('invalid_or_out_of_day_timestamp')
-        if entry.get('columns') and set(row) != set(entry['columns']):
+        if expected_columns and set(row) != set(expected_columns):
             problems.append('schema_columns_mismatch')
         key = (row.get('bus_id'), row.get('collected_at')) if table == 'raw_positions' else row.get('id')
         if key is not None:
@@ -237,7 +239,10 @@ def audit(data_root, topology, frozen_at=None, days=None):
                 serviceBuckets=evidence_counts[route], serviceBucketsWithoutGps=gps_gaps[route],
                 completedVisitIntervals=len(intervals), gpsSupportedVisitIntervals=supported,
                 predictionSurfaces=dict(predictions[route]), clientBuilds=dict(builds[route]),
-                readyForCompleteDayComparison=not reasons, reasons=reasons))
+                observedEvidenceChecksPass=not reasons,
+                serviceDayCompleteness='unproven_without_independent_service_record',
+                predictionCoverage='sampled_viewed_stops' if sum(n for s, n in predictions[route].items() if s in ('trip', 'ride', 'card')) else 'no_rider_observations',
+                reasons=reasons))
         day_results.append(dict(day=day, finality=status, missingTables=missing,
                                 inputErrors=len(input_errors), reasons=day_reasons))
     return dict(version=1, frozenAt=frozen_at, bucketSeconds=900,
@@ -283,18 +288,18 @@ def main():
     p.add_argument('--frozen-at')
     p.add_argument('--days', nargs='+')
     p.add_argument('--output', required=True)
-    p.add_argument('--require-complete', action='store_true')
+    p.add_argument('--require-observed-coverage', action='store_true')
     args = p.parse_args()
     payload = Path(args.topology).read_bytes()
     if hashlib.sha256(payload).hexdigest() != args.topology_sha256:
         raise ValueError('Topology hash mismatch')
     result = audit(args.data_root, json.loads(payload), args.frozen_at, args.days)
     result['topologySha256'] = args.topology_sha256
-    ready = all(r['readyForCompleteDayComparison'] for r in result['routes']) and bool(result['routes'])
+    ready = all(r['observedEvidenceChecksPass'] for r in result['routes']) and bool(result['routes'])
     write_report(result, args.output)
-    print(json.dumps({'days': len(result['days']), 'routes': len(result['routes']), 'allComplete': ready,
+    print(json.dumps({'days': len(result['days']), 'routes': len(result['routes']), 'allObservedEvidenceChecksPass': ready,
                       'inputErrors': sum(bool(s['errors']) for s in result['sources'])}))
-    if args.require_complete and not ready:
+    if args.require_observed_coverage and not ready:
         raise SystemExit(1)
 
 
