@@ -5,7 +5,8 @@ import {tmpdir} from 'node:os';
 import {gunzipSync} from 'node:zlib';
 import {bindRelease,encode,JsonlSink,readScenarios,runStreamingEpisode,schedule,utcClock,type Timeline} from './streaming';
 import {feed,scenario} from './fixtures';
-import proof from './INITIAL-SOURCE-PROOF.json';
+import {ACTIVE_PROOF as proof} from './source';
+import {BASELINE_SOURCE,CURRENT_SOURCE,sourceProof} from './source-versions.mjs';
 const START=Date.parse('2026-09-23T16:00:00Z'),HORIZON=START+2_700_000;
 const clock={now:()=>Date.now(),advance:async(ms:number)=>{await vi.advanceTimersByTimeAsync(ms);}};
 const episode:any={id:'unit-scenario:2026-09-23:24:B',scenario:{...scenario,id:'unit-scenario'},profile:'B',scheduledAt:START,horizon:HORIZON,date:'2026-09-23',slot:24};
@@ -56,6 +57,28 @@ describe('streaming baseline schedule, clocks, uncertainty and component parity'
     first.state.status='no_complete_bundle';
     const result=await runStreamingEpisode(episode,timeline([first,later]),clock,sink());
     expect(result.initialReceipt).toBe(first.receipt.id);expect(result.versionStatus).toBe('initial_version_unavailable');
+  });
+  it('refuses future proof knowledge and a complete other-version initial receipt',()=>{
+    const first=frame(0,'2026-09-23T16:00:00Z');
+    first.state.releaseEvidence.proofKnownAt=START+1;
+    expect(bindRelease(first.receipt,first.state)).toBeNull();
+    const another=frame(1,'2026-09-23T16:00:15Z'),other=sourceProof(proof.source===BASELINE_SOURCE?CURRENT_SOURCE:BASELINE_SOURCE);
+    Object.assign(another.state,{source:other.source,webTree:other.webTree,files:other.files});
+    Object.assign(another.state.releaseEvidence,{source:other.source,webTree:other.webTree,files:other.files,proofKnownAt:Date.parse(other.proofKnownAt)});
+    Object.assign(another.state.releaseEvidence.lastCompleteBundle,{files:other.files,precedingHealthBuild:other.source});
+    another.state.releaseEvidence.previousHealth.build=other.source;
+    expect(bindRelease(another.receipt,another.state)).toBeNull();
+  });
+  it('keeps an already-bound page after an explicitly known different qualified source appears',async()=>{
+    const first=frame(0,'2026-09-23T16:00:00Z'),changed=frame(1,'2026-09-23T16:00:15Z');
+    const other=sourceProof(proof.source===BASELINE_SOURCE?CURRENT_SOURCE:BASELINE_SOURCE);
+    Object.assign(changed.state,{source:other.source,webTree:other.webTree,files:other.files});
+    Object.assign(changed.state.releaseEvidence,{source:other.source,webTree:other.webTree,files:other.files,proofKnownAt:Date.parse(other.proofKnownAt)});
+    Object.assign(changed.state.releaseEvidence.lastCompleteBundle,{files:other.files,precedingHealthBuild:other.source});
+    changed.state.releaseEvidence.previousHealth.build=other.source;
+    const output=sink(),result=await runStreamingEpisode(episode,timeline([first,changed],START*1000+16000000),clock,output);
+    expect(result.versionStatus).toBe('assumption_qualified');expect(result.executionStatus).toBe('known_prefix_only');
+    expect(result.release.source).toBe(proof.source);expect(output.events.filter(e=>e.type==='receipt')).toHaveLength(1);
   });
   it('does not skip ambiguous initial input to select a later complete response',async()=>{
     const unknown=frame(0,'2026-09-23T16:00:00Z'),later=frame(1,'2026-09-23T16:00:15Z');

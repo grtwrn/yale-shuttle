@@ -4,17 +4,19 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import {qualification} from './source-versions.mjs';
+const selectedSource=qualification();
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const path = root + 'services/shuttle-v2/web/src/TransitMap.tsx';
 const override = process.argv[2];
 const source = readFileSync(override ?? path, 'utf8');
 const hash = s => createHash('sha256').update(s).digest('hex');
 if (hash(source) !== '8e89152f7af5589c0451b343ab3b85f1210eb3013df2cad537cc8d4a5d3432be') throw Error('Unsupported TransitMap source');
-const webTree = execFileSync('git',['rev-parse','HEAD:services/shuttle-v2/web'],{cwd:root,encoding:'utf8'}).trim();
-if(webTree!=='39e7e9738975f45dfb5c443cc99961a39e9aa4ef') throw Error('Unsupported complete frontend source tree');
-execFileSync('git',['diff','--exit-code','HEAD','--','services/shuttle-v2/web'],{cwd:root});
+const webTree = execFileSync('git',['rev-parse',selectedSource.source+':services/shuttle-v2/web'],{cwd:root,encoding:'utf8'}).trim();
+if(webTree!==selectedSource.webTree) throw Error('Unsupported complete frontend source tree');
+execFileSync('git',['diff','--exit-code',selectedSource.source,'--','services/shuttle-v2/web','services/shuttle-v2/src/schema','services/shuttle-v2/src/network/alignStops.ts'],{cwd:root});
 const sf = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const manifest = { sourceSha256: hash(source), webTree, ranges: [] };
+const manifest = { source:selectedSource.source, sourceSha256: hash(source), webTree, ranges: [] };
 const all = [];
 function visit(n) { all.push(n); ts.forEachChild(n, visit); }
 visit(sf);
@@ -144,7 +146,7 @@ for (const node of sf.statements.filter(ts.isImportDeclaration)) {
 }
 imports.push(`import {preferredTripOrder} from './tripRanking';`);
 imports.push(`import {${[...boundary].join(',')}} from '../../../../research/synthetic-selection/boundary';`);
-const generated = `${imports.join('\n')}\n${globals.map(n=>take(n,'global:'+names(n).join(','))).join('\n')}
+const generated = `${imports.join('\n')}\nexport const RESEARCH_SOURCE=${JSON.stringify({source:selectedSource.source,webTree})} as const;\n${globals.map(n=>take(n,'global:'+names(n).join(','))).join('\n')}
 export const ReferenceTripPlanner = (${props}: any) => { ${referenceBody}\n${probe} };
 export const SelectionAdapter = (${props}: any) => { const rainRef = useRef({likely:false}); ${adapterBody}\n${probe} };
 ${poll}\n${pollDriver}\n${referencePoll}\n${wallComponent}\n`;

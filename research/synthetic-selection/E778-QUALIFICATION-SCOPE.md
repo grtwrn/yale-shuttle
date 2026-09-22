@@ -60,3 +60,17 @@ workflow is bounded to two version jobs and 20 minutes each; no scale workflow
 or capture runner is invoked. Results qualify component state and source
 identity, not DOM/browser behavior, physical boarding, ETA accuracy, or every
 possible release between capture health brackets.
+
+## Proof availability precision
+
+Fresh hosted verification completed at 2026-09-22T18:45:29.513721Z in run
+35769249431. The pinned e778 proof preserves those exact receipt timestamps
+and original artifact hash, and declares availability at 18:45:30Z (next
+whole second). This conservative ceiling preserves the decoder/JavaScript
+proof identity equality without backdating submillisecond knowledge. No prior
+captured episode gains e778 eligibility from this new proof.
+
+Profile B still chooses the first ordered option, as frozen in SPEC.md;
+this qualification does not replace that research policy with a visible-only
+choice. The new overview threshold can change visibleOptions while the full
+ordered list remains intact. Both are observed independently.

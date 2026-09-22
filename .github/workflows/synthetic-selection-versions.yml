@@ -1,0 +1,75 @@
+name: research-synthetic-selection-versions
+on:
+  push:
+    branches: [research/synthetic-selection-e778-2026-09-22]
+    paths: [research/synthetic-selection/**, .github/workflows/synthetic-selection-versions.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  parity:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        source: [05a988194af3c376e5aa5da16682c29f797db2b2, e7784c03b8c739eaa603fb231fe5ce80d2d71e82]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: America/New_York
+      SELECTION_SOURCE: ${{ matrix.source }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Stage one exact source per isolated hosted job
+        run: git restore --staged --worktree --source="$SELECTION_SOURCE" -- services/shuttle-v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            services/shuttle-v2/package-lock.json
+            services/shuttle-v2/web/package-lock.json
+      - name: Install pinned application and isolated React renderer
+        run: |
+          npm ci --prefix services/shuttle-v2
+          npm ci --prefix services/shuttle-v2/web
+          npm install --prefix services/shuttle-v2/web --no-save --package-lock=false react-test-renderer@19.2.6
+      - name: Extract exact source
+        run: node research/synthetic-selection/extract.mjs
+      - name: Prove original generated behavior is byte-identical except explicit source identity
+        if: matrix.source == '05a988194af3c376e5aa5da16682c29f797db2b2'
+        run: |
+          cp services/shuttle-v2/web/src/__researchSelection.generated.tsx research/synthetic-selection/results/versioned-generated.tsx
+          cp research/synthetic-selection/results/extraction.json research/synthetic-selection/results/versioned-extraction.json
+          git show 53834e9d21379ea5193c14760239e897d3e9742d:research/synthetic-selection/extract.mjs > research/synthetic-selection/old-extract.mjs
+          node research/synthetic-selection/old-extract.mjs
+          python3 - <<'PY'
+          import pathlib, re
+          p = pathlib.Path('research/synthetic-selection/results/versioned-generated.tsx')
+          new = p.read_text()
+          stripped = re.sub(r'^export const RESEARCH_SOURCE=.*?;\n', '', new, flags=re.M)
+          old = pathlib.Path('services/shuttle-v2/web/src/__researchSelection.generated.tsx').read_text()
+          assert stripped == old, 'Original generated behavior changed'
+          PY
+          node research/synthetic-selection/extract.mjs
+      - name: Generate only synthetic decoder fixtures from exact recorder source
+        run: |
+          git show bae23b33211c73589ede784bf32d3485124874d1:research/public-fleet-timeline/capture.py > research/synthetic-selection/results/recorder.py
+          python3 research/synthetic-selection/test_capture_input.py
+      - name: Actual component, parent poll, version and streaming parity
+        working-directory: services/shuttle-v2
+        run: npx vitest run --config ../../research/synthetic-selection/vitest.config.ts
+      - name: Exact source's production overview regressions
+        working-directory: services/shuttle-v2
+        run: npx vitest run web/src/overview-walking.test.ts --reporter=json --outputFile=../../research/synthetic-selection/results/overview.json
+      - name: Assert staged production source unchanged
+        if: always()
+        run: git diff --exit-code "$SELECTION_SOURCE" -- services/shuttle-v2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selection-version-${{ matrix.source }}
+          path: |
+            research/synthetic-selection/results/*.json

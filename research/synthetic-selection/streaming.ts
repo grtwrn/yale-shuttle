@@ -7,7 +7,7 @@ import {pipeline} from 'node:stream/promises';
 import Database from '../../services/shuttle-v2/node_modules/better-sqlite3/lib/index.js';
 import {mountSelection,type EventSink,type Scenario} from './adapter';
 import {initialStructure,supportedRelease,SUPPORTED_RELEASE} from './envelope';
-import proof from './INITIAL-SOURCE-PROOF.json';
+import {ACTIVE_PROOF as proof} from './source';
 
 export const POLICY='9ded9d0';
 export const SCENARIO_SHA='265ecc5b1bf189f995f8272805b658dc28c63f991e7a724a54e2e8e1b4699af9';

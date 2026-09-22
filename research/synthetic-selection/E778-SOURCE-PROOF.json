@@ -1,0 +1,66 @@
+{
+  "source": "e7784c03b8c739eaa603fb231fe5ce80d2d71e82",
+  "webTree": "f985c086ee1d340ab37c7fc7c482b98bcde03ac6",
+  "webSrcTree": "c86bcf558a276752ed35b1145bd7c7fc33f7d4cf",
+  "proofKnownAt": "2026-09-22T18:45:30+00:00",
+  "proofRun": "https://github.com/grtwrn/yale-shuttle/actions/runs/35769249431",
+  "files": {
+    "index.html": {
+      "bytes": 1174,
+      "sha256": "1a2f603f04ad3d8642aec5913f9200587bb748275fd9a258e64670a3dd1f174a"
+    },
+    "assets/rider-CiwwGOPJ.js": {
+      "bytes": 472494,
+      "sha256": "9580f82a1c9e094783de4b41537e84dd162be67ec22814ba76c8f62728f56d84"
+    },
+    "assets/geo-BjWFh9tz.js": {
+      "bytes": 198769,
+      "sha256": "5d804a22578f34121b98c45d5b614c6e92ebc354d5423109c4d5421ca8203a5f"
+    }
+  },
+  "receipts": [
+    {
+      "path": "/healthz",
+      "requestedAt": "2026-09-22T18:45:29.012814+00:00",
+      "receivedAt": "2026-09-22T18:45:29.080130+00:00",
+      "bytes": 416,
+      "sha256": "fc250fe157bd0c52b70b41eda36d932868233b0be00f80c42df3a3bba0746f34"
+    },
+    {
+      "path": "/",
+      "requestedAt": "2026-09-22T18:45:29.080225+00:00",
+      "receivedAt": "2026-09-22T18:45:29.140271+00:00",
+      "bytes": 1174,
+      "sha256": "1a2f603f04ad3d8642aec5913f9200587bb748275fd9a258e64670a3dd1f174a"
+    },
+    {
+      "path": "/assets/rider-CiwwGOPJ.js",
+      "requestedAt": "2026-09-22T18:45:29.140583+00:00",
+      "receivedAt": "2026-09-22T18:45:29.411499+00:00",
+      "bytes": 472494,
+      "sha256": "9580f82a1c9e094783de4b41537e84dd162be67ec22814ba76c8f62728f56d84"
+    },
+    {
+      "path": "/assets/geo-BjWFh9tz.js",
+      "requestedAt": "2026-09-22T18:45:29.412491+00:00",
+      "receivedAt": "2026-09-22T18:45:29.473757+00:00",
+      "bytes": 198769,
+      "sha256": "5d804a22578f34121b98c45d5b614c6e92ebc354d5423109c4d5421ca8203a5f"
+    },
+    {
+      "path": "/healthz",
+      "requestedAt": "2026-09-22T18:45:29.474447+00:00",
+      "receivedAt": "2026-09-22T18:45:29.513652+00:00",
+      "bytes": 416,
+      "sha256": "a87bacc4cbfdc51d7e995a2f658769c00f8dfad066e984274730667e7d6f3d2b"
+    }
+  ],
+  "scope": "Fresh served public HTML/JS equal exact-source hosted Docker build; equal health brackets do not prove every intervening release.",
+  "verifiedAt": "2026-09-22T18:45:29.513721+00:00",
+  "availabilityConvention": "Next whole UTC second after exact verifiedAt; conservative shared Python/JavaScript identity clock, never rounded backward.",
+  "proofArtifact": {
+    "id": 10713088088,
+    "zipSha256": "b80f5c096d9448022cbb32475fd9cba0e3a55578b19700528943abde341f93aa",
+    "originalProofSha256": "5143e115bd6316c9154763d341a5d7e3e4ada7c31780e480fec752d67823da94"
+  }
+}

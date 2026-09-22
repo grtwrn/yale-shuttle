@@ -8,6 +8,7 @@ import {applyModelParams} from '../../services/shuttle-v2/web/src/eta/params';
 import {haversineMeters} from '../../services/shuttle-v2/web/src/geo';
 import {walkSecFromMeters} from '../../services/shuttle-v2/web/src/walk';
 import {CURRENT_LOCATION_TEXT} from '../../services/shuttle-v2/web/src/endpoints';
+import './source';
 
 type LL = {lat:number;lon:number};
 type Clock = {now:()=>number; advance:(milliseconds:number)=>Promise<void>};

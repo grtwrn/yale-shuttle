@@ -1,11 +1,10 @@
 import {mountSelection,type Scenario} from './adapter';
+import {ACTIVE_PROOF} from './source';
 
 export const SUPPORTED_RELEASE={
-  source:'05a988194af3c376e5aa5da16682c29f797db2b2',
-  webTree:'39e7e9738975f45dfb5c443cc99961a39e9aa4ef',
-  files:{'index.html':'02dd90560d74374a8e826cd56e36e0d31e4325937f8ed6751899224bc75bd008',
-    'assets/rider-U6Gl7ugq.js':'de3217094fc8eca240035b8562189c7f28891068e4936b0a80a92ca7ccf4e18d',
-    'assets/geo-BjWFh9tz.js':'5d804a22578f34121b98c45d5b614c6e92ebc354d5423109c4d5421ca8203a5f'},
+  source:ACTIVE_PROOF.source,
+  webTree:ACTIVE_PROOF.webTree,
+  files:Object.fromEntries(Object.entries(ACTIVE_PROOF.files).map(([path,file]:any)=>[path,file.sha256])),
 } as const;
 export function supportedRelease(r:any):boolean {
   return !!r && r.source===SUPPORTED_RELEASE.source && r.webTree===SUPPORTED_RELEASE.webTree
