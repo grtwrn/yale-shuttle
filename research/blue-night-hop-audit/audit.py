@@ -108,6 +108,7 @@ def main():
                         reason='forward_occurrence_hop_over_5'
                         failures.append(dict(population='training',bus=bus,at=v['arrived_at'],wait=w,source=slim(s),
                             previous=slim(prev),next=slim(v),previousIndex=prev['stop_index'],nextIndex=v['stop_index'],hop=hop,
+                            sourceToFailureQuality=qtrain.describe(bus,RID,s['departed_at'],v['arrived_at']),
                             unreachedTargets=[ti for p,ti in wanted.items() if p not in reached]))
                         break
                     progress+=hop;prev=v
@@ -139,6 +140,7 @@ def main():
                 failures.append(dict(population='labels',bus=r['bus'],at=v['arrived_at'],snapshotAt=r['at'],
                     target=r['target'],targetIndex=r['targetIndex'],stopsAhead=r['stopsAhead'],
                     anchorIndex=r['anchorIndex'],phaseIndex=r['index'],occurrenceReason=r['occurrenceReason'],
+                    firstStep=prev is None,
                     previous=slim(prev) if prev else None,next=slim(v),previousIndex=index,nextIndex=v['stop_index'],hop=hop))
                 break
             prev=v;index=v['stop_index']
@@ -151,6 +153,12 @@ def main():
         fs.sort(key=lambda f:(f['at'],f['bus'],f.get('snapshotAt',0),f.get('wait',0)))
         summaries.append(dict(population=population,fromIndex=a,toIndex=b,fromStop=seq[a],toStop=seq[b],hop=ev.distance(a,b,n),
             rows=len(fs),events=len({(f['bus'],f['next']['id']) for f in fs}),
+            sourceTrips=len({(f['bus'],f['source']['id']) for f in fs if f.get('source')}),
+            trainingByWait=dict(collections.Counter(f['wait'] for f in fs if population=='training')),
+            sourceToFailureQuality=dict(collections.Counter(' + '.join(f['sourceToFailureQuality']['reasons']) or 'pass'
+                for f in fs if population=='training')),
+            firstStepRows=sum(f.get('firstStep',False) for f in fs),
+            initialAnchorPhaseDisagreementRows=sum(f.get('firstStep',False) and f['anchorIndex']!=f['phaseIndex'] for f in fs),
             days=sorted({ev.date(f['at']) for f in fs}),buses=sorted({f['bus'] for f in fs})))
         f=dict(fs[0]);prev=f['previous'];nxt=f['next']
         start=(prev['arrived_at'] or prev['anchored_at']) if prev else f['snapshotAt']

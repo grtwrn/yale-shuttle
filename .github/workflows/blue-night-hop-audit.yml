@@ -40,6 +40,7 @@ jobs:
         run: |
           python3 research/blue-night-hop-audit/audit.py
           services/shuttle-v2/node_modules/.bin/tsx research/blue-night-hop-audit/trace.ts
+          python3 research/blue-night-hop-audit/report.py
           sha256sum --check /tmp/canonical-before.sha256
           sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
       - uses: actions/upload-artifact@v4
