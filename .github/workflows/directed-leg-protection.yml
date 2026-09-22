@@ -1,0 +1,65 @@
+name: directed-leg-protection-research
+on:
+  push:
+    branches: [research/directed-leg-protection-2026-09-22]
+    paths: ['research/directed-leg-protection/**', '.github/workflows/directed-leg-protection.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+      TZ: America/New_York
+      NODE_OPTIONS: --max-old-space-size=10000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/diagnostic-frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: blue-night-hop-audit
+          run-id: 35686892045
+          github-token: ${{ github.token }}
+          path: research/blue-night-frozen
+      - name: Preserve comparator and original inputs
+        run: |
+          ln -s "$GITHUB_WORKSPACE/research/diagnostic-frozen/canonical-windows/results" research/canonical-windows/results
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+          find research/diagnostic-frozen -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/canonical-before.sha256
+          git diff --exit-code 4624407 -- services/shuttle-v2
+      - name: Focused positive and recovery fixtures
+        run: services/shuttle-v2/node_modules/.bin/tsx research/directed-leg-protection/fixtures.ts
+      - name: Existing detector departure network and Red clock tests
+        working-directory: services/shuttle-v2
+        run: npm test -- src/collector/detector src/collector/departure src/network web/src/eta/filter.test.ts
+      - name: All-route reducer reconstruction and causal prefixes
+        run: services/shuttle-v2/node_modules/.bin/tsx research/directed-leg-protection/replay.ts
+      - name: Fixed-forecast cohort differences with original quality
+        run: |
+          python3 research/directed-leg-protection/cohorts.py
+          sha256sum --check /tmp/canonical-before.sha256
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+          git diff --exit-code 4624407 -- services/shuttle-v2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: directed-leg-protection
+          path: research/directed-leg-protection/results/**
+          retention-days: 90
