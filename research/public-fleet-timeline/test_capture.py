@@ -80,6 +80,16 @@ class Tests(unittest.TestCase):
         self.assertEqual(stale['servedAt'], 100000)
         self.assertNotIn('etaAvailable', stale)
 
+    def test_overflow_clock_preserves_response_and_does_not_break_journal(self):
+        body = b'{"buses":[],"server_eta":{"at":1e999,"servedAt":1000}}'
+        entry, got, parsed = self.request(body)
+        self.assertTrue(entry['transportComplete'])
+        self.assertFalse(entry['jsonObject'])
+        self.assertIsNone(parsed)
+        self.assertEqual(got, body)
+        self.assertEqual(gzip.decompress((self.root / entry['blob']).read_bytes()), body)
+        self.assertEqual(self.cap.sequence, 1)
+
     def test_http_error_body_is_preserved_but_not_successful(self):
         error = urllib.error.HTTPError(c.BASE + '/api/buses', 503, 'down', {'Content-Type': 'text/plain'}, io.BytesIO(b'busy'))
         with patch.object(self.cap.opener, 'open', side_effect=error):

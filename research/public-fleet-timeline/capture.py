@@ -31,6 +31,13 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def finite_float(value):
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError('Non-finite JSON number')
+    return result
+
+
 def utc_end(value):
     result = dt.datetime.fromisoformat(value.replace('Z', '+00:00'))
     if result.utcoffset() != dt.timedelta(0):
@@ -235,7 +242,8 @@ class Capture:
             try:
                 if record['headers'].get('Content-Encoding') not in (None, '', 'identity'):
                     raise ValueError('Unexpected body encoding')
-                parsed = json.loads(body, parse_constant=lambda x: (_ for _ in ()).throw(ValueError(x)))
+                parsed = json.loads(body, parse_float=finite_float,
+                                    parse_constant=lambda x: (_ for _ in ()).throw(ValueError(x)))
                 if not isinstance(parsed, dict):
                     raise ValueError('Expected an object')
                 record['jsonObject'] = True
