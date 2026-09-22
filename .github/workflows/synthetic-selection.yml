@@ -1,0 +1,41 @@
+name: research-synthetic-selection
+on:
+  push:
+    branches: [research/synthetic-selection-baseline-2026-09-22]
+    paths: [research/synthetic-selection/**, .github/workflows/synthetic-selection.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TZ: America/New_York
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            services/shuttle-v2/package-lock.json
+            services/shuttle-v2/web/package-lock.json
+      - name: Install pinned application and isolated React test renderer
+        run: |
+          npm ci --prefix services/shuttle-v2
+          npm ci --prefix services/shuttle-v2/web
+          npm install --prefix services/shuttle-v2/web --no-save --package-lock=false react-test-renderer@19.2.6
+      - name: Generate exact source extracts
+        run: node research/synthetic-selection/extract.mjs
+      - name: Component and policy parity (synthetic only)
+        working-directory: services/shuttle-v2
+        run: npx vitest run --config ../../research/synthetic-selection/vitest.config.ts
+      - name: Assert production source unchanged
+        if: always()
+        run: git diff --exit-code -- services/shuttle-v2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-selection-parity
+          path: research/synthetic-selection/results/
