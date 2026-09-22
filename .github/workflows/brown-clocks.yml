@@ -1,0 +1,68 @@
+name: brown-clock-lifetime-experiments
+on:
+  push:
+    branches: [research/brown-clock-lifetimes-2026-09-22]
+    paths: ['research/brown-clocks/**', '.github/workflows/brown-clocks.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+      TZ: America/New_York
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/brown-clocks/input/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: window-only-results
+          run-id: 35685527686
+          github-token: ${{ github.token }}
+          path: research/brown-clocks/input/window
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - name: Check pinned clock and transformation boundaries
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/brown-clocks/policy.test.ts
+          python3 -m unittest discover -s research/window-only -p 'test_*.py' -v
+          python3 research/useful-windows/rider_risk.py --self-test
+      - name: Replay causal clocks and halt on original feature discrepancy
+        run: services/shuttle-v2/node_modules/.bin/tsx research/brown-clocks/replay.ts
+      - name: Preserve original leads then persist all arms before labels
+        run: python3 research/brown-clocks/study.py
+      - name: Audit printed windows and causal handoffs
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/brown-clocks/printed.ts
+          python3 research/brown-clocks/handoffs.py
+      - name: Replay matched rider actions and verify formatter parity
+        run: |
+          ln -s ../../k-sweep/results/raw_positions.jsonl.gz research/brown-clocks/results/raw_positions.jsonl.gz
+          python3 research/useful-windows/rider_risk.py research/brown-clocks/results
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/brown-clocks/results/rider-risk
+          python3 research/brown-clocks/actions.py
+          sha256sum --check research/brown-clocks/results/immutable-inputs.sha256
+          python3 research/brown-clocks/report.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brown-clock-results
+          path: |
+            research/brown-clocks/results/**
+            !research/brown-clocks/results/raw_positions.jsonl.gz
+          retention-days: 90
