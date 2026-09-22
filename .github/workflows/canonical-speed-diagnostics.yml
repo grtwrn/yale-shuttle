@@ -1,0 +1,40 @@
+name: canonical-speed-diagnostics
+on:
+  push:
+    branches: [research/canonical-windows-2026-09-21]
+    paths: ['research/canonical-speed-diagnostics/**', '.github/workflows/canonical-speed-diagnostics.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install geographiclib==2.1
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - name: Independent geodesic and matching fixtures
+        run: python3 -m unittest discover -s research/canonical-speed-diagnostics -p 'test_*.py' -v
+      - name: Diagnose frozen positions and collection-time patterns
+        run: |
+          python3 research/canonical-speed-diagnostics/analyze.py
+          python3 research/canonical-speed-diagnostics/report.py
+          cp research/canonical-speed-diagnostics/SOURCE-AUDIT.md research/canonical-speed-diagnostics/results/
+          cp research/canonical-speed-diagnostics/PLAN.md research/canonical-speed-diagnostics/results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canonical-speed-diagnostics
+          path: research/canonical-speed-diagnostics/results/**
+          retention-days: 90
