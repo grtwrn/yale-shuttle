@@ -22,7 +22,7 @@ export function project(slice: readonly (readonly number[])[], p: Point) {
   return best;
 }
 
-type Certificate={route:number;provider:number;leg:number};
+type Certificate={bus:string;route:number;provider:number;leg:number};
 export interface Decision {
   at:number;bus:string;provider:number;route:number;previous:number|null;ordinary:number|null;
   selected:number|null;leg:number|null;protected:boolean;retained:boolean;reason:string;
@@ -67,7 +67,12 @@ export class DirectedGuard {
       leg:null,protected:false,retained:false,reason:'no_prior'};
     const fail=(reason:string)=>{this.certificates.delete(key);d.reason=reason;return d;};
     if(!prev)return fail('no_prior');
-    if(contended)return fail('contended_name');
+    if(contended) {
+      // planTracks temporarily changes keys for a contended name. Clear its
+      // unqualified certificate too, so it cannot reappear after contention.
+      for(const [other,c] of this.certificates)if(c.bus===o.busName)this.certificates.delete(other);
+      return fail('contended_name');
+    }
     if(prev.routeId!==o.routeId)return fail('route_change');
     if(prev.busId!==o.busId)return fail('provider_change');
     const gap=o.collectedAt-prev.lastObservedAt;d.gapMs=gap;
@@ -105,7 +110,7 @@ export class DirectedGuard {
       .map(i=>({index:i,stopId:route.stops[i]!,meters:distanceMeters(o,this.base.stops.get(route.stops[i]!)!)}))
       .sort((a,b)=>a.meters-b.meters);
     const selected=candidates[0]!;
-    this.certificates.set(key,{route:o.routeId,provider:o.busId,leg:index});
+    this.certificates.set(key,{bus:o.busName,route:o.routeId,provider:o.busId,leg:index});
     this.selected.set(o,selected);
     return {...d,selected:selected.index,protected:true,retained:true,reason:'directed_leg_protected'};
   }

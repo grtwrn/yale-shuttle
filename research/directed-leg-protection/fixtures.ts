@@ -31,7 +31,7 @@ function stateAt(o:BusObservation,index:number):BusState {
 const results:any[]=[];
 for(const c of cases) {
   const observations=raw.filter(r=>r.busName===c.bus&&r.collectedAt<=c.time&&r.collectedAt>=c.time-10000);
-  const o=observations.at(-1)!,p=observations.at(-2)!;assert.equal(o.collectedAt,c.time);
+  const o=observations.at(-1)!,p=observations.filter(r=>r.collectedAt<o.collectedAt).at(-1)!;assert.equal(o.collectedAt,c.time);
   const before=stateAt(p,c.before),guard=new DirectedGuard(net),d=guard.prepare(c.bus,before,o);
   assert.equal(step(net,before,o).state?.nearestIndex,c.ordinary);
   assert.equal(d.protected,c.positive);assert.equal(step(guard.network,before,o).state?.nearestIndex,c.expected);
@@ -73,6 +73,10 @@ const skipped={...o,lat:far.lat,lon:far.lon,collectedAt:o.collectedAt+10000};
 assert.equal(guard.prepare(c.bus,after,skipped).protected,false);
 assert.deepEqual(step(guard.network,after,skipped).events.map(e=>e.kind),['arrival']);
 results.push({fixture:'repeat retains certificate after duplicate; genuine skipped stop recovers with arrival only',passed:true});
+const collision=new DirectedGuard(net);assert(collision.prepare(c.bus,before,o).protected);
+collision.prepare(c.bus+'|provider',after,{...repeat,busId:o.busId+1},true);
+assert.equal(collision.prepare(c.bus,after,repeat).protected,false,'Contended name resurrected an old-key certificate');
+results.push({fixture:'contended identity clears certificate across track-key migration',passed:true});
 fs.mkdirSync('research/directed-leg-protection/results',{recursive:true});
 fs.writeFileSync('research/directed-leg-protection/results/focused-fixtures.json',JSON.stringify(results,null,2)+'\n');
 console.log(JSON.stringify({focusedFixtures:results.length,passed:true}));
