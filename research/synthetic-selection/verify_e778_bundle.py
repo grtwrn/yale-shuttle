@@ -8,7 +8,8 @@ import subprocess
 import urllib.request
 
 SOURCE = 'e7784c03b8c739eaa603fb231fe5ce80d2d71e82'
-TREE = 'c86bcf558a276752ed35b1145bd7c7fc33f7d4cf'
+TREE = 'f985c086ee1d340ab37c7fc7c482b98bcde03ac6'
+SRC_TREE = 'c86bcf558a276752ed35b1145bd7c7fc33f7d4cf'
 BASE = 'https://yale-shuttle.fly.dev'
 PATHS = {'index.html': '/', 'assets/rider-CiwwGOPJ.js': '/assets/rider-CiwwGOPJ.js',
          'assets/geo-BjWFh9tz.js': '/assets/geo-BjWFh9tz.js'}
@@ -41,6 +42,7 @@ def main():
     assert os.environ.get('GITHUB_ACTIONS') == 'true', 'Hosted only'
     tree = subprocess.check_output(['git', 'rev-parse', f'{SOURCE}:services/shuttle-v2/web'], text=True).strip()
     assert tree == TREE
+    assert subprocess.check_output(['git', 'rev-parse', f'{SOURCE}:services/shuttle-v2/web/src'], text=True).strip() == SRC_TREE
     subprocess.run(['git', 'diff', '--exit-code', SOURCE, '--', 'services/shuttle-v2'], check=True)
     OUT.mkdir(exist_ok=True)
     health, before = read('/healthz')
@@ -57,7 +59,7 @@ def main():
     health, after = read('/healthz')
     assert json.loads(health)['build'] == SOURCE[:12]
     receipts.append(after)
-    proof = {'source': SOURCE, 'webTree': TREE, 'proofKnownAt': now(),
+    proof = {'source': SOURCE, 'webTree': TREE, 'webSrcTree': SRC_TREE, 'proofKnownAt': now(),
              'proofRun': f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
              'files': files, 'receipts': receipts,
              'scope': 'Fresh served public HTML/JS equal exact-source hosted Docker build; equal health brackets do not prove every intervening release.'}

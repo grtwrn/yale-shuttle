@@ -12,7 +12,12 @@ Qualify only the exact frontend trees for:
 - 05a988194af3c376e5aa5da16682c29f797db2b2:
   39e7e9738975f45dfb5c443cc99961a39e9aa4ef (existing baseline/default).
 - e7784c03b8c739eaa603fb231fe5ce80d2d71e82:
-  c86bcf558a276752ed35b1145bd7c7fc33f7d4cf (separate qualification).
+  f985c086ee1d340ab37c7fc7c482b98bcde03ac6 (complete web tree;
+  c86bcf558a276752ed35b1145bd7c7fc33f7d4cf is its web/src subtree).
+
+The first hosted proof attempt rejected the previously supplied subtree hash
+as a complete-tree identity. This correction follows exact git tree identity;
+no source, behavioral threshold or scenario changes accompany it.
 
 An explicit source argument selects an allowlisted qualification. Extraction
 checks the entire checked-out frontend against that source and records the
