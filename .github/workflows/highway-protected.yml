@@ -1,0 +1,66 @@
+name: protected-highway-window-study
+on:
+  push:
+    branches: [research/highway-protected-2026-09-22]
+    paths: ['research/highway-protected/**', '.github/workflows/highway-protected.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - run: python3 -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: highway-context-window-results
+          run-id: 35688081446
+          github-token: ${{ github.token }}
+          path: research/highway-protected/input
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-route-context
+          run-id: 35686813146
+          github-token: ${{ github.token }}
+          path: research/highway-geometry
+      - name: Pin source artifact metadata and test transform fixtures
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/grtwrn/yale-shuttle/actions/artifacts/10678256735 > research/highway-protected/input/artifact-metadata.json
+          gh api repos/grtwrn/yale-shuttle/actions/runs/35688081446 > research/highway-protected/input/run-metadata.json
+          python3 -m unittest discover -s research/highway-protected -p 'test_*.py' -v
+      - name: Transform unscored rows and verify exact source joins before scoring
+        run: python3 research/highway-protected/study.py --generate
+      - name: Evaluate every fixed arm on shared and full-route cohorts
+        run: python3 research/highway-protected/study.py --score
+      - name: Replay all unchanged action rules and assert protected controls
+        run: python3 research/highway-protected/actions.py
+      - name: Verify application rendering for all policy cohorts
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-protected/results/highway25/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-protected/results/highway25/original-cohort/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-protected/results/highway50/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-protected/results/highway50/original-cohort/rider-risk
+          python3 research/highway-protected/report.py
+          cp research/highway-protected/PLAN.md research/highway-protected/results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protected-highway-window-results
+          path: |
+            research/highway-protected/results/**
+            !research/highway-protected/results/**/raw_positions.jsonl.gz
+          retention-days: 90
