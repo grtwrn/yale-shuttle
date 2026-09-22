@@ -252,7 +252,11 @@ async function archiveLocked(day, opts, base, adminToken, dir) {
     generatedAt: new Date().toISOString(), base, build: null, tables: {}, positions: null,
     completeness: "transport only; service coverage and outcome finality are not established", ok: true,
   };
-  const selected = { ...attempt, tables: { ...previous?.tables }, positions: previous?.positions ?? null };
+  const retained = Object.fromEntries(Object.entries(previous?.tables ?? {}).map(([table, entry]) => [table, {
+    ...entry, capturedAt: entry.capturedAt ?? previous.generatedAt ?? null,
+    build: entry.build ?? previous.build ?? null,
+  }]));
+  const selected = { ...attempt, tables: retained, positions: previous?.positions ?? null };
   for (const table of TABLES) {
     const entry = { file: path.join(relativeDir, `${table}.jsonl.gz`), rows: 0, complete: false, source: "server" };
     let positions = null;
@@ -263,11 +267,11 @@ async function archiveLocked(day, opts, base, adminToken, dir) {
       try { olderRows = previousRows(dir, table, previous); }
       catch (err) {
         entry.replacementError = err instanceof Error ? err.message : String(err);
-        selected.tables[table] = { ...prior, integrityError: entry.replacementError };
+        selected.tables[table] = { ...retained[table], integrityError: entry.replacementError };
       }
     } else if (prior && (prior.rows > 0 || prior.complete)) {
       entry.replacementError = `previous ${table} has no verifiable hash`;
-      selected.tables[table] = { ...prior, integrityError: entry.replacementError };
+      selected.tables[table] = { ...retained[table], integrityError: entry.replacementError };
     }
     try {
       const got = await fetchTable(base, adminToken, day, table);

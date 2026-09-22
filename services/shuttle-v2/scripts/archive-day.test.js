@@ -183,11 +183,17 @@ describe("immutable archive attempts and selection", () => {
       const file = archiveTableFile(path.join(dir, day), table, manifest);
       fs.copyFileSync(file, path.join(dir, day, `${table}.jsonl.gz`));
       manifest.tables[table].file = `${table}.jsonl.gz`;
+      delete manifest.tables[table].capturedAt;
+      delete manifest.tables[table].build;
     }
+    manifest.generatedAt = "2026-09-22T07:40:00.000Z";
     fs.writeFileSync(path.join(dir, day, "manifest.json"), JSON.stringify(manifest));
     expect(readArchiveRows(day, "raw_positions", dir)).toHaveLength(2);
     rows.raw_positions.push(gps(3));
-    expect((await archiveDay(day, opts)).ok).toBe(true);
+    failures.add("legs");
+    expect((await archiveDay(day, opts)).ok).toBe(false);
+    expect(selected().tables.legs.capturedAt).toBe(manifest.generatedAt);
+    expect(selected().tables.legs.build).toBe(manifest.build);
     expect(readArchiveRows(day, "raw_positions", dir)).toHaveLength(3);
     expect(zlib.gunzipSync(fs.readFileSync(path.join(dir, day, "raw_positions.jsonl.gz")))
       .toString().trim().split("\n")).toHaveLength(2);
