@@ -33,3 +33,35 @@ The synthetic all-line protocol is separately pinned in `6dfbe4f` under
 `research/phase-encounters/PROSPECTIVE-SELECTION-PROTOCOL.md`, with42 static O/D
 entries, all-route planning and actual one-shot reminder semantics. No candidate
 or outcome replay is activated by recording these public responses.
+
+## Initial deployed frontend verified
+
+[Hosted run 35693019507](https://github.com/grtwrn/yale-shuttle/actions/runs/35693019507)
+succeeded at research source `70708534c62430ae5e46cad0e471b9b72b4e42e9`.
+The production Docker frontend stage reproduced all three captured files exactly:
+`index.html`, `assets/rider-U6Gl7ugq.js` and `assets/geo-BjWFh9tz.js`.
+Their lengths and SHA256 hashes match `deployed-bundle.json`; the result is in the
+run's `captured-bundle-provenance` artifact, `bundle-verification.json`.
+
+Production source is `05a988194af3c376e5aa5da16682c29f797db2b2`, with frontend tree
+`39e7e9738975f45dfb5c443cc99961a39e9aa4ef`. This establishes source equivalence
+for the initial captured release. Future different bundles require their own
+mapping; a health build label alone is not sufficient. It does not validate
+candidate forecasts, React replay parity, physical outcomes or probabilities.
+
+## Hybrid distribution limitation
+
+The protected-window research changes bounds while preserving the served point
+and the original 50-point distribution. The deployed frontend does consume that
+distribution: `ArrivalDetails.tsx` plots pickup samples, and `ArriveBy.tsx` plots
+destination samples passed through `journeyArrival.ts`. Consequently, changing
+only bounds can leave the detailed forecast plot inconsistent with the new
+window even if point, reminder and route-selection controls pass.
+
+The four-arm Brown lock deliberately retains those arrays as a diagnostic
+control. It is not a coherent probability export or a production-ready display.
+Before any hybrid deployment, define and test a consistent representation of
+both pickup and destination uncertainty. The existing pickup component has an
+interval-only fallback when a distribution is absent, and the destination plot
+is conditional on a distribution; this observation does not authorize changing
+the pinned experiment or inventing/rescaling probabilities to fit its bounds.
