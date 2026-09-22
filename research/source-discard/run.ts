@@ -43,12 +43,19 @@ const audit:any={descriptiveOnly:true,planSha256:sha(here+'PLAN.md'),inputHashes
   rawRows:raw.length,rawConsumed:full.rawConsumed,forecastRows:preds.length,prefixChecks:[],
   modelFits:0,newScores:0,newLabels:0,eofClosureCalls:0,
   prefixContract:'Delete all raw and prediction rows after cutoff; preserve original fixed cohort bus-name membership, input ordering and one-hour start.'};
-for(const file of ['unscored','forecasts'])for(const r of read(canon+file+'.jsonl.gz')){
+const expectedModelKeys=new Set(full.rows.filter(r=>r.at>=Date.parse('2026-09-17T04:00:00Z')).map(key));
+for(const file of ['unscored','forecasts']){
+ const seen=new Set<string>();
+ for(const r of read(canon+file+'.jsonl.gz')){
   const f=byKey.get(key(r));assert(f);
+  assert(expectedModelKeys.has(key(r)));assert(!seen.has(key(r)));seen.add(key(r));
   for(const field of Object.keys(f))assert.deepEqual(r[field],f[field],file+': '+field);
   audit[file==='unscored'?'originalForecastInputJoins':'originalLabelledForecastInputJoins']++;
+ }
+ if(file==='unscored')assert.deepEqual(seen,expectedModelKeys);
 }
-assert.equal(audit.originalForecastInputJoins,full.rows.length);
+assert.equal(audit.originalForecastInputJoins,expectedModelKeys.size);
+audit.originalFeatureOnlyWarmupRows=full.rows.length-expectedModelKeys.size;
 // Save observer output only after the independent pinned original control passes.
 write('features-control',full.rows);write('diagnostics',full.diagnostics);
 write('emissions',full.observer.emissions);write('resets',full.observer.resets);

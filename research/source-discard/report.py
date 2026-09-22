@@ -88,7 +88,7 @@ def main():
         'Snapshot categories partition each arm; visit counts can overlap between categories. Repeated source evidence is not an independent source trip.',
         'Only immutable saved labels IDs are used for denominators; no outcome times, ETA accuracy, width, action or model score is calculated.',
         'Original inputs and model forecasts remain unchanged. This study neither refits nor asserts an improved model or app safety.'])
-    checked=0
+    checked=0;expected_keys=None
     for policy,base in [('original22',CANON),('highway25',HIGHWAY/'highway25'),('highway50',HIGHWAY/'highway50')]:
         # Outcome fields are deliberately discarded at the read boundary.
         labels={key(r):r['label']['id'] for r in rows(base/'forecasts.jsonl.gz')}
@@ -99,7 +99,10 @@ def main():
             checked+=1
             # Keep only identifiers and existing reason strings, not predicted values.
             data.append({**{name:r[name] for name in ('at','bus','route','target')},'reasons':r['candidateReasons'],'diagnostic':diagnostics[key(r)]})
-        assert len(data)==len(features) and len({key(r) for r in data})==len(data)
+        actual_keys={key(r) for r in data}
+        assert len(actual_keys)==len(data)
+        if expected_keys is None:expected_keys=actual_keys
+        assert actual_keys==expected_keys and len(data)==verification['originalForecastInputJoins']
         assert labels.keys()<=features.keys()
         report={}
         for rid,route in routes.items():
