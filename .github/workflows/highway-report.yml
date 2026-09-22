@@ -1,0 +1,34 @@
+name: highway-study-shared-cohort-report
+on:
+  push:
+    branches: [research/highway-windows-2026-09-22]
+    paths: ['research/highway-report/**', '.github/workflows/highway-report.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: highway-context-window-results
+          run-id: 35688081446
+          github-token: ${{ github.token }}
+          path: research/highway-report/input
+      - name: Describe every fixed arm on shared and full-route cohorts
+        run: python3 research/highway-report/report.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: highway-study-shared-cohort-report
+          path: research/highway-report/results/**
+          retention-days: 90
