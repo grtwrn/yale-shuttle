@@ -134,3 +134,27 @@ result['rebuiltPriors']=rebuild_result
 (DEST/'audit.json').write_text(json.dumps(result,indent=2))
 (DEST/'endpoint-details.json').write_text(json.dumps(endpoints,indent=2))
 print(json.dumps(dict(rebuiltPriors=rebuild_result)))
+# Check archive identity uniqueness, calendar support, and the longest actual hold.
+visit_ids=collections.defaultdict(list)
+for v in visits:visit_ids[v['id']].append(v)
+duplicates={i:vv for i,vv in visit_ids.items() if len(vv)>1}
+calendar={}
+for rid in (2,14):
+ days=sorted({date(v['arrived_at']) for v in visits if v['route_id']==rid and v['arrived_at'] is not None})
+ entries=[];w=WAITS[rid][0];source=(w-10)%len(ROUTES[rid]['stops']);target=(w+1)%len(ROUTES[rid]['stops'])
+ for day in days:
+  vv=[v for v in visits if v['route_id']==rid and v['arrived_at'] is not None and date(v['arrived_at'])==day]
+  starts=[v for v in vv if v['stop_index']==source and v['departed_at'] is not None and v['how']!='gap']
+  rr=[r for r in raw if r['route_id']==rid and date(r['collected_at'])==day]
+  entries.append(dict(day=day,raw=len(rr),visits=len(vv),completedSources=len(starts),pathsToNextStop=sum(e['day']==day for e in model.paths.get((rid,10,w,target),[]))))
+ calendar[rid]=entries
+hold_examples=[]
+for key in ['2/K10','14/K10']:
+ rid=int(key.split('/')[0]);trip=result['decomposition'][key]['longest'][0]
+ es=[e for e in by_route[trip['bus'],rid] if e['stopIndex']==WAITS[rid][0] and e['arrivedAt']>=trip['start'] and e['departedAt'] is not None and e['departedAt']<=trip['end']]
+ e=es[0];points=[r for r in rg[trip['bus']] if e['arrivedAt']<=r['collected_at']<=e['departedAt']]
+ hold_examples.append(dict(route=rid,trip=trip,wait=e,points=len(points),providerIds=sorted({r['bus_id'] for r in points}),maxGapSeconds=max((b['collected_at']-a['collected_at'])/1000 for a,b in zip(points,points[1:])),distinctCoordinates=len({(r['lat'],r['lon']) for r in points}),raw=points))
+result['archiveAudit']=dict(duplicateVisitIds=len(duplicates),conflictingVisitIds=sum(any(v!=vv[0] for v in vv[1:]) for vv in duplicates.values()),calendar=calendar)
+(DEST/'audit.json').write_text(json.dumps(result,indent=2))
+(DEST/'longest-holds.json').write_text(json.dumps(hold_examples,indent=2))
+print(json.dumps(dict(archiveAudit=result['archiveAudit'],longestHolds=[{k:v for k,v in e.items() if k!='raw'} for e in hold_examples])))
