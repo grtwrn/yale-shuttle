@@ -15,6 +15,7 @@ import datetime as dt
 
 WALKS = (60, 180, 300, 600)
 RESPONSES = (0, 30)
+POLICIES = ("point", "lower", "rendered_lower")
 BUFFER_SEC = 30
 MAX_SNAPSHOT_GAP_MS = 30_000
 MAX_RAW_GAP_MS = 60_000
@@ -43,6 +44,33 @@ def forecast(row, arm):
 def valid_forecast(value):
     return (isinstance(value, dict) and all(finite(value.get(k)) for k in ("eta", "low", "high"))
             and 0 <= value["low"] <= value["eta"] <= value["high"])
+
+
+def valid_point(value):
+    return isinstance(value, dict) and finite(value.get("eta")) and value["eta"] >= 0
+
+
+def rendered_pickup(value, elapsed=0):
+    """Mirror arrivalDetails.predictionWindow, including its point-only fallback.
+
+    This is the primary pickup table, not etaBand's legacy 3–15 minute filter.
+    The low minute is floored, the high minute ceiled, and '<1' starts now.
+    Bounds are aged afresh on each timer tick before formatting.
+    """
+    if not valid_point(value):
+        raise ValueError("A rendered pickup requires a finite, nonnegative point ETA")
+    elapsed = max(0, elapsed)
+    low, high = value.get("low"), value.get("high")
+    point = max(0, value["eta"] - elapsed)
+    if not finite(low) or not finite(high) or high < low:
+        return dict(sec=point, basis="point", text=None)
+    low, high = max(0, low - elapsed), max(0, high - elapsed)
+    if high <= 0:
+        return dict(sec=point, basis="point", text=None)
+    first = "<1" if low < 60 else str(math.floor(low / 60))
+    last = max(1, math.ceil(high / 60))
+    text = f"{last} min" if first == str(last) else f"{first}–{last} min"
+    return dict(sec=0 if low < 60 else math.floor(low / 60) * 60, basis="window", text=text)
 
 
 def causal(row):
@@ -154,17 +182,29 @@ def trigger(rows, arm, field, walk, response, departure):
         if not causal(row):
             return {"status": "censored", "reason": "noncausal-snapshot", "at": at}
         value = forecast(row, arm)
-        if not valid_forecast(value):
+        if not (valid_forecast(value) if field == "low" else valid_point(value)):
             return {"status": "censored", "reason": "missing-or-invalid-arm-forecast", "at": at}
         following = rows[i + 1]["at"] if i + 1 < len(rows) else math.inf
         fresh_until = at + MAX_SNAPSHOT_GAP_MS
         # Timer ticks every second relative to arming, matching the app's countdown check.
-        threshold = at + max(0, value[field] - walk - BUFFER_SEC) * 1000
-        fire = start + math.ceil(max(0, threshold - start) / 1000) * 1000
-        fire = max(fire, start + math.ceil((at - start) / 1000) * 1000)
+        rendered = None
+        if field == "rendered_lower":
+            # Flooring is discontinuous, so reformat at each actual check. At most
+            # 31 checks per observed row; never extrapolate past the freshness cap.
+            fire = start + math.ceil((at - start) / 1000) * 1000
+            while fire <= min(latest_leave, fresh_until) and fire < following:
+                rendered = rendered_pickup(value, (fire - at) / 1000)
+                if rendered["sec"] <= walk + BUFFER_SEC:
+                    break
+                fire += 1000
+        else:
+            threshold = at + max(0, value[field] - walk - BUFFER_SEC) * 1000
+            fire = start + math.ceil(max(0, threshold - start) / 1000) * 1000
+            fire = max(fire, start + math.ceil((at - start) / 1000) * 1000)
         if fire <= latest_leave and fire <= fresh_until and fire < following:
             return {"status": "triggered", "leaveNowAt": fire, "forecastAt": at,
-                    "triggerForecast": value, "latestLeaveAt": latest_leave}
+                    "triggerForecast": value, "latestLeaveAt": latest_leave,
+                    **({"renderedAtTrigger": rendered} if rendered is not None else {})}
         if latest_leave <= fresh_until and latest_leave < following:
             return {"status": "no-timely-reminder", "latestLeaveAt": latest_leave,
                     "forecastAt": at, "deadlineForecast": value}
@@ -176,7 +216,8 @@ def trigger(rows, arm, field, walk, response, departure):
 
 
 def evaluate_action(rows, arm, policy, walk, response, label):
-    decision = trigger(rows, arm, "eta" if policy == "point" else "low", walk, response, label["departure"])
+    field = {"point": "eta", "lower": "low", "rendered_lower": "rendered_lower"}[policy]
+    decision = trigger(rows, arm, field, walk, response, label["departure"])
     result = dict(decision, arm=arm, policy=policy, walkSec=walk, responseSec=response)
     initial = forecast(rows[0], arm)
     if valid_forecast(initial):
@@ -185,6 +226,12 @@ def evaluate_action(rows, arm, policy, walk, response, label):
                       earlyBelowLowSec=max(0, initial["low"] - actual),
                       pointOverestimationSec=max(0, initial["eta"] - actual),
                       armWidthSec=initial["high"] - initial["low"])
+    if policy == "rendered_lower" and valid_point(initial):
+        rendered = rendered_pickup(initial)
+        actual = (label["arrival"] - rows[0]["at"]) / 1000
+        result.update(renderedAtArm=rendered,
+                      earlyBeforeRendered=actual < rendered["sec"],
+                      earlyBeforeRenderedSec=max(0, rendered["sec"] - actual))
     if decision["status"] == "triggered":
         reach = decision["leaveNowAt"] + (walk + response) * 1000
         result.update(reachStopAt=reach, hypotheticalMissedBoarding=reach > label["departure"],
@@ -206,6 +253,7 @@ def mean(values):
 def summary(records):
     scored = [r for r in records if r["status"] in ("triggered", "no-timely-reminder")]
     early = [r for r in records if "earlyBelowLow" in r and r["status"] != "censored"]
+    rendered = [r for r in records if "earlyBeforeRendered" in r and r["status"] != "censored"]
     return dict(records=len(records), statuses=dict(collections.Counter(r["status"] for r in records)),
                 censorReasons=dict(collections.Counter(r.get("reason") for r in records if r["status"] == "censored")),
                 scored=len(scored), visits=len({(r["route"], r["bus"], r["target"], r["visit"]) for r in scored}),
@@ -217,6 +265,8 @@ def summary(records):
                 meanPositiveLatenessSec=mean([r.get("lateToArrivalSec") for r in scored]),
                 earlyBelowLowRate=mean([int(r["earlyBelowLow"]) for r in early]),
                 meanEarlyBelowLowSec=mean([r["earlyBelowLowSec"] for r in early]),
+                earlyBeforeRenderedRate=mean([int(r["earlyBeforeRendered"]) for r in rendered]),
+                meanEarlyBeforeRenderedSec=mean([r["earlyBeforeRenderedSec"] for r in rendered]),
                 meanArmWindowWidthSec=mean([r["armWidthSec"] for r in early]))
 
 
@@ -241,6 +291,35 @@ def compare(records):
                            newlyMissed=sum(not b["hypotheticalMissedBoarding"] and c["hypotheticalMissedBoarding"] for b, c in paired),
                            rescued=sum(b["hypotheticalMissedBoarding"] and not c["hypotheticalMissedBoarding"] for b, c in paired),
                            deployedPoint=summary([b for b, c in paired]), candidate=summary([c for b, c in paired])))
+    return output
+
+
+def compare_rendered_to_raw(records):
+    """Measure display rounding on exactly the same arm, visit, walk and response."""
+    indexed = {(r["route"], r["bus"], r["target"], r["visit"], r["walkSec"], r["responseSec"],
+                r["arm"], r["policy"]): r for r in records}
+    groups = collections.defaultdict(list)
+    for key, rendered in indexed.items():
+        if rendered["policy"] != "rendered_lower":
+            continue
+        raw = indexed.get((*key[:-1], "lower"))
+        if raw:
+            groups[(rendered["route"], rendered["arm"], rendered["walkSec"], rendered["responseSec"])].append((raw, rendered))
+    output = []
+    for key, pairs in sorted(groups.items()):
+        paired = [(a, b) for a, b in pairs if a["status"] in ("triggered", "no-timely-reminder")
+                  and b["status"] in ("triggered", "no-timely-reminder")]
+        both_triggered = [(a, b) for a, b in paired if a["status"] == b["status"] == "triggered"]
+        output.append(dict(route=key[0], arm=key[1], walkSec=key[2], responseSec=key[3],
+                           attemptedPairs=len(pairs), scoredPairs=len(paired),
+                           rawStatuses=dict(collections.Counter(a["status"] for a, b in pairs)),
+                           renderedStatuses=dict(collections.Counter(b["status"] for a, b in pairs)),
+                           newlyMissed=sum(not a["hypotheticalMissedBoarding"] and b["hypotheticalMissedBoarding"] for a, b in paired),
+                           rescued=sum(a["hypotheticalMissedBoarding"] and not b["hypotheticalMissedBoarding"] for a, b in paired),
+                           bothTriggered=len(both_triggered),
+                           meanEarlierReminderSec=mean([(a["leaveNowAt"] - b["leaveNowAt"]) / 1000 for a, b in both_triggered]),
+                           meanAddedWaitSec=mean([b["waitAtStopSec"] - a["waitAtStopSec"] for a, b in both_triggered]),
+                           rawLower=summary([a for a, b in paired]), renderedLower=summary([b for a, b in paired])))
     return output
 
 
@@ -281,7 +360,7 @@ def run(directory, output):
             cohort.append(dict(audit, status="excluded", reason="unresolved-departure-or-outcome"))
             continue
         # This arming rule depends on deployed information available then, never on candidate values.
-        start = next((i for i, r in enumerate(rows) if valid_forecast(r.get("deployed"))
+        start = next((i for i, r in enumerate(rows) if valid_point(r.get("deployed"))
                       and 300 <= r["deployed"]["eta"] <= 1200 and r["at"] < arrival), None)
         if start is None:
             cohort.append(dict(audit, status="excluded", reason="no-common-deployed-5-to-20min-arm"))
@@ -303,7 +382,7 @@ def run(directory, output):
                     snapshotCount=len(rows), armAsOf=rows[0].get("asof"))
         cohort.append(dict(audit, status="included", armedAt=at, arrivalAt=arrival, departureAt=departure))
         for arm in sorted(arms):
-            for policy in ("point", "lower"):
+            for policy in POLICIES:
                 for walk in WALKS:
                     for response in RESPONSES:
                         records.append(dict(base, **evaluate_action(rows, arm, policy, walk, response, label)))
@@ -311,7 +390,7 @@ def run(directory, output):
     for r in records:
         by_cell[(r["route"], r["arm"], r["policy"], r["walkSec"], r["responseSec"], r["outcome"])].append(r)
     result = dict(description="Fixed-visit hypothetical reminder risk; not observed rider misses or a full app journey simulation",
-                  rules=dict(walkSec=WALKS, responseSec=RESPONSES, bufferSec=BUFFER_SEC,
+                  rules=dict(walkSec=WALKS, responseSec=RESPONSES, bufferSec=BUFFER_SEC, policies=POLICIES,
                              maxSnapshotGapMs=MAX_SNAPSHOT_GAP_MS, maxRawGapMs=MAX_RAW_GAP_MS,
                              arming="First deployed point ETA 5–20 min before observed arrival; one arm per physical visit"),
                   invalidInputRows=dict(invalid), invalidRawRowsByBus=dict(connectivity.invalid),
@@ -319,7 +398,8 @@ def run(directory, output):
                               exclusions=dict(collections.Counter(r["reason"] for r in cohort if r["status"] == "excluded"))),
                   cells=[dict(route=k[0], arm=k[1], policy=k[2], walkSec=k[3], responseSec=k[4], outcome=k[5], **summary(rs))
                          for k, rs in sorted(by_cell.items())],
-                  pairedAgainstDeployedPoint=compare(records))
+                  pairedAgainstDeployedPoint=compare(records),
+                  pairedRenderedAgainstRawLower=compare_rendered_to_raw(records))
     output.mkdir(parents=True, exist_ok=True)
     for name, values in (("rider-risk-records", records), ("rider-risk-cohort", cohort)):
         with gzip.open(output / (name + ".jsonl.gz"), "wt") as dest:
@@ -345,7 +425,27 @@ def self_test():
     assert not causal(dict(row(0, 100), asof=1000))
     assert unique_rows([row(0, 100), row(0, 101)])[1] == "conflicting-same-time-snapshots"
     assert len(unique_rows([row(0, 100), row(0, 100)])[0]) == 1
-    print(json.dumps(dict(selfTest="passed", assertions=9)))
+    # Primary pickup formatting: outward minutes, every valid width, and '<1'.
+    assert rendered_pickup(dict(eta=300, low=239, high=481)) == dict(sec=180, basis="window", text="3–9 min")
+    assert rendered_pickup(dict(eta=90, low=89, high=91))["text"] == "1–2 min"
+    assert rendered_pickup(dict(eta=300, low=119, high=2401))["text"] == "1–41 min"
+    assert rendered_pickup(dict(eta=60, low=60, high=60)) == dict(sec=60, basis="window", text="1 min")
+    assert rendered_pickup(dict(eta=90, low=59, high=91))["sec"] == 0
+    assert rendered_pickup(dict(eta=300, low=120, high=481), 1) == dict(sec=60, basis="window", text="1–8 min")
+    # Missing, nonfinite, reversed, and expired windows use the aged point.
+    for value in (dict(eta=300), dict(eta=300, low=None, high=600),
+                  dict(eta=300, low=math.nan, high=600), dict(eta=300, low=500, high=100),
+                  dict(eta=300, low=0, high=1)):
+        assert rendered_pickup(value, 1) == dict(sec=299, basis="point", text=None)
+    # Flooring must be recomputed, not subtracted as a fixed clock: at 120s
+    # the printed lower minute is 2; one second later it is 1 and triggers.
+    rounding = [row(0, 180, 120)]
+    assert trigger(rounding, "deployed", "rendered_lower", 60, 0, 200_000)["leaveNowAt"] == 1000
+    assert trigger(rounding, "deployed", "low", 60, 0, 200_000)["leaveNowAt"] == 30_000
+    point_only = dict(at=0, asof=0, origins={}, deployed=dict(eta=120))
+    assert trigger([point_only], "deployed", "rendered_lower", 60, 0, 200_000)["leaveNowAt"] == 30_000
+    assert trigger([point_only], "deployed", "eta", 60, 0, 200_000)["leaveNowAt"] == 30_000
+    print(json.dumps(dict(selfTest="passed", assertions=24)))
 
 
 if __name__ == "__main__":

@@ -17,11 +17,21 @@ One hypothetical rider is armed per route/bus/pickup/physical-visit identity, at
 the first observed deployed point ETA between 5 and 20 minutes while the bus has
 not arrived. Every candidate uses that same arming instant. Simulated walks are
 1, 3, 5 and 10 minutes, with immediate response and a separate 30-second response
-sensitivity. Each point policy uses `eta - walk - 30 seconds`, matching the
-current leave-now reminder; each hypothetical lower-bound policy substitutes
-`low`. Per-second checks age the latest observation, and an observed replacement
-takes effect at its timestamp. Lower-bound reminders are an experiment, not
-current application behavior.
+sensitivity. The three policies share the existing 30-second walking buffer:
+
+- `point` uses `eta - walk - 30 seconds`, matching the current leave-now reminder.
+- `lower` substitutes the raw `low` bound, without display rounding.
+- `rendered_lower` uses the earliest minute printed by the primary pickup
+  window, reformatting the aged bounds on every one-second reminder tick.
+  A low endpoint below one minute prints `<1`, whose earliest possible time is
+  now. Other low endpoints are floored to minutes. All valid narrow and wide
+  windows qualify. Missing, nonfinite, reversed or expired windows fall back to
+  the aged point countdown, preserving point-only behavior.
+
+An observed replacement takes effect at its timestamp. Raw-bound and rendered
+reminders are experiments, not current application behavior. Both `point` and
+`rendered_lower` require a valid point ETA but can handle missing bounds; `lower`
+requires a valid bounded forecast. Their different support remains visible.
 
 GPS must bracket arming through the **observed departure**, without route or
 provider identity changes, gaps over 60 seconds or speeds over 22 m/s. Exact
@@ -45,7 +55,12 @@ not door-opening observations; passed and stopped visits have separate cells.
 Outputs include a summary, every action record and every visit's inclusion or
 exclusion reason. Paired results compare each candidate/policy with the deployed
 point reminder on the **same scored visits**. They include newly introduced
-misses and rescues. Censoring and late-at-arming counts remain visible. Wait
+misses and rescues. `pairedRenderedAgainstRawLower` separately compares display
+rounding against the raw-bound policy for the same forecast arm. Its paired
+cohort and both policies' statuses are explicit; earlier reminders may remain
+judgeable on visits that become censored before the raw-bound decision. Reminder
+timing and added waiting are compared only when both policies emitted a timely
+reminder. Censoring and late-at-arming counts remain visible. Wait
 averages omit unknown reach times for never-timely reminders and must be read
 alongside missed-boarding counts. No confidence or promotion claim is made here.
 
@@ -53,8 +68,16 @@ This is **not a full app journey simulation or observed rider missed-shuttle
 rate**. Archive rows do not preserve the client's pinned/boardable bus selection,
 notification delivery, background browser throttling, rider movement or door
 state. The bus and stop occurrence are fixed, and no later bus substitutes for
-the tested one. Current stop-alert lead notifications and rendered range
-rounding are not simulated. Raw lower-bound tail risk is reported even when the
-UI would suppress the range and print only a point. The existing 30-second
-safety margin and these response assumptions do not establish real walk-time
-coverage.
+the tested one. Current stop-alert lead notifications are not simulated. The
+primary pickup table uses
+`web/src/ArrivalDetails.tsx` and `web/src/arrivalDetails.ts:predictionWindow`:
+it displays all valid widths, floors the lower minute and ceils the upper
+minute. The older stop-row/chip path through `etaBand.displayBand` instead hides
+ranges narrower than 3 or wider than 15 printed minutes. Those legacy display
+limits do not describe the primary pickup table. Only `rendered_lower` follows
+the primary table's rounding; `lower` remains the raw-bound comparison. No
+already-at-pickup override is simulated because all arms start before arrival
+and their bus/visit stays fixed. The existing 30-second safety margin and these
+response assumptions do not establish real walk-time coverage. The hosted
+self-test covers rounding transitions, bounds aging, narrow/wide and subminute
+windows, point-only fallback, replacement timing, deadlines and missing data.
