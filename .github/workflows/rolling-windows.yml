@@ -1,0 +1,54 @@
+name: rolling-window-experiments
+on:
+  push:
+    branches: [research/useful-windows-2026-09-21]
+    paths: ['research/useful-windows/rolling.py', 'research/useful-windows/rolling-plan.md', 'research/useful-windows/training-visits.ts', 'research/useful-windows/rendered-parity.ts', 'research/useful-windows/baseline.ts', 'research/useful-windows/rider_risk.py', '.github/workflows/rolling-windows.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - name: Check temporal and reminder boundaries
+        run: |
+          BLUE_MAX_PATH_SECONDS=5400 python3 research/useful-windows/rolling.py --self-test
+          python3 research/useful-windows/rider_risk.py --self-test
+      - name: Reproduce deployed checkpoint layer
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/baseline.ts
+      - name: Generate and evaluate embargoed daily fits
+        env:
+          BLUE_MAX_PATH_SECONDS: '5400'
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/training-visits.ts
+          python3 research/useful-windows/rolling.py
+      - name: Replay hypothetical reminder actions
+        run: |
+          ln -s ../../k-sweep/results/raw_positions.jsonl.gz research/useful-windows/rolling-results/raw_positions.jsonl.gz
+          python3 research/useful-windows/rider_risk.py research/useful-windows/rolling-results
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/useful-windows/rolling-results/rider-risk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rolling-window-results
+          path: |
+            research/useful-windows/rolling-results/*.json
+            research/useful-windows/rolling-results/*.jsonl.gz
+            research/useful-windows/rolling-results/rider-risk/**
+            !research/useful-windows/rolling-results/raw_positions.jsonl.gz
+            research/useful-windows/results/baseline-audit.json
+          retention-days: 90
