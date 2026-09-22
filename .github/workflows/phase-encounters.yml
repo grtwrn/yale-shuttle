@@ -1,0 +1,72 @@
+name: phase-independent-encounters-research
+on:
+  push:
+    branches: [research/directed-leg-protection-2026-09-22]
+    paths: ['research/phase-encounters/**', '.github/workflows/phase-encounters.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TZ: America/New_York
+      NODE_OPTIONS: --max-old-space-size=10000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/diagnostic-frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: directed-leg-protection
+          run-id: 35687909547
+          github-token: ${{ github.token }}
+          path: research/phase-frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: directed-leg-physical-diagnostics
+          run-id: 35688487783
+          github-token: ${{ github.token }}
+          path: research/directed-leg-diagnostics/results
+      - name: Freeze inputs and production comparator
+        run: |
+          ln -s "$GITHUB_WORKSPACE/research/diagnostic-frozen/canonical-windows/results" research/canonical-windows/results
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+          find research/diagnostic-frozen research/phase-frozen research/directed-leg-diagnostics/results -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/encounter-inputs-before.sha256
+          git diff --exit-code 4624407 -- services/shuttle-v2
+      - name: Focused independent-encounter and original phase recovery fixtures
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/phase-encounters/fixtures.ts
+          services/shuttle-v2/node_modules/.bin/tsx research/directed-leg-protection/fixtures.ts
+          cp research/directed-leg-protection/results/focused-fixtures.json research/phase-encounters/results/phase-focused-fixtures.json
+      - name: Full all-route paired replay and causal prefixes
+        run: services/shuttle-v2/node_modules/.bin/tsx research/phase-encounters/replay.ts
+      - name: Fixed forecast barriers and all physical differences
+        run: |
+          python3 research/phase-encounters/audit.py
+          sha256sum --check /tmp/encounter-inputs-before.sha256
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+          git diff --exit-code 4624407 -- services/shuttle-v2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-independent-encounters
+          path: research/phase-encounters/results/**
+          retention-days: 90
