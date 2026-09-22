@@ -1,0 +1,49 @@
+name: useful-window-experiments
+on:
+  push:
+    branches: [research/useful-windows-2026-09-21]
+    paths: ['research/useful-windows/**', '.github/workflows/useful-windows.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - name: Check action replay boundary cases
+        run: python3 research/useful-windows/rider_risk.py --self-test
+      - name: Reproduce deployed checkpoint layer on chronological raw GPS
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/baseline.ts
+      - name: Evaluate conditional wait and upstream-pace arms
+        env:
+          BLUE_MAX_PATH_SECONDS: '5400'
+        run: python3 research/useful-windows/experiment.py
+      - name: Replay hypothetical leave-time actions
+        run: |
+          ln -s ../../k-sweep/results/raw_positions.jsonl.gz research/useful-windows/results/raw_positions.jsonl.gz
+          python3 research/useful-windows/rider_risk.py research/useful-windows/results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: useful-window-results
+          path: |
+            research/useful-windows/results/*.json
+            research/useful-windows/results/*.jsonl.gz
+            research/useful-windows/results/*.md
+            research/useful-windows/results/rider-risk/**
+            !research/useful-windows/results/raw_positions.jsonl.gz
+          retention-days: 90
