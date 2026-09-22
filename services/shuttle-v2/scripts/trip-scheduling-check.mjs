@@ -181,9 +181,9 @@ try {
     const nav = new URL(await directions.getAttribute('href'));
     assert.equal(nav.searchParams.get('destination'), `${feed.stop_coords[48].lat},${feed.stop_coords[48].lon}`);
     assert.equal(nav.searchParams.get('travelmode'), 'walking');
-    const remind = actions.getByRole('button', { name: '🔔 Remind me', exact: true });
+    const remind = actions.getByRole('button', { name: '🔔 Remind me for #307', exact: true });
     await remind.focus(); await page.keyboard.press('Space');
-    const armed = actions.getByRole('button', { name: '🔔 Reminding you', exact: true });
+    const armed = actions.getByRole('button', { name: '🔔 Reminding you for #307', exact: true });
     assert.equal(await armed.getAttribute('aria-pressed'), 'true');
     await page.keyboard.press('Space');
     assert.equal(await remind.getAttribute('aria-pressed'), 'false');
