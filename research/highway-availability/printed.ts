@@ -17,6 +17,7 @@ function printed(f:any,at:number){
 assert.deepEqual(printed({low:239,high:481},0),{basis:'window',text:'3–9 min',spanSec:360});
 assert.deepEqual(printed({low:59,high:60},0),{basis:'window',text:'<1–1 min',spanSec:60});
 assert.deepEqual(printed({low:60,high:60},0),{basis:'window',text:'1 min',spanSec:0});
+async function main(){
 for(const policy of ['highway25','highway50']){
  const rows:any[]=[];
  for await(const line of readline.createInterface({input:fs.createReadStream(`${dir}/${policy}/forecasts.jsonl.gz`).pipe(zlib.createGunzip())})){
@@ -31,3 +32,5 @@ for(const policy of ['highway25','highway50']){
  fs.writeFileSync(`${out}/${policy}-printed.jsonl.gz`,zlib.gzipSync(rows.map(r=>JSON.stringify(r)).join('\n')+'\n'));
  console.log(JSON.stringify({policy,rows:rows.length,actualProductionFormatter:true}));
 }
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});
