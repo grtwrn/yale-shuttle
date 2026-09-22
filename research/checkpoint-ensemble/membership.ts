@@ -78,6 +78,7 @@ export function membership(row:any,families:any[],wait:number,k:number,n:number,
   const no=(reason:string,extra:any={})=>({supported:false,reason,...extra});
   if(!row.ready)return no('not warm/fresh');
   if(row.targetIndex==null||row.anchorIndex==null)return no('target occurrence ambiguous');
+  if(row.targetIndex===wait)return no('target outside fixed downstream group');
   if(row.anchorIndex!==row.index||row.anchorIndex!==row.nearest)return no('phase/nearest/logged target anchors disagree');
   if(k>=n)return no('K outside single-occurrence loop');
   if(!(0<row.stopsAhead&&row.stopsAhead<n))return no('invalid logged target hops');

@@ -4,7 +4,7 @@ import {TransitNetwork} from '../../services/shuttle-v2/src/network/TransitNetwo
 import {planTracks,reconcileTracks} from '../../services/shuttle-v2/src/collector/detector.ts';
 import {stepManyWithVisits} from '../../services/shuttle-v2/src/collector/departure.ts';
 import {resolveOccurrence} from '../canonical-windows/occurrence.ts';
-import {Families} from './membership.ts';
+import {Families,membership,SIZES} from './membership.ts';
 import {replay as legacyReplay} from '../source-retention/replay.ts';
 const here=new URL('.',import.meta.url).pathname,out=here+'results/';
 const rawDir=here+'../k-sweep/results/',canon=here+'../canonical-windows/results/';
@@ -90,7 +90,18 @@ function replay(raw:any[],preds:any[]){
   const occurrence=resolveOccurrence(routes.get(p.route_id).stops,p.to_stop_id,p.stops_ahead,index,s?.nearestIndex??-1,ready);
   const row={...occurrence,releasedOrigins:Object.fromEntries(latches.get(p.bus_name)??[]),at:p.predicted_at,asof,bus:p.bus_name,route:p.route_id,target:p.to_stop_id,
    baseline:{eta:p.predicted_sec,low:p.predicted_low_sec,high:p.predicted_high_sec},stopsAhead:p.stops_ahead,from:p.from_stop_id,ready,index,nearest:s?.nearestIndex??-1,phase,began,observedAt:s?.lastObservedAt??0,origins};
-  rows.push({...row,families:ledger.snapshot(p.bus_name)});
+  const families=ledger.snapshot(p.bus_name),ensemble:any={},n=routes.get(row.route).stops.length;
+  const ws:number[]=waits[row.route]??[];
+  const d=(w:number)=>((row.targetIndex??-1)-w+n)%n||n;
+  const wait=row.targetIndex==null||!ws.length?null:ws.reduce((a,b)=>d(b)<d(a)?b:a);
+  const groupLength=wait==null?0:Math.min(...ws.filter(w=>w!==wait).map(w=>(w-wait+n)%n),n-1);
+  const targets=wait==null?[]:Array.from({length:groupLength},(_,i)=>(wait+i+1)%n);
+  for(const k of SIZES)for(const extension of [false,true]){
+   const id=`K${k}_${extension?'extended':'primary'}`;
+   ensemble[id]=wait==null||!targets.includes(row.targetIndex as number)?{supported:false,reason:'no fixed downstream wait/target group'}:
+    {...membership(row,families,wait,k,n,extension),targetGroup:targets};
+  }
+  rows.push({...row,families,ensemble});
  }
  return{rows,ledger,consumed:cursor};
 }
@@ -101,7 +112,7 @@ function validateLegacy(){
  const control=legacyReplay(net,top,waits,pr,pp,45);assert.deepEqual(control.rows,expected);return control.rows.length;
 }
 const exactOriginalFeatures=validateLegacy(),full=replay(raw,preds);
-const experimentalChanges=full.rows.filter(r=>r.at>=cutoff).reduce((n,{families,...row},i)=>n+Number(JSON.stringify(row)!==JSON.stringify(expected[i])),0);
+const experimentalChanges=full.rows.filter(r=>r.at>=cutoff).reduce((n,{families,ensemble,...row},i)=>n+Number(JSON.stringify(row)!==JSON.stringify(expected[i])),0);
 const checks:any[]=[];
 for(const fraction of [.25,.5,.75]){
  const end=expected[Math.floor(expected.length*fraction)].at;

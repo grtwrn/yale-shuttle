@@ -28,3 +28,38 @@ jobs:
           if test -f research/checkpoint-ensemble/membership.test.ts; then
             services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/membership.test.ts
           fi
+  materialize:
+    needs: fixtures
+    if: github.event_name == 'push' || inputs.fixtures_only == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      TZ: America/New_York
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/highway-frozen
+      - run: ln -s "$GITHUB_WORKSPACE/research/highway-frozen/canonical-windows/results" research/canonical-windows/results
+      - name: Reproduce original controls and materialize independent causal traversals
+        run: services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/materialize.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-ensemble-features
+          path: research/checkpoint-ensemble/results/**
+          retention-days: 90
