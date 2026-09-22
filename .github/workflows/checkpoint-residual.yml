@@ -1,5 +1,8 @@
 name: checkpoint-residual-development
 on:
+  push:
+    branches: [research/checkpoint-residual-2026-09-22]
+    paths: ['research/checkpoint-residual/**', '.github/workflows/checkpoint-residual.yml']
   workflow_dispatch:
     inputs:
       fixtures_only:
@@ -27,7 +30,7 @@ jobs:
           services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-residual/folds.test.ts
   support-ledger:
     needs: fixtures
-    if: inputs.fixtures_only == false
+    if: github.event_name == 'workflow_dispatch' && inputs.fixtures_only == false
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
