@@ -15,6 +15,8 @@
  * Env: ARCHIVE_DIR (~/shuttle-archive).
  */
 import fs from "node:fs";
+import crypto from "node:crypto";
+import { archiveTableFile } from "./archive-files.mjs";
 import os from "node:os";
 import path from "node:path";
 
@@ -42,8 +44,14 @@ export function checkDay(dir) {
   const tables = {};
   for (const t of REQUIRED) {
     const e = m.tables && m.tables[t];
-    const file = e && path.join(dir, e.file);
-    const present = e && e.complete && file && fs.existsSync(file) && fs.statSync(file).size === e.bytes;
+    let present = false;
+    try {
+      const file = e && archiveTableFile(dir, t, m);
+      if (e?.complete && !e.integrityError && file && fs.existsSync(file) && fs.statSync(file).size === e.bytes) {
+        const hash = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+        present = hash === e.sha256;
+      }
+    } catch { /* Unreadable, escaped or corrupt files are incomplete. */ }
     if (!present) missing.push(t);
     else bytes += e.bytes;
     tables[t] = e ? { rows: e.rows, complete: !!present, source: e.source } : null;
@@ -59,6 +67,8 @@ export function checkDay(dir) {
     build: m.build ?? null,
     generatedAt: m.generatedAt ?? null,
     positions: m.positions ?? null,
+    lastAttempt: m.lastAttempt ?? null,
+    completeness: m.completeness ?? "transport only; service coverage and outcome finality are not established",
     tables,
   };
 }

@@ -16,7 +16,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import zlib from "node:zlib";
+import { archiveTableFile, readArchiveTable } from "./archive-files.mjs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 
@@ -63,20 +63,14 @@ function archivedDays() {
     try {
       const manifest = JSON.parse(fs.readFileSync(path.join(ARCHIVE, day, 'manifest.json'), 'utf8'));
       return manifest.ok === true && ['raw_positions', 'arrivals', 'stop_visits', 'legs'].every(table =>
-        manifest.tables?.[table]?.complete === true && fs.existsSync(path.join(ARCHIVE, day, `${table}.jsonl.gz`)));
+        manifest.tables?.[table]?.complete === true && fs.existsSync(archiveTableFile(path.join(ARCHIVE, day), table, manifest)));
     } catch { return false; }
   }).sort();
 }
 
 /** One archived table as rows. Absent file = no rows, which is a legitimate day. */
 function readRows(day, table) {
-  const file = path.join(ARCHIVE, day, `${table}.jsonl.gz`);
-  if (!fs.existsSync(file)) return [];
-  const out = [];
-  for (const line of zlib.gunzipSync(fs.readFileSync(file)).toString("utf8").split("\n")) {
-    if (line) out.push(JSON.parse(line));
-  }
-  return out;
+  return readArchiveTable(path.join(ARCHIVE, day), table);
 }
 
 // -- topology -------------------------------------------------------------------

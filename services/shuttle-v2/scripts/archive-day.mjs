@@ -8,9 +8,9 @@
  * so the rows a replay needs do not survive where they are written. This pulls
  * them, one table at a time, through `GET /api/archive/day` (admin header
  * only, JSON lines with a header and an `{"end":true}` trailer) and keeps them
- * as `~/shuttle-archive/YYYY-MM-DD/<table>.jsonl.gz` beside a `manifest.json`.
+ * under `~/shuttle-archive/YYYY-MM-DD/`; `manifest.json` selects the files.
  *
- * Positions are the one table retention has usually beaten by 03:40, so the
+ * The 36-hour retention covers the normal 03:40 export. When present, the
  * Pi's own capture (`~/shuttle-captures/positions-YYYYMMDD.jsonl`, UTC-named,
  * so an ET day spans two files) is merged in, filtered to the ET day and
  * de-duplicated on (bus_id, collected_at); the manifest says how many rows
@@ -24,14 +24,18 @@
  * CAPTURES_DIR (~/shuttle-captures), ARCHIVE_RETAIN_DAYS (180),
  * SHUTTLE_ADMIN_TOKEN (else ~/.yale-shuttle-admin-token).
  *
- * Re-running a day overwrites it. Exit code is non-zero when any table of any
- * requested day failed, after every other table was still written.
+ * Every attempt writes immutable files under the day's snapshots directory.
+ * The manifest atomically selects non-regressing, complete table downloads;
+ * older files and rejected attempts remain available. Exit non-zero on any
+ * failed download or rejected replacement. Transport completion is not proof
+ * of full service coverage or settled outcomes.
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
+import { archiveTableFile, readArchiveTable } from "./archive-files.mjs";
 
 const BASE = process.env.BASE ?? "https://yale-shuttle.fly.dev";
 const ARCHIVE_DIR = process.env.ARCHIVE_DIR ?? path.join(os.homedir(), "shuttle-archive");
@@ -99,7 +103,9 @@ export async function fetchTable(base, adminToken, day, table) {
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const obj = JSON.parse(lines[i]);
-    if (obj && obj.end === true) { trailer = obj; break; }
+    if (trailer !== null) throw new Error(`data after trailer for ${table}`);
+    if (obj && obj.end === true) { trailer = obj; continue; }
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error(`invalid row for ${table}`);
     rows.push(obj);
   }
   const complete = trailer !== null && trailer.rows === rows.length;
@@ -142,74 +148,199 @@ export function captureRows(day, capturesDir = CAPTURES_DIR) {
 function writeGz(file, rows) {
   const text = rows.map((r) => JSON.stringify(r)).join("\n") + (rows.length ? "\n" : "");
   const gz = zlib.gzipSync(Buffer.from(text, "utf8"), { level: 6 });
-  fs.writeFileSync(file, gz);
+  fs.writeFileSync(file, gz, { flag: "wx" });
   return { bytes: gz.length, rawBytes: Buffer.byteLength(text), sha256: crypto.createHash("sha256").update(gz).digest("hex") };
 }
 
-/** Archive one day. Returns the manifest; throws nothing, records failures. */
+/** Row identity includes the event clock: a reused database id is not the same event. */
+const TIME_KEYS = {
+  arrivals: "arrived_at", stop_visits: "anchored_at", legs: "departed_at",
+  predictions_log: "predicted_at", upstream_etas: "sampled_at",
+};
+function rowKey(table, row) {
+  const fields = table === "raw_positions" ? ["bus_id", "collected_at"]
+    : table === "scorecard_days" ? ["day", "route_id", "horizon", "surface"]
+    : ["id", TIME_KEYS[table]];
+  if (fields.some(key => row[key] === undefined || row[key] === null)) throw new Error(`missing row identity for ${table}`);
+  return JSON.stringify(fields.map(key => row[key]));
+}
+function indexRows(table, rows) {
+  const index = new Map();
+  for (const row of rows) {
+    const key = rowKey(table, row);
+    if (index.has(key)) throw new Error(`duplicate row identity for ${table}`);
+    index.set(key, row);
+  }
+  return index;
+}
+
+/** Only ordinary arrival completion and advancing scorecard snapshots may change old values. */
+function preservesRow(table, prior, next) {
+  if (table === "scorecard_days") {
+    return next.scored_through >= prior.scored_through && next.scored_at >= prior.scored_at
+      && next.final >= prior.final && (prior.final !== 1 || JSON.stringify(next) === JSON.stringify(prior));
+  }
+  return Object.entries(prior).every(([key, value]) =>
+    JSON.stringify(next[key]) === JSON.stringify(value)
+    || (table === "arrivals" && ["departed_at", "dwell_sec"].includes(key) && value === null && Number.isFinite(next[key])));
+}
+
+/** A retry must contain every previous observation, not just as many rows. */
+export function replacementError(table, priorRows, nextRows) {
+  const before = indexRows(table, priorRows), after = indexRows(table, nextRows);
+  for (const [key, row] of before) {
+    const next = after.get(key);
+    if (!next) return `retry omits previously archived rows in ${table}`;
+    if (!preservesRow(table, row, next)) return `retry changes previously archived values in ${table}`;
+  }
+  return null;
+}
+
+function atomicJson(file, value) {
+  const temp = `${file}.${crypto.randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(temp, JSON.stringify(value, null, 2) + "\n", { flag: "wx" });
+    fs.renameSync(temp, file);
+  } finally {
+    fs.rmSync(temp, { force: true });
+  }
+}
+
+/** Verify the older file before treating it as evidence for a replacement. */
+function previousRows(dir, table, manifest) {
+  const entry = manifest.tables[table];
+  const data = fs.readFileSync(archiveTableFile(dir, table, manifest));
+  if (data.length !== entry.bytes || crypto.createHash("sha256").update(data).digest("hex") !== entry.sha256) {
+    throw new Error(`previous archive integrity check failed for ${table}`);
+  }
+  const rows = readArchiveTable(dir, table, manifest);
+  if (rows.length !== entry.rows) throw new Error(`previous archive row count differs for ${table}`);
+  return rows;
+}
+
+/**
+ * Preserve every attempt, then publish one atomic manifest selecting safe files.
+ * `ok` describes THIS attempt; `archiveOk` describes the selected archive.
+ */
 export async function archiveDay(day, opts = {}) {
   const base = opts.base ?? BASE;
   const adminToken = opts.token ?? token();
   const dir = path.join(opts.archiveDir ?? ARCHIVE_DIR, day);
   fs.mkdirSync(dir, { recursive: true });
-  const manifest = {
-    day,
-    from: etDayStartMs(day),
-    to: etDayStartMs(nextDay(day)),
-    generatedAt: new Date().toISOString(),
-    base,
-    build: null,
-    tables: {},
-    positions: null,
-    ok: true,
+  const lock = path.join(dir, ".archive-lock");
+  // Fail before touching any archive if another writer (or an interrupted writer) owns it.
+  fs.mkdirSync(lock);
+  try {
+    return await archiveLocked(day, opts, base, adminToken, dir);
+  } finally {
+    fs.rmdirSync(lock);
+  }
+}
+
+async function archiveLocked(day, opts, base, adminToken, dir) {
+  const manifestFile = path.join(dir, "manifest.json");
+  const previousText = fs.existsSync(manifestFile) ? fs.readFileSync(manifestFile, "utf8") : null;
+  const previous = previousText === null ? null : JSON.parse(previousText);
+  if (previous && previous.day !== day) throw new Error("previous manifest day mismatch");
+  const attemptId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${crypto.randomUUID()}`;
+  const relativeDir = path.join("snapshots", attemptId);
+  const snapshotDir = path.join(dir, relativeDir);
+  fs.mkdirSync(snapshotDir, { recursive: true });
+  if (previousText !== null) fs.writeFileSync(path.join(snapshotDir, "previous-manifest.json"), previousText, { flag: "wx" });
+  const attempt = {
+    version: 2, day, from: etDayStartMs(day), to: etDayStartMs(nextDay(day)),
+    generatedAt: new Date().toISOString(), base, build: null, tables: {}, positions: null,
+    completeness: "transport only; service coverage and outcome finality are not established", ok: true,
   };
+  const retained = Object.fromEntries(Object.entries(previous?.tables ?? {}).map(([table, entry]) => [table, {
+    ...entry, capturedAt: entry.capturedAt ?? previous.generatedAt ?? null,
+    build: entry.build ?? previous.build ?? null,
+  }]));
+  const selected = { ...attempt, tables: retained, positions: previous?.positions ?? null };
   for (const table of TABLES) {
-    const entry = { file: `${table}.jsonl.gz`, rows: 0, complete: false, source: "server" };
+    const entry = { file: path.join(relativeDir, `${table}.jsonl.gz`), rows: 0, complete: false, source: "server" };
+    let positions = null;
+    const prior = previous?.tables?.[table];
+    let olderRows = null;
+    // Check retained evidence even if this attempt later fails to download.
+    if (prior?.sha256) {
+      try { olderRows = previousRows(dir, table, previous); }
+      catch (err) {
+        entry.replacementError = err instanceof Error ? err.message : String(err);
+        selected.tables[table] = { ...retained[table], integrityError: entry.replacementError };
+      }
+    } else if (prior && (prior.rows > 0 || prior.complete)) {
+      entry.replacementError = `previous ${table} has no verifiable hash`;
+      selected.tables[table] = { ...retained[table], integrityError: entry.replacementError };
+    }
     try {
       const got = await fetchTable(base, adminToken, day, table);
-      manifest.build = manifest.build ?? got.header.build ?? null;
+      attempt.build = attempt.build ?? got.header.build ?? null;
+      entry.build = got.header.build ?? null;
+      entry.capturedAt = new Date().toISOString();
       entry.columns = got.header.columns;
       let rows = got.rows;
       entry.complete = got.complete;
-      if (!got.complete) entry.error = "stream ended without its trailer";
+      if (!got.complete) entry.error = "missing trailer or trailer row-count mismatch";
+      // Catch duplicate server identities before a capture merge could conceal them.
+      indexRows(table, rows);
       if (table === "raw_positions") {
-        // Merge any independent capture too, filling server outages or a
-        // delayed archive that exceeded the server's 36 h retention window.
         const cap = captureRows(day, opts.capturesDir);
         const merged = new Map();
-        for (const r of cap.rows) merged.set(`${r.bus_id}:${r.collected_at}`, r);
+        for (const r of cap.rows) {
+          const trimmed = {};
+          for (const c of POSITION_COLUMNS) trimmed[c] = r[c] ?? null;
+          merged.set(rowKey(table, r), trimmed);
+        }
         let fromServer = 0;
         for (const r of rows) {
-          const key = `${r.bus_id}:${r.collected_at}`;
+          const key = rowKey(table, r);
           if (!merged.has(key)) fromServer += 1;
           const trimmed = {};
           for (const c of POSITION_COLUMNS) trimmed[c] = r[c] ?? null;
           merged.set(key, trimmed);
         }
         rows = [...merged.values()].sort((a, b) => a.collected_at - b.collected_at || a.bus_id - b.bus_id);
-        manifest.positions = {
-          server: got.rows.length,
-          capture: cap.rows.length,
-          onlyServer: fromServer,
-          merged: rows.length,
-          captureFiles: cap.files.map((f) => path.basename(f)),
+        positions = {
+          server: got.rows.length, capture: cap.rows.length, onlyServer: fromServer,
+          merged: rows.length, captureFiles: cap.files.map(f => path.basename(f)),
         };
+        attempt.positions = positions;
         entry.columns = POSITION_COLUMNS;
         entry.source = cap.rows.length ? (got.rows.length ? "server+capture" : "capture") : "server";
-        // The capture is complete for the day even when the server's part was cut off.
-        if (!got.complete && cap.rows.length) { entry.complete = true; delete entry.error; entry.note = "server stream incomplete; capture used"; }
+        // A partial capture cannot certify a failed server transport, nor full-day coverage.
       }
       entry.rows = rows.length;
       Object.assign(entry, writeGz(path.join(dir, entry.file), rows));
+      if (olderRows !== null) {
+        const reason = replacementError(table, olderRows, rows);
+        if (reason) entry.replacementError = reason;
+      }
+      if (entry.complete && !entry.replacementError) {
+        selected.tables[table] = { ...entry };
+        if (positions) selected.positions = positions;
+      } else if (!prior) {
+        // First partial export is retained and explicitly marked incomplete.
+        selected.tables[table] = { ...entry };
+        if (positions) selected.positions = positions;
+      }
     } catch (err) {
       entry.error = err instanceof Error ? err.message : String(err);
       entry.complete = false;
+      if (!previous?.tables?.[table]) selected.tables[table] = { ...entry };
     }
-    if (!entry.complete) manifest.ok = false;
-    manifest.tables[table] = entry;
+    if (!entry.complete || entry.replacementError) attempt.ok = false;
+    attempt.tables[table] = entry;
   }
-  fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
-  return manifest;
+  selected.ok = TABLES.every(table => selected.tables[table]?.complete === true && !selected.tables[table]?.replacementError && !selected.tables[table]?.integrityError);
+  // Each selected table carries its own build/time; retained tables may be older.
+  selected.build = attempt.build;
+  selected.lastAttempt = { file: path.join(relativeDir, "manifest.json"), ok: attempt.ok };
+  attempt.archiveOk = selected.ok;
+  attempt.manifestFile = path.join(relativeDir, "manifest.json");
+  atomicJson(path.join(snapshotDir, "manifest.json"), attempt);
+  atomicJson(manifestFile, selected);
+  return attempt;
 }
 
 /** Remove day directories older than the retention. Returns what was removed. */
@@ -251,7 +382,11 @@ async function main() {
     });
     const pos = m.positions ? ` positions(server ${m.positions.server}, capture ${m.positions.capture}, merged ${m.positions.merged})` : "";
     console.log(`${new Date().toISOString()} ${day} ${m.ok ? "ok" : "INCOMPLETE"} ${parts.join(" ")}${pos} build=${m.build ?? "?"} ${Date.now() - t0} ms`);
-    for (const t of TABLES) if (m.tables[t].error) console.error(`  ${day} ${t}: ${m.tables[t].error}`);
+    console.log(`  attempt=${m.manifestFile} selected archive=${m.archiveOk ? "transport complete" : "INCOMPLETE"}`);
+    for (const t of TABLES) {
+      const error = m.tables[t].error ?? m.tables[t].replacementError;
+      if (error) console.error(`  ${day} ${t}: ${error}; previous data preserved when available`);
+    }
     if (!m.ok) failed = true;
   }
   const removed = prune();
