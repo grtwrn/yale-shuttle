@@ -1,0 +1,32 @@
+name: rendered-window-audit
+on:
+  push:
+    branches: [research/rendered-window-audit-2026-09-22]
+    paths: ['research/rendered-windows/**', '.github/workflows/rendered-windows.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: window-only-results
+          run-id: 35685527686
+          github-token: ${{ github.token }}
+          path: research/rendered-windows/input
+      - name: Audit identical forecasts through production window formatting
+        run: services/shuttle-v2/node_modules/.bin/tsx research/rendered-windows/audit.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rendered-window-audit
+          path: research/rendered-windows/results
+          retention-days: 90
