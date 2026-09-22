@@ -27,6 +27,7 @@ import {
 } from "./serverEta.js";
 import { buildBusesPayload, createBusesPayloadCache } from "./v1compat.js";
 import { BLUE_K10_MODELS, blueK10GroupPredictions } from './blueK10Trial.js';
+import { ADDITIONAL_K10_MODELS } from './routeK10Trial.js';
 import type { K10Evidence } from '../collector/k10Clock.js';
 
 // Read rather than `import ... from`: `resolveJsonModule` would have tsc infer
@@ -102,10 +103,11 @@ describe("the served answer", () => {
   beforeEach(() => registerRoutePaths(CAP.static.route_paths));
   afterEach(() => registerRoutePaths(null));
 
-  for (const model of BLUE_K10_MODELS) it(`serves ${model.label}'s updated and usual forecasts from one live step`, () => {
+  for (const model of [...BLUE_K10_MODELS, ...ADDITIONAL_K10_MODELS]) it(`serves ${model.label}'s updated and usual forecasts from one live step`, () => {
     // Use an observed, supported service-time clock. An arbitrary midday
     // departure is not representative of Blue West's operating history.
-    const cases = JSON.parse(gunzipSync(fs.readFileSync(new URL('./__fixtures__/blue-k10-parity.json.gz', import.meta.url))).toString()) as
+    const fixtureFile = [14, 15].includes(model.routeId) ? 'route-k10-parity.json.gz' : 'blue-k10-parity.json.gz';
+    const cases = JSON.parse(gunzipSync(fs.readFileSync(new URL(`./__fixtures__/${fixtureFile}`, import.meta.url))).toString()) as
       { route: number; now: number; evidence: K10Evidence | null; expected: { changed: boolean } }[];
     const sample = cases.find(f => f.route === model.routeId && f.expected.changed
       && f.evidence?.index === model.waitIndex && f.evidence.phase === 'hold')!;
