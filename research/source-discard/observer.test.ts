@@ -78,7 +78,8 @@ check('sequential provider reissue does not assert reset',()=>{
 });
 check('contention and provider-to-name changes remain identity ambiguity',()=>{
  const o=withSource(),a=obs(1002500),b=obs(1003000,{busId:2});
- o.observePoll([a],planTracks([a]),a.collectedAt);o.observePoll([a,b],planTracks([a,b]),b.collectedAt);
+ const a2=obs(b.collectedAt);
+ o.observePoll([a],planTracks([a]),a.collectedAt);o.observePoll([a2,b],planTracks([a2,b]),b.collectedAt);
  assert.equal(snap(o,row()).historyContext.identityAmbiguous,true);
  const p=withSource(),c=obs(1003000,{busName:'43'});
  p.observePoll([a],planTracks([a]),a.collectedAt);p.observePoll([c],planTracks([c]),c.collectedAt);

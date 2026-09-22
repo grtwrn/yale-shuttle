@@ -76,6 +76,7 @@ export class Observer {
     return this.strict.get(this.signature(name, index, origin)) ?? [];
   }
   observePoll(obs: any[], plan: any, time: number) {
+    if(obs.some(o=>o.collectedAt!==time))throw Error('observer poll contains mixed timestamps');
     const byName = new Map<string, any[]>(), byProvider = new Map<number, any[]>();
     for (const o of obs) {
       if (!byName.has(o.busName)) byName.set(o.busName, []);
