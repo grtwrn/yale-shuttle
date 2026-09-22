@@ -88,9 +88,9 @@ def generate(policy):
     generated=[];countdown=CountdownLatch()
     def save_model(model,mode,day):
         write(directory/f'training-paths-{mode}-{day}.jsonl.gz',
-            (dict(mode=mode,day=day,cutoff=model.cutoff,cell=cell,**p) for cell,paths in model.paths.items() for p in paths))
+            (dict(mode=mode,fitDay=day,cutoff=model.cutoff,cell=cell,**p) for cell,paths in model.paths.items() for p in paths))
         write(directory/f'vector-queries-{mode}-{day}.jsonl.gz',
-            (dict(mode=mode,day=day,cutoff=model.cutoff,query=query,**info) for query,info in model.vector_cache.items()))
+            (dict(mode=mode,fitDay=day,cutoff=model.cutoff,query=query,**info) for query,info in model.vector_cache.items()))
     for day in sorted({date(r['at']) for r in prior}):
         cutoff=rr.cutoff_for(day);rolling,audit['training'][day]=fit(top,waits,visits,raw,cutoff,policy,clause,occurrences)
         old_rolling,_=hw.fit(visits,raw,cutoff,policy,clause)
