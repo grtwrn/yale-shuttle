@@ -89,3 +89,17 @@ from process TZ. Restore that exact original execution contract and assert it
 explicitly; compare rows individually to bound any mismatch diagnostics. The
 physical guard and its gates are unchanged. Runner cancellation itself does not
 establish the asserted cause; the corrected hosted control must still pass.
+
+Stage1 completed in hosted run35690562531 at9202411: all722 Brown physical
+visits match arrival/departure/actual knownAt,120 have anchor-only changes,
+121 unpinned null/null bookkeeping passes are removed, and243123 non-Brown
+emissions match byte-for-byte. Four full raw-prefix deletion checks pass.
+The next hosted stage retains these gates, reconstructs all-route features
+with Brown's already-tested provider-continuity reset, compares non-Brown
+features and original Sep17–20 Brown lead controls, and checks every causal
+Brown source departure/knownAt emission. Feature-prefix cutoffs use Sep17/19
+and both named anomaly edges; the Sep16 training cutoff is already covered by
+stage1, before feature evaluation begins. Compare normalized physical training
+paths at every original frozen/daily cutoff and numerical fit/support outputs
+for both fixed Ks over all target groups. No outcome labels or scores are read
+in either feature or model-parity stage.
