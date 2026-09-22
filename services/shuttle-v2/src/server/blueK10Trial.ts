@@ -81,12 +81,12 @@ export function applyBlueK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<str
     if (!model || routes[String(model.routeId)]?.join(',')!==model.sequence.join(',') || !e
       || e.routeId!==model.routeId || e.released || e.observedAt>wire.at || wire.at-e.observedAt>15_000
       || e.origin.departed>e.origin.knownAt || e.origin.knownAt>e.observedAt) return old;
-    const n=model.sequence.length, ti=model.sequence.indexOf(r[1]), w=model.waitIndex, source=model.sourceIndex;
+    const n=model.sequence.length, ti=model.sequence.indexOf(r[1]), w=model.waitIndex, source=model.sourceIndex, k=forwardStops(source,w,n);
     if (ti<0 || ti===w || e.index<0 || e.index>=n || bus[2]<0 || bus[2]>=n || r[5]<=0 || r[5]>=n
-      || forwardStops(source,e.index,n)>10 || (e.index===w && e.phase==='drive')) return old;
+      || forwardStops(source,e.index,n)>k || (e.index===w && e.phase==='drive')) return old;
     if (e.index!==w && (forwardStops(e.index,ti,n)||n)<=forwardStops(e.index,w,n)) return old;
     const progress=forwardStops(source,bus[2],n);
-    if (progress>10 || r[5]!==10+forwardStops(w,ti,n)-progress) return old;
+    if (progress>k || r[5]!==k+forwardStops(w,ti,n)-progress) return old;
     if (!groups.has(bus[0])) groups.set(bus[0],blueK10GroupPredictions(model,e.origin.departed,wire.at));
     const p=groups.get(bus[0])?.get(r[1]);
     if (!p) return old;

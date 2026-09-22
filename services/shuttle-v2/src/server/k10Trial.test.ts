@@ -92,6 +92,7 @@ describe('K10 trial prior and hybrid', () => {
     // Blue's fresh checkpoint must never price that row with Red's prior.
     check({ ...sample, routeId: 1 });
     check({ ...sample, routeId: 16 });
+    check({ ...sample, routeId: 14 });
     check({ ...sample, origin: { ...sample.origin, knownAt: sample.now + 1 } });
     check({ ...sample, observedAt: sample.now - 15_001 });
     check({ ...sample, observedAt: sample.now + 1 });
