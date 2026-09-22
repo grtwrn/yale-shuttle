@@ -1,0 +1,46 @@
+name: brown-source-lap-diagnostic
+on:
+  push:
+    branches: [research/brown-source-lap-2026-09-22]
+    paths: ['research/brown-source-lap/**', '.github/workflows/brown-source-lap.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/brown-source-lap/input/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: brown-clock-results
+          run-id: 35687958726
+          github-token: ${{ github.token }}
+          path: research/brown-source-lap/input/clock
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - name: Trace pinned cases with feature and causal prefix identity
+        run: services/shuttle-v2/node_modules/.bin/tsx research/brown-source-lap/trace.ts
+      - name: Summarize evidence without fitting or scoring
+        run: python3 research/brown-source-lap/report.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brown-source-lap-results
+          path: research/brown-source-lap/results/**
+          retention-days: 90
