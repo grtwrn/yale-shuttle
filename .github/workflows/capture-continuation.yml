@@ -1,0 +1,36 @@
+name: capture-continuation-fixtures
+on:
+  push:
+    branches: [research/capture-continuation-2026-09-22]
+    paths: ['research/capture-continuation/**', '.github/workflows/capture-continuation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-fixtures-and-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Synthetic capture provenance and bounded handoff fixtures; no live data
+        run: |
+          set -o pipefail
+          mkdir -p research/capture-continuation/results
+          python3 -m unittest discover -s research/capture-continuation -p 'test_*.py' -v 2>&1 | tee research/capture-continuation/results/fixtures.log
+      - name: Freeze exact deployment manifest and review-only units; install nothing
+        run: |
+          python3 research/capture-continuation/continuation_bundle.py --source-commit "$GITHUB_SHA" --output research/capture-continuation/results/review > research/capture-continuation/results/review-summary.json
+          bash -n research/capture-continuation/results/review/INSTALL-REVIEW-ONLY.sh
+          systemd-analyze calendar '2026-09-25 03:59:00 UTC' '2026-09-25 04:00:00 UTC' '2026-09-28 03:59:00 UTC' '2026-09-28 04:00:00 UTC' > research/capture-continuation/results/calendar-check.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capture-continuation-review
+          path: |
+            research/capture-continuation/results/**
+            research/capture-continuation/README.md
+            research/capture-continuation/plan.json
+          retention-days: 90

@@ -1,0 +1,13 @@
+{
+  "capture_decoder.py": {
+    "commit": "53834e9d21379ea5193c14760239e897d3e9742d",
+    "path": "research/synthetic-selection/capture_input.py",
+    "sha256": "fd7bfcd2fcd559217cabc6cbd1da6f75b7687e39de92349601ac89268dcb8b51"
+  },
+  "recorder.py": {
+    "commit": "bae23b33211c73589ede784bf32d3485124874d1",
+    "path": "research/public-fleet-timeline/capture.py",
+    "sha256": "4f494f132da14bd369b768605190a77319ef1586e326f062289ec6f1274115b3"
+  },
+  "note": "Exact immutable copies, no edits. Recorder used only for synthetic fixtures; live units use the already frozen external recorder path. Decoder opens synthetic sealed prefixes only in this workflow."
+}

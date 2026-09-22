@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "kind": "bounded-public-capture-continuation",
+  "approvedScope": "Root approved three parts only; timers await final review",
+  "base": "https://yale-shuttle.fly.dev",
+  "deadline": "2026-09-30T04:30:00Z",
+  "recorderCommit": "bae23b33211c73589ede784bf32d3485124874d1",
+  "recorderSha256": "4f494f132da14bd369b768605190a77319ef1586e326f062289ec6f1274115b3",
+  "recorderPath": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-window-research/capture-tools/bae23b33211c73589ede784bf32d3485124874d1/capture.py",
+  "evidenceRoot": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-window-research",
+  "maximumParts": 3,
+  "maximumAggregateBytes": 9663676416,
+  "maximumPartBytes": 3221225472,
+  "minimumFreeBytes": 4294967296,
+  "bodyLimitBytes": 8388608,
+  "intervalSeconds": 15,
+  "healthIntervalSeconds": 60,
+  "overlapPreludeSeconds": 60,
+  "handoffDeadlineSeconds": 120,
+  "ownership": "requestedAt within the fixed half-open primary interval; no best-response substitution",
+  "admission": "original receivedAt; context never updates fleet; unsafe clock remains unsafe",
+  "gapOwnership": "schedule-gap has no requestedAt; retain as span-ownership-unknown evidence",
+  "parts": [
+    {
+      "id": "A",
+      "unit": "shuttle-public-fleet-20260922.service",
+      "directory": "full-public-feed-2026-09-22-bae23b3",
+      "primaryFrom": "2026-09-22T05:50:35.121829+00:00",
+      "primaryUntil": "2026-09-25T04:00:00Z",
+      "existing": true,
+      "preservedPrefix": {
+        "records": 3837,
+        "lastRecordSha256": "97dc57890c22a91644bfeeac396a09bffad8dc3d3366ca52c2051e95277173a7",
+        "manifestUpdatedAt": "2026-09-22T18:36:05.295112+00:00",
+        "storedDataBytes": 247195046
+      }
+    },
+    {
+      "id": "B",
+      "unit": "shuttle-public-fleet-20260925.service",
+      "directory": "full-public-feed-2026-09-25-part-b-bae23b3",
+      "primaryFrom": "2026-09-25T04:00:00Z",
+      "primaryUntil": "2026-09-28T04:00:00Z",
+      "launchAt": "2026-09-25T03:59:00Z",
+      "previousPart": "A",
+      "existing": false
+    },
+    {
+      "id": "C",
+      "unit": "shuttle-public-fleet-20260928.service",
+      "directory": "full-public-feed-2026-09-28-part-c-bae23b3",
+      "primaryFrom": "2026-09-28T04:00:00Z",
+      "primaryUntil": "2026-09-30T04:30:00Z",
+      "launchAt": "2026-09-28T03:59:00Z",
+      "previousPart": "B",
+      "existing": false
+    }
+  ]
+}
