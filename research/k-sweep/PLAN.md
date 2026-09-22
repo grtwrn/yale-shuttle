@@ -1,0 +1,9 @@
+# K sweep, fixed before scoring
+
+User prefers narrower windows and explicitly requests other K values after the all-line K10 comparison. Compare K=1,2,3,5,8,10,15 with otherwise identical rules. K must be smaller than route stop count because the source tracker stores one occurrence per index. Targets remain a whole segment after a training-identified major wait through the next major wait. No pickup-specific support or expiry switching.
+
+Use the same training before September16 and September17–20 diagnostic dates. Existing results have already been examined, so this is model selection on reused development data, not new holdout validation. Keep weekday/weekend splits, effective sample/date gates, the ninety-minute training cap and forty-five-minute source lifetime fixed. Match production's latched release for each source occurrence; returning to a hold label cannot reactivate an old source. Chronological prefix and delayed-feed checks remain required.
+
+For additional routes retain the previously frozen gate: at least twelve target visits on two dates, MAE no more than20s worse than usual, mean width at least60s narrower, coverage>=80% and no drop>10 percentage points, no added false-now readings and no introduced adjacent-stop ordering reversal>30s. Choose the smallest mean width among passing arms; show every arm and all fallbacks so selection is visible. Review individual stops/dates and source-trip concentration. Already deployed Red/Blue fits remain unchanged by this sweep; any proposal to replace them needs a direct comparison with their actual currently deployed fit.
+
+Do not fit covariate coefficients on these selected cases. The related upstream-break question needs causal feature definitions and an end-to-end comparison against the final chosen checkpoint model, not just remaining rest at one stop. A new K value alone does not establish a break-compensation mechanism.

@@ -1,0 +1,32 @@
+name: all-route-k-sweep
+on:
+  push:
+    branches: [research/all-k10-2026-09-21]
+    paths: ['research/k-sweep/**', '.github/workflows/k-sweep.yml']
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - run: python3 research/k-sweep/prepare.py
+      - name: Replay source clocks for the seven fixed K values
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx research/k-sweep/replay.ts
+      - name: Score all K values without changing support or coverage rules
+        env:
+          BLUE_MAX_PATH_SECONDS: '5400'
+        run: python3 research/k-sweep/evaluate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k-sweep-results
+          path: research/k-sweep/results
+          retention-days: 90
