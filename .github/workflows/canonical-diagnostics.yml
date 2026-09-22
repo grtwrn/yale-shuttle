@@ -1,0 +1,47 @@
+name: canonical-exclusion-diagnostics
+on:
+  push:
+    branches: [research/canonical-windows-2026-09-21]
+    paths: ['research/canonical-diagnostics/**', '.github/workflows/canonical-diagnostics.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/diagnostic-frozen
+      - name: Link frozen artifact without changing bytes
+        run: |
+          ln -s "$GITHUB_WORKSPACE/research/diagnostic-frozen/canonical-windows/results" research/canonical-windows/results
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+          find research/diagnostic-frozen -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/canonical-before.sha256
+      - name: Synthetic classifier and support fixtures
+        run: python3 -m unittest discover -s research/canonical-diagnostics -p 'test_*.py' -v
+      - name: Diagnose current exclusions without changing cohorts
+        run: |
+          python3 research/canonical-diagnostics/diagnose.py
+          python3 research/canonical-diagnostics/report.py
+          sha256sum --check /tmp/canonical-before.sha256
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canonical-exclusion-diagnostics
+          path: research/canonical-diagnostics/results/**
+          retention-days: 90
