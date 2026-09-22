@@ -1,0 +1,14 @@
+{
+  "productionSource": "05a988194af3c376e5aa5da16682c29f797db2b2",
+  "webTree": "39e7e9738975f45dfb5c443cc99961a39e9aa4ef",
+  "captureCode": "bae23b33211c73589ede784bf32d3485124874d1",
+  "captureStartedAt": "2026-09-22T05:50:35.121829+00:00",
+  "captureDirectory": "ongoing-window-research/full-public-feed-2026-09-22-bae23b3",
+  "healthBuild": "05a988194af3",
+  "purpose": "Require an actual production Docker frontend-stage build to reproduce the exact captured HTML and referenced JavaScript bytes before claiming this source/bundle mapping.",
+  "files": [
+    {"path": "index.html", "record": 1, "bytes": 1174, "sha256": "02dd90560d74374a8e826cd56e36e0d31e4325937f8ed6751899224bc75bd008"},
+    {"path": "assets/rider-U6Gl7ugq.js", "record": 2, "bytes": 472476, "sha256": "de3217094fc8eca240035b8562189c7f28891068e4936b0a80a92ca7ccf4e18d"},
+    {"path": "assets/geo-BjWFh9tz.js", "record": 3, "bytes": 198769, "sha256": "5d804a22578f34121b98c45d5b614c6e92ebc354d5423109c4d5421ca8203a5f"}
+  ]
+}

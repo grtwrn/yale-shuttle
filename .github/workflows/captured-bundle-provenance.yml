@@ -1,0 +1,29 @@
+name: captured-bundle-provenance
+on:
+  push:
+    branches: [research/public-fleet-timeline-2026-09-22]
+    paths: ['research/public-fleet-timeline/deployed-bundle.json', 'research/public-fleet-timeline/verify-bundle.py', '.github/workflows/captured-bundle-provenance.yml']
+permissions:
+  contents: read
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reproduce the actual Docker frontend stage on a hosted runner
+        run: |
+          docker build --target web --tag captured-shuttle-web services/shuttle-v2
+          docker create --name captured-shuttle-web-files captured-shuttle-web
+          docker cp captured-shuttle-web-files:/app/web/dist /tmp/captured-shuttle-dist
+          docker rm captured-shuttle-web-files
+      - name: Require exact captured rider bundle and HTML hashes
+        run: python3 research/public-fleet-timeline/verify-bundle.py /tmp/captured-shuttle-dist research/public-fleet-timeline/bundle-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: captured-bundle-provenance
+          path: research/public-fleet-timeline/bundle-results
+          retention-days: 90
