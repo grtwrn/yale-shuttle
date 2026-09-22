@@ -241,6 +241,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "The Study at Yale", lat: 41.309106, lon: -72.932975, aliases: ["the study", "study hotel", "heirloom", "1157 chapel"], poi: "hotel", anchorStop: "180 York (A&A)" }, // OSM N4088137294
 
   // -- Civic -----------------------------------------------------------------
+  { label: "MakeHaven", lat: 41.3050228, lon: -72.92366, aliases: ["make haven", "770 chapel"], poi: "hackerspace", anchorStop: "Chapel / State Elm City Market" }, // OSM N8218430666, verified 2026-09-22; 770 Chapel St confirmed by https://www.makehaven.org/visit.
   { label: "New Haven City Hall", lat: 41.307378, lon: -72.92433, aliases: ["city hall", "165 church"], poi: "civic", anchorStop: "Elm / Orange" }, // OSM W39267857
   { label: "New Haven Free Public Library", lat: 41.309007, lon: -72.924766, aliases: ["public library", "nhfpl", "ives library", "city library", "133 elm"], poi: "library", anchorStop: "Wall / Church" }, // OSM W141163194
   { label: "New Haven Superior Court", lat: 41.309527, lon: -72.922894, aliases: ["courthouse", "superior court", "235 church", "jury duty"], poi: "civic", anchorStop: "Church Wall" }, // OSM W141164127
