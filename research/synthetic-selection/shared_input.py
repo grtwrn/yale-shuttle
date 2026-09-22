@@ -48,6 +48,8 @@ def validate_shared(directory, date):
         raise ValueError('Shared input readiness changed')
     if ready != json.loads((metadata/'spool-ready.json').read_text()) or shared['generator']!=ready['syntheticGenerator']:
         raise ValueError('Shared metadata differs from sealed input')
+    if any(shared[key]!=ready[key] for key in ('captureId','prefixSha256','databaseSha256','databaseBytes')):
+        raise ValueError('Shared identity differs from sealed input')
     generator=shared['generator']
     if generator['start'] != epoch or generator['seconds']!=87300 or generator['generatorSha256']!=file_hash(HERE/'make_synthetic_capture.py')[0]:
         raise ValueError('Changed fixed synthetic workload')

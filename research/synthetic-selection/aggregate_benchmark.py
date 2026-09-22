@@ -1,5 +1,6 @@
 """Reconcile every scheduled key, including missing generation and worker artifacts."""
 import json
+import hashlib
 from pathlib import Path
 import sys
 from benchmark import expected, DATES, ROUTES
@@ -19,6 +20,8 @@ def input_checks(root):
                 raise ValueError('Wrong shared metadata assignment')
             if file_hash(directory/'spool-ready.json')[0]!=shared['readySha256'] or shared['generator']!=ready['syntheticGenerator']:
                 raise ValueError('Shared readiness metadata differs')
+            if any(shared[key]!=ready[key] for key in ('captureId','prefixSha256','databaseSha256','databaseBytes')):
+                raise ValueError('Shared identity differs from sealed input')
             if file_hash(directory/'fleet-index.jsonl')[0]!=shared['fleetIndexSha256']:
                 raise ValueError('Changed shared fleet index')
             if resource['exitCode']!=0 or resource['limitViolation'] is not None:
@@ -54,16 +57,30 @@ def aggregate(stage,root,output):
             suffix=f'{route}-{date}' if date else str(route)
             directory=root/f'selection-scale-{stage}-{suffix}'
             summaries=list(directory.glob('**/summary.json')) if directory.exists() else []
-            summary=json.loads(summaries[0].read_text()) if len(summaries)==1 else {'success':False,'error':'missing or ambiguous shard summary'}
+            issues=[]
+            try:
+                if len(summaries)!=1:raise ValueError('missing or ambiguous shard summary')
+                summary=json.loads(summaries[0].read_text())
+                if not isinstance(summary,dict):raise ValueError('invalid summary object')
+            except (OSError,ValueError) as error:
+                summary={'success':False,'error':str(error)}
             records=list(directory.glob('**/denominators.jsonl')) if directory.exists() else []
-            observed={}
+            observed={};ambiguous=set()
+            planned=expected(stage,route,date);valid={row['id'] for row in planned}
             if len(records)==1:
-                for line in records[0].read_text().splitlines():
-                    record=json.loads(line)
-                    if record['id'] in observed:raise RuntimeError('Duplicate shard key')
-                    observed[record['id']]=record
-            planned=expected(stage,route,date)
-            if not set(observed)<={row['id'] for row in planned}:raise RuntimeError('Unexpected shard keys')
+                for line in records[0].read_bytes().splitlines(keepends=True):
+                    try:
+                        if not line.endswith(b'\n'):raise ValueError('unfinished denominator row')
+                        record=json.loads(line);key=record['id']
+                        if key not in valid:raise ValueError('unexpected shard key')
+                        if key in observed or key in ambiguous:
+                            ambiguous.add(key);observed.pop(key,None)
+                            raise ValueError('ambiguous duplicate shard key')
+                        observed[key]=record
+                    except (ValueError,KeyError,TypeError) as error:
+                        issues.append(dict(error=str(error),bytes=len(line),sha256=hashlib.sha256(line).hexdigest()))
+            else:issues.append(dict(error='missing or ambiguous denominator manifest'))
+            if issues:summary={**summary,'success':False,'artifactIssues':issues}
             for row in planned:
                 if row['id'] in seen:raise RuntimeError('Duplicate global key')
                 seen.add(row['id']);counts['expected']+=1
@@ -87,11 +104,19 @@ def aggregate(stage,root,output):
                 group=f"{row['date']}/{row['generatingRouteId']}/{row['profile']}"
                 strata.setdefault(group,{})[status]=strata.setdefault(group,{}).get(status,0)+1
                 combined.write(json.dumps(record,separators=(',',':'))+'\n')
-            resources=[json.loads(path.read_text()) for path in directory.glob('**/*-resources.json')] if directory.exists() else []
+            resources=[]
+            for path in directory.glob('**/*-resources.json') if directory.exists() else []:
+                try:
+                    resource=json.loads(path.read_text())
+                    if not all(key in resource for key in ('elapsedSeconds','exitCode','limitViolation')):raise ValueError('incomplete resource report')
+                    resources.append(resource)
+                except (OSError,ValueError,TypeError) as error:
+                    summary={**summary,'success':False,'resourceError':str(error)}
             if stage=='full':
                 evidence=list(directory.glob('**/shared-input.json')) if directory.exists() else []
                 generation=by_date[date]
-                shared_ok=generation['success'] and len(evidence)==1 and json.loads(evidence[0].read_text())==generation['shared']
+                try:shared_ok=generation['success'] and len(evidence)==1 and json.loads(evidence[0].read_text())==generation['shared']
+                except (OSError,ValueError):shared_ok=False
                 summary={**summary,'sharedInputMatchesGeneration':shared_ok,'success':summary.get('success') and shared_ok}
                 resources_ok=len(resources)==1 and resources[0]['exitCode']==0 and resources[0]['limitViolation'] is None
                 summary.update(resourceReportValid=resources_ok,success=summary['success'] and resources_ok)

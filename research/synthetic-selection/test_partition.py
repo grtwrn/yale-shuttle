@@ -66,6 +66,19 @@ class PartitionTests(unittest.TestCase):
             self.assertEqual(result['missingKeys'],287);self.assertEqual(len(result['partialManifestLines']),1)
             self.assertEqual(len((root/'denominators.jsonl').read_text().splitlines()),288)
 
+    def test_hard_killed_artifact_cannot_abort_global_denominators(self):
+        with tempfile.TemporaryDirectory() as root:
+            root=Path(root);artifact=root/('selection-scale-full-1-'+DATES[0]);artifact.mkdir()
+            planned=expected('full',1,DATES[0]);row={**planned[0],'executionStatus':'completed'}
+            (artifact/'summary.json').write_text('{"partial":')
+            (artifact/'denominators.jsonl').write_text(json.dumps(row)+'\n'+json.dumps(row)+'\n'+json.dumps({**planned[1],'executionStatus':'completed'})+'\n'+ '{"partial":')
+            (artifact/'worker-resources.json').write_text('{')
+            with contextlib.redirect_stdout(io.StringIO()):report=aggregate('full',root,root/'result')
+            self.assertFalse(report['success']);self.assertEqual(report['counts']['expected'],28224)
+            self.assertEqual(report['counts']['terminalKeys'],1)
+            self.assertEqual(report['counts']['missingArtifactKeys'],28223)
+            self.assertEqual(len(report['shards'][0]['summary']['artifactIssues']),2)
+
     def test_shared_spool_hashes_date_and_generator_are_enforced(self):
         with tempfile.TemporaryDirectory() as root:
             directory=tiny_shared(Path(root),DATES[0])
