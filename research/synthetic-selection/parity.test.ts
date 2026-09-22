@@ -6,6 +6,8 @@ import {commuteSec,topVisibleOptions} from '../../services/shuttle-v2/web/src/pl
 import {haversineMeters} from '../../services/shuttle-v2/web/src/geo';
 import {walkSecFromMeters} from '../../services/shuttle-v2/web/src/walk';
 import {boundary} from './boundary';
+import {ROUTE_LISTS} from '../../services/shuttle-v2/web/src/routes';
+import {isBusInService} from '../../services/shuttle-v2/web/src/schedule';
 
 let session:any;
 const records:any[]=[];
@@ -16,14 +18,16 @@ beforeEach(()=>{
   // at this synthetic sink. Any other request is an implementation gap.
   vi.stubGlobal('fetch',vi.fn(async(url:any)=>{if(url==='/api/weather')return {ok:false};throw Error(`Forbidden request: ${url}`);}));
 });
-afterEach(async()=>{if(session)await session.close();session=null;vi.useRealTimers();vi.unstubAllGlobals();
+afterEach(async()=>{if(session)await session.close();session=null;
+  expect(vi.mocked(fetch).mock.calls.every(([url])=>url==='/api/weather')).toBe(true);
+  vi.useRealTimers();vi.unstubAllGlobals();
   writeFileSync('../../research/synthetic-selection/results/transcripts.json',JSON.stringify(records,null,2));});
 const clock={now:()=>Date.now(),advance:async(ms:number)=>{await vi.advanceTimersByTimeAsync(ms);}};
 const option=(s:any,label='Red')=>s.options.find((o:any)=>o.routeLabel===label);
-async function parity(name:string, initial:any, events:(s:any,capture:(label:string)=>void)=>Promise<void>,profile:'A'|'B'='A',geometry=scenario){
+async function parity(name:string, initial:any, events:(s:any,capture:(label:string)=>void)=>Promise<void>,profile:'A'|'B'='A',geometry=scenario,startAt=NOW){
   const streams:any[][]=[];
   for(const reference of [true,false]){
-    vi.clearAllTimers();vi.setSystemTime(NOW);
+    vi.clearAllTimers();vi.setSystemTime(startAt);
     session=await mountSelection({reference,scenario:geometry,payload:initial,clock,profile});
     const rows:any[]=[];
     const capture=(label:string)=>rows.push({label,at:Date.now(),...session.snapshot()});
@@ -35,6 +39,17 @@ async function parity(name:string, initial:any, events:(s:any,capture:(label:str
   return streams[1];
 }
 describe('exact TripPlanner hook extraction versus complete original component',()=>{
+  it('considers the complete fleet, applies service filtering and retains the six-shuttle cap',async()=>{
+    const full=feed(NOW,ROUTE_LISTS.map((cfg,i)=>({name:String(100+i),label:cfg.label,ride:300+i})));
+    expect(full.buses.filter((b:any)=>isBusInService(b,NOW)).length).toBeGreaterThan(6);
+    await parity('complete fleet and six-route cap',full,async(s,c)=>{
+      const stable=s.state().stableOptions;
+      expect(stable.filter((o:any)=>o.mode==='shuttle')).toHaveLength(6);
+      expect(stable.some((o:any)=>o.mode==='walk')).toBe(true);
+      expect(s.state().busRoster).not.toContain('13:');expect(s.state().busRoster).not.toContain('14:');
+      expect(stable.some((o:any)=>o.routeLabel==='Brown')).toBe(true);c('service-filtered capped set');
+    });
+  });
   it('plans from all routes and preserves the original plan across live polls',async()=>{
     const rows=await parity('complete options',feed(NOW,[{name:'301'},{name:'101',label:'Blue Day',ride:330},{name:'201',label:'Orange Day',ride:360}]),async(s,c)=>{
       expect(s.state().stableOptions.filter((o:any)=>o.mode==='shuttle')).toHaveLength(3);
@@ -114,6 +129,22 @@ describe('exact TripPlanner hook extraction versus complete original component',
       await s.advanceTo(NOW+35_000);expect(s.state().options).not.toBe(options);
       expect(s.state().stableOptions).toBe(plan);expect(option(s.state()).etaUnavailable).toBe(true);
       expect(s.state().reminder).toBeNull();c('expired on parent wall second');
+    },'B');
+  });
+  it('retains fractional arming timer phase and starts walking at actual leave signal time',async()=>{
+    await parity('fractional reminder timer phase',feed(),async(s,c)=>{
+      await s.advanceTo(NOW+15_000);await s.receive(feed(NOW+15_000,[{name:'301',pickup:350,low:239}]));
+      await s.advanceTo(NOW+16_000);
+      const signal=s.snapshot().events.find((e:any)=>e.type==='would_signal'&&e.kind==='leave_now');
+      expect(signal.at).toBe(NOW+15_123);expect(s.snapshot().movement.since).toBe(signal.at);
+      expect(s.state().userLatLon).not.toEqual(s.state().fromLL);c('777 milliseconds after leave');
+    },'B',scenario,NOW+123);
+  });
+  it('uses the pinned timer-before-receipt convention at an exact expiry tie',async()=>{
+    await parity('expiry receipt tie',feed(NOW,[{name:'301',pickup:900,low:780}]),async(s,c)=>{
+      await s.advanceTo(NOW+45_000);await s.receive(feed(NOW+45_000,[{name:'301',pickup:900,low:780}]));
+      expect(s.state().etaFresh).toBe(true);expect(s.state().reminder).toBeNull();
+      expect(s.snapshot().events.filter((e:any)=>e.type==='disarm'&&e.reason==='invalid_input')).toHaveLength(1);c('fresh receipt cannot rearm');
     },'B');
   });
   it('keeps ranking pending for 30 seconds of applicable recomputations',async()=>{
