@@ -22,6 +22,16 @@ const topology = JSON.parse(topologyBytes.toString());
 const network = TransitNetwork.build(topology.stops, topology.routes);
 const routeIds = new Set<number>(topology.routes.map((r: { id: number }) => r.id));
 const sequenceByRoute = new Map<number, number[]>(topology.routes.map((r: { id: number; stops: number[] }) => [r.id, r.stops]));
+// TransitNetwork.build may repair a published route order. Models and its
+// frozen wait map still use topology.routes[].stops: do not silently translate
+// occurrence indices, or admit the matching fragments of a reordered lap.
+const networkSequenceByRoute = new Map([...network.routes].map(([id, route]) => [id, route.stops]));
+const sequenceDifferences = Object.fromEntries([...sequenceByRoute].flatMap(([id, sequence]) => {
+  const actual = networkSequenceByRoute.get(id);
+  return JSON.stringify(sequence) === JSON.stringify(actual) ? [] : [[id, {
+    name: network.routes.get(id)?.name ?? null, frozen: sequence, reducer: actual ?? null,
+  }]];
+}));
 const et = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', hour: 'numeric', weekday: 'short' });
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -38,6 +48,8 @@ interface TrainingVisit {
   outcome: string;
   how: string | null;
   closest_m: number;
+  replay_fit_eligible: boolean;
+  replay_topology_exclusion: string | null;
   [key: string]: unknown;
 }
 interface RouteAudit {
@@ -49,9 +61,13 @@ interface RouteAudit {
   unresolved: number;
   gaps: number;
   contendedAtEmission: number;
+  fitTopologyEligible: number;
+  topologyExcluded: number;
+  unexpectedCompletedTopology: number;
 }
 const emptyRouteAudit = (): RouteAudit => ({ observations: 0, visits: 0, completed: 0,
-  passed: 0, stopped: 0, unresolved: 0, gaps: 0, contendedAtEmission: 0 });
+  passed: 0, stopped: 0, unresolved: 0, gaps: 0, contendedAtEmission: 0,
+  fitTopologyEligible: 0, topologyExcluded: 0, unexpectedCompletedTopology: 0 });
 
 const raw: BusObservation[] = [];
 const rawHash = createHash('sha256');
@@ -119,8 +135,23 @@ function replay(observations: readonly BusObservation[]) {
       const row = Object.fromEntries(Object.entries(mappedRow).map(([key, value]) => [
         key.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`), value instanceof Date ? value.getTime() : value,
       ])) as TrainingVisit;
-      assert(routeIds.has(row.route_id), 'Emitted a visit outside the pinned topology');
-      assert(sequenceByRoute.get(row.route_id)?.[row.stop_index] === row.stop_id, 'Visit topology disagreement');
+      const frozenStop = sequenceByRoute.get(row.route_id)?.[row.stop_index];
+      const networkStop = networkSequenceByRoute.get(row.route_id)?.[row.stop_index];
+      const networkOccurrenceValid = Number.isInteger(row.stop_index) && row.stop_index >= 0
+        && networkStop === row.stop_id;
+      row.replay_topology_exclusion = !routeIds.has(row.route_id) ? 'route outside frozen topology'
+        : !networkOccurrenceValid ? 'emission disagrees with reducer topology'
+        : Object.hasOwn(sequenceDifferences, row.route_id) ? 'reducer route order differs from frozen fit topology'
+        : frozenStop !== row.stop_id ? 'emission disagrees with frozen fit topology' : null;
+      row.replay_fit_eligible = row.replay_topology_exclusion === null;
+      if (!row.replay_fit_eligible) {
+        // Keep the original event and occurrence fields intact for diagnosis.
+        // These rows go to a separate artifact, never to the Models input.
+        row.replay_frozen_stop_id = frozenStop ?? null;
+        row.replay_network_stop_id = networkStop ?? null;
+        row.replay_emitted_event = emitted[ordinal];
+        row.replay_emission_observations = group.filter(o => o.busName === row.bus_name || o.busId === row.bus_id);
+      }
       // Poll time plus within-poll emission order is deterministic, safe as a
       // JS integer, chronological at tied anchors, and invariant to removing
       // any future suffix. These IDs never join stored evaluation visit IDs.
@@ -139,9 +170,13 @@ function replay(observations: readonly BusObservation[]) {
       row.dow = weekdays.indexOf(parts.find(p => p.type === 'weekday')!.value);
       row.hour = Number(parts.find(p => p.type === 'hour')!.value);
       rows.push(row);
-      const count = perRoute[row.route_id]!;
+      const count = perRoute[row.route_id] ??= emptyRouteAudit();
       count.visits++;
-      if (row.arrived_at !== null && row.departed_at !== null && row.outcome !== 'unresolved' && row.how !== 'gap') count.completed++;
+      const completed = row.arrived_at !== null && row.departed_at !== null && row.outcome !== 'unresolved' && row.how !== 'gap';
+      if (completed) count.completed++;
+      if (row.replay_fit_eligible) count.fitTopologyEligible++;
+      else count.topologyExcluded++;
+      if (completed && !networkOccurrenceValid) count.unexpectedCompletedTopology++;
       if (row.outcome === 'passed') count.passed++;
       if (row.outcome === 'stopped') count.stopped++;
       if (row.outcome === 'unresolved') count.unresolved++;
@@ -179,13 +214,30 @@ for (const cutoff of [...new Set(requestedCutoffs)].filter(t => t > first && t <
 assert(checks.length > 0, 'No nontrivial prefix-deletion checks ran');
 
 fs.mkdirSync(output, { recursive: true });
-fs.writeFileSync(output + 'training-visits.jsonl.gz', zlib.gzipSync(full.rows.map(r => JSON.stringify(r)).join('\n') + '\n'));
+const fitRows = full.rows.filter(r => r.replay_fit_eligible);
+const excludedRows = full.rows.filter(r => !r.replay_fit_eligible);
+for (const [file, rows] of [['training-visits', fitRows], ['training-visits-topology-excluded', excludedRows]] as const) {
+  fs.writeFileSync(output + file + '.jsonl.gz', zlib.gzipSync(rows.map(r => JSON.stringify(r)).join('\n') + (rows.length ? '\n' : '')));
+}
+const exclusionReasons: Record<string, number> = {};
+for (const row of excludedRows) exclusionReasons[row.replay_topology_exclusion!] = (exclusionReasons[row.replay_topology_exclusion!] ?? 0) + 1;
 const audit = { input, inputSha256: rawHash.digest('hex'), inputRows,
   topology: topologyFile, topologySha256: createHash('sha256').update(topologyBytes).digest('hex'),
   firstObservationAt: first, lastObservationAt: last, emittedVisits: full.rows.length,
+  trainingTopologyEligibleVisits: fitRows.length, topologyExcludedVisits: excludedRows.length,
+  topologyExclusionReasons: exclusionReasons, routeSequenceDifferences: sequenceDifferences,
+  routeNames: Object.fromEntries(topology.routes.map((r: { id: number; name: string }) => [r.id, r.name])),
+  topologyExclusionArtifact: 'training-visits-topology-excluded.jsonl.gz',
+  topologyPolicy: 'No remapping. Entire differing route sequences and invalid occurrences are excluded from the Models input; original emissions are retained separately.',
   delayedConfirmedDepartures: full.rows.filter(v => v.departed_at !== null && v.known_at > v.departed_at).length,
   storedVisitInputs: false, historicalSeeds: false, knownAtSource: 'actual stepManyWithVisits emission poll',
   identity: 'known_at * 1000 + within-poll emission ordinal; synthetic IDs, not stored visit IDs',
   prefixDeletionChecks: checks, ...full.audit };
 fs.writeFileSync(output + 'training-visits-audit.json', JSON.stringify(audit, null, 2) + '\n');
 console.log(JSON.stringify(audit));
+// A completed event inconsistent with the very network used by the reducer is
+// an unexpected defect, unlike a documented published-order repair. Preserve
+// diagnostics above before failing so it cannot silently shrink the cohort.
+assert.equal(Object.values(full.audit.perRoute).reduce((n, r) => n + r.unexpectedCompletedTopology, 0), 0,
+  'Completed emissions disagree with reducer topology; inspect training-visits-topology-excluded.jsonl.gz');
+assert(fitRows.length > 0, 'No topology-compatible reconstructed visits remain for fitting');
