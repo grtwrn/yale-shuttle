@@ -33,6 +33,7 @@ jobs:
       - run: python3 -m pip install numpy==2.2.6
       - name: Smoke-test unique study, report and action imports before heavy work
         run: |
+          python3 -c 'from pathlib import Path; p=Path("research/k-sweep/results/preparation.json"); p.parent.mkdir(parents=True,exist_ok=True); assert not p.exists(); p.write_text("{\"waits\":{}}\n")'
           cd research/checkpoint-ensemble
           python3 -c 'import ensemble_study, ensemble_report, actions; assert ensemble_report.s is ensemble_study; assert actions.s is ensemble_study'
       - run: npm ci --prefix services/shuttle-v2
