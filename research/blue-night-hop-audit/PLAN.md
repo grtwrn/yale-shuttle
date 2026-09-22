@@ -1,0 +1,11 @@
+# Blue Night forward-hop audit
+
+Frozen before this diagnostic: inputs from k-sweep run35677536788 (Sep3–20), canonical run35684356219, diagnostic code847f86d. No Sep21 inputs, refitting, scoring, threshold changes, relabelling, source/path admission changes, candidate changes or production changes.
+
+Inspect Blue Night route13 only. Reproduce all canonical labels exactly, and enumerate existing K10 source paths for both frozen major waits at the original preSep16 cutoff, checking exact accepted path equality against the unchanged model. Report first >5 forward-hop failures, retained/rejected intermediate visits, provider/route continuity, observation spacing and distances to every canonical stop. Count distinct transitions and source trips separately from repeated snapshot exclusions.
+
+Examples are selected independently of model error: the earliest chronological failure for each distinct (population, previous index, next index), where populations are frozen training paths and the existing rejected label snapshots. Retain every transition count; detailed reducer traces use the first12 examples in each population ordered by time. No favorable subset selection or correction follows from this audit.
+
+Use the original published and serialized runtime topology; verify sequence equality/repeated-stop status. Re-run the unchanged production detector for relevant bus names, keeping ALL their route/provider assignments and the original chronology. Preserve all completed and unresolved emissions. No historical seeds or EOF closures. Compare Blue Night emitted visit signatures exactly against canonical visits, independent of synthetic global emission ordinals. Trace before/after anchor indices and nearest-stop distances only; no raw coordinates in output.
+
+Evidence may distinguish continuity failures, detector re-anchoring, observed detours/skips and missing observations. Do not infer that proximity proves boarding service or that the absence of a visit proves a skipped stop. Whole-group fallback remains unchanged. A later subsection proposal must have an independently defined topology/service boundary, frozen before separate validation; this audit cannot remove poorly performing targets post hoc.

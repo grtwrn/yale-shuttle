@@ -1,0 +1,50 @@
+name: blue-night-forward-hop-audit
+on:
+  push:
+    branches: [research/blue-night-hop-audit-2026-09-22]
+    paths: ['research/blue-night-hop-audit/**', '.github/workflows/blue-night-hop-audit.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+      TZ: America/New_York
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/diagnostic-frozen
+      - name: Preserve frozen artifacts
+        run: |
+          ln -s "$GITHUB_WORKSPACE/research/diagnostic-frozen/canonical-windows/results" research/canonical-windows/results
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+          find research/diagnostic-frozen -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/canonical-before.sha256
+      - name: Trace unchanged Blue Night paths and labels
+        run: |
+          python3 research/blue-night-hop-audit/audit.py
+          services/shuttle-v2/node_modules/.bin/tsx research/blue-night-hop-audit/trace.ts
+          sha256sum --check /tmp/canonical-before.sha256
+          sha256sum --check research/canonical-windows/results/immutable-inputs.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blue-night-hop-audit
+          path: research/blue-night-hop-audit/results/**
+          retention-days: 90
