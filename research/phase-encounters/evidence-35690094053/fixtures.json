@@ -1,0 +1,18 @@
+{
+  "passed": 13,
+  "cases": [
+    "frozen constants",
+    "overlaps are marker-specific and never transitive",
+    "moving one-fix encounter remains a possible pass",
+    "exact near plateau is descriptive and causal",
+    "hysteresis retains band, band plateau does not imply near stationary",
+    "duplicates deduplicate and older input is inert",
+    "EOF is open and contains-target encounter spans asof",
+    "provider_change censors without erasing prior possible pickup",
+    "route_change censors without erasing prior possible pickup",
+    "contention_change censors without erasing prior possible pickup",
+    "observation_gap censors without erasing prior possible pickup",
+    "same-provider absence witness bounds presence but preserves earlier queries",
+    "physical update bytes and identities survive future deletion"
+  ]
+}

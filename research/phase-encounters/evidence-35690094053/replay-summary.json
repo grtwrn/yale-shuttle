@@ -1,0 +1,190 @@
+{
+  "cutoff": null,
+  "counts": {
+    "observations": 1487970,
+    "polls": 153936,
+    "duplicates": 0,
+    "physical": 2022476,
+    "breaks": 418,
+    "annotations": 4044952,
+    "phaseDifferences": 40791
+  },
+  "hashes": {
+    "physical": "f6e4e01c279eaf74f5ec5c4176adc052538152c00c91baa255c23c746f3fabc8",
+    "baseline": "94f41ab8a01fe3b40b6d3637aacc0664212b6cfc35a81bae0111c8f36e3b9aeb",
+    "guarded": "a72bb4012bf395e227efc30dc6d4392f36e44064b631fc52e7eca43dc0e61c9e",
+    "breaks": "a56d01f57dbe751b78b62294732fe884592e35d8ba0ab7e51b922a8400564b10"
+  },
+  "visits": [
+    51581,
+    51017
+  ],
+  "snapshots": [
+    {
+      "cutoff": 1789262772829,
+      "counts": {
+        "observations": 743989,
+        "polls": 78887,
+        "duplicates": 0,
+        "physical": 1008542,
+        "breaks": 228,
+        "annotations": 2017084,
+        "phaseDifferences": 23901
+      },
+      "hashes": {
+        "physical": "ea9ff612fcf00aafc693e5090ca2f00d6a6008188015d8ff3e4d069063535c9a",
+        "baseline": "20661cb7ccab107f63c87d12cf80c52d68d73fda32bccc76b97c26ccefbf0c87",
+        "guarded": "4823caea7c4d648c4b8c30ba0cadc306508368b52ccc4857ad05df65204bc868",
+        "breaks": "0a1e4243628ecfa33288d6eb7ed00efca33d6506850d216b33981320f8862d27"
+      },
+      "visits": [
+        25752,
+        25436
+      ]
+    },
+    {
+      "cutoff": 1789531200000,
+      "counts": {
+        "observations": 805357,
+        "polls": 87671,
+        "duplicates": 0,
+        "physical": 1100484,
+        "breaks": 253,
+        "annotations": 2200968,
+        "phaseDifferences": 25649
+      },
+      "hashes": {
+        "physical": "c605a2ba4915aebffe03d24bc9419f353d924eb8025c6c5cae3b05b668e54b49",
+        "baseline": "453ec665180c186b65fce782b2d097db4dfccbc4ef1d340333dc53df605ff589",
+        "guarded": "6c81bfe273577816b8d695c88ecce758d310d1ae4701a89f70a6231f544747ee",
+        "breaks": "f2d2ed2f6aa6398903926c1568bc3d101d8591839f0ded41551e5a1039ee1faa"
+      },
+      "visits": [
+        27743,
+        27377
+      ]
+    },
+    {
+      "cutoff": 1789790400000,
+      "counts": {
+        "observations": 1326246,
+        "polls": 126896,
+        "duplicates": 0,
+        "physical": 1825679,
+        "breaks": 381,
+        "annotations": 3651358,
+        "phaseDifferences": 36780
+      },
+      "hashes": {
+        "physical": "f95d253cef368b9b1d6c5c6f523bda295e172c9f553c8d89c2cbb2b9e2eebd14",
+        "baseline": "695bbc36db3ddf9a646917744d88a9f5f7539b82f6e9c552392ffa7030efc4c9",
+        "guarded": "cd737ce5b8fd8bf2895a3787809799bc0f6e2fcca23393b95129530a9fcf23ae",
+        "breaks": "06fd2fdd9abf1c53f593560910f9fc579fa3aa50a674e7d3ee429643cdd9b633"
+      },
+      "visits": [
+        46617,
+        46111
+      ]
+    }
+  ],
+  "associationCounts": {
+    "baseline/unique_phase_supported": 867026,
+    "guarded/unique_phase_supported": 864952,
+    "baseline/other_phase_or_leg": 149036,
+    "guarded/other_phase_or_leg": 151110,
+    "baseline/marker_not_on_route": 1005808,
+    "guarded/marker_not_on_route": 1005808,
+    "baseline/unavailable": 606,
+    "guarded/unavailable": 606
+  },
+  "episodes": 130331,
+  "prefixes": [
+    {
+      "cutoff": 1789262772829,
+      "counts": {
+        "observations": 743989,
+        "polls": 78887,
+        "duplicates": 0,
+        "physical": 1008542,
+        "breaks": 228,
+        "annotations": 2017084,
+        "phaseDifferences": 23901
+      },
+      "hashes": {
+        "physical": "ea9ff612fcf00aafc693e5090ca2f00d6a6008188015d8ff3e4d069063535c9a",
+        "baseline": "20661cb7ccab107f63c87d12cf80c52d68d73fda32bccc76b97c26ccefbf0c87",
+        "guarded": "4823caea7c4d648c4b8c30ba0cadc306508368b52ccc4857ad05df65204bc868",
+        "breaks": "0a1e4243628ecfa33288d6eb7ed00efca33d6506850d216b33981320f8862d27"
+      },
+      "visits": [
+        25752,
+        25436
+      ],
+      "identical": true
+    },
+    {
+      "cutoff": 1789531200000,
+      "counts": {
+        "observations": 805357,
+        "polls": 87671,
+        "duplicates": 0,
+        "physical": 1100484,
+        "breaks": 253,
+        "annotations": 2200968,
+        "phaseDifferences": 25649
+      },
+      "hashes": {
+        "physical": "c605a2ba4915aebffe03d24bc9419f353d924eb8025c6c5cae3b05b668e54b49",
+        "baseline": "453ec665180c186b65fce782b2d097db4dfccbc4ef1d340333dc53df605ff589",
+        "guarded": "6c81bfe273577816b8d695c88ecce758d310d1ae4701a89f70a6231f544747ee",
+        "breaks": "f2d2ed2f6aa6398903926c1568bc3d101d8591839f0ded41551e5a1039ee1faa"
+      },
+      "visits": [
+        27743,
+        27377
+      ],
+      "identical": true
+    },
+    {
+      "cutoff": 1789790400000,
+      "counts": {
+        "observations": 1326246,
+        "polls": 126896,
+        "duplicates": 0,
+        "physical": 1825679,
+        "breaks": 381,
+        "annotations": 3651358,
+        "phaseDifferences": 36780
+      },
+      "hashes": {
+        "physical": "f95d253cef368b9b1d6c5c6f523bda295e172c9f553c8d89c2cbb2b9e2eebd14",
+        "baseline": "695bbc36db3ddf9a646917744d88a9f5f7539b82f6e9c552392ffa7030efc4c9",
+        "guarded": "cd737ce5b8fd8bf2895a3787809799bc0f6e2fcca23393b95129530a9fcf23ae",
+        "breaks": "06fd2fdd9abf1c53f593560910f9fc579fa3aa50a674e7d3ee429643cdd9b633"
+      },
+      "visits": [
+        46617,
+        46111
+      ],
+      "identical": true
+    }
+  ],
+  "inputs": {
+    "research/k-sweep/results/raw_positions.jsonl.gz": "3990d06ebdab596cfebdd7f03c528f7efcbb46fd3f6af68a9d64ede648e220b9",
+    "research/canonical-windows/results/canonical-topology.json": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+    "research/canonical-windows/results/unscored.jsonl.gz": "4eb4f2d24429d948e282670c213a807a32eb3858f235b2ded48168cd78c31312",
+    "research/phase-frozen/baseline-visits.jsonl.gz": "eda9fc990fd50f01b05545f2f861307977a6c79d3ecb960f92a55ace30e4011b",
+    "research/phase-frozen/protected-visits.jsonl.gz": "59b96abe24c072c816f3f00a8d2bef2dc5310736f1d5d26b4546fca8538fad07",
+    "research/phase-frozen/label-comparison.jsonl.gz": "cbde31d0409bff9ae1d18ea8a65016c260f0aeaedc6d9bafd791247033400d62",
+    "research/directed-leg-diagnostics/results/physical-visit-differences.jsonl.gz": "b6cf73cecbd533cd3545deabf0fa30a8fcd2c1b74b05a4f3511d4abd8eb69da0",
+    "research/directed-leg-diagnostics/results/earlier-pickup-barriers.jsonl.gz": "60a29b6a8b55d541c5d9a3e48ef579b757d1627ba229997f51b057f35e29c920",
+    "research/phase-encounters/SPEC.md": "366f0c7736d916806e663dac06018424120143984760b85410060a7f2b2a819a",
+    "research/phase-encounters/SCHEMA.json": "4f04b941b8cc3b42e36f0c1364e5e05571f2ea23f85adc78937f2f4e0f471d1f",
+    "research/phase-encounters/ledger.ts": "a462753eab4d7f8346b22c3ccab37a730e9f5c106b568a7dd8b3024e12d67576",
+    "research/directed-leg-protection/guard.ts": "472c2e7a5babebcb3e2d31736aa4d3ddb013d11bb73ebd157d3daf65719719f6"
+  },
+  "qualityRuleMps": 22,
+  "modelScoresComputed": false,
+  "productionFilesChanged": false,
+  "latestInputEtDay": "2026-09-20"
+}
