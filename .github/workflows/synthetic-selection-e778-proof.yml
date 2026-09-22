@@ -15,7 +15,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Stage exact production source in ephemeral hosted checkout
-        run: git restore --source=e7784c03b8c739eaa603fb231fe5ce80d2d71e82 -- services/shuttle-v2
+        run: git restore --staged --worktree --source=e7784c03b8c739eaa603fb231fe5ce80d2d71e82 -- services/shuttle-v2
       - name: Build exact frontend
         run: |
           docker build --target web --tag e778-proof services/shuttle-v2
