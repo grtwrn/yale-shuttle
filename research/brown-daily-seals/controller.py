@@ -36,7 +36,8 @@ def save_state(root,state):write_json(Path(root)/'state.json',state)
 def may_attempt(state,day):
     existing=state['days'].get(day)
     if existing and existing['status'] in ('available','available_late','expired'):return 'already_sealed'
-    if existing and existing['status']=='scientific_halt':raise InputError('Scientific halt requires review; no automatic retry')
+    if any(x['status']=='scientific_halt' for x in state['days'].values()):
+        raise InputError('Scientific halt requires review; no later-day fit or automatic retry')
     require(not any(x['status'] in ('queued','running','sealed_pending_publish') for x in state['days'].values()),'another request is pending/running')
     return 'attempt'
 

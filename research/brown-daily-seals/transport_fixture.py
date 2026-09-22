@@ -19,7 +19,10 @@ def main():
     at=now_ms()
     require(artifact['id']==identity and artifact['digest']==digest,'artifact API/output identity mismatch')
     require(artifact['workflow_run']['id']==fixture['runId'] and not artifact['expired'],'foreign or expired fixture')
-    require(fixture['preparedAt']<=time_ms(artifact['created_at'])<=at,'artifact clock order')
+    # API creation timestamps have whole-second precision; preserve that
+    # interval rather than asserting a fictitious millisecond creation time.
+    created=time_ms(artifact['created_at'])
+    require(fixture['preparedAt']<=created+999 and created<=at,'artifact clock order')
     write_json(HERE/'results/transport.json',dict(status='passed',kind=fixture['kind'],artifactId=identity,
         artifactDigest=digest,bodySha256=sha(raw),runId=fixture['runId'],runAttempt=fixture['runAttempt'],
         preparedAt=fixture['preparedAt'],artifactCreatedAt=artifact['created_at'],verifiedReceiptAt=at,

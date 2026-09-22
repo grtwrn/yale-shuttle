@@ -126,6 +126,7 @@ class Fixtures(unittest.TestCase):
             state['days']['2026-09-24']={'status':status};self.assertEqual(ctl.may_attempt(state,'2026-09-24'),'already_sealed')
         state['days']['2026-09-24']={'status':'scientific_halt'}
         with self.assertRaises(c.InputError):ctl.may_attempt(state,'2026-09-24')
+        with self.assertRaises(c.InputError):ctl.may_attempt(state,'2026-09-25')
         state['days']['2026-09-24']={'status':'running'}
         with self.assertRaises(c.InputError):ctl.may_attempt(state,'2026-09-25')
         state['days']['2026-09-24']={'status':'operational_failure'};self.assertEqual(ctl.may_attempt(state,'2026-09-24'),'attempt')
