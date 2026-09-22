@@ -1,0 +1,18 @@
+name: public-fleet-timeline
+on:
+  push:
+    branches: [research/public-fleet-timeline-2026-09-22]
+    paths: ['research/public-fleet-timeline/capture.py', 'research/public-fleet-timeline/test_capture.py', '.github/workflows/public-fleet-timeline.yml']
+permissions:
+  contents: read
+jobs:
+  capture-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Exact transport, failure, storage and lifecycle fixtures
+        run: python3 -m unittest discover -s research/public-fleet-timeline -p test_capture.py -v
