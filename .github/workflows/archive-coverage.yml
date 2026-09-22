@@ -1,0 +1,42 @@
+name: archive-coverage-research
+on:
+  push:
+    branches: [research/archive-coverage-2026-09-21]
+    paths: ['research/archive-coverage/**', '.github/workflows/archive-coverage.yml']
+permissions:
+  contents: read
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check coverage and transport failure cases
+        run: python3 -m unittest discover -s research/archive-coverage -p 'test_*.py' -v
+      - uses: actions/checkout@v4
+        with:
+          ref: e2d0468e7f1890be0fc5a2a9498f35daa23234ce
+          path: frozen-inputs
+          sparse-checkout: |
+            research/blue-k10/data
+            research/all-k10/data/topology.json
+      - name: Characterize historical fleet coverage
+        run: >-
+          python3 research/archive-coverage/coverage.py
+          --data-root frozen-inputs/research/blue-k10/data
+          --topology frozen-inputs/research/all-k10/data/topology.json
+          --topology-sha256 f66b9d465921cd34cd216225283267c174337b5cbc3a191874bc48267ecee8ce
+          --frozen-at 2026-09-22T02:18:44Z
+          --days 2026-09-11 2026-09-14 2026-09-15 2026-09-16 2026-09-17 2026-09-18
+          --output research/archive-coverage/results
+      - name: Demonstrate known losses are rejected
+        run: python3 research/archive-coverage/demonstrate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: archive-coverage-results
+          path: research/archive-coverage/results
+          retention-days: 90
