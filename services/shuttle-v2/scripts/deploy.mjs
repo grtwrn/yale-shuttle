@@ -153,20 +153,14 @@ async function browserSmoke(base, { markAsTest }) {
       }
     }
 
-    // Red uses the trial by default. Exercise opting out and restoring the
-    // default through the actual bundled frontend and its API requests.
-    await page.getByText('Updated estimates', { exact: true }).waitFor();
-    const usualPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
-      && new URL(r.url()).searchParams.get('eta_model') === 'usual');
-    await page.getByRole('link', { name: 'Use previous estimates' }).click();
-    await usualPoll;
-    await page.getByText('Previous estimates', { exact: true }).waitFor();
+    // There is one rider experience. Old comparison URLs must also request
+    // the current forecast, without exposing estimator implementation choices.
     const defaultPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
       && !new URL(r.url()).searchParams.has('eta_model'));
-    await page.getByRole('link', { name: 'Use updated estimates' }).click();
+    await page.goto(new URL('/?eta_model=usual', base).href, { waitUntil: 'domcontentloaded' });
     await defaultPoll;
-    if (new URL(page.url()).searchParams.has('eta_model')) fail('restoring Red default left an override');
-    await page.getByText('Updated estimates', { exact: true }).waitFor();
+    if (await page.getByText(/^(Updated estimates|Previous estimates|Use previous estimates|Use updated estimates)$/).count())
+      fail('browser smoke: estimator chooser is visible to riders');
 
     const fatal = errors.filter((e) => !e.startsWith("console:"));
     if (fatal.length) fail(`browser smoke: page errors:\n  ${fatal.join("\n  ")}`);

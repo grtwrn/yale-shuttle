@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { JourneyHistory as History } from '../../src/server/journeyHistory';
 import { ArrivalPlot } from './ArrivalPlot';
 import { historyRecency, HISTORY_HALF_LIFE_DAYS } from './historyRecency';
-import { k10TrialSelected } from './etaTrial';
 
 const when = (t: number) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 // Match the server's service-date count: the starting date in New Haven.
@@ -33,7 +32,6 @@ export function ArrivalHistory({ route, stopId, etaSec, busName }: { route: stri
     let active = true;
     const timeout = setTimeout(() => abort.abort(), 10_000);
     const query = new URLSearchParams({ route, stop: String(stopId), bus: busName, eta: String(Math.round(etaSec)), limit: '100' });
-    if (!k10TrialSelected()) query.set('eta_model', 'usual');
     fetch(`/api/journey-history?${query}`, { signal: abort.signal }).then(async r => {
       if (!r.ok) throw new Error('history unavailable');
       const raw = await r.json();
