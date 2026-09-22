@@ -1,0 +1,26 @@
+{
+  "source": "https://gisportal.dot.ct.gov/server/rest/services/OpenData/CTDOT_Roadway_Basemap/MapServer/5",
+  "url": "https://gisportal.dot.ct.gov/server/rest/services/OpenData/CTDOT_Roadway_Basemap/MapServer/5/query?where=ROUTE_PREFIX+%3D+%27I%27+AND+ROAD_TYPE+%3D+%27M%27&geometry=-73.005%2C41.240%2C-72.905%2C41.330&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=OBJECTID%2CROUTE_ID%2CROUTE_PREFIX%2CROUTE_NUMBER%2CROAD_TYPE%2CTOWN_NAME%2CYEAR%2CROUTE_DIR&returnGeometry=true&returnM=false&returnZ=false&f=json",
+  "query": {
+    "where": "ROUTE_PREFIX = 'I' AND ROAD_TYPE = 'M'",
+    "geometry": "-73.005,41.240,-72.905,41.330",
+    "geometryType": "esriGeometryEnvelope",
+    "inSR": "4326",
+    "spatialRel": "esriSpatialRelIntersects",
+    "outSR": "4326",
+    "outFields": "OBJECTID,ROUTE_ID,ROUTE_PREFIX,ROUTE_NUMBER,ROAD_TYPE,TOWN_NAME,YEAR,ROUTE_DIR",
+    "returnGeometry": "true",
+    "returnM": "false",
+    "returnZ": "false",
+    "f": "json"
+  },
+  "capturedAt": "2026-09-22T04:20:29.341025+00:00",
+  "finishedAt": "2026-09-22T04:20:29.810161+00:00",
+  "file": "ctdot-interstates-20260922-original.json",
+  "sha256": "aaeccc535103efcbc23ac092f544894a506167224b160d47ae1a7118ef2dd2fa",
+  "bytes": 46459,
+  "features": 8,
+  "purpose": "Independent public interstate-mainline road geometry for research localization; no speed limit or GPS-validity claim",
+  "publisher": "Connecticut Department of Transportation",
+  "failedAlternative": "OpenStreetMap Overpass query HTTP406; no OSM geometry used"
+}

@@ -100,6 +100,13 @@ def main():
         route=routes[rid];rs=[r for r in records if r['route']==rid]
         fig,ax=plt.subplots(figsize=(9,8),layout='constrained')
         line=[xy(*p) for p in route['path']]
+        roads=json.loads((HERE/'data/ctdot-interstates-20260922-original.json').read_text())
+        for feature in roads['features']:
+            for path in feature['geometry']['paths']:
+                pts=[xy(p[1],p[0]) for p in path]
+                ax.plot([p[0]/1000 for p in pts],[p[1]/1000 for p in pts],color='#4f83cc',lw=2,alpha=.45)
+        ax.set_xlim(min(p[0] for p in line)/1000-.35,max(p[0] for p in line)/1000+.35)
+        ax.set_ylim(min(p[1] for p in line)/1000-.35,max(p[1] for p in line)/1000+.35)
         ax.plot([p[0]/1000 for p in line],[p[1]/1000 for p in line],color='#777777',lw=1,label='Published route')
         for leg in route['legs']:
             if leg['index'] in TRANSFER[rid] and not leg['bridged']:
@@ -117,7 +124,7 @@ def main():
             ax.scatter([x/1000],[y/1000],s=25,c='black');ax.annotate(stop['name'],(x/1000,y/1000),xytext=(5,-13),textcoords='offset points',fontsize=8)
         ax.set(title=route['name']+': public route geometry and unchanged >22 m/s sample',
             xlabel='East from reference, km',ylabel='North from reference, km',aspect='equal')
-        ax.text(.01,.01,'Orange: predeclared intercampus transfer legs.\nPublished route geometry; no road-speed-limit inference.',transform=ax.transAxes,fontsize=8,bbox=dict(facecolor='white',alpha=.85))
+        ax.text(.01,.01,'Orange: intercampus transfer legs. Blue: CTDOT interstates.\nNo road-speed-limit or GPS-validity inference.',transform=ax.transAxes,fontsize=8,bbox=dict(facecolor='white',alpha=.85))
         ax.legend(loc='upper left',fontsize=8);fig.savefig(OUT/f'route-{rid}.png',dpi=160);plt.close(fig)
     print(json.dumps(dict(sameHighEdges=len(records),sameSelections=len(prior['selections']),inputUnchanged=True)))
 

@@ -45,6 +45,8 @@ jobs:
       - name: Locate the unchanged speed sample
         run: |
           python3 research/canonical-route-context/localize.py
+          python3 research/canonical-route-context/roads.py
+          python3 research/canonical-route-context/report.py
           cp research/canonical-route-context/PLAN.md research/canonical-route-context/results/
       - uses: actions/upload-artifact@v4
         if: always()
