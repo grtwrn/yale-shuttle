@@ -30,7 +30,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import zlib from "node:zlib";
+import { readArchiveTable } from "../archive-files.mjs";
 import { createRequire } from "node:module";
 
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
@@ -66,15 +66,7 @@ export function readManifest(day: string, dir = ARCHIVE_DIR): { ok?: boolean; ta
 
 /** Every row of one archived table, or [] when the file is absent. */
 export function readArchiveRows(day: string, table: string, dir = ARCHIVE_DIR): Record<string, unknown>[] {
-  const file = path.join(dir, day, `${table}.jsonl.gz`);
-  if (!fs.existsSync(file)) return [];
-  const text = zlib.gunzipSync(fs.readFileSync(file)).toString("utf8");
-  const out: Record<string, unknown>[] = [];
-  for (const line of text.split("\n")) {
-    if (!line) continue;
-    out.push(JSON.parse(line) as Record<string, unknown>);
-  }
-  return out;
+  return readArchiveTable(path.join(dir, day), table);
 }
 
 export interface ArchiveDbReport {
