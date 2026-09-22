@@ -2,9 +2,9 @@
 import argparse
 import collections
 import json
-import study as s
+import ensemble_study as s
 import run_risk as prior_risk
-from report import distribution
+from ensemble_report import distribution
 risk=prior_risk.risk
 
 def key(r):return tuple(r[k] for k in ('route','bus','target','visit','walkSec','responseSec','arm','policy'))

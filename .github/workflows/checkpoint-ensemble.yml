@@ -13,6 +13,10 @@ on:
         description: Reuse a completed schema-2 feature run; blank regenerates causal evidence
         type: string
         default: ''
+      study_run:
+        description: Reuse completed frozen forecasts for report/actions only; no fitting
+        type: string
+        default: ''
 permissions:
   contents: read
   actions: read
@@ -26,6 +30,11 @@ jobs:
         with:
           node-version: 22
       - run: python3 -m unittest discover -s research/checkpoint-ensemble -p 'test_*.py' -v
+      - run: python3 -m pip install numpy==2.2.6
+      - name: Smoke-test unique study, report and action imports before heavy work
+        run: |
+          cd research/checkpoint-ensemble
+          python3 -c 'import ensemble_study, ensemble_report, actions; assert ensemble_report.s is ensemble_study; assert actions.s is ensemble_study'
       - run: npm ci --prefix services/shuttle-v2
       - name: Run source-membership fixtures when materializer lands
         run: |
@@ -37,7 +46,7 @@ jobs:
           fi
   materialize:
     needs: fixtures
-    if: github.event_name == 'workflow_dispatch' && inputs.fixtures_only == false && inputs.feature_run == ''
+    if: github.event_name == 'workflow_dispatch' && inputs.fixtures_only == false && inputs.feature_run == '' && inputs.study_run == ''
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -126,21 +135,37 @@ jobs:
           run-id: 35690386363
           github-token: ${{ github.token }}
           path: research/checkpoint-ensemble/reference
+      - uses: actions/download-artifact@v4
+        if: inputs.study_run != ''
+        with:
+          name: checkpoint-ensemble-complete-${{ matrix.policy }}
+          run-id: ${{ inputs.study_run }}
+          github-token: ${{ github.token }}
+          path: research/checkpoint-ensemble/results/${{ matrix.policy }}
       - name: Pin original comparator and causal evidence provenance
         env:
           GH_TOKEN: ${{ github.token }}
           FEATURE_RUN: ${{ inputs.feature_run || github.run_id }}
+          STUDY_RUN: ${{ inputs.study_run }}
         run: |
           ln -s "$GITHUB_WORKSPACE/research/highway-frozen/canonical-windows/results" research/canonical-windows/results
           gh api repos/grtwrn/yale-shuttle/actions/artifacts/10678003242 > research/checkpoint-ensemble/reference/artifact-metadata.json
           gh api "repos/grtwrn/yale-shuttle/actions/runs/$FEATURE_RUN" > research/checkpoint-ensemble/results/feature-run-metadata.json
           gh api "repos/grtwrn/yale-shuttle/actions/runs/$FEATURE_RUN/artifacts" > research/checkpoint-ensemble/results/feature-artifact-metadata.json
+          if test -n "$STUDY_RUN"; then
+            gh api "repos/grtwrn/yale-shuttle/actions/runs/$STUDY_RUN" > research/checkpoint-ensemble/results/study-run-metadata.json
+            gh api "repos/grtwrn/yale-shuttle/actions/runs/$STUDY_RUN/artifacts" > research/checkpoint-ensemble/results/study-artifact-metadata.json
+          fi
       - name: Fit fixed arms, prove original controls and freeze unscored forecasts before joining outcomes
-        run: python3 research/checkpoint-ensemble/study.py --policy ${{ matrix.policy }}
+        if: inputs.study_run == ''
+        run: python3 research/checkpoint-ensemble/ensemble_study.py --policy ${{ matrix.policy }}
+      - name: Freeze exact completed forecast streams before report-only reuse
+        if: inputs.study_run != ''
+        run: python3 research/checkpoint-ensemble/reuse.py --policy ${{ matrix.policy }} --freeze
       - name: Render actual app windows and report all fixed route and support cells
         run: |
           services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/printed.ts research/checkpoint-ensemble/results/${{ matrix.policy }}
-          python3 research/checkpoint-ensemble/report.py --policy ${{ matrix.policy }}
+          python3 research/checkpoint-ensemble/ensemble_report.py --policy ${{ matrix.policy }}
       - uses: actions/upload-artifact@v4
         with:
           name: checkpoint-ensemble-pre-action-summary-${{ matrix.policy }}
@@ -157,6 +182,9 @@ jobs:
         run: |
           services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/checkpoint-ensemble/results/${{ matrix.policy }}/rider-risk
           services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/checkpoint-ensemble/results/${{ matrix.policy }}/original-cohort/rider-risk
+      - name: Prove immutable completed forecast streams survived reporting
+        if: inputs.study_run != '' && always()
+        run: python3 research/checkpoint-ensemble/reuse.py --policy ${{ matrix.policy }} --verify
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -166,11 +194,13 @@ jobs:
             research/checkpoint-ensemble/SCHEMA.md
             research/checkpoint-ensemble/results/materialization-audit.json
             research/checkpoint-ensemble/results/feature-*-metadata.json
+            research/checkpoint-ensemble/results/study-*-metadata.json
             research/checkpoint-ensemble/results/${{ matrix.policy }}/REPORT.md
             research/checkpoint-ensemble/results/${{ matrix.policy }}/summary.json
             research/checkpoint-ensemble/results/${{ matrix.policy }}/verification.json
             research/checkpoint-ensemble/results/${{ matrix.policy }}/covariance.json
             research/checkpoint-ensemble/results/${{ matrix.policy }}/action-comparisons.json
+            research/checkpoint-ensemble/results/${{ matrix.policy }}/reuse-audit.json
             research/checkpoint-ensemble/results/${{ matrix.policy }}/**/rendered-parity.json
           retention-days: 90
       - uses: actions/upload-artifact@v4

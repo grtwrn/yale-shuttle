@@ -4,7 +4,7 @@ import collections
 import json
 import math
 import statistics as st
-import study as s
+import ensemble_study as s
 from covariance import covariance_report
 
 def scope(rows):return dict(snapshots=len(rows),visits=len({r['label']['id'] for r in rows}),dates=sorted({s.date(r['at']) for r in rows}))
