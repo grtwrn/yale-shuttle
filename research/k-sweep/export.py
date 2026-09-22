@@ -13,7 +13,7 @@ for rid,arm in selected.items():
     k=int(arm[1:]);assert len(WAITS[rid])==1;w=WAITS[rid][0]
     seq=ROUTES[rid]['stops']
     paths={str(seq[ti]):[[e['day'],clock(e['start']),e['duration']] for e in es]
-        for (route,k,wait,ti),es in model.paths.items() if (route,k,wait)==(rid,k,w)}
+        for (route,path_k,wait,ti),es in model.paths.items() if (route,path_k,wait)==(rid,k,w)}
     assert len(paths)==len(seq)-1
     models.append(dict(version='route-checkpoint-20260921',trainBefore=CUTOFF,validUntil=1790568000000,
         sequence=seq,paths=paths,routeId=rid,label=ROUTES[rid]['name'],sourceIndex=(w-k)%len(seq),waitIndex=w))
