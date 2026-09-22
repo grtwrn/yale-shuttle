@@ -1,0 +1,51 @@
+name: brown-complete-response-parity
+on:
+  push:
+    branches: [research/brown-response-adapter-2026-09-22]
+    paths: ['research/brown-response/**', '.github/workflows/brown-response.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: America/New_York
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: brown-directed-parity
+          run-id: 35691411464
+          github-token: ${{ github.token }}
+          path: research/brown-response/input/development
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/brown-response/input/raw
+      - uses: actions/download-artifact@v4
+        with:
+          name: sealed-frozen-brown-k8
+          run-id: 35694227486
+          github-token: ${{ github.token }}
+          path: research/brown-response/input/sealed
+      - name: Synthetic complete-wire, availability and frontend clock boundaries
+        run: services/shuttle-v2/node_modules/.bin/tsx research/brown-response/synthetic.ts
+      - name: Reload exact sealed Python runtime at development queries only
+        run: python3 research/brown-response/sealed-query.py
+      - name: Original four-arm controls and causal knownAt prefix gates; no outcomes
+        run: /usr/bin/time -v services/shuttle-v2/node_modules/.bin/tsx research/brown-response/development.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brown-complete-response-parity
+          path: research/brown-response/results/**
+          retention-days: 90
