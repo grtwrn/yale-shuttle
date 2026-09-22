@@ -136,6 +136,20 @@ describe('live reminder boarding identity and feed age', () => {
     expect(leaveAlertMessage('heads_up', 'Red', s)).toContain('Red #309 could arrive in 4–7 min');
   });
 
+  it('uses the same-visit forecast when the countdown bus is also the trip bus', () => {
+    expect(liveReminderInput([option(first)], 'Red', context()))
+      .toMatchObject({ busName: '307', busEtaSec: 20, busLowSec: 0, busHighSec: 100, laterVisit: false });
+  });
+
+  it('does not remind for a visible vehicle that has no usable ETA while its route remains live', () => {
+    const c = context();
+    expect(attachServerEta(c.buses, { v: 2, at: NOW, servedAt: NOW,
+      buses: [['307', 'Red', 0, null]], rows: [[0, 48, 20, 0, 100, 2, 0, 20, 0]],
+    }, NOW)).toBe(true);
+    expect(liveReminderInput([option(first)], 'Red', c)).not.toBeNull();
+    expect(liveReminderInput([option(other)], 'Red', c)).toBeNull();
+  });
+
   it('keeps the same bus\'s later visit distinct and uses its own clock', () => {
     const o = { ...option(returned), walkToSec: 200, computedAtMs: NOW - 100_000 };
     const s = liveReminderInput([o], 'Red', context())!;
