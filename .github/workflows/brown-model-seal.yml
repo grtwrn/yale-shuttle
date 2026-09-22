@@ -2,7 +2,7 @@ name: sealed-frozen-brown-model
 on:
   push:
     branches: [research/brown-model-seal-2026-09-22]
-    paths: ['research/brown-model-seal/**', '.github/workflows/brown-model-seal.yml']
+    paths: ['research/brown-model-seal/*.py', '.github/workflows/brown-model-seal.yml']
 permissions:
   contents: read
   actions: read
