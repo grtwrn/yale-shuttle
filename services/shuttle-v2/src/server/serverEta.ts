@@ -17,6 +17,7 @@ import { ETA_MAX_AGE_MS } from '../../web/src/etaSource.js';
 import { serialize, deserialize } from 'node:v8';
 import { applyK10Trial } from './k10Trial.js';
 import { applyBlueK10Trial } from './blueK10Trial.js';
+import { applyRouteK10Trial } from './routeK10Trial.js';
 import type { K10Evidence } from '../collector/k10Clock.js';
 
 export const RECOVERY_MAX_AGE_MS = 120_000;
@@ -164,7 +165,10 @@ export class ServerEta {
           try {
             const evidence = this.trialEvidence(now);
             this.trialWire = applyK10Trial(this.wire, evidence, payload.routes['3']);
-            if (process.env.SHUTTLE_BLUE_K10 !== '0') this.trialWire = applyBlueK10Trial(this.trialWire, evidence, payload.routes);
+            if (process.env.SHUTTLE_ROUTE_K10 !== '0')
+              this.trialWire = applyRouteK10Trial(this.trialWire, evidence, payload.routes, process.env.SHUTTLE_BLUE_K10 !== '0');
+            else if (process.env.SHUTTLE_BLUE_K10 !== '0')
+              this.trialWire = applyBlueK10Trial(this.trialWire, evidence, payload.routes);
           }
           catch (err) { this.log('server_eta.k10_failed', { error: String(err) }); }
         }

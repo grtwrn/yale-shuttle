@@ -10,7 +10,7 @@ jobs:
   replay:
     # The frozen qualification artifacts have finite retention. They are a
     # one-off rollout check, never a dependency of unrelated future changes.
-    if: github.head_ref == 'feat/blue-k10-default-2026-09-21'
+    if: github.head_ref == 'feat/blue-k10-default-2026-09-21' || github.head_ref == 'feat/orange-night-k10-2026-09-21'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

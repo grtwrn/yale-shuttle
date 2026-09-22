@@ -1,0 +1,39 @@
+name: route-k10-production-replay
+on:
+  pull_request:
+    branches: [master]
+    paths: ['services/shuttle-v2/**', '.github/workflows/route-k10-replay.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay:
+    if: github.head_ref == 'feat/orange-night-k10-2026-09-21'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: cbeee377774f216d18afd041d686673833e55d12
+          path: research-source
+          sparse-checkout: research/all-k10/data/topology.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: all-k10-results
+          run-id: 35675303606
+          github-token: ${{ github.token }}
+          path: frozen-results
+      - name: Replay Orange Night clocks, restart recovery and forecasts
+        env:
+          TZ: America/New_York
+        run: services/shuttle-v2/node_modules/.bin/tsx services/shuttle-v2/scripts/route-k10-clock-replay.ts research-source/research/all-k10/data/topology.json frozen-results
+      - uses: actions/upload-artifact@v4
+        with:
+          name: route-k10-production-audit
+          path: route-k10-production-audit.json

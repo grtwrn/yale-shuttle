@@ -26,8 +26,8 @@ function harness(id: number) {
     move: (i: number, p = 'hold') => { index = i; phase = p; }, route: (r: number) => { route = r; } };
 }
 
-for (const route of [1, 16]) {
-  it(`keeps Blue ${route}'s wait clock across route wraparound until observed departure`, () => {
+for (const route of [1, 16, 14]) {
+  it(`keeps route ${route}'s wait clock across route wraparound until observed departure`, () => {
     const h = harness(route); h.tick();
     expect(h.tick([h.departure(h.scope.sourceIndex)])).toBeUndefined(); h.warm();
     expect(h.tick()).toMatchObject({ routeId: route, index: h.scope.waitIndex, released: false });
@@ -40,7 +40,7 @@ for (const route of [1, 16]) {
     h.move(h.scope.sourceIndex, 'drive');
     expect(h.tick([h.departure(h.scope.sourceIndex)])?.released).toBe(false);
   });
-  it(`releases Blue ${route} on confirmed exit and discards broken identity/continuity`, () => {
+  it(`releases route ${route} on confirmed exit and discards broken identity/continuity`, () => {
     for (const cause of ['gap', 'route', 'contended'] as const) {
       const h = harness(route); h.tick(); h.tick([h.departure(h.scope.sourceIndex)]); h.warm();
       expect(h.tick([h.departure(h.scope.waitIndex)])?.released).toBe(true);
@@ -50,7 +50,7 @@ for (const route of [1, 16]) {
       h.warm(); expect(h.tick()).toBeUndefined();
     }
   });
-  it(`expires Blue ${route}'s observation and never accepts a future checkpoint`, () => {
+  it(`expires route ${route}'s observation and never accepts a future checkpoint`, () => {
     const h = harness(route); h.tick(); h.warm();
     const future = { ...h.departure(h.scope.sourceIndex), departedAt: h.now() + 60_000 };
     expect(h.tick([future])).toBeUndefined();
