@@ -9,7 +9,12 @@ import "./androidCompact.css";
 
 // Apply the phone density to the actual layout, including standalone launches.
 // The viewport remains at 1; browser zoom and pinch zoom stay under rider control.
-if (/Android.*Mobile/i.test(navigator.userAgent)) {
+// Some Android phone browser modes omit "Mobile" (report #128). Keep the
+// phone layout for those narrow screens too, without shrinking large tablets.
+const androidPhone = /Android/i.test(navigator.userAgent)
+  && (/Mobile/i.test(navigator.userAgent)
+    || Math.min(window.screen.width, window.screen.height, window.innerWidth) <= 600);
+if (androidPhone) {
   document.documentElement.dataset.androidCompact = "true";
 }
 
