@@ -8,7 +8,7 @@
  * so the rows a replay needs do not survive where they are written. This pulls
  * them, one table at a time, through `GET /api/archive/day` (admin header
  * only, JSON lines with a header and an `{"end":true}` trailer) and keeps them
- * as `~/shuttle-archive/YYYY-MM-DD/<table>.jsonl.gz` beside a `manifest.json`.
+ * under `~/shuttle-archive/YYYY-MM-DD/`; `manifest.json` selects the files.
  *
  * The 36-hour retention covers the normal 03:40 export. When present, the
  * Pi's own capture (`~/shuttle-captures/positions-YYYYMMDD.jsonl`, UTC-named,
@@ -256,6 +256,19 @@ async function archiveLocked(day, opts, base, adminToken, dir) {
   for (const table of TABLES) {
     const entry = { file: path.join(relativeDir, `${table}.jsonl.gz`), rows: 0, complete: false, source: "server" };
     let positions = null;
+    const prior = previous?.tables?.[table];
+    let olderRows = null;
+    // Check retained evidence even if this attempt later fails to download.
+    if (prior?.sha256) {
+      try { olderRows = previousRows(dir, table, previous); }
+      catch (err) {
+        entry.replacementError = err instanceof Error ? err.message : String(err);
+        selected.tables[table] = { ...prior, integrityError: entry.replacementError };
+      }
+    } else if (prior && (prior.rows > 0 || prior.complete)) {
+      entry.replacementError = `previous ${table} has no verifiable hash`;
+      selected.tables[table] = { ...prior, integrityError: entry.replacementError };
+    }
     try {
       const got = await fetchTable(base, adminToken, day, table);
       attempt.build = attempt.build ?? got.header.build ?? null;
@@ -295,12 +308,9 @@ async function archiveLocked(day, opts, base, adminToken, dir) {
       }
       entry.rows = rows.length;
       Object.assign(entry, writeGz(path.join(dir, entry.file), rows));
-      const prior = previous?.tables?.[table];
-      if (prior?.sha256) {
-        const reason = replacementError(table, previousRows(dir, table, previous), rows);
+      if (olderRows !== null) {
+        const reason = replacementError(table, olderRows, rows);
         if (reason) entry.replacementError = reason;
-      } else if (prior && (prior.rows > 0 || prior.complete)) {
-        entry.replacementError = `previous ${table} has no verifiable hash`;
       }
       if (entry.complete && !entry.replacementError) {
         selected.tables[table] = { ...entry };
@@ -318,7 +328,7 @@ async function archiveLocked(day, opts, base, adminToken, dir) {
     if (!entry.complete || entry.replacementError) attempt.ok = false;
     attempt.tables[table] = entry;
   }
-  selected.ok = TABLES.every(table => selected.tables[table]?.complete === true && !selected.tables[table]?.replacementError);
+  selected.ok = TABLES.every(table => selected.tables[table]?.complete === true && !selected.tables[table]?.replacementError && !selected.tables[table]?.integrityError);
   // Each selected table carries its own build/time; retained tables may be older.
   selected.build = attempt.build;
   selected.lastAttempt = { file: path.join(relativeDir, "manifest.json"), ok: attempt.ok };

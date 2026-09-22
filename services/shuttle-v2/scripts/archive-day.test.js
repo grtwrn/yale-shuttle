@@ -145,7 +145,10 @@ describe("immutable archive attempts and selection", () => {
     const file = archiveTableFile(path.join(dir, day), "raw_positions"), bytes = fs.readFileSync(file);
     bytes[bytes.length - 1] ^= 1; fs.writeFileSync(file, bytes);
     expect(checkDay(path.join(dir, day)).complete).toBe(false);
-    expect((await archiveDay(day, opts)).tables.raw_positions.error).toContain("integrity check failed");
+    const attempt = await archiveDay(day, opts);
+    expect(attempt.tables.raw_positions.replacementError).toContain("integrity check failed");
+    expect(attempt.archiveOk).toBe(false);
+    expect(selected().ok).toBe(false);
     expect(fs.readFileSync(file)).toEqual(bytes);
   });
 

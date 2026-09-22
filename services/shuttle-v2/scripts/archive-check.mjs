@@ -47,7 +47,7 @@ export function checkDay(dir) {
     let present = false;
     try {
       const file = e && archiveTableFile(dir, t, m);
-      if (e?.complete && file && fs.existsSync(file) && fs.statSync(file).size === e.bytes) {
+      if (e?.complete && !e.integrityError && file && fs.existsSync(file) && fs.statSync(file).size === e.bytes) {
         const hash = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
         present = hash === e.sha256;
       }
