@@ -17,7 +17,8 @@ jobs:
     timeout-minutes: 5
     outputs:
       stage: ${{ steps.assignment.outputs.stage }}
-      routes: ${{ steps.assignment.outputs.routes }}
+      dates: ${{ steps.assignment.outputs.dates }}
+      shards: ${{ steps.assignment.outputs.shards }}
     steps:
       - uses: actions/checkout@v4
       - id: assignment
@@ -25,32 +26,93 @@ jobs:
           DISPATCH_STAGE: ${{ inputs.stage }}
         run: |
           python3 - <<'PY'
-          import json, os
+          import json, os, sys
           from pathlib import Path
+          sys.path.insert(0,'research/synthetic-selection')
+          from benchmark import ROUTES, DATES, expected
           request=json.loads(Path('research/synthetic-selection/BENCHMARK-REQUEST.json').read_text())
           assert request['syntheticOnly'] is True and request['outcomes'] is False
           stage=os.environ.get('DISPATCH_STAGE') or request['stage']
           assert stage in ('pilot','full')
-          routes=[1,2,3,4,8,9,10,13,14,15,16,17,18,19] if stage=='full' else [0]
+          shards=[dict(route=route,date=date) for date in DATES for route in ROUTES]
+          assert len(shards)==98 and sum(len(expected('full',s['route'],s['date'])) for s in shards)==28224
           with open(os.environ['GITHUB_OUTPUT'],'a') as output:
             output.write('stage='+stage+'\n')
-            output.write('routes='+json.dumps(routes)+'\n')
+            output.write('dates='+json.dumps(DATES)+'\n')
+            output.write('shards='+json.dumps(shards)+'\n')
           PY
-  benchmark:
+  assets:
+    if: needs.assignment.outputs.stage == 'full'
     needs: assignment
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild proven baseline assets once
+        run: |
+          mkdir -p research/synthetic-selection/results
+          docker build --target web --tag synthetic-shuttle-web services/shuttle-v2
+          docker create --name synthetic-shuttle-web-files synthetic-shuttle-web
+          docker cp synthetic-shuttle-web-files:/app/web/dist research/synthetic-selection/results/baseline-assets
+          docker rm synthetic-shuttle-web-files
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selection-baseline-assets
+          path: research/synthetic-selection/results/baseline-assets/
+          retention-days: 90
+  generate:
+    needs: [assignment, assets]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
-        route: ${{ fromJSON(needs.assignment.outputs.routes) }}
+        date: ${{ fromJSON(needs.assignment.outputs.dates) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: selection-baseline-assets
+          path: research/synthetic-selection/results/baseline-assets
+      - name: Pin exact recorder source
+        run: |
+          git fetch --no-tags --depth=1 origin bae23b33211c73589ede784bf32d3485124874d1
+          git show bae23b33211c73589ede784bf32d3485124874d1:research/public-fleet-timeline/capture.py > research/synthetic-selection/results/recorder.py
+      - name: Generate and seal one daily input under aggregate resource limits
+        run: python3 research/synthetic-selection/shared_input.py prepare '${{ matrix.date }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selection-input-metadata-${{ matrix.date }}
+          path: research/synthetic-selection/results/shared-${{ matrix.date }}/metadata/
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selection-input-${{ matrix.date }}
+          path: research/synthetic-selection/results/shared-${{ matrix.date }}/
+          compression-level: 0
+          retention-days: 90
+  benchmark:
+    if: always() && needs.assignment.result == 'success' && needs.assignment.outputs.stage == 'full' && needs.generate.result != 'skipped'
+    needs: [assignment, generate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include: ${{ fromJSON(needs.assignment.outputs.shards) }}
     env:
       TZ: America/New_York
     steps:
       - uses: actions/checkout@v4
-      - name: Retain every assigned denominator before setup or execution
-        run: python3 research/synthetic-selection/benchmark.py declare '${{ needs.assignment.outputs.stage }}' '${{ matrix.route }}'
+      - name: Retain all 288 assigned keys before setup or download
+        run: python3 research/synthetic-selection/shared_input.py declare '${{ matrix.route }}' '${{ matrix.date }}'
+      - uses: actions/download-artifact@v4
+        with:
+          name: selection-input-${{ matrix.date }}
+          path: research/synthetic-selection/results/shared-${{ matrix.date }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -63,36 +125,58 @@ jobs:
           npm ci --prefix services/shuttle-v2
           npm ci --prefix services/shuttle-v2/web
           npm install --prefix services/shuttle-v2/web --no-save --package-lock=false react-test-renderer@19.2.6
-      - name: Verify exact component extraction and pin recorder source
-        run: |
-          node research/synthetic-selection/extract.mjs
-          git fetch --no-tags --depth=1 origin bae23b33211c73589ede784bf32d3485124874d1
-          git show bae23b33211c73589ede784bf32d3485124874d1:research/public-fleet-timeline/capture.py > research/synthetic-selection/results/recorder.py
-      - name: Rebuild the proven assets for synthetic release responses
-        run: |
-          docker build --target web --tag synthetic-shuttle-web services/shuttle-v2
-          docker create --name synthetic-shuttle-web-files synthetic-shuttle-web
-          docker cp synthetic-shuttle-web-files:/app/web/dist research/synthetic-selection/results/baseline-assets
-          docker rm synthetic-shuttle-web-files
-      - name: Run bounded synthetic benchmark with sequential daily workers
-        run: python3 research/synthetic-selection/benchmark.py '${{ needs.assignment.outputs.stage }}' '${{ matrix.route }}'
-      - name: Reconcile missing keys even after an earlier failure
+      - name: Verify exact component extraction
+        run: node research/synthetic-selection/extract.mjs
+      - name: Execute assigned profiles sequentially against shared verified input
+        run: python3 research/synthetic-selection/shared_input.py worker '${{ matrix.route }}' '${{ matrix.date }}' 'research/synthetic-selection/results/shared-${{ matrix.date }}'
+      - name: Reconcile every key after failure
         if: always()
-        run: python3 research/synthetic-selection/benchmark.py reconcile '${{ needs.assignment.outputs.stage }}' '${{ matrix.route }}'
+        run: python3 research/synthetic-selection/shared_input.py reconcile '${{ matrix.route }}' '${{ matrix.date }}'
       - name: Assert production source unchanged
         if: always()
         run: git diff --exit-code -- services/shuttle-v2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: selection-scale-${{ needs.assignment.outputs.stage }}-${{ matrix.route }}
-          path: |
-            research/synthetic-selection/results/benchmark-${{ needs.assignment.outputs.stage }}-${{ matrix.route }}/
-            !research/synthetic-selection/results/benchmark-${{ needs.assignment.outputs.stage }}-${{ matrix.route }}/capture-*/**
+          name: selection-scale-full-${{ matrix.route }}-${{ matrix.date }}
+          path: research/synthetic-selection/results/benchmark-full-${{ matrix.route }}-${{ matrix.date }}/
+          retention-days: 90
+  pilot:
+    if: needs.assignment.outputs.stage == 'pilot'
+    needs: assignment
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TZ: America/New_York
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 research/synthetic-selection/benchmark.py declare pilot 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          npm ci --prefix services/shuttle-v2
+          npm ci --prefix services/shuttle-v2/web
+          npm install --prefix services/shuttle-v2/web --no-save --package-lock=false react-test-renderer@19.2.6
+          node research/synthetic-selection/extract.mjs
+          git fetch --no-tags --depth=1 origin bae23b33211c73589ede784bf32d3485124874d1
+          git show bae23b33211c73589ede784bf32d3485124874d1:research/public-fleet-timeline/capture.py > research/synthetic-selection/results/recorder.py
+          docker build --target web --tag synthetic-shuttle-web services/shuttle-v2
+          docker create --name synthetic-shuttle-web-files synthetic-shuttle-web
+          docker cp synthetic-shuttle-web-files:/app/web/dist research/synthetic-selection/results/baseline-assets
+          docker rm synthetic-shuttle-web-files
+      - run: python3 research/synthetic-selection/benchmark.py pilot 0
+      - if: always()
+        run: python3 research/synthetic-selection/benchmark.py reconcile pilot 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selection-scale-pilot-0
+          path: research/synthetic-selection/results/benchmark-pilot-0/
           retention-days: 90
   reconcile:
     if: always() && needs.assignment.result == 'success'
-    needs: [assignment, benchmark]
+    needs: [assignment, generate, benchmark, pilot]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -100,10 +184,15 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: selection-scale-${{ needs.assignment.outputs.stage }}-*
-          path: /tmp/selection-scale-artifacts
-      - name: Preserve all scheduled keys and report full benchmark completion
+          path: research/synthetic-selection/results/downloaded
+      - uses: actions/download-artifact@v4
+        if: always() && needs.assignment.outputs.stage == 'full'
+        with:
+          pattern: selection-input-metadata-*
+          path: research/synthetic-selection/results/downloaded
+      - name: Retain all keys and verify shared inputs and adjacent-day agreement
         if: always()
-        run: python3 research/synthetic-selection/aggregate_benchmark.py '${{ needs.assignment.outputs.stage }}' /tmp/selection-scale-artifacts research/synthetic-selection/results/scale-${{ needs.assignment.outputs.stage }}-combined
+        run: python3 research/synthetic-selection/aggregate_benchmark.py '${{ needs.assignment.outputs.stage }}' research/synthetic-selection/results/downloaded research/synthetic-selection/results/scale-${{ needs.assignment.outputs.stage }}-combined
       - uses: actions/upload-artifact@v4
         if: always()
         with:

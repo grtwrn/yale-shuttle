@@ -29,6 +29,14 @@ class ResourceGuardTests(unittest.TestCase):
                 run([sys.executable,'-c',code],root,root,report,scratch_limit=1024**2,seconds=4)
             self.assertEqual(json.loads(report.read_text())['limitViolation'],'scratch')
 
+    def test_owned_temporary_files_are_inside_monitored_scratch(self):
+        with tempfile.TemporaryDirectory() as root:
+            report=Path(root)/'report.json'
+            code='import tempfile; from pathlib import Path; Path("temp-path").write_text(tempfile.gettempdir())'
+            run([sys.executable,'-c',code],root,root,report,seconds=4)
+            self.assertEqual(Path((Path(root)/'temp-path').read_text()),Path(root)/'.synthetic-worker-tmp')
+            self.assertIn('waitedChildCpuSeconds',json.loads(report.read_text()))
+
     def test_failed_shard_retains_every_assigned_denominator(self):
         with tempfile.TemporaryDirectory() as root:
             root=Path(root);assigned=expected('full',1)

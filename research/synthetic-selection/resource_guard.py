@@ -5,6 +5,7 @@ from pathlib import Path
 import signal
 import subprocess
 import time
+import resource
 
 RSS_LIMIT = 2 * 1024**3
 SCRATCH_LIMIT = 8 * 1024**3
@@ -54,10 +55,15 @@ def tree_bytes(root):
 def run(command, cwd, scratch, report, env=None, seconds=SECONDS_LIMIT,
         rss_limit=RSS_LIMIT, scratch_limit=SCRATCH_LIMIT):
     began = time.monotonic()
-    child = subprocess.Popen(command,cwd=cwd,env=env,start_new_session=True)
+    before_cpu = resource.getrusage(resource.RUSAGE_CHILDREN)
+    temporary = Path(scratch).resolve()/'.synthetic-worker-tmp'
+    temporary.mkdir(exist_ok=True)
+    child_env = dict(os.environ if env is None else env)
+    child_env.update(TMPDIR=str(temporary),TEMP=str(temporary),TMP=str(temporary))
+    child = subprocess.Popen(command,cwd=cwd,env=child_env,start_new_session=True)
     result = dict(command=command,peakAggregateRssBytes=0,peakProcesses=0,peakScratchBytes=0,
                   rssLimit=rss_limit,scratchLimit=scratch_limit,deadlineSeconds=seconds,
-                  rssSamplingSeconds=.1,scratchSamplingSeconds=2,limitViolation=None)
+                  rssSamplingSeconds=.1,scratchSamplingSeconds=2,temporaryDirectory=str(temporary),limitViolation=None)
     next_disk = 0
     while child.poll() is None:
         now = time.monotonic()
@@ -77,6 +83,9 @@ def run(command, cwd, scratch, report, env=None, seconds=SECONDS_LIMIT,
         time.sleep(.1)
     result['exitCode'] = child.wait()
     result['elapsedSeconds'] = time.monotonic()-began
+    after_cpu = resource.getrusage(resource.RUSAGE_CHILDREN)
+    result['waitedChildCpuSeconds'] = dict(user=after_cpu.ru_utime-before_cpu.ru_utime,
+                                          system=after_cpu.ru_stime-before_cpu.ru_stime)
     result['peakScratchBytes'] = max(result['peakScratchBytes'],tree_bytes(scratch))
     if result['peakScratchBytes'] > scratch_limit:
         result['limitViolation'] = 'scratch'

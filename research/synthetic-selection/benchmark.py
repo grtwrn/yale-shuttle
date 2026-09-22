@@ -15,7 +15,11 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 
 
-def expected(stage, route):
+ROUTES = [1,2,3,4,8,9,10,13,14,15,16,17,18,19]
+DATES = [f'2026-09-{day}' for day in range(23,30)]
+
+
+def expected(stage, route, date=None):
     scenarios = json.loads((HERE/'PROSPECTIVE-SCENARIOS.json').read_text())['scenarios']
     rows = []
     for day in range(23,30) if stage == 'full' else [23]:
@@ -27,6 +31,10 @@ def expected(stage, route):
                     rows.append(dict(id=f"{scenario['id']}:2026-09-{day}:{slot:02}:{profile}",
                                      date=f'2026-09-{day}',slot=slot,scenarioId=scenario['id'],
                                      profile=profile,generatingRouteId=scenario['generatingRouteId']))
+    if date is not None:
+        if date not in DATES:
+            raise ValueError('Date outside fixed schedule')
+        rows = [row for row in rows if row['date'] == date]
     return rows[:2] if stage == 'integration' else rows
 
 

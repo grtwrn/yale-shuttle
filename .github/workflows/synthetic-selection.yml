@@ -36,6 +36,8 @@ jobs:
         run: python3 research/synthetic-selection/test_capture_input.py
       - name: Verify aggregate child resource enforcement and failed-shard denominators
         run: python3 research/synthetic-selection/test_resource_guard.py
+      - name: Verify fixed partitions, shared input integrity, overlap and missing-shard reconciliation
+        run: python3 research/synthetic-selection/test_partition.py
       - name: Component and policy parity (synthetic only)
         working-directory: services/shuttle-v2
         run: npx vitest run --config ../../research/synthetic-selection/vitest.config.ts
