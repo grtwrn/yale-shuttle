@@ -70,7 +70,7 @@ protected prior artifact hashes; never use final labels to resolve features.
 
 ## Fixed estimator and full scope
 
-Keep canonical3f7b5e9 topology, Brown route11, waits0/5, every full target group:
+Keep canonical3f7b5e9 topology, Brown route19, waits0/5, every full target group:
 wait0→1..5, wait5→6,7,8,0. FrozenK8 source indices1/6; rollingK5 sources4/0.
 Keep unchanged source visits known beforeSeptember16 midnight ET for frozen;
 rolling dayD uses actual known_at strictly beforeD−1 midnight ET (full prior-day
