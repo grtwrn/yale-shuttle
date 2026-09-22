@@ -29,7 +29,7 @@ an unrecorded client bundle or splice old/new server responses into one poll.
 Slow requests cause explicit missed scheduled ticks, not fabricated snapshots.
 
 An invocation requires a new output directory and explicit UTC end time. Initial
-recording will end at2026-09-30T04:00Z, with3GiB maximum stored capture bytes and a
+recording will end at2026-09-30T04:30Z, with3GiB maximum stored capture bytes and a
 4GiB minimum filesystem-free guard; reaching either stops recording explicitly,
 without deleting prior evidence. All responses have an8MiB body cap and10-second
 request timeout. New output prevents overlapping writers and overwriting old
@@ -50,3 +50,8 @@ state, walking/arming policy, physical labels and censoring must be pinned in a
 separate replay protocol before interpreting held-out outcomes. Complete fleet
 capture establishes transport evidence only, not chronological model causality
 or whole-app safety. Heavy replay and scoring stay on hosted runners.
+
+Before recording, the end time was extended by30minutes because pinned synthetic
+plans startingSeptember29 23:30ET run throughSeptember30 00:15ET. This preserves
+their full45-minute horizon and15minutes of context; it does not change a model,
+scenario or outcome rule. The original04:00Z end would truncate the last plans.

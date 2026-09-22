@@ -84,6 +84,7 @@ class Capture:
         self.previous = None
         self.last_build = None
         self.release_checks = 0
+        self.release_retry = True
         self.stop_requested = False
         self.opener = urllib.request.build_opener(NoRedirects())
         self.manifest = dict(schema=1, base=BASE, startedAt=utc(), until=until.isoformat(),
@@ -209,7 +210,8 @@ class Capture:
         build = parsed.get('build') if parsed and health['transportComplete'] else None
         if not isinstance(build, str):
             build = None
-        if self.release_checks == 0 or (build is not None and build != self.last_build):
+        if self.release_retry or (build is not None and build != self.last_build):
+            self.release_retry = True
             html, body, _ = self.request(BASE + '/', 'html')
             if html['transportComplete']:
                 parser = Assets()
@@ -217,10 +219,15 @@ class Capture:
                 # A bound also prevents malformed HTML causing an unbounded fetch list.
                 if len(parser.urls) > 32:
                     self.manifest['assetCaptureError'] = 'TooManyModuleResources'
-                else:
+                elif parser.urls:
+                    assets_complete = True
                     for url in parser.urls:
-                        self.request(url, 'module')
-            self.last_build = build
+                        asset, _, _ = self.request(url, 'module')
+                        assets_complete = assets_complete and asset['transportComplete']
+                    self.release_retry = not assets_complete
+            if not self.release_retry:
+                self.last_build = build
+            self.manifest['releaseCaptureNeedsRetry'] = self.release_retry
         self.release_checks += 1
 
     def run(self):
@@ -234,7 +241,7 @@ class Capture:
                     continue
                 if time.monotonic() >= health_due:
                     self.release()
-                    health_due = time.monotonic() + 60
+                    health_due, _ = next_tick(health_due, time.monotonic(), 60)
                 self.request(BASE + '/api/buses', 'fleet')
                 due, skipped = next_tick(due, time.monotonic(), 15)
                 if skipped:

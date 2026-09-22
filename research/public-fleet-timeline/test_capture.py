@@ -142,6 +142,71 @@ class Tests(unittest.TestCase):
         self.cap.max_bytes = c.RESERVE - 1
         with patch.object(self.cap.opener, 'open') as op, self.assertRaisesRegex(c.StopCapture, 'capture-byte-limit'):
             self.cap.request(c.BASE + '/api/buses', 'fleet')
+
+    def test_failed_module_capture_retries_same_build_on_next_health_check(self):
+        failed = [True]
+        seen = []
+        def open_req(req, timeout):
+            seen.append(req.full_url)
+            if req.full_url.endswith('/healthz'):
+                return Response(b'{"build":"a"}')
+            if req.full_url == c.BASE + '/':
+                return Response(b'<script src="/assets/main.js"></script>')
+            return Response(b'body', 503 if failed[0] else 200)
+        with patch.object(self.cap.opener, 'open', side_effect=open_req):
+            self.cap.release()
+            self.assertTrue(self.cap.release_retry)
+            failed[0] = False
+            self.cap.release()
+            self.assertFalse(self.cap.release_retry)
+            self.cap.release()
+        self.assertEqual(seen.count(c.BASE + '/assets/main.js'), 2)
+
+    def test_main_loop_cadence_deadline_and_explicit_skipped_slots(self):
+        real_datetime = dt.datetime
+        start = real_datetime.now(c.UTC)
+        state = {'mono': 0.0}
+        class Clock(real_datetime):
+            @classmethod
+            def now(cls, tz=None):
+                value = start + dt.timedelta(seconds=state['mono'])
+                return value.astimezone(tz) if tz else value.replace(tzinfo=None)
+        def advance(seconds):
+            state['mono'] += seconds
+        requests = []
+        def open_req(req, timeout):
+            requests.append((req.full_url, state['mono']))
+            advance(1)
+            if req.full_url.endswith('/healthz'):
+                return Response(b'{"build":"a"}')
+            if req.full_url == c.BASE + '/':
+                return Response(b'<script src="/assets/main.js"></script>')
+            return Response(b'{"buses":[]}' if req.full_url.endswith('/api/buses') else b'export{}')
+        self.cap.until = start + dt.timedelta(seconds=90)
+        with patch.object(c.dt, 'datetime', Clock), patch.object(c.time, 'monotonic', side_effect=lambda: state['mono']), \
+             patch.object(c.time, 'sleep', side_effect=advance), patch.object(self.cap.opener, 'open', side_effect=open_req), \
+             patch('sys.stdout', io.StringIO()):
+            self.cap.run()
+        self.assertEqual([t for url, t in requests if url.endswith('/api/buses')], [3, 15, 30, 45, 61, 75])
+        self.assertEqual([t for url, t in requests if url.endswith('/healthz')], [0, 60])
+        self.assertEqual(self.cap.manifest['stopReason'], 'deadline')
+        self.assertEqual(self.cap.manifest['skippedTicks'], 0)
+        # A delayed request is captured at its real receipt time, not backfilled.
+        slow = c.Capture(Path(self.temp.name) / 'slow', start + dt.timedelta(seconds=42), 2**25, 0)
+        state['mono'] = 0
+        def slow_open(req, timeout):
+            response = open_req(req, timeout)
+            if req.full_url.endswith('/api/buses'):
+                advance(34)
+            return response
+        with patch.object(c.dt, 'datetime', Clock), patch.object(c.time, 'monotonic', side_effect=lambda: state['mono']), \
+             patch.object(c.time, 'sleep', side_effect=advance), patch.object(slow.opener, 'open', side_effect=slow_open), \
+             patch('sys.stdout', io.StringIO()):
+            slow.run()
+        records = [json.loads(line) for line in (slow.output / 'records.jsonl').read_text().splitlines()]
+        self.assertEqual(sum(r['kind'] == 'fleet' for r in records), 1)
+        self.assertEqual(slow.manifest['skippedTicks'], 2)
+        self.assertEqual([r['skippedTicks'] for r in records if r['kind'] == 'schedule-gap'], [2])
         op.assert_not_called()
         self.cap.max_bytes = 2**25
         with patch.object(c.shutil, 'disk_usage', return_value=SimpleNamespace(free=0)), self.assertRaisesRegex(c.StopCapture, 'filesystem-free-limit'):
