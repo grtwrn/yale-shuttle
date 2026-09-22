@@ -7,12 +7,16 @@ import {
   HEADS_UP_LEAD_SEC,
   LEAVE_BUFFER_SEC,
   leaveAlertMessage,
+  liveReminderInput,
   markFired,
   NO_PINGS_FIRED,
   secUntilLeave,
   type FiredPings,
   type LeaveAlertInput,
 } from "./leaveAlert";
+import { forecastPickupSelection, rawPickupSelection } from './livePickupSelection';
+import { attachServerEta, ETA_MAX_AGE_MS } from './etaSource';
+import type { BusData } from './map-data';
 
 const NOW = 1_700_000_000_000;
 
@@ -41,6 +45,141 @@ describe("secUntilLeave", () => {
 
   it("goes negative when the rider is already late", () => {
     expect(secUntilLeave(input(60, 180))).toBeLessThan(0);
+  });
+});
+
+describe('leave for the early end of the selected boarding window', () => {
+  it('uses the printed early minute instead of waiting for the point estimate', () => {
+    const s = input(600, 180, { busLowSec: 239, busHighSec: 900 });
+    expect(secUntilLeave(s)).toBe(-30); // printed3min,3min walk,30s margin
+    expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe('leave_now');
+    expect(leaveAlertMessage('leave_now', 'Red', s))
+      .toBe('Time to leave — Red could arrive in 3–15 min, 3 min walk');
+  });
+
+  it('reformats aged bounds on every tick, including a minute-boundary crossing', () => {
+    const s = input(600, 180, { busLowSec: 240, busHighSec: 900 });
+    expect(secUntilLeave(s)).toBe(30);
+    expect(secUntilLeave({ ...s, nowMs: NOW + 1000 })).toBe(-30);
+    expect(leaveAlertMessage('heads_up', 'Red', s)).toContain('4–15 min');
+  });
+
+  it('uses valid narrow, wide and subminute windows rather than hiding their early end', () => {
+    expect(secUntilLeave(input(90, 60, { busLowSec: 89, busHighSec: 91 }))).toBe(-30);
+    expect(secUntilLeave(input(900, 180, { busLowSec: 239, busHighSec: 2401 }))).toBe(-30);
+    expect(secUntilLeave(input(90, 60, { busLowSec: 59, busHighSec: 91 }))).toBe(-90);
+  });
+
+  it.each([
+    { busLowSec: undefined, busHighSec: 900 },
+    { busLowSec: NaN, busHighSec: 900 },
+    { busLowSec: 500, busHighSec: 200 },
+    { busLowSec: 0, busHighSec: 0 },
+    { busLowSec: 700, busHighSec: 900 },
+  ])('falls back to the point for an unusable window (%#)', bounds => {
+    expect(secUntilLeave(input(600, 180, bounds))).toBe(390);
+  });
+
+  it('cannot move leave-time later than the point as bounds age or estimates change', () => {
+    for (const point of [0, 59, 60, 239, 600, 1800]) {
+      for (const low of [-30, 0, 59, 60, 120, 239, 600, 2000]) {
+        for (const age of [0, 1, 30, 61, 500]) {
+          const plain = input(point, 180, { nowMs: NOW + age * 1000 });
+          const bounded = { ...plain, busLowSec: low, busHighSec: Math.max(low, point) + 300 };
+          expect(secUntilLeave(bounded)).toBeLessThanOrEqual(secUntilLeave(plain));
+        }
+      }
+    }
+  });
+
+  it.each([NaN, Infinity, -1])('does not notify from an invalid point estimate (%s)', busEtaSec => {
+    expect(computeLeaveAlert(input(busEtaSec, 180, { busLowSec: 0, busHighSec: 100 }), NO_PINGS_FIRED)).toBeNull();
+  });
+
+  it('keeps one-shot state when the window or selected vehicle changes', () => {
+    const initial = input(900, 180, { busLowSec: 480, busHighSec: 1200, busName: '307' });
+    const first = computeLeaveAlert(initial, NO_PINGS_FIRED)!;
+    expect(first).toBe('heads_up');
+    const fired = markFired(NO_PINGS_FIRED, first);
+    expect(computeLeaveAlert({ ...initial, busName: '309', busLowSec: 1200, busHighSec: 1800 }, fired)).toBeNull();
+    const close = { ...initial, busName: '309', busLowSec: 180, busHighSec: 1000 };
+    expect(computeLeaveAlert(close, fired)).toBe('leave_now');
+    expect(computeLeaveAlert(close, markFired(fired, 'leave_now'))).toBeNull();
+  });
+});
+
+describe('live reminder boarding identity and feed age', () => {
+  const row = (busName: string, eta: number, stopsAhead = 2) => ({
+    busName, stopId: 48, stopsAhead, eta, low: Math.max(0, eta - 20), high: eta + 80,
+  });
+  const first = row('#307', 20), other = row('#309', 300, 4), returned = row('307', 1200, 30);
+  const option = (boarding = other) => ({
+    mode: 'shuttle', routeLabel: 'Red', busEtaSec: first.eta, busLowSec: first.low, busHighSec: first.high,
+    boardStopId: 48, alightStopId: 121, walkToSec: 100, computedAtMs: NOW,
+    livePickupSelection: forecastPickupSelection({ match: first, boardable: boarding, departed: false }, NOW),
+  });
+  const context = () => {
+    const buses: BusData[] = [307, 309].map(id => ({ bus_id: id, bus_name: `#${id}`, route_id: 3,
+      lat: 41.3, lon: -72.9, heading: 0, last_stop_id: 48 }));
+    expect(attachServerEta(buses, { v: 2, at: NOW, servedAt: NOW,
+      buses: [['307', 'Red', 0, null], ['309', 'Red', 0, null]],
+      rows: [[0, 48, 20, 0, 100, 2, 0, 20, 0], [1, 48, 300, 280, 380, 4, 0, 300, 0]],
+    }, NOW)).toBe(true);
+    return { buses, busUpdateFailed: false, nowMs: NOW };
+  };
+
+  it('uses the actual trip bus instead of spending its final ping on an uncatchable countdown bus', () => {
+    const s = liveReminderInput([option()], 'Red', context())!;
+    expect(s).toMatchObject({ busName: '309', busEtaSec: 300, busLowSec: 280, busHighSec: 380, computedAtMs: NOW });
+    expect(secUntilLeave(s)).toBe(110);
+    expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe('heads_up');
+    expect(leaveAlertMessage('heads_up', 'Red', s)).toContain('Red #309 could arrive in 4–7 min');
+  });
+
+  it('keeps the same bus\'s later visit distinct and uses its own clock', () => {
+    const o = { ...option(returned), walkToSec: 200, computedAtMs: NOW - 100_000 };
+    const s = liveReminderInput([o], 'Red', context())!;
+    expect(s).toMatchObject({ busName: '307', busEtaSec: 1200, laterVisit: true, computedAtMs: NOW });
+    expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBeNull();
+    expect(leaveAlertMessage('heads_up', 'Red', s)).toContain('Red #307 could return in 19–22 min');
+  });
+
+  it('retains the selected raw-current bus at zero without borrowing a later forecast', () => {
+    const o = { ...option(), livePickupSelection: rawPickupSelection('#307', 48, NOW) };
+    const s = liveReminderInput([o], 'Red', context())!;
+    expect(s).toMatchObject({ busName: '307', busEtaSec: 0, busLowSec: 0, busHighSec: 0, atPickup: true });
+    expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe('leave_now');
+    expect(leaveAlertMessage('leave_now', 'Red', s)).toContain('Red #307 is at your stop');
+  });
+
+  it('uses the selected boarding point when its bounds are invalid, never the approaching bus point', () => {
+    const o = option({ ...other, low: NaN, high: NaN });
+    const s = liveReminderInput([o], 'Red', context())!;
+    expect(secUntilLeave(s)).toBe(170);
+    expect(leaveAlertMessage('heads_up', 'Red', s)).toContain('Red #309 in 5 min');
+    expect(liveReminderInput([option({ ...other, eta: Infinity })], 'Red', context())).toBeNull();
+  });
+
+  it('expires a feed between React renders even if the option was recomputed just now', () => {
+    const c = context();
+    expect(liveReminderInput([option()], 'Red', { ...c, nowMs: NOW + ETA_MAX_AGE_MS - 1 })).not.toBeNull();
+    const at = NOW + ETA_MAX_AGE_MS;
+    const o = option();
+    o.computedAtMs = at;
+    o.livePickupSelection!.selectedAtMs = at;
+    expect(liveReminderInput([o], 'Red', { ...c, nowMs: at })).toBeNull();
+  });
+
+  it('disarms when feed fails, planning is future, the visit disappears, or the trip changes', () => {
+    const c = context(), o = option();
+    expect(liveReminderInput([o], 'Red', { ...c, busUpdateFailed: true })).toBeNull();
+    expect(liveReminderInput([o], 'Red', { ...c, targetDateMs: NOW + 60_001 })).toBeNull();
+    expect(liveReminderInput([o], 'Red', { ...c, boardStopId: 99 })).toBeNull();
+    expect(liveReminderInput([o], 'Red', { ...c, alightStopId: 99 })).toBeNull();
+    expect(liveReminderInput([{ ...o, livePickupSelection: undefined }], 'Red', c)).toBeNull();
+    expect(liveReminderInput([{ ...o, departed: true }], 'Red', c)).toBeNull();
+    expect(liveReminderInput([{ ...o, etaUnavailable: true }], 'Red', c)).toBeNull();
+    expect(liveReminderInput([o], 'Red', { ...c, buses: c.buses.slice(0, 1) })).toBeNull();
   });
 });
 

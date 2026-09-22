@@ -3,8 +3,8 @@
 // component state and dies with the page (a page that is gone cannot fire a
 // timer, so persisting the arm would be a lie to the rider).
 //
-// Timing model: "time to leave" is the moment the bus's live ETA at the
-// board stop drops to the rider's walk time plus a small safety buffer.
+// Timing model: leave for the early end of the selected boarding visit's
+// window, allowing the rider's walk time plus a small safety buffer.
 // Two pings per armed reminder, each at most once:
 //
 //   heads_up  (T−5) — five minutes before it's time to leave
@@ -14,6 +14,11 @@
 // pure so every rule here is unit-testable without React or timers.
 
 import { fmtMin, fmtWalk, remainingSec } from "./format";
+import { predictionWindow } from "./arrivalDetails";
+import { liveEtaAvailable, liveBusAvailable } from "./etaSource";
+import type { BusData } from "./map-data";
+import type { LivePickupSelection } from "./livePickupSelection";
+import { ROUTE_LISTS } from "./routes";
 
 /** Safety margin added to the walk time — leave a little before you must. */
 export const LEAVE_BUFFER_SEC = 30;
@@ -28,6 +33,12 @@ export const AT_STOP_WALK_SEC = 60;
 export type LeaveAlertInput = {
   /** Bus's ETA at the board stop, seconds remaining as of `computedAtMs`. */
   busEtaSec: number;
+  /** Bounds for this same pickup, on the same computedAtMs clock. */
+  busLowSec?: number;
+  busHighSec?: number;
+  busName?: string;
+  laterVisit?: boolean;
+  atPickup?: boolean;
   /** When busEtaSec was computed (ms epoch); undefined = treat as fresh. */
   computedAtMs?: number;
   /** Rider's walk to the board stop, seconds. */
@@ -42,12 +53,22 @@ export type LeavePing = "heads_up" | "leave_now";
 export const NO_PINGS_FIRED: FiredPings = { headsUp: false, leaveNow: false };
 
 /**
- * Seconds until it's time to leave: the live ETA (counted down from when it
- * was computed) minus walk time minus the safety buffer. ≤ 0 means leave now
- * (or you're already late).
+ * Use the pickup table's outward rounding for the selected boarding window.
+ * Format anew each tick as its lower bound crosses a minute boundary.
+ * A missing/invalid/expired window uses the point countdown. Never schedule a
+ * reminder later than that point, even if inconsistent bounds reach the UI.
  */
+function reminderArrival(s: LeaveAlertInput): { sec: number; window: string | null } {
+  const point = remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs);
+  const window = predictionWindow(s.busLowSec, s.busHighSec, s.computedAtMs, s.nowMs);
+  if (!window || window.lowSec > point) return { sec: point, window: null };
+  const early = window.lowSec < 60 ? 0 : Math.floor(window.lowSec / 60) * 60;
+  return { sec: Math.min(point, early), window: window.text };
+}
+
+/** Seconds until leaving for the earliest displayed arrival, including buffer. */
 export function secUntilLeave(s: LeaveAlertInput): number {
-  return remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs) - s.walkToSec - LEAVE_BUFFER_SEC;
+  return reminderArrival(s).sec - s.walkToSec - LEAVE_BUFFER_SEC;
 }
 
 /**
@@ -61,7 +82,9 @@ export function secUntilLeave(s: LeaveAlertInput): number {
  *   jumps up and re-enters a window never repeats a ping.
  */
 export function computeLeaveAlert(s: LeaveAlertInput, fired: FiredPings): LeavePing | null {
-  if (s.walkToSec < AT_STOP_WALK_SEC) return null;
+  if (!Number.isFinite(s.busEtaSec) || s.busEtaSec < 0 || !Number.isFinite(s.walkToSec)
+    || !Number.isFinite(s.nowMs) || (s.computedAtMs != null && !Number.isFinite(s.computedAtMs))
+    || s.walkToSec < AT_STOP_WALK_SEC) return null;
   const until = secUntilLeave(s);
   if (until <= 0) return fired.leaveNow ? null : "leave_now";
   if (until <= HEADS_UP_LEAD_SEC) {
@@ -98,13 +121,17 @@ export function leaveAlertMessage(
   s: LeaveAlertInput,
   rainLikely = false,
 ): string {
-  const remaining = remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs);
+  const arrival = reminderArrival(s);
   const prefix = rainLikely ? RAIN_PREFIX : "";
+  const bus = s.busName ? `${routeLabel} #${s.busName.replace(/^#/, '')}` : routeLabel;
+  const description = s.atPickup ? `${bus} is at your stop`
+    : arrival.window ? `${bus} could ${s.laterVisit ? 'return' : 'arrive'} in ${arrival.window}`
+    : `${bus}${s.laterVisit ? ' returns' : ''} in ${fmtMin(arrival.sec)}`;
   if (ping === "heads_up") {
     const until = Math.max(0, secUntilLeave(s));
-    return `${prefix}${routeLabel} in ${fmtMin(remaining)} — leave in ${fmtMin(until)}`;
+    return `${prefix}${description} — leave in ${fmtMin(until)}`;
   }
-  return `${prefix}Time to leave — ${routeLabel} in ${fmtMin(remaining)}, ${fmtWalk(s.walkToSec)} walk`;
+  return `${prefix}Time to leave — ${description}, ${fmtWalk(s.walkToSec)} walk`;
 }
 
 /**
@@ -116,8 +143,62 @@ export function findReminderOption<
   T extends { mode: string; routeLabel: string; departed?: boolean; etaUnavailable?: boolean; busEtaSec?: number },
 >(options: readonly T[] | null | undefined, routeLabel: string): (T & { busEtaSec: number }) | null {
   const o = options?.find((x) => x.mode === "shuttle" && x.routeLabel === routeLabel);
-  if (!o || o.departed || o.etaUnavailable || o.busEtaSec == null) return null;
+  if (!o || o.departed || o.etaUnavailable || o.busEtaSec == null
+    || !Number.isFinite(o.busEtaSec) || o.busEtaSec < 0) return null;
   return o as T & { busEtaSec: number };
+}
+
+type ReminderOption = {
+  mode: string;
+  routeLabel: string;
+  departed?: boolean;
+  etaUnavailable?: boolean;
+  busEtaSec?: number;
+  busLowSec?: number;
+  busHighSec?: number;
+  computedAtMs?: number;
+  walkToSec: number;
+  boardStopId: number;
+  alightStopId: number;
+  livePickupSelection?: LivePickupSelection;
+};
+
+/** Recheck actual feed freshness on every timer tick, not just React renders.
+ * computedAtMs can change when the walking origin changes; it is not evidence
+ * that the underlying bus observation is fresh. Use the selected boarding
+ * visit's point and bounds together. An approaching countdown bus may already
+ * be out of reach while the trip uses a different bus or a later visit.
+ */
+export function liveReminderInput(
+  options: readonly ReminderOption[] | null | undefined,
+  routeLabel: string,
+  context: { buses: readonly BusData[]; busUpdateFailed: boolean; targetDateMs?: number | null; nowMs: number;
+    boardStopId?: number; alightStopId?: number },
+): LeaveAlertInput | null {
+  const { buses, busUpdateFailed, targetDateMs, nowMs } = context;
+  if (!Number.isFinite(nowMs) || busUpdateFailed
+    || (targetDateMs != null && (!Number.isFinite(targetDateMs) || targetDateMs - nowMs > 60_000))
+    || !liveEtaAvailable(buses, nowMs, routeLabel)) return null;
+  const o = findReminderOption(options, routeLabel);
+  if (!o || !Number.isFinite(o.walkToSec) || o.walkToSec < 0
+    || (context.boardStopId != null && context.boardStopId !== o.boardStopId)
+    || (context.alightStopId != null && context.alightStopId !== o.alightStopId)) return null;
+  const selected = o.livePickupSelection;
+  if (!selected || !Number.isFinite(selected.selectedAtMs) || selected.selectedAtMs > nowMs + 5000) return null;
+  const board = selected.boarding;
+  if (!board || board.stopId !== o.boardStopId || !board.busName) return null;
+  const cfg = ROUTE_LISTS.find(route => route.label === routeLabel);
+  const vehicle = buses.find(bus => bus.bus_name.replace(/^#/, '') === board.busName.replace(/^#/, '')
+    && cfg?.busRouteIds.includes(bus.route_id));
+  if (!vehicle || !liveBusAvailable(vehicle, routeLabel, nowMs)) return null;
+  const point = board.source === 'raw-at-stop' ? 0 : board.etaSec;
+  if (!Number.isFinite(point) || point < 0) return null;
+  return { busEtaSec: point,
+    busLowSec: board.source === 'forecast' ? board.lowSec : 0,
+    busHighSec: board.source === 'forecast' ? board.highSec : 0,
+    busName: board.busName.replace(/^#/, ''), laterVisit: selected.relation === 'same-bus-later-visit',
+    atPickup: board.source === 'raw-at-stop',
+    computedAtMs: selected.selectedAtMs, walkToSec: o.walkToSec, nowMs };
 }
 
 // ── Delivery (side-effectful, all non-throwing) ────────────────────────────

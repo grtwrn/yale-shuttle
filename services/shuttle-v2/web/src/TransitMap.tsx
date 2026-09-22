@@ -60,7 +60,7 @@ import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon }
 import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
 import {
   AT_STOP_WALK_SEC, computeLeaveAlert, deliverPing, ensureNotifyPermission,
-  findReminderOption, leaveAlertMessage, markFired, NO_PINGS_FIRED,
+  liveReminderInput, leaveAlertMessage, markFired, NO_PINGS_FIRED,
   notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
@@ -1663,7 +1663,7 @@ const TripPlanner: FC<{
   // engine effect below (after the options memo) feeds it live data.
   // Declared HERE, before any hook that references it — see the TDZ
   // warning at the top of this file's conventions.
-  const [reminder, setReminder] = useState<{ routeLabel: string } | null>(null);
+  const [reminder, setReminder] = useState<{ routeLabel: string; boardStopId: number; alightStopId: number } | null>(null);
   // In-app fallback banner when a system notification can't be shown
   // (permission denied, or iOS Safari where the page-context
   // Notification API doesn't exist at all).
@@ -2202,26 +2202,24 @@ const TripPlanner: FC<{
   // one interval read fresh data.
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const reminderContextRef = useRef({ buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null });
+  reminderContextRef.current = { buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null };
 
   // The reminder engine: once armed, check every second (piggybacking on
-  // the same remainingSec countdown the on-screen ETA uses, so the ping
-  // and the number the rider watches always agree). computeLeaveAlert
+  // selected boarding window, using the table's rounding and clock). computeLeaveAlert
   // decides IF a ping fires; this effect only delivers it.
   useEffect(() => {
     if (!reminder) return;
-    const { routeLabel } = reminder;
+    const { routeLabel, boardStopId, alightStopId } = reminder;
     const check = () => {
-      const o = findReminderOption(optionsRef.current, routeLabel);
-      if (!o) {
+      const input = liveReminderInput(optionsRef.current, routeLabel,
+        { ...reminderContextRef.current, boardStopId, alightStopId, nowMs: Date.now() });
+      if (!input) {
         // Option gone / departed / no live bus (route stopped running,
         // plan cleared) — quietly disarm.
         setReminder(null);
         return;
       }
-      const input = {
-        busEtaSec: o.busEtaSec, computedAtMs: o.computedAtMs,
-        walkToSec: o.walkToSec, nowMs: Date.now(),
-      };
       const ping = computeLeaveAlert(input, reminderFiredRef.current);
       if (!ping) return;
       reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
@@ -4226,6 +4224,11 @@ const TripPlanner: FC<{
                 })()}
                 {isExpanded && o.mode === "shuttle" && (() => {
                   const tripBus = tripBusIdentity(o);
+                  const leaveInput = liveReminderInput([o], o.routeLabel,
+                    { ...reminderContextRef.current, nowMs: Date.now() });
+                  const reminderActive = reminder?.routeLabel === o.routeLabel
+                    && reminder.boardStopId === o.boardStopId && reminder.alightStopId === o.alightStopId;
+                  const reminderBus = leaveInput?.laterVisit ? `#${leaveInput.busName}'s return` : `#${leaveInput?.busName}`;
                   const boardCoord = stopCoords[o.boardStopId];
                   const navHref = boardCoord
                     ? `https://www.google.com/maps/dir/?api=1&destination=${boardCoord.lat},${boardCoord.lon}&travelmode=walking`
@@ -4316,26 +4319,26 @@ const TripPlanner: FC<{
                           })} />
                           {/* Only offer a leave reminder while there is a live,
                               catchable pickup and a walk left to make. */}
-                          {!o.departed && o.busEtaSec != null && o.walkToSec >= AT_STOP_WALK_SEC && (
+                          {o.walkToSec >= AT_STOP_WALK_SEC && leaveInput && (
                             <button
                               className="trip-action-button"
-                              aria-pressed={reminder?.routeLabel === o.routeLabel}
+                              aria-pressed={reminderActive}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (reminder?.routeLabel === o.routeLabel) {
+                                if (reminderActive) {
                                   setReminder(null);
                                   return;
                                 }
                                 reminderFiredRef.current = NO_PINGS_FIRED;
                                 setReminderBanner(null);
                                 void ensureNotifyPermission();
-                                setReminder({ routeLabel: o.routeLabel });
+                                setReminder({ routeLabel: o.routeLabel, boardStopId: o.boardStopId, alightStopId: o.alightStopId });
                               }}
-                              title={reminder?.routeLabel === o.routeLabel
+                              title={reminderActive
                                 ? "Reminding you when it's time to leave — tap to cancel"
-                                : "Ping me 5 min before it's time to leave, and again when it's time to go"}
+                                : `Remind me before the pickup window for ${reminderBus}, allowing time to walk`}
                             >
-                              {reminder?.routeLabel === o.routeLabel ? "🔔 Reminding you" : "🔔 Remind me"}
+                              {reminderActive ? `🔔 Reminding you for ${reminderBus}` : `🔔 Remind me for ${reminderBus}`}
                             </button>
                           )}
                           <button
