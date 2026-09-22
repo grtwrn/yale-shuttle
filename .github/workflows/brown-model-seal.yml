@@ -1,0 +1,48 @@
+name: sealed-frozen-brown-model
+on:
+  push:
+    branches: [research/brown-model-seal-2026-09-22]
+    paths: ['research/brown-model-seal/**', '.github/workflows/brown-model-seal.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: America/New_York
+      BLUE_MAX_PATH_SECONDS: '5400'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact-source loader and artifact boundary fixtures
+        run: python3 -m unittest discover -s research/brown-model-seal -p 'test_*.py' -v
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/brown-model-seal/input/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: brown-directed-parity
+          run-id: 35691411464
+          github-token: ${{ github.token }}
+          path: research/brown-model-seal/input/directed
+      - name: Exact frozen model, path and prefix parity before actual-time sealing
+        run: /usr/bin/time -v python3 research/brown-model-seal/build.py
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: sealed-frozen-brown-k8
+          path: research/brown-model-seal/results/**
+          retention-days: 90
