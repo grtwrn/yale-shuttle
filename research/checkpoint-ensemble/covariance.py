@@ -119,12 +119,10 @@ def _normalize(row):
     if not all(math.isfinite(v) for v in errors + [error]):
         result["unknownReason"] = "nonfinite_derived_error"
         return result
-    mean = math.fsum(v / len(errors) for v in errors)
-    try:
-        variance = math.fsum((v - mean) ** 2 / len(errors) for v in errors)
-        sd = math.sqrt(variance)
-    except OverflowError:
-        sd = math.inf
+    scale = max(abs(v) for v in errors)
+    normalized = [v / scale for v in errors] if scale else [0.0] * len(errors)
+    mean = math.fsum(v / len(errors) for v in normalized)
+    sd = scale * math.sqrt(math.fsum((v - mean) ** 2 / len(errors) for v in normalized))
     spread = max(arrivals) - min(arrivals)
     if not math.isfinite(sd) or not math.isfinite(spread):
         result["unknownReason"] = "nonfinite_derived_dispersion"
@@ -142,13 +140,26 @@ def _group_report(rows):
     weights = _visit_weights(complete)
     all_weights = _visit_weights(rows)
     counts = _counts(complete)
-    means = [_weighted([r["componentErrors"][i] for r in complete], weights)
-             for i in range(len(mask))]
-    variances = [
-        _weighted([(r["componentErrors"][i] - means[i]) ** 2 for r in complete], weights)
-        if counts["visits"] >= 2 else None
-        for i in range(len(mask))
-    ]
+    # Compute moments on scaled columns. Multiplying two finite raw variances
+    # before taking their square root can overflow and silently produce rho=0.
+    columns, scales, means, deviations, unit_variances, variances = [], [], [], [], [], []
+    for i in range(len(mask)):
+        column = [r["componentErrors"][i] for r in complete]
+        scale = max((abs(v) for v in column), default=0.0)
+        normalized = [v / scale if scale else 0.0 for v in column]
+        normalized_mean = _weighted(normalized, weights)
+        centered = [v - normalized_mean for v in normalized]
+        unit_variance = _weighted([v * v for v in centered], weights)
+        variance = unit_variance * scale * scale if unit_variance is not None else None
+        if counts["visits"] < 2 or (variance is not None and (
+                not math.isfinite(variance) or (unit_variance > 0 and variance == 0))):
+            variance = None
+        columns.append(normalized)
+        scales.append(scale)
+        means.append(normalized_mean * scale if normalized_mean is not None else None)
+        deviations.append(centered)
+        unit_variances.append(unit_variance)
+        variances.append(variance)
     pairs = []
     for i, a in enumerate(mask):
         for j, b in enumerate(mask):
@@ -156,14 +167,22 @@ def _group_report(rows):
             reason = None
             if counts["visits"] < 2:
                 reason = "fewer_than_two_physical_visits"
-            elif variances[i] == 0 or variances[j] == 0:
+            elif variances[i] is None or variances[j] is None:
+                reason = "unrepresentable_component_variance"
+            elif unit_variances[i] == 0 or unit_variances[j] == 0:
                 reason = "zero_component_variance"
             else:
-                covariance = _weighted([
-                    (r["componentErrors"][i] - means[i])
-                    * (r["componentErrors"][j] - means[j]) for r in complete], weights)
-                correlation = covariance / math.sqrt(variances[i] * variances[j])
-                correlation = min(1.0, max(-1.0, correlation))
+                unit_covariance = _weighted([
+                    a * b for a, b in zip(deviations[i], deviations[j])], weights)
+                covariance = unit_covariance * scales[i] * scales[j]
+                if (not math.isfinite(covariance)
+                        or (unit_covariance != 0 and covariance == 0)):
+                    covariance = None
+                    reason = "unrepresentable_covariance"
+                else:
+                    correlation = (unit_covariance / math.sqrt(unit_variances[i])
+                                   / math.sqrt(unit_variances[j]))
+                    correlation = min(1.0, max(-1.0, correlation))
             pairs.append(dict(a=a, b=b, covarianceSec2=covariance,
                               correlation=correlation, undefinedReason=reason))
 
@@ -197,11 +216,16 @@ def covariance_report(rows):
                   multiOffsetGroups=sum(not g["singleton"] for g in groups),
                   weighting="Each physical visit has total weight one within a stratum; "
                             "complete-case statistics renormalize within valid visits.",
+                  denominatorNote="Complete/unknown snapshot counts partition each group; "
+                                  "their physical-visit counts can overlap. Bin visit counts "
+                                  "can also overlap and must not be added as independent visits.",
                   interpretation="Descriptive population moments only. Repeated polls, "
                                  "target visits within one journey and reused dates are not "
                                  "independent trials. No confidence or interval-width inference.",
                   targetPooling="Physical target visits are matched within every row; "
-                                "target-stop occurrences are pooled within the declared stratum.")
+                                "target-stop occurrences are pooled within the declared stratum. "
+                                "Between-stop bias can contribute to correlation; it does not "
+                                "identify a shared-wait cause.")
     # This rejects accidental NaN/Infinity if a later arithmetic change leaks it.
     json.dumps(result, allow_nan=False)
     return result

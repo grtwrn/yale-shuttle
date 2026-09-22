@@ -69,6 +69,32 @@ class CovarianceTests(unittest.TestCase):
         self.assertIsNone(pair(result)["correlation"])
         self.assertEqual(pair(result)["undefinedReason"], "zero_component_variance")
 
+    def test_finite_extreme_moments_do_not_overflow_correlation_denominator(self):
+        for magnitude in (1e100, 1e-100):
+            rows = [row("a", {1: 0, 2: 0}), row("b", {1: 0, 2: 0})]
+            for r, sign in zip(rows, (-1, 1)):
+                r.update(truthAbs=0, pointAbs=sign * magnitude,
+                         components={1: sign * magnitude, 2: sign * magnitude})
+            result = group(rows)
+            with self.subTest(magnitude=magnitude):
+                self.assertEqual(pair(result)["correlation"], 1)
+                self.assertTrue(math.isfinite(pair(result)["covarianceSec2"]))
+                self.assertAlmostEqual(pair(result)["covarianceSec2"] / magnitude / magnitude, 1)
+                json.dumps(result, allow_nan=False)
+
+    def test_unrepresentable_covariance_is_explicitly_undefined(self):
+        for magnitude in (1e200, 1e-200):
+            rows = [row("a", {1: 0, 2: 0}), row("b", {1: 0, 2: 0})]
+            for r, sign in zip(rows, (-1, 1)):
+                r.update(truthAbs=0, pointAbs=sign * magnitude,
+                         components={1: sign * magnitude, 2: sign * magnitude})
+            result = group(rows)
+            with self.subTest(magnitude=magnitude):
+                self.assertIsNone(pair(result)["covarianceSec2"])
+                self.assertIsNone(pair(result)["correlation"])
+                self.assertEqual(pair(result)["undefinedReason"], "unrepresentable_component_variance")
+                json.dumps(result, allow_nan=False)
+
     def test_exact_fixed_dispersion_boundaries(self):
         rows = [row(str(i), {1: -sd, 2: sd})
                 for i, sd in enumerate((0, 29, 30, 59, 60, 119, 120, 299, 300, 400))]
