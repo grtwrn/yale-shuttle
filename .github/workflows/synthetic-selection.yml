@@ -28,6 +28,12 @@ jobs:
           npm install --prefix services/shuttle-v2/web --no-save --package-lock=false react-test-renderer@19.2.6
       - name: Generate exact source extracts
         run: node research/synthetic-selection/extract.mjs
+      - name: Pin recorder source (code only)
+        run: |
+          git fetch --no-tags --depth=1 origin bae23b33211c73589ede784bf32d3485124874d1
+          git show bae23b33211c73589ede784bf32d3485124874d1:research/public-fleet-timeline/capture.py > research/synthetic-selection/results/recorder.py
+      - name: Verify synthetic immutable prefixes and causal release knowledge
+        run: python3 research/synthetic-selection/test_capture_input.py
       - name: Component and policy parity (synthetic only)
         working-directory: services/shuttle-v2
         run: npx vitest run --config ../../research/synthetic-selection/vitest.config.ts

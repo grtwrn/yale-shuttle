@@ -46,4 +46,12 @@ describe('fixed episode input/version envelope',()=>{
       expect(()=>execFileSync('node',['../../research/synthetic-selection/extract.mjs',changed],{stdio:'pipe'})).toThrow();
     }finally{rmSync(dir,{recursive:true,force:true});}
   });
+  it('accepts verified synthetic receipt structure without silently approving release continuity',async()=>{
+    const receipts=JSON.parse(readFileSync('../../research/synthetic-selection/results/verified-synthetic-receipts.json','utf8'));
+    expect(receipts).toHaveLength(2);
+    expect(receipts.every((r:any)=>r.replayAdmissible&&initialStructure(r.body))).toBe(true);
+    expect(receipts.every((r:any)=>r.releaseEvidence.assumptionRequired&&!r.releaseEvidence.acceptedRelease)).toBe(true);
+    const result=await runEpisode({...args(),scheduledAt:receipts[0].receivedAt,receipts,releases:[]});
+    expect(result.status).toBe('unavailable_version');
+  });
 });
