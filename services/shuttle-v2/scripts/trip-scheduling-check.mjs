@@ -259,9 +259,13 @@ try {
       await page.evaluate(() => delete document.documentElement.dataset.androidCompact);
       const originalHeading = await heading.boundingBox();
       await page.screenshot({ path: `${out}home-before-${width}.png` });
-      assert(Math.abs(compactHeading.width / originalHeading.width - 0.85) < 0.02, 'home title did not shrink');
-      assert(Math.abs(compactHeading.height / originalHeading.height - 0.85) < 0.02, 'home title height did not shrink');
       run.home = { compactHeading, originalHeading };
+      assert(Math.abs(compactHeading.width / originalHeading.width - 0.85) < 0.02, 'home title did not shrink');
+      // Normal line-height rounds with font metrics; allow one rendered pixel
+      // while still requiring an actual reduction in height.
+      assert(compactHeading.height < originalHeading.height
+        && Math.abs(compactHeading.height - originalHeading.height * 0.85) <= 1,
+      `home title height did not shrink: ${JSON.stringify(run.home)}`);
       await page.reload({ waitUntil: 'domcontentloaded' });
       await search.waitFor();
       assert.equal(await page.evaluate(() => document.documentElement.dataset.androidCompact), 'true', 'compact layout lost after refresh');
