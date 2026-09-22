@@ -1,0 +1,65 @@
+name: highway-context-window-study
+on:
+  push:
+    branches: [research/highway-windows-2026-09-22]
+    paths: ['research/highway-windows/**', '.github/workflows/highway-windows.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BLUE_MAX_PATH_SECONDS: '5400'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - run: python3 -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/highway-frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-route-context
+          run-id: 35686813146
+          github-token: ${{ github.token }}
+          path: research/highway-geometry
+      - run: ln -s "$GITHUB_WORKSPACE/research/highway-frozen/canonical-windows/results" research/canonical-windows/results
+      - name: Fixed-policy geometry, chronology and action fixtures
+        run: python3 -m unittest discover -s research/highway-windows -p 'test_*.py' -v
+      - name: Freeze forecasts, verify canonical and prefix controls, then attach labels
+        run: python3 research/highway-windows/run_study.py --generate
+      - name: Score all fixed policy cohorts after controls pass
+        run: python3 research/highway-windows/run_study.py --score
+      - name: Replay unchanged action rules with the corresponding quality policy
+        run: python3 research/highway-windows/run_risk.py
+      - name: Verify actual rendered pickup strings for every action cohort
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-windows/results/original22/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-windows/results/highway25/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-windows/results/highway25/original-cohort/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-windows/results/highway50/rider-risk
+          services/shuttle-v2/node_modules/.bin/tsx research/useful-windows/rendered-parity.ts research/highway-windows/results/highway50/original-cohort/rider-risk
+          python3 research/highway-windows/report.py
+          cp research/highway-windows/PLAN.md research/highway-windows/results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: highway-context-window-results
+          path: |
+            research/highway-windows/results/**
+            !research/highway-windows/results/**/raw_positions.jsonl.gz
+          retention-days: 90
