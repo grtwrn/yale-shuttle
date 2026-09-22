@@ -1,5 +1,6 @@
 /** Hosted only. Actual emission knowledge, no finalized source insertion. */
 import fs from 'node:fs';import zlib from 'node:zlib';import crypto from 'node:crypto';import assert from 'node:assert/strict';
+import {Readable} from 'node:stream';import {pipeline} from 'node:stream/promises';
 import {TransitNetwork} from '../../services/shuttle-v2/src/network/TransitNetwork.ts';
 import {planTracks,reconcileTracks} from '../../services/shuttle-v2/src/collector/detector.ts';
 import {stepManyWithVisits} from '../../services/shuttle-v2/src/collector/departure.ts';
@@ -9,7 +10,7 @@ import {replay as legacyReplay} from '../source-retention/replay.ts';
 const here=new URL('.',import.meta.url).pathname,out=here+'results/';
 const rawDir=here+'../k-sweep/results/',canon=here+'../canonical-windows/results/';
 const read=(p:string)=>zlib.gunzipSync(fs.readFileSync(p)).toString().trim().split('\n').filter(Boolean).map(s=>JSON.parse(s));
-const write=(name:string,rows:any[])=>fs.writeFileSync(out+name+'.jsonl.gz',zlib.gzipSync(rows.map(r=>JSON.stringify(r)).join('\n')+'\n'));
+const write=async(name:string,rows:Iterable<any>)=>pipeline(Readable.from((function*(){for(const row of rows)yield JSON.stringify(row)+'\n';})()),zlib.createGzip(),fs.createWriteStream(out+name+'.jsonl.gz'));
 const sha=(p:string)=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const pins:any={
  [rawDir+'raw_positions.jsonl.gz']:'3990d06ebdab596cfebdd7f03c528f7efcbb46fd3f6af68a9d64ede648e220b9',
@@ -120,9 +121,32 @@ for(const fraction of [.25,.5,.75]){
  assert.deepEqual(prefix.rows,full.rows.filter(r=>r.at<=end));
  checks.push({end,rows:prefix.rows.length,raw:pr.length,exact:true});
 }
-write('features',full.rows);write('physical-sources',full.ledger.events);write('source-rejections',full.ledger.rejected);write('source-resets',full.ledger.resets);
 for(const[p,h]of Object.entries(pins))assert.equal(sha(p),h);
 const audit={planSha256:sha(here+'PLAN.md'),pins,exactOriginalFeatures,experimentalFullPollFeatureDifferences:experimentalChanges,
  allSampledFeatures:full.rows.length,consumed:full.consumed,
  strictPhysicalSources:full.ledger.events.length,prefixChecks:checks,eofClosures:0,providerInterpretation:'Observed IDs only, not proven physical vehicle identity'};
-fs.writeFileSync(out+'materialization-audit.json',JSON.stringify(audit,null,2)+'\n');console.log(JSON.stringify(audit));
+const sourceMap=new Map(full.ledger.events.map(e=>[e.id,e]));assert.equal(sourceMap.size,full.ledger.events.length);
+const availability:any={};
+for(const row of full.rows.filter(r=>r.at>=Date.parse('2026-09-17T04:00:00Z'))){
+ const route=availability[row.route]??={generated:0,arms:{}};route.generated++;
+ for(const [arm,m]of Object.entries(row.ensemble) as any){
+  const a=route.arms[arm]??={reasons:{},masks:{},journeys:new Set(),dates:new Set()};
+  a.reasons[m.reason]=(a.reasons[m.reason]??0)+1;
+  if(m.supported){const mask=m.offsets.join(',');a.masks[mask]=(a.masks[mask]??0)+1;a.journeys.add(m.journey);a.dates.add(new Date(row.at-4*3600000).toISOString().slice(0,10));}
+ }
+}
+for(const route of Object.values(availability) as any)for(const a of Object.values(route.arms) as any){a.journeys=a.journeys.size;a.dates=[...a.dates].sort();}
+function* compact(){for(const {families,...row}of full.rows){
+ const ensemble:any={};for(const [name,m]of Object.entries(row.ensemble) as any){
+  const {sources,...rest}=m;if(!sources){ensemble[name]=rest;continue;}
+  const sourceIds:any={};for(const[offset,e]of Object.entries(sources) as any){assert.deepEqual(sourceMap.get(e.id),e);sourceIds[offset]=e.id;}
+  ensemble[name]={...rest,sourceIds};
+ }yield{...row,ensemble};
+}}
+async function save(){
+ await write('physical-sources',full.ledger.events);await write('features',compact());
+ await write('traversal-history',(function*(){for(const r of full.rows)yield{at:r.at,bus:r.bus,route:r.route,target:r.target,families:r.families};})());
+ await write('source-rejections',full.ledger.rejected);await write('source-resets',full.ledger.resets);
+ fs.writeFileSync(out+'materialization-audit.json',JSON.stringify({...audit,schemaVersion:1,sourceReferenceRoundtrip:true,availability},null,2)+'\n');console.log(JSON.stringify(audit));
+}
+save().catch(e=>{console.error(e);process.exitCode=1;});

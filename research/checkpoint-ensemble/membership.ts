@@ -5,6 +5,7 @@ const dist=(a:number,b:number,n:number)=>(b-a+n)%n;
 export const sourceId=(e:any,at:number)=>JSON.stringify([e.busName,e.routeId,e.stopIndex,e.departedAt,at,e.busId]);
 export class Families {
   current=new Map<string,any[]>(); epochs=new Map<string,number>(); providers=new Map<string,number>();epochBegan=new Map<string,number>();
+  providerNames=new Map<number,string>();
   events:any[]=[]; resets:any[]=[]; rejected:any[]=[];
   constructor(readonly routes:Map<number,any>,readonly waits:any){}
   reset(name:string,at:number,reason:string){
@@ -12,6 +13,9 @@ export class Families {
     this.resets.push({name,at,reason,epoch:this.epochs.get(name)});
   }
   identity(name:string,provider:number,at:number){
+    const oldName=this.providerNames.get(provider);
+    if(oldName!==undefined&&oldName!==name){this.reset(oldName,at,'provider public-name changed');this.reset(name,at,'provider public-name changed');}
+    this.providerNames.set(provider,name);
     const prior=this.providers.get(name);
     if(!this.epochBegan.has(name))this.epochBegan.set(name,at);
     if(prior!==undefined&&prior!==provider)this.reset(name,at,'observed provider ID changed; physical identity unknown');
@@ -67,7 +71,7 @@ export class Families {
       f.phaseProgress+=hop;f.phaseIndex=index;
       // A fixed whole group cannot continue after its first physical pickup.
       // Raw phase evidence retires it even if no strict departure is emitted.
-      if(f.phaseProgress>=f.k+1){f.invalid='first fixed-group pickup reached';continue;}
+      if(f.phaseProgress>=f.k+1){f.invalid='phase indicates first fixed-group pickup reached';continue;}
       if(!f.releasedAt&&(dist(f.sources[f.k].index,index,n)>f.k||index===f.wait&&phase==='drive'))f.releasedAt=at;
     }
   }
