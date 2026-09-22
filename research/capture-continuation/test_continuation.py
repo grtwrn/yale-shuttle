@@ -88,6 +88,11 @@ class ContinuationTests(unittest.TestCase):
         c=self.capture('B');self.request(c,self.boundary+1000000,receive_delta=9000000);meta=snapshot_metadata(self.root/'B',self.plan)
         self.assertEqual(handoff_decision(self.plan,self.parts['B'],self.boundary+2000000,meta)['status'],'waiting')
         self.assertEqual(handoff_decision(self.plan,self.parts['B'],self.boundary+10000000,meta)['status'],'ready')
+    def test_later_clock_rollback_blocks_old_transport_success_handoff(self):
+        b=self.capture('B');self.request(b,self.boundary+1000000)
+        self.request(b,self.boundary+500000);meta=snapshot_metadata(self.root/'B',self.plan)
+        result=handoff_decision(self.plan,self.parts['B'],self.boundary+2000000,meta)
+        self.assertEqual(result['status'],'failed');self.assertIn('unsafe successor clock',result['reason'])
     def test_preserve_failure_overlap_and_microsecond_receipt_order(self):
         a=self.capture('A');self.request(a,self.boundary-1000000,receive_delta=9000000);self.request(a,self.boundary+10000000);self.freeze('A')
         b=self.capture('B');self.request(b,self.boundary-500000,kind='health',body=b'{"build":"unqualified"}')

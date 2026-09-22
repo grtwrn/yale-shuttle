@@ -19,7 +19,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p research/capture-continuation/results
-          python3 -m unittest discover -s research/capture-continuation -p 'test_*.py' -v 2>&1 | tee research/capture-continuation/results/fixtures.log
+          python3 -W error -m unittest discover -s research/capture-continuation -p 'test_*.py' -v 2>&1 | tee research/capture-continuation/results/fixtures.log
       - name: Freeze exact deployment manifest and review-only units; install nothing
         run: |
           python3 research/capture-continuation/continuation_bundle.py --source-commit "$GITHUB_SHA" --output research/capture-continuation/results/review > research/capture-continuation/results/review-summary.json

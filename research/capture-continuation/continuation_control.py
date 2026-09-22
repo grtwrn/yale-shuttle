@@ -55,6 +55,7 @@ def handoff_decision(plan,part,at,metadata=None):
     if at<begin:return dict(status='waiting',reason='before fixed primary boundary')
     if metadata:
         m,rows=metadata
+        if any(item['clockUnsafe'] for item in rows):return dict(status='failed',reason='unsafe successor clock; preserve predecessor for audit')
         for item in rows:
             r=item['record']
             if r['kind']!='fleet':continue

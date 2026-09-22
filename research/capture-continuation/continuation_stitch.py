@@ -33,6 +33,7 @@ def index_parts(plan,prefixes,destination):
     audit=dict(parts={},roles=collections.Counter(),bodyReads='sealed decoder only; synthetic in CI',
                identityProof='none added; per-part release/decoder checks remain mandatory',scenarioResetEvents=0,
                decisionReady=False,missingParts=[],unsafeClockParts=[])
+    db=None
     try:
         with tempfile.TemporaryDirectory(dir=destination) as tmp:
             db=sqlite3.connect(Path(tmp)/'index.sqlite')
@@ -87,15 +88,16 @@ def index_parts(plan,prefixes,destination):
                          chronologyLimit='Unsafe-clock records are preserved and cannot be silently activated; existing permanent unsafe-frontier policy still required.')
         (destination/'verification.json').write_text(json.dumps(audit,indent=2)+'\n')
         return audit
-    except BaseException:
-        # No completion marker: a partial index cannot be used by a consumer.
-        raise
+    finally:
+        # No completion marker on failure: partial indices cannot be consumed.
+        if db is not None:db.close()
 
 def decision_events(index,asof_us):
     """Convenience fixture iterator; context/unknown records never become buses."""
     verification=json.loads((Path(index)/'verification.json').read_text())
     require(verification.get('verificationComplete') is True,'unverified partial index')
-    for line in (Path(index)/'records.jsonl').open():
-        row=json.loads(line)
-        if row['receiptUs']>asof_us:break
-        if row['role'] in ('primary','prelude_context','gap_evidence'):yield row
+    with (Path(index)/'records.jsonl').open() as f:
+        for line in f:
+            row=json.loads(line)
+            if row['receiptUs']>asof_us:break
+            if row['role'] in ('primary','prelude_context','gap_evidence'):yield row
