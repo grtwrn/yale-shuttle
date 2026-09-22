@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'services/shuttle-v2/web/index.html'
+      - 'services/shuttle-v2/web/src/main.tsx'
+      - 'services/shuttle-v2/web/src/androidCompact.css'
       - 'services/shuttle-v2/web/public/minimap-options/**'
       - 'services/shuttle-v2/scripts/minimap-gallery-check.mjs'
       - 'services/shuttle-v2/scripts/minimap-label-render.mjs'

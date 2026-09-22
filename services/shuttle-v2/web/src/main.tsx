@@ -5,6 +5,13 @@ import { saveTripDraft } from "./tripDraft";
 import MinimapReview from "./MinimapReview";
 import BerthReview from "./BerthReview";
 import CrashRecovery from "./CrashRecovery";
+import "./androidCompact.css";
+
+// Apply the phone density to the actual layout, including standalone launches.
+// The viewport remains at 1; browser zoom and pinch zoom stay under rider control.
+if (/Android.*Mobile/i.test(navigator.userAgent)) {
+  document.documentElement.dataset.androidCompact = "true";
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   constructor(props: { children: ReactNode }) {

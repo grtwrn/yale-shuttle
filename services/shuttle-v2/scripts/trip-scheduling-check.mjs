@@ -63,11 +63,19 @@ try {
       catch { return route.fulfill({ status: 404 }); }
     });
     await page.goto('https://trip-ui.test', { waitUntil: 'domcontentloaded' });
-    const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scale: visualViewport?.scale ?? 1,
-      compact: document.documentElement.dataset.androidCompact === 'true' }));
+    const viewport = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;left:0;top:0;width:100px;height:100px;pointer-events:none;visibility:hidden';
+      document.body.append(probe);
+      const renderedPx = probe.getBoundingClientRect().width;
+      probe.remove();
+      return { width: innerWidth, height: innerHeight, scale: visualViewport?.scale ?? 1, renderedPx,
+        compact: document.documentElement.dataset.androidCompact === 'true' };
+    });
     run.viewport = viewport;
     assert.equal(viewport.compact, androidReview);
-    assert(Math.abs(viewport.scale - (androidReview ? 0.9 : 1)) < 0.01, 'unexpected initial page scale');
+    assert(Math.abs(viewport.scale - 1) < 0.01, 'browser viewport scale should remain normal');
+    assert(Math.abs(viewport.renderedPx - (androidReview ? 85 : 100)) < 0.1, 'layout did not render at the requested density');
     const card = page.getByRole('button', { name: 'View Red trip details', exact: true });
     const table = page.getByTestId('route-timing-table');
     const row = table.locator('[data-route="Red"]');
