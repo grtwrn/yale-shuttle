@@ -130,6 +130,26 @@ class JointDeviationTests(unittest.TestCase):
             with self.subTest(projection=projection), self.assertRaises(ValueError):
                 joint_deviations(self.shared, (1, 2), self.weights, projection)
 
+    def test_relabeling_a_journey_cannot_duplicate_physical_support(self):
+        duplicate = copy.deepcopy(self.shared[0])
+        duplicate["journeyId"] = "relabeled-journey"
+        for component in duplicate["components"].values():
+            component["journeyId"] = duplicate["journeyId"]
+        with self.assertRaises(ValueError):
+            joint_deviations(self.shared + [duplicate], (1, 2), self.weights + [1])
+        # Isolate each physical identity guard instead of relying on the target
+        # guard to happen to reject every reused wait/source case as well.
+        for field in ("targetId", "waitId", "sourceId"):
+            row = vector(99, {1: 200, 2: 300})
+            if field == "sourceId":
+                row["components"][1][field] = self.shared[0]["components"][1][field]
+            else:
+                row[field] = self.shared[0][field]
+                for component in row["components"].values():
+                    component[field] = row[field]
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                joint_deviations(self.shared + [row], (1, 2), self.weights + [1])
+
     def test_missing_extra_offsets_bad_duration_and_bad_weights(self):
         for components in ({1: self.shared[0]["components"][1]},
                            dict(self.shared[0]["components"], **{"3": {}})):

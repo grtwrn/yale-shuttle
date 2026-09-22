@@ -94,6 +94,7 @@ def joint_deviations(vectors, offsets, weights, project_offsets=None):
     if any(w <= 0 for w in admitted_weights):
         raise ValueError("weights must be positive")
     seen = set()
+    seen_targets, seen_waits, seen_sources = set(), set(), set()
     values = []
     for vector in vectors:
         if not isinstance(vector, Mapping):
@@ -105,6 +106,12 @@ def joint_deviations(vectors, offsets, weights, project_offsets=None):
         if identity in seen:
             raise ValueError("duplicate physical journey/target vector")
         seen.add(identity)
+        # One call is one route/wait/target/mask cell. Relabeling a journey must
+        # not turn a repeated physical visit into new effective support.
+        if target in seen_targets or wait in seen_waits:
+            raise ValueError("physical target or wait reused under another journey")
+        seen_targets.add(target)
+        seen_waits.add(wait)
         components = vector.get("components")
         _exact_keys(components, offsets, "components")
         durations = {}
@@ -122,7 +129,10 @@ def joint_deviations(vectors, offsets, weights, project_offsets=None):
             source = _identity(component.get("sourceId"), "sourceId")
             if source in source_ids:
                 raise ValueError("distinct offsets must have distinct source IDs")
+            if source in seen_sources:
+                raise ValueError("physical source reused under another journey")
             source_ids.add(source)
+            seen_sources.add(source)
             duration = _finite(component.get("durationSec"), "durationSec")
             if duration <= 0:
                 raise ValueError("durationSec must be positive")
