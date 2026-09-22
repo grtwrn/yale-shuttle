@@ -1,6 +1,6 @@
 import React from '../../services/shuttle-v2/web/node_modules/react/index.js';
 import {create, act} from '../../services/shuttle-v2/web/node_modules/react-test-renderer/index.js';
-import {SelectionAdapter, ReferenceTripPlanner, applyPublicResponse, WallClock} from '../../services/shuttle-v2/web/src/__researchSelection.generated';
+import {SelectionAdapter, ReferenceTripPlanner, createOriginalPollDriver, WallClock} from '../../services/shuttle-v2/web/src/__researchSelection.generated';
 import {boundary} from './boundary';
 import {liveAnchorStore} from '../../services/shuttle-v2/web/src/eta';
 import {registerRoutePaths} from '../../services/shuttle-v2/web/src/anchor';
@@ -12,10 +12,11 @@ import {CURRENT_LOCATION_TEXT} from '../../services/shuttle-v2/web/src/endpoints
 type LL = {lat:number;lon:number};
 type Clock = {now:()=>number; advance:(milliseconds:number)=>Promise<void>};
 export type Scenario = {origin:LL;destination:LL};
+export type EventSink = {event:(event:any)=>void;flush:()=>Promise<void>};
 // Synthetic-only execution. Caller supplies a deterministic global Date/timer
 // clock. One session at a time because app model/path stores are module-global.
-export async function mountSelection({reference=false, scenario, payload, clock, profile='A'}:
-  {reference?:boolean;scenario:Scenario;payload:any;clock:Clock;profile?:'A'|'B'}) {
+export async function mountSelection({reference=false, scenario, payload, clock, profile='A',sink,retainEvents=true}:
+  {reference?:boolean;scenario:Scenario;payload:any;clock:Clock;profile?:'A'|'B';sink?:EventSink;retainEvents?:boolean}) {
   liveAnchorStore.clear(); registerRoutePaths({}); applyModelParams(undefined);
   boundary.draft = {fromText:CURRENT_LOCATION_TEXT,fromLL:{...scenario.origin},
     toText:'Synthetic destination',toLL:{...scenario.destination},tripTime:'',tripTimeSetAt:clock.now(),expandedKey:null};
@@ -30,6 +31,8 @@ export async function mountSelection({reference=false, scenario, payload, clock,
     pendingTrip:null,onConsumePending:noop,onBoard:()=>{throw Error('Research cannot board');}};
   let read:()=>any, actions:any, root:any;
   const events:any[]=[];
+  const emit=(event:any)=>{if(retainEvents)events.push(event);sink?.event(event);};
+  const flush=async()=>{await sink?.flush();};
   let movement:null|{from:LL;to:LL;since:number;duration:number;kind:string}=null;
   let frozenBoard:null|{id:number;coord:LL}=null;
   let interpretationUnresolved=false;
@@ -48,14 +51,25 @@ export async function mountSelection({reference=false, scenario, payload, clock,
   }]));
   props.__research={observe:(getter:()=>any,a:any)=>{read=getter;actions=a;}};
   const element=()=>React.createElement(WallClock,{},()=>React.createElement(reference?ReferenceTripPlanner:SelectionAdapter,props));
-  // Match the parent atomic successful poll application, including array identity.
-  applyPublicResponse(structuredClone(payload),setters);
+  let nextResponse:any;
+  const poll=createOriginalPollDriver(setters,async()=>{
+    if(!nextResponse)throw Error('Missing synthetic response');
+    return nextResponse;
+  });
+  async function apply(data:any,ok=true) {
+    nextResponse={ok,json:async()=>structuredClone(data)};
+    const before=poll.inspect().latestApplied;
+    try {await poll.poll();} finally {nextResponse=null;}
+    return poll.inspect().latestApplied!==before;
+  }
+  // The exact original closure also retains latestApplied/abort/catch behavior.
+  await apply(payload);
   await act(async()=>{root=create(element());});
   const state=()=>read();
   const move=(to:LL,kind:string,since=clock.now())=>{
     const from={...props.userLatLon};
     movement={from,to:{...to},since,duration:walkSecFromMeters(haversineMeters(from,to))*1000,kind};
-    events.push({at:since,type:'start_walking',kind,from,to:{...to}});
+    emit({at:since,type:'start_walking',kind,from,to:{...to}});
   };
   // Observe original markFired transitions and pure delivery records. Reading a
   // ref through the probe needs no extra render and cannot refresh its memo.
@@ -63,7 +77,8 @@ export async function mountSelection({reference=false, scenario, payload, clock,
     const s=state();
     if(liveAnchorStore.size!==0)throw Error('Live replay entered the offline anchor estimator');
     if(s.options!==priorOptions || s.stableOptions!==priorPlan || s.orderedOptions!==priorOrdered || s.visibleOptions!==priorVisible){
-      events.push({at:clock.now(),type:'selection_update',planChanged:s.stableOptions!==priorPlan,
+      emit({at:clock.now(),type:'selection_update',planChanged:s.stableOptions!==priorPlan,
+        ...(s.stableOptions!==priorPlan?{stableOptions:s.stableOptions}:{}),
         options:s.options,orderedOptions:s.orderedOptions,visibleOptions:s.visibleOptions,
         refreshKey:s.refreshKey,rank:structuredClone(s.rank),third:s.third,desiredOrder:s.desiredOrder});
       priorOptions=s.options;priorPlan=s.stableOptions;priorOrdered=s.orderedOptions;priorVisible=s.visibleOptions;
@@ -72,38 +87,39 @@ export async function mountSelection({reference=false, scenario, payload, clock,
       const kind=!priorFired.leaveNow && s.fired.leaveNow?'leave_now':'heads_up';
       const delivery=boundary.signals[signalIndex++];
       if (!delivery) throw Error('Fired flag without pure delivery');
-      events.push({at:delivery.at,type:'would_signal',kind,fired:{...s.fired},message:delivery.message});
+      emit({at:delivery.at,type:'would_signal',kind,fired:{...s.fired},message:delivery.message});
       if(profile==='B' && kind==='leave_now' && frozenBoard && !movement && !interpretationUnresolved) move(frozenBoard.coord,'to_board',delivery.at);
     }
-    if(priorReminder && !s.reminder) events.push({at:clock.now(),type:'disarm',reason:s.fired.leaveNow?'leave_now':'invalid_input'});
+    if(priorReminder && !s.reminder) emit({at:clock.now(),type:'disarm',reason:s.fired.leaveNow?'leave_now':'invalid_input'});
     priorReminder=s.reminder?{...s.reminder}:null; priorFired={...s.fired};
   };
   const chooseInitial=async()=>{
     if(chosen || profile==='A') return;
     chosen=true;
     const top=state().orderedOptions?.[0];
-    if(!top) {events.push({at:clock.now(),type:'initial_choice',result:'absent'});return;}
-    events.push({at:clock.now(),type:'initial_choice',routeLabel:top.routeLabel,mode:top.mode});
+    if(!top) {emit({at:clock.now(),type:'initial_choice',result:'absent'});return;}
+    emit({at:clock.now(),type:'initial_choice',routeLabel:top.routeLabel,mode:top.mode});
     if(top.mode==='walk') {move(scenario.destination,'direct');return;}
     const coord=props.stopCoords[top.boardStopId];
     if(coord) frozenBoard={id:top.boardStopId,coord:{...coord}};
     let armed=false;
     await act(async()=>{armed=actions.arm(top.routeLabel);});
-    events.push({at:clock.now(),type:'arm_attempt',accepted:armed,
+    emit({at:clock.now(),type:'arm_attempt',accepted:armed,
       result:armed?'armed':top.walkToSec<60?'at_stop_no_ping':top.departed?'departed':top.etaUnavailable?'eta_unavailable':'invalid_live_input',
       routeLabel:top.routeLabel,boardStopId:top.boardStopId,alightStopId:top.alightStopId});
     if(armed && !coord) interpretationUnresolved=true;
     collect();
-    if(armed && !state().reminder)events.push({at:clock.now(),type:'disarm',reason:state().fired.leaveNow?'leave_now':'invalid_input',immediate:true});
+    if(armed && !state().reminder)emit({at:clock.now(),type:'disarm',reason:state().fired.leaveNow?'leave_now':'invalid_input',immediate:true});
   };
   collect();
   await chooseInitial();
+  await flush();
   function checkBoard() {
     if(!frozenBoard || interpretationUnresolved) return;
     const c=props.stopCoords[frozenBoard.id];
     if(!c || c.lat!==frozenBoard.coord.lat || c.lon!==frozenBoard.coord.lon) {
       interpretationUnresolved=true;
-      events.push({at:clock.now(),type:'unresolved_board_geometry',boardStopId:frozenBoard.id});
+      emit({at:clock.now(),type:'unresolved_board_geometry',boardStopId:frozenBoard.id});
     }
   }
   async function positionTick() {
@@ -129,18 +145,19 @@ export async function mountSelection({reference=false, scenario, payload, clock,
         collect();
         if(next%1000===0) await positionTick();
         collect();
+        await flush();
       }
     },
     async receive(data:any) {
-      try {applyPublicResponse(structuredClone(data),setters);events.push({at:clock.now(),type:'feed_applied'});}
-      catch {props.busUpdateFailed=true;props.busSnapshotFailed=true;events.push({at:clock.now(),type:'feed_failed'});}
+      emit({at:clock.now(),type:await apply(data)?'feed_applied':'feed_failed',poll:poll.inspect()});
       checkBoard(); await act(async()=>{root.update(element());}); collect();
+      await flush();
     },
-    async fail(){props.busUpdateFailed=true;props.busSnapshotFailed=true;events.push({at:clock.now(),type:'feed_failed'});await act(async()=>{root.update(element());});collect();},
+    async fail(){await apply(null,false);emit({at:clock.now(),type:'feed_failed',poll:poll.inspect()});await act(async()=>{root.update(element());});collect();await flush();},
     async locate(ll:LL){props.userLatLon={...ll};await act(async()=>{root.update(element());});collect();},
     // Component reset parity only; the fixed prospective policy never invokes it.
     async testOnlySetDestination(ll:LL){await act(async()=>{actions.testOnlySetDestination({...ll});});collect();},
     async arm(routeLabel:string){let accepted=false;await act(async()=>{accepted=actions.arm(routeLabel);});collect();return accepted;},
-    async close(){await act(async()=>{root.unmount();});},
+    async close(){poll.stop();await act(async()=>{root.unmount();});await flush();},
   };
 }

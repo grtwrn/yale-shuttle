@@ -89,12 +89,35 @@ const poll = `export function applyPublicResponse(data: any, setters: any) {
   const {${setters.join(',')}} = setters;
   ${pollBody}
 }`;
+const pollArrow = applied.parent.parent;
+if (!ts.isArrowFunction(pollArrow)) throw Error('Unexpected original poll scope');
+const pollStatement = pollArrow.parent.parent.parent;
+if (!ts.isVariableStatement(pollStatement) || !names(pollStatement).includes('poll')) throw Error('Unexpected poll declaration');
+const pollScope = pollStatement.parent;
+const pollPrefix = [...pollScope.statements].slice(0, [...pollScope.statements].indexOf(pollStatement)+1);
+if (pollPrefix.length !== 5) throw Error('Unexpected original poll setup');
+const pollDriver = `export function createOriginalPollDriver(setters: any, fetch: any, anonIdHeader=()=>({})) {
+  const {${setters.join(',')}} = setters;
+  ${pollPrefix.map(n=>take(n, 'parent-poll:'+names(n).join(','))).join('\n')}
+  return {poll, stop(){stopped=true;currentController?.abort();}, inspect:()=>({seq,latestApplied,stopped})};
+}`;
+const pollEffect = pollScope.parent.parent.parent;
+if (!ts.isExpressionStatement(pollEffect) || !text(pollEffect).startsWith('useEffect(')) throw Error('Unexpected full poll effect');
+const referencePoll = `export function startReferencePollingEffect(setters: any, fetch: any, document: any, timers: any, anonIdHeader=()=>({})) {
+  const {${setters.join(',')}} = setters;
+  const {setInterval,clearInterval} = timers;
+  const busUpdatesStartedAt={current:Date.now()};
+  let cleanup: any;
+  const useEffect=(callback:any)=>{cleanup=callback();};
+  ${take(pollEffect,'parent-poll:entire-original-effect')}
+  return ()=>cleanup();
+}`;
 // Parent wall-second effect, unchanged, with only its setTick state supplied.
 const parent = decl('TransitMap').initializer;
 const wall = one([...parent.body.statements].filter(n => ts.isExpressionStatement(n) && text(n).includes('1000 - (Date.now() % 1000)')), 'parent wall timer');
 const wallComponent = `export function WallClock({children}: any) { const [tick,setTick] = useState(0); ${take(wall,'parent:wall-second-effect')} return children(tick); }`;
 // Include imports and module constants referenced by either component body.
-const snippets = `${referenceBody}\n${adapterBody}\n${probe}\n${poll}\n${wallComponent}`;
+const snippets = `${referenceBody}\n${adapterBody}\n${probe}\n${poll}\n${pollDriver}\n${referencePoll}\n${wallComponent}`;
 function ids(s) { const set = new Set(); const f=ts.createSourceFile('s.tsx',s,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX); const walk=n=>{if(ts.isIdentifier(n))set.add(n.text);ts.forEachChild(n,walk)};walk(f);return set; }
 const used = ids(snippets);
 const globals = [];
@@ -114,7 +137,7 @@ for (const node of sf.statements.filter(ts.isImportDeclaration)) {
   const parts = [];
   if (c.name && used.has(c.name.text)) parts.push(text(c.name));
   if (c.namedBindings && ts.isNamedImports(c.namedBindings)) {
-    const kept = c.namedBindings.elements.filter(e => used.has(e.name.text) && !boundary.has(e.name.text));
+    const kept = c.namedBindings.elements.filter(e => used.has(e.name.text) && !boundary.has(e.name.text) && e.name.text !== 'anonIdHeader');
     if (kept.length) parts.push(`{${kept.map(text).join(',')}}`);
   }
   if (parts.length) imports.push(`import ${c.isTypeOnly ? 'type ' : ''}${parts.join(',')} from ${from};`);
@@ -124,7 +147,7 @@ imports.push(`import {${[...boundary].join(',')}} from '../../../../research/syn
 const generated = `${imports.join('\n')}\n${globals.map(n=>take(n,'global:'+names(n).join(','))).join('\n')}
 export const ReferenceTripPlanner = (${props}: any) => { ${referenceBody}\n${probe} };
 export const SelectionAdapter = (${props}: any) => { const rainRef = useRef({likely:false}); ${adapterBody}\n${probe} };
-${poll}\n${wallComponent}\n`;
+${poll}\n${pollDriver}\n${referencePoll}\n${wallComponent}\n`;
 const output = root+'services/shuttle-v2/web/src/__researchSelection.generated.tsx';
 writeFileSync(output, generated);
 manifest.generatedSha256 = hash(generated);
