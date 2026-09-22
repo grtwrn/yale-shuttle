@@ -1,0 +1,34 @@
+name: frontend-window-contract
+on:
+  push:
+    branches: [research/frontend-window-contract-2026-09-22]
+    paths: ['research/frontend-window-contract/audit.ts', '.github/workflows/frontend-window-contract.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TZ: America/New_York
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - name: Verify production source is unchanged
+        run: git diff --exit-code 05a988194af3c376e5aa5da16682c29f797db2b2 -- services/shuttle-v2
+      - name: Existing selection, destination, ranking and reminder controls
+        working-directory: services/shuttle-v2
+        run: npx vitest run web/src/planner.test.ts web/src/journeyArrival.test.ts web/src/tripRanking.test.ts web/src/leaveAlert.test.ts web/src/livePickupSelection.test.ts web/src/etaSource.test.ts
+      - name: Actual export sensitivity audit
+        run: services/shuttle-v2/node_modules/.bin/tsx research/frontend-window-contract/audit.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-window-contract
+          path: research/frontend-window-contract/results
+          retention-days: 90
