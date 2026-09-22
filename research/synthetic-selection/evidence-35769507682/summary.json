@@ -1,0 +1,117 @@
+{
+  "05a": {
+    "artifactId": 10713795561,
+    "artifactZipSha256": "230f7e8af4b08920cddecd9498884fdd5a0904529e42543cfcbbae30bd845365",
+    "source": "05a988194af3c376e5aa5da16682c29f797db2b2",
+    "webTree": "39e7e9738975f45dfb5c443cc99961a39e9aa4ef",
+    "fixtureTests": 59,
+    "fixturePassed": 59,
+    "fixtureFailed": 0,
+    "overviewTests": 6,
+    "overviewPassed": 6,
+    "componentSequences": 20,
+    "componentSnapshotsPerImplementation": 59,
+    "additionalBoundarySnapshotsPerImplementation": 3,
+    "exactBoundaryParity": true,
+    "walkingBoundary": [
+      {
+        "fixtureSnapshot": 0,
+        "directWalkSec": 1295.2700238401515,
+        "shuttleWalkSec": 777.1620144802469,
+        "fullOptions": [
+          "Walk",
+          "Red"
+        ],
+        "visibleOptions": [
+          "Red",
+          "Walk"
+        ]
+      },
+      {
+        "fixtureSnapshot": 1,
+        "directWalkSec": 1295.2700238401515,
+        "shuttleWalkSec": 777.1620144802469,
+        "fullOptions": [
+          "Walk",
+          "Red"
+        ],
+        "visibleOptions": [
+          "Red",
+          "Walk"
+        ]
+      },
+      {
+        "fixtureSnapshot": 2,
+        "directWalkSec": 1295.2700238401515,
+        "shuttleWalkSec": 777.1620144802469,
+        "fullOptions": [
+          "Walk",
+          "Red"
+        ],
+        "visibleOptions": [
+          "Red",
+          "Walk"
+        ]
+      }
+    ],
+    "transitMapSha256": "8e89152f7af5589c0451b343ab3b85f1210eb3013df2cad537cc8d4a5d3432be",
+    "generatedSha256": "9147d729a636d14a6c1b139f4cb093eb8cb7c836dd75eb534709a91148747c1d",
+    "extractedRanges": 199
+  },
+  "e778": {
+    "artifactId": 10714075306,
+    "artifactZipSha256": "2acb9957151ee643bb4f6ba718ae3919d4c2be160def0703185af37a4d896bf6",
+    "source": "e7784c03b8c739eaa603fb231fe5ce80d2d71e82",
+    "webTree": "f985c086ee1d340ab37c7fc7c482b98bcde03ac6",
+    "fixtureTests": 59,
+    "fixturePassed": 59,
+    "fixtureFailed": 0,
+    "overviewTests": 8,
+    "overviewPassed": 8,
+    "componentSequences": 20,
+    "componentSnapshotsPerImplementation": 59,
+    "additionalBoundarySnapshotsPerImplementation": 3,
+    "exactBoundaryParity": true,
+    "walkingBoundary": [
+      {
+        "fixtureSnapshot": 0,
+        "directWalkSec": 1295.2700238401515,
+        "shuttleWalkSec": 777.1620144802469,
+        "fullOptions": [
+          "Walk",
+          "Red"
+        ],
+        "visibleOptions": [
+          "Walk"
+        ]
+      },
+      {
+        "fixtureSnapshot": 1,
+        "directWalkSec": 1295.2700238401515,
+        "shuttleWalkSec": 777.1620144802469,
+        "fullOptions": [
+          "Walk",
+          "Red"
+        ],
+        "visibleOptions": [
+          "Walk"
+        ]
+      },
+      {
+        "fixtureSnapshot": 2,
+        "directWalkSec": 1295.2700238401515,
+        "shuttleWalkSec": 777.1620144802469,
+        "fullOptions": [
+          "Walk",
+          "Red"
+        ],
+        "visibleOptions": [
+          "Walk"
+        ]
+      }
+    ],
+    "transitMapSha256": "8e89152f7af5589c0451b343ab3b85f1210eb3013df2cad537cc8d4a5d3432be",
+    "generatedSha256": "5349e05e27f3a70b878c896fd08a15b66ec276fd3b3659f0f1fed9c3ee7c2eee",
+    "extractedRanges": 199
+  }
+}
