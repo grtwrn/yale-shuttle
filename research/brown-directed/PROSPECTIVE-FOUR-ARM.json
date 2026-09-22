@@ -1,0 +1,271 @@
+{
+  "schema": 1,
+  "status": "specification-only; complete causal pipeline and launch not yet approved",
+  "pinnedOn": "2026-09-22",
+  "timezone": "America/New_York",
+  "prospectiveOutcomesOpened": false,
+  "development": {
+    "codeCommit": "f840e7226e0abd495e0215c8a4f96b10be036c7b",
+    "immutableReportCommit": "7aac285731d12ed946ea40c65f0df9895fcfc56f",
+    "hostedRun": 35691411464
+  },
+  "arms": [
+    {
+      "name": "frozen_K8_original",
+      "training": "frozen",
+      "K": 8,
+      "guardBrownOnly": false
+    },
+    {
+      "name": "frozen_K8_directed",
+      "training": "frozen",
+      "K": 8,
+      "guardBrownOnly": true
+    },
+    {
+      "name": "rolling_K5_original",
+      "training": "rolling",
+      "K": 5,
+      "guardBrownOnly": false
+    },
+    {
+      "name": "rolling_K5_directed",
+      "training": "rolling",
+      "K": 5,
+      "guardBrownOnly": true
+    }
+  ],
+  "comparator": "complete actually served public response",
+  "evaluationStartDaysET": [
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29"
+  ],
+  "contextEndExclusive": "2026-09-30T04:30:00Z",
+  "scope": {
+    "routeId": 19,
+    "routeName": "Brown",
+    "canonicalTopologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+    "sequence": [
+      145,
+      147,
+      4,
+      42,
+      98,
+      121,
+      115,
+      172,
+      47
+    ],
+    "waits": [
+      0,
+      5
+    ],
+    "groups": {
+      "0": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "5": [
+        6,
+        7,
+        8,
+        0
+      ]
+    },
+    "K8Sources": {
+      "0": 1,
+      "5": 6
+    },
+    "K5Sources": {
+      "0": 4,
+      "5": 0
+    },
+    "everyServedRowAccounted": true,
+    "missingRowsStayMissing": true,
+    "originalRowOrderAndStopsAheadPreserved": true,
+    "guardedIndexCannotDefineOriginalTarget": true
+  },
+  "clocks": {
+    "sourceAgeMaxInclusiveMs": 2700000,
+    "observationAgeMaxInclusiveMs": 15000,
+    "warmupMs": 600000,
+    "rawGapMaxMs": 60000,
+    "frontendSnapshotAgeStrictlyLessMs": 45000,
+    "publicCaptureCadenceSeconds": 15,
+    "candidateAsOf": "server_eta.at",
+    "clientEffectiveAt": "receivedAt - (servedAt - at)",
+    "consumeOnlyRawKnownAtOrBeforeAsOf": true,
+    "oneSecondTicksOnlyAgeAttachedForecast": true
+  },
+  "training": {
+    "pathCapSeconds": 5400,
+    "clockBandwidthMinutes": 120,
+    "circularClock": true,
+    "weekendSplit": true,
+    "minEffectivePaths": 12,
+    "minMaterialDates": 3,
+    "materialDateMinWeightFraction": 0.05,
+    "quantiles": [
+      0.1,
+      0.9
+    ],
+    "qualityMaxMps": 22,
+    "qualityMaxGapSeconds": 60,
+    "actualReducerEmissionKnownAt": true,
+    "sourceIntermediateTargetAndGpsStrictlyBeforeCutoff": true,
+    "noEofCompletion": true,
+    "allOriginalPhysicalSourcePathFitGatesRequired": true
+  },
+  "frozen": {
+    "trainBefore": "2026-09-16T04:00:00Z",
+    "canonicalRun": 35684356219,
+    "validFrom": "2026-09-23T04:00:00Z",
+    "validUntil": "2026-09-30T04:30:00Z",
+    "requiresActuallySealedBuiltAt": true
+  },
+  "rolling": [
+    {
+      "dayET": "2026-09-23",
+      "trainBefore": "2026-09-22T04:00:00Z",
+      "validFrom": "2026-09-23T04:00:00Z",
+      "validUntil": "2026-09-24T04:00:00Z",
+      "contextOnly": false,
+      "requiresActuallySealedBuiltAt": true
+    },
+    {
+      "dayET": "2026-09-24",
+      "trainBefore": "2026-09-23T04:00:00Z",
+      "validFrom": "2026-09-24T04:00:00Z",
+      "validUntil": "2026-09-25T04:00:00Z",
+      "contextOnly": false,
+      "requiresActuallySealedBuiltAt": true
+    },
+    {
+      "dayET": "2026-09-25",
+      "trainBefore": "2026-09-24T04:00:00Z",
+      "validFrom": "2026-09-25T04:00:00Z",
+      "validUntil": "2026-09-26T04:00:00Z",
+      "contextOnly": false,
+      "requiresActuallySealedBuiltAt": true
+    },
+    {
+      "dayET": "2026-09-26",
+      "trainBefore": "2026-09-25T04:00:00Z",
+      "validFrom": "2026-09-26T04:00:00Z",
+      "validUntil": "2026-09-27T04:00:00Z",
+      "contextOnly": false,
+      "requiresActuallySealedBuiltAt": true
+    },
+    {
+      "dayET": "2026-09-27",
+      "trainBefore": "2026-09-26T04:00:00Z",
+      "validFrom": "2026-09-27T04:00:00Z",
+      "validUntil": "2026-09-28T04:00:00Z",
+      "contextOnly": false,
+      "requiresActuallySealedBuiltAt": true
+    },
+    {
+      "dayET": "2026-09-28",
+      "trainBefore": "2026-09-27T04:00:00Z",
+      "validFrom": "2026-09-28T04:00:00Z",
+      "validUntil": "2026-09-29T04:00:00Z",
+      "contextOnly": false,
+      "requiresActuallySealedBuiltAt": true
+    },
+    {
+      "dayET": "2026-09-29",
+      "trainBefore": "2026-09-28T04:00:00Z",
+      "validFrom": "2026-09-29T04:00:00Z",
+      "validUntil": "2026-09-30T04:00:00Z",
+      "contextOnly": false,
+      "requiresActuallySealedBuiltAt": true
+    },
+    {
+      "dayET": "2026-09-30",
+      "trainBefore": "2026-09-29T04:00:00Z",
+      "validFrom": "2026-09-30T04:00:00Z",
+      "validUntil": "2026-09-30T04:30:00Z",
+      "contextOnly": true,
+      "requiresActuallySealedBuiltAt": true
+    }
+  ],
+  "availability": {
+    "require": "builtAt <= server_eta.at and validFrom <= server_eta.at < validUntil",
+    "lateMissingExpiredInvalid": "exact served fallback, separately counted",
+    "noBackdating": true,
+    "noPreviousRollingExtension": true
+  },
+  "requiredHostedGates": [
+    "exact original development feature, forecast and evidence controls",
+    "every served row, point, occurrence, order and unchanged distribution accounted",
+    "Brown physical arrival/departure/actual-knownAt multiset and source ledger parity",
+    "non-Brown reducer emission and feature identity",
+    "original physical training paths, support and numerical fits at every cutoff",
+    "future-prefix deletion invariance for reducer knowledge, origins, releases and forecasts",
+    "unchanged observation, source, training, frontend and model availability boundaries",
+    "actual frontend bundle/source attachment and scenario-state parity"
+  ],
+  "scientificParityDiscrepancy": "halt guarded comparison before scoring; never relabel, subset or convert into ordinary fallback",
+  "overlay": {
+    "allowedCells": [
+      "server_eta.rows[*][3]",
+      "server_eta.rows[*][4]"
+    ],
+    "eta": "served.eta",
+    "low": "min(served.low, candidate.low, served.eta)",
+    "high": "max(served.eta, candidate.high)",
+    "unsupported": "exact served row",
+    "wholeGroupCountdownMinimumExclusiveSeconds": 60,
+    "allOtherFieldsAndDistributions": "unchanged",
+    "coherentNewDistribution": false,
+    "probabilityExportAuthorized": false
+  },
+  "selectionProtocol": {
+    "commit": "6dfbe4f86e60873663784e129743dbabbe1122e6",
+    "version": "1.1",
+    "sha256": "4507ff7e1d89bf188aa1273cd2c7a1fb6fcd7ed02ac0dfa62501264e3f23e13c",
+    "scenarioSha256": "265ecc5b1bf189f995f8272805b658dc28c63f991e7a724a54e2e8e1b4699af9",
+    "sameCompleteInputsIndependentArmState": true,
+    "noWholeAppOutcomeAdapterApproved": true
+  },
+  "sourceSha256": {
+    "research/brown-directed/guard.ts": "472c2e7a5babebcb3e2d31736aa4d3ddb013d11bb73ebd157d3daf65719719f6",
+    "research/brown-directed/features.ts": "f354983be927df3b4ceb3dcccbce3625f0674053d0d82e3ac5cfb1157d54f00d",
+    "research/brown-directed/study.py": "10b2076c5ece9ddbbc15d9fedafffd0d12511470fc2c43ac74ec367685deea46",
+    "research/brown-clocks/policy.ts": "21fcef4373f8a798680d07b4fb25d34d2f73b621323b59ba6b20f6943e35258d",
+    "research/canonical-windows/occurrence.ts": "70dcfd2c5db16694a1b5defbb7b20a1b71badcd257c607736bace622bc7dffe5",
+    "research/canonical-windows/study.py": "9a721b0efb647434762598619509eae1dc80f7dabf4f02cf960d4131fbe5ee0d",
+    "research/k-sweep/evaluate.py": "713fe1e8da904b8ac6c254aa30e6ce8acf736a7a7ab4ac79e458d95329632f6e",
+    "research/useful-windows/rolling.py": "1fbb06754513373df26a4be2925e1cdc26d57e7bc5d40bfb365e23e463460cbc",
+    "research/window-only/study.py": "6bce4e0030ba104c78a37bddcccc7526c49543fb733a85b1c3c838e3bb1fdcbc",
+    "services/shuttle-v2/src/collector/detector.ts": "e4b317bcf04f8609ad07fb20fd70546f734fecc8bd93db2f0413e475a95af7f5",
+    "services/shuttle-v2/src/collector/departure.ts": "e403c2376d1344701d156e40e9707784ebc5a9f691a29496f7e797dc720c2fcd",
+    "services/shuttle-v2/src/collector/visitRows.ts": "76754de0023b7276abdd10c85599c328818e2e9a33e9d5cc108f7a7e3da2ecca",
+    "services/shuttle-v2/src/network/TransitNetwork.ts": "6914bea50830fbea2238e878ed477794c3a15b0b731a1a1dfd4a3f014ddd652e",
+    "services/shuttle-v2/src/network/legs.ts": "93c4515396bdb3a2a2ee8aacea7b649631ecaeea69977991c1422fc34d1959fe",
+    "services/shuttle-v2/src/network/alignStops.ts": "7933bf134ce010ebceb33d1ea9afe77ff36361e0b4cab0cc4228b7af8bc412da"
+  },
+  "gapsBeforeImplementationOrLaunch": [
+    "all-target response-preserving occurrence adapter",
+    "complete raw/provider prefix and public asof alignment",
+    "actually built/sealed frozen and rolling model exports",
+    "actual frontend source/bundle/version parity",
+    "separately reviewed physical outcome and censoring adapter"
+  ],
+  "changesAuthorized": {
+    "production": false,
+    "prospectiveOutcomeScoring": false,
+    "localReplay": false,
+    "newKs": false,
+    "newConstants": false,
+    "selectWinner": false
+  }
+}
