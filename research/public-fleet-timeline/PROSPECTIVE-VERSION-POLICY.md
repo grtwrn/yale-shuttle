@@ -22,6 +22,13 @@ by run35693019507; proofKnownAt is06:01:55UTC on September22. Record all hashes,
 bundle observation, proof, prior health and causal attribution times. Do not
 use a later bracket, retry or proof to make an earlier initial receipt eligible.
 
+An isolated failed health request remains unresolved until a later successful
+same-build health receipt. Under this same continuity assumption, that receipt
+may restore the previously complete/proven bundle for subsequent starts without
+requiring an asset refetch. Its restoration knowledge time is the later receipt;
+retain the intervening failure history and never fill the failed interval.
+An observed different build still requires a complete matching bundle group.
+
 Missing, conflicting, invalidated, clock-unsafe or unproven version evidence at
 that initial receipt makes the episode version-unavailable. Retain the episode
 and its reason; do not seek a later fleet response or older supported release.
