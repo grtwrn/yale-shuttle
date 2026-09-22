@@ -405,7 +405,7 @@ class ReleaseEvidence:
         self.last_at = None
 
     def candidate(self, receipt_ms, unsafe):
-        base = dict(strictIdentityKnown=False, assumptionRequired=True,
+        base = dict(strictIdentityKnown=False, assumptionRequired=True, acceptedRelease=False,
                     assumption='No unobserved intermediate frontend change since the recorded bundle; health endpoints cannot prove this.',
                     previousHealth=self.health, lastCompleteBundle=self.bundle,
                     healthFailuresSinceBundle=self.health_failures)
@@ -420,7 +420,10 @@ class ReleaseEvidence:
         if len(identities) != 1:
             return {**base, 'status':'ambiguous_source_proofs', 'source':None}
         proof = min(eligible, key=lambda p:p['proofKnownAtMs'])
-        known = max(proof['proofKnownAtMs'], self.bundle['completedAtMs'])
+        # A later health recovery is new knowledge; it cannot restore the failed
+        # interval using the old bundle/proof's earlier timestamp.
+        known = max(proof['proofKnownAtMs'], self.bundle['completedAtMs'],
+                    self.health['receivedAtMs'] if self.health else -math.inf)
         if known > receipt_ms:
             return {**base, 'status':'future_bundle_knowledge', 'source':None}
         healthy = self.health and self.health['valid'] and self.health['build'] == self.bundle['precedingHealthBuild']
@@ -428,6 +431,18 @@ class ReleaseEvidence:
                 'source':proof['source'], 'webTree':proof['webTree'], 'files':proof['files'],
                 'knownAt':known, 'proofKnownAt':proof['proofKnownAtMs'],
                 'acceptedRelease':False}
+
+    def state_event(self, sequence, kind, at, unsafe, evidence, body_hash=None):
+        candidate = evidence['status'] == 'candidate_under_continuity_assumption'
+        return dict(event='release-state', id=f"release:{sequence}:{body_hash or kind}",
+                    sequence=sequence, trigger=kind, observedReceiptMs=at,
+                    knownAt=None if unsafe else at, clockUnsafe=unsafe,
+                    shadowsEarlierReleaseMappings=True, acceptedRelease=False,
+                    strictIdentityKnown=False, assumptionRequired=True,
+                    status=evidence['status'], source=evidence.get('source') if candidate else None,
+                    webTree=evidence.get('webTree') if candidate else None,
+                    files=evidence.get('files') if candidate else None,
+                    releaseEvidence=evidence)
 
     def step(self, verified):
         if verified['event'] != 'response':
@@ -467,6 +482,7 @@ class ReleaseEvidence:
             pending = self.pending
             if not pending or r['url'] != pending['urls'][pending['index']]:
                 self.pending = None
+                self.bundle = None
                 events.append(dict(event='bundle-observation-incomplete', knownAt=at, reason='unpaired_or_out_of_order_module'))
             else:
                 pending['valid'] = pending['valid'] and success and r['headers'].get('Content-Encoding') in (None, '', 'identity')
@@ -497,16 +513,39 @@ class ReleaseEvidence:
                                replayAdmissible=admissible,
                                body=body if verified['fleetUsable'] else None, reason=verified['unusableReason'],
                                releaseEvidence=self.candidate(at, verified['clockUnsafe'])))
+        evidence = self.candidate(at, verified['clockUnsafe'])
+        state = self.state_event(r['sequence'], kind, at, verified['clockUnsafe'], evidence, r['bodySha256'])
+        # Every observation has an explicit state, even unsupported/unknown ones.
+        # Consumers must not filter unknown states and reuse an older candidate.
+        for event in events:
+            if event['event'] == 'fleet-receipt':
+                event.update(releaseStateId=state['id'], releaseStateSequence=state['sequence'])
+            else:
+                event.update(knownAt=None if verified['clockUnsafe'] else at,
+                             observedReceiptMs=at, clockUnsafe=verified['clockUnsafe'])
+        fleet = [event for event in events if event['event'] == 'fleet-receipt']
+        events = [event for event in events if event['event'] != 'fleet-receipt']
+        events.append(state)
+        events.extend(fleet)
         return events
 
-    def interrupt(self, event):
-        if not self.pending:
-            return []
-        pending = self.pending
-        self.pending = None
-        return [dict(event='bundle-observation-incomplete', knownAt=self.last_at,
-                     htmlSequence=pending['htmlSequence'], reason='prefix_ended_before_resource_completion'
-                     if event == 'verification-complete' else 'gap_before_resource_completion')]
+    def interrupt(self, record):
+        gap = record['event'] == 'schedule-gap'
+        at = utc_ms(record['record']['at']) if gap else self.last_at
+        unsafe = record['clockUnsafe']
+        self.last_at = at
+        events = []
+        if self.pending:
+            pending = self.pending
+            self.pending = None
+            events.append(dict(event='bundle-observation-incomplete', knownAt=None if unsafe else at,
+                               observedReceiptMs=at, clockUnsafe=unsafe,
+                               htmlSequence=pending['htmlSequence'], reason='gap_before_resource_completion'
+                               if gap else 'prefix_ended_before_resource_completion'))
+        if gap:
+            events.append(self.state_event(record['record']['sequence'], 'schedule-gap', at, unsafe,
+                                           self.candidate(at, unsafe)))
+        return events
 
 
 def iter_capture(prefix, expected_seal_sha256, proofs=()):
@@ -516,5 +555,5 @@ def iter_capture(prefix, expected_seal_sha256, proofs=()):
         if record['event'] == 'response':
             yield from release.step(record)
         else:
-            yield from release.interrupt(record['event'])
+            yield from release.interrupt(record)
             yield record

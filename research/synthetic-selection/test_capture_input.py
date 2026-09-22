@@ -306,6 +306,65 @@ class CaptureInputTests(unittest.TestCase):
         self.assertEqual(candidate['status'],'bundle_observed_health_unknown')
         self.assertEqual(candidate['healthFailuresSinceBundle'],1)
 
+    def test_same_build_health_recovery_is_known_only_at_later_receipt(self):
+        proof=self.bundle();self.request()
+        self.t=60;self.request(b'{"build":"a"}',kind='health',status=503);self.request()
+        self.t=120;self.request(b'{"build":"a"}',kind='health');self.request()
+        events=self.events([proof]);fleets=self.fleets(events)
+        self.assertEqual([f['releaseEvidence']['status'] for f in fleets],
+                         ['candidate_under_continuity_assumption','bundle_observed_health_unknown',
+                          'candidate_under_continuity_assumption'])
+        restored=fleets[-1]['releaseEvidence']
+        self.assertEqual(restored['healthFailuresSinceBundle'],1)
+        self.assertEqual(restored['knownAt'],restored['previousHealth']['receivedAtMs'])
+        self.assertGreater(restored['knownAt'],fleets[1]['receivedAt'])
+        failed_state=next(e for e in events if e.get('id')==fleets[1]['releaseStateId'])
+        self.assertIsNone(failed_state['source'])
+
+    def test_unknown_release_state_shadows_prior_supported_candidate(self):
+        proof=self.bundle()
+        raw=encoded(dict(buses=[],routes={},stop_names={},stop_coords={},segments={},dwells={}))
+        self.request(raw)
+        self.t=60;self.request(b'{"build":"b"}',kind='health');self.request(raw)
+        events=self.events([proof]);fleets=self.fleets(events)
+        states=[e for e in events if e['event']=='release-state']
+        self.assertEqual(len(states),self.capture.sequence)
+        self.assertTrue(all(e['shadowsEarlierReleaseMappings'] and not e['acceptedRelease'] for e in states))
+        for fleet in fleets:
+            state=next(e for e in states if e['id']==fleet['releaseStateId'])
+            self.assertEqual(state['sequence'],fleet['releaseStateSequence'])
+            self.assertEqual(state['sequence'],fleet['sequence'])
+            self.assertEqual(state['knownAt'],fleet['receivedAt'])
+            self.assertEqual(state['releaseEvidence'],fleet['releaseEvidence'])
+            self.assertLess(events.index(state),events.index(fleet))
+        self.assertEqual(states[-1]['status'],'no_complete_bundle')
+        self.assertIsNone(states[-1]['source']);self.assertIsNone(states[-1]['files'])
+        (RESULTS/'verified-synthetic-release-shadow.json').write_text(json.dumps(dict(states=states,fleets=fleets),indent=2)+'\n')
+
+    def test_unpaired_resource_invalidates_prior_bundle(self):
+        proof=self.bundle();self.request()
+        self.t=60;self.request(b'failed module',kind='module',status=503);self.request()
+        fleets=self.fleets(self.events([proof]))
+        self.assertEqual(fleets[0]['releaseEvidence']['status'],'candidate_under_continuity_assumption')
+        self.assertEqual(fleets[1]['releaseEvidence']['status'],'no_complete_bundle')
+
+    def test_unsafe_health_and_gap_have_no_causal_release_timestamp(self):
+        proof=self.bundle();self.request()
+        self.t=60;self.request(b'{"build":"a"}',kind='health');self.request()
+        prior=(EPOCH-dt.timedelta(seconds=1)).isoformat()
+        prefix=self.rewrite(self.freeze(),lambda rows:rows[-2].update(requestedAt=prior,receivedAt=prior))
+        events=self.events([proof],prefix)
+        unsafe=[e for e in events if e.get('clockUnsafe') and e['event']!='verification-complete']
+        self.assertTrue(any(e['event']=='health-bracket-known' for e in unsafe))
+        self.assertTrue(all(e['knownAt'] is None and e['observedReceiptMs'] is not None for e in unsafe))
+        self.assertEqual(self.fleets(events)[-1]['status'],'unknown')
+        self.capture.manifest['skippedTicks']+=1
+        self.capture.record(dict(kind='schedule-gap',at=prior,skippedTicks=1,nextMonotonic=1100))
+        events=self.events([proof])
+        state=[e for e in events if e['event']=='release-state'][-1]
+        self.assertEqual(state['trigger'],'schedule-gap');self.assertTrue(state['clockUnsafe'])
+        self.assertIsNone(state['knownAt']);self.assertIsNone(state['source'])
+
     def test_prefix_ending_mid_bundle_remains_incomplete(self):
         proof=self.bundle();prefix=self.freeze(3)
         events=self.events([proof],prefix)

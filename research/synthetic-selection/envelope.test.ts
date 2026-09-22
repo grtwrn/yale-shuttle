@@ -54,4 +54,18 @@ describe('fixed episode input/version envelope',()=>{
     const result=await runEpisode({...args(),scheduledAt:receipts[0].receivedAt,receipts,releases:[]});
     expect(result.status).toBe('unavailable_version');
   });
+  it('retains a decoded unknown release instead of reusing an earlier supported mapping',async()=>{
+    const {states,fleets}=JSON.parse(readFileSync('../../research/synthetic-selection/results/verified-synthetic-release-shadow.json','utf8'));
+    const unknown=states.find((s:any)=>s.id===fleets[1].releaseStateId);
+    expect(unknown.shadowsEarlierReleaseMappings).toBe(true);expect(unknown.source).toBeNull();
+    // The older supported mapping is a fixture input, not approval of the
+    // decoder's synthetic bundle. Only the actual unknown state crosses here.
+    const result=await runEpisode({...args(),scheduledAt:fleets[1].receivedAt,receipts:fleets,
+      releases:[{...SUPPORTED_RELEASE,knownAt:fleets[0].receivedAt},unknown]});
+    expect(result.status).toBe('unavailable_version');expect(result.initialReceipt).toBe(fleets[1].id);
+  });
+  it('does not reinterpret unknown capture input as a frontend failure',async()=>{
+    await expect(runEpisode({...args(),receipts:[{...r('unknown',NOW),status:'unknown',complete:false,replayAdmissible:false}]}))
+      .rejects.toThrow('Unresolved receipt uncertainty');
+  });
 });

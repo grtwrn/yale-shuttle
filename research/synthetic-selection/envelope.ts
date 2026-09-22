@@ -19,9 +19,9 @@ export function initialStructure(body:any):boolean {
   return record(body) && Array.isArray(body.buses)
     && ['routes','stop_names','stop_coords','segments','dwells'].every(k=>record(body[k]));
 }
-export type Receipt={id:string;receivedAt:number;status:'ok'|'failure';complete:boolean;body?:any;
+export type Receipt={id:string;receivedAt:number;status:'ok'|'failure'|'unknown';complete:boolean;body?:any;replayAdmissible?:boolean;
   bodySha256:string;serverBuild?:string;requestStartedAt?:number;requestDurationMs?:number};
-type Release={knownAt:number;source:string;webTree:string;files:Record<string,string>};
+type Release={knownAt:number;source:string|null;webTree?:string|null;files?:Record<string,string>|null};
 // No file/network reader: immutable capture verification/decoding is a separate
 // boundary. This API accepts already-verified complete public receipt envelopes.
 export async function runEpisode({scenario,scheduledAt,receipts,releases,clock,profile='A',reference=false,captureKnownThrough}:
@@ -31,6 +31,7 @@ export async function runEpisode({scenario,scheduledAt,receipts,releases,clock,p
   if(clock.now()>scheduledAt) throw Error('Clock already after scheduled start');
   const ids=new Set<string>();let last=-Infinity;
   for(const r of receipts){
+    if(r.status==='unknown'||r.replayAdmissible===false)throw Error('Unresolved receipt uncertainty requires a separate runner policy');
     if(!Number.isFinite(r.receivedAt)||r.receivedAt<last||ids.has(r.id)||!/^[a-f0-9]{64}$/.test(r.bodySha256)) throw Error('Invalid/noncausal receipt envelope');
     last=r.receivedAt;ids.add(r.id);
   }
