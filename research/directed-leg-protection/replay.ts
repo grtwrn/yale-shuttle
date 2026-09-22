@@ -99,18 +99,41 @@ const baseline=replay(raw,false),protectedRun=replay(raw,true);
 assert.deepEqual(baseline.rows.map(signature),frozenRows.map(signature),'Baseline differs from frozen canonical visits');
 emit('baseline-visits',baseline.rows);emit('protected-visits',protectedRun.rows);
 emit('guard-decisions',protectedRun.decisions);emit('baseline-example-traces',baseline.traces);emit('protected-example-traces',protectedRun.traces);
-const baseByKey=new Map(baseline.rows.map(r=>[visitKey(r),r])),newByKey=new Map(protectedRun.rows.map(r=>[visitKey(r),r]));
-assert.equal(baseByKey.size,baseline.rows.length,'Non-unique baseline anchored occurrence');
-assert.equal(newByKey.size,protectedRun.rows.length,'Non-unique protected anchored occurrence');
-const diff:any[]=[],counts:Record<string,any>={};
-for(const key of new Set([...baseByKey.keys(),...newByKey.keys()])) {
-  const old=baseByKey.get(key),next=newByKey.get(key),row=old??next;
+function grouped(rows:any[]) {
+  const groups=new Map<string,any[]>();
+  for(const row of rows){const key=visitKey(row),group=groups.get(key)??[];group.push(row);groups.set(key,group);}
+  return groups;
+}
+const baseByKey=grouped(baseline.rows),newByKey=grouped(protectedRun.rows);
+const diff:any[]=[],collisions:any[]=[],counts:Record<string,any>={};
+function compare(key:string,old:any,next:any,ambiguousIdentity=false) {
+  const row=old??next;
   const fields=old&&next?Object.keys(signature(old)).filter(k=>JSON.stringify(old[k])!==JSON.stringify(next[k])):[];
   const status=!old?'added':!next?'removed':fields.length?'changed':'identical';
   const r=counts[row.route_id]??={added:0,removed:0,changed:0,identical:0};r[status]++;
-  if(status!=='identical')diff.push({key,route:row.route_id,bus:row.bus_name,status,fields,baseline:old??null,protected:next??null});
+  if(status!=='identical')diff.push({key,route:row.route_id,bus:row.bus_name,status,fields,ambiguousIdentity,
+    baseline:old??null,protected:next??null});
 }
-emit('visit-differences',diff);
+for(const key of new Set([...baseByKey.keys(),...newByKey.keys()])) {
+  const old=[...(baseByKey.get(key)??[])],next=[...(newByKey.get(key)??[])];
+  if(old.length>1||next.length>1)collisions.push({key,baseline:[...old],protected:[...next]});
+  // Contended names can have two visits at exactly the same anchor instant.
+  // Match exact semantic rows first and retain every unmatched row; never let
+  // Map.set silently overwrite a physical/provider occurrence.
+  for(let i=old.length-1;i>=0;i--) {
+    const j=next.findIndex(r=>JSON.stringify(signature(r))===JSON.stringify(signature(old[i])));
+    if(j>=0){compare(key,old[i],next[j]);old.splice(i,1);next.splice(j,1);}
+  }
+  if(old.length===1&&next.length===1)compare(key,old[0],next[0]);
+  else {
+    const ambiguous=old.length>1||next.length>1;
+    for(const row of old)compare(key,row,null,ambiguous);
+    for(const row of next)compare(key,null,row,ambiguous);
+  }
+}
+emit('visit-differences',diff);emit('anchored-identity-collisions',collisions);
+assert.equal(Object.values(counts).reduce((n,r)=>n+r.identical+r.changed+r.removed,0),baseline.rows.length);
+assert.equal(Object.values(counts).reduce((n,r)=>n+r.identical+r.changed+r.added,0),protectedRun.rows.length);
 const prefixChecks=[];
 for(const cutoff of [Date.parse('2026-09-16T04:00:00Z'),Date.parse('2026-09-19T04:00:00Z'),raw[Math.floor(raw.length/2)]!.collectedAt+1]) {
   const before=raw.filter(o=>o.collectedAt<cutoff),prefix=replay(before,true,false);
@@ -135,7 +158,7 @@ for(const [bus,at] of [
   assert.equal(row.decision.protected,false);checks.push({bus,at,index:row.index,positive:false,decision:row.decision});
 }
 const summary={baselineVisitSignaturesIdentical:baseline.rows.length,baseline:baseline.audit,protected:protectedRun.audit,
-  visitDifferencesByRoute:counts,focusedExamples:checks,prefixChecks,
+  visitDifferencesByRoute:counts,anchoredIdentityCollisionGroups:collisions.length,focusedExamples:checks,prefixChecks,
   inputSha256:createHash('sha256').update(fs.readFileSync('research/k-sweep/results/raw_positions.jsonl.gz')).digest('hex'),
   topologySha256:createHash('sha256').update(fs.readFileSync(frozen+'canonical-topology.json')).digest('hex'),
   specSha256:createHash('sha256').update(fs.readFileSync('research/directed-leg-protection/SPEC.md')).digest('hex'),
