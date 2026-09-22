@@ -1,5 +1,8 @@
 name: checkpoint-ensemble-cross-policy-control
 on:
+  push:
+    branches: [research/checkpoint-ensemble-2026-09-22]
+    paths: ['research/checkpoint-ensemble/compare_policies.py', '.github/workflows/checkpoint-ensemble-compare.yml']
   workflow_dispatch:
 permissions:
   contents: read
