@@ -1,7 +1,7 @@
 # Blue Day and Blue West K10 default
 
-Blue Day and Blue West join Red's bounded default trial. The page identifies all
-three routes and offers `/?eta_model=usual` to compare previous estimates.
+Blue Day and Blue West join Red's bounded default trial. Riders automatically
+receive the current estimates without a model-version banner or chooser.
 Blue Night and Blue Weekend retain their existing forecasts because neither
 had enough qualifying historical support. `SHUTTLE_BLUE_K10=0` disables only the
 Blue overlay; `SHUTTLE_K10_TRIAL=0` disables the entire trial.
@@ -33,9 +33,8 @@ latched departure prevents an old short-loop origin from becoming active again.
 If any target countdown reaches 60 seconds, the whole group returns to live.
 
 The prior expires September 28, 2026 at 00:00 America/New_York, like Red's.
-Renewal requires evaluating a refreshed prior. Default readings count in normal
-accuracy; explicit opt-outs for all three trial routes use `*-usual` surfaces.
-Other routes retain normal surfaces on the comparison page. API trial metadata
+Renewal requires evaluating a refreshed prior. Rider readings count in normal
+accuracy. Legacy comparison page URLs now request current estimates too. API trial metadata
 adds per-route replacement counts under `server_eta.trial.byRoute`.
 
 ## Qualification and limits
@@ -62,7 +61,7 @@ not claim to smooth away the difference between the two estimates.
 Hosted checks compare every exported Blue forecast/fallback decision, replay raw
 GPS through the production tracker and startup recovery, and repeat Red's GPS
 replay to catch changes to its behavior. Regular gates cover types, the full
-application suite, build, staging API and a real-browser default/opt-out flow.
+application suite, build, staging API and a real-browser check that current estimates are used even on legacy URLs.
 
 The production replay matched 8,335 available Blue clocks (4,899 before release,
 3,436 released), all 413 sampled restarts, and all 2,100 replacement forecasts
