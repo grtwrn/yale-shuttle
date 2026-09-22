@@ -1,0 +1,43 @@
+name: protected-highway-availability-report
+on:
+  push:
+    branches: [research/highway-protected-2026-09-22]
+    paths: ['research/highway-availability/**', '.github/workflows/highway-availability.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: protected-highway-window-results
+          run-id: 35690386363
+          github-token: ${{ github.token }}
+          path: research/highway-availability/input
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/highway-availability/canonical
+      - name: Record exact production printed spans without changing forecasts
+        run: services/shuttle-v2/node_modules/.bin/tsx research/highway-availability/printed.ts research/highway-availability/input research/highway-availability/results
+      - name: Attribute only observable availability reasons and preserve action censoring
+        run: |
+          python3 research/highway-availability/diagnose.py
+          cp research/highway-availability/PLAN.md research/highway-availability/results/
+          cp research/highway-protected-app-scope.md research/highway-availability/results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protected-highway-availability-report
+          path: research/highway-availability/results/**
+          retention-days: 90
