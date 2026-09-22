@@ -5,6 +5,8 @@ import http.client
 import importlib.util
 import io
 import json
+import signal
+import time
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -137,6 +139,14 @@ class Tests(unittest.TestCase):
             entry, body, _ = self.cap.request(c.BASE + '/api/buses', 'fleet')
         self.assertEqual(body, b'part')
         self.assertEqual(entry['errorType'], 'RequestCancelled')
+
+    def test_total_alarm_interrupts_blocking_io_and_restores_handler(self):
+        previous = signal.getsignal(signal.SIGALRM)
+        with self.assertRaises(c.RequestDeadlineExceeded):
+            with c.request_budget(0.02):
+                time.sleep(0.5)
+        self.assertEqual(signal.getsignal(signal.SIGALRM), previous)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
 
     def test_encoding_is_preserved_not_silently_decoded(self):
         wire = gzip.compress(b'{"buses":[]}', mtime=0)
