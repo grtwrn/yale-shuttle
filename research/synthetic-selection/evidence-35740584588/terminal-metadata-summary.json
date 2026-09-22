@@ -1,0 +1,48 @@
+{
+  "metadataOnly": true,
+  "syntheticOnly": true,
+  "outcomesEvaluated": false,
+  "originalRun": 35740584588,
+  "originalSource": "8c67b5bcd5e5deb02893bed31de7d22c3b034337",
+  "originalArtifactId": 10712181180,
+  "originalArtifactSha256": "b0cf90389f5c0c89326185533272287f012b98a46f323df05ef0421b4a9077ee",
+  "denominatorSha256": "df85598fac927394fa28402792c713306f3bbf117369da252010c49cb2b101df",
+  "denominatorBytes": 101676220,
+  "profiles": 28224,
+  "captureLineages": 7,
+  "profilesByDate": {
+    "2026-09-23": 4032,
+    "2026-09-24": 4032,
+    "2026-09-25": 4032,
+    "2026-09-26": 4032,
+    "2026-09-27": 4032,
+    "2026-09-28": 4032,
+    "2026-09-29": 4032
+  },
+  "outputMaxima": {
+    "maxBuffered": 44775,
+    "maxRowBytes": 41260,
+    "rawBytes": 44071597,
+    "compressedBytes": 2151054,
+    "rows": 3243
+  },
+  "outputSums": {
+    "rawBytes": 145253628342,
+    "compressedBytes": 6820706333,
+    "rows": 22599277
+  },
+  "inputCounts": {
+    "applied": 5080320,
+    "failed": 0,
+    "skippedSlots": 0,
+    "emptyFleet": 0,
+    "missingServerEta": 0,
+    "modelParamsMissing": 5080320
+  },
+  "minAppliedPerProfile": 180,
+  "maxAppliedPerProfile": 180,
+  "logicalBodyReadInference": {
+    "count": 5080320,
+    "basis": "For this healthy workload every initial candidate is accepted and each applied receipt calls DiskTimeline.body once; that method reads, gunzips, hashes and parses the body without a payload cache. This is a logical read count derived from emitted application counters and frozen source, not an OS physical-I/O/cache measurement."
+  }
+}

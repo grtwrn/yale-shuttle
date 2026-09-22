@@ -1,0 +1,5131 @@
+{
+  "stage": "full",
+  "success": true,
+  "counts": {
+    "expected": 28224,
+    "completed": 28224,
+    "missingArtifactKeys": 0,
+    "terminalKeys": 28224,
+    "rawBytes": 145253628342,
+    "compressedBytes": 6820706333,
+    "rows": 22599277,
+    "retainedStreams": 168
+  },
+  "statuses": {
+    "selected/assumption_qualified/complete/completed": 28224
+  },
+  "strata": {
+    "2026-09-23/1/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/1/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/2/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/2/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/3/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/3/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/4/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/4/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/8/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/8/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/9/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/9/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/10/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/10/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/13/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/13/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/14/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/14/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/15/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/15/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/16/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/16/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/17/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/17/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/18/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/18/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/19/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-23/19/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/1/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/1/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/2/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/2/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/3/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/3/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/4/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/4/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/8/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/8/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/9/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/9/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/10/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/10/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/13/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/13/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/14/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/14/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/15/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/15/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/16/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/16/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/17/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/17/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/18/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/18/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/19/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-24/19/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/1/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/1/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/2/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/2/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/3/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/3/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/4/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/4/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/8/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/8/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/9/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/9/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/10/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/10/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/13/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/13/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/14/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/14/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/15/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/15/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/16/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/16/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/17/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/17/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/18/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/18/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/19/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-25/19/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/1/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/1/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/2/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/2/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/3/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/3/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/4/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/4/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/8/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/8/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/9/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/9/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/10/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/10/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/13/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/13/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/14/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/14/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/15/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/15/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/16/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/16/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/17/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/17/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/18/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/18/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/19/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-26/19/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/1/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/1/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/2/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/2/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/3/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/3/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/4/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/4/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/8/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/8/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/9/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/9/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/10/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/10/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/13/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/13/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/14/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/14/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/15/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/15/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/16/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/16/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/17/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/17/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/18/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/18/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/19/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-27/19/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/1/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/1/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/2/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/2/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/3/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/3/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/4/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/4/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/8/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/8/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/9/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/9/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/10/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/10/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/13/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/13/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/14/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/14/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/15/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/15/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/16/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/16/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/17/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/17/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/18/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/18/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/19/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-28/19/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/1/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/1/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/2/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/2/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/3/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/3/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/4/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/4/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/8/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/8/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/9/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/9/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/10/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/10/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/13/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/13/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/14/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/14/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/15/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/15/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/16/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/16/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/17/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/17/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/18/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/18/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/19/A": {
+      "selected/assumption_qualified/complete/completed": 144
+    },
+    "2026-09-29/19/B": {
+      "selected/assumption_qualified/complete/completed": 144
+    }
+  },
+  "shards": [
+    {
+      "route": 1,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 519909376,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078329344,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 441.897061078,
+          "waitedChildCpuSeconds": {
+            "user": 475.718414,
+            "system": 25.91646
+          }
+        }
+      ]
+    },
+    {
+      "route": 2,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 530706432,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078083584,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 514.971658852,
+          "waitedChildCpuSeconds": {
+            "user": 557.634361,
+            "system": 21.746197
+          }
+        }
+      ]
+    },
+    {
+      "route": 3,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 535601152,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077936128,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 396.479923079,
+          "waitedChildCpuSeconds": {
+            "user": 429.846433,
+            "system": 17.889289
+          }
+        }
+      ]
+    },
+    {
+      "route": 4,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 580734976,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1079062528,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 413.75824920499997,
+          "waitedChildCpuSeconds": {
+            "user": 445.220134,
+            "system": 20.564407
+          }
+        }
+      ]
+    },
+    {
+      "route": 8,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 516374528,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076830208,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 471.06837053099997,
+          "waitedChildCpuSeconds": {
+            "user": 516.240843,
+            "system": 21.741067
+          }
+        }
+      ]
+    },
+    {
+      "route": 9,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 517111808,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076928512,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 477.47551264300006,
+          "waitedChildCpuSeconds": {
+            "user": 523.143391,
+            "system": 23.518148
+          }
+        }
+      ]
+    },
+    {
+      "route": 10,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 526749696,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076940800,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 471.863575382,
+          "waitedChildCpuSeconds": {
+            "user": 515.992541,
+            "system": 23.455086
+          }
+        }
+      ]
+    },
+    {
+      "route": 13,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 525840384,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078005760,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 504.655712395,
+          "waitedChildCpuSeconds": {
+            "user": 550.331787,
+            "system": 21.238306
+          }
+        }
+      ]
+    },
+    {
+      "route": 14,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 585080832,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078538240,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 535.2203990070001,
+          "waitedChildCpuSeconds": {
+            "user": 574.113734,
+            "system": 30.569429
+          }
+        }
+      ]
+    },
+    {
+      "route": 15,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 523530240,
+          "peakProcesses": 7,
+          "peakScratchBytes": 1078067200,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 339.554126235,
+          "waitedChildCpuSeconds": {
+            "user": 368.823655,
+            "system": 16.206979
+          }
+        }
+      ]
+    },
+    {
+      "route": 16,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 515944448,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077710848,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 511.52776940300004,
+          "waitedChildCpuSeconds": {
+            "user": 556.608412,
+            "system": 20.835263
+          }
+        }
+      ]
+    },
+    {
+      "route": 17,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 521527296,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077743616,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 415.404846433,
+          "waitedChildCpuSeconds": {
+            "user": 452.654256,
+            "system": 18.079764
+          }
+        }
+      ]
+    },
+    {
+      "route": 18,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 519389184,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077239808,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 515.68900546,
+          "waitedChildCpuSeconds": {
+            "user": 562.484754,
+            "system": 25.784679
+          }
+        }
+      ]
+    },
+    {
+      "route": 19,
+      "date": "2026-09-23",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 524943360,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078386688,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 521.648587241,
+          "waitedChildCpuSeconds": {
+            "user": 573.7312,
+            "system": 24.580263
+          }
+        }
+      ]
+    },
+    {
+      "route": 1,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 526528512,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076674560,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 509.409988174,
+          "waitedChildCpuSeconds": {
+            "user": 554.552035,
+            "system": 22.938879
+          }
+        }
+      ]
+    },
+    {
+      "route": 2,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 523603968,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076428800,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 411.900884022,
+          "waitedChildCpuSeconds": {
+            "user": 443.296576,
+            "system": 23.10799
+          }
+        }
+      ]
+    },
+    {
+      "route": 3,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 529301504,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076428800,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 529.3027086349999,
+          "waitedChildCpuSeconds": {
+            "user": 579.757337,
+            "system": 23.825771
+          }
+        }
+      ]
+    },
+    {
+      "route": 4,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 533241856,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076428800,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 551.575039998,
+          "waitedChildCpuSeconds": {
+            "user": 592.647423,
+            "system": 29.530295
+          }
+        }
+      ]
+    },
+    {
+      "route": 8,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 526790656,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076420608,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 359.31948877799994,
+          "waitedChildCpuSeconds": {
+            "user": 390.027567,
+            "system": 20.643898
+          }
+        }
+      ]
+    },
+    {
+      "route": 9,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 522428416,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076420608,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 483.881793839,
+          "waitedChildCpuSeconds": {
+            "user": 529.881905,
+            "system": 23.895954
+          }
+        }
+      ]
+    },
+    {
+      "route": 10,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 521969664,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076428800,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 360.56500231899986,
+          "waitedChildCpuSeconds": {
+            "user": 387.754909,
+            "system": 22.024493
+          }
+        }
+      ]
+    },
+    {
+      "route": 13,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 523509760,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076428800,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 311.88328315700005,
+          "waitedChildCpuSeconds": {
+            "user": 338.78186,
+            "system": 19.802793
+          }
+        }
+      ]
+    },
+    {
+      "route": 14,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 525918208,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076568064,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 411.614357004,
+          "waitedChildCpuSeconds": {
+            "user": 448.628599,
+            "system": 17.76919
+          }
+        }
+      ]
+    },
+    {
+      "route": 15,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 525447168,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076432896,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 519.8833411879999,
+          "waitedChildCpuSeconds": {
+            "user": 568.426147,
+            "system": 22.666401
+          }
+        }
+      ]
+    },
+    {
+      "route": 16,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 527306752,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076432896,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 477.66792771699994,
+          "waitedChildCpuSeconds": {
+            "user": 520.804124,
+            "system": 22.335531
+          }
+        }
+      ]
+    },
+    {
+      "route": 17,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 522706944,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076432896,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 544.396124361,
+          "waitedChildCpuSeconds": {
+            "user": 589.275005,
+            "system": 24.935888
+          }
+        }
+      ]
+    },
+    {
+      "route": 18,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 522375168,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076428800,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 521.462723389,
+          "waitedChildCpuSeconds": {
+            "user": 567.214676,
+            "system": 27.17469
+          }
+        }
+      ]
+    },
+    {
+      "route": 19,
+      "date": "2026-09-24",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 526462976,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076424704,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 410.579155601,
+          "waitedChildCpuSeconds": {
+            "user": 443.843205,
+            "system": 24.178868
+          }
+        }
+      ]
+    },
+    {
+      "route": 1,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 519753728,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076637696,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 430.726883245,
+          "waitedChildCpuSeconds": {
+            "user": 464.38692,
+            "system": 23.599986
+          }
+        }
+      ]
+    },
+    {
+      "route": 2,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 534970368,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076441088,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 521.747874399,
+          "waitedChildCpuSeconds": {
+            "user": 570.692179,
+            "system": 22.76244
+          }
+        }
+      ]
+    },
+    {
+      "route": 3,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 540164096,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076441088,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 507.88048340700004,
+          "waitedChildCpuSeconds": {
+            "user": 557.817098,
+            "system": 23.528309
+          }
+        }
+      ]
+    },
+    {
+      "route": 4,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 531701760,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076465664,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 434.519812945,
+          "waitedChildCpuSeconds": {
+            "user": 468.450741,
+            "system": 23.079294
+          }
+        }
+      ]
+    },
+    {
+      "route": 8,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 524210176,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076441088,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 477.39667937099995,
+          "waitedChildCpuSeconds": {
+            "user": 523.131336,
+            "system": 23.173856
+          }
+        }
+      ]
+    },
+    {
+      "route": 9,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 521654272,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076436992,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 263.803129558,
+          "waitedChildCpuSeconds": {
+            "user": 288.637851,
+            "system": 17.292144
+          }
+        }
+      ]
+    },
+    {
+      "route": 10,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 523673600,
+          "peakProcesses": 7,
+          "peakScratchBytes": 1076441088,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 438.76926566000003,
+          "waitedChildCpuSeconds": {
+            "user": 485.786116,
+            "system": 20.970063
+          }
+        }
+      ]
+    },
+    {
+      "route": 13,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 535760896,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076445184,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 527.492192668,
+          "waitedChildCpuSeconds": {
+            "user": 573.227832,
+            "system": 24.600204
+          }
+        }
+      ]
+    },
+    {
+      "route": 14,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 527179776,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076817920,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 498.401770168,
+          "waitedChildCpuSeconds": {
+            "user": 543.120055,
+            "system": 21.403964
+          }
+        }
+      ]
+    },
+    {
+      "route": 15,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 516386816,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076441088,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 509.778298885,
+          "waitedChildCpuSeconds": {
+            "user": 546.743414,
+            "system": 28.166726
+          }
+        }
+      ]
+    },
+    {
+      "route": 16,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 519077888,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076441088,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 525.5832513409999,
+          "waitedChildCpuSeconds": {
+            "user": 572.98313,
+            "system": 23.164679
+          }
+        }
+      ]
+    },
+    {
+      "route": 17,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 519520256,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076441088,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 531.200608126,
+          "waitedChildCpuSeconds": {
+            "user": 575.899235,
+            "system": 22.867078
+          }
+        }
+      ]
+    },
+    {
+      "route": 18,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 523739136,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076441088,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 502.91585890000005,
+          "waitedChildCpuSeconds": {
+            "user": 537.573398,
+            "system": 32.367626
+          }
+        }
+      ]
+    },
+    {
+      "route": 19,
+      "date": "2026-09-25",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 526688256,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076875264,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 398.74732603499996,
+          "waitedChildCpuSeconds": {
+            "user": 433.548525,
+            "system": 18.276086
+          }
+        }
+      ]
+    },
+    {
+      "route": 1,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 521646080,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076408320,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 510.41254584399996,
+          "waitedChildCpuSeconds": {
+            "user": 542.306889,
+            "system": 22.131741
+          }
+        }
+      ]
+    },
+    {
+      "route": 2,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 530354176,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076375552,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 259.184658352,
+          "waitedChildCpuSeconds": {
+            "user": 273.511501,
+            "system": 15.457448
+          }
+        }
+      ]
+    },
+    {
+      "route": 3,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 521793536,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076850688,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 537.6072800979998,
+          "waitedChildCpuSeconds": {
+            "user": 579.346757,
+            "system": 28.299042
+          }
+        }
+      ]
+    },
+    {
+      "route": 4,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 532844544,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076375552,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 501.447055299,
+          "waitedChildCpuSeconds": {
+            "user": 533.074389,
+            "system": 22.531747
+          }
+        }
+      ]
+    },
+    {
+      "route": 8,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 524378112,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076375552,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 492.648858334,
+          "waitedChildCpuSeconds": {
+            "user": 519.328261,
+            "system": 25.948914
+          }
+        }
+      ]
+    },
+    {
+      "route": 9,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 520609792,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076367360,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 454.22676310400004,
+          "waitedChildCpuSeconds": {
+            "user": 480.023804,
+            "system": 22.967057
+          }
+        }
+      ]
+    },
+    {
+      "route": 10,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 527159296,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076371456,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 450.1798274160001,
+          "waitedChildCpuSeconds": {
+            "user": 471.429031,
+            "system": 27.630152
+          }
+        }
+      ]
+    },
+    {
+      "route": 13,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 523714560,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076379648,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 478.48728197599996,
+          "waitedChildCpuSeconds": {
+            "user": 508.447711,
+            "system": 23.48705
+          }
+        }
+      ]
+    },
+    {
+      "route": 14,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 525807616,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076604928,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 527.231278126,
+          "waitedChildCpuSeconds": {
+            "user": 570.37345,
+            "system": 26.650092
+          }
+        }
+      ]
+    },
+    {
+      "route": 15,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 518459392,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076375552,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 506.458656594,
+          "waitedChildCpuSeconds": {
+            "user": 541.235238,
+            "system": 23.500756
+          }
+        }
+      ]
+    },
+    {
+      "route": 16,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 511348736,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076375552,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 498.73521755300004,
+          "waitedChildCpuSeconds": {
+            "user": 535.127178,
+            "system": 23.855166
+          }
+        }
+      ]
+    },
+    {
+      "route": 17,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 527552512,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076375552,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 507.321504335,
+          "waitedChildCpuSeconds": {
+            "user": 544.331244,
+            "system": 23.370049
+          }
+        }
+      ]
+    },
+    {
+      "route": 18,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 511619072,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076371456,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 379.831480622,
+          "waitedChildCpuSeconds": {
+            "user": 396.024441,
+            "system": 24.918053
+          }
+        }
+      ]
+    },
+    {
+      "route": 19,
+      "date": "2026-09-26",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 519639040,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076727808,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 483.35903682299994,
+          "waitedChildCpuSeconds": {
+            "user": 519.364374,
+            "system": 21.870334
+          }
+        }
+      ]
+    },
+    {
+      "route": 1,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 571097088,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076383744,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 380.84248455499994,
+          "waitedChildCpuSeconds": {
+            "user": 404.184449,
+            "system": 16.339027
+          }
+        }
+      ]
+    },
+    {
+      "route": 2,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 521691136,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076391936,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 489.624056401,
+          "waitedChildCpuSeconds": {
+            "user": 522.485216,
+            "system": 21.625093
+          }
+        }
+      ]
+    },
+    {
+      "route": 3,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 524537856,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076514816,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 514.8833219510001,
+          "waitedChildCpuSeconds": {
+            "user": 550.518837,
+            "system": 26.428272
+          }
+        }
+      ]
+    },
+    {
+      "route": 4,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 519495680,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076613120,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 533.8115772579999,
+          "waitedChildCpuSeconds": {
+            "user": 560.114278,
+            "system": 31.25784
+          }
+        }
+      ]
+    },
+    {
+      "route": 8,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 517345280,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076387840,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 477.625883862,
+          "waitedChildCpuSeconds": {
+            "user": 496.339666,
+            "system": 29.694057
+          }
+        }
+      ]
+    },
+    {
+      "route": 9,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 518643712,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076383744,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 465.20035132500004,
+          "waitedChildCpuSeconds": {
+            "user": 485.742444,
+            "system": 30.739435
+          }
+        }
+      ]
+    },
+    {
+      "route": 10,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 527388672,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076383744,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 453.21460243,
+          "waitedChildCpuSeconds": {
+            "user": 479.118171,
+            "system": 22.594172
+          }
+        }
+      ]
+    },
+    {
+      "route": 13,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 524730368,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076383744,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 372.32607124900005,
+          "waitedChildCpuSeconds": {
+            "user": 398.709323,
+            "system": 17.250018
+          }
+        }
+      ]
+    },
+    {
+      "route": 14,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 531718144,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076387840,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 468.552925356,
+          "waitedChildCpuSeconds": {
+            "user": 508.029664,
+            "system": 20.067733
+          }
+        }
+      ]
+    },
+    {
+      "route": 15,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 529948672,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076391936,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 493.34681992500003,
+          "waitedChildCpuSeconds": {
+            "user": 527.716762,
+            "system": 22.400313
+          }
+        }
+      ]
+    },
+    {
+      "route": 16,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 530382848,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076383744,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 394.773929823,
+          "waitedChildCpuSeconds": {
+            "user": 423.342406,
+            "system": 18.548659
+          }
+        }
+      ]
+    },
+    {
+      "route": 17,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 528474112,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076387840,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 497.32906662899995,
+          "waitedChildCpuSeconds": {
+            "user": 535.510177,
+            "system": 21.519438
+          }
+        }
+      ]
+    },
+    {
+      "route": 18,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 522792960,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076383744,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 456.22186232699994,
+          "waitedChildCpuSeconds": {
+            "user": 475.970621,
+            "system": 28.250482
+          }
+        }
+      ]
+    },
+    {
+      "route": 19,
+      "date": "2026-09-27",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 527347712,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076592640,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 305.950468008,
+          "waitedChildCpuSeconds": {
+            "user": 324.534275,
+            "system": 20.25292
+          }
+        }
+      ]
+    },
+    {
+      "route": 1,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 522272768,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076637696,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 582.656047941,
+          "waitedChildCpuSeconds": {
+            "user": 636.731983,
+            "system": 27.710835
+          }
+        }
+      ]
+    },
+    {
+      "route": 2,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 579166208,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076285440,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 551.565053828,
+          "waitedChildCpuSeconds": {
+            "user": 592.500851,
+            "system": 32.548566
+          }
+        }
+      ]
+    },
+    {
+      "route": 3,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 531402752,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076277248,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 343.187558962,
+          "waitedChildCpuSeconds": {
+            "user": 372.472621,
+            "system": 17.831811
+          }
+        }
+      ]
+    },
+    {
+      "route": 4,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 523784192,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076281344,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 329.17752953,
+          "waitedChildCpuSeconds": {
+            "user": 358.232194,
+            "system": 19.764051
+          }
+        }
+      ]
+    },
+    {
+      "route": 8,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 521900032,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076277248,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 384.887400528,
+          "waitedChildCpuSeconds": {
+            "user": 419.656402,
+            "system": 23.846458
+          }
+        }
+      ]
+    },
+    {
+      "route": 9,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 534790144,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076277248,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 555.976890831,
+          "waitedChildCpuSeconds": {
+            "user": 600.837031,
+            "system": 22.148665
+          }
+        }
+      ]
+    },
+    {
+      "route": 10,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 523341824,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076277248,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 298.595767432,
+          "waitedChildCpuSeconds": {
+            "user": 325.89093,
+            "system": 16.529988
+          }
+        }
+      ]
+    },
+    {
+      "route": 13,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 527671296,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076281344,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 442.134713732,
+          "waitedChildCpuSeconds": {
+            "user": 483.868479,
+            "system": 20.582957
+          }
+        }
+      ]
+    },
+    {
+      "route": 14,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 543137792,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076383744,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 525.547285335,
+          "waitedChildCpuSeconds": {
+            "user": 573.57319,
+            "system": 20.972222
+          }
+        }
+      ]
+    },
+    {
+      "route": 15,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 651694080,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076285440,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 512.373917397,
+          "waitedChildCpuSeconds": {
+            "user": 555.198081,
+            "system": 21.237848
+          }
+        }
+      ]
+    },
+    {
+      "route": 16,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 528211968,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076281344,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 528.969384106,
+          "waitedChildCpuSeconds": {
+            "user": 575.281624,
+            "system": 23.405892
+          }
+        }
+      ]
+    },
+    {
+      "route": 17,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 530796544,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076285440,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 305.325535767,
+          "waitedChildCpuSeconds": {
+            "user": 330.328685,
+            "system": 18.320252
+          }
+        }
+      ]
+    },
+    {
+      "route": 18,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 549031936,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076277248,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 270.138659708,
+          "waitedChildCpuSeconds": {
+            "user": 292.34344,
+            "system": 18.732232
+          }
+        }
+      ]
+    },
+    {
+      "route": 19,
+      "date": "2026-09-28",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 530595840,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076285440,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 521.984634743,
+          "waitedChildCpuSeconds": {
+            "user": 570.340573,
+            "system": 23.634159
+          }
+        }
+      ]
+    },
+    {
+      "route": 1,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 524521472,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078812672,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 595.1936943559999,
+          "waitedChildCpuSeconds": {
+            "user": 652.188171,
+            "system": 27.898848
+          }
+        }
+      ]
+    },
+    {
+      "route": 2,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 531349504,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077755904,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 530.504293944,
+          "waitedChildCpuSeconds": {
+            "user": 567.869972,
+            "system": 29.67073
+          }
+        }
+      ]
+    },
+    {
+      "route": 3,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 544698368,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078312960,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 546.25665166,
+          "waitedChildCpuSeconds": {
+            "user": 596.053064,
+            "system": 25.759169
+          }
+        }
+      ]
+    },
+    {
+      "route": 4,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 554401792,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078796288,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 561.449810091,
+          "waitedChildCpuSeconds": {
+            "user": 600.44441,
+            "system": 31.153542
+          }
+        }
+      ]
+    },
+    {
+      "route": 8,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 521523200,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076580352,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 467.86153844100005,
+          "waitedChildCpuSeconds": {
+            "user": 510.514156,
+            "system": 22.448068
+          }
+        }
+      ]
+    },
+    {
+      "route": 9,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 525860864,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076678656,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 474.59674894299997,
+          "waitedChildCpuSeconds": {
+            "user": 522.552401,
+            "system": 23.486327
+          }
+        }
+      ]
+    },
+    {
+      "route": 10,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 524001280,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1076625408,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 463.21619108799996,
+          "waitedChildCpuSeconds": {
+            "user": 498.765865,
+            "system": 27.704854
+          }
+        }
+      ]
+    },
+    {
+      "route": 13,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 518467584,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077547008,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 498.96393879899995,
+          "waitedChildCpuSeconds": {
+            "user": 534.229765,
+            "system": 28.021738
+          }
+        }
+      ]
+    },
+    {
+      "route": 14,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 520581120,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077751808,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 536.701702707,
+          "waitedChildCpuSeconds": {
+            "user": 583.187026,
+            "system": 23.641602
+          }
+        }
+      ]
+    },
+    {
+      "route": 15,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 519925760,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078038528,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 521.6134563539999,
+          "waitedChildCpuSeconds": {
+            "user": 566.676346,
+            "system": 23.429856
+          }
+        }
+      ]
+    },
+    {
+      "route": 16,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 530259968,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077440512,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 518.5945390630001,
+          "waitedChildCpuSeconds": {
+            "user": 554.776554,
+            "system": 29.868121
+          }
+        }
+      ]
+    },
+    {
+      "route": 17,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 533540864,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077456896,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 521.152685763,
+          "waitedChildCpuSeconds": {
+            "user": 557.209956,
+            "system": 29.058599
+          }
+        }
+      ]
+    },
+    {
+      "route": 18,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 524357632,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1077047296,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 524.5271307339999,
+          "waitedChildCpuSeconds": {
+            "user": 572.17752,
+            "system": 27.899198
+          }
+        }
+      ]
+    },
+    {
+      "route": 19,
+      "date": "2026-09-29",
+      "summary": {
+        "expected": 288,
+        "observedTerminalKeys": 288,
+        "completed": 288,
+        "missingKeys": 0,
+        "partialManifestLines": [],
+        "error": null,
+        "success": true,
+        "sharedInputMatchesGeneration": true,
+        "resourceReportValid": true
+      },
+      "resources": [
+        {
+          "command": [
+            "npx",
+            "vitest",
+            "run",
+            "--config",
+            "../../research/synthetic-selection/benchmark.config.ts"
+          ],
+          "peakAggregateRssBytes": 527101952,
+          "peakProcesses": 6,
+          "peakScratchBytes": 1078845440,
+          "rssLimit": 2147483648,
+          "scratchLimit": 8589934592,
+          "deadlineSeconds": 5100,
+          "rssSamplingSeconds": 0.1,
+          "scratchSamplingSeconds": 2,
+          "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+          "limitViolation": null,
+          "exitCode": 0,
+          "elapsedSeconds": 514.053835807,
+          "waitedChildCpuSeconds": {
+            "user": 562.287492,
+            "system": 23.378236
+          }
+        }
+      ]
+    }
+  ],
+  "sharedInputs": [
+    {
+      "date": "2026-09-23",
+      "success": true,
+      "shared": {
+        "schema": 1,
+        "date": "2026-09-23",
+        "syntheticOnly": true,
+        "outcomes": false,
+        "readySha256": "a714653ced7fc1fcce0b0d47e850d885905c2e766e3699da64cd6c322c1d25f4",
+        "captureId": "592ee58e2a16083505ec41bd8907f77ae2620a87adaffb0f7c92b8a7036d1e0e",
+        "prefixSha256": "f36d293996cc0314ca563fe5f368926857cb9719ff23d23fa96768a61dde6fb1",
+        "databaseSha256": "db8adb13064243ff45ce1fff166ecddedc30625c2369979c6f45b0e15211d5fd",
+        "databaseBytes": 85405696,
+        "generator": {
+          "syntheticOnly": true,
+          "outcomes": false,
+          "generatorSha256": "4ee86d5dcb0d31839f3bc42a70e65001985b8cfb10e2caccd32f308bb4bc077b",
+          "topologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+          "start": "2026-09-23T04:00:00+00:00",
+          "seconds": 87300,
+          "routes": 14,
+          "busesPerRoute": 2,
+          "cycles": 2,
+          "distributionPoints": 50,
+          "cadenceSeconds": 15
+        },
+        "fleetIndexSha256": "48426692861317c16cc979712965a009baf0e63eadb0011770f4b9473261eb19",
+        "fleetReceipts": 5821
+      },
+      "resources": {
+        "command": [
+          "/usr/bin/python3",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/shared_input.py",
+          "generate",
+          "2026-09-23",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/results/shared-2026-09-23"
+        ],
+        "peakAggregateRssBytes": 167628800,
+        "peakProcesses": 2,
+        "peakScratchBytes": 1815408640,
+        "rssLimit": 2147483648,
+        "scratchLimit": 8589934592,
+        "deadlineSeconds": 5100,
+        "rssSamplingSeconds": 0.1,
+        "scratchSamplingSeconds": 2,
+        "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+        "limitViolation": null,
+        "exitCode": 0,
+        "elapsedSeconds": 201.45953292500002,
+        "waitedChildCpuSeconds": {
+          "user": 191.30436,
+          "system": 6.078646
+        }
+      },
+      "adjacentOverlapReceipts": 0
+    },
+    {
+      "date": "2026-09-24",
+      "success": true,
+      "shared": {
+        "schema": 1,
+        "date": "2026-09-24",
+        "syntheticOnly": true,
+        "outcomes": false,
+        "readySha256": "894db7752ae898eaa675fd942e8bb7ff8246c30a58282686c03513b40da0224f",
+        "captureId": "c05a82764f8fd24827e963352a3e9e5efa97bab8f3519aa1bafa7f379bcff9f9",
+        "prefixSha256": "4e5fb78d5cb3d23c3526bed6bde7ee2e9025381efa8feb132655c070f0168932",
+        "databaseSha256": "c020c90155f6cb3093ea8131beb45dbbdc0619582ac10162d844016c12ac18b7",
+        "databaseBytes": 85405696,
+        "generator": {
+          "syntheticOnly": true,
+          "outcomes": false,
+          "generatorSha256": "4ee86d5dcb0d31839f3bc42a70e65001985b8cfb10e2caccd32f308bb4bc077b",
+          "topologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+          "start": "2026-09-24T04:00:00+00:00",
+          "seconds": 87300,
+          "routes": 14,
+          "busesPerRoute": 2,
+          "cycles": 2,
+          "distributionPoints": 50,
+          "cadenceSeconds": 15
+        },
+        "fleetIndexSha256": "f7ed5c012e3d71064694cd63df816b9b03c14a36a22be7faab7c7e6c9baee15e",
+        "fleetReceipts": 5821
+      },
+      "resources": {
+        "command": [
+          "/usr/bin/python3",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/shared_input.py",
+          "generate",
+          "2026-09-24",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/results/shared-2026-09-24"
+        ],
+        "peakAggregateRssBytes": 169627648,
+        "peakProcesses": 2,
+        "peakScratchBytes": 1799880704,
+        "rssLimit": 2147483648,
+        "scratchLimit": 8589934592,
+        "deadlineSeconds": 5100,
+        "rssSamplingSeconds": 0.1,
+        "scratchSamplingSeconds": 2,
+        "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+        "limitViolation": null,
+        "exitCode": 0,
+        "elapsedSeconds": 174.79716381499998,
+        "waitedChildCpuSeconds": {
+          "user": 146.835864,
+          "system": 3.51214
+        }
+      },
+      "adjacentOverlapReceipts": 61
+    },
+    {
+      "date": "2026-09-25",
+      "success": true,
+      "shared": {
+        "schema": 1,
+        "date": "2026-09-25",
+        "syntheticOnly": true,
+        "outcomes": false,
+        "readySha256": "78b0caf9de1cd0829c43569f032ee7ed2a39ed52f6f828cdd86cfeb70c7b0e9c",
+        "captureId": "cf3ffc16c564857148588a26af9ad71c948953ba9b2524382aeaa90826d22155",
+        "prefixSha256": "6127b7fca24c8c4d37d0f995b3ca78363df6b5ea166624a2d43cb89e3218d7ca",
+        "databaseSha256": "8be98dea07b24e4be6242763d82b503da34f7df66af5b32719b70e5f026a415d",
+        "databaseBytes": 85405696,
+        "generator": {
+          "syntheticOnly": true,
+          "outcomes": false,
+          "generatorSha256": "4ee86d5dcb0d31839f3bc42a70e65001985b8cfb10e2caccd32f308bb4bc077b",
+          "topologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+          "start": "2026-09-25T04:00:00+00:00",
+          "seconds": 87300,
+          "routes": 14,
+          "busesPerRoute": 2,
+          "cycles": 2,
+          "distributionPoints": 50,
+          "cadenceSeconds": 15
+        },
+        "fleetIndexSha256": "3fbe1aae91dffbd4dca7c74fa556088ddd2a4db248a585a833c8904e57412e97",
+        "fleetReceipts": 5821
+      },
+      "resources": {
+        "command": [
+          "/usr/bin/python3",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/shared_input.py",
+          "generate",
+          "2026-09-25",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/results/shared-2026-09-25"
+        ],
+        "peakAggregateRssBytes": 168804352,
+        "peakProcesses": 2,
+        "peakScratchBytes": 1807380480,
+        "rssLimit": 2147483648,
+        "scratchLimit": 8589934592,
+        "deadlineSeconds": 5100,
+        "rssSamplingSeconds": 0.1,
+        "scratchSamplingSeconds": 2,
+        "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+        "limitViolation": null,
+        "exitCode": 0,
+        "elapsedSeconds": 207.52688382000002,
+        "waitedChildCpuSeconds": {
+          "user": 199.391405,
+          "system": 7.001487
+        }
+      },
+      "adjacentOverlapReceipts": 61
+    },
+    {
+      "date": "2026-09-26",
+      "success": true,
+      "shared": {
+        "schema": 1,
+        "date": "2026-09-26",
+        "syntheticOnly": true,
+        "outcomes": false,
+        "readySha256": "86115ca6633e658638da1e9e90159e78dfa0c841d9c22b109be03ba42d03dea8",
+        "captureId": "ddbb7ddd1eb4ccf7aebc7fbd2c0ccf887f66a6bff7a7f1e4ef86ecfa01248085",
+        "prefixSha256": "c41815c25a9148ff889885cb1b1c171f0d1867d54267dcd9031ef14a0b8f5907",
+        "databaseSha256": "e8bc18649e8f718bb87b883ef23ef0f796ede12d5022991f19d1ea3e92063b63",
+        "databaseBytes": 85405696,
+        "generator": {
+          "syntheticOnly": true,
+          "outcomes": false,
+          "generatorSha256": "4ee86d5dcb0d31839f3bc42a70e65001985b8cfb10e2caccd32f308bb4bc077b",
+          "topologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+          "start": "2026-09-26T04:00:00+00:00",
+          "seconds": 87300,
+          "routes": 14,
+          "busesPerRoute": 2,
+          "cycles": 2,
+          "distributionPoints": 50,
+          "cadenceSeconds": 15
+        },
+        "fleetIndexSha256": "fae16ec677a772f9d60eddb40515cdf37fc849727d2afe64c24f52ee42e507ac",
+        "fleetReceipts": 5821
+      },
+      "resources": {
+        "command": [
+          "/usr/bin/python3",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/shared_input.py",
+          "generate",
+          "2026-09-26",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/results/shared-2026-09-26"
+        ],
+        "peakAggregateRssBytes": 168890368,
+        "peakProcesses": 2,
+        "peakScratchBytes": 1822736384,
+        "rssLimit": 2147483648,
+        "scratchLimit": 8589934592,
+        "deadlineSeconds": 5100,
+        "rssSamplingSeconds": 0.1,
+        "scratchSamplingSeconds": 2,
+        "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+        "limitViolation": null,
+        "exitCode": 0,
+        "elapsedSeconds": 233.710231168,
+        "waitedChildCpuSeconds": {
+          "user": 225.282284,
+          "system": 7.197721
+        }
+      },
+      "adjacentOverlapReceipts": 61
+    },
+    {
+      "date": "2026-09-27",
+      "success": true,
+      "shared": {
+        "schema": 1,
+        "date": "2026-09-27",
+        "syntheticOnly": true,
+        "outcomes": false,
+        "readySha256": "90cdc9d0a7c1519fac12ea88676da0931449289055a27f4e44db3bbc06ecb5c8",
+        "captureId": "bb687bd9e0efd0a2193f7a1ed237848390e9183cd366cac83edf2c98f0794b03",
+        "prefixSha256": "3f2ae6624a8faf09349843f5c08a99a9d901dbdf11d6257ab36421acee8cfb74",
+        "databaseSha256": "079c5c3121c2e5aacf962c9e348b0a9be1b409739f238f1bf0f9a44621e39e1f",
+        "databaseBytes": 85405696,
+        "generator": {
+          "syntheticOnly": true,
+          "outcomes": false,
+          "generatorSha256": "4ee86d5dcb0d31839f3bc42a70e65001985b8cfb10e2caccd32f308bb4bc077b",
+          "topologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+          "start": "2026-09-27T04:00:00+00:00",
+          "seconds": 87300,
+          "routes": 14,
+          "busesPerRoute": 2,
+          "cycles": 2,
+          "distributionPoints": 50,
+          "cadenceSeconds": 15
+        },
+        "fleetIndexSha256": "040d158382d119c099ac2f9ff3d84c8b87e2c59a6b7aed591f9945c4d89bbd2c",
+        "fleetReceipts": 5821
+      },
+      "resources": {
+        "command": [
+          "/usr/bin/python3",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/shared_input.py",
+          "generate",
+          "2026-09-27",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/results/shared-2026-09-27"
+        ],
+        "peakAggregateRssBytes": 169320448,
+        "peakProcesses": 2,
+        "peakScratchBytes": 1825013760,
+        "rssLimit": 2147483648,
+        "scratchLimit": 8589934592,
+        "deadlineSeconds": 5100,
+        "rssSamplingSeconds": 0.1,
+        "scratchSamplingSeconds": 2,
+        "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+        "limitViolation": null,
+        "exitCode": 0,
+        "elapsedSeconds": 139.59572543899998,
+        "waitedChildCpuSeconds": {
+          "user": 132.48523,
+          "system": 5.024553
+        }
+      },
+      "adjacentOverlapReceipts": 61
+    },
+    {
+      "date": "2026-09-28",
+      "success": true,
+      "shared": {
+        "schema": 1,
+        "date": "2026-09-28",
+        "syntheticOnly": true,
+        "outcomes": false,
+        "readySha256": "c5014af55339044939b3c8626d67132822c1d4fd12361c4a8f4c28fe1b265a7a",
+        "captureId": "8dd54c9a00fe42c4cd3a1d0b9ea16913cfc36623978231c6832eabba2062f2ae",
+        "prefixSha256": "117132d31b34e85d67f84db40328dab3e2d26d1cdfe2d5331bd3091f0628efd3",
+        "databaseSha256": "24ec385096ea8a280cacb4cde454e0b2da9336de6b8e7354e31c539d55ed91c8",
+        "databaseBytes": 85405696,
+        "generator": {
+          "syntheticOnly": true,
+          "outcomes": false,
+          "generatorSha256": "4ee86d5dcb0d31839f3bc42a70e65001985b8cfb10e2caccd32f308bb4bc077b",
+          "topologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+          "start": "2026-09-28T04:00:00+00:00",
+          "seconds": 87300,
+          "routes": 14,
+          "busesPerRoute": 2,
+          "cycles": 2,
+          "distributionPoints": 50,
+          "cadenceSeconds": 15
+        },
+        "fleetIndexSha256": "1cce957b7af5438d330806d253ad9e70e98a11237239f2bbfd1a16ccc8281ab1",
+        "fleetReceipts": 5821
+      },
+      "resources": {
+        "command": [
+          "/usr/bin/python3",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/shared_input.py",
+          "generate",
+          "2026-09-28",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/results/shared-2026-09-28"
+        ],
+        "peakAggregateRssBytes": 167518208,
+        "peakProcesses": 2,
+        "peakScratchBytes": 1811390464,
+        "rssLimit": 2147483648,
+        "scratchLimit": 8589934592,
+        "deadlineSeconds": 5100,
+        "rssSamplingSeconds": 0.1,
+        "scratchSamplingSeconds": 2,
+        "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+        "limitViolation": null,
+        "exitCode": 0,
+        "elapsedSeconds": 135.89622875099997,
+        "waitedChildCpuSeconds": {
+          "user": 125.094058,
+          "system": 4.973604
+        }
+      },
+      "adjacentOverlapReceipts": 61
+    },
+    {
+      "date": "2026-09-29",
+      "success": true,
+      "shared": {
+        "schema": 1,
+        "date": "2026-09-29",
+        "syntheticOnly": true,
+        "outcomes": false,
+        "readySha256": "461b6f9ae38397bc928e57f73adfbdc5d1a061e11ccf817ddaa47d926bdfce48",
+        "captureId": "d0c3c71096f9d98e0cb3bf782f69eabb58306b9dce2176f0a2cdbc65f05a8b61",
+        "prefixSha256": "cf111bb40e4dc8d2d09eeea8d762a40222bb6a1eb7496fb0f987bf50199c81bc",
+        "databaseSha256": "f7507329481d8e33feb50b57f00aef04e118870d0a316fe65bbedf8c498522b6",
+        "databaseBytes": 85405696,
+        "generator": {
+          "syntheticOnly": true,
+          "outcomes": false,
+          "generatorSha256": "4ee86d5dcb0d31839f3bc42a70e65001985b8cfb10e2caccd32f308bb4bc077b",
+          "topologySha256": "eb753d58c4ace616e844b3a54842978c4ec46833373560e1b236d7b5d61b40bc",
+          "start": "2026-09-29T04:00:00+00:00",
+          "seconds": 87300,
+          "routes": 14,
+          "busesPerRoute": 2,
+          "cycles": 2,
+          "distributionPoints": 50,
+          "cadenceSeconds": 15
+        },
+        "fleetIndexSha256": "eacb52d6e324fa3f8262831b5115f4a943733d4b0bd22cbc54e0a1d24d7d81f7",
+        "fleetReceipts": 5821
+      },
+      "resources": {
+        "command": [
+          "/usr/bin/python3",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/shared_input.py",
+          "generate",
+          "2026-09-29",
+          "/home/runner/work/yale-shuttle/yale-shuttle/research/synthetic-selection/results/shared-2026-09-29"
+        ],
+        "peakAggregateRssBytes": 169725952,
+        "peakProcesses": 2,
+        "peakScratchBytes": 1819140096,
+        "rssLimit": 2147483648,
+        "scratchLimit": 8589934592,
+        "deadlineSeconds": 5100,
+        "rssSamplingSeconds": 0.1,
+        "scratchSamplingSeconds": 2,
+        "temporaryDirectory": "/home/runner/work/yale-shuttle/yale-shuttle/.synthetic-worker-tmp",
+        "limitViolation": null,
+        "exitCode": 0,
+        "elapsedSeconds": 208.616282453,
+        "waitedChildCpuSeconds": {
+          "user": 201.907354,
+          "system": 5.529544
+        }
+      },
+      "adjacentOverlapReceipts": 61
+    }
+  ],
+  "retainedStreamErrors": [],
+  "resourceTotals": {
+    "workerElapsedSeconds": 45821.661512999,
+    "generationElapsedSeconds": 1301.602048371,
+    "generationReportsCountedOnce": 7,
+    "workerResourceReports": 98,
+    "setupAndJobTiming": "GitHub job timestamps; dependency installation/artifact transfers and baseline asset rebuild are outside workload watchdog"
+  },
+  "strictIdentityKnownEpisodes": 0,
+  "assumptionQualifiedEpisodes": 28224,
+  "syntheticOnly": true,
+  "outcomesEvaluated": false
+}

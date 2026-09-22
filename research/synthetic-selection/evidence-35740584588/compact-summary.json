@@ -1,0 +1,65 @@
+{
+  "success": true,
+  "counts": {
+    "expected": 28224,
+    "completed": 28224,
+    "missingArtifactKeys": 0,
+    "terminalKeys": 28224,
+    "rawBytes": 145253628342,
+    "compressedBytes": 6820706333,
+    "rows": 22599277,
+    "retainedStreams": 168
+  },
+  "statuses": {
+    "selected/assumption_qualified/complete/completed": 28224
+  },
+  "resourceTotals": {
+    "workerElapsedSeconds": 45821.661512999,
+    "generationElapsedSeconds": 1301.602048371,
+    "generationReportsCountedOnce": 7,
+    "workerResourceReports": 98,
+    "setupAndJobTiming": "GitHub job timestamps; dependency installation/artifact transfers and baseline asset rebuild are outside workload watchdog"
+  },
+  "strictIdentityKnownEpisodes": 0,
+  "assumptionQualifiedEpisodes": 28224,
+  "retainedStreamErrors": [],
+  "artifactId": 10712181180,
+  "artifactZipBytes": 3987634,
+  "artifactZipSha256": "b0cf90389f5c0c89326185533272287f012b98a46f323df05ef0421b4a9077ee",
+  "reportBytes": 154710,
+  "reportSha256": "1bcb7b013385fee1fc49cf9515944a6ada9b6ff4472168c0e6ba37e21033b717",
+  "sharedInputs": 7,
+  "adjacentOverlapReceipts": [
+    0,
+    61,
+    61,
+    61,
+    61,
+    61,
+    61
+  ],
+  "workers": {
+    "peakAggregateRssBytes": 651694080,
+    "peakScratchBytes": 1079062528,
+    "peakProcesses": 7,
+    "elapsedSeconds": 595.1936943559999,
+    "summedElapsedSeconds": 45821.661512999,
+    "summedWaitedChildCpuSeconds": {
+      "user": 49471.862452,
+      "system": 2302.478317
+    },
+    "limitViolations": []
+  },
+  "generation": {
+    "peakAggregateRssBytes": 169725952,
+    "peakScratchBytes": 1825013760,
+    "peakProcesses": 2,
+    "elapsedSeconds": 233.710231168,
+    "summedElapsedSeconds": 1301.602048371,
+    "summedWaitedChildCpuSeconds": {
+      "user": 1222.300555,
+      "system": 39.317695
+    },
+    "limitViolations": []
+  }
+}
