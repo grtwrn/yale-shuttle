@@ -53,6 +53,12 @@ jobs:
           run-id: 35694227486
           github-token: ${{ github.token }}
           path: research/brown-response/input/sealed
+      - uses: actions/download-artifact@v4
+        with:
+          name: sealed-rolling-brown-k5-sep23
+          run-id: 35696391115
+          github-token: ${{ github.token }}
+          path: research/brown-integration/input/rolling
       - name: Preserve complete-response controls and causal prefix invariance
         run: |
           services/shuttle-v2/node_modules/.bin/tsx research/brown-response/synthetic.ts
@@ -66,6 +72,11 @@ jobs:
         run: |
           services/shuttle-v2/node_modules/.bin/tsx research/brown-integration/prepare.ts
           python3 research/brown-integration/query.py
+      - name: Load actual sealed K5 and K8; query explicitly synthetic clocks
+        run: |
+          python3 research/brown-integration/sealed.py prepare
+          services/shuttle-v2/node_modules/.bin/tsx research/brown-integration/sealed-prepare.ts
+          python3 research/brown-integration/sealed.py query
       - name: Extract exact captured frontend component bodies
         run: node deps/selection/research/synthetic-selection/extract.mjs
       - name: Preserve original synthetic-selection component and envelope parity
