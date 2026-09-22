@@ -7,6 +7,7 @@ import io
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import urllib.error
@@ -37,6 +38,7 @@ class CaptureTests(unittest.TestCase):
         (self.home / '.yale-shuttle-admin-token').write_text('test-token-do-not-print')
         self.output = self.home / 'capture'
         self.suffix, self.trailer, self.corrupt, self.http_failure = {}, {}, {}, set()
+        self.snapshot_failure = False
         self.requests = []
         self.streams = {}
         for patcher in [patch.object(capture.Path, 'home', return_value=self.home),
@@ -49,6 +51,8 @@ class CaptureTests(unittest.TestCase):
         url = request if isinstance(request, str) else request.full_url
         self.requests.append(url)
         if '/api/archive/day?' not in url:
+            if self.snapshot_failure:
+                raise urllib.error.HTTPError(url, 503, 'unavailable', {}, None)
             return Response(json.dumps({'build': 'fixed-build', 'routes': {}}).encode())
         self.assertEqual(request.get_header('X-admin-token'), 'test-token-do-not-print')
         query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
@@ -142,6 +146,38 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(manifest['tables']['raw_positions']['errorType'], 'HTTPError')
         self.assertTrue(manifest['tables']['scorecard_days']['transportComplete'])
+
+    def test_missing_version_topology_metadata_is_not_a_successful_capture(self):
+        self.snapshot_failure = True
+        code, manifest = self.run_capture()
+        self.assertEqual(code, 1)
+        self.assertTrue(manifest['transportComplete'])
+        self.assertFalse(manifest['metadataComplete'])
+
+
+class PairTests(unittest.TestCase):
+    def test_second_day_runs_after_first_failure_with_explicit_partial_context(self):
+        spec = importlib.util.spec_from_file_location('capture_pair', Path(__file__).with_name('capture-pair.py'))
+        pair = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pair)
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'pair'
+            with patch.object(pair.sys, 'argv', ['capture-pair.py', '2026-09-21', str(output)]), \
+                 patch.object(pair.subprocess, 'run', side_effect=[SimpleNamespace(returncode=1), SimpleNamespace(returncode=0)]) as run:
+                with self.assertRaises(SystemExit) as result:
+                    pair.main()
+                self.assertEqual(result.exception.code, 1)
+                self.assertEqual(run.call_count, 2)
+                first, second = (call.args[0] for call in run.call_args_list)
+                self.assertIn('2026-09-21', first)
+                self.assertNotIn('--allow-open-day', first)
+                self.assertIn('2026-09-22', second)
+                self.assertIn('--allow-open-day', second)
+                self.assertEqual([row['exitCode'] for row in json.loads((output / 'pair.json').read_text())['captures']], [1, 0])
+                run.reset_mock()
+                with self.assertRaises(FileExistsError):
+                    pair.main()
+                run.assert_not_called()
 
 
 if __name__ == '__main__':
