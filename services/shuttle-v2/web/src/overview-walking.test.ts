@@ -20,6 +20,20 @@ it('filters the analogous Brown one-minute ride and leaves real walking savings 
   const red=shuttle('Red',3,8,8,24,3),brown=shuttle('Brown',5,1,16,24,13),blue=shuttle('Blue Day',2,18,8,24,3);
   expect(topVisibleOptions([red,walk(24),brown,blue]).map(o=>o.routeLabel)).toEqual(['Red','Walk','Blue Day']);
 });
+it('keeps report #127 Green behind Show more while preserving Red, Blue and walking', () => {
+  // Rounded minutes transcribed from the screenshot, not a saved raw plan.
+  const red=shuttle('Red',3,11,8,36),green=shuttle('Green',8,5,15,36),blue=shuttle('Blue Day',2,20,8,36);
+  const all=[red,green,walk(36),blue],before=JSON.stringify(all);
+  expect(topVisibleOptions(all).map(o=>o.routeLabel)).toEqual(['Red','Walk','Blue Day']);
+  expect(topVisibleOptions([{ ...green,totalSec:100,busEtaSec:1 },red,walk(36),blue],'Green').map(o=>o.routeLabel))
+    .toEqual(['Red','Walk','Blue Day']);
+  expect(JSON.stringify(all)).toBe(before); // Show more retains Green unchanged.
+});
+it('includes exactly half the direct walk but hides one additional second', () => {
+  const half=shuttle('Shuttle',8,5,10,36),direct=walk(36);
+  expect(topVisibleOptions([half,direct])).toEqual([half,direct]);
+  expect(topVisibleOptions([{ ...half,walkFromSec:half.walkFromSec+1,totalSec:half.totalSec+1 },direct])).toEqual([direct]);
+});
 it('shows walking alone when all shuttle options add little benefit, without deleting those options', () => {
   const green=shuttle('Green',8,5,16,33),all=[green,walk(33)];
   expect(topVisibleOptions(all)).toEqual([all[1]]);

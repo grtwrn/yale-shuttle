@@ -893,11 +893,11 @@ export const THIRD_SHUTTLE_KEEP_SLACK_SEC = 8 * 60;
  *   that row, gets the wider slack. A different route in the third slot has
  *   not earned it and must clear the normal bar.
  */
-/** Reports #125/#126: a short ride surrounded by almost the entire direct
+/** Reports #125/#126/#127: a short ride surrounded by most of the direct
  * walk is a poor overview recommendation. Keep it in the full route list,
- * but require a third less walking for the overview, regardless of ETA. */
+ * but show it initially only when it saves at least half the walking, regardless of ETA. */
 export function worthwhileOverviewOption(o: TripOption, directWalkSec = o.directWalkSec): boolean {
-  return o.mode !== 'shuttle' || o.walkToSec + o.walkFromSec <= directWalkSec * (2 / 3);
+  return o.mode !== 'shuttle' || o.walkToSec + o.walkFromSec <= directWalkSec / 2;
 }
 
 export function topVisibleOptions(
