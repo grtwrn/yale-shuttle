@@ -1,0 +1,148 @@
+{
+  "auditedAt": "2026-09-22T18:36:12.387339+00:00",
+  "manifest": {
+    "schema": 1,
+    "base": "https://yale-shuttle.fly.dev",
+    "startedAt": "2026-09-22T05:50:35.121829+00:00",
+    "until": "2026-09-30T04:30:00+00:00",
+    "status": "running",
+    "transportOnly": true,
+    "outcomesEvaluated": false,
+    "holdoutStatus": "not assessed by capture",
+    "scriptSha256": "4f494f132da14bd369b768605190a77319ef1586e326f062289ec6f1274115b3",
+    "intervalSeconds": 15,
+    "healthIntervalSeconds": 60,
+    "bodyLimitBytes": 8388608,
+    "maxStoredBytes": 3221225472,
+    "minimumFreeBytes": 4294967296,
+    "skippedTicks": 7,
+    "records": 3837,
+    "completeResponses": 3828,
+    "incompleteResponses": 3,
+    "buildAttribution": "Health brackets only; no assumed intermediate-release identity",
+    "updatedAt": "2026-09-22T18:36:05.295112+00:00",
+    "storedDataBytes": 247195046,
+    "lastRecordSha256": "97dc57890c22a91644bfeeac396a09bffad8dc3d3366ca52c2051e95277173a7",
+    "releaseCaptureNeedsRetry": false
+  },
+  "metadataJournalBytes": 3672633,
+  "metadataHashChainExact": true,
+  "metadataStoredByteAccountingExact": true,
+  "manifestAgeSeconds": 7.092227,
+  "fleetRecords": 3056,
+  "completeFleetResponses": 3054,
+  "lastFleetReceipt": "2026-09-22T18:36:05.274779+00:00",
+  "lastHealthReceipt": "2026-09-22T18:35:35.189522+00:00",
+  "completeFleetGapSeconds": {
+    "max": 70.242935,
+    "above30": 5,
+    "above60": 1
+  },
+  "failures": [
+    {
+      "sequence": 1855,
+      "kind": "fleet",
+      "requestedAt": "2026-09-22T12:00:50.122529+00:00",
+      "receivedAt": "2026-09-22T12:01:07.969039+00:00",
+      "status": null,
+      "errorType": "URLError",
+      "bodyBytes": 0
+    },
+    {
+      "sequence": 3160,
+      "kind": "fleet",
+      "requestedAt": "2026-09-22T16:22:05.122405+00:00",
+      "receivedAt": "2026-09-22T16:22:15.123912+00:00",
+      "status": null,
+      "errorType": "RequestDeadlineExceeded",
+      "bodyBytes": 0
+    },
+    {
+      "sequence": 3180,
+      "kind": "health",
+      "requestedAt": "2026-09-22T16:25:35.122404+00:00",
+      "receivedAt": "2026-09-22T16:25:45.122894+00:00",
+      "status": null,
+      "errorType": "RequestDeadlineExceeded",
+      "bodyBytes": 0
+    }
+  ],
+  "scheduleGaps": [
+    {
+      "sequence": 1856,
+      "at": "2026-09-22T12:01:34.495692+00:00",
+      "skippedTicks": 2
+    },
+    {
+      "sequence": 1859,
+      "at": "2026-09-22T12:01:56.289962+00:00",
+      "skippedTicks": 1
+    },
+    {
+      "sequence": 2779,
+      "at": "2026-09-22T15:05:57.421813+00:00",
+      "skippedTicks": 1
+    },
+    {
+      "sequence": 2784,
+      "at": "2026-09-22T15:06:55.042494+00:00",
+      "skippedTicks": 1
+    },
+    {
+      "sequence": 2816,
+      "at": "2026-09-22T15:13:25.588100+00:00",
+      "skippedTicks": 1
+    },
+    {
+      "sequence": 3182,
+      "at": "2026-09-22T16:25:51.876624+00:00",
+      "skippedTicks": 1
+    }
+  ],
+  "observedHealthBuildTransitions": [
+    {
+      "sequence": 0,
+      "receivedAt": "2026-09-22T05:50:35.183491+00:00",
+      "build": "05a988194af3",
+      "transportComplete": true
+    },
+    {
+      "sequence": 3162,
+      "receivedAt": "2026-09-22T16:22:35.190152+00:00",
+      "build": "b00823130aa5",
+      "transportComplete": true
+    },
+    {
+      "sequence": 3180,
+      "receivedAt": "2026-09-22T16:25:45.122894+00:00",
+      "build": null,
+      "transportComplete": false
+    },
+    {
+      "sequence": 3185,
+      "receivedAt": "2026-09-22T16:26:35.188983+00:00",
+      "build": "e7784c03b8c7",
+      "transportComplete": true
+    }
+  ],
+  "diskFreeBytes": 5998473216,
+  "usableBeforeDiskFloorBytes": 1703440384,
+  "remainingCaptureCapBytes": 2973964890,
+  "growthScenariosNotForecasts": {
+    "elapsedAverage": {
+      "bytesPerHour": 19375110.128952574,
+      "extraBytesToDeadline": 3446803593.780067,
+      "diskFloorProjectionUTC": "2026-09-26T10:31:13.709340+00:00",
+      "captureCapProjectionUTC": "2026-09-29T04:05:44.017645+00:00"
+    },
+    "last3Hours": {
+      "bytesPerHour": 26787035.333333336,
+      "extraBytesToDeadline": 4765374185.702157,
+      "diskFloorProjectionUTC": "2026-09-25T10:11:36.392043+00:00",
+      "captureCapProjectionUTC": "2026-09-27T09:37:26.464408+00:00"
+    }
+  },
+  "bodyReads": 0,
+  "rawOrOutcomeReads": 0,
+  "warning": "Manifest and journal metadata do not establish per-route GPS coverage, ETA freshness, causal alignment or usable outcomes. Rates can change with service and other filesystem use."
+}

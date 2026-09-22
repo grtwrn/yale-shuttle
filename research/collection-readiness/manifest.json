@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "frozenAt": "2026-09-22T18:46:57.874150+00:00",
+  "scope": "Metadata-only collection audit; proposed continuation is not approved or scheduled",
+  "rawBodiesRead": 0,
+  "prospectiveOutcomesRead": 0,
+  "productionModelChanged": false,
+  "cacheMaintenance": "Only root-authorized npm _cacache removed; evidence in separate record",
+  "files": [
+    {
+      "file": "COLLECTION-READINESS-2026-09-22.md",
+      "bytes": 10641,
+      "sha256": "35e892a5284b91767fa4b2e202700245f0c408758edf5c52288397b62babbcd4"
+    },
+    {
+      "file": "CAPTURE-CONTINUATION-PLAN-2026-09-22.md",
+      "bytes": 4029,
+      "sha256": "0b04043d7bcea148346135a4fa739df0822369c90408780756234692d6a83cf6"
+    },
+    {
+      "file": "COLLECTION-METADATA-2026-09-22.json",
+      "bytes": 4471,
+      "sha256": "dd835d01f904583e2d3b695b2f164af03efbb567172836c798ee5946b8eac28d"
+    },
+    {
+      "file": "ARCHIVE-METADATA-2026-09-22.json",
+      "bytes": 29399,
+      "sha256": "32342224117d780a28b932e79b2cda213cf2bd06a201401fbb1ffdfd1bc64950"
+    },
+    {
+      "file": "CACHE-RECLAMATION-2026-09-22.json",
+      "bytes": 574,
+      "sha256": "80f015b958c60e356e302b64cc16647ac70592ef45df26fff86fa66c239f266d"
+    }
+  ]
+}

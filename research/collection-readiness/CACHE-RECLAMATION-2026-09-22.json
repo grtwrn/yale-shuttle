@@ -1,0 +1,15 @@
+{
+  "path": "/home/gwarren/.npm/_cacache",
+  "resolvedPathVerified": true,
+  "activeNpmInstalls": [],
+  "startedAt": "2026-09-22T18:41:16.058822+00:00",
+  "finishedAt": "2026-09-22T18:41:16.940684+00:00",
+  "freeBeforeBytes": 5805940736,
+  "freeAfterBytes": 16927453184,
+  "netFreeIncreaseBytes": 11121512448,
+  "cacheAllocatedBytesFromPriorInventory": 11121512448,
+  "cacheRemoved": true,
+  "limitsChanged": false,
+  "otherDirectoriesChanged": false,
+  "note": "Net free-space delta can include concurrent capture writes; only the reconstructible npm cache was removed."
+}

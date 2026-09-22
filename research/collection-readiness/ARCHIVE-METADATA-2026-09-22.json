@@ -1,0 +1,789 @@
+{
+  "manifestAndFileStatOnly": true,
+  "bodyHashVerificationPerformed": false,
+  "days": [
+    {
+      "day": "2026-09-11",
+      "version": null,
+      "ok": true,
+      "generatedAt": "2026-09-12T07:40:02.185Z",
+      "completeness": null,
+      "manifestSha256": "ac9cf46d04305b8e954391fc63281d38825331493f91a4d0aa655c9fe6fcc2de",
+      "tables": {
+        "raw_positions": {
+          "rows": 12882,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-11/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 117310,
+          "declaredBytes": 117310,
+          "declaredSha256": "d2017b5a34335caa0a6377dcd429864534fc09f412e93463a494646ba2fbc9b7"
+        },
+        "arrivals": {
+          "rows": 6198,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-11/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 113275,
+          "declaredBytes": 113275,
+          "declaredSha256": "c4061ee36a35c25d5603519955031a627211730595fe7eb900e832b91c9438e2"
+        },
+        "stop_visits": {
+          "rows": 6024,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-11/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 449295,
+          "declaredBytes": 449295,
+          "declaredSha256": "e4e9213cf58ef52b909add44e4775bbb5c009b7ae1f9c471e1f22baafee879da"
+        },
+        "legs": {
+          "rows": 5611,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-11/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 192083,
+          "declaredBytes": 192083,
+          "declaredSha256": "d91c59d3fd5045e7f6bbdba70ce9f801968a26889c9dc38f983f68adcac2abc6"
+        },
+        "predictions_log": {
+          "rows": 62190,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-11/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 785135,
+          "declaredBytes": 785135,
+          "declaredSha256": "2516dc0e54c0729b3a12882d3364c745cea762c1200b180ae0b75a0a18e391be"
+        },
+        "upstream_etas": {
+          "rows": 59899,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-11/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 740137,
+          "declaredBytes": 740137,
+          "declaredSha256": "236cbcd0bcff84d2d5845bd2ae0a1ec4b5fbf641c132c53504cc78fe9c60abac"
+        },
+        "scorecard_days": {
+          "rows": 381,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-11/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 17197,
+          "declaredBytes": 17197,
+          "declaredSha256": "62b805f41115e7380a45f2804a3265b4e3bd2582f98ee5bd1bf3c8e76f4d8984"
+        }
+      }
+    },
+    {
+      "day": "2026-09-14",
+      "version": null,
+      "ok": true,
+      "generatedAt": "2026-09-15T07:40:02.480Z",
+      "completeness": null,
+      "manifestSha256": "fcf4356d0f4b656f01c163e57611fd1aa0048f06b8d21d670b2cd1ecf54997cc",
+      "tables": {
+        "raw_positions": {
+          "rows": 16198,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-14/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 141906,
+          "declaredBytes": 141906,
+          "declaredSha256": "b29566295187107892aea9eca1eef02f8ece6956d7cb685affcaefa365b480be"
+        },
+        "arrivals": {
+          "rows": 5958,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-14/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 110074,
+          "declaredBytes": 110074,
+          "declaredSha256": "eaf5995db7041c795a8f2ee129e13aad7133926e250576a0dbb6b811359bf93c"
+        },
+        "stop_visits": {
+          "rows": 5954,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-14/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 446199,
+          "declaredBytes": 446199,
+          "declaredSha256": "0d514eb3ebab192abb4cc01c653c301220e98fb67ee9da12f13ead67c108d53a"
+        },
+        "legs": {
+          "rows": 5665,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-14/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 194852,
+          "declaredBytes": 194852,
+          "declaredSha256": "d4c7989f03ce09e5ceccd5e4279fd7cc3fa671b2d486b3dbe7799516228a0394"
+        },
+        "predictions_log": {
+          "rows": 53456,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-14/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 606905,
+          "declaredBytes": 606905,
+          "declaredSha256": "cf905fe8d55c8eaaf3bc683aea89a795aff9b20931f6d3b0a4feac898f8e1daa"
+        },
+        "upstream_etas": {
+          "rows": 59605,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-14/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 741972,
+          "declaredBytes": 741972,
+          "declaredSha256": "3093e70616253e7a1ab6d2fcbecd47363361835e2bdad48ef79e3355ee4f288a"
+        },
+        "scorecard_days": {
+          "rows": 343,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-14/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 15664,
+          "declaredBytes": 15664,
+          "declaredSha256": "80d6867c3c0fd710851069e1a9b061ad11088bd239ffe320f9300c6c1b45970b"
+        }
+      }
+    },
+    {
+      "day": "2026-09-15",
+      "version": null,
+      "ok": true,
+      "generatedAt": "2026-09-16T07:40:02.814Z",
+      "completeness": null,
+      "manifestSha256": "2b9507d6e7c3cffe3770cf9d0f770b246f4f2c0925e5363583d36973bd5fba2f",
+      "tables": {
+        "raw_positions": {
+          "rows": 16075,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-15/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 141582,
+          "declaredBytes": 141582,
+          "declaredSha256": "3a3bc3fd73f7afb3ea5dc04059474d224df97424671021fbd4012de0bfa5b6f3"
+        },
+        "arrivals": {
+          "rows": 5975,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-15/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 110586,
+          "declaredBytes": 110586,
+          "declaredSha256": "472677440eee33148e671528277ac0e1039bb27f7480a25386b79321fae2cf17"
+        },
+        "stop_visits": {
+          "rows": 5964,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-15/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 451556,
+          "declaredBytes": 451556,
+          "declaredSha256": "b6d51430e64bdccf33e72a0ed98280e8d5daea51511487af268ea527c5305337"
+        },
+        "legs": {
+          "rows": 5722,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-15/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 196975,
+          "declaredBytes": 196975,
+          "declaredSha256": "0cfae0f6bda4da4cfaf2fcbf8be2292d444cbb43a69d6ddd468e7ce8f6e89983"
+        },
+        "predictions_log": {
+          "rows": 58318,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-15/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 647447,
+          "declaredBytes": 647447,
+          "declaredSha256": "f107f9266a38cff9ae0a0ec3beff53a17cdb8b346f68f97f7111603091c6a483"
+        },
+        "upstream_etas": {
+          "rows": 58510,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-15/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 728074,
+          "declaredBytes": 728074,
+          "declaredSha256": "c80f5899dd8120ec1f38daf536dce2bace0b5ffdf116332f06f6e24f3e901b9d"
+        },
+        "scorecard_days": {
+          "rows": 311,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-15/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 14530,
+          "declaredBytes": 14530,
+          "declaredSha256": "03419c3e9d315329940c217a7d21eff9d0ab09b0701b5b68596c0cdda9967bd2"
+        }
+      }
+    },
+    {
+      "day": "2026-09-16",
+      "version": null,
+      "ok": true,
+      "generatedAt": "2026-09-17T07:40:02.792Z",
+      "completeness": null,
+      "manifestSha256": "417df08607687dde27d99fd0c89f8ea2642c387611c79bed635e2aae07000fa0",
+      "tables": {
+        "raw_positions": {
+          "rows": 174377,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-16/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 1590796,
+          "declaredBytes": 1590796,
+          "declaredSha256": "db97377f7a27145c9a7c905c4024f048bd521ae49324fc34ec0140528c7a27f9"
+        },
+        "arrivals": {
+          "rows": 6676,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-16/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 123004,
+          "declaredBytes": 123004,
+          "declaredSha256": "9ee1004265ede98286fabd26161c41cb3cb7238e3062130a38d802da013bbda0"
+        },
+        "stop_visits": {
+          "rows": 6623,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-16/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 496874,
+          "declaredBytes": 496874,
+          "declaredSha256": "d7ec80d2b99b272e7f39327659d1a9428c42e189dc704a9b692a237f85945348"
+        },
+        "legs": {
+          "rows": 6304,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-16/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 217135,
+          "declaredBytes": 217135,
+          "declaredSha256": "5f0ba086d1fc7cd8d57567fb27710c60e931db6c45ca2e1c6c0b2f8159f46198"
+        },
+        "predictions_log": {
+          "rows": 51989,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-16/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 582270,
+          "declaredBytes": 582270,
+          "declaredSha256": "9dbf4af3b8c7e4f90938983507e62f0a42e1bdf112e64693cfa1762238fb51bb"
+        },
+        "upstream_etas": {
+          "rows": 64339,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-16/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 789454,
+          "declaredBytes": 789454,
+          "declaredSha256": "bd8e148b3158c86f4edab5db0fb1d812297897f09586e3a3c447d11ce0a4013e"
+        },
+        "scorecard_days": {
+          "rows": 348,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-16/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 16116,
+          "declaredBytes": 16116,
+          "declaredSha256": "4db2c09e97cc57cfa94c41605236be03fd9c2bc0674b76f1bacc1062f103cbd0"
+        }
+      }
+    },
+    {
+      "day": "2026-09-17",
+      "version": null,
+      "ok": true,
+      "generatedAt": "2026-09-18T07:40:03.458Z",
+      "completeness": null,
+      "manifestSha256": "378316fdd17a7f64e47c991ebcb2b6444075c49111b8b5c53ab1bc050b2e2bd1",
+      "tables": {
+        "raw_positions": {
+          "rows": 182921,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-17/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 1682971,
+          "declaredBytes": 1682971,
+          "declaredSha256": "fce2d8a919e5321d231a01ec03493f4aa8cbdef731658f10e9d916252a9f396a"
+        },
+        "arrivals": {
+          "rows": 6773,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-17/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 124208,
+          "declaredBytes": 124208,
+          "declaredSha256": "9a905ae1d300489b640ae82b381520a359e8bfd61114850c8abbdf47f0ce46f2"
+        },
+        "stop_visits": {
+          "rows": 6618,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-17/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 496881,
+          "declaredBytes": 496881,
+          "declaredSha256": "4fe45831f5c5be78af9cc415c3691acc11e5b20be518d22e36a19549f82eb306"
+        },
+        "legs": {
+          "rows": 6213,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-17/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 213298,
+          "declaredBytes": 213298,
+          "declaredSha256": "e8a777a7bc584d01d4d2b16c9705ce0ded0c90672e691ad2a1cff0f4bc779d38"
+        },
+        "predictions_log": {
+          "rows": 64230,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-17/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 767219,
+          "declaredBytes": 767219,
+          "declaredSha256": "1b1cd237e7ebff5881d46aae84f42c27a3f702927d9d736a6efa3078a97eaeb8"
+        },
+        "upstream_etas": {
+          "rows": 64367,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-17/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 787985,
+          "declaredBytes": 787985,
+          "declaredSha256": "9e48f7ce4da280ba99b01098490aab0781b925371528d532a08eed790848d971"
+        },
+        "scorecard_days": {
+          "rows": 323,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-17/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 15717,
+          "declaredBytes": 15717,
+          "declaredSha256": "e27aaec360550a3f8391aafc66fa8928138a318a8da9219386fc723d3d67192b"
+        }
+      }
+    },
+    {
+      "day": "2026-09-18",
+      "version": null,
+      "ok": true,
+      "generatedAt": "2026-09-19T07:40:05.377Z",
+      "completeness": null,
+      "manifestSha256": "e6b4228881b094af6fc7b77077c03c079c07d50200096a66e0c575bac43aa6d3",
+      "tables": {
+        "raw_positions": {
+          "rows": 163591,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-18/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 1497680,
+          "declaredBytes": 1497680,
+          "declaredSha256": "9e92290131a5c411fb29939775985136718c00f5836cf3945ced7b9a519782b5"
+        },
+        "arrivals": {
+          "rows": 5977,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-18/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 109839,
+          "declaredBytes": 109839,
+          "declaredSha256": "b791a03ef4801574fcf7f17567b02b7e6f93bf056d3f7507ac68f3a959aad600"
+        },
+        "stop_visits": {
+          "rows": 5875,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-18/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 442094,
+          "declaredBytes": 442094,
+          "declaredSha256": "d02f2fcc8b6b0fb1b82ecd082f70c90bad075f155dae604400188ba800ff9b58"
+        },
+        "legs": {
+          "rows": 5529,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-18/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 190588,
+          "declaredBytes": 190588,
+          "declaredSha256": "8411c659efc325eb9972a533c5f5559e91d33eedfcbb4e015ebcef5247ddeeb4"
+        },
+        "predictions_log": {
+          "rows": 52758,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-18/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 621011,
+          "declaredBytes": 621011,
+          "declaredSha256": "e51049a0e2c9e47549c5afd18b852130bc8662cfae0b40c0ac86edb2b6cfdc6b"
+        },
+        "upstream_etas": {
+          "rows": 55791,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-18/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 698300,
+          "declaredBytes": 698300,
+          "declaredSha256": "febc1efc7db1ce5a1b4d0f1f4388b6c55945675cf45b637caf75f80dd61f668c"
+        },
+        "scorecard_days": {
+          "rows": 359,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-18/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 17882,
+          "declaredBytes": 17882,
+          "declaredSha256": "c6241aedc49f81d67b2482b7489f478633e7afa43d6bea8c1b2c142639fee985"
+        }
+      }
+    },
+    {
+      "day": "2026-09-19",
+      "version": null,
+      "ok": true,
+      "generatedAt": "2026-09-20T07:40:04.923Z",
+      "completeness": null,
+      "manifestSha256": "ab6e496c4e2d0b7aff0a51e4121218aaaa5cb7528848115a275a5c1bb2199240",
+      "tables": {
+        "raw_positions": {
+          "rows": 82107,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-19/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 781458,
+          "declaredBytes": 781458,
+          "declaredSha256": "307b469c2e7ef25e17f2c1143c93ae8862084eba9c0703f03812568f10f5a53f"
+        },
+        "arrivals": {
+          "rows": 2492,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-19/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 45177,
+          "declaredBytes": 45177,
+          "declaredSha256": "78122e8aa155a908c8de7169065cf64c5774bc751f948462083765bbea9404bb"
+        },
+        "stop_visits": {
+          "rows": 2479,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-19/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 177564,
+          "declaredBytes": 177564,
+          "declaredSha256": "2f079dfa9d1e0de87b3e2015429da086ce9211a9987d7d2eaa86deecd2403877"
+        },
+        "legs": {
+          "rows": 2291,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-19/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 77606,
+          "declaredBytes": 77606,
+          "declaredSha256": "43f6864f4bb315254b6d617c7910260e15e573d8b9ed67f942383d7718883061"
+        },
+        "predictions_log": {
+          "rows": 19690,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-19/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 214399,
+          "declaredBytes": 214399,
+          "declaredSha256": "9926bf037bccbb7c247570911b670199d5eccd222abb47eda9ad745a3dcf8a6a"
+        },
+        "upstream_etas": {
+          "rows": 43582,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-19/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 551887,
+          "declaredBytes": 551887,
+          "declaredSha256": "cd8a003dd5c7ba0305972b7c35d2dc6bb7e7e7c362f5f7f8143e2af68e8d7453"
+        },
+        "scorecard_days": {
+          "rows": 223,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-19/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 9976,
+          "declaredBytes": 9976,
+          "declaredSha256": "88bcf72222a4c92555f9048c0773f424ff3aca6d732f5a1704ebc675dd76596a"
+        }
+      }
+    },
+    {
+      "day": "2026-09-20",
+      "version": null,
+      "ok": true,
+      "generatedAt": "2026-09-21T07:40:03.680Z",
+      "completeness": null,
+      "manifestSha256": "5ba529982a54001a74e943d50f4664a74130e68452ec7b247eace28a2b735b7b",
+      "tables": {
+        "raw_positions": {
+          "rows": 79617,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-20/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 749945,
+          "declaredBytes": 749945,
+          "declaredSha256": "0cc119a3c714df01aaea75c000ae16ae973aa256511daa418f60a775b867d8b3"
+        },
+        "arrivals": {
+          "rows": 2488,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-20/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 44954,
+          "declaredBytes": 44954,
+          "declaredSha256": "ef6e9dc9eca5b3f498cca272bddc7a5fdfad55df33d7f6598409bd6697e53bdb"
+        },
+        "stop_visits": {
+          "rows": 2478,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-20/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 177535,
+          "declaredBytes": 177535,
+          "declaredSha256": "77d3b4aa77039f3e808acc06baa90caf452ee530bb3031199511a5b61fecdd9c"
+        },
+        "legs": {
+          "rows": 2302,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-20/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 77321,
+          "declaredBytes": 77321,
+          "declaredSha256": "4e227de4691b647ca9f53a251bd866d34452a7cd64d04839f5fbb2585618c791"
+        },
+        "predictions_log": {
+          "rows": 23533,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-20/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 258895,
+          "declaredBytes": 258895,
+          "declaredSha256": "4aaa5e1999b3445d114b41ed3324e9fb478c209972b47ffc6143d136327c1be7"
+        },
+        "upstream_etas": {
+          "rows": 39969,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-20/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 515291,
+          "declaredBytes": 515291,
+          "declaredSha256": "6d52c160c9d868e70102d4b01d08ae320127341b62ce46e29728e4a8045ebdc6"
+        },
+        "scorecard_days": {
+          "rows": 230,
+          "complete": true,
+          "capturedAt": null,
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-20/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 10755,
+          "declaredBytes": 10755,
+          "declaredSha256": "a5df1324caf3642b1481a96ef0969065ed84adf2390e98daab231bc9f1f7b33e"
+        }
+      }
+    },
+    {
+      "day": "2026-09-21",
+      "version": 2,
+      "ok": true,
+      "generatedAt": "2026-09-22T07:40:09.446Z",
+      "completeness": "transport only; service coverage and outcome finality are not established",
+      "manifestSha256": "6af15e08891c2dedefabe8588800926912979cd137210e342c1dca70f300e7fe",
+      "tables": {
+        "raw_positions": {
+          "rows": 179751,
+          "complete": true,
+          "capturedAt": "2026-09-22T07:40:12.293Z",
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-21/snapshots/2026-09-22T07-40-09-445Z-34fcd4b0-e24b-4551-bfd2-41cb077590cd/raw_positions.jsonl.gz",
+          "exists": true,
+          "bytes": 1644074,
+          "declaredBytes": 1644074,
+          "declaredSha256": "e44f295cb525cfa38e7f9e19ea29efb5204d93b3b39f26ea04c2213b914386c6"
+        },
+        "arrivals": {
+          "rows": 6750,
+          "complete": true,
+          "capturedAt": "2026-09-22T07:40:13.886Z",
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-21/snapshots/2026-09-22T07-40-09-445Z-34fcd4b0-e24b-4551-bfd2-41cb077590cd/arrivals.jsonl.gz",
+          "exists": true,
+          "bytes": 123057,
+          "declaredBytes": 123057,
+          "declaredSha256": "44c057928c02dc4313240b414ac3cb7eb1860b1994d05fb7f7964d9e350c8089"
+        },
+        "stop_visits": {
+          "rows": 6682,
+          "complete": true,
+          "capturedAt": "2026-09-22T07:40:14.315Z",
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-21/snapshots/2026-09-22T07-40-09-445Z-34fcd4b0-e24b-4551-bfd2-41cb077590cd/stop_visits.jsonl.gz",
+          "exists": true,
+          "bytes": 499179,
+          "declaredBytes": 499179,
+          "declaredSha256": "0f9195736977b67e4d9b2974e101e5a66d8ec14f011509875d3ab7839da65fa7"
+        },
+        "legs": {
+          "rows": 6344,
+          "complete": true,
+          "capturedAt": "2026-09-22T07:40:14.662Z",
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-21/snapshots/2026-09-22T07-40-09-445Z-34fcd4b0-e24b-4551-bfd2-41cb077590cd/legs.jsonl.gz",
+          "exists": true,
+          "bytes": 216091,
+          "declaredBytes": 216091,
+          "declaredSha256": "0e7cf00a171696f2e6b34f00e261120ca22dfef25730e772cbc45777ddd40ae1"
+        },
+        "predictions_log": {
+          "rows": 58988,
+          "complete": true,
+          "capturedAt": "2026-09-22T07:40:16.018Z",
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-21/snapshots/2026-09-22T07-40-09-445Z-34fcd4b0-e24b-4551-bfd2-41cb077590cd/predictions_log.jsonl.gz",
+          "exists": true,
+          "bytes": 699463,
+          "declaredBytes": 699463,
+          "declaredSha256": "6b76cc2d55b96c6acc3d3e709f064c3e49dbf2d2e5dfa93197d91a74ca7cf6a2"
+        },
+        "upstream_etas": {
+          "rows": 62982,
+          "complete": true,
+          "capturedAt": "2026-09-22T07:40:17.421Z",
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-21/snapshots/2026-09-22T07-40-09-445Z-34fcd4b0-e24b-4551-bfd2-41cb077590cd/upstream_etas.jsonl.gz",
+          "exists": true,
+          "bytes": 772617,
+          "declaredBytes": 772617,
+          "declaredSha256": "10a5a87b61d8d368730090eb53aba3a9dbc1dfc8b3ac47989c0b48cddaad78ba"
+        },
+        "scorecard_days": {
+          "rows": 358,
+          "complete": true,
+          "capturedAt": "2026-09-22T07:40:17.752Z",
+          "source": "server",
+          "file": "/home/gwarren/shuttle-archive/2026-09-21/snapshots/2026-09-22T07-40-09-445Z-34fcd4b0-e24b-4551-bfd2-41cb077590cd/scorecard_days.jsonl.gz",
+          "exists": true,
+          "bytes": 17128,
+          "declaredBytes": 17128,
+          "declaredSha256": "a59d96f1ce3a160a99d610d78b135b0c332432d9c953b6c8407b42939567f0d0"
+        }
+      }
+    }
+  ]
+}
