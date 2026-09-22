@@ -107,3 +107,30 @@ for rid in (2,14):
 (DEST/'audit.json').write_text(json.dumps(result,indent=2))
 (DEST/'suspect-paths.json').write_text(json.dumps(suspects,indent=2))
 print(json.dumps(dict(pathAudit=result['pathAudit'],outcomeAudit=result['outcomeAudit'],sensitivity=result['sensitivity'])))
+
+# Reconstruct priors from ALL rebuilt events, avoiding selection on agreement.
+reconstructed=[]
+for i,e in enumerate(rebuilt):
+ reconstructed.append(dict(id=-(i+1),bus_name=e['busName'],route_id=e['routeId'],stop_index=e['stopIndex'],stop_id=e['stopId'],arrived_at=e['arrivedAt'],departed_at=e['departedAt'],anchored_at=e['anchoredAt'],outcome=e['outcome'],how=e['how'],closest_m=e['closestM']))
+rebuilt_model=Models(reconstructed,quality)
+rebuild_result={}
+for rid in (2,14):
+ rs=[r for r in rows if r['route']==rid];rebuild_result[rid]={}
+ for arm in ARMS:
+  original=[r for r in rs if r['forecasts'][arm]['changed']]
+  regenerated=[dict(r,forecasts={arm:rebuilt_model.predict(r,arm)}) for r in rs]
+  changed=[r for r in regenerated if r['forecasts'][arm]['changed']]
+  same=[dict(r,forecasts={arm:rebuilt_model.predict(r,arm)}) for r in original]
+  rebuild_result[rid][arm]=dict(onOriginal=metrics(same,arm),changed=metrics(changed,arm),usualOnChanged=metrics(changed,'usual'))
+# Inspect endpoints without treating a threshold disagreement as proven corruption.
+ids=sorted({e['sourceId'] for e in suspects if e['route']==2 and e['k']==8 and 'sourceReplayMismatch' in e['flags']}|{64143})
+endpoints=[]
+for ident in ids:
+ v=vs[ident];key=v['bus_name'],v['route_id'],v['stop_index'];es=by_event.get(key,[])
+ nearest=sorted(es,key=lambda e:abs(e['arrivedAt']-v['arrived_at']))[:2]
+ rs=[r for r in rg[v['bus_name']] if v['arrived_at']-120000<=r['collected_at']<=v['departed_at']+120000] if v['departed_at'] else []
+ endpoints.append(dict(stored=v,rebuilt=nearest,raw=rs))
+result['rebuiltPriors']=rebuild_result
+(DEST/'audit.json').write_text(json.dumps(result,indent=2))
+(DEST/'endpoint-details.json').write_text(json.dumps(endpoints,indent=2))
+print(json.dumps(dict(rebuiltPriors=rebuild_result)))
