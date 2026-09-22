@@ -1,0 +1,36 @@
+name: checkpoint-ensemble-cross-policy-control
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: checkpoint-ensemble-complete-highway25
+          run-id: 35741682149
+          github-token: ${{ github.token }}
+          path: research/checkpoint-ensemble/policy-comparison-input/highway25
+      - uses: actions/download-artifact@v4
+        with:
+          name: checkpoint-ensemble-complete-highway50
+          run-id: 35741682149
+          github-token: ${{ github.token }}
+          path: research/checkpoint-ensemble/policy-comparison-input/highway50
+      - name: Prove pinned full-stream controls without fitting or new scoring
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/grtwrn/yale-shuttle/actions/runs/35741682149/artifacts > research/checkpoint-ensemble/policy-comparison-input/artifacts.json
+          python3 research/checkpoint-ensemble/compare_policies.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-ensemble-cross-policy-control
+          path: research/checkpoint-ensemble/policy-comparison.json
+          retention-days: 90
