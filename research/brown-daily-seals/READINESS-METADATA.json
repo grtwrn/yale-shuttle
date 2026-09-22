@@ -1,0 +1,103 @@
+{
+  "auditedAt": "2026-09-22T19:27:17.223242+00:00",
+  "scope": "Raw manifest/file-stat and hosted artifact metadata only; no raw bodies opened or hashes locally reverified",
+  "readinessCommit": "7eebbde77cbeeb8e466b1001c2b9a585989e8e96",
+  "rawDays": [
+    {
+      "day": "2026-09-21",
+      "manifestExists": true,
+      "manifestVersion": 2,
+      "rawTable": {
+        "file": "snapshots/2026-09-22T07-40-09-445Z-34fcd4b0-e24b-4551-bfd2-41cb077590cd/raw_positions.jsonl.gz",
+        "rows": 179751,
+        "complete": true,
+        "source": "server",
+        "build": "05a988194af3",
+        "capturedAt": "2026-09-22T07:40:12.293Z",
+        "columns": [
+          "bus_id",
+          "bus_name",
+          "route_id",
+          "lat",
+          "lon",
+          "heading",
+          "last_stop_id",
+          "collected_at"
+        ],
+        "bytes": 1644074,
+        "rawBytes": 25476010,
+        "sha256": "e44f295cb525cfa38e7f9e19ea29efb5204d93b3b39f26ea04c2213b914386c6"
+      },
+      "positions": {
+        "server": 179751,
+        "capture": 0,
+        "onlyServer": 179751,
+        "merged": 179751,
+        "captureFiles": []
+      },
+      "selectedFileExists": true,
+      "statBytes": 1644074
+    },
+    {
+      "day": "2026-09-22",
+      "manifestExists": false
+    },
+    {
+      "day": "2026-09-23",
+      "manifestExists": false
+    },
+    {
+      "day": "2026-09-24",
+      "manifestExists": false
+    },
+    {
+      "day": "2026-09-25",
+      "manifestExists": false
+    },
+    {
+      "day": "2026-09-26",
+      "manifestExists": false
+    },
+    {
+      "day": "2026-09-27",
+      "manifestExists": false
+    },
+    {
+      "day": "2026-09-28",
+      "manifestExists": false
+    }
+  ],
+  "archiveScheduleET": "03:40 daily; no change",
+  "repositoryDefaultBranch": "master",
+  "archiveAdminSecretConfigured": false,
+  "fixedHostedInputs": [
+    {
+      "run": 35677536788,
+      "artifact": 10673937070,
+      "name": "k-sweep-results",
+      "zipSha256": "946f3d2b60d9f87dea7d1c628bcbd05acdda108f08637f42300bd4b9a7767980",
+      "expiresAt": "2026-12-21T01:55:08Z"
+    },
+    {
+      "run": 35684356219,
+      "artifact": 10675444393,
+      "name": "canonical-window-results",
+      "zipSha256": "a854fe5adf04ac934723ee2e51aa9be20f40c3b2f39a747fd6093547ec36eb71",
+      "expiresAt": "2026-12-21T03:45:59Z"
+    },
+    {
+      "run": 35694227486,
+      "artifact": 10679258655,
+      "name": "sealed-frozen-brown-k8",
+      "zipSha256": "414da2ad271463a679a7c0f8f92c0685b896158e5634266de875fb67683349d5",
+      "expiresAt": "2026-12-21T06:18:14Z"
+    },
+    {
+      "run": 35696391115,
+      "artifact": 10680921023,
+      "name": "sealed-rolling-brown-k5-sep23",
+      "zipSha256": "2c62523f825145520da434017ecce4b07bc954e719cb6ecc65839ba4c1dae993",
+      "expiresAt": "2026-12-21T06:46:48Z"
+    }
+  ]
+}
