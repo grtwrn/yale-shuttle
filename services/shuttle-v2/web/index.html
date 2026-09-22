@@ -3,6 +3,25 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      // A slightly wider layout at first paint makes Android phones less
+      // crowded, including the installed app. Leave pinch zoom available.
+      if (/Android.*Mobile/i.test(navigator.userAgent)) {
+        document.documentElement.dataset.androidCompact = "true";
+        document.querySelector('meta[name="viewport"]').content =
+          "width=device-width, initial-scale=0.9";
+      }
+    </script>
+    <style>
+      /* Keep the main controls at least 44 screen pixels tall at 90% scale. */
+      html[data-android-compact] :is(
+        .trip-action-button, .trip-map-wrap button,
+        #trip-from, #trip-to, input[type="datetime-local"]
+      ) {
+        min-height: 49px !important;
+        min-width: 49px !important;
+      }
+    </style>
     <title>Yale Shuttle Tracker</title>
     <meta name="description" content="Unofficial live tracker for the Yale shuttles: bus positions, stop ETAs and trip planning." />
     <meta name="theme-color" content="#00356b" />
