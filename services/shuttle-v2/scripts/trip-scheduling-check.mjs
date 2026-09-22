@@ -216,7 +216,8 @@ try {
     }
     for (const button of await actions.getByRole('button').all()) {
       const box = await button.boundingBox();
-      assert(box.width * viewport.scale >= 44 && box.height * viewport.scale >= 44, 'action has a small touch target');
+      assert(box.width * viewport.scale >= 44 && box.height * viewport.scale >= 44,
+        `action has a small touch target: ${await button.innerText()} (${box.width} x ${box.height}, scale ${viewport.scale})`);
       assert(await button.evaluate(e => e.scrollWidth <= e.clientWidth), 'action text clips');
     }
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
