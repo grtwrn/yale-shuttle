@@ -1,0 +1,42 @@
+name: brown-handoff-audit
+on:
+  push:
+    branches: [research/brown-handoffs-2026-09-22]
+    paths: ['research/brown-handoffs/audit.py', 'research/brown-handoffs/test_audit.py', '.github/workflows/brown-handoffs.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: window-only-results
+          run-id: 35685527686
+          github-token: ${{ github.token }}
+          path: research/brown-handoffs/input/window
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/brown-handoffs/input/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - name: Check cause and absolute-time boundaries
+        run: python3 -m unittest discover -s research/brown-handoffs -p 'test_*.py' -v
+      - name: Classify unchanged Brown handoffs
+        run: python3 research/brown-handoffs/audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brown-handoff-results
+          path: research/brown-handoffs/results/**
+          retention-days: 90
