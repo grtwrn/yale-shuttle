@@ -1,0 +1,59 @@
+name: causal-source-discard-diagnostic
+on:
+  push:
+    branches: [research/source-discard-2026-09-22]
+    paths: ['research/source-discard/**', '.github/workflows/source-discard.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      TZ: America/New_York
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/source-discard/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: highway-context-window-results
+          run-id: 35688081446
+          github-token: ${{ github.token }}
+          path: research/source-discard/highway
+      - name: Pin saved reason stream and run observer fixtures
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/grtwrn/yale-shuttle/actions/artifacts/10678256735 > research/source-discard/highway/artifact-metadata.json
+          gh api repos/grtwrn/yale-shuttle/actions/runs/35688081446 > research/source-discard/highway/run-metadata.json
+          services/shuttle-v2/node_modules/.bin/tsx research/source-discard/observer.test.ts
+      - name: Observe original replay; assert unchanged inputs and deleted-future parity
+        run: services/shuttle-v2/node_modules/.bin/tsx research/source-discard/run.ts
+      - name: Count existing reason cohorts without fitting or scoring
+        run: |
+          python3 research/source-discard/report.py
+          cp research/source-discard/PLAN.md research/source-discard/results/
+          cp research/highway-protected-app-scope.md research/source-discard/results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: causal-source-discard-diagnostic
+          path: research/source-discard/results/**
+          retention-days: 90
