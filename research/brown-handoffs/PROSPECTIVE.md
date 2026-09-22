@@ -1,5 +1,13 @@
 # Prospective Brown validation protocol
 
+Status clarification: this pins the two unchanged reference leads. Before any
+prospective scoring, the separately preregistered [clock factorial](../brown-clocks/PLAN.md)
+now tests documented45/90min source lifetime and15/<45s observation freshness
+on development dates only. That experiment does not authorize prospective
+scoring, pick a winner, or resolve the K8 occurrence concern. September23–29
+remains unopened; any prospective lead/clock selection must be pinned before
+those outcomes are opened.
+
 Pinned after documenting handoff audit35686521295, before reading any subsequent
 outcomes. Retain both arms; no winner is selected from18 development visits.
 This protocol schedules no scoring or deployment by itself. September17–20 are

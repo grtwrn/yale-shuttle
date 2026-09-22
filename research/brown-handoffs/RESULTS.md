@@ -78,17 +78,16 @@ Sep17 and narrow on Sep18. At a3-minute walk,13 common rendered-reminder pairs
 show zero additional misses and mean extra waiting0.85s /0s respectively;
 7 of20 deployed rendered actions are censored. Neither is deployment-ready.
 
-A principled next experiment would distinguish uncertainty withdrawal from
-physical release, rather than average away jumps. In particular, test a
-separately preregistered conservative interval envelope on TEMPORARY freshness
-loss: combine the last causally accepted absolute bounds with current deployed
-bounds, keeping the deployed point unchanged, and reset only on explicitly
-defined causal evidence. Such an arm must use no future connectivity checks,
-must keep route/provider/source identity and existing expiry limits explicit,
-and must report added width/waiting. This is an UNIMPLEMENTED research proposal;
-no holding, smoothing, freshness extension or threshold change occurs here.
-Source-age expiry and possible source-occurrence reactivation need separate
-experiments, not silently expanded scope in that temporary-freshness arm.
+The next bounded question is whether two inherited clock limits cause
+unnecessary withdrawal of otherwise causal evidence. Code provenance and the
+existing live-server contract justify a separately frozen
+[45/90min source-lifetime by15/<45s freshness factorial](../brown-clocks/PLAN.md).
+Both Brown leads are retained. This changes neither the completed audit nor its
+forecasts; the extension must reproduce both original controls before scoring.
+It tests documented validity contracts without smoothing bounds or choosing
+constants from observed errors. No conservative-envelope arm was implemented.
+The possible K8 source-occurrence reactivation remains separately reported and
+is not silently repaired by either clock factor.
 
 Record-level clocks, original snapshots, causal emissions, adjacent occurrences
 and raw continuity evidence are in artifact35686521295/handoff-records.jsonl.gz.
