@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "timestamps": "Integer UTC epoch milliseconds; knownAt is the observation poll that emitted the update.",
+  "markerUpdate": {
+    "type": "encounter_update",
+    "episodeId": "JSON [1,busName,providerId,routeId,segmentStartedAt,markerId,enteredAt]",
+    "version": "Positive per-episode integer, never a global ordinal",
+    "knownAt": "Actual emission poll",
+    "event": "enter | observe | exit | censor | absence_witness",
+    "episode": {
+      "bus": "Stable displayed vehicle name",
+      "provider": "Provider vehicle ID",
+      "route": "Observed route assignment; not inferred from marker proximity",
+      "segmentStartedAt": "First poll of this continuity segment",
+      "marker": "Physical marker ID; independent of canonical occurrence",
+      "enteredAt": "First observed fix within75m",
+      "entryLowerAt": "Previous continuous observation time or null on first sight/break",
+      "lastObservedAt": "Last supported observation within125m",
+      "lastWithin75At": "Last observed fix within75m",
+      "minimumMetres": "Observed closest approach",
+      "polls": "Observed fixes in this marker episode",
+      "nearPolls": "Observed fixes within75m",
+      "movementFixes": "Observed coordinate changes during the episode",
+      "plateau": "{startedAt,lastAt,polls,metres}; raw coordinate held only in private processing state",
+      "maxNearPlateauMs": "Largest already-observed exact-coordinate plateau within75m",
+      "maxBandPlateauMs": "Largest already-observed plateau in75–125m band",
+      "stationaryNearKnownAt": "First poll with a>=15s observed near plateau, else null",
+      "evidence": "stationary_fix_supported | possible_pass | uncertain; not a boarding claim",
+      "status": "open | exited | censored",
+      "exitLowerAt": "Last within125m time on observed exit, else null",
+      "exitAt": "First observed fix beyond125m, else null",
+      "censorKnownAt": "First poll where discontinuity is known, else null",
+      "censorReason": "provider_change | route_change | contention_change | observation_gap | null",
+      "absenceWitnessAt": "Later same-provider same-name fix beyond125m, else null",
+      "contended": "Whether provider identity was ambiguous in its segment",
+      "simultaneousNearMarkers": "Sorted marker IDs within75m on THIS observation only; never merged or inherited"
+    }
+  },
+  "phaseAnnotation": {
+    "episodeId": "Physical episode reference; may annotate an update without changing it",
+    "version": "Referenced physical update version",
+    "knownAt": "Same emission poll",
+    "arm": "baseline | guarded",
+    "anchorIndex": "Causal detector anchor, or null",
+    "phaseIndex": "Causal departure/hold occurrence, or null",
+    "supportedLeg": "Guard's causal directed-leg certificate where present, or null",
+    "markerOccurrences": "All marker indices on canonical runtime route",
+    "association": "unavailable | marker_not_on_route | unique_phase_supported | multiple_phase_candidates | other_phase_or_leg"
+  },
+  "barrierRow": {
+    "forecastKey": "[at,bus,route,target]",
+    "asof": "Original causal forecast asof",
+    "originalLabel": "Unchanged baseline label",
+    "proposedLabel": "Unchanged c80ab5f label; not adopted as truth",
+    "targetEpisodeIds": "Observed-interval identity matches, unmodified by phase",
+    "barriers": "Every {episodeId,reason,entryKnownByAsOf,stationaryKnownByAsOf}; reasons include open_at_asof, earlier_encounter, censored_without_exit",
+    "associationReason": "unique_target_encounter | missing_target_encounter | ambiguous_target_encounter | no_proposed_label",
+    "knownBarrierPreserved": "Existing32-row barrier membership remains unresolved"
+  },
+  "continuityBreak": {
+    "knownAt": "Poll demonstrating the break",
+    "bus": "Vehicle name",
+    "provider": "Affected provider",
+    "route": "Prior route",
+    "lastObservedAt": "Prior physical evidence time",
+    "reason": "Same censor reason vocabulary",
+    "episodeIds": "All affected marker-specific episode IDs; none deleted from history"
+  }
+}
