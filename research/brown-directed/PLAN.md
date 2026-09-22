@@ -72,3 +72,11 @@ report additional waiting and censoring with same-policy pairs and no actual
 rider-miss claim. Require original action/point identity. All prior promotion
 thresholds and unopened-date support remain; no production promotion here.
 Heavy replay/tests/fitting/scoring occur on GitHub only.
+
+Execution note: hosted run35689458971 attempts1 and2 were cancelled by the
+runner with no assertion, process exit status or artifacts, before the30min
+job timeout. These are missing execution results, not physical-gate failures.
+The next attempt records progress/memory and streams complete event lines to
+disk, comparing them exactly (including four future-prefix checks) before
+compression. This changes storage and observability only; all scientific
+inputs, adapter bytes, cohorts and halt gates remain fixed.

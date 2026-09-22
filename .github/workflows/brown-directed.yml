@@ -29,7 +29,9 @@ jobs:
           github-token: ${{ github.token }}
           path: research/k-sweep/results
       - name: Brown-only physical parity gates; halt before scoring on discrepancy
-        run: services/shuttle-v2/node_modules/.bin/tsx research/brown-directed/parity.ts
+        run: /usr/bin/time -v services/shuttle-v2/node_modules/.bin/tsx research/brown-directed/parity.ts
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - uses: actions/upload-artifact@v4
         if: always()
         with:

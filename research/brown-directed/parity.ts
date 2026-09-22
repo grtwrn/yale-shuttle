@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import readline from 'node:readline';
 import zlib from 'node:zlib';
 import {createHash} from 'node:crypto';
+import {pipeline} from 'node:stream/promises';
 import {TransitNetwork} from '../../services/shuttle-v2/src/network/TransitNetwork.ts';
 import {distanceMeters} from '../../services/shuttle-v2/src/network/geo.ts';
 import {planTracks,reconcileTracks,type BusObservation,type BusState} from '../../services/shuttle-v2/src/collector/detector.ts';
@@ -16,6 +17,12 @@ fs.mkdirSync(out,{recursive:true});
 const topology=JSON.parse(fs.readFileSync(frozen+'canonical-topology.json','utf8'));
 const network=TransitNetwork.build(topology.stops,topology.routes);
 const windows:any[]=[];
+function progress(stage:string,detail:Record<string,unknown>={}){
+ const entry={at:new Date().toISOString(),stage,...detail,memory:process.memoryUsage()};
+ console.log(JSON.stringify(entry));
+ fs.appendFileSync(out+'execution-progress.jsonl',JSON.stringify(entry)+'\n');
+}
+progress('loading-inputs');
 const hash=(p:string)=>createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 assert.equal(hash('research/brown-directed/guard.ts'),'472c2e7a5babebcb3e2d31736aa4d3ddb013d11bb73ebd157d3daf65719719f6');
 async function read(path:string) {
@@ -30,13 +37,44 @@ const raw=(await read('research/k-sweep/results/raw_positions.jsonl.gz')).map((r
 })).sort((a,b)=>a.collectedAt-b.collectedAt||a.busId-b.busId);
 assert(raw.at(-1)!.collectedAt<Date.parse('2026-09-21T04:00:00Z'),'Unexpected September21 input');
 const frozenRows=await read(frozen+'training-visits.jsonl.gz');
+progress('inputs-loaded',{raw:raw.length,canonicalVisits:frozenRows.length});
+// Complete event streams live on disk, not in duplicate retained object arrays.
+// Comparisons below check every serialized line exactly; hashes are provenance.
+class EventLog {
+ readonly path:string; private fd:number; count=0;
+ private digest=createHash('sha256'); sha256='';
+ constructor(readonly name:string){this.path=out+name+'-events.jsonl';this.fd=fs.openSync(this.path,'w');}
+ append(row:any){const line=JSON.stringify(row)+'\n';fs.writeSync(this.fd,line);this.digest.update(line);this.count++;}
+ close(){fs.closeSync(this.fd);this.sha256=this.digest.digest('hex');}
+}
+async function* eventLines(log:EventLog,nonBrown=false,cutoff=Infinity){
+ for await(const line of readline.createInterface({input:fs.createReadStream(log.path)})){
+  const r=JSON.parse(line);if(r.knownAt>=cutoff)break;
+  if(!nonBrown||r.routeId!==19)yield line;
+ }
+}
+async function compareEvents(left:EventLog,right:EventLog,nonBrown=false,cutoff=Infinity){
+ const a=eventLines(left,nonBrown,cutoff),b=eventLines(right,nonBrown,cutoff);
+ let count=0;const digest=createHash('sha256');
+ for(;;){const x=await a.next(),y=await b.next();assert.equal(x.done,y.done,'Event stream length changed');
+  if(x.done)break;assert.equal(x.value,y.value,`Event stream changed at line ${count}`);
+  digest.update(x.value+'\n');count++;
+ }
+ return {count,sha256:digest.digest('hex')};
+}
+async function compressEvents(log:EventLog){
+ await pipeline(fs.createReadStream(log.path),zlib.createGzip(),fs.createWriteStream(log.path+'.gz'));
+ fs.unlinkSync(log.path);
+}
 function emit(name:string,rows:any[]){fs.writeFileSync(out+name+'.jsonl.gz',zlib.gzipSync(rows.map(r=>JSON.stringify(r)).join('\n')+(rows.length?'\n':'')));}
 function signature(r:any){return Object.fromEntries(Object.entries(r).filter(([k])=>k!=='id'&&!k.startsWith('replay_')));}
 function visitKey(r:any){return [r.bus_name,r.route_id,r.stop_index,r.anchored_at].join('|');}
-function replay(observations:BusObservation[],protectedArm:boolean,diagnostic=true) {
+function replay(observations:BusObservation[],protectedArm:boolean,name:string,diagnostic=true) {
+  progress('replay-start',{name,observations:observations.length});
   const states=new Map<string,BusState>(),visits=new Map<string,VisitState>();
   const guard=new DirectedGuard(network),net=protectedArm?guard.network:network;
-  const rows:any[]=[],decisions:any[]=[],traces:any[]=[],allEvents:any[]=[],perRoute:Record<string,any>={};
+  const rows:any[]=[],decisions:any[]=[],traces:any[]=[],perRoute:Record<string,any>={};
+  const events=new EventLog(name);
   let polls=0,duplicates=0;
   for(let cursor=0;cursor<observations.length;) {
     const at=observations[cursor]!.collectedAt,unique=new Map<number,BusObservation>();
@@ -64,7 +102,7 @@ function replay(observations:BusObservation[],protectedArm:boolean,diagnostic=tr
     });
     const stepped=stepManyWithVisits(net,states,visits,group,plan);
     for(const e of [...stepped.events,...stepped.visits]) {
-      allEvents.push({knownAt:at,...e});
+      events.append({knownAt:at,...e});
       const r=perRoute[e.routeId]??={observations:0,visits:0,protectedPolls:0,protectedBuses:new Set(),reasons:{},transitionsOver5:0,events:{},outcomes:{}};
       r.events[e.kind]=(r.events[e.kind]??0)+1;
     }
@@ -94,18 +132,20 @@ function replay(observations:BusObservation[],protectedArm:boolean,diagnostic=tr
       }
     }
     polls++;
+    if(polls%10000===0)progress('replay-progress',{name,polls,at,visits:rows.length,events:events.count});
   }
   for(const r of Object.values(perRoute))r.protectedBuses=[...r.protectedBuses].sort();
-  return {rows,decisions,traces,allEvents,audit:{polls,observations:observations.length,duplicates,perRoute,eofClosures:0}};
+  events.close();progress('replay-complete',{name,polls,visits:rows.length,events:events.count});
+  return {rows,decisions,traces,events,audit:{polls,observations:observations.length,duplicates,perRoute,eofClosures:0}};
 }
-const baseline=replay(raw,false),candidate=replay(raw,true);
+const baseline=replay(raw,false,'baseline'),candidate=replay(raw,true,'candidate');
 assert.deepEqual(baseline.rows.map(signature),frozenRows.map(signature),'Baseline differs from frozen canonical visits');
 emit('baseline-visits',baseline.rows);emit('candidate-visits',candidate.rows);
-emit('baseline-events',baseline.allEvents);emit('candidate-events',candidate.allEvents);
+progress('baseline-canonical-identity-passed');
 emit('guard-decisions',candidate.decisions);
 assert(candidate.decisions.every(d=>d.route===19),'Guard changed another route');
-const otherBase=baseline.allEvents.filter(e=>e.routeId!==19),otherNext=candidate.allEvents.filter(e=>e.routeId!==19);
-assert.deepEqual(otherNext,otherBase,'Non-Brown reducer emission changed');
+const other=await compareEvents(baseline.events,candidate.events,true);
+progress('non-brown-event-identity-passed',{events:other.count});
 const physical=(r:any)=>r.pinned_at!==null||r.arrived_at!==null||r.departed_at!==null;
 const fields=['bus_name','bus_id','route_id','stop_index','stop_id','arrived_at','departed_at','known_at'];
 const identity=(r:any)=>JSON.stringify(Object.fromEntries(fields.map(k=>[k,r[k]])));
@@ -139,17 +179,18 @@ emit('candidate-unpinned-bookkeeping',next.filter(r=>!physical(r)));
 const prefixes=[];
 for(const cutoff of [Date.parse('2026-09-16T04:00:00Z'),Date.parse('2026-09-19T04:00:00Z'),
  Date.parse('2026-09-18T10:14:45-04:00'),Date.parse('2026-09-18T10:17:15-04:00')]){
- const prefix=replay(raw.filter(o=>o.collectedAt<cutoff),true,false);
+ const prefix=replay(raw.filter(o=>o.collectedAt<cutoff),true,'prefix-'+cutoff,false);
  assert.deepEqual(prefix.rows,candidate.rows.filter(r=>r.known_at<cutoff));
- assert.deepEqual(prefix.allEvents,candidate.allEvents.filter(r=>r.knownAt<cutoff));
- prefixes.push({cutoff,visits:prefix.rows.length,events:prefix.allEvents.length});
+ const eventCheck=await compareEvents(prefix.events,candidate.events,false,cutoff);
+ prefixes.push({cutoff,visits:prefix.rows.length,events:eventCheck.count,eventSha256:eventCheck.sha256});
+ await compressEvents(prefix.events);
+ progress('prefix-identity-passed',{cutoff,...eventCheck});
 }
 const mapCount=(rows:any[],field:(r:any)=>string)=>Object.fromEntries(rows.reduce((m,r)=>{
  const k=field(r);m.set(k,(m.get(k)??0)+1);return m;},new Map<string,number>()));
-const hashEvents=(rows:any[])=>createHash('sha256').update(rows.map(r=>JSON.stringify(r)).join('\n')).digest('hex');
 const result={guardSha256:hash('research/brown-directed/guard.ts'),baselineCanonicalIdentity:true,
- baselineAudit:baseline.audit,candidateAudit:candidate.audit,nonBrownEventCount:otherBase.length,
- nonBrownEventIdentity:true,nonBrownEventSha256:hashEvents(otherBase),prefixChecks:prefixes,
+ baselineAudit:baseline.audit,candidateAudit:candidate.audit,nonBrownEventCount:other.count,
+ nonBrownEventIdentity:true,nonBrownEventSha256:other.sha256,prefixChecks:prefixes,
  Brown:{baselineTotal:brown.length,candidateTotal:next.length,baselinePhysical:brown.filter(physical).length,
  candidatePhysical:next.filter(physical).length,matchedPhysical:matched,discrepancyKeys:discrepancies.length,
  anchorOnly:anchorOnly.length,metadataDifferences:metadata.length,
@@ -160,6 +201,7 @@ const result={guardSha256:hash('research/brown-directed/guard.ts'),baselineCanon
  gate:discrepancies.length?'HALTED: physical arrival/departure/knownAt multiset changed':'PHYSICAL GATE PASSED; feature/source/path/fit gates still required',
  modelsFitted:0,scoresProduced:false,labelsChanged:false,
  rawSha256:hash('research/k-sweep/results/raw_positions.jsonl.gz'),canonicalVisitsSha256:hash(frozen+'training-visits.jsonl.gz')};
+await compressEvents(baseline.events);await compressEvents(candidate.events);
 fs.writeFileSync(out+'parity-summary.json',JSON.stringify(result,null,2));
 console.log(JSON.stringify({gate:result.gate,Brown:result.Brown,nonBrownEventIdentity:true,prefixChecks:prefixes.length}));
 assert.equal(discrepancies.length,0,'Frozen physical multiset gate failed; halt before feature/fitting/scoring');
