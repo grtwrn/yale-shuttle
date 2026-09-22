@@ -24,6 +24,12 @@ jobs:
         env:
           BLUE_MAX_PATH_SECONDS: '5400'
         run: python3 research/all-k10/evaluate.py
+      - name: Audit ordering and export the qualifying additional route
+        env:
+          BLUE_MAX_PATH_SECONDS: '5400'
+        run: |
+          python3 research/all-k10/audit.py
+          python3 research/all-k10/export.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
