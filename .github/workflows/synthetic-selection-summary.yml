@@ -1,0 +1,70 @@
+name: research-synthetic-selection-summary
+on:
+  push:
+    branches: [research/synthetic-selection-baseline-2026-09-22]
+    paths: [.github/workflows/synthetic-selection-summary.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Summarize immutable synthetic terminal metadata only
+        run: |
+          python3 - <<'PY'
+          import hashlib,io,json,resource,subprocess,zipfile
+          from pathlib import Path
+          resource.setrlimit(resource.RLIMIT_AS,(1024**3,1024**3))
+          artifact=10712181180
+          expected='b0cf90389f5c0c89326185533272287f012b98a46f323df05ef0421b4a9077ee'
+          raw=subprocess.check_output(['gh','api',f'repos/grtwrn/yale-shuttle/actions/artifacts/{artifact}/zip'])
+          assert len(raw)==3987634 and hashlib.sha256(raw).hexdigest()==expected
+          rows=0;keys=set();captures=set();by_date={};inputs={};applied_min=10**9;applied_max=0
+          maxima={key:0 for key in ('maxBuffered','maxRowBytes','rawBytes','compressedBytes','rows')}
+          sums={key:0 for key in ('rawBytes','compressedBytes','rows')}
+          ledger_hash=hashlib.sha256();ledger_bytes=0
+          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+              report=json.loads(archive.read('REPORT.json'))
+              assert report['success'] is True and report['outcomesEvaluated'] is False
+              assert archive.getinfo('all-denominators.jsonl').file_size<1024**3
+              with archive.open('all-denominators.jsonl') as stream:
+                  for line in stream:
+                      assert len(line)<256*1024 and line.endswith(b'\n')
+                      ledger_hash.update(line);ledger_bytes+=len(line)
+                      row=json.loads(line);assert row['id'] not in keys
+                      keys.add(row['id']);captures.add(row['captureId']);rows+=1
+                      by_date[row['date']]=by_date.get(row['date'],0)+1
+                      assert row['initialStatus']=='selected' and row['executionStatus']=='completed'
+                      assert row['versionStatus']=='assumption_qualified' and row['strictIdentityKnown'] is False
+                      assert row['captureStartCovered'] and row['horizonEndCovered'] and row['initialWindowCovered']
+                      assert row['release']['source']=='05a988194af3c376e5aa5da16682c29f797db2b2'
+                      for key,value in row['inputCounts'].items():inputs[key]=inputs.get(key,0)+value
+                      applied_min=min(applied_min,row['inputCounts']['applied'])
+                      applied_max=max(applied_max,row['inputCounts']['applied'])
+                      for key in maxima:maxima[key]=max(maxima[key],row['output'][key])
+                      for key in sums:sums[key]+=row['output'][key]
+          assert rows==28224 and len(captures)==7 and len(by_date)==7 and set(by_date.values())=={4032}
+          assert all(sums[key]==report['counts'][key] for key in sums)
+          assert applied_min==applied_max==180
+          result=dict(metadataOnly=True,syntheticOnly=True,outcomesEvaluated=False,
+              originalRun=35740584588,originalSource='8c67b5bcd5e5deb02893bed31de7d22c3b034337',
+              originalArtifactId=artifact,originalArtifactSha256=expected,
+              denominatorSha256=ledger_hash.hexdigest(),denominatorBytes=ledger_bytes,
+              profiles=rows,captureLineages=len(captures),profilesByDate=by_date,
+              outputMaxima=maxima,outputSums=sums,inputCounts=inputs,
+              minAppliedPerProfile=applied_min,maxAppliedPerProfile=applied_max,
+              logicalBodyReadInference=dict(count=inputs['applied'],
+                  basis='For this healthy workload every initial candidate is accepted and each applied receipt calls DiskTimeline.body once; that method reads, gunzips, hashes and parses the body without a payload cache. This is a logical read count derived from emitted application counters and frozen source, not an OS physical-I/O/cache measurement.'))
+          Path('metadata-summary.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selection-full-terminal-metadata-summary
+          path: metadata-summary.json
+          retention-days: 90
