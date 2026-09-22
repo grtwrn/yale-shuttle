@@ -1,0 +1,10 @@
+[Unit]
+Description=Reconcile hosted Brown research artifact availability
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/gwarren/projects/yale-shuttle-watcher/brown-daily-seals-2026-09-22
+ExecStart=/usr/bin/python3 research/brown-daily-seals/controller.py reconcile --state-root /home/gwarren/projects/yale-shuttle-watcher/ongoing-window-research/brown-daily-seals
+TimeoutStartSec=10min
+UMask=0077

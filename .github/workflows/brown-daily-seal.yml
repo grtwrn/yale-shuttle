@@ -1,0 +1,83 @@
+name: research-brown-daily-seal
+on:
+  push:
+    branches: [research/brown-daily-seals-2026-09-22]
+    paths: [research/brown-daily-seals/requests/*.json]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: fixed-brown-daily-seals
+  cancel-in-progress: false
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TZ: America/New_York
+      BLUE_MAX_PATH_SECONDS: '5400'
+      NODE_OPTIONS: --max-old-space-size=4096
+      BEFORE: ${{ github.event.before }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate immutable request and implementation
+        id: request
+        run: python3 research/brown-daily-seals/select_request.py
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/brown-rolling-seal/input/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: sealed-frozen-brown-k8
+          run-id: 35694227486
+          github-token: ${{ github.token }}
+          path: research/brown-rolling-seal/input/frozen
+      - name: Fresh daily physical and numerical gates under aggregate limits
+        env:
+          REQUEST_PATH: ${{ steps.request.outputs.path }}
+          REQUEST_SHA256: ${{ steps.request.outputs.sha256 }}
+        run: python3 research/brown-daily-seals/run_daily.py --request "$REQUEST_PATH" --expected-request-sha256 "$REQUEST_SHA256"
+      - uses: actions/upload-artifact@v4
+        id: model
+        with:
+          name: brown-k5-${{ steps.request.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/brown-rolling-seal/results/**
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.model.outputs.artifact-id }}
+          path: research/brown-daily-seals/work/published
+      - name: Verify actually published bytes and record availability separately
+        env:
+          ARTIFACT_ID: ${{ steps.model.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.model.outputs.artifact-digest }}
+        run: python3 research/brown-daily-seals/publish.py --directory research/brown-daily-seals/work/published --status research/brown-daily-seals/results/status.json --artifact-id "$ARTIFACT_ID" --artifact-digest "sha256:$ARTIFACT_DIGEST"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brown-daily-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            research/brown-daily-seals/results/**
+            research/brown-rolling-seal/replay-results/**
+            research/brown-rolling-seal/input/raw-audit.json
+            research/brown-rolling-seal/results/provider-identity-audit.json
+          retention-days: 90

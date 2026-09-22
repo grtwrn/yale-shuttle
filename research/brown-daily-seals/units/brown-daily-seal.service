@@ -1,0 +1,12 @@
+[Unit]
+Description=Publish immutable Brown research seal requests (no local fitting)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/gwarren/projects/yale-shuttle-watcher/brown-daily-seals-2026-09-22
+EnvironmentFile=/home/gwarren/.config/yale-shuttle/brown-daily-seal.env
+ExecStart=/usr/bin/python3 research/brown-daily-seals/controller.py due --archive-root /home/gwarren/shuttle-archive --implementation ${BROWN_SEAL_IMPLEMENTATION} --state-root /home/gwarren/projects/yale-shuttle-watcher/ongoing-window-research/brown-daily-seals --request-branch research/brown-daily-seals-2026-09-22
+TimeoutStartSec=10min
+UMask=0077
