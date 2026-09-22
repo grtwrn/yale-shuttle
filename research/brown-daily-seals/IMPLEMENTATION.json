@@ -3,8 +3,8 @@
   "scope": "Daily Brown research implementation only; new-day requests and timers remain inactive pending review",
   "protocolSha256": "4d1e09bd3cb41762a11e19a7de49bcfb8d8c479b44b3354a845df1b6c8f82742",
   "files": {
-    ".github/workflows/brown-daily-fixtures.yml": "c1bbe3889815132483e32f7a987c35dc5cc07830ac4234d30fc8623d03fcbbb9",
-    ".github/workflows/brown-daily-seal.yml": "161891bbd19de0a515c13ba3d9bf97fffc9f6c06ddf0f84ab9d2351ff8b09eb8",
+    ".github/workflows/brown-daily-fixtures.yml": "219340ed3f77ada616f0ca3f05dcca49af05d4a2b570d04daa5aafb7acc96df9",
+    ".github/workflows/brown-daily-seal.yml": "fa7ba3910b2c6e3323c2ff232f6c2e8523f26302a953de81b5de3ee75bd0a263",
     "research/brown-clocks/actions.py": "fb63e8cffff56cefff0afde83c4564ac070beb7b7e2bf11f561008a40f33077e",
     "research/brown-clocks/handoffs.py": "bec0b099a7b65bc5661f5742fc9d0fa8fab63d4444cfbc94a261a594ad553373",
     "research/brown-clocks/policy.test.ts": "d0f35eef8dc3f2dc962450768efe15192836b8b65100f8a6b0e517fa262d1638",
@@ -24,6 +24,7 @@
     "research/brown-daily-seals/sealing.py": "320cead217afcf3095271c3af2a0233fd4047dc345bba2148d04d45a9fab013f",
     "research/brown-daily-seals/select_request.py": "7a720fa431a96dc3520f3366dddfdc670fea97f816ab96e9f79360d14cfef051",
     "research/brown-daily-seals/test_daily.py": "098e0e2d3695fc0c9d87ffc529d172c89b0e2d772f81dd14a4c754436bd00155",
+    "research/brown-daily-seals/transport_fixture.py": "5191085032a9de3f3a2daea5ae6477662788554902c9e3596a36f31f8de75e42",
     "research/brown-daily-seals/units/brown-daily-seal-status.service": "5025dbb97544495385def453fb2f24e4d7b91ca1f6eb1ae4653485d5d2305844",
     "research/brown-daily-seals/units/brown-daily-seal-status.timer": "68e9cdee4e26a167dd76830df8946c9073acbc73b063b1bc0e5f531314c7d3f3",
     "research/brown-daily-seals/units/brown-daily-seal.service": "82d7bb61b078f506ba02e020e5670c542ce3d44020e1c0eef962178e8e25763d",

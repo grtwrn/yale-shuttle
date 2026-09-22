@@ -2,10 +2,13 @@ name: research-brown-daily-fixtures
 on:
   push:
     branches: [research/brown-daily-seals-2026-09-22]
-    paths: [research/brown-daily-seals/**, .github/workflows/brown-daily-fixtures.yml, .github/workflows/brown-daily-seal.yml]
+    paths: [research/brown-daily-seals/*.py, research/brown-daily-seals/IMPLEMENTATION.json, research/brown-daily-seals/units/**, research/brown-daily-seals/fixtures-data/**, .github/workflows/brown-daily-fixtures.yml, .github/workflows/brown-daily-seal.yml]
 permissions:
   contents: read
   actions: read
+concurrency:
+  group: fixed-brown-daily-seals
+  cancel-in-progress: false
 jobs:
   fixtures:
     runs-on: ubuntu-latest
@@ -27,6 +30,26 @@ jobs:
       - run: npm ci --prefix services/shuttle-v2
       - name: Synthetic contracts and child-resource fixtures (no fit)
         run: python3 -m unittest discover -s research/brown-daily-seals -p 'test_*.py' -v
+      - name: Prepare synthetic publication transport fixture
+        run: python3 research/brown-daily-seals/transport_fixture.py prepare
+      - uses: actions/upload-artifact@v4
+        id: transport
+        with:
+          name: synthetic-brown-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: research/brown-daily-seals/work/transport-original/**
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.transport.outputs.artifact-id }}
+          merge-multiple: true
+          path: research/brown-daily-seals/work/transport-published
+      - name: Verify actual synthetic artifact bytes, API identity and publication receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.transport.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.transport.outputs.artifact-digest }}
+        run: python3 research/brown-daily-seals/transport_fixture.py verify
       - name: Validate inactive calendar expressions on hosted runner
         run: |
           systemd-analyze calendar '2026-09-23..29 04,06,10:10:00 America/New_York'
