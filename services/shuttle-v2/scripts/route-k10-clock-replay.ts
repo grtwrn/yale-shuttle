@@ -14,7 +14,7 @@ import type { ServerEtaWire } from '../web/src/etaSource.js';
 const [topology, result] = process.argv.slice(2);
 const read = (file: string) => zlib.gunzipSync(fs.readFileSync(file)).toString().trim().split('\n').map(s => JSON.parse(s));
 const top = JSON.parse(fs.readFileSync(topology!, 'utf8'));
-const features = read(`${result}/long90/forecasts.jsonl.gz`).filter(f => f.route === 14);
+const features = read(`${result}/long90/forecasts.jsonl.gz`).filter(f => ADDITIONAL_K10_MODELS.some(m=>m.routeId===f.route));
 const names = new Set(features.map(f => f.bus));
 const cutoff = Date.parse('2026-09-16T04:00:00Z') - 3_600_000;
 const raw: BusObservation[] = [];
@@ -43,18 +43,15 @@ for(const f of features) {
   }
   const name=f.bus.replace(/^#/,''), snapshot=tracker.snapshot(f.asof), observed=snapshot.get(name), e=observed?.routeId===f.route?observed:undefined;
   const model=ADDITIONAL_K10_MODELS.find(m=>m.routeId===f.route)!, scope=K10_SCOPES[f.route]!;
+  const k=forwardStops(scope.sourceIndex,scope.waitIndex,scope.stopCount);
   const origin=f.origins[String(scope.sourceIndex)], exit=f.origins[String(scope.waitIndex)];
   if(e && f.at-e.origin.departed<=2_700_000) {
     assert(origin,`unexpected clock ${f.bus}/${f.at}`);
     assert.equal(e.routeId,f.route); assert.equal(e.origin.departed,origin.departed);
     assert.equal(e.origin.knownAt,origin.knownAt); assert.equal(e.index,f.index); assert.equal(e.phase,f.phase);
-    const expectedRelease=Boolean(exit && exit.departed>origin.departed)
-      || forwardStops(scope.sourceIndex,f.index,scope.stopCount)>10 || (f.index===scope.waitIndex && f.phase==='drive');
-    if(e.released!==expectedRelease) {
-      // A latched old-lap release is deliberately more conservative than the
-      // research. It must never invent an earlier source or enable a forecast.
-      assert(e.released && !expectedRelease); latched++;
-    }
+    const expectedRelease=f.releasedOrigins?.[`${k}/${scope.waitIndex}`]===origin.departed || Boolean(exit && exit.departed>origin.departed)
+      || forwardStops(scope.sourceIndex,f.index,scope.stopCount)>k || (f.index===scope.waitIndex && f.phase==='drive');
+    assert.equal(e.released,expectedRelease,`release ${f.bus}/${f.at}/${f.route}`);
     compared++; if(e.released)released++;else active++;
     const restartKey=`${name}/${e.observedAt}`;
     if(compared%20===0 && !restartKeys.has(restartKey)) {
@@ -69,7 +66,7 @@ for(const f of features) {
   const base:ServerEtaWire={v:2,at:f.at,servedAt:f.at,
     buses:[[name,model.label,(model.sequence.indexOf(f.target)-f.stopsAhead+model.sequence.length)%model.sequence.length,null]],
     rows:[[0,f.target,f.baseline.eta,f.baseline.low,f.baseline.high,f.stopsAhead,0,0,0]],distributions:[Array(50).fill(123)]};
-  const trial=applyRouteK10Trial(base,snapshot,routes), expected=f.forecasts.K10;
+  const trial=applyRouteK10Trial(base,snapshot,routes), expected=f.forecasts[`K${k}`];
   if(expected.changed && !trial.trial!.changedRows) {
     assert(e?.released && latched>0,`unexplained lost forecast ${f.bus}/${f.at}/${f.target}`);
     conservativeFallbacks++;

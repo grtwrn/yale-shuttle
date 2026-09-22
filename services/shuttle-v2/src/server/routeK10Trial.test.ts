@@ -22,7 +22,7 @@ function wire(f = fixture): ServerEtaWire {
 function evidence(f=fixture): Map<string,K10Evidence> {
   return f.evidence ? new Map([['42',{...f.evidence,routeId:f.route}]]) : new Map();
 }
-it('matches the independent Python broad-K10 forecast and fallback decisions on Orange Night', () => {
+it('matches the independent Python checkpoint forecast and fallback decisions on Orange Night and Gold', () => {
   expect(fixtures.length).toBeGreaterThan(1000);
   let changed=0;
   for(const f of fixtures) {
@@ -42,9 +42,9 @@ it('matches the independent Python broad-K10 forecast and fallback decisions on 
   expect(changed).toBeGreaterThan(500);
 },30_000);
 it('pins collector checkpoints to each generated model and does not enable unsupported routes', () => {
-  expect([...models.keys()].sort((a,b)=>a-b)).toEqual([14]);
+  expect([...models.keys()].sort((a,b)=>a-b)).toEqual([14,15]);
   for(const m of models.values())expect(K10_SCOPES[m.routeId]).toEqual({sourceIndex:m.sourceIndex,waitIndex:m.waitIndex,stopCount:m.sequence.length});
-  for(const label of ['Red','Blue Night','Blue Weekend','Green','Orange Day','Gold','Orange East']) {
+  for(const label of ['Red','Blue Night','Blue Weekend','Green','Orange Day','Orange East']) {
     const base=wire();base.buses[0]=['42',label,fixture.anchor,null];
     const trial=applyRouteK10Trial(base,evidence(),routes);
     expect(trial.rows).toEqual(base.rows);expect(trial.distributions).toEqual(base.distributions);
@@ -81,4 +81,15 @@ it('sorts competing arrivals and keeps the matching distribution with each row',
   const trial=applyRouteK10Trial(base,evidence(),routes);
   expect(trial.rows[0]![0]).toBe(1);expect(trial.distributions![0]).toEqual(Array(50).fill(1));
   expect(trial.trial!.byRoute!['Orange Night']).toBe(1);
+});
+
+it('uses Gold K8 instead of allowing a K10 occurrence or clock', () => {
+  const f=fixtures.find(f=>f.route===15 && f.expected.changed)!,m=models.get(15)!;
+  const base=wire(f),e={...f.evidence!,routeId:15};
+  expect(applyRouteK10Trial(base,evidence(f),routes).trial!.changedRows).toBe(1);
+  const beyond={...e,index:(m.sourceIndex+9)%m.sequence.length,phase:'hold' as const};
+  expect(applyRouteK10Trial(base,new Map([['42',beyond]]),routes).rows).toEqual(base.rows);
+  const later={...base,rows:base.rows.map(r=>[...r] as typeof r)};
+  later.rows[0]![5]+=2;
+  expect(applyRouteK10Trial(later,evidence(f),routes).rows).toEqual(later.rows);
 });

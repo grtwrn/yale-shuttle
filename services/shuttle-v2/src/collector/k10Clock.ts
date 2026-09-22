@@ -61,13 +61,13 @@ export class K10Clock {
       const index = phase === 'hold' ? pass!.stopIndex : v.transit?.fromIndex ?? -1;
       const began = phase === 'hold' ? pass!.arrivedAt! : v.transit?.departedAt ?? Infinity;
       if (this.routeId !== 3) {
-        const scope = K10_SCOPES[this.routeId]!;
+        const scope = K10_SCOPES[this.routeId]!, k = forwardStops(scope.sourceIndex, scope.waitIndex, scope.stopCount);
         const origin = c.origins.get(scope.sourceIndex);
         if (!origin || !phase || index < 0 || index >= scope.stopCount || origin.departed > began
           || c.last - c.first < 600_000 || c.last - origin.departed > 2_700_000) continue;
         const released = c.releasedOrigin === origin.departed
           || Boolean(c.release && c.release.departed > origin.departed && c.release.departed <= began && c.release.knownAt <= c.last)
-          || forwardStops(scope.sourceIndex, index, scope.stopCount) > 10
+          || forwardStops(scope.sourceIndex, index, scope.stopCount) > k
           || (index === scope.waitIndex && phase === 'drive');
         // A missing finalized wait visit cannot reactivate the preceding lap
         // when a short loop returns to its source. A new departure starts anew.

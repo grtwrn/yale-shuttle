@@ -26,7 +26,7 @@ function harness(id: number) {
     move: (i: number, p = 'hold') => { index = i; phase = p; }, route: (r: number) => { route = r; } };
 }
 
-for (const route of [1, 16, 14]) {
+for (const route of [1, 16, 14, 15]) {
   it(`keeps route ${route}'s wait clock across route wraparound until observed departure`, () => {
     const h = harness(route); h.tick();
     expect(h.tick([h.departure(h.scope.sourceIndex)])).toBeUndefined(); h.warm();

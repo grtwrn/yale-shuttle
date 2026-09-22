@@ -106,7 +106,7 @@ describe("the served answer", () => {
   for (const model of [...BLUE_K10_MODELS, ...ADDITIONAL_K10_MODELS]) it(`serves ${model.label}'s updated and usual forecasts from one live step`, () => {
     // Use an observed, supported service-time clock. An arbitrary midday
     // departure is not representative of Blue West's operating history.
-    const fixtureFile = model.routeId === 14 ? 'route-k10-parity.json.gz' : 'blue-k10-parity.json.gz';
+    const fixtureFile = [14, 15].includes(model.routeId) ? 'route-k10-parity.json.gz' : 'blue-k10-parity.json.gz';
     const cases = JSON.parse(gunzipSync(fs.readFileSync(new URL(`./__fixtures__/${fixtureFile}`, import.meta.url))).toString()) as
       { route: number; now: number; evidence: K10Evidence | null; expected: { changed: boolean } }[];
     const sample = cases.find(f => f.route === model.routeId && f.expected.changed
