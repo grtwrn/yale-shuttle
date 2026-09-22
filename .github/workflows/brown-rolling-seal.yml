@@ -1,0 +1,70 @@
+name: sealed-rolling-brown-model
+on:
+  push:
+    branches: [research/brown-rolling-seal-2026-09-22]
+    paths: ['research/brown-rolling-seal/*.py', 'research/brown-rolling-seal/*.ts', 'research/brown-rolling-seal/data/**', 'research/brown-model-seal/runtime.py', '.github/workflows/brown-rolling-seal.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: sealed-rolling-brown-model
+  cancel-in-progress: true
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: America/New_York
+      BLUE_MAX_PATH_SECONDS: '5400'
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --prefix services/shuttle-v2
+      - name: Artifact loader and raw transport fixtures
+        run: |
+          python3 -m unittest discover -s research/brown-model-seal -p 'test_*.py' -v
+          python3 -m unittest discover -s research/brown-rolling-seal -p 'test_*.py' -v
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/brown-rolling-seal/input/canonical
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: sealed-frozen-brown-k8
+          run-id: 35694227486
+          github-token: ${{ github.token }}
+          path: research/brown-rolling-seal/input/frozen
+      - name: Validate raw-only export and preserve old prefix
+        run: python3 research/brown-rolling-seal/prepare.py
+      - name: Exact reducer, physical source and deleted-future gates before fitting
+        run: /usr/bin/time -v services/shuttle-v2/node_modules/.bin/tsx research/brown-rolling-seal/replay.ts
+      - name: Path and original-fit parity before actual-time model seal
+        run: /usr/bin/time -v python3 research/brown-rolling-seal/build.py
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: sealed-rolling-brown-k5-sep23
+          path: research/brown-rolling-seal/results/**
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rolling-brown-seal-diagnostics
+          path: |
+            research/brown-rolling-seal/replay-results/**
+            research/brown-rolling-seal/input/raw-audit.json
+          retention-days: 90

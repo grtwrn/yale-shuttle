@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "day": "2026-09-21",
+  "base": "https://yale-shuttle.fly.dev",
+  "startedAt": "2026-09-22T04:04:19.844491+00:00",
+  "fromMs": 1789963200000,
+  "toMs": 1790049600000,
+  "calendarDayClosed": true,
+  "labelsFinal": false,
+  "transportComplete": true,
+  "serviceCoverage": "not evaluated",
+  "untouchedHoldout": false,
+  "limitations": [
+    "Sep21 Red examples were previously inspected; this day is exploratory.",
+    "Rows may still finalize after export, especially across ET midnight.",
+    "Tables are sequential snapshots, not a single database transaction.",
+    "Header build is export-time server build, not each row creation build.",
+    "GPS retention is 36h; complete transport does not establish service coverage.",
+    "Adjacent-day context and chronological knownAt checks are required in hosted replay."
+  ],
+  "table": {
+    "startedAt": "2026-09-22T04:04:20.042118+00:00",
+    "transportComplete": true,
+    "serverDate": "Tue, 22 Sep 2026 04:04:20 GMT",
+    "contentType": "application/x-ndjson; charset=utf-8",
+    "header": {
+      "table": "raw_positions",
+      "day": "2026-09-21",
+      "from": 1789963200000,
+      "to": 1790049600000,
+      "columns": [
+        "id",
+        "bus_id",
+        "bus_name",
+        "route_id",
+        "lat",
+        "lon",
+        "heading",
+        "last_stop_id",
+        "collected_at"
+      ],
+      "build": "1e8b13ee858d"
+    },
+    "trailer": {
+      "end": true,
+      "rows": 179751
+    },
+    "observedRows": 179751,
+    "rawSha256": "44c403f6bcaca480a37e95b2e44e0607ba771f85b0dbea53acc92b1543fa6c10",
+    "rawBytes": 27992759,
+    "file": "raw_positions.original.jsonl.gz",
+    "sha256": "250494e8bbc09794da6df73b772ba1f78addf83c4511e186e34ffee1c4c05381",
+    "bytes": 2773282,
+    "finishedAt": "2026-09-22T04:04:22.685185+00:00"
+  },
+  "scope": "Only raw bus observations copied; no forecast or outcome tables."
+}

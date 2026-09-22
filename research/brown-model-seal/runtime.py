@@ -48,26 +48,28 @@ def exact_fit_class(source):
     return namespace['SealedFit'], hashes
 
 
-def from_pools(source, pools):
+def from_pools(source, pools, *, cutoff=FROZEN, K=8):
     cls, hashes = exact_fit_class(source)
     model = cls()
     model.cache = {}
     model.paths = {}
-    assert pools['schema'] == 1 and len(pools['cells']) == len(CELLS)
+    assert K in (5, 8)
+    cells = [(r, K, w, t) for r, _, w, t in CELLS]
+    assert pools['schema'] == 1 and len(pools['cells']) == len(cells)
     for cell in pools['cells']:
         key = tuple(cell['key'])
-        assert key in CELLS and key not in model.paths
+        assert key in cells and key not in model.paths
         for path in cell['paths']:
             assert all(isinstance(path[f], (int, float)) and not isinstance(path[f], bool) and math.isfinite(path[f])
                        for f in ('start', 'end', 'duration'))
-            assert path['start'] < path['end'] < FROZEN and 0 < path['duration'] <= 5400
+            assert path['start'] < path['end'] < cutoff and 0 < path['duration'] <= 5400
             assert path['duration'] == (path['end'] - path['start']) / 1000
             assert isinstance(path['weekend'], bool) and isinstance(path['day'], str)
             assert path['day'] == dt.datetime.fromtimestamp(path['start']/1000, ZoneInfo('America/New_York')).strftime('%Y-%m-%d')
             assert path['weekend'] == (dt.datetime.fromtimestamp(path['start']/1000, ZoneInfo('America/New_York')).weekday() >= 5)
             assert all(path.get(f) is not None for f in ('sourceId', 'targetId', 'bus'))
         model.paths[key] = cell['paths']
-    assert set(model.paths) == set(CELLS)
+    assert set(model.paths) == set(cells)
     return model, hashes
 
 
@@ -77,11 +79,19 @@ def load(directory, expected_artifact_id):
     identity = dict(manifest)
     artifact_id = identity.pop('artifactId')
     assert artifact_id == expected_artifact_id == sha(canonical(identity))
-    assert manifest['schema'] == 1 and manifest['kind'] == 'sealed' and manifest['training'] == 'frozen' and manifest['K'] == 8
-    assert manifest['trainBefore'] == FROZEN
-    assert manifest['validFrom'] == VALID_FROM and manifest['validUntil'] == VALID_UNTIL
+    assert manifest['schema'] == 1 and manifest['kind'] == 'sealed'
+    if manifest['training'] == 'frozen':
+        assert manifest['K'] == 8 and manifest['trainBefore'] == FROZEN
+        assert manifest['validFrom'] == VALID_FROM and manifest['validUntil'] == VALID_UNTIL
+    else:
+        assert manifest['training'] == 'rolling' and manifest['K'] == 5
+        start = manifest['validFrom']
+        assert isinstance(start, int) and not isinstance(start, bool)
+        assert VALID_FROM <= start < VALID_UNTIL and (start - VALID_FROM) % 86400000 == 0
+        assert manifest['trainBefore'] == start - 86400000
+        assert manifest['validUntil'] == min(start + 86400000, VALID_UNTIL)
     assert isinstance(manifest['builtAt'], int) and not isinstance(manifest['builtAt'], bool)
-    assert manifest['builtAt'] >= FROZEN and manifest['builtAt'] < VALID_UNTIL
+    assert manifest['trainBefore'] <= manifest['builtAt'] < manifest['validUntil']
     assert manifest['protocolSha256'] == PROTOCOL_SHA and manifest['topologySha256'] == TOPOLOGY_SHA
     assert manifest['parity'] == dict(physical=True, source=True, path=True, fit=True)
     for name, expected in manifest['sealedFiles'].items():
@@ -95,7 +105,8 @@ def load(directory, expected_artifact_id):
     for name, expected in sources.items():
         assert manifest['sealedFiles']['source/' + name] == expected
     pools = json.loads((directory / 'paths.json').read_text())
-    model, hashes = from_pools((directory / 'source/research/k-sweep/evaluate.py').read_text(), pools)
+    model, hashes = from_pools((directory / 'source/research/k-sweep/evaluate.py').read_text(), pools,
+                              cutoff=manifest['trainBefore'], K=manifest['K'])
     assert hashes == manifest['fitFunctionSha256']
     return model, manifest
 
