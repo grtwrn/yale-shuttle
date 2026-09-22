@@ -1,4 +1,5 @@
 """Seal first daily K5 pool after raw/reducer/physical/path/fit gates, hosted only."""
+import bisect
 import collections
 import datetime as dt
 import gzip
@@ -88,6 +89,41 @@ def evidence(model, visits):
     return sorted(map(canonical,identities)),full
 
 
+def audit_provider_rows(model, visits, raw):
+    """Expose an identity gate failure; never repair paths or infer continuity."""
+    by_id={v['id']:v for v in visits}
+    mismatches=[]
+    for cell in CELLS:
+        for p in model.paths.get(cell,[]):
+            s,t=by_id[p['sourceId']],by_id[p['targetId']]
+            if s['bus_id'] != t['bus_id']:
+                mismatches.append(dict(cell=cell,path=p,source=s,target=t))
+    mismatches.sort(key=lambda r:(r['path']['start'],r['path']['end'],r['cell']))
+    names={r['path']['bus'] for r in mismatches}
+    tracks={name:sorted((r for r in raw if r['bus_name']==name),key=lambda r:r['collected_at']) for name in names}
+    times={name:[r['collected_at'] for r in rows] for name,rows in tracks.items()}
+    examples=[]
+    for row in mismatches[:25]:
+        name=row['path']['bus'];rows,ts=tracks[name],times[name]
+        clocks=dict(sourceDeparture=row['source']['departed_at'],targetArrival=row['target']['arrived_at'],
+                    targetDeparture=row['target']['departed_at'],targetKnownAt=row['target']['known_at'])
+        windows={key:rows[bisect.bisect_left(ts,at-90000):bisect.bisect_right(ts,at+90000)] for key,at in clocks.items()}
+        lo=max(0,bisect.bisect_right(ts,clocks['sourceDeparture'])-1)
+        hi=min(len(rows)-1,bisect.bisect_left(ts,clocks['targetArrival']))
+        quality_span=rows[lo:hi+1]
+        examples.append(dict(row,rawWindows=windows,originalQualityBracket=dict(
+            first=quality_span[0],last=quality_span[-1],rows=len(quality_span),
+            providerIds=sorted({r['bus_id'] for r in quality_span}),routes=sorted({r['route_id'] for r in quality_span}))))
+    result=dict(pathMismatches=len(mismatches),uniquePairs=len({(r['source']['id'],r['target']['id']) for r in mismatches}),
+                allPairs=[dict(cell=r['cell'],source=r['source']['id'],target=r['target']['id'],
+                               sourceProvider=r['source']['bus_id'],targetProvider=r['target']['bus_id']) for r in mismatches],
+                examples=examples,exampleRule='first25chronological mismatched paths; no performance labels',
+                modelSealed=False,gateUnchanged=True)
+    write('provider-identity-audit.json',result)
+    print(json.dumps(dict(providerPathMismatches=len(mismatches),uniquePairs=result['uniquePairs'])))
+    assert not mismatches, 'HALT: inspect provider-identity-audit.json; no model sealed'
+
+
 def main():
     assert os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('BLUE_MAX_PATH_SECONDS') == '5400'
     assert not OUT.exists()
@@ -115,6 +151,7 @@ def main():
     admitted = [v for v in old if c.rr.available(v,CUTOFF)]
     guard_admitted = [v for v in new if c.rr.available(v,CUTOFF)]
     raw_prefix = [r for r in raw if r['collected_at'] < CUTOFF]
+    audit_provider_rows(original,admitted,raw_prefix)
     a,full_evidence = evidence(original,admitted)
     b,_ = evidence(guarded,guard_admitted)
     assert a == b, 'HALT: original and guarded physical path identities differ'
@@ -175,7 +212,7 @@ def main():
         rawPrefixSha256=raw_hash,knownAtPrefixSha256=known_hash,sourceSha256=files['sources.json'],
         parametersSha256=files['parameters.json'],fitFunctionSha256=function_hashes,
         parity=dict(physical=True,source=True,path=True,fit=True),
-        parityEvidence=dict(run=os.environ['GITHUB_RUN_ID'],physical=files['physical-source-parity.json']),
+        parityEvidence=dict(run=os.environ['GITHUB_RUN_ID'],replayRun=os.environ.get('REPLAY_EVIDENCE_RUN'),physical=files['physical-source-parity.json']),
         inputHashes=dict(raw=file_sha(RAW),originalVisits=file_sha(REPLAY/'baseline-visits.jsonl.gz'),
                          guardedVisits=file_sha(REPLAY/'candidate-visits.jsonl.gz')),
         creatingCommit=os.environ['GITHUB_SHA'],creatingRun=os.environ['GITHUB_RUN_ID'],

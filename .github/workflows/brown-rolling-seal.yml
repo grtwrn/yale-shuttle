@@ -17,6 +17,7 @@ jobs:
       TZ: America/New_York
       BLUE_MAX_PATH_SECONDS: '5400'
       NODE_OPTIONS: --max-old-space-size=4096
+      REPLAY_EVIDENCE_RUN: '35695402601'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,8 +51,21 @@ jobs:
           path: research/brown-rolling-seal/input/frozen
       - name: Validate raw-only export and preserve old prefix
         run: python3 research/brown-rolling-seal/prepare.py
-      - name: Exact reducer, physical source and deleted-future gates before fitting
-        run: /usr/bin/time -v services/shuttle-v2/node_modules/.bin/tsx research/brown-rolling-seal/replay.ts
+      - uses: actions/download-artifact@v4
+        with:
+          name: rolling-brown-seal-diagnostics
+          run-id: 35695402601
+          github-token: ${{ github.token }}
+          path: prior-replay
+      - name: Reuse passed unchanged reducer gates while diagnosing provider rows
+        run: |
+          python3 - <<'PY'
+          import hashlib, pathlib, shutil
+          root=pathlib.Path('research/brown-rolling-seal')
+          assert hashlib.sha256((root/'replay.ts').read_bytes()).hexdigest()=='da6a9f9acb6f150cb67e6735f3565d744cc4509448137fc48d838b84e58ef934'
+          assert (root/'input/raw-audit.json').read_bytes()==pathlib.Path('prior-replay/input/raw-audit.json').read_bytes()
+          shutil.copytree('prior-replay/replay-results',root/'replay-results')
+          PY
       - name: Path and original-fit parity before actual-time model seal
         run: /usr/bin/time -v python3 research/brown-rolling-seal/build.py
       - uses: actions/upload-artifact@v4
@@ -67,4 +81,5 @@ jobs:
           path: |
             research/brown-rolling-seal/replay-results/**
             research/brown-rolling-seal/input/raw-audit.json
+            research/brown-rolling-seal/results/provider-identity-audit.json
           retention-days: 90
