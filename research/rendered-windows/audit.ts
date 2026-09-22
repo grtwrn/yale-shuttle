@@ -83,7 +83,11 @@ for await (const line of readline.createInterface({input:fs.createReadStream(fil
     }
   }
 }
-assert.equal(rows,38047);assert.equal(labelled,22962);assert.equal(hash(file),before);
+// forecasts contains only the unchanged labelled subset; all38047 generated
+// predictions are preserved separately in the source artifact's unscored file.
+const sourceAudit=JSON.parse(fs.readFileSync(input+'audit.json','utf8'));
+assert.equal(sourceAudit.generatedRows,38047);
+assert.equal(rows,sourceAudit.labelledRows);assert.equal(labelled,22962);assert.equal(hash(file),before);
 const results = [...groups.values()].map(g=>{
   const values:Record<string,number>={};let paired=0;
   for(const v of g.visits.values()){
@@ -96,7 +100,7 @@ const results = [...groups.values()].map(g=>{
 });
 fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(out+'summary.json',JSON.stringify({sourceRun:35685527686,forecastSha256:before,
-  rows,labelled,unionRows,formatterCalls,ages,results,limitations:[
+  rows,labelled,sourceGeneratedRows:sourceAudit.generatedRows,unionRows,formatterCalls,ages,results,limitations:[
     'Widths are the numeric envelope printed by the primary pickup formatter; <1 starts at zero.',
     'Aging sensitivities are hypothetical ticks, not observed rider views or independent arrivals.',
     'Current raw-window gates remain; printed coverage cannot override failures.',
