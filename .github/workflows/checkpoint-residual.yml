@@ -9,6 +9,10 @@ on:
         description: Run only synthetic causal/support fixtures
         type: boolean
         default: true
+      support_run:
+        description: Reduce an existing Stage A artifact only; no replay or model fitting
+        type: string
+        default: ''
 permissions:
   contents: read
   actions: read
@@ -30,7 +34,7 @@ jobs:
           services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-residual/folds.test.ts
   support-ledger:
     needs: fixtures
-    if: github.event_name == 'workflow_dispatch' && inputs.fixtures_only == false
+    if: github.event_name == 'workflow_dispatch' && inputs.fixtures_only == false && inputs.support_run == ''
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
@@ -86,4 +90,26 @@ jobs:
         with:
           name: checkpoint-residual-support-complete
           path: research/checkpoint-residual/results/**
+          retention-days: 90
+  ceiling-digest:
+    needs: fixtures
+    if: github.event_name == 'workflow_dispatch' && inputs.fixtures_only == false && inputs.support_run != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: checkpoint-residual-support-complete
+          run-id: ${{ inputs.support_run }}
+          github-token: ${{ github.token }}
+          path: research/checkpoint-residual/results
+      - name: Reduce fixed source-date and journey ceilings; assert original ledger hashes unchanged
+        run: python3 research/checkpoint-residual/support_digest.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-residual-ceiling-digest
+          path: |
+            research/checkpoint-residual/results/support-digest.json
+            research/checkpoint-residual/results/DIGEST.md
           retention-days: 90
