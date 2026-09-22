@@ -1,0 +1,86 @@
+name: checkpoint-residual-development
+on:
+  workflow_dispatch:
+    inputs:
+      fixtures_only:
+        description: Run only synthetic causal/support fixtures
+        type: boolean
+        default: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: python3 -m unittest discover -s research/checkpoint-residual -p 'test_*.py' -v
+      - run: npm ci --prefix services/shuttle-v2
+      - name: Original strict-source, raw-occurrence and new fold/projection fixtures
+        run: |
+          services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/membership.test.ts
+          services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/progress.test.ts
+          services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-residual/folds.test.ts
+  support-ledger:
+    needs: fixtures
+    if: inputs.fixtures_only == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      TZ: America/New_York
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix services/shuttle-v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: k-sweep-results
+          run-id: 35677536788
+          github-token: ${{ github.token }}
+          path: research/k-sweep/results
+      - uses: actions/download-artifact@v4
+        with:
+          name: canonical-window-results
+          run-id: 35684356219
+          github-token: ${{ github.token }}
+          path: research/highway-frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: checkpoint-ensemble-features
+          run-id: 35740424751
+          github-token: ${{ github.token }}
+          path: research/checkpoint-residual/reference
+      - name: Preserve immutable source metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ln -s "$GITHUB_WORKSPACE/research/highway-frozen/canonical-windows/results" research/canonical-windows/results
+          gh api repos/grtwrn/yale-shuttle/actions/artifacts/10699234338 > research/checkpoint-residual/reference/artifact-metadata.json
+      - name: Causal fold waits, universal source projection controls and deleted-future parity
+        run: services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-residual/materialize.ts
+      - name: Necessary source-date and distinct-journey ceilings; no fits or outcome scores
+        run: python3 research/checkpoint-residual/support.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-residual-support-summary
+          path: |
+            research/checkpoint-residual/PLAN.md
+            research/checkpoint-residual/results/REPORT.md
+            research/checkpoint-residual/results/support-summary.json
+            research/checkpoint-residual/results/materialization-audit.json
+            research/checkpoint-residual/results/folds.json
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-residual-support-complete
+          path: research/checkpoint-residual/results/**
+          retention-days: 90
