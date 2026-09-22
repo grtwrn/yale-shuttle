@@ -61,6 +61,7 @@ export async function mountSelection({reference=false, scenario, payload, clock,
   // ref through the probe needs no extra render and cannot refresh its memo.
   const collect=()=>{
     const s=state();
+    if(liveAnchorStore.size!==0)throw Error('Live replay entered the offline anchor estimator');
     if(s.options!==priorOptions || s.stableOptions!==priorPlan || s.orderedOptions!==priorOrdered || s.visibleOptions!==priorVisible){
       events.push({at:clock.now(),type:'selection_update',planChanged:s.stableOptions!==priorPlan,
         options:s.options,orderedOptions:s.orderedOptions,visibleOptions:s.visibleOptions,

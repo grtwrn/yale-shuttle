@@ -46,8 +46,12 @@ describe('exact TripPlanner hook extraction versus complete original component',
       const stable=s.state().stableOptions;
       expect(stable.filter((o:any)=>o.mode==='shuttle')).toHaveLength(6);
       expect(stable.some((o:any)=>o.mode==='walk')).toBe(true);
-      expect(s.state().busRoster).not.toContain('13:');expect(s.state().busRoster).not.toContain('14:');
-      expect(stable.some((o:any)=>o.routeLabel==='Brown')).toBe(true);c('service-filtered capped set');
+      // 16:30 is inside the actual 90-minute night-service grace. Weekend
+      // Blue and groceries are excluded; Brown remains in the full roster
+      // even when faster synthetic alternatives put it beyond the UI cap.
+      expect(s.state().busRoster.split(',').some((x:string)=>x.startsWith('4:'))).toBe(false);
+      expect(s.state().busRoster.split(',').some((x:string)=>x.startsWith('6:'))).toBe(false);
+      expect(s.state().busRoster).toContain('19:#108');c('service-filtered capped set');
     });
   });
   it('plans from all routes and preserves the original plan across live polls',async()=>{
