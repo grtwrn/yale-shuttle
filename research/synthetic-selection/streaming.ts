@@ -142,6 +142,8 @@ export async function runStreamingEpisode(episode:Episode,timeline:Timeline,cloc
     generatingRouteId:episode.scenario.generatingRouteId,generatingRouteName:episode.scenario.generatingRouteName,
     initialStatus:'unselected',versionStatus:'not_evaluated',executionStatus:'not_started',
     coverageStatus:unsafeUs<=horizonUs?'clock_unknown':coverage<horizonUs?'unfinished_horizon':'complete',
+    captureStartCovered:Number.isSafeInteger(timeline.metadata.coverageStart?.atUs)&&timeline.metadata.coverageStart.atUs<=startUs,
+    horizonEndCovered:coverage>=horizonUs,initialWindowCovered:timeline.metadata.coverageStart?.atUs<=startUs&&limitUs>=startUs+30_000_000,
     scheduledHorizon:episode.horizon,knownThrough:null,strictIdentityKnown:false,assumptionRequired:true,
     inputCounts:{applied:0,failed:0,skippedSlots:0,emptyFleet:0,missingServerEta:0,modelParamsMissing:0}};
   delete base.scenario;

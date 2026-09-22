@@ -92,12 +92,15 @@ def make(output, assets, start, seconds):
         capture = c.Capture(output/'source', dt.datetime(2099,1,1,tzinfo=dt.timezone.utc), 8*1024**3, 0)
         with patch.object(capture.opener,'open',side_effect=opened):
             capture.release()
+            global_origin = dt.datetime(2026,9,23,4,tzinfo=dt.timezone.utc)
+            global_offset = int((epoch-global_origin).total_seconds())//15
             for tick in range(seconds//15+1):
                 state['us'] = tick*15000000+700000
                 at = int(epoch.timestamp()*1000)+tick*15000+700
                 if tick%4 == 0:
                     capture.release()
-                data = payload(topology,tick,at)
+                # Adjacent daily captures agree at the same absolute time.
+                data = payload(topology,global_offset+tick,at)
                 if seconds == 60 and tick == 2:
                     # Fixed large-legal-body integration stress, never used to
                     # change the full-schedule workload or physical forecasts.
