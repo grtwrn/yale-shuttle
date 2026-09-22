@@ -1,0 +1,30 @@
+name: checkpoint-ensemble-development
+on:
+  push:
+    branches: [research/checkpoint-ensemble-2026-09-22]
+    paths: ['research/checkpoint-ensemble/**', '.github/workflows/checkpoint-ensemble.yml']
+  workflow_dispatch:
+    inputs:
+      fixtures_only:
+        description: Run only the small independent validity fixtures
+        type: boolean
+        default: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: python3 -m unittest discover -s research/checkpoint-ensemble -p 'test_*.py' -v
+      - run: npm ci --prefix services/shuttle-v2
+      - name: Run source-membership fixtures when materializer lands
+        run: |
+          if test -f research/checkpoint-ensemble/membership.test.ts; then
+            services/shuttle-v2/node_modules/.bin/tsx research/checkpoint-ensemble/membership.test.ts
+          fi
