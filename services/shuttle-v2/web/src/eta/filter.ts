@@ -676,7 +676,16 @@ export function stepBelief(
     && stops.filter(id => id === restId).length > 1
     && prev.lastStopId === restId && bus.last_stop_id != null
     && bus.last_stop_id !== restId && stops.includes(bus.last_stop_id);
-  if (foldedDeparture) return initBelief(ring, bus, now, stops);
+  if (foldedDeparture) {
+    // On Purple, the next stop reading can uniquely follow the very pass the
+    // warm belief has tracked. Resetting then discards direction evidence at
+    // the fold, where the return road lies closer to the same GPS fix.
+    const nextOnSamePass = ring.key.startsWith("10|") && prev.lead === prev.restStop
+      && stops.filter((id, i) => id === bus.last_stop_id
+        && (i - prev.lead + ring.N) % ring.N > 0
+        && (i - prev.lead + ring.N) % ring.N <= 2).length === 1;
+    if (!nextOnSamePass) return initBelief(ring, bus, now, stops);
+  }
   // Has the fix left the rest? The collector's own rule (STATIONARY_RADIUS_M):
   // inside the radius the bus is still where it came to rest, whatever the
   // published line says.
