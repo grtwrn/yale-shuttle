@@ -30,12 +30,25 @@
  */
 import { beliefFor, ringForBus, type AnchorStore } from "./eta";
 import { standingSec, type FilterBus } from "./eta/filter";
-import type { LatLon } from "./geo";
+import { haversineMeters, type LatLon } from "./geo";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
 import { serverTrack } from './etaSource';
 
 /** What the anchor needs of a bus: a fix, the clocks, and the route whose line it is measured against. */
 export type AnchorBus = FilterBus & { route_id: number | string };
+
+/** A direct stop observation can settle a display disagreement
+ * while the route belief catches up. Require the stop id, a stationary fix,
+ * and proximity: at_stop_id alone can linger after departure. */
+export function observedAtStop(
+  bus: LatLon & { at_stop_id?: number | null; stationary?: boolean },
+  stopId: number,
+  stopCoords: Record<number, LatLon>,
+): boolean {
+  const stop = stopCoords[stopId];
+  return bus.stationary === true && bus.at_stop_id === stopId && !!stop
+    && haversineMeters(bus, stop) <= 75;
+}
 
 /**
  * The store's per-vehicle key. Route label plus the bus NAME, never `bus_id`:

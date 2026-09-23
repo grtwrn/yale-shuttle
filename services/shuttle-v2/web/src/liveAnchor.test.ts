@@ -7,7 +7,7 @@ import { registerRoutePaths } from "./anchor";
 import { ringForBus } from "./eta";
 import { haversineMeters } from "./geo";
 import type { LatLon } from "./geo";
-import { anchorIndexOnList, anchorKeyFor, resolveAnchorIndex, resolveStandingStop } from "./liveAnchor";
+import { anchorIndexOnList, anchorKeyFor, observedAtStop, resolveAnchorIndex, resolveStandingStop } from "./liveAnchor";
 import type { RouteListConfig } from "./routes";
 import {
   at, BLUE_WEEKEND, dwellTimes, makeBus, routeStops, segmentTimes, STOP, stopCoords,
@@ -23,6 +23,16 @@ const BW: RouteListConfig = {
 
 const T0 = 1_700_000_000_000;
 const store = (): AnchorStore => new Map();
+
+it("recognizes the observed pickup when a Green route belief still says two stops away", () => {
+  // Live 2026-09-23 Green #119 at Building 400: the row said "At stop" while
+  // the expanded route said "2 stops away". The stop marker is ~58 m away.
+  const building400 = { 22: { lat: 41.255793, lon: -72.993569 } };
+  const atPickup = { lat: 41.255269, lon: -72.993469, at_stop_id: 22, stationary: true };
+  expect(observedAtStop(atPickup, 22, building400)).toBe(true);
+  expect(observedAtStop({ ...atPickup, stationary: false }, 22, building400)).toBe(false);
+  expect(observedAtStop({ ...atPickup, lat: 41.258024, lon: -72.988826 }, 22, building400)).toBe(false);
+});
 
 // The de-duplicated stop list every render site in TransitMap.tsx builds for
 // itself. On a route with no repeats it is the canonical list, element for
