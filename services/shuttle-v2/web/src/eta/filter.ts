@@ -423,8 +423,8 @@ const SHUFFLE_KERNEL: ReadonlyArray<readonly [number, number]> = [
  * mod N. From priors.ts: `last_stop_id` is the last stop PASSED, with 60-75% of
  * its mass on {nearest - 1, nearest} and a long tail both ways. Applied
  * tempered (square root), only on the poll the reading changes, never obeyed.
- * A stop that occurs twice in the sequence (routes 9 and 10) gets the best of
- * its occurrences.
+ * Green's repeated outbound stops use the nearby forward occurrence when a
+ * warm belief can distinguish it. Otherwise both occurrences remain possible.
  */
 function lastStopLikelihood(offset: number, N: number): number {
   if (offset === 0) return 0.5;
@@ -532,10 +532,18 @@ function applyLastStop(b: Belief, ring: Ring, bus: FilterBus, stops: readonly nu
   const occurrences: number[] = [];
   for (let i = 0; i < N; i++) if (stops[i] === lsid) occurrences.push(i);
   if (occurrences.length === 0) return;
+  // Green's Building 800/900 occur on both sides of the fold. A changed
+  // last-stop reading follows the previous leg, even when the return marker
+  // lies near the same GPS fix. Resolve only when exactly one occurrence is
+  // within the next two legs of a warm belief. Leave cold readings symmetric;
+  // other routes retain their existing observation model.
+  const nearby = b.lead < 0 || !ring.key.startsWith("9|") ? []
+    : occurrences.filter(i => (i - b.lead + N) % N <= 2);
+  const plausible = nearby.length === 1 ? nearby : occurrences;
   const w = new Float64Array(N);
   for (let i = 0; i < N; i++) {
     let best = 0;
-    for (const lastIdx of occurrences) best = Math.max(best, lastStopLikelihood(((i - lastIdx) % N + N) % N, N));
+    for (const lastIdx of plausible) best = Math.max(best, lastStopLikelihood(((i - lastIdx) % N + N) % N, N));
     w[i] = Math.sqrt(best);
   }
   for (let c = 0; c < C; c++) {
