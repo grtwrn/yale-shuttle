@@ -3,6 +3,7 @@ import { buildRing, CELL_M, type Ring } from "./ring";
 import { legMass, P_DEPART_ON_FRESH, situations, standingSec, stepBelief, type Belief } from "./filter";
 import { fromQuantiles } from "./dist";
 import type { LatLon } from "../geo";
+import purple from "../__fixtures__/purple-published-order.json";
 
 // A synthetic rectangular loop: four stops at the corners of a ~900 x 450 m
 // block, the published line running along its edges. Metres per degree at
@@ -51,6 +52,28 @@ describe("ring", () => {
 });
 
 describe("filter: the deadband is the observation model", () => {
+  it("keeps Purple's tracked outbound pass when the next stop reading confirms it", () => {
+    const stops = purple.stops as number[];
+    const coords: Record<number, LatLon> = {};
+    for (const [id, point] of Object.entries(purple.stopCoords)) coords[Number(id)] = { lat: point[0]!, lon: point[1]! };
+    const r = buildRing("10|purple", purple.path as [number, number][], stops, coords)!;
+    const before = { lat: 41.258165, lon: -72.987528, last_stop_id: 25,
+      stationary_since: "2026-09-23T12:56:29.467" };
+    const after = { lat: 41.25717, lon: -72.988323, last_stop_id: 24 };
+    const t = Date.parse("2026-09-23T12:57:35Z");
+    const tracked = stepBelief(undefined, r, before, t, stops);
+    tracked.p.fill(0);
+    tracked.p[r.stopCell[6]!] = 1;
+    tracked.rested = true;
+    tracked.restStop = 6;
+    tracked.restApproach = false;
+    tracked.lead = 6;
+    const warm = stepBelief(tracked, r, after, t + 15_000, stops);
+    const cold = stepBelief(undefined, r, after, t + 15_000, stops);
+    const outbound = (b: Belief) => legMass(b, r)[6]! + legMass(b, r)[7]!;
+    expect(outbound(warm)).toBeGreaterThan(outbound(cold) + 0.2);
+  });
+
   it("conserves mass and never moves backwards", () => {
     const r = ring();
     let b = stepBelief(undefined, r, bus(onLeg0(300)), 0, STOPS);
