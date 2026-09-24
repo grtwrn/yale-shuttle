@@ -12,7 +12,7 @@ import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
 import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
 import { liveAnchorStore } from "./eta";
-import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
+import { anchorIndexOnList, observedAtStop, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import {
@@ -2575,7 +2575,8 @@ const TripPlanner: FC<{
           busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
         );
         if (busIdx >= 0) {
-          stopsAway = (bi - busIdx + allStops.length) % allStops.length;
+          stopsAway = observedAtStop(busMatch, o.boardStopId, stopCoords)
+            ? 0 : (bi - busIdx + allStops.length) % allStops.length;
         }
       }
       // How many buses are really on this line — the same on-route
@@ -2682,9 +2683,11 @@ const TripPlanner: FC<{
     // beside a countdown that was not moving; it now comes from
     // the same gated anchor the countdown does.
     const busAnchorIdx = busMatch
-      ? anchorIndexOnList(
-          busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
-        )
+      ? observedAtStop(busMatch, o.boardStopId, stopCoords)
+        ? bi
+        : anchorIndexOnList(
+            busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+          )
       : -1;
     const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
     // Follow the loop to the pickup even when the bus is currently on a
@@ -3934,9 +3937,11 @@ const TripPlanner: FC<{
                 // The gated anchor, off the app's one live store — the dashed
                 // approach must start where the cards and the countdown say
                 // the bus is (liveAnchor.ts).
-                const busIdx = anchorIndexOnList(
-                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
-                );
+                const busIdx = observedAtStop(busMatch, o.boardStopId, stopCoords)
+                  ? bi
+                  : anchorIndexOnList(
+                      busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                    );
                 if (busIdx >= 0 && busIdx !== bi) {
                   const upstream = busIdx <= bi
                     ? allStops.slice(busIdx, bi + 1)
@@ -3974,7 +3979,7 @@ const TripPlanner: FC<{
                   distributionSec: o.busDistribution, stopId: o.boardStopId,
                   computedAtMs: o.computedAtMs, nextSec: nextArrLive?.eta,
                   nextBusName: nextArrLive?.busName, stopsAway: shuttleCtx?.stopsAway,
-                  atPickup: shuttleCtx?.busMatch?.at_stop_id === o.boardStopId,
+                  atPickup: !!shuttleCtx?.busMatch && observedAtStop(shuttleCtx.busMatch, o.boardStopId, stopCoords),
                   holdingAt: shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
                     ? stopNames[shuttleCtx.busMatch.at_stop_id] : undefined,
                 } : undefined,
