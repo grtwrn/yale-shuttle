@@ -200,6 +200,7 @@ describe("landmark search", () => {
     ["101 college street", "101 College Street"],
     ["yale hr", "Yale Human Resources"],
     ["wingstop", "Wingstop (Whalley Ave)"],
+    ["517 prospect", "517 Prospect Street"],
     // The building lost "Biology" in the 2023 renovation; riders have not.
     ["kline tower", "Kline Tower (Kline Biology Tower)"],
     ["kline biology tower", "Kline Tower (Kline Biology Tower)"],
