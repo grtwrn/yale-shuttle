@@ -195,6 +195,11 @@ describe("landmark search", () => {
     ["law school", "Yale Law School"],
     ["yale health", "Yale Health Center"],
     ["divinity", "Divinity School"],
+    ["divinity school library", "Divinity School"],
+    ["354 canner street", "Bellamy Hall"],
+    ["101 college street", "101 College Street"],
+    ["yale hr", "Yale Human Resources"],
+    ["wingstop", "Wingstop (Whalley Ave)"],
     // The building lost "Biology" in the 2023 renovation; riders have not.
     ["kline tower", "Kline Tower (Kline Biology Tower)"],
     ["kline biology tower", "Kline Tower (Kline Biology Tower)"],
