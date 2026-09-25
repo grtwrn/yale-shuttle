@@ -599,8 +599,23 @@ function coordOrNull(v: unknown, limit: number): number | null {
 }
 
 /** An address-level hit: the building the rider actually typed. */
-function hasAddressHit(hits: readonly GeocodeV1Hit[]): boolean {
-  return hits.some((h) => h.type === "house");
+function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
+  if (hit.type !== "house") return false;
+  const parts = /^(\d{1,6})\s+(.+)$/.exec(normalizeName(query));
+  if (!parts) return false;
+  const suffixes = new Set(["st", "street", "ave", "avenue", "rd", "road", "dr", "drive", "ln", "lane", "blvd", "boulevard", "pl", "place", "ct", "court"]);
+  const words = parts[2]!.split(" ");
+  const suffixAt = words.findIndex((word, index) => index > 0 && suffixes.has(word));
+  const street = suffixAt < 0 ? words : words.slice(0, suffixAt);
+  if (street.length === 0) return false;
+  // Nominatim starts with "517, Prospect Street"; Photon usually starts
+  // with "517 Prospect Street". Named buildings may put the address second.
+  const candidate = new Set(normalizeName(hit.display_name.split(",").slice(0, 2).join(" ")).split(" "));
+  return candidate.has(parts[1]!) && street.every((word) => candidate.has(word));
+}
+
+function hasAddressHit(query: string, hits: readonly GeocodeV1Hit[]): boolean {
+  return hits.some((h) => isRequestedAddress(query, h));
 }
 
 /**
@@ -727,6 +742,11 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
   };
 
   const lookup = async (query: string): Promise<GeocodeV1Hit[]> => {
+    // The providers resolve "101 College St" but often return nothing for
+    // the same address written "101 College Street".
+    const providerQuery = looksLikeStreetAddress(query)
+      ? query.replace(/\bStreet\b/gi, "St")
+      : query;
     // Someone is already fetching this query — ride along on their request.
     // Keyed like the cache, so "Union Station" and "union station" typed at
     // the same moment cost one slot, not two.
@@ -739,7 +759,7 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), budgetMs);
       try {
-        const first = await ask("photon", query, deadline, ctrl.signal, photon);
+        const first = await ask("photon", providerQuery, deadline, ctrl.signal, photon);
         // "Returned something" is not "returned something useful".
         //
         // Photon answers an address-shaped query with whatever shares the
@@ -758,10 +778,10 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
         // asked as well. Its address hits lead; Photon's places follow,
         // because a rider who typed a house number wants the house.
         const wantAddress = looksLikeStreetAddress(query);
-        if (first && first.length > 0 && !(wantAddress && !hasAddressHit(first))) {
+        if (first && first.length > 0 && !(wantAddress && !hasAddressHit(query, first))) {
           return first;
         }
-        const second = await ask("nominatim", query, deadline, ctrl.signal, nominatim);
+        const second = await ask("nominatim", providerQuery, deadline, ctrl.signal, nominatim);
         if (!second || second.length === 0) return first ?? [];
         if (!first || first.length === 0) return second;
         const addresses = second.filter((h) => h.type === "house");
@@ -915,18 +935,16 @@ export function rankExternal(
   // an unrelated name goes. It may empty the external list: the local answer
   // is then the whole answer, which is the honest outcome.
   //
-  // An ADDRESS is exempt, and has to be. Nominatim writes a house as
-  // "517, Prospect Street, Prospect Hill, ..." — its first segment is the bare
-  // number "517", which no relevance test can match against "517 Prospect St",
-  // so the exact building the rider typed scored zero and was dropped. That is
-  // the whole of report #59/#69's street-address fix undone (it shipped this
-  // morning; its test caught this). A house-typed hit answering an
-  // address-shaped query IS the answer, so it never faces this filter.
+  // Nominatim writes a house as "517, Prospect Street, ...", which the name
+  // matcher cannot score against "517 Prospect St". Keep that exact address,
+  // but never exempt a different house: "30 Whitney Avenue" once returned
+  // "30 Homestead Avenue, Hamden" simply because both were type=house.
   const addressQuery = query !== undefined && looksLikeStreetAddress(query);
   const related = query
     ? hits.filter((h) =>
-        (addressQuery && h.type === "house") ||
-        relevanceOf(query, h.display_name.split(",").slice(0, 2).join(" ").trim()) > 0)
+        addressQuery && h.type === "house"
+          ? isRequestedAddress(query, h)
+          : relevanceOf(query, h.display_name.split(",").slice(0, 2).join(" ").trim()) > 0)
     : hits;
   // Keep the provider's order — it ranks by relevance, and re-sorting by
   // distance put a street centreline ahead of the house the rider typed —

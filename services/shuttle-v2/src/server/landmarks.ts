@@ -109,7 +109,8 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Yale Science Building (YSB)", lat: 41.317405, lon: -72.921762, aliases: ["ysb", "science building", "science hill", "260 whitney"], poi: "college", anchorStop: "Lot 22 - Whitney / Humphrey" }, // OSM W719112933
 
   // -- Professional schools --------------------------------------------------
-  { label: "Divinity School", lat: 41.3232, lon: -72.922508, aliases: ["divinity", "yds", "divinity library", "marquand chapel", "sterling divinity quadrangle", "409 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // OSM R5730472
+  { label: "Divinity School", lat: 41.3232, lon: -72.922508, aliases: ["divinity", "yds", "divinity library", "divinity school library", "marquand chapel", "sterling divinity quadrangle", "409 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // OSM R5730472
+  { label: "Bellamy Hall", lat: 41.3245257, lon: -72.9205313, aliases: ["354 canner street", "354 canner st"], poi: "college", anchorStop: "Prospect / Canner" }, // OSM geocoded 354 Canner St; Yale Divinity housing
   { label: "School of Art (Green Hall)", lat: 41.308301, lon: -72.933003, aliases: ["art school", "school of art", "green hall", "1156 chapel", "iseman theater", "iseman"], poi: "college", anchorStop: "York / Chapel" }, // OSM W224973110
   { label: "School of Management (SOM)", lat: 41.315171, lon: -72.920475, aliases: ["som", "evans hall", "business school", "yale som", "165 whitney"], poi: "college", anchorStop: "SOM" }, // OSM R3959340
   { label: "School of Medicine (YSM)", lat: 41.303186, lon: -72.933746, aliases: ["med school", "medical school", "ysm", "sterling hall of medicine", "shm", "333 cedar", "medicine"], poi: "college", anchorStop: "333 Cedar" }, // OSM W180193233
@@ -144,10 +145,12 @@ export const LANDMARKS: readonly Landmark[] = [
   // -- Medical campus and hospitals ------------------------------------------
   { label: "Mary S. Harkness Auditorium", lat: 41.3034645, lon: -72.9338409, aliases: ["harkness auditorium", "harkness memorial auditorium", "mary s harkness memorial auditorium", "harkness auditorium (shm)", "shm auditorium", "med school auditorium"], poi: "theatre", anchorStop: "333 Cedar" }, // OSM N367139179
   { label: "100 College Street", lat: 41.304191, lon: -72.931689, aliases: ["100 college", "alexion", "100 college st"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W266150495
+  { label: "101 College Street", lat: 41.3035877, lon: -72.9305618, aliases: ["101 college", "101 college st"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM geocoded 101 College St; Yale Ventures
   { label: "Smilow Cancer Hospital", lat: 41.3051, lon: -72.93584, aliases: ["smilow", "cancer center", "yale cancer center", "35 park"], poi: "hospital", anchorStop: "Howard / Park" }, // OSM R5641557
   { label: "The Anlyan Center (TAC)", lat: 41.30118, lon: -72.934072, aliases: ["tac", "anlyan", "300 cedar"], poi: "hospital", anchorStop: "Gilbert / Cedar" }, // OSM W232595709
   { label: "VA Hospital (West Haven)", lat: 41.283664, lon: -72.959832, aliases: ["va", "the va", "veterans hospital", "va medical center", "west haven va", "veterans affairs", "va ct", "va connecticut", "va connecticut healthcare", "va health center", "va healthcare"], poi: "hospital", anchorStop: "VA Entrance Inbound" }, // OSM W42735113
   { label: "Yale Health Center", lat: 41.315731, lon: -72.927521, aliases: ["yale health", "health center", "student health", "yuhs", "55 lock", "pharmacy", "acute care"], poi: "hospital", anchorStop: "Winchester / Sachem" }, // OSM W217340232
+  { label: "Yale Human Resources", lat: 41.3168436, lon: -72.9197904, aliases: ["yale hr", "human resources", "hr office", "221 whitney"], poi: "college", anchorStop: "221 Whitney (N)" }, // OSM Yale HR POI at 221 Whitney Ave
   { label: "Yale New Haven Hospital Saint Raphael Campus", lat: 41.310144, lon: -72.942931, aliases: ["st raphael", "saint raphael", "st raphaels", "srh", "1450 chapel"], poi: "hospital", anchorStop: "Chapel / Dwight" }, // OSM W442001687
   { label: "Yale Physicians Building", lat: 41.302563, lon: -72.936326, aliases: ["ypb", "physicians building", "800 howard"], poi: "hospital", anchorStop: "Davenport / Howard" }, // OSM W232595708
   { label: "Yale-New Haven Hospital", lat: 41.304312, lon: -72.936013, aliases: ["ynhh", "hospital", "yale new haven hospital", "children's hospital", "emergency room", "er", "emergency department", "20 york"], poi: "hospital", anchorStop: "Howard / Park" }, // OSM W114193509
@@ -176,6 +179,7 @@ export const LANDMARKS: readonly Landmark[] = [
 
   // -- Cafes, restaurants and bars -------------------------------------------
   { label: "Archie Moore's", lat: 41.321407, lon: -72.910523, aliases: ["archie moores", "archies", "wings", "188 willow"], poi: "bar", anchorStop: "Willow / Foster" }, // OSM N299708928
+  { label: "Wingstop (Whalley Ave)", lat: 41.3164796, lon: -72.9428924, aliases: ["wingstop", "292 whalley"], poi: "fast_food", anchorStop: "Stop & Shop" }, // OSM geocoded 292 Whalley Ave; Wingstop's published address
   { label: "Arethusa Farm Dairy", lat: 41.307405, lon: -72.929298, aliases: ["arethusa", "arethusa ice cream", "1020 chapel"], poi: "ice_cream", anchorStop: "Chapel / College" }, // OSM N2760039180
   { label: "Miller Hall", lat: 41.323144, lon: -72.923783, aliases: ["miller hall", "institute of sacred music", "sacred music", "ism", "406 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // Yale's Institute of Sacred Music, 406 Prospect St; the coordinate is the geocoded address, OSM has no
   // building of that name here. Searched 3 times, empty 3 times.
