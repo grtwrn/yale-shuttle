@@ -21,7 +21,7 @@ import {
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import {
-  nextArrivalAfterPinned, shownStandSec,
+  busReadyForEta, nextArrivalAfterPinned, shownStandSec,
   type DwellStat, type SegmentStat, type UpcomingArrival,
 } from "./arrivals";
 // Records what the screen actually said, sampled, deduplicated and posted from
@@ -4954,6 +4954,7 @@ const StopList: FC<{
   const restByBus: Record<number, Record<string, { stopId: number; standingSec: number; approach: boolean }>> = {};
   /** Buses on the line that the estimator will actually price from. */
   const onRouteCounts: Record<number, number> = {};
+  const startingCounts: Record<number, number> = {};
   const normBusName = (s: string) => s.replace(/^#/, "");
   {
     // One clock for the whole page: the anchor and the ETA must be answers
@@ -4979,6 +4980,7 @@ const StopList: FC<{
       restByStop[idx] = {};
       restByBus[idx] = {};
       onRouteCounts[idx] = 0;
+      startingCounts[idx] = 0;
       for (const sid of stops) targets.push(sid);
     });
 
@@ -5013,6 +5015,10 @@ const StopList: FC<{
         // stop it is not serving, above a list with no times in it, is two
         // contradictory claims on one card.
         if (!isBusOnRoute(bus, canonical, stopCoords)) continue;
+        if (!busReadyForEta(bus, cfg.label, canonical)) {
+          startingCounts[idx]!++;
+          continue;
+        }
         onRouteCounts[idx]!++;
         const i = anchorIndexOnList(bus, cfg, routeStops, stopCoords, stops, nowMs, liveAnchorStore);
         if (i < 0) continue;
@@ -5060,7 +5066,8 @@ const StopList: FC<{
         const restAtStop = restByStop[listIdx] ?? {};
         const restForBus = restByBus[listIdx] ?? {};
         const onRoute = onRouteCounts[listIdx] ?? 0;
-        const hasBuses = onRoute > 0;
+        const starting = startingCounts[listIdx] ?? 0;
+        const hasBuses = onRoute + starting > 0;
         const primaryRouteId = cfg.routeIds[0];
         const isFav = favorites.has(primaryRouteId);
         const isolated = isolatedRouteId === primaryRouteId;
@@ -5593,6 +5600,8 @@ const StopList: FC<{
                         ? `${stops.length} stops · live arrivals unavailable ›`
                         : routeBuses.length === 0
                         ? `${stops.length} stops · no buses reporting ›`
+                        : starting > 0 && onRoute === 0
+                          ? `${stops.length} stops · bus entering service ›`
                         : onRoute === 0
                           ? `${stops.length} stops · ${routeBuses.length} bus${routeBuses.length === 1 ? "" : "es"} off route ›`
                           : `${stops.length} stops · live arrivals unavailable ›`}
