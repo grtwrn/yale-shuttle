@@ -61,6 +61,34 @@ function payloadFor(i: number): EtaPayloadView {
 const ALL_ROUTES = ROUTE_LISTS.map((c) => c.label);
 
 describe("the flag", () => {
+  it("withholds Blue West ETAs while its assigned bus approaches the first route stop", () => {
+    // Report #133, 2026-09-26 18:00 ET: #127 was deadheading south with
+    // last_stop_id=0, yet Mansfield/Division showed a 1–56 minute window.
+    const engine = new ServerEta({ routes: ["Blue West"] });
+    const now = Date.parse("2026-09-26T22:00:35Z");
+    const bus: BusData = {
+      bus_id: 66904, bus_name: "#127", route_id: 16,
+      lat: 41.319058, lon: -72.933916, heading: 168,
+      last_stop_id: 0, observed_at: now,
+    };
+    const payload = (b: BusData): EtaPayloadView => ({ ...payloadFor(0), buses: [b] });
+    expect(engine.contribute(payload(bus), 1, now)).toBeNull();
+
+    // At 18:08 the vehicle actually reached 333 Cedar, its first route stop.
+    const atFirst = { ...bus, lat: 41.303254, lon: -72.934247,
+      stationary: true, at_stop_id: 10, observed_at: now + 8 * 60_000 };
+    const atStop = engine.contribute(payload(atFirst), 2, now + 8 * 60_000);
+    expect(atStop?.buses.some(b => b[1] === "Blue West")).toBe(true);
+    expect(atStop?.rows.some(r => r[1] === 163)).toBe(true);
+
+    // The feed then advanced last_stop_id to 10 after departure; predictions
+    // must continue even after at_stop_id clears.
+    const departed = { ...bus, lat: 41.303353, lon: -72.936055,
+      stationary: false, last_stop_id: 10, observed_at: now + 10 * 60_000 };
+    const underway = engine.contribute(payload(departed), 3, now + 10 * 60_000);
+    expect(underway?.rows.some(r => r[1] === 163)).toBe(true);
+  });
+
   it('reads the displayed history origin without advancing belief and expires missing buses', () => {
     const engine = new ServerEta({ routes: ALL_ROUTES });
     const t = CAP.frames[0]!.t, payload = payloadFor(0);
