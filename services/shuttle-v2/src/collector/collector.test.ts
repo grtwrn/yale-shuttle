@@ -310,6 +310,46 @@ describe("upstream payload sanitisation", () => {
     expect(live).toHaveLength(1);
     expect(live[0]!.heading).toBe(0);
   });
+
+  it("archives and shows Blue West's incoming bus without inventing stop visits", async () => {
+    const cedar: Stop = { id: 10, name: "333 Cedar", lat: 41.303254, lon: -72.934247 };
+    const mansfield: Stop = { id: 163, name: "Mansfield / Division", lat: 41.32486, lon: -72.9247 };
+    vi.spyOn(upstream, "stops").mockResolvedValue([...stops, cedar, mansfield]);
+    vi.spyOn(upstream, "routes").mockResolvedValue([...routes,
+      { id: 16, name: "Blue West", shortName: "BW", color: "#00838F", stops: [10, 163] },
+    ]);
+    await inner().refreshStaticIfNeeded(true);
+
+    const incoming = (lat: number, lon: number, lastStop: number) =>
+      bus({ id: 66904, name: "#127", route: 16, lat, lon, lastStop });
+    const clock = vi.spyOn(Date, "now");
+    clock.mockReturnValue(Date.parse("2026-09-26T21:55:35Z"));
+    await poll([incoming(41.339441, -72.935181, 0)]);
+    clock.mockReturnValue(Date.parse("2026-09-26T22:00:35Z"));
+    await poll([incoming(41.319058, -72.933916, 0)]);
+    expect(collector.getLiveBuses()).toHaveLength(1);
+    expect(bundle.db.select().from(rawPositions).all()).toHaveLength(2);
+    expect(bundle.db.select().from(arrivals).all()).toHaveLength(0);
+    expect(bundle.db.select().from(stopVisits).all()).toHaveLength(0);
+
+    // The archived handoff: #127 first reached Cedar at 18:08:25 and held
+    // there while lastStopId was still 0. Upstream advanced it only at 18:08:50.
+    for (const [at, lat, lon, lastStop] of [
+      ["2026-09-26T22:08:25Z", 41.302809, -72.934055, 0],
+      ["2026-09-26T22:08:30Z", 41.303078, -72.934174, 0],
+      ["2026-09-26T22:08:35Z", 41.303078, -72.934174, 0],
+      ["2026-09-26T22:08:40Z", 41.303078, -72.934174, 0],
+      ["2026-09-26T22:08:45Z", 41.303078, -72.934174, 0],
+      ["2026-09-26T22:08:50Z", 41.303343, -72.934353, 10],
+    ] as const) {
+      clock.mockReturnValue(Date.parse(at));
+      await poll([incoming(lat, lon, lastStop)]);
+    }
+    expect(bundle.db.select().from(rawPositions).all()).toHaveLength(8);
+    const recorded = bundle.db.select().from(arrivals).all();
+    expect(recorded).toMatchObject([{ routeId: 16, stopId: 10 }]);
+    expect(recorded[0]!.arrivedAt.getTime()).toBe(Date.parse("2026-09-26T22:08:25Z"));
+  });
 });
 
 describe("state pruning", () => {

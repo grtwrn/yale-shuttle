@@ -858,7 +858,18 @@ export class Collector {
           });
         }
         reconcileTracks(this.livePositions, plan);
-        this.recoverOpenVisits(observations, plan);
+        // Blue West's bus is assigned route 16 before it starts the route at
+        // 333 Cedar. With lastStopId=0, the detector's unbounded nearest-stop
+        // anchor records the deadhead as visits hundreds of metres from any
+        // stop. Keep those positions in the raw archive and on the live map,
+        // but wait until the bus is actually within the stop pin radius at
+        // Cedar, or upstream reports a served stop. The GPS reached Cedar
+        // ~25 s before lastStopId advanced, and those held fixes are the real
+        // first-stop stand; excluding them would lose its arrival clock.
+        const cedar = this.ref.get().stops.get(10);
+        const serving = observations.filter((o) => o.routeId !== 16 || o.lastStopId !== 0 ||
+          (cedar !== undefined && distanceMeters(o, cedar) <= AT_STOP_PIN_M));
+        this.recoverOpenVisits(serving, plan);
         // The same `step`, in the same order, as `stepMany` — `events` is
         // byte-for-byte what it returned before. The visit reducer rides
         // alongside and adds the departure observation the detector lacks.
@@ -866,7 +877,7 @@ export class Collector {
           this.ref.get(),
           this.states,
           this.visitStates,
-          observations,
+          serving,
           plan,
           (obs, anchorStop) => this.seedStationary(obs, anchorStop),
         );
