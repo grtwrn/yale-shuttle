@@ -449,6 +449,19 @@ describe('stop-count lead alerts', () => {
     expect(stepStopAlerts([a], [{routeLabel: 'Red', stopId: 11, busName: '317', eta: 600}], T0).pings).toEqual([]);
   });
 
+  it('does not repeat a lead when the soonest vehicle changes A to B to A, including reload', () => {
+    let alerts = [alert({leadStops: 2})];
+    const poll = (busName: string) => [{routeLabel: 'Red', stopId: 11, busName, eta: 600, stopsAhead: 2}];
+    const first = stepStopAlerts(alerts, poll('317'), T0); alerts = first.alerts;
+    expect(first.pings).toHaveLength(1);
+    const second = stepStopAlerts(alerts, poll('309'), T0); alerts = second.alerts;
+    expect(second.pings).toHaveLength(1);
+    vi.stubGlobal('localStorage', {getItem: () => JSON.stringify(alerts)});
+    try { alerts = loadStopAlerts(); } finally { vi.unstubAllGlobals(); }
+    expect(stepStopAlerts(alerts, poll('317'), T0).pings).toEqual([]);
+    expect(stepStopAlerts(alerts, [{...poll('317')[0]!, eta: 0, stopsAhead: 0}], T0).pings.map(p => p.kind)).toEqual(['arrival']);
+  });
+
   it('estimates the same bus and visit, preserves skipped-stop thresholds, and refuses missing evidence', () => {
     const rows = [
       {routeLabel: 'Red', stopId: 11, busName: '317', eta: 900, stopsAhead: 5},

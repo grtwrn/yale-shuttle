@@ -66,6 +66,7 @@ export const CLOSE_GRACE_MS = 10 * 60 * 1000;
 
 /** How many arms are kept. A bound on the list, the strip and the stored blob. */
 export const MAX_STOP_ALERTS = 8;
+const MAX_ALERT_BUSES = 32;
 
 export type StopAlertKind = "lead" | "arrival";
 
@@ -91,6 +92,8 @@ export type StopAlert = {
   leadStops?: number;
   createdAt: number;
   fired?: StopAlertFired;
+  /** Recent vehicles for this arm: leader reorder must not repeat a lead ping. */
+  firedHistory?: StopAlertFired[];
 };
 
 const NOT_FIRED = (busName: string): StopAlertFired => ({ busName, lead: false, arrival: false });
@@ -165,7 +168,8 @@ export function expireStopAlerts(
 /** The fired record that applies to `busName` — a different vehicle starts clean. */
 function firedFor(alert: StopAlert, busName: string): StopAlertFired {
   const f = alert.fired;
-  return f && f.busName === busName ? f : NOT_FIRED(busName);
+  return f && f.busName === busName ? f
+    : alert.firedHistory?.find(record => record.busName === busName) ?? NOT_FIRED(busName);
 }
 
 /**
@@ -185,7 +189,7 @@ function firedFor(alert: StopAlert, busName: string): StopAlertFired {
  *   `lead` never did: a rider who arms while the bus is 20 s out gets the
  *   useful ping, not two in the same second (leaveAlert.ts's rule, same reason).
  * - inside the rider's lead time → `lead`, once per vehicle.
- * - a DIFFERENT vehicle resets both flags, so the next bus is a fresh promise.
+ * - a new vehicle gets its own flags; a returning leader keeps its fired history.
  */
 export function decide(
   alert: StopAlert,
@@ -212,12 +216,14 @@ export function decide(
  */
 export function markStopAlertFired(alert: StopAlert, kind: StopAlertKind, busName: string): StopAlert {
   const base = firedFor(alert, busName);
-  return {
-    ...alert,
-    fired: kind === "arrival"
-      ? { busName, lead: true, arrival: true }
-      : { ...base, busName, lead: true },
-  };
+  const fired = kind === "arrival"
+    ? { busName, lead: true, arrival: true }
+    : { ...base, busName, lead: true };
+  const history = [...(alert.firedHistory ?? []), ...(alert.fired ? [alert.fired] : [])];
+  const byBus = new Map(history.map(record => [record.busName, record]));
+  byBus.delete(busName);
+  byBus.set(busName, fired);
+  return { ...alert, fired, firedHistory: [...byBus.values()].slice(-MAX_ALERT_BUSES) };
 }
 
 /**
@@ -343,6 +349,7 @@ function parseAlert(raw: unknown): StopAlert | null {
     routeLabel,
     stopId,
     stopName: typeof o.stopName === "string" && o.stopName ? o.stopName : `Stop ${stopId}`,
+    ...(Array.isArray(o.firedHistory) ? { firedHistory: o.firedHistory.filter(record => record && typeof record.busName === "string" && record.busName.length <= 64).slice(-MAX_ALERT_BUSES).map(record => ({ busName: record.busName, lead: !!record.lead, arrival: !!record.arrival })) } : {}),
     leadMin: validLead(o.leadMin),
     ...((LEAD_STOP_CHOICES as readonly unknown[]).includes(o.leadStops) ? { leadStops: o.leadStops as number } : {}),
     createdAt,
