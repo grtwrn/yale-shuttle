@@ -230,7 +230,7 @@ export function followupImageFile(db: DB, id: number, index: number): string | n
 }
 
 /** The stored screenshot filename for one report, if it has one. */
-export function reportImageFile(db: DB, id: number): string | null {
+export function reportImageFile(db: DB, id: number, index = 0): string | null {
   const row = db
     .select({ context: reports.context })
     .from(reports)
@@ -238,8 +238,10 @@ export function reportImageFile(db: DB, id: number): string | null {
     .get();
   if (!row?.context) return null;
   try {
-    const ctx = JSON.parse(row.context) as { imageFile?: unknown };
-    return typeof ctx.imageFile === "string" ? ctx.imageFile : null;
+    const ctx = JSON.parse(row.context) as { imageFile?: unknown; imageFiles?: unknown };
+    if (!Number.isInteger(index) || index < 0) return null;
+    if (Array.isArray(ctx.imageFiles)) return typeof ctx.imageFiles[index] === "string" ? ctx.imageFiles[index] : null;
+    return index === 0 && typeof ctx.imageFile === "string" ? ctx.imageFile : null;
   } catch {
     return null;
   }

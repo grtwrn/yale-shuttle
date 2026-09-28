@@ -14,7 +14,7 @@ import {
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
-import type { JourneyArrival } from './journeyArrival';
+import { atStopJourneyBoard, journeyArrival, type JourneyArrival } from './journeyArrival';
 import type { LivePickupSelection } from './livePickupSelection';
 
 export type TripOption = {
@@ -425,6 +425,8 @@ export function planTrip(
         let busDepartNowSec: number | undefined;
         let busLowSec: number | undefined;
         let busHighSec: number | undefined;
+        let departed = false;
+        let destination: JourneyArrival | undefined;
         if (futureMode) {
           waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
           busName = "";
@@ -443,6 +445,7 @@ export function planTrip(
             busDepartNowSec = 0;
             busLowSec = 0; busHighSec = 0;
             busName = hereBus.bus_name.replace(/^#/, "");
+            destination = journeyArrival(atStopJourneyBoard(boardArrivals, cfg.label, busName, b, cur), boardArrivals, cur, walkToSec, walkFromSec, now, 'at-stop');
           } else if (arrivals.length === 0) {
             continue;
           } else {
@@ -455,7 +458,10 @@ export function planTrip(
             // the option then correctly shows "departed".
             // STOP_DWELL_SEC is shared with pickLiveArrival's canCatch so
             // plan-time and live pinning can never disagree.
-            const next = arrivals.find((a) => walkToSec <= a.eta + STOP_DWELL_SEC) ?? arrivals[0];
+            const catchable = arrivals.find((a) => walkToSec <= a.eta + STOP_DWELL_SEC);
+            const next = catchable ?? arrivals[0];
+            departed = !catchable;
+            destination = departed ? undefined : journeyArrival(next, boardArrivals, cur, walkToSec, walkFromSec, now);
             waitSec = Math.max(0, next.eta - walkToSec);
             busEtaSec = next.eta;
             busDistribution = next.distribution;
@@ -464,7 +470,9 @@ export function planTrip(
             busName = next.busName;
           }
         }
-        const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
+        const totalSec = destination ? (destination.pointMs - now) / 1000
+          : walkToSec + waitSec + cumRide + walkFromSec;
+        const rideSec = destination ? Math.max(0, totalSec - walkToSec - waitSec - walkFromSec) : cumRide;
         // A shuttle that saves almost no walking adds a wait/boarding/ride
         // without enough benefit, even if a noisy ETA briefly looks attractive.
         if (!savesWalking(walkToSec + walkFromSec, directWalkSec)) continue;
@@ -472,7 +480,8 @@ export function planTrip(
           mode: "shuttle",
           routeLabel: cfg.label, color: cfg.color,
           boardStopId: b, alightStopId: cur,
-          walkToSec, waitSec, rideSec: cumRide, plannedRideSec: cumRide, walkFromSec,
+          walkToSec, waitSec, rideSec, plannedRideSec: cumRide, walkFromSec,
+          departed, journeyArrival: destination,
           totalSec, busName,
           directWalkSec,
           busEtaSec,
@@ -496,7 +505,6 @@ export function planTrip(
   // The old pick minimized walk-to unconditionally, which ignored wait:
   // report #3 saw a 43-min wait at the nearest stop chosen over boarding
   // the same (resting) bus a 4-min walk away.
-  const TOTAL_TIE_SEC = 180;
   const byRoute = new Map<string, TripOption[]>();
   for (const o of viable) {
     const bucket = byRoute.get(o.routeLabel);
@@ -505,11 +513,7 @@ export function planTrip(
   }
   const bestPerRoute = new Map<string, TripOption>();
   for (const [label, group] of byRoute) {
-    const minTotal = Math.min(...group.map((o) => o.totalSec));
-    const nearBest = group.filter((o) => o.totalSec <= minTotal + TOTAL_TIE_SEC);
-    nearBest.sort((a, b) => (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
-      || a.rideSec - b.rideSec || a.totalSec - b.totalSec);
-    bestPerRoute.set(label, nearBest[0]);
+    bestPerRoute.set(label, bestRoutePickup(group));
   }
   // Sort the chosen options by total time for display.
   const dedup = [...bestPerRoute.values()]
@@ -937,4 +941,29 @@ export function topVisibleOptions(
 export function keptThirdLabel(visible: readonly TripOption[]): string | null {
   const shuttles = visible.filter((o) => o.mode === "shuttle");
   return shuttles.length >= 3 ? shuttles[2]!.routeLabel : null;
+}
+
+/** Reconsider an unopened pickup as buses move. A watched route or armed
+ * reminder stays pinned: the rider may already be walking to that stop.
+ * Apply the same three-minute total-time shortlist and walking preference
+ * as initial planning, with at least a minute less walking to the pickup. */
+export function pickupFallback(current: TripOption, candidate: TripOption | undefined, protectedRoute = false): TripOption | undefined {
+  if (protectedRoute || current.mode !== 'shuttle' || !candidate || candidate.mode !== 'shuttle'
+    || candidate.routeLabel !== current.routeLabel || candidate.boardStopId === current.boardStopId
+    || candidate.departed || candidate.etaUnavailable || current.etaUnavailable
+    || !Number.isFinite(candidate.totalSec) || candidate.walkToSec > current.walkToSec - 60) return undefined;
+  if (current.journeyArrival && !candidate.journeyArrival) return undefined;
+  return bestRoutePickup([current, candidate]) === candidate ? candidate : undefined;
+}
+
+/** Shared initial/live per-route choice: catchable first, then least walking
+ * among arrivals within three minutes of the best journey time. */
+export function bestRoutePickup(group: readonly TripOption[]): TripOption {
+  const catchable = group.filter(o => !o.departed);
+  const candidates = catchable.length ? catchable : group;
+  const minTotal = Math.min(...candidates.map(o => o.totalSec));
+  const nearBest = candidates.filter(o => o.totalSec <= minTotal + 180);
+  nearBest.sort((a, b) => (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
+    || (a.plannedRideSec ?? a.rideSec) - (b.plannedRideSec ?? b.rideSec) || a.totalSec - b.totalSec);
+  return nearBest[0]!;
 }

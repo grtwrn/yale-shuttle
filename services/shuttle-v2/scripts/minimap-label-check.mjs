@@ -13,7 +13,7 @@ await fs.mkdir(out, { recursive: true });
 const baseline = process.argv.includes('--baseline'), prefix = baseline ? 'before' : 'after';
 const desktop = !!process.env.DESKTOP;
 const from = { lat: 41.321, lon: -72.927 }, to = { lat: 41.307, lon: -72.926 };
-const base = { label: 'Red', segCoords: [from, to], bus: { ...from, name: '307' }, passedBus: { lat: 41.3207, lon: -72.927, name: '309' }, boardEta: '2–19 min', arriveAt: '12:59–1:32 PM', busWait: { compact: '3:21/~5m', elapsed: 'Waiting 3:21', typical: 'Usually ~5 min total', overdue: false } };
+const base = { label: 'Red', segCoords: [from, to], bus: { ...from, name: '307' }, passedBus: { lat: 41.3207, lon: -72.927, name: '309' }, boardEta: '2–19 min', arriveAt: '12:59–1:32 PM', busWait: { compact: 'Stopped 3:21 · usual ~5m total', elapsed: 'Waiting 3:21', typical: 'Usually ~5 min total', overdue: false } };
 const source = baseline ? process.env.BASELINE_SOURCE : service + '/web/src/TransitMap.tsx';
 if (!source)
     throw Error('Set BASELINE_SOURCE when using --baseline');
@@ -64,17 +64,17 @@ try {
     else {
         assert.match(first.buses[0].name, /Red #307.*Waiting 3:21.*Usually ~5 min total.*not time remaining/);
         assert.equal(first.buses[1].name, 'Red #309 — just passed');
-        assert.equal(first.labels.find(l => l.wait).text, 'Red #307 3:21/~5m');
+        assert.equal(first.labels.find(l => l.wait).text, 'Red #307 Stopped 3:21 · usual ~5m total');
         report.checks.push('Catchable and passed Red buses have distinct accessible identities; compact wait names #307');
     }
     await page.locator('.bus-pin-sm').first().focus();
     await capture('focused-bus');
-    await page.evaluate(base => { window.originalMarker = document.querySelector('.bus-pin-sm'); window.setOptions([{ ...base, busWait: { ...base.busWait, compact: '3:22/~5m', elapsed: 'Waiting 3:22' } }]); }, base);
+    await page.evaluate(base => { window.originalMarker = document.querySelector('.bus-pin-sm'); window.setOptions([{ ...base, busWait: { ...base.busWait, compact: 'Stopped 3:22 · usual ~5m total', elapsed: 'Waiting 3:22' } }]); }, base);
     await page.waitForTimeout(60);
     assert(await page.locator('.bus-pin-sm').first().evaluate(e => e === window.originalMarker && e === document.activeElement), 'poll update keeps marker and keyboard focus');
     if (!baseline)
         assert.match(await page.locator('.bus-pin-sm').first().getAttribute('aria-label'), /Waiting 3:22/);
-    assert.match(await page.locator('.bus-wait-label').innerText(), /3:22\/~5m/);
+    assert.match(await page.locator('.bus-wait-label').innerText(), /Stopped 3:22 · usual ~5m total/);
     report.checks.push('Wait tick updates identity/details in place and preserves keyboard focus');
     await page.getByRole('button', { name: 'Fullscreen', exact: true }).focus();
     await page.keyboard.press('Enter');
@@ -96,7 +96,7 @@ try {
     assert.equal(await page.locator('.map-fs').count(), 0);
     report.backFocus = await page.evaluate(() => document.activeElement?.tagName);
     report.checks.push('44px fullscreen control works by Enter/touch or click; Escape retains toggle focus; Back closes');
-    const options = [base, { ...base, label: 'Blue Day', bus: { ...from, name: '410' }, passedBus: null, busWait: { ...base.busWait, compact: '12:08/~10m' } }, { ...base, label: 'Brown', bus: { lat: 41.3208, lon: -72.927, name: '507' }, passedBus: null, busWait: { ...base.busWait, compact: '18:05/~12m' } }];
+    const options = [base, { ...base, label: 'Blue Day', bus: { ...from, name: '410' }, passedBus: null, busWait: { ...base.busWait, compact: 'Stopped 12:08 · usual ~10m total' } }, { ...base, label: 'Brown', bus: { lat: 41.3208, lon: -72.927, name: '507' }, passedBus: null, busWait: { ...base.busWait, compact: 'Stopped 18:05 · usual ~12m total' } }];
     await page.evaluate(options => window.setOptions(options), options);
     await page.waitForTimeout(200);
     const together = await capture(`three-routes-${desktop ? 1280 : 360}`, true);

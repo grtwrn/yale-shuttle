@@ -1,3 +1,5 @@
+import { pickupFallback } from "./planner";
+import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGES_MAX_DATA_URL_LENGTH } from "./reportAttachments";
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
 import L from "leaflet";
 import { cancelMapTouchZoom } from "./mapLifecycle";
@@ -101,7 +103,7 @@ import { lastBusVerdict } from "./lastBus";
 import { fmtSchedule, fmtWindows, groceryServiceNotice, isBusInService, routeDiscontinuedAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
 import { stopRowHighlight } from "./stopRow";
 import type { PublishedWindow } from "./schedule";
-import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
+import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imagesFromTransfer } from "./screenshot";
 import { AT_PLACE_M, walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
@@ -1164,6 +1166,7 @@ const CombinedTripMap: FC<{
         route.textContent = label; route.style.color = color;
         const time = document.createElement('span');
         time.textContent = wait.compact;
+        time.style.display = 'block';
         time.style.color = wait.overdue ? '#8a5300' : '#374151';
         content.append(route, document.createTextNode(' '), time);
       } else content.textContent = label;
@@ -2021,6 +2024,10 @@ const TripPlanner: FC<{
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
 
+  // Choices are scoped to the initial plan. Once a fallback is selected it
+  // remains the pickup when its card opens; opening cannot revert to the old stop.
+  const [pickupChoices, setPickupChoices] = useState<{ plan: TripOption[]; byRoute: Map<string, TripOption> } | null>(null);
+
   // Collapse the "show more" list whenever a new trip is planned.
   useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
 
@@ -2069,7 +2076,8 @@ const TripPlanner: FC<{
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
     if (isFutureMode) return stableOptions.map(o => ({ ...o, livePickupSelection: undefined }));
-    return stableOptions.map((o) => {
+    return stableOptions.map((initial) => {
+      const o = pickupChoices?.plan === stableOptions ? pickupChoices.byRoute.get(initial.routeLabel) ?? initial : initial;
       if (o.mode !== "shuttle") {
         // A live origin moves with the rider for both alternatives.
         const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
@@ -2186,7 +2194,25 @@ const TripPlanner: FC<{
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+
+  useEffect(() => {
+    if (!stableOptions || !options || !etaFresh || !effectiveFromLL || !toLL
+      || (targetDate && targetDate.getTime() - Date.now() > 60_000)) return;
+    const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
+    const fresh = planTrip(from, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), liveAnchorStore);
+    const replacements = options.flatMap(current => {
+      const candidate = fresh.find(o => o.routeLabel === current.routeLabel);
+      const replacement = pickupFallback(current, candidate, expandedKey === current.routeLabel || reminder?.routeLabel === current.routeLabel);
+      return replacement ? [replacement] : [];
+    });
+    if (!replacements.length) return;
+    setPickupChoices(prev => {
+      const byRoute = new Map(prev?.plan === stableOptions ? prev.byRoute : []);
+      for (const replacement of replacements) byRoute.set(replacement.routeLabel, replacement);
+      return { plan: stableOptions, byRoute };
+    });
+  }, [options, stableOptions, etaFresh, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, effectiveFromLL, toLL, fromText, userLatLon, expandedKey, reminder]);
 
   // Origin and destination are the same place (report: setting one's own
   // location as the destination "gets confused"). Keyed on effectiveFromLL,
@@ -6481,28 +6507,51 @@ const TransitMap: FC = () => {
   // Attached screenshot as a JPEG data URL, already downscaled. Phones produce
   // 12 MP screenshots; nobody triages bugs at 12 MP, and the server caps the
   // upload at 2 MB, so the browser shrinks to <=1280 px before anything is sent.
-  const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
+  const [feedbackImages, setFeedbackImages] = useState<string[]>([]);
+  const feedbackAttachGeneration = useRef(0);
+  const feedbackAttachBusy = useRef(false);
   const [feedbackPriority, setFeedbackPriority] = useState<"urgent" | "normal" | "nice_to_have">("normal");
   const [feedbackImageErr, setFeedbackImageErr] = useState<string | null>(null);
   /** A pasted screenshot is still being downscaled; Send waits for it. */
   const [feedbackAttaching, setFeedbackAttaching] = useState(false);
   // Shared with the Issues tab's reply box — one downscale, one set of
   // limits, one wording for the failures (web/src/screenshot.ts).
-  const attachScreenshot = (file: File | undefined | null) => {
+  const resetFeedbackImages = () => {
+    feedbackAttachGeneration.current++;
+    feedbackAttachBusy.current = false;
+    setFeedbackAttaching(false);
+    setFeedbackImages([]);
+  };
+  const attachScreenshots = async (files: File[]) => {
+    if (!files.length || feedbackSending || feedbackAttachBusy.current) return;
+    if (files.length + feedbackImages.length > REPORT_IMAGE_MAX_COUNT) {
+      setFeedbackImageErr(`Attach up to ${REPORT_IMAGE_MAX_COUNT} screenshots`);
+      return;
+    }
     setFeedbackImageErr(null);
-    if (!file) return;
-    // Decoding a 12 MP screenshot takes long enough on a phone that a rider
-    // can tap Send first and post a report with no picture and no warning.
+    feedbackAttachBusy.current = true;
     setFeedbackAttaching(true);
-    void downscaleToDataUrl(file).then((res) => {
-      setFeedbackAttaching(false);
-      if ("error" in res) setFeedbackImageErr(attachErrorText(res.error));
-      else setFeedbackImage(res.dataUrl);
-    });
+    const generation = feedbackAttachGeneration.current;
+    const added: string[] = [];
+    // Decode sequentially: five full-resolution phone images at once waste memory.
+    for (const file of files) {
+      const res = await downscaleToDataUrl(file);
+      if (generation !== feedbackAttachGeneration.current) return;
+      if ("error" in res) {
+        setFeedbackImageErr(attachErrorText(res.error));
+      } else if ([...feedbackImages, ...added, res.dataUrl].reduce((n, url) => n + url.length, 0) > REPORT_IMAGES_MAX_DATA_URL_LENGTH) {
+        setFeedbackImageErr("Screenshots are too large together — remove one and try again");
+      } else {
+        added.push(res.dataUrl);
+      }
+    }
+    setFeedbackImages(prev => [...prev, ...added]);
+    feedbackAttachBusy.current = false;
+    setFeedbackAttaching(false);
   };
   const sendFeedback = async () => {
     const msg = feedbackText.trim();
-    if (!msg) return;
+    if (!msg || feedbackSending || feedbackAttachBusy.current) return;
     const ownedFocus = feedbackRef.current?.contains(document.activeElement);
     setFeedbackSending(true);
     setFeedbackError(null);
@@ -6513,7 +6562,7 @@ const TransitMap: FC = () => {
         headers: { "Content-Type": "application/json", ...anonIdHeader() },
         body: JSON.stringify({
           note: msg,
-          image: feedbackImage ?? undefined,
+          images: feedbackImages.length ? feedbackImages : undefined,
           priority: feedbackPriority,
           source: "feedback",
           client: {
@@ -6527,7 +6576,7 @@ const TransitMap: FC = () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
       setFeedbackText("");
-      setFeedbackImage(null);
+      resetFeedbackImages();
       setFeedbackPriority("normal");
       closeFeedback(ownedFocus);
       setMyReportsBump((b) => b + 1);
@@ -7897,7 +7946,7 @@ const TransitMap: FC = () => {
             }}>
               Feedback
             </label>
-            <textarea
+            <textarea disabled={feedbackSending}
               id="feedback-message"
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
@@ -7908,17 +7957,17 @@ const TransitMap: FC = () => {
               // text paste is untouched — imageFromTransfer returns null and
               // the event runs as normal.
               onPaste={(e) => {
-                const file = imageFromTransfer(e.clipboardData);
-                if (!file) return;
+                const files = imagesFromTransfer(e.clipboardData);
+                if (!files.length) return;
                 e.preventDefault();
-                attachScreenshot(file);
+                void attachScreenshots(files);
               }}
               onDragOver={(e) => { if (dragCarriesFile(e.dataTransfer)) e.preventDefault(); }}
               onDrop={(e) => {
-                const file = imageFromTransfer(e.dataTransfer);
-                if (!file) return;
+                const files = imagesFromTransfer(e.dataTransfer);
+                if (!files.length) return;
                 e.preventDefault();
-                attachScreenshot(file);
+                void attachScreenshots(files);
               }}
               placeholder="Anything on your mind — bugs, ideas, confusing bits…"
               autoFocus
@@ -7958,34 +8007,35 @@ const TransitMap: FC = () => {
                 style={{ fontSize: 13, color: "#1976D2", cursor: "pointer", fontFamily: "inherit",
                   border: "1px solid #bbb", borderRadius: 6, background: "#fff",
                   minHeight: 44, padding: "8px 12px" }}>
-                📎 {feedbackImage ? "Replace screenshot" : "Attach screenshot"}
+                📎 {feedbackImages.length ? "Add screenshots" : "Attach screenshots"}
               </button>
-              <input ref={feedbackFileRef} type="file" accept="image/*" hidden
-                onChange={(e) => { attachScreenshot(e.target.files?.[0]); e.target.value = ""; }} />
-              {!feedbackImage && <span style={{ fontSize: 12, color: "#78909c" }}>or paste one</span>}
-              {feedbackImage && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <img src={feedbackImage} alt="attached screenshot"
+              <input ref={feedbackFileRef} type="file" accept="image/*" multiple hidden
+                onChange={(e) => { void attachScreenshots(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+              <span style={{ fontSize: 12, color: "#78909c" }}>{feedbackImages.length}/{REPORT_IMAGE_MAX_COUNT} · or paste/drop images</span>
+              {feedbackImages.map((image, index) => (
+                <div key={index} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <img src={image} alt={`attached screenshot ${index + 1}`}
                     style={{ height: 44, borderRadius: 4, border: "1px solid #ccc" }} />
                   <button
-                    aria-label="Remove screenshot"
-                    onClick={() => { setFeedbackImage(null); setFeedbackImageErr(null); feedbackAttachRef.current?.focus(); }} title="Remove screenshot"
+                    aria-label={`Remove screenshot ${index + 1}`}
+                    disabled={feedbackSending || feedbackAttaching}
+                    onClick={() => { setFeedbackImages(prev => prev.filter((_, i) => i !== index)); setFeedbackImageErr(null); feedbackAttachRef.current?.focus(); }} title="Remove screenshot"
                     style={{ border: "none", background: "transparent", color: "#c62828",
                       fontSize: 13, cursor: "pointer", minHeight: 44, padding: "0 6px" }}>
                     ✕ remove
                   </button>
                 </div>
-              )}
+              ))}
               {feedbackImageErr && (
                 <span role="alert" style={{ fontSize: 12, color: "#c62828" }}>{feedbackImageErr}</span>
               )}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button
+              <button disabled={feedbackSending}
                 onClick={() => {
                   closeFeedback();
                   setFeedbackText("");
-                  setFeedbackImage(null);
+                  resetFeedbackImages();
                   setFeedbackImageErr(null);
                   setFeedbackError(null);
                 }}
@@ -8016,7 +8066,7 @@ const TransitMap: FC = () => {
             {feedbackError && <div role="alert" style={{ fontSize: 13, color: "#c62828" }}>{feedbackError}</div>}
           </div>
         )}
-        <div role="status" style={{ fontSize: 12, color: "#546e7a" }}>{feedbackAttaching ? "Attaching screenshot…" : feedbackStatus}</div>
+        <div role="status" style={{ fontSize: 12, color: "#546e7a" }}>{feedbackAttaching ? "Attaching screenshots…" : feedbackStatus}</div>
       </div>
 
       {/* Beta notice — persistent, and the tap opens the feedback composer

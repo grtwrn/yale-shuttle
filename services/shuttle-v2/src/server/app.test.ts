@@ -74,6 +74,7 @@ beforeEach(async () => {
   // refreshStaticIfNeeded call below does the static load synchronously.
   await (collector as unknown as { refreshStaticIfNeeded: (force: boolean) => Promise<void> })
     .refreshStaticIfNeeded(true);
+  vi.stubEnv("SHUTTLE_V2_DB", path.join(tmpDir, "test.db"));
   app = buildApp({
     collector,
     bundle,
@@ -91,6 +92,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   collector.stop();
   bundle.sqlite.close();
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -147,12 +149,12 @@ describe("GET /healthz", () => {
 
 describe("body limits", () => {
   it("rejects an oversized report payload with 413", async () => {
-    // The limit is sized for a downscaled screenshot (3 MB); anything past it
+    // The limit is sized for a bounded screenshot batch (~8 MB); anything past it
     // is refused before parsing.
     const res = await app.request("/api/report", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ note: "x".repeat(3 * 1024 * 1024 + 1024) }),
+      body: JSON.stringify({ note: "x".repeat(8 * 1024 * 1024 + 128 * 1024) }),
     });
     expect(res.status).toBe(413);
   });
@@ -184,6 +186,75 @@ describe("report screenshots", () => {
     // ...and never to anyone without the token.
     const anon = await app.request(`/api/reports/${d.id}/image`);
     expect(anon.status).toBe(401);
+  });
+
+  it("stores every screenshot in order, preserves the legacy URL, and protects indexed images", async () => {
+    const jpeg = "data:image/jpeg;base64," + Buffer.from([0xff, 0xd8, 1, 2, 3, 4, 5, 6]).toString("base64");
+    const res = await app.request("/api/report", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ note: "two views", images: [PNG_1PX, jpeg], imageFile: "forged.jpg", imageFiles: ["forged.jpg"] }),
+    });
+    expect(res.status).toBe(200);
+    const { id, attachedCount } = await res.json() as { id: number; attachedCount: number };
+    expect(attachedCount).toBe(2);
+    const admin = { "x-admin-token": TEST_ADMIN_TOKEN };
+    for (const [index, type] of ["image/png", "image/jpeg"].entries()) {
+      const image = await app.request(`/api/reports/${id}/images/${index}`, { headers: admin });
+      expect(image.status).toBe(200);
+      expect(image.headers.get("content-type")).toBe(type);
+      expect((await app.request(`/api/reports/${id}/images/${index}`)).status).toBe(401);
+    }
+    expect((await app.request(`/api/reports/${id}/image`, { headers: admin })).headers.get("content-type")).toBe("image/png");
+    expect((await app.request(`/api/reports/${id}/images/2`, { headers: admin })).status).toBe(404);
+    expect((await app.request(`/api/reports/${id}/images/-1`, { headers: admin })).status).toBe(400);
+    const list = await (await app.request("/api/reports", { headers: admin })).json() as { reports: { context: string }[] };
+    const ctx = JSON.parse(list.reports[0]!.context);
+    expect(ctx.images).toBeUndefined();
+    expect(ctx.imageFiles).toHaveLength(2);
+    expect(ctx.imageFiles).not.toContain("forged.jpg");
+    expect(ctx.imageFile).toBe(ctx.imageFiles[0]);
+  });
+
+  it("rejects an invalid or oversized batch without logging a partial report", async () => {
+    const header = { "content-type": "application/json" };
+    for (const images of [[PNG_1PX, "bad"], Array(6).fill(PNG_1PX), "bad"]) {
+      const response = await app.request("/api/report", { method: "POST", headers: header, body: JSON.stringify({ note: "draft", images }) });
+      expect(response.status).toBe(400);
+    }
+    const big = Buffer.alloc(1_600_000); big[0] = 0xff; big[1] = 0xd8;
+    const data = "data:image/jpeg;base64," + big.toString("base64");
+    const response = await app.request("/api/report", { method: "POST", headers: header, body: JSON.stringify({ note: "draft", images: Array(4).fill(data) }) });
+    expect(response.status).toBe(413);
+    const list = await (await app.request("/api/reports", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).json() as { reports: unknown[] };
+    expect(list.reports).toEqual([]);
+  });
+
+  it("removes the entire batch after a filesystem or database failure", async () => {
+    const body = JSON.stringify({ note: "retain my draft", images: [PNG_1PX, PNG_1PX] });
+    const write = fs.writeFileSync;
+    let calls = 0;
+    const spy = vi.spyOn(fs, "writeFileSync").mockImplementation((...args) => {
+      if (++calls === 2) throw new Error("disk full");
+      return write(...args);
+    });
+    try {
+      expect((await app.request("/api/report", { method: "POST", headers: { "content-type": "application/json" }, body })).status).toBe(500);
+      expect(fs.readdirSync(path.join(tmpDir, "report-images"))).toEqual([]);
+    } finally { spy.mockRestore(); }
+    const insert = vi.spyOn(bundle.db, "insert").mockImplementationOnce(() => { throw new Error("database full"); });
+    try {
+      expect((await app.request("/api/report", { method: "POST", headers: { "content-type": "application/json" }, body })).status).toBe(500);
+      expect(fs.readdirSync(path.join(tmpDir, "report-images"))).toEqual([]);
+    } finally { insert.mockRestore(); }
+    const list = await (await app.request("/api/reports", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).json() as { reports: unknown[] };
+    expect(list.reports).toEqual([]);
+  });
+
+  it("cannot forge an attachment filename on a text report", async () => {
+    const res = await app.request("/api/report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ note: "text", imageFile: "forged.jpg", imageFiles: ["forged.jpg"] }) });
+    const { id, attachedCount } = await res.json() as { id: number; attachedCount: number };
+    expect(attachedCount).toBe(0);
+    expect((await app.request(`/api/reports/${id}/image`, { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).status).toBe(404);
   });
 
   it("keeps the report when the image is garbage", async () => {
