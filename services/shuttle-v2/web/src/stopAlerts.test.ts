@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { deliverPing } from "./leaveAlert";
 import {
-  ARRIVAL_ETA_SEC, CLOSE_GRACE_MS, DEFAULT_LEAD_MIN, LEAD_CHOICES, MAX_STOP_ALERTS,
+  stopAlertEstimateSec, stopAlertEstimateText, stopAlertLeadLabel, ARRIVAL_ETA_SEC, CLOSE_GRACE_MS, DEFAULT_LEAD_MIN, LEAD_CHOICES, MAX_STOP_ALERTS,
   STOP_ALERTS_KEY, STOP_ALERT_TTL_MS,
   alertKey, stopAlertPermissionHint, armStopAlert, decide, disarmStopAlert, expireStopAlerts, findStopAlert,
   isStopAlertArmed, isStopAlertExpired, loadStopAlerts, markStopAlertFired, saveStopAlerts,
@@ -434,5 +434,62 @@ describe("the page's engine asks the ONE estimator (source-level — TransitMap 
   it("keeps the arms in the page shell, out of the hiddenRoutes reset", () => {
     expect(src).toMatch(/useState<StopAlert\[\]>\(\(\) => loadStopAlerts\(\)\)/);
     expect(engine).not.toContain("hiddenRoutes");
+  });
+});
+
+describe('stop-count lead alerts', () => {
+  it('fires at the requested count once per bus and still sends arrival', () => {
+    const a = alert({leadStops: 2});
+    const rows = (stopsAhead: number, eta = 600) => [{routeLabel: 'Red', stopId: 11, busName: '317', eta, stopsAhead}];
+    expect(stepStopAlerts([a], rows(3), T0).pings).toEqual([]);
+    const lead = stepStopAlerts([a], rows(2), T0);
+    expect(lead.pings.map(p => p.kind)).toEqual(['lead']);
+    expect(stepStopAlerts(lead.alerts, rows(1), T0).pings).toEqual([]);
+    expect(stepStopAlerts(lead.alerts, rows(0, 0), T0).pings.map(p => p.kind)).toEqual(['arrival']);
+    expect(stepStopAlerts([a], [{routeLabel: 'Red', stopId: 11, busName: '317', eta: 600}], T0).pings).toEqual([]);
+  });
+
+  it('does not repeat a lead when the soonest vehicle changes A to B to A, including reload', () => {
+    let alerts = [alert({leadStops: 2})];
+    const poll = (busName: string) => [{routeLabel: 'Red', stopId: 11, busName, eta: 600, stopsAhead: 2}];
+    const first = stepStopAlerts(alerts, poll('317'), T0); alerts = first.alerts;
+    expect(first.pings).toHaveLength(1);
+    const second = stepStopAlerts(alerts, poll('309'), T0); alerts = second.alerts;
+    expect(second.pings).toHaveLength(1);
+    vi.stubGlobal('localStorage', {getItem: () => JSON.stringify(alerts)});
+    try { alerts = loadStopAlerts(); } finally { vi.unstubAllGlobals(); }
+    expect(stepStopAlerts(alerts, poll('317'), T0).pings).toEqual([]);
+    expect(stepStopAlerts(alerts, [{...poll('317')[0]!, eta: 0, stopsAhead: 0}], T0).pings.map(p => p.kind)).toEqual(['arrival']);
+  });
+
+  it('estimates the same bus and visit, preserves skipped-stop thresholds, and refuses missing evidence', () => {
+    const rows = [
+      {routeLabel: 'Red', stopId: 11, busName: '317', eta: 900, stopsAhead: 5},
+      {routeLabel: 'Red', stopId: 8, busName: '309', eta: 30, stopsAhead: 3},
+      {routeLabel: 'Red', stopId: 8, busName: '317', eta: 480, stopsAhead: 3},
+      {routeLabel: 'Red', stopId: 8, busName: '317', eta: 2000, stopsAhead: 34},
+    ];
+    expect(stopAlertEstimateSec(rows, 'Red', 11, 2)).toBe(480);
+    expect(stopAlertEstimateSec(rows, 'Red', 11, 5)).toBe(0);
+    expect(stopAlertEstimateSec(rows.slice(0, 2), 'Red', 11, 2)).toBeNull();
+    expect(stopAlertEstimateSec([], 'Red', 11, 2)).toBeNull();
+    expect(decide(alert({leadStops: 3}), 600, '317', T0, 2)).toBe('lead');
+    expect(stopAlertEstimateText(null)).toBe('Alert time unavailable');
+    expect(stopAlertEstimateText(0)).toBe('Alert now');
+    expect(stopAlertEstimateText(45)).toBe('Alert in <1 min');
+    expect(stopAlertEstimateText(480)).toBe('Alert in ~8 min');
+  });
+
+  it('persists stop counts alongside legacy minute alerts', () => {
+    const data = JSON.stringify([alert({leadStops: 4}), alert({stopId: 12, leadMin: 5})]);
+    vi.stubGlobal('localStorage', {getItem: () => data});
+    try {
+      const loaded = loadStopAlerts();
+      expect(loaded[0]?.leadStops).toBe(4);
+      expect(loaded[1]?.leadStops).toBeUndefined();
+      expect(stopAlertLeadLabel(loaded[0]!)).toBe('4 stops');
+      expect(stopAlertLeadLabel(loaded[1]!)).toBe('5 min');
+      expect(decide(loaded[1]!, 200, '317', T0)).toBe('lead');
+    } finally { vi.unstubAllGlobals(); }
   });
 });

@@ -221,6 +221,7 @@ await waitForHealthy(STAGE_URL, 90_000);
 log("  ✓ healthy (migrations applied to an empty DB, collector polling)");
 await apiSmoke(STAGE_URL);
 await browserSmoke(STAGE_URL, { markAsTest: false });
+run("stop-count notification browser regression", "node", ["scripts/stop-alert-controls-check.mjs"], { env: { ...process.env, OUT: path.join(stageDir, "stop-alert-controls") } });
 run("map pause wording browser regression", "node", ["scripts/map-pause-label-check.mjs"], { env: { ...process.env, OUT: path.join(stageDir, "map-pause-labels") } });
 run("Blue pickup transition browser regression", "node", ["scripts/blue-pickup-fallback-check.mjs"]);
 run("feedback attachment browser regression", "node", ["scripts/feedback-accessibility-check.mjs"]);

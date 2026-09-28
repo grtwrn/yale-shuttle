@@ -75,7 +75,7 @@ import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, 
 // decision, the words, storage) lives in stopAlerts.ts; this file places the 🔔
 // and hands the module the arrival the row already prints.
 import {
-  DEFAULT_LEAD_MIN, LEAD_CHOICES, alertKey, armStopAlert, disarmStopAlert, expireStopAlerts,
+  DEFAULT_LEAD_MIN, DEFAULT_LEAD_STOPS, LEAD_STOP_CHOICES, stopAlertEstimateSec, stopAlertEstimateText, stopAlertLeadLabel, alertKey, armStopAlert, disarmStopAlert, expireStopAlerts,
   findStopAlert, loadStopAlerts, saveStopAlerts, stepStopAlerts, stopAlertPermissionHint,
   type StopAlert,
 } from "./stopAlerts";
@@ -4894,7 +4894,7 @@ const StopList: FC<{
   // Stop-arrival alerts (stopAlerts.ts). The arms live in the page shell, not
   // here: this list unmounts on a tab switch and an armed alert must not.
   stopAlerts?: readonly StopAlert[];
-  onArmStopAlert?: (routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number) => void;
+  onArmStopAlert?: (routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number, leadStops?: number) => void;
   onDisarmStopAlert?: (routeLabel: string, stopId: number) => void;
 }> = ({ buses, busStatus, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate, stopAlerts, onArmStopAlert, onDisarmStopAlert }) => {
   // Which route the rider has tapped into, by primary route id. Local state on
@@ -4981,6 +4981,7 @@ const StopList: FC<{
   /** Buses on the line that the estimator will actually price from. */
   const onRouteCounts: Record<number, number> = {};
   const startingCounts: Record<number, number> = {};
+  let alertArrivals: UpcomingArrival[] = [];
   const normBusName = (s: string) => s.replace(/^#/, "");
   {
     // One clock for the whole page: the anchor and the ETA must be answers
@@ -5010,7 +5011,7 @@ const StopList: FC<{
       for (const sid of stops) targets.push(sid);
     });
 
-    const live = computeUpcomingArrivals(
+    const live = alertArrivals = computeUpcomingArrivals(
       targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
     );
     // Sorted by eta ascending, so the first entry for a (line, stop) is this
@@ -5361,7 +5362,7 @@ const StopList: FC<{
                     ? `Cancel the alert for ${cfg.label} at ${name}`
                     : `Alert me when ${cfg.label} reaches ${name}`}
                   title={armedAlert
-                    ? `Alerting you ${armedAlert.leadMin} min before ${cfg.label} reaches ${name} — tap to cancel`
+                    ? `Alerting you ${stopAlertLeadLabel(armedAlert)} before ${cfg.label} reaches ${name} — tap to cancel`
                     : `Alert me when ${cfg.label} reaches ${name}`}
                   style={{
                     flexShrink: 0, width: 44, minHeight: 44,
@@ -5410,25 +5411,27 @@ const StopList: FC<{
                 <span style={{ fontSize: 12.5, color: "#37474f", lineHeight: 1.3 }}>
                   Alert me when <strong style={{ color: cfg.color }}>{cfg.label}</strong> reaches {name}
                 </span>
-                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  {LEAD_CHOICES.map((m) => (
+                <span style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  {LEAD_STOP_CHOICES.map((m) => (
                     <button
                       key={m}
                       onClick={(e) => {
                         e.stopPropagation();
                         closeAlertChooser(`${chooserId}-trigger`);
-                        onArmStopAlert?.(primaryRouteId!, cfg.label, stopId, name, m);
+                        onArmStopAlert?.(primaryRouteId!, cfg.label, stopId, name, DEFAULT_LEAD_MIN, m);
                       }}
-                      title={`Ping me ${m} min before it arrives, and again when it gets here`}
+                      title={`Ping me ${m} stop${m === 1 ? "" : "s"} before it arrives, and again when it gets here`}
                       style={{
                         minHeight: 44, padding: "0 12px", borderRadius: 12,
                         border: `1px solid ${cfg.color}`,
-                        background: m === DEFAULT_LEAD_MIN ? cfg.color : "#fff",
-                        color: m === DEFAULT_LEAD_MIN ? "#fff" : cfg.color,
+                        background: m === DEFAULT_LEAD_STOPS ? cfg.color : "#fff",
+                        color: m === DEFAULT_LEAD_STOPS ? "#fff" : cfg.color,
                         fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
                         whiteSpace: "nowrap",
                       }}
-                    >{m} min</button>
+                    ><span style={{ display: "block" }}>{m} stop{m === 1 ? "" : "s"}</span>
+                      <span style={{ display: "block", fontSize: 11, fontWeight: 400 }}>{stopAlertEstimateText(stopAlertEstimateSec(alertArrivals, cfg.label, stopId, m))}</span>
+                    </button>
                   ))}
                   <button
                     onClick={(e) => { e.stopPropagation(); closeAlertChooser(`${chooserId}-trigger`); }}
@@ -5440,7 +5443,7 @@ const StopList: FC<{
                   >✕</button>
                 </span>
                 <span id={`${chooserId}-hint`} style={{ fontSize: 11, color: "#78909c", lineHeight: 1.35, flexBasis: "100%" }}>
-                  {stopAlertPermissionHint(notifyPermissionState())}
+                  Estimates update with the live bus. {stopAlertPermissionHint(notifyPermissionState())}
                 </span>
               </div>
             )}
@@ -6373,14 +6376,14 @@ const TransitMap: FC = () => {
    */
   const [stopAlertBanner, setStopAlertBanner] = useState<string | null>(null);
   const armStopAlertFor = (
-    routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number,
+    routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number, leadStops?: number,
   ) => {
     // The permission ask must come from this tap — never on load. Fire and
     // forget: denied, the banner below carries the ping instead.
     void ensureNotifyPermission();
     setStopAlertBanner(null);
     setStopAlerts((prev) => armStopAlert(prev, {
-      routeId, routeLabel, stopId, stopName, leadMin, createdAt: Date.now(),
+      routeId, routeLabel, stopId, stopName, leadMin, leadStops, createdAt: Date.now(),
     }));
   };
   const disarmStopAlertFor = (routeLabel: string, stopId: number) => {
@@ -7415,7 +7418,7 @@ const TransitMap: FC = () => {
               {stopAlerts.map((a) => (
                 <span
                   key={alertKey(a.routeLabel, a.stopId)}
-                  title={`Alerting you ${a.leadMin} min before ${a.routeLabel} reaches ${a.stopName}, and again when it gets there`}
+                  title={`Alerting you ${stopAlertLeadLabel(a)} before ${a.routeLabel} reaches ${a.stopName}, and again when it gets there`}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0,
                     padding: "2px 2px 2px 8px", borderRadius: 12, whiteSpace: "nowrap",
@@ -7427,7 +7430,7 @@ const TransitMap: FC = () => {
                   🔔
                   <strong style={{ color: ROUTE_COLOR[a.routeLabel] ?? "#546e7a" }}>{a.routeLabel}</strong>
                   <span>at {a.stopName}</span>
-                  <span style={{ color: "#90a4ae" }}>· {a.leadMin} min</span>
+                  <span style={{ color: "#90a4ae" }}>· {stopAlertLeadLabel(a)}</span>
                   <button
                     onClick={() => disarmStopAlertFor(a.routeLabel, a.stopId)}
                     aria-label={`Cancel the alert for ${a.routeLabel} at ${a.stopName}`}
