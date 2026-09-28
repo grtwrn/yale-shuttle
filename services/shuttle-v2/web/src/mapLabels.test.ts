@@ -87,11 +87,11 @@ describe('bus wait label', () => {
     const a = mapWaitLabel({ stopId: 11, standingSec: 201.9 }, dwells, undefined)!;
     const b = mapWaitLabel({ stopId: 11, standingSec: 601 }, dwells, undefined)!;
     expect(a.elapsed).toBe('Waiting 3:21');
-    expect(a.compact).toBe('3:21/~5m');
+    expect(a.compact).toBe('Stopped 3:21 · usual ~5m total');
     expect(a.typical).toBe('Usually ~5 min total');
     expect(b.typical).toBe(a.typical);
     expect(b.elapsed).toBe('Waiting 10:01');
-    expect(b.compact).toBe('10:01/~5m');
+    expect(b.compact).toBe('Stopped 10:01 · usual ~5m total');
     expect(b.overdue).toBe(true);
     expect(mapWaitLabel({ stopId: 11, standingSec: 201, approach: true }, dwells, undefined)?.elapsed).toBe('Waiting nearby 3:21');
   });

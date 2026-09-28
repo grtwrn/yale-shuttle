@@ -1166,6 +1166,7 @@ const CombinedTripMap: FC<{
         route.textContent = label; route.style.color = color;
         const time = document.createElement('span');
         time.textContent = wait.compact;
+        time.style.display = 'block';
         time.style.color = wait.overdue ? '#8a5300' : '#374151';
         content.append(route, document.createTextNode(' '), time);
       } else content.textContent = label;
