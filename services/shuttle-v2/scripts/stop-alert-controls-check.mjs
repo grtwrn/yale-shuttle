@@ -13,7 +13,7 @@ const { seedTestId } = await import(service + '/scripts/testId.mjs');
 const now = Date.parse('2026-09-17T14:00:00-04:00');
 const original = JSON.parse(await fs.readFile(service + '/web/src/__fixtures__/buses-payload.json', 'utf8'));
 original.stop_names = Object.fromEntries(JSON.parse(await fs.readFile(service + '/src/server/__fixtures__/stops.json', 'utf8')).map(s=>[s.id,s.name]));
-const seq=original.routes['3'], start=seq.indexOf(48), previous=(start+seq.length-1)%seq.length;
+const seq=original.routes['3'], start=(seq.indexOf(48)+seq.length-4)%seq.length, previous=(start+seq.length-1)%seq.length;
 original.buses=['307','309'].map((bus_name,i)=>({bus_name,bus_id:i+1,route_id:3,...original.stop_coords[seq[previous]],last_stop_id:seq[previous],heading:180,observed_at:now}));
 const rows=[];
 for(let i=0;i<2;i++)for(let h=0;h<seq.length*2;h++){
@@ -57,11 +57,12 @@ try {
   const stop=feed.stop_names[48];
   const bell=()=>red.getByRole('button',{name:`Alert me when Red reaches ${stop}`,exact:true});
   const armed=()=>red.getByRole('button',{name:`Cancel the alert for Red at ${stop}`,exact:true});
-  const choice=()=>red.getByRole('button',{name:'3 min',exact:true});
+  const choice=()=>red.getByRole('button',{name:/^2 stops/});
   await bell().focus();await page.keyboard.press('Enter');await choice().waitFor();
+  assert.match(await choice().innerText(), /Alert in ~13 min/);
   state.expanded=await bell().getAttribute('aria-expanded');
   assert.equal(await page.evaluate(()=>window.notificationRequests),0,'no permission prompt on open');
-  await page.keyboard.press('Tab');assert(await focused(red.getByRole('button',{name:'1 min',exact:true})),'Tab enters choices');
+  await page.keyboard.press('Tab');assert(await focused(red.getByRole('button',{name:/^1 stop/})),'Tab enters choices');
   await choice().focus();await page.keyboard.press('Escape');
   state.escapeClosed=await choice().count()===0;state.escapeFocus=await focused(bell());
   if(!state.escapeClosed)await red.getByRole('button',{name:'Cancel',exact:true}).click();
@@ -71,7 +72,7 @@ try {
   await bell().focus();await page.keyboard.press('Space');await choice().focus();await page.keyboard.press('Enter');
   await armed().waitFor();state.armFocus=await focused(armed());
   state.stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle.stopAlerts')));
-  assert.equal(state.stored.length,1);assert.equal(state.stored[0].stopId,48);assert.equal(state.stored[0].leadMin,3);
+  assert.equal(state.stored.length,1);assert.equal(state.stored[0].stopId,48);assert.equal(state.stored[0].leadStops,2);
   if(process.env.BASELINE){await page.screenshot({path:out+'/baseline-armed.png'});continue;}
   assert.equal(state.expanded,'true');assert(state.escapeClosed&&state.escapeFocus&&state.cancelFocus&&state.armFocus,'chooser closes to its own bell');
   assert.equal(await page.evaluate(()=>window.notificationRequests),permission==='default'?1:0);
@@ -124,7 +125,7 @@ try {
   assert.equal(await page.evaluate(()=>window.notifications.length),0,'empty fleet cannot fire');
   assert.equal(await page.getByTitle('Dismiss',{exact:true}).count(),0);
   feed.buses=buses;feed.server_eta=wire;
-  for(const row of wire.rows)if(row[0]===0&&row[1]===48){row[2]=120;row[3]=60;row[4]=180;}
+  for(const row of wire.rows)if(row[0]===0&&row[1]===48){row[2]=120;row[3]=60;row[4]=180;row[5]=2;}
   wire.rows.sort((a,b)=>a[2]-b[2]);await poll();
   if(permission==='granted')assert.equal(await page.evaluate(()=>window.notifications.length),1);
   else {const banner=page.getByTitle('Dismiss',{exact:true});await banner.waitFor();assert((await banner.innerText()).includes(stop));assert.match(await banner.innerText(),/Red/);}

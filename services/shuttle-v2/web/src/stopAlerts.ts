@@ -37,6 +37,8 @@ export const STOP_ALERTS_KEY = "shuttle.stopAlerts";
 /** Lead times offered, in minutes. Three choices, because a chooser with five is a menu. */
 export const LEAD_CHOICES = [1, 3, 5] as const;
 export const DEFAULT_LEAD_MIN = 3;
+export const LEAD_STOP_CHOICES = [1, 2, 3, 4, 5] as const;
+export const DEFAULT_LEAD_STOPS = 2;
 
 /**
  * An ETA at or under this is "it is here". `fmtMin` calls anything under 10 s
@@ -85,6 +87,8 @@ export type StopAlert = {
   /** Upstream's name, captured at arm time so the strip reads without a stop table. */
   stopName: string;
   leadMin: number;
+  /** New alerts count stops; absent on legacy minute-based alerts. */
+  leadStops?: number;
   createdAt: number;
   fired?: StopAlertFired;
 };
@@ -188,13 +192,16 @@ export function decide(
   etaSec: number | null | undefined,
   busName: string | null | undefined,
   nowMs: number,
+  stopsAhead?: number,
 ): StopAlertKind | null {
   if (isStopAlertExpired(alert, nowMs)) return null;
   if (etaSec == null || !Number.isFinite(etaSec) || !busName) return null;
   const fired = firedFor(alert, busName);
   if (fired.arrival) return null;
   if (etaSec <= ARRIVAL_ETA_SEC) return "arrival";
-  if (etaSec <= alert.leadMin * 60) return fired.lead ? null : "lead";
+  const reachedLead = alert.leadStops === undefined ? etaSec <= alert.leadMin * 60
+    : Number.isInteger(stopsAhead) && stopsAhead! >= 0 && stopsAhead! <= alert.leadStops;
+  if (reachedLead) return fired.lead ? null : "lead";
   return null;
 }
 
@@ -242,7 +249,7 @@ export function stopAlertTag(alert: StopAlert): string {
 }
 
 /** The fields of an `UpcomingArrival` (arrivals.ts) this module reads — nothing else. */
-export type AlertArrival = { eta: number; routeLabel: string; stopId: number; busName: string };
+export type AlertArrival = { eta: number; routeLabel: string; stopId: number; busName: string; stopsAhead?: number };
 
 export type StopAlertPing = {
   alert: StopAlert;
@@ -284,7 +291,7 @@ export function stepStopAlerts(
   const pings: StopAlertPing[] = [];
   for (const alert of alerts) {
     const a = soonest.get(alertKey(alert.routeLabel, alert.stopId));
-    const kind = decide(alert, a?.eta ?? null, a?.busName ?? null, nowMs);
+    const kind = decide(alert, a?.eta ?? null, a?.busName ?? null, nowMs, a?.stopsAhead);
     if (!kind || !a) continue;
     pings.push({
       alert, kind, message: stopAlertMessage(kind, alert, a.eta), tag: stopAlertTag(alert),
@@ -337,6 +344,7 @@ function parseAlert(raw: unknown): StopAlert | null {
     stopId,
     stopName: typeof o.stopName === "string" && o.stopName ? o.stopName : `Stop ${stopId}`,
     leadMin: validLead(o.leadMin),
+    ...((LEAD_STOP_CHOICES as readonly unknown[]).includes(o.leadStops) ? { leadStops: o.leadStops as number } : {}),
     createdAt,
     ...(fired && typeof fired === "object" && typeof fired.busName === "string"
       ? { fired: { busName: fired.busName, lead: !!fired.lead, arrival: !!fired.arrival } }
@@ -373,4 +381,24 @@ export function saveStopAlerts(alerts: readonly StopAlert[]): void {
   try {
     localStorage.setItem(STOP_ALERTS_KEY, JSON.stringify(alerts.slice(-MAX_STOP_ALERTS)));
   } catch { /* storage blocked — the arm lives for this page's lifetime only */ }
+}
+
+/** Time until this bus reaches the requested stop-count threshold. Use the
+ * SAME vehicle and forward visit as the destination row, never a different
+ * bus's soonest upstream ETA or a typical-per-stop multiplication. */
+export function stopAlertEstimateSec(arrivals: readonly AlertArrival[], routeLabel: string, stopId: number, leadStops: number): number | null {
+  const destination = arrivals.find(a => a.routeLabel === routeLabel && a.stopId === stopId);
+  if (!destination || !Number.isFinite(destination.eta) || destination.eta < 0 || !Number.isInteger(destination.stopsAhead) || destination.stopsAhead! < 0) return null;
+  if (destination.stopsAhead! <= leadStops) return 0;
+  const upstream = arrivals.find(a => a.routeLabel === routeLabel && a.busName === destination.busName
+    && a.stopsAhead === destination.stopsAhead! - leadStops);
+  return upstream && Number.isFinite(upstream.eta) && upstream.eta >= 0 && upstream.eta <= destination.eta ? upstream.eta : null;
+}
+
+export function stopAlertEstimateText(sec: number | null): string {
+  return sec === null ? 'Alert time unavailable' : sec === 0 ? 'Alert now' : sec < 60 ? 'Alert in <1 min' : `Alert in ~${Math.round(sec / 60)} min`;
+}
+
+export function stopAlertLeadLabel(alert: StopAlert): string {
+  return alert.leadStops === undefined ? `${alert.leadMin} min` : `${alert.leadStops} stop${alert.leadStops === 1 ? '' : 's'}`;
 }
