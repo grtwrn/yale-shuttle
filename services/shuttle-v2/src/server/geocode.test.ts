@@ -102,16 +102,19 @@ describe("landmark coordinates", () => {
     }
   });
 
-  // One entry per physical place: the same coordinates under two labels mean
-  // somebody pasted the wrong line, or entered a nickname as a second place
-  // instead of an alias. Distinct places CAN be metres apart (a cafe in a
+  // Duplicate coordinates need an explicit, verified shared-building exception;
+  // otherwise they mean somebody pasted the wrong line or entered a nickname
+  // as a second place instead of an alias. Distinct places CAN be metres apart (a cafe in a
   // museum's ground floor, a bookshop next to the Apple Store), so the bound
   // is 'same point', not 'same block'.
-  it("has no two landmarks stacked on the same spot", () => {
+  it("has no landmarks stacked on the same spot except verified destinations in one building", () => {
     for (let i = 0; i < LANDMARKS.length; i++) {
       for (let j = i + 1; j < LANDMARKS.length; j++) {
         const a = LANDMARKS[i]!;
         const b = LANDMARKS[j]!;
+        // Yale confirms the Divinity Library is within the school building.
+        // Both use its verified OSM coordinate, with separate rider-facing labels.
+        if ([a.label, b.label].sort().join("|") === "Divinity School|Divinity School Library") continue;
         expect(
           distanceMeters(a, b),
           `${a.label} and ${b.label} are on top of each other`,
@@ -195,7 +198,9 @@ describe("landmark search", () => {
     ["law school", "Yale Law School"],
     ["yale health", "Yale Health Center"],
     ["divinity", "Divinity School"],
-    ["divinity school library", "Divinity School"],
+    ["divinity school library", "Divinity School Library"],
+    ["divinity library", "Divinity School Library"],
+    ["yds library", "Divinity School Library"],
     ["354 canner street", "Bellamy Hall"],
     ["101 college street", "101 College Street"],
     ["yale hr", "Yale Human Resources"],

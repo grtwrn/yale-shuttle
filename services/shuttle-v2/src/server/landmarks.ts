@@ -24,10 +24,10 @@
  * the street address. They exist because on 2026-09-02 the live geocoder
  * returned nothing for "kbt", "commons" and "medical school". An alias scores
  * exactly like the label (see `geocode.ts`). No misspellings: the matcher's
- * fuzzy tier handles those. Places that share a building are ONE entry with
- * the other name as an alias; adjacent-but-distinct places (a cafe next to a
- * museum) stay separate even when metres apart, because folding would hide
- * the label a rider types.
+ * fuzzy tier handles those. Other names for the same destination are aliases.
+ * Distinct destinations may share a building (Divinity School and its library)
+ * and its verified coordinate; keep their labels so riders can select the
+ * place they asked for without inventing separate entrance coordinates.
  *
  * Nothing here is farther than 500 m from a stop; candidates beyond that
  * (Edgewood Park, the Yale Bowl) are simply not shuttle destinations.
@@ -109,7 +109,8 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Yale Science Building (YSB)", lat: 41.317405, lon: -72.921762, aliases: ["ysb", "science building", "science hill", "260 whitney"], poi: "college", anchorStop: "Lot 22 - Whitney / Humphrey" }, // OSM W719112933
 
   // -- Professional schools --------------------------------------------------
-  { label: "Divinity School", lat: 41.3232, lon: -72.922508, aliases: ["divinity", "yds", "divinity library", "divinity school library", "marquand chapel", "sterling divinity quadrangle", "409 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // OSM R5730472
+  { label: "Divinity School", lat: 41.3232, lon: -72.922508, aliases: ["divinity", "yds", "marquand chapel", "sterling divinity quadrangle", "409 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // OSM R5730472
+  { label: "Divinity School Library", lat: 41.3232, lon: -72.922508, aliases: ["divinity library", "yds library", "ydsl", "day missions library", "day missions room", "trowbridge reference room"], poi: "library", anchorStop: "Divinity / 409 Prospect" }, // Within the school at 409 Prospect (library.yale.edu special-collections-reading-rooms); OSM R5730472 building coordinate reverified 2026-09-28.
   { label: "Bellamy Hall", lat: 41.3245257, lon: -72.9205313, aliases: ["354 canner street", "354 canner st"], poi: "college", anchorStop: "Prospect / Canner" }, // OSM geocoded 354 Canner St; Yale Divinity housing
   { label: "School of Art (Green Hall)", lat: 41.308301, lon: -72.933003, aliases: ["art school", "school of art", "green hall", "1156 chapel", "iseman theater", "iseman"], poi: "college", anchorStop: "York / Chapel" }, // OSM W224973110
   { label: "School of Management (SOM)", lat: 41.315171, lon: -72.920475, aliases: ["som", "evans hall", "business school", "yale som", "165 whitney"], poi: "college", anchorStop: "SOM" }, // OSM R3959340
