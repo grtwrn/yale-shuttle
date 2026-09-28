@@ -7918,7 +7918,7 @@ const TransitMap: FC = () => {
             }}>
               Feedback
             </label>
-            <textarea
+            <textarea disabled={feedbackSending}
               id="feedback-message"
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
@@ -8003,7 +8003,7 @@ const TransitMap: FC = () => {
               )}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button
+              <button disabled={feedbackSending}
                 onClick={() => {
                   closeFeedback();
                   setFeedbackText("");

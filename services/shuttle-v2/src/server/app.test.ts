@@ -74,6 +74,7 @@ beforeEach(async () => {
   // refreshStaticIfNeeded call below does the static load synchronously.
   await (collector as unknown as { refreshStaticIfNeeded: (force: boolean) => Promise<void> })
     .refreshStaticIfNeeded(true);
+  vi.stubEnv("SHUTTLE_V2_DB", path.join(tmpDir, "test.db"));
   app = buildApp({
     collector,
     bundle,
@@ -91,6 +92,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   collector.stop();
   bundle.sqlite.close();
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -223,6 +225,27 @@ describe("report screenshots", () => {
     const data = "data:image/jpeg;base64," + big.toString("base64");
     const response = await app.request("/api/report", { method: "POST", headers: header, body: JSON.stringify({ note: "draft", images: Array(4).fill(data) }) });
     expect(response.status).toBe(413);
+    const list = await (await app.request("/api/reports", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).json() as { reports: unknown[] };
+    expect(list.reports).toEqual([]);
+  });
+
+  it("removes the entire batch after a filesystem or database failure", async () => {
+    const body = JSON.stringify({ note: "retain my draft", images: [PNG_1PX, PNG_1PX] });
+    const write = fs.writeFileSync;
+    let calls = 0;
+    const spy = vi.spyOn(fs, "writeFileSync").mockImplementation((...args) => {
+      if (++calls === 2) throw new Error("disk full");
+      return write(...args);
+    });
+    try {
+      expect((await app.request("/api/report", { method: "POST", headers: { "content-type": "application/json" }, body })).status).toBe(500);
+      expect(fs.readdirSync(path.join(tmpDir, "report-images"))).toEqual([]);
+    } finally { spy.mockRestore(); }
+    const insert = vi.spyOn(bundle.db, "insert").mockImplementationOnce(() => { throw new Error("database full"); });
+    try {
+      expect((await app.request("/api/report", { method: "POST", headers: { "content-type": "application/json" }, body })).status).toBe(500);
+      expect(fs.readdirSync(path.join(tmpDir, "report-images"))).toEqual([]);
+    } finally { insert.mockRestore(); }
     const list = await (await app.request("/api/reports", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).json() as { reports: unknown[] };
     expect(list.reports).toEqual([]);
   });

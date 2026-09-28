@@ -659,6 +659,10 @@ export function buildApp(opts: AppOptions): Hono {
     delete b.imageFile;
     delete b.imageFiles;
     const imageFiles: string[] = [];
+    const removeImages = () => {
+      for (const name of imageFiles) { try { fs.unlinkSync(path.join(imageDir, name)); } catch { /* absent */ } }
+      imageFiles.length = 0;
+    };
     try {
       for (const img of decoded) {
         if (!img) continue; // legacy single-image clients still log the words
@@ -668,8 +672,7 @@ export function buildApp(opts: AppOptions): Hono {
         fs.writeFileSync(path.join(imageDir, name), img.bytes);
       }
     } catch {
-      for (const name of imageFiles) { try { fs.unlinkSync(path.join(imageDir, name)); } catch { /* absent */ } }
-      imageFiles.length = 0;
+      removeImages();
       if (batch) return c.json({ error: "image_upload_failed" }, 500);
     }
     // The body limit above is sized for the screenshot, which has just been
@@ -679,12 +682,18 @@ export function buildApp(opts: AppOptions): Hono {
     if (JSON.stringify(b).length > REPORT_BODY_LIMIT) {
       b = { note, source: b.source, contextTruncated: true };
     }
-    const { id } = submitReport(
-      opts.bundle.db,
-      { kind, routeId, body: note || "(report)", priority, context: imageFiles.length ? { ...b, imageFile: imageFiles[0], imageFiles } : b },
-      ip,
-      anonId,
-    );
+    let id: number;
+    try {
+      ({ id } = submitReport(
+        opts.bundle.db,
+        { kind, routeId, body: note || "(report)", priority, context: imageFiles.length ? { ...b, imageFile: imageFiles[0], imageFiles } : b },
+        ip,
+        anonId,
+      ));
+    } catch {
+      removeImages();
+      return c.json({ error: "report_save_failed" }, 500);
+    }
     notifyReportListeners(id);
     return c.json({ ok: true, id, attached: imageFiles.length > 0, attachedCount: imageFiles.length });
   });
