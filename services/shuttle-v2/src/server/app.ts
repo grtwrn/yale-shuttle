@@ -1,3 +1,4 @@
+import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGES_MAX_BYTES } from "../../web/src/reportAttachments.js";
 import { serveStatic } from "@hono/node-server/serve-static";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -75,7 +76,8 @@ const REPORT_BODY_LIMIT = 64 * 1024;
 // A report with a screenshot attached. 2 MB of image as base64 is ~2.7 MB of
 // JSON; the client downscales before sending so a normal one is ~100-300 KB.
 const REPORT_WITH_IMAGE_BODY_LIMIT = 3 * 1024 * 1024;
-const REPORT_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const REPORT_WITH_IMAGES_BODY_LIMIT = 4 * Math.ceil(REPORT_IMAGES_MAX_BYTES / 3) + REPORT_BODY_LIMIT;
+
 const PLAN_BODY_LIMIT = 16 * 1024;
 // The triage-update body only ever carries a status and a short note, so it
 // gets a far tighter cap than a rider's free-form report.
@@ -603,7 +605,7 @@ export function buildApp(opts: AppOptions): Hono {
   // v1's frontend posts a free-form payload: { note?, source?, option?, ... }.
   // We stash the whole thing as context and return v1's { ok, id } shape.
   app.post("/api/report", bodyLimit({
-    maxSize: REPORT_WITH_IMAGE_BODY_LIMIT,
+    maxSize: REPORT_WITH_IMAGES_BODY_LIMIT,
     onError: (c) => c.json({ error: "payload_too_large" }, 413),
   }), async (c) => {
     const ip = clientIp(c) ?? "anon";
@@ -639,21 +641,36 @@ export function buildApp(opts: AppOptions): Hono {
         ? b.priority
         : "normal";
 
-    // Optional screenshot. The data URL is pulled OUT of the context stash
-    // (2 MB of base64 in a DB row would make every triage query pay for it)
-    // and written beside the DB; the context keeps only the filename. A bad
-    // image never fails the report — the words still matter without it.
-    let imageFile: string | undefined;
-    const img = decodeReportImage(b.image);
+    // Modern clients submit a bounded batch. Validate the whole batch before
+    // writing or logging anything, so an upload failure retains the draft.
+    const batch = b.images !== undefined;
+    if (batch && (!Array.isArray(b.images) || b.images.length > REPORT_IMAGE_MAX_COUNT || b.image !== undefined)) {
+      return c.json({ error: "invalid_images" }, 400);
+    }
+    const rawImages: unknown[] = batch ? b.images as unknown[] : b.image === undefined ? [] : [b.image];
+    const decoded = rawImages.map(decodeReportImage);
+    if (batch && decoded.some(img => !img)) return c.json({ error: "invalid_images" }, 400);
+    if (decoded.reduce((total, img) => total + (img?.bytes.length ?? 0), 0) > REPORT_IMAGES_MAX_BYTES) {
+      return c.json({ error: "images_too_large" }, 413);
+    }
     delete b.image;
-    if (img) {
-      try {
+    delete b.images;
+    // Filenames are generated here; riders cannot attach existing reports' files.
+    delete b.imageFile;
+    delete b.imageFiles;
+    const imageFiles: string[] = [];
+    try {
+      for (const img of decoded) {
+        if (!img) continue; // legacy single-image clients still log the words
         fs.mkdirSync(imageDir, { recursive: true });
-        imageFile = `${crypto.randomBytes(12).toString("hex")}.${img.ext}`;
-        fs.writeFileSync(path.join(imageDir, imageFile), img.bytes);
-      } catch {
-        imageFile = undefined;
+        const name = `${crypto.randomBytes(12).toString("hex")}.${img.ext}`;
+        imageFiles.push(name);
+        fs.writeFileSync(path.join(imageDir, name), img.bytes);
       }
+    } catch {
+      for (const name of imageFiles) { try { fs.unlinkSync(path.join(imageDir, name)); } catch { /* absent */ } }
+      imageFiles.length = 0;
+      if (batch) return c.json({ error: "image_upload_failed" }, 500);
     }
     // The body limit above is sized for the screenshot, which has just been
     // pulled out; what remains is stored verbatim in the row, so cap it at
@@ -664,12 +681,12 @@ export function buildApp(opts: AppOptions): Hono {
     }
     const { id } = submitReport(
       opts.bundle.db,
-      { kind, routeId, body: note || "(report)", priority, context: imageFile ? { ...b, imageFile } : b },
+      { kind, routeId, body: note || "(report)", priority, context: imageFiles.length ? { ...b, imageFile: imageFiles[0], imageFiles } : b },
       ip,
       anonId,
     );
     notifyReportListeners(id);
-    return c.json({ ok: true, id, attached: Boolean(imageFile) });
+    return c.json({ ok: true, id, attached: imageFiles.length > 0, attachedCount: imageFiles.length });
   });
 
   // -- Rider self-service: their own reports --------------------------------
@@ -1298,10 +1315,12 @@ export function buildApp(opts: AppOptions): Hono {
     }
   });
 
-  app.get("/api/reports/:id/image", requireAdmin, (c) => {
+  const serveReportImage = (c: Context) => {
     const id = Number(c.req.param("id"));
     if (!Number.isInteger(id)) return c.json({ error: "invalid_request" }, 400);
-    const name = reportImageFile(opts.bundle.db, id);
+    const index = c.req.param("index") === undefined ? 0 : Number(c.req.param("index"));
+    if (!Number.isInteger(index) || index < 0) return c.json({ error: "invalid_request" }, 400);
+    const name = reportImageFile(opts.bundle.db, id, index);
     if (!name || !/^[a-f0-9]{24}\.(png|jpg|webp)$/.test(name)) {
       return c.json({ error: "no_image" }, 404);
     }
@@ -1315,7 +1334,10 @@ export function buildApp(opts: AppOptions): Hono {
     } catch {
       return c.json({ error: "no_image" }, 404);
     }
-  });
+  };
+
+  app.get("/api/reports/:id/image", requireAdmin, serveReportImage);
+  app.get("/api/reports/:id/images/:index", requireAdmin, serveReportImage);
 
   app.post("/api/reports/:id/update", requireAdmin, bodyLimit({
     maxSize: REPORT_UPDATE_BODY_LIMIT,

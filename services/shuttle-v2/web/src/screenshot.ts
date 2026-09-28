@@ -41,7 +41,12 @@ export function attachErrorText(error: "not_an_image" | "unreadable" | "too_larg
  * normal behaviour.
  */
 export function imageFromTransfer(data: DataTransfer | null | undefined): File | null {
-  if (!data) return null;
+  return imagesFromTransfer(data)[0] ?? null;
+}
+
+/** All image files, in transfer order; text pastes keep their normal behavior. */
+export function imagesFromTransfer(data: DataTransfer | null | undefined): File[] {
+  if (!data) return [];
   try {
     // Text wins. Copying a spreadsheet range or rich text publishes a bitmap
     // flavour ALONGSIDE the text, so taking the image whenever one exists
@@ -49,25 +54,26 @@ export function imageFromTransfer(data: DataTransfer | null | undefined): File |
     // of a table instead. An image-only clipboard is the attach case; a
     // clipboard that also carries words is a text paste, as everywhere else.
     const text = data.getData?.("text/plain");
-    if (text && text.length > 0) return null;
+    if (text && text.length > 0) return [];
     const files = data.files;
     if (files) {
-      for (const f of Array.from(files)) {
-        if (f && f.type.startsWith("image/")) return f;
-      }
+      const images = Array.from(files).filter(f => f && f.type.startsWith("image/"));
+      if (images.length) return images; // items normally mirrors files: don't duplicate them.
     }
     const items = data.items;
     if (items) {
+      const images: File[] = [];
       for (const it of Array.from(items)) {
         if (it.kind !== "file" || !it.type.startsWith("image/")) continue;
         const f = it.getAsFile();
-        if (f) return f;
+        if (f) images.push(f);
       }
+      return images;
     }
   } catch {
     /* a clipboard we are not allowed to read is the same as an empty one */
   }
-  return null;
+  return [];
 }
 
 /**

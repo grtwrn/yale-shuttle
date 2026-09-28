@@ -78,7 +78,7 @@ try {
     assert.equal(await page.getByRole('alert').getByText("Couldn't send — try again", {exact: true}).count(), 1);
   }
   if (!baseline) {
-    const attach = page.getByRole('button', {name: '📎 Attach screenshot', exact: true});
+    const attach = page.getByRole('button', {name: '📎 Attach screenshots', exact: true});
     const pick = async (button, file, key = 'Enter') => {
       assert(await button.isEnabled());
       assert.notEqual(await button.getAttribute('aria-disabled'), 'true');
@@ -93,15 +93,16 @@ try {
     assert.match(await feedback.inputValue(), /pickup sign/);
     const image = {name: 'fixture.png', mimeType: 'image/png', buffer: await page.screenshot()};
     await pick(attach, image, 'Space');
-    await page.getByRole('img', {name: 'attached screenshot', exact: true}).waitFor();
+    await page.getByRole('img', {name: 'attached screenshot 1', exact: true}).waitFor();
     assert.equal(await page.getByText("Couldn't read the image", {exact: true}).count(), 0);
-    const replace = page.getByRole('button', {name: '📎 Replace screenshot', exact: true});
+    const replace = page.getByRole('button', {name: '📎 Add screenshots', exact: true});
     assert(await replace.evaluate(e => e === document.activeElement), 'file picker must retain keyboard focus after attaching');
     await pick(replace, [], 'Enter');
-    assert(await page.getByRole('img', {name: 'attached screenshot', exact: true}).isVisible());
-    await page.getByRole('button', {name: 'Remove screenshot'}).click();
+    assert(await page.getByRole('img', {name: 'attached screenshot 1', exact: true}).isVisible());
+    await page.getByRole('button', {name: 'Remove screenshot 1', exact: true}).click();
     assert(await attach.evaluate(e => e === document.activeElement));
-    await pick(attach, image);
+    await pick(attach, [image, {...image, name: 'second.png'}]);
+    await page.getByRole('img', {name: 'attached screenshot 2', exact: true}).waitFor();
     const urgent = page.getByRole('button', {name: '🔴 Urgent', exact: true});
     await urgent.focus(); await page.keyboard.press('Space');
     assert.equal(await urgent.getAttribute('aria-pressed'), 'true');
@@ -117,12 +118,18 @@ try {
     }
     await page.setViewportSize({width: 360, height: 800});
     await feedback.locator('..').screenshot({path: out + '/after-feedback-attached-360.png'});
+    feedbackResponse = 503;
+    await page.getByRole('button', {name: 'Send', exact: true}).click();
+    await page.getByRole('alert').getByText("Couldn't send — try again", {exact: true}).waitFor();
+    assert.equal(await page.getByRole('img', {name: /attached screenshot/}).count(), 2);
+    assert.match(await feedback.inputValue(), /pickup sign/);
     feedbackResponse = 'pending';
     await page.getByRole('button', {name: 'Send', exact: true}).focus();
     await page.keyboard.press('Enter');
     await page.getByRole('button', {name: 'Sending…', exact: true}).waitFor();
     assert(await page.getByRole('button', {name: 'Sending…', exact: true}).isDisabled());
-    assert.match(submissions.at(-1).image, /^data:image\/jpeg;base64,/);
+    assert.match(submissions.at(-1).images[0], /^data:image\/jpeg;base64,/);
+    assert.equal(submissions.at(-1).images.length, 2);
     assert.equal(submissions.at(-1).priority, 'urgent');
     feedbackResponse = 200; releaseFeedback();
     await opener.waitFor();
@@ -130,9 +137,9 @@ try {
     await page.getByRole('status').getByText('Thanks — logged (#902)', {exact: true}).waitFor();
     await opener.press('Enter');
     assert.equal(await feedback.inputValue(), '');
-    assert.equal(await page.getByRole('img', {name: 'attached screenshot', exact: true}).count(), 0);
+    assert.equal(await page.getByRole('img', {name: 'attached screenshot 1', exact: true}).count(), 0);
     assert.equal(await page.getByRole('button', {name: 'Normal', exact: true}).getAttribute('aria-pressed'), 'true');
-    result.checks.push('Named feedback, selected 44px priorities, keyboard file chooser (Enter/Space), decoding error, replace/cancel/remove, image and priority retained through failed send; success resets and restores focus');
+    result.checks.push('Named feedback, selected 44px priorities, keyboard file chooser (Enter/Space), decoding error, multiple attachments/cancel/remove, images and priority retained through failed send; success resets and restores focus');
     await feedback.fill('Fixture: focus stays with navigation.');
     feedbackResponse = 'pending';
     await page.getByRole('button', {name: 'Send', exact: true}).click();
@@ -169,7 +176,7 @@ try {
     await page.keyboard.press('Space');
     await (await chooser).setFiles({name: 'reply.png', mimeType: 'image/png', buffer: await page.screenshot()});
     await page.getByRole('img', {name: 'Attached screenshot', exact: true}).waitFor();
-    assert(await page.getByRole('button', {name: '📎 Replace screenshot', exact: true}).evaluate(e => e === document.activeElement), 'reply picker focus');
+    assert(await page.getByRole('button', {name: '📎 Add screenshots', exact: true}).evaluate(e => e === document.activeElement), 'reply picker focus');
     for (const width of [360, 390, 430, 1280, 640]) {
       await page.setViewportSize({width, height: width === 640 ? 422 : 844});
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'reply overflow at ' + width);
@@ -235,7 +242,7 @@ try {
     await page.getByRole('button', {name: '💡 Nice to have', exact: true}).tap();
     assert.equal(await page.getByRole('button', {name: '💡 Nice to have', exact: true}).getAttribute('aria-pressed'), 'true');
     const chooser = page.waitForEvent('filechooser');
-    await page.getByRole('button', {name: '📎 Attach screenshot', exact: true}).tap();
+    await page.getByRole('button', {name: '📎 Attach screenshots', exact: true}).tap();
     await (await chooser).setFiles([]);
     await page.getByRole('button', {name: 'Cancel', exact: true}).tap();
     await opener.waitFor();
