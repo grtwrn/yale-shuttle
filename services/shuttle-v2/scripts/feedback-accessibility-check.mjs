@@ -176,7 +176,7 @@ try {
     await page.keyboard.press('Space');
     await (await chooser).setFiles({name: 'reply.png', mimeType: 'image/png', buffer: await page.screenshot()});
     await page.getByRole('img', {name: 'Attached screenshot', exact: true}).waitFor();
-    assert(await page.getByRole('button', {name: '📎 Add screenshots', exact: true}).evaluate(e => e === document.activeElement), 'reply picker focus');
+    assert(await page.getByRole('button', {name: '📎 Replace screenshot', exact: true}).evaluate(e => e === document.activeElement), 'reply picker focus');
     for (const width of [360, 390, 430, 1280, 640]) {
       await page.setViewportSize({width, height: width === 640 ? 422 : 844});
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'reply overflow at ' + width);
