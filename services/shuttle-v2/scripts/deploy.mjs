@@ -221,6 +221,7 @@ await waitForHealthy(STAGE_URL, 90_000);
 log("  ✓ healthy (migrations applied to an empty DB, collector polling)");
 await apiSmoke(STAGE_URL);
 await browserSmoke(STAGE_URL, { markAsTest: false });
+run("Blue pickup transition browser regression", "node", ["scripts/blue-pickup-fallback-check.mjs"]);
 killStaging();
 
 if (STAGE_ONLY) {
