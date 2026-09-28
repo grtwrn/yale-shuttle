@@ -61,7 +61,7 @@ export function mapWaitLabel(standing: { stopId: number; standingSec: number; ap
   const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
   const typicalMinutes = Math.round(typical / 60);
   return {
-    compact: `${clock}/~${typicalMinutes}m`,
+    compact: `Stopped${standing.approach ? " nearby" : ""} ${clock} · usual ~${typicalMinutes}m total`,
     elapsed: `Waiting${standing.approach ? ' nearby' : ''} ${clock}`,
     typical: `Usually ~${typicalMinutes} min total`,
     overdue: standing.standingSec >= typical,

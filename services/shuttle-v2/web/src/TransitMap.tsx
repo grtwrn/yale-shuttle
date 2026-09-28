@@ -1,3 +1,4 @@
+import { pickupFallback } from "./planner";
 import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGES_MAX_DATA_URL_LENGTH } from "./reportAttachments";
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
 import L from "leaflet";
@@ -1165,6 +1166,7 @@ const CombinedTripMap: FC<{
         route.textContent = label; route.style.color = color;
         const time = document.createElement('span');
         time.textContent = wait.compact;
+        time.style.display = 'block';
         time.style.color = wait.overdue ? '#8a5300' : '#374151';
         content.append(route, document.createTextNode(' '), time);
       } else content.textContent = label;
@@ -2022,6 +2024,10 @@ const TripPlanner: FC<{
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
 
+  // Choices are scoped to the initial plan. Once a fallback is selected it
+  // remains the pickup when its card opens; opening cannot revert to the old stop.
+  const [pickupChoices, setPickupChoices] = useState<{ plan: TripOption[]; byRoute: Map<string, TripOption> } | null>(null);
+
   // Collapse the "show more" list whenever a new trip is planned.
   useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
 
@@ -2070,7 +2076,8 @@ const TripPlanner: FC<{
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
     if (isFutureMode) return stableOptions.map(o => ({ ...o, livePickupSelection: undefined }));
-    return stableOptions.map((o) => {
+    return stableOptions.map((initial) => {
+      const o = pickupChoices?.plan === stableOptions ? pickupChoices.byRoute.get(initial.routeLabel) ?? initial : initial;
       if (o.mode !== "shuttle") {
         // A live origin moves with the rider for both alternatives.
         const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
@@ -2187,7 +2194,25 @@ const TripPlanner: FC<{
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+
+  useEffect(() => {
+    if (!stableOptions || !options || !etaFresh || !effectiveFromLL || !toLL
+      || (targetDate && targetDate.getTime() - Date.now() > 60_000)) return;
+    const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
+    const fresh = planTrip(from, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), liveAnchorStore);
+    const replacements = options.flatMap(current => {
+      const candidate = fresh.find(o => o.routeLabel === current.routeLabel);
+      const replacement = pickupFallback(current, candidate, expandedKey === current.routeLabel || reminder?.routeLabel === current.routeLabel);
+      return replacement ? [replacement] : [];
+    });
+    if (!replacements.length) return;
+    setPickupChoices(prev => {
+      const byRoute = new Map(prev?.plan === stableOptions ? prev.byRoute : []);
+      for (const replacement of replacements) byRoute.set(replacement.routeLabel, replacement);
+      return { plan: stableOptions, byRoute };
+    });
+  }, [options, stableOptions, etaFresh, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, effectiveFromLL, toLL, fromText, userLatLon, expandedKey, reminder]);
 
   // Origin and destination are the same place (report: setting one's own
   // location as the destination "gets confused"). Keyed on effectiveFromLL,
