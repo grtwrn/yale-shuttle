@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { attachErrorText, dragCarriesFile, imageFromTransfer, MAX_EDGE_PX, scaleFor } from "./screenshot";
+import { attachErrorText, dragCarriesFile, imageFromTransfer, imagesFromTransfer, MAX_EDGE_PX, scaleFor } from "./screenshot";
 
 describe("scaleFor", () => {
   it("shrinks the longest edge to the cap", () => {
@@ -39,6 +39,18 @@ describe("imageFromTransfer — pasting a screenshot", () => {
       files: opts.files, items: opts.items, types: opts.types,
       getData: (t: string) => (t === "text/plain" ? opts.text ?? "" : ""),
     } as unknown as DataTransfer);
+
+  it("keeps every dropped image in order without duplicating the items mirror", () => {
+    const second = new File(["second"], "second.jpg", { type: "image/jpeg" });
+    expect(imagesFromTransfer(transfer({ files: [imageFile, textFile, second], items: [
+      { kind: "file", type: "image/png", getAsFile: () => imageFile },
+    ] }))).toEqual([imageFile, second]);
+    expect(imagesFromTransfer(transfer({ items: [
+      { kind: "file", type: "image/png", getAsFile: () => imageFile },
+      { kind: "file", type: "image/jpeg", getAsFile: () => second },
+    ] }))).toEqual([imageFile, second]);
+    expect(imagesFromTransfer(transfer({ files: [imageFile, second], text: "normal paste" }))).toEqual([]);
+  });
 
   it("finds an image among the pasted files", () => {
     expect(imageFromTransfer(transfer({ files: [textFile, imageFile] }))).toBe(imageFile);

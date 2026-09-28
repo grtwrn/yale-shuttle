@@ -23,7 +23,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(new URL("../..", import.meta.url).pathname);
-const ENTRIES = ["src/server/serverEta.ts", "src/planner/planner.ts"].map(f => path.join(ROOT, f));
+const ENTRIES = ["src/server/serverEta.ts", "src/planner/planner.ts", "src/server/app.ts"].map(f => path.join(ROOT, f));
 
 /** Every relative import in a TS source, value and type alike. */
 function importsOf(file: string): string[] {
