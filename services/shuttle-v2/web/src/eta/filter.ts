@@ -253,7 +253,7 @@ export interface Belief {
   lastStopId: number | null;
   /** The leg the screen shows the bus on (hysteresis, see `leadLeg`). -1 before the first step. */
   lead: number;
-  /** When the mass first left `lead` for a leg BEHIND it, else null (see `leadLeg`). */
+  /** When the mass first left `lead` for a leg BEHIND it (or a jump ahead the feed cannot judge), else null (see `leadLeg`). */
   leadDisagreeSince: number | null;
   /** True when this step saw a fresh fix. */
   fresh: boolean;
@@ -622,7 +622,9 @@ export function legMass(b: Belief, ring: Ring): Float64Array {
  *    marker must not trigger it;
  *  - a candidate far ahead (a fold's other branch, a lap) must carry
  *    LEAD_SWITCH_MASS first — what stops the number racing across the gap as
- *    a branch weight passes 0.5 (#88);
+ *    a branch weight passes 0.5 (#88) — and the feed's last stop must put
+ *    the bus there (`lastStopReading`): a jump it contradicts is not taken,
+ *    one it cannot judge is held like a wrap behind;
  *  - a candidate BEHIND is a wrap of N - k legs, which a bus cannot do
  *    (anchorGate.ts, THE RING), so the lead holds; released only after
  *    LEAD_MAX_HOLD_MS of sustained disagreement, the gate's own rule for a
@@ -642,15 +644,44 @@ export function leadLeg(b: Belief, ring: Ring, prev: number, now: number, state?
     const next = (prev + 1) % N;
     return 1 - m[prev]! >= LEAD_SWITCH_MASS ? next : prev;
   }
-  if (ahead <= N / 2) {
+  const feed = ahead <= N / 2 && m[best]! >= LEAD_SWITCH_MASS ? lastStopReading(b, ring, best) : "confirms";
+  if (ahead <= N / 2 && feed !== "unknown") {
     if (state) state.leadDisagreeSince = null;
-    return m[best]! >= LEAD_SWITCH_MASS ? best : prev;
+    return m[best]! >= LEAD_SWITCH_MASS && feed === "confirms" ? best : prev;
   }
   if (m[best]! < LEAD_SWITCH_MASS) { if (state) state.leadDisagreeSince = null; return prev; }
   if (!state) return prev;
   if (state.leadDisagreeSince === null) { state.leadDisagreeSince = now; return prev; }
   if (now - state.leadDisagreeSince >= LEAD_MAX_HOLD_MS) { state.leadDisagreeSince = null; return best; }
   return prev;
+}
+
+/**
+ * Does the feed put the bus where a far-ahead jump would land? It confirms the
+ * jump when the candidate is at most LEAD_FOLLOW_LEGS legs past an occurrence
+ * of `last_stop_id`, contradicts it when the ring carries that stop and none
+ * of its occurrences is that close, and cannot say when there is no last stop
+ * the ring carries (TransLoc sends 0 when it cannot place the bus).
+ *
+ * A detour can put the fix ON another leg of the same loop: on 2026-09-25,
+ * road-race day, Red buses ran down Temple St alongside the Chapel St leg, a
+ * dozen legs ahead of College St where the feed had them. Taking that jump
+ * wrapped the ride past its exit ("5 stops" -> "21 stops") and the true
+ * position then read as a wrap BEHIND and was held (incident 5a7ad1d). #127
+ * stood beside that leg for five minutes with the feed's last stop against
+ * it, so a contradicted jump is not released on a timer; the next stop the
+ * bus passes confirms the leg it is really on. A ring whose sequence the
+ * belief does not index cannot be read, and keeps the jump as it was.
+ */
+function lastStopReading(b: Belief, ring: Ring, best: number): "confirms" | "contradicts" | "unknown" {
+  if (ring.stops.length !== ring.N) return "confirms";
+  let known = false;
+  for (let i = 0; i < ring.N; i++) {
+    if (ring.stops[i] !== b.lastStopId) continue;
+    known = true;
+    if (((best - i) % ring.N + ring.N) % ring.N <= LEAD_FOLLOW_LEGS) return "confirms";
+  }
+  return known ? "contradicts" : "unknown";
 }
 
 /**
