@@ -1,5 +1,29 @@
 # Continuous rider instrumentation
 
+## Local watcher
+
+From `services/shuttle-v2`, run `node scripts/rider-watch/start.mjs`.
+It uses installed Chrome on macOS or `/usr/bin/chromium`, with
+`BOT_CHROMIUM_PATH` as an override. `BOT_BASE_URL` selects the target.
+One mobile browser continuously chooses a random running line and random
+stop pair, walks to pickup, boards through the UI, and follows live GPS to
+the destination. It identifies as the excluded test rider.
+
+Artifacts default to `scripts/.rider-watcher` (`WATCHER_DIR` overrides):
+`status.json`, `events.jsonl`, `journeys.jsonl`, bounded UI samples and
+screenshots, and an auto-refreshing `index.html` gallery. Serve locally with
+`python3 -m http.server 8093 --bind 127.0.0.1 --directory scripts/.rider-watcher`.
+Candidate issues require review; observations use the same GPS feed as the
+app and are not independent physical arrival measurements. This launcher
+does not deploy changes or submit rider reports.
+
+For a detached run, use a process supervisor; redirect stdout/stderr to
+`scripts/watcher.log`. The watcher PID is saved in the artifact directory as
+`watcher.pid`. The browser restarts after a transport failure. On the team Mac
+it runs under the launchd agent `com.grtwrn.yale-shuttle-rider` (KeepAlive,
+starts at login); stop it with `launchctl bootout gui/$(id -u)/com.grtwrn.yale-shuttle-rider`
+rather than killing the PID, which launchd would restart.
+
 This versions the previously workspace-only continuous runner so measurement fixes are reviewable. `attach({page, ctx, outputDir, initialFeed, allowedLabels, fixedTrip})` receives an existing tester-seeded Playwright page/context; it launches no browser. Existing local supervision owns offline pause/resume. Imports use the repository canary helpers.
 
 September 16: focus and activate the trip card with Enter so its nested ETA disclosure does not intercept a centre click. Install the matching canary helpers alongside a runner release: they parse the two-line arrival summary and measure movement of its visible estimate, keeping the interval for coverage scoring. A broad interval must not hide a jumping headline.

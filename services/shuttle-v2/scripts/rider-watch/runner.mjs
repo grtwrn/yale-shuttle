@@ -8,7 +8,7 @@ const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialRun,outputDir,allowedLabels,fixedTrip}) {
+export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
  const ROOT=outputDir;
  await fs.mkdir(ROOT,{recursive:true});
@@ -44,8 +44,10 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
  const removeListeners=()=>{page.off('response',onResponse);page.off('pageerror',onPageError);page.off('request',onRequest);};
  const select=async()=>{
   // One page, one journey at a time. Normal UI interactions test lookup too.
-  for(let k=1;k<=metrics.CANARY_LINES.length;k++){
-   const idx=(cursor+k)%metrics.CANARY_LINES.length,line=metrics.CANARY_LINES[idx];
+  const order=metrics.CANARY_LINES.map((_,i)=>(cursor+i+1)%metrics.CANARY_LINES.length);
+  if(randomLines)for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  for(const idx of order){
+   const line=metrics.CANARY_LINES[idx];
    if(allowedLabels && !allowedLabels.includes(line.label))continue;
    if(!metrics.liveBusesOf(feed,line).length)continue;
    let picked=fixedTrip ?? null;
