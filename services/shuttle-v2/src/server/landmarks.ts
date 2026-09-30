@@ -180,7 +180,7 @@ export const LANDMARKS: readonly Landmark[] = [
   // -- Shops -----------------------------------------------------------------
   { label: "Apple Store (Broadway)", lat: 41.311853, lon: -72.93101, aliases: ["apple", "apple store", "shops at yale"], poi: "shop", anchorStop: "Broadway / Park" }, // OSM N2719820443
   { label: "AT&T (Chapel St)", lat: 41.306615, lon: -72.927436, poi: "shop", anchorStop: "Chapel / College" }, // OSM N2366454247 (shop=mobile_phone)
-  { label: "Yale Bookstore", lat: 41.312017, lon: -72.931088, aliases: ["bookstore", "barnes and noble", "barnes & noble", "yale barnes and noble"], poi: "books", anchorStop: "Broadway / Park" }, // OSM N2719820436
+  { label: "Yale Bookstore", lat: 41.312017, lon: -72.931088, aliases: ["bookstore", "barnes and noble", "barnes & noble", "yale barnes and noble", "b&n"], poi: "books", anchorStop: "Broadway / Park" }, // OSM N2719820436
 
   // -- Cafes, restaurants and bars -------------------------------------------
   { label: "Archie Moore's", lat: 41.321407, lon: -72.910523, aliases: ["archie moores", "archies", "wings", "188 willow"], poi: "bar", anchorStop: "Willow / Foster" }, // OSM N299708928

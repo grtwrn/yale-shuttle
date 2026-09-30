@@ -838,3 +838,37 @@ describe("stylised names (dot or ampersand inside a word)", () => {
     expect(relevanceOf("at&t", "AT&T")).toBeGreaterThan(0);
   });
 });
+
+/**
+ * Review of PR #341: collapsing "t.d." to "td" and "p&m" to "pm" lost places
+ * the spaced reading found on master. Both readings are scored now.
+ */
+describe("dotted initials and ampersand abbreviations keep their spaced reading", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  const labels = (q: string) => geocode(live, q).map((h) => h.label);
+  const top3 = (q: string) => labels(q).slice(0, 3);
+
+  it.each([
+    ["t.d. college", "Timothy Dwight College"],
+    ["j.e. college", "Jonathan Edwards College"],
+    ["j.e. edwards", "Jonathan Edwards College"],
+  ])("%o still finds %s first", (q, label) => {
+    expect(labels(q)[0]).toBe(label);
+  });
+
+  it("ranks the P&M market first for 'p&m', ahead of Pauli Murray's 'pm'", () => {
+    expect(labels("p&m")[0]).toBe("P&M Orange Street Market");
+    expect(top3("p&m")).toContain("Pauli Murray College");
+  });
+
+  it.each(["b&n", "b and n"])("%o finds the Yale Bookstore (Barnes & Noble)", (q) => {
+    expect(top3(q)).toContain("Yale Bookstore");
+  });
+
+  it("keeps the stylised name first when the spaced reading is noise", () => {
+    // "at and t" strips to a lone "t", which prefixes Temple / Grove.
+    expect(labels("at&t")[0]).toBe("AT&T (Chapel St)");
+    expect(labels("h&k")[0]).toBe("H&K");
+    expect(labels("m&t")[0]).toBe("M&T Bank (Church St)");
+  });
+});
