@@ -159,6 +159,13 @@ export function normalizeName(s: string): string {
       .replace(/['‘’]/g, "")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
+      // A dot or ampersand INSIDE a short stylised name is deleted: riders
+      // type "bbq" for "bb.q Chicken", "at&t" for "AT&T", "mt bank" for
+      // "M&T Bank" \u2014 and "h&k" must not become "h and k", two one-letter
+      // tokens that prefix-match AKW and Kroon. Only between runs of 1\u20133
+      // letters, so a spaced "Stop & Shop" and a long "Artist&Craftsman"
+      // still read as "and" (2026-09-30 search-gap audit).
+      .replace(/(?<![a-z])([a-z]{1,3})[.&](?=[a-z]{1,3}(?![a-z]))/g, "$1")
       // The upstream stop is "Stop & Shop"; riders type "stop and shop".
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, " ")
