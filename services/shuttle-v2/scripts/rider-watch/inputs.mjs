@@ -1,4 +1,4 @@
-import {haversineM} from '../canary-metrics.mjs';
+import {CANARY_LINES,CANONICAL_TRIP,haversineM,stopsOfLine} from '../canary-metrics.mjs';
 const norm = s => String(s).replace(/\s/g, '').toLowerCase();
 /** Match the whole stop name after removing only known rendered decorations.
  * Ambiguous names fail closed; do not turn a suffix/prefix into another stop. */
@@ -50,6 +50,36 @@ export const RIDE_CAP_MIN = 50, RIDE_CAP_MAX_MIN = 90;
  * bus that never reaches the stop still ends the run. */
 export function rideCapMin(quoted) {
   return Math.min(RIDE_CAP_MAX_MIN, Math.max(RIDE_CAP_MIN, Math.ceil((quoted ?? 0) * 1.5)));
+}
+/** The rider's assignment from the environment. Unset: random lines and
+ * trips. RIDER_LINE alone pins the line. With RIDER_FROM (board stop id) and
+ * RIDER_TO (stop id, or `ysph` for the School of Public Health landmark riders
+ * search for) it repeats one trip, idling while the line has no live bus.
+ * A stop that is not on the line fails instead of riding something else. */
+export function riderConfig(env, feed) {
+  const label = env.RIDER_LINE?.trim();
+  if (!label) {
+    if (env.RIDER_FROM || env.RIDER_TO) throw new Error('RIDER_FROM/RIDER_TO need RIDER_LINE');
+    return {randomLines: true};
+  }
+  const line = CANARY_LINES.find(l => l.label === label);
+  if (!line) throw new Error(`Unknown RIDER_LINE ${label}`);
+  if (!env.RIDER_FROM && !env.RIDER_TO) return {allowedLabels: [label]};
+  const stop = (raw, role) => {
+    const id = Number(raw), coord = feed.stop_coords?.[id];
+    if (!Number.isInteger(id) || !stopsOfLine(feed, line).includes(id) || !coord)
+      throw new Error(`${role}=${raw} is not a ${label} stop`);
+    return {id, name: feed.stop_names?.[id] ?? `stop ${id}`, lat: coord.lat, lon: coord.lon};
+  };
+  const from = stop(env.RIDER_FROM, 'RIDER_FROM');
+  const to = String(env.RIDER_TO).trim().toLowerCase() === 'ysph' ? null : stop(env.RIDER_TO, 'RIDER_TO');
+  return {allowedLabels: [label], fixedTrip: {
+    kind: 'fixed',
+    origin: {label: from.name, lat: from.lat, lon: from.lon, stopId: from.id},
+    destination: to
+      ? {display_name: to.name, lat: to.lat, lon: to.lon, type: 'bus_stop', class: 'shuttle', stopId: to.id}
+      : {...CANONICAL_TRIP.destination},
+  }};
 }
 export function destinationMatches(draft, destination) {
   const p = draft?.toLL;

@@ -7,5 +7,5 @@ store/
 *.db-shm
 .env
 .env.*
-scripts/.rider-watcher/
-scripts/watcher.log
+scripts/.rider-watcher*/
+scripts/watcher*.log

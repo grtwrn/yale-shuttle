@@ -1,6 +1,6 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {labeledStopId,destinationMatches,selectDestination,followedBusName,quotedRideMin,rideCapMin} from './inputs.mjs';
+import {labeledStopId,destinationMatches,selectDestination,followedBusName,quotedRideMin,rideCapMin,riderConfig} from './inputs.mjs';
 const names={145:'Science Park Garage',98:'Phelps Gate',48:'Division / Prospect'};
 test('recorded Brown boarding prompt resolves on the first poll',()=>{
  const text="BOARD🚌Science Park Garage⏸ 14:04\nWinchester/Sachem\nGET OFFPhelps Gate\n🚌 On Brown #309?";
@@ -83,4 +83,22 @@ test('the ride cap covers the quoted ride, bounded to 50–90 min',()=>{
  assert.equal(rideCapMin(null),50);
  assert.equal(rideCapMin(20),50);
  assert.equal(rideCapMin(120),90);
+});
+const redFeed={routes:{3:[11,146,49,48,104,72],1:[106,34]},stop_names:{48:'Division / Prospect',72:'LEPH / 60 College',106:'Elm / High'},
+ stop_coords:{48:{lat:41.324769,lon:-72.923522},72:{lat:41.30378,lon:-72.93261},106:{lat:41.31,lon:-72.93}}};
+test('the dedicated Red rider repeats Division / Prospect to the School of Public Health',()=>{
+ const config=riderConfig({RIDER_LINE:'Red',RIDER_FROM:'48',RIDER_TO:'ysph'},redFeed);
+ assert.deepEqual(config.allowedLabels,['Red']);
+ assert.deepEqual(config.fixedTrip.origin,{label:'Division / Prospect',lat:41.324769,lon:-72.923522,stopId:48});
+ assert.equal(config.fixedTrip.destination.display_name,'School of Public Health (YSPH)');
+ assert.equal(config.fixedTrip.destination.class,'yale');
+ assert.equal(riderConfig({RIDER_LINE:'Red',RIDER_FROM:'48',RIDER_TO:'72'},redFeed).fixedTrip.destination.stopId,72);
+});
+test('an unset rider stays random and a bad assignment fails instead of riding elsewhere',()=>{
+ assert.deepEqual(riderConfig({},redFeed),{randomLines:true});
+ assert.deepEqual(riderConfig({RIDER_LINE:'Red'},redFeed),{allowedLabels:['Red']});
+ assert.throws(()=>riderConfig({RIDER_LINE:'Crimson'},redFeed),/Unknown RIDER_LINE/);
+ assert.throws(()=>riderConfig({RIDER_FROM:'48',RIDER_TO:'ysph'},redFeed),/need RIDER_LINE/);
+ assert.throws(()=>riderConfig({RIDER_LINE:'Red',RIDER_FROM:'106',RIDER_TO:'ysph'},redFeed),/RIDER_FROM=106 is not a Red stop/);
+ assert.throws(()=>riderConfig({RIDER_LINE:'Red',RIDER_FROM:'48'},redFeed),/RIDER_TO=undefined/);
 });

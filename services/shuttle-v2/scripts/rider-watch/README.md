@@ -24,6 +24,16 @@ it runs under the launchd agent `com.grtwrn.yale-shuttle-rider` (KeepAlive,
 starts at login); stop it with `launchctl bootout gui/$(id -u)/com.grtwrn.yale-shuttle-rider`
 rather than killing the PID, which launchd would restart.
 
+`RIDER_LINE` pins a rider to one line; adding `RIDER_FROM` (board stop id)
+and `RIDER_TO` (stop id, or `ysph` for the School of Public Health landmark)
+repeats one trip and idles while the line has no live bus. Give each rider
+its own `WATCHER_DIR`. Since October 1 a second agent,
+`com.grtwrn.yale-shuttle-rider-red`, rides Red from Division / Prospect (48)
+to the School of Public Health with
+`RIDER_LINE=Red RIDER_FROM=48 RIDER_TO=ysph WATCHER_DIR=scripts/.rider-watcher-red`,
+logging to `scripts/watcher-red.log`, so every Red pickup after the
+344 Winchester hold is observed for ETA experiments.
+
 This versions the previously workspace-only continuous runner so measurement fixes are reviewable. `attach({page, ctx, outputDir, initialFeed, allowedLabels, fixedTrip})` receives an existing tester-seeded Playwright page/context; it launches no browser. Existing local supervision owns offline pause/resume. Imports use the repository canary helpers.
 
 October 1 (riderwait20261001): once the followed bus is at the pickup the app drops its `🚌 #NN · N stops away` line and shows `BOARD🚌Stop⏸ 0:19`. The runner treated that as an invalid sample, so it skipped exactly the polls where it should board and half the runs timed out. A `BOARD🚌` dwell keeps the tracked bus while the app's own at-stop rule (`observedAtStop`, web/src/liveAnchor.ts: stationary, `at_stop_id`, ≤75 m) holds for it. While the tracked bus is still within 150 m of the stop but not observed there, the poll is skipped: the app may place it at the stop from route belief, and another bus listed at the stop is not the one being timed (Purple 2026-09-30 21:34:12Z: #321 at 75 m, #332 at the stop). Only when the tracked bus is gone does the single bus observed at the stop take over; several unknown buses fail closed. A poll with no followed bus (e.g. `Unavailable`) is skipped and counted as `unnamedBusSamples` without excluding the run; only unparsable stop labels still exclude. A waiting run whose line has no live buses for 5 minutes ends as `no-service-excluded` instead of waiting 45 minutes.
