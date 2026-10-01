@@ -66,7 +66,7 @@ import {
   notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
-  directPromotion, boardingVisitAllowed, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
+  directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
 } from "./planner";
 import { optionTier, stableTripOrder, type TripOrderState } from './tripRanking';
 import { anonIdHeader } from "./anonId";
@@ -2133,7 +2133,7 @@ const TripPlanner: FC<{
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
       const busesAtBoard = cfg
-        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && liveBusAvailable(b, cfg.label, nowMs) && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, visits))
+        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && liveBusAvailable(b, cfg.label, nowMs) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, visits))
         : [];
       const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
       if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {
@@ -2332,7 +2332,7 @@ const TripPlanner: FC<{
         segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel);
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
-        && liveBusAvailable(b, cfg.label, Date.now()) && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
+        && liveBusAvailable(b, cfg.label, Date.now()) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
