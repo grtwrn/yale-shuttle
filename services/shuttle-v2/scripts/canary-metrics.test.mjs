@@ -55,6 +55,15 @@ describe("parseBusEtaText", () => {
     expect(parseBusEtaText('About 6 min\nLikely 9–4 min')).toBeNull();
   });
 
+  it('reads "~1", the app\'s spelling of a window inside one minute, as [0, 60]', () => {
+    // web/src/arrivalDetails.ts collapses "<1–1 min" (two spellings of about a
+    // minute) to "~1 min" — on the detail line, the card and the table cell.
+    expect(parseBusEtaText('About <1 min\nLikely ~1 min')).toMatchObject({ first: [0, 60], median: [0, 60], spread: true });
+    expect(parseBusEtaText('Arrives in <1 min, ~1 min range')).toMatchObject({ first: [0, 60], median: [0, 60], spread: true });
+    // Only "~1" — a tilde before any other window is not something the app prints.
+    expect(parseBusEtaText('Arrives in <1 min, ~2 min range')).toBeNull();
+  });
+
   it('does not hide a jumping headline inside overlapping prediction windows', () => {
     const before = parseBusEtaText('About 3 min\nLikely 1–20 min');
     const after = parseBusEtaText('About 9 min\nLikely 1–20 min');
@@ -1288,11 +1297,14 @@ describe("the arrival clock has TWO readers", () => {
   });
 
   it("recognizes destination windows and approximate points without mistaking nearby map or pickup text for a clock", () => {
-    for (const clock of ['10:21a–10:27a', '~10:45a', '~Sep 19, 12:05a', '11:59p–Sep 19, 12:05a']) {
+    for (const clock of ['10:21a–10:27a', '~10:45a', '~Sep 19, 12:05a', '11:59p–Sep 19, 12:05a',
+      // The same clocks on a browser in another zone (web/src/format.ts `fmtClock`).
+      '10:21a ET – 10:27a ET', '~10:45a ET', '11:59p ET–Sep 19, 12:05a ET']) {
       expect(ARRIVAL_CLOCK_RE.test(clock), clock).toBe(true);
       expect(hasArrivalClock(`At destination (est.)\n${clock}`), clock).toBe(true);
     }
-    for (const text of ['🏁 (R) 10:23a', '(B) ~10:45a', 'Likely 3–9 min', 'About 5 min ⓘ', 'At destination (est.)']) {
+    for (const text of ['🏁 (R) 10:23a', '(B) ~10:45a', 'Likely 3–9 min', 'About 5 min ⓘ', 'At destination (est.)',
+      '12:13 PM ET', '10:21a EST', 'ET']) {
       expect(ARRIVAL_CLOCK_RE.test(text), text).toBe(false);
     }
   });
@@ -1312,6 +1324,25 @@ describe("the arrival clock has TWO readers", () => {
     ]);
     expect(live).toContain('Plan for later…');
     expect(live).not.toContain('Arrive by');
+  });
+
+  it("reads a pickup window inside a minute, and the clocks of a browser in another zone", () => {
+    // Captured at 390px from the built SPA (the #273 port) with a synthetic
+    // shared-server ETA whose pickup window is 10–55 s, on an Eastern and on a
+    // UTC browser, 2026-10-01. Rendered text, not a mocked layout. Before the
+    // parser knew "~1" the Red row was dropped; before it knew " ET" the UTC
+    // page parsed to nothing at all.
+    const et = readFileSync(new URL('./__fixtures__/trip-pickup-within-a-minute-et.txt', import.meta.url), 'utf8');
+    const utc = readFileSync(new URL('./__fixtures__/trip-pickup-within-a-minute-utc.txt', import.meta.url), 'utf8');
+    expect(et).toContain('<1 (~1)');
+    expect(utc).toContain('10:36a ET – 10:42a ET');
+    for (const text of [et, utc]) {
+      const options = parseOptions(text);
+      expect(options.map(o => o.routeLabel)).toEqual(['Red', 'Walk']);
+      expect(options[0].eta).toMatchObject({ first: [0, 60], median: [0, 60], spread: true });
+    }
+    expect(parseOptions(et).map(o => o.arriveText)).toEqual(['10:36a – 10:42a', '~10:45a']);
+    expect(parseOptions(utc).map(o => o.arriveText)).toEqual(['10:36a ET – 10:42a ET', '~10:45a ET']);
   });
 
   it("finds a clock in the card text `openCard` actually greps", () => {

@@ -16,7 +16,13 @@ export function predictionWindow(low?: number, high?: number, computedAt?: numbe
   if (highSec <= 0) return null;
   const first = lowSec < 60 ? '<1' : String(Math.floor(lowSec / 60));
   const last = Math.max(1, Math.ceil(highSec / 60));
-  return { lowSec, highSec, text: first === String(last) ? `${last} min` : `${first}–${last} min` };
+  // "<1–1 min" is the one adjacent pair that is not a range — the tokens
+  // differ only by the "<", so it is two spellings of about a minute (the
+  // departure chip's rule, standWait.ts `standLeftText`).
+  const text = first === String(last) ? `${last} min`
+    : first === '<1' && last === 1 ? '~1 min'
+    : `${first}–${last} min`;
+  return { lowSec, highSec, text };
 }
 
 /** The difference of two arrival estimates is an estimated gap, not a

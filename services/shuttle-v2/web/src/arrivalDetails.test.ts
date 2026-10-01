@@ -18,6 +18,14 @@ describe('arrival detail window', () => {
     expect(predictionWindow(300, 120)).toBeNull();
     expect(predictionWindow(NaN, 300)).toBeNull();
   });
+  it('collapses the two spellings of about a minute into one', () => {
+    // "<1–1 min" is not a range: the ends differ only by the "<" — the same
+    // pair standLeftText collapses for the departure chip (2026-09-10, and
+    // flagged again by the 2026-09-17 rider eval against the live card).
+    expect(predictionWindow(30, 55, 0, 0)?.text).toBe('~1 min');
+    expect(predictionWindow(0, 70, 0, 0)?.text).toBe('<1–2 min');
+    expect(arrivalSummary(20, 0, 50, 0, 0).token).toBe('About <1 min\nLikely ~1 min');
+  });
 });
 
 it('reports a gap only for an available later arrival', () => {

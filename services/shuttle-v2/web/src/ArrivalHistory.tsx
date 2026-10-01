@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import type { JourneyHistory as History } from '../../src/server/journeyHistory';
 import { ArrivalPlot } from './ArrivalPlot';
 import { historyRecency, HISTORY_HALF_LIFE_DAYS } from './historyRecency';
+import { fmtDateTime } from './format';
 
-const when = (t: number) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+// Campus zone like the trip clocks (fmtClock): the journeys are New Haven's.
+const when = (t: number) => fmtDateTime(t);
 // Match the server's service-date count: the starting date in New Haven.
 const date = (t: number) => new Date(t).toLocaleDateString([], { timeZone: 'America/New_York', month: 'short', day: 'numeric' });
 const minutes = (s: number) => s < 60 ? '<1 min' : `${Math.round(s / 60)} min`;
