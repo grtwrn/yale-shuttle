@@ -1,0 +1,13 @@
+{
+ "frozen_at": "2026-10-01T12:09:48-04:00",
+ "plan_sha256": "e3e1a8f749673d713abfbd619889442865e5e25c196fde106f8a5a41f9868347",
+ "code_sha256": {
+  "PLAN.json": "e3e1a8f749673d713abfbd619889442865e5e25c196fde106f8a5a41f9868347",
+  "lib.py": "a2a0227c17200d0bd28adb49f3ebac8588b376a5d13e916e3c68702eb18ce780",
+  "model.py": "296ade65b93e7b4c5ccde2fae136a98f9972c5bca6e04f52e60e5e9e3ca7d1d6",
+  "screen.py": "1a18e246ef7e05cb9e0aa2f6ab1f65766ae941eead9ff48b93b1c8d46aa54c91"
+ },
+ "test_days_unscored": "2026-09-21..2026-09-30 (no test-period hold duration, residual, pickup outcome or score computed or printed before this record)",
+ "dev_smoke": "results/dev-smoke (local, folds 2026-09-14..09-18) ran with exactly these files",
+ "baseline_check": "refit at 2026-09-17 13:14:00.913 ET reproduces runtime-fits.json: n=259, 10 dates, ref lap 3210.248, coefficients equal to 4 dp"
+}
