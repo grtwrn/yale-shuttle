@@ -2,6 +2,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { seedTestId } from '../testId.mjs';
+import { riderConfig } from './inputs.mjs';
 import { attach } from './runner.mjs';
 
 const base = process.env.BOT_BASE_URL || 'https://yale-shuttle.fly.dev';
@@ -35,8 +36,10 @@ while (!stopping) {
     if (!response.ok()) throw new Error(`Feed HTTP ${response.status()}`);
     const initialFeed = await response.json();
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    watcher = await attach({ page, ctx, initialFeed, outputDir, randomLines: true });
-    console.log(`Watcher started: ${base}; artifacts: ${outputDir}`);
+    const config = riderConfig(process.env, initialFeed);
+    watcher = await attach({ page, ctx, initialFeed, outputDir, ...config });
+    const trip = config.fixedTrip && `${config.fixedTrip.origin.label} → ${config.fixedTrip.destination.display_name}`;
+    console.log(`Watcher started: ${base}; artifacts: ${outputDir}; lines: ${config.allowedLabels ?? 'random'}${trip ? `; trip: ${trip}` : ''}`);
     while (!stopping && browser.isConnected() && !page.isClosed() && watcher.status().running)
       await new Promise(resolve => setTimeout(resolve, 5000));
     if (!stopping) throw new Error('Browser or instrumentation stopped');

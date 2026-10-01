@@ -105,3 +105,34 @@ test('a quoted 54 min ride is ridden to arrival, not cut off at 50 min',async()=
  assert.equal(run.rideCapMin,81);
  assert.deepEqual(await h.journeys(),[]);
 });
+
+// The dedicated Red rider (RIDER_LINE=Red RIDER_FROM=48 RIDER_TO=ysph) idles
+// while Red has no live bus, then starts the fixed trip, never another line.
+test('a fixed Red trip waits for Red service and then starts from Division / Prospect',async()=>{
+ vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});
+ vi.setSystemTime(Date.parse('2026-10-01T15:00:00Z'));
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
+ const ysph={display_name:'School of Public Health (YSPH)',lat:41.303735,lon:-72.932155,type:'college',class:'yale'};
+ const fixedTrip={kind:'fixed',origin:{label:'Division / Prospect',lat:41.324769,lon:-72.923522,stopId:48},destination:ysph};
+ const red={routes:{3:[11,48,72],10:[122,127]},stop_names:{11:'344 Winchester',48:'Division / Prospect',72:'LEPH / 60 College',122:'Union Station (S)',127:'West Haven Train Station'},
+  stop_coords:{11:{lat:41.3271,lon:-72.9298},48:fixedTrip.origin,72:{lat:41.30378,lon:-72.93261},122:union,127:westHaven}};
+ const purpleOnly={...red,buses:[{...near126}]};
+ const geo=[],opened=[],handlers={};
+ const page={on:(k,f)=>{handlers[k]=f;},off:()=>{},reload:async()=>{},screenshot:async()=>Buffer.from('jpg'),
+  locator:()=>({innerText:async()=>''}),keyboard:{press:async k=>opened.push(k)},waitForFunction:async()=>{},
+  evaluate:async()=>({toLL:{lat:ysph.lat,lon:ysph.lon}}),
+  getByPlaceholder:()=>({fill:async()=>{},press:async()=>{}}),
+  getByRole:(_,{name})=>({isVisible:async()=>name==='View Red trip details',click:async()=>{},focus:async()=>opened.push(name)})};
+ const watcher=await attach({page,ctx:{setGeolocation:async g=>geo.push(g)},initialFeed:purpleOnly,outputDir:dir,allowedLabels:['Red'],fixedTrip});
+ try{
+  assert.equal(watcher.status().run,null);
+  assert.deepEqual(opened,[]);
+  await handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>({...red,buses:[{bus_name:'#317',route_id:3,lat:41.3271,lon:-72.9298,at_stop_id:11,stationary:true}]})});
+  await watcher.tick();
+  const run=watcher.status().run;
+  assert.equal(run.line.label,'Red');
+  assert.equal(run.trip,fixedTrip);
+  assert.deepEqual(opened,['View Red trip details','Enter']);
+  assert.deepEqual(geo.at(-1),{latitude:41.324769,longitude:-72.923522});
+ }finally{await watcher.stop();vi.useRealTimers();await fs.rm(dir,{recursive:true,force:true});}
+});
