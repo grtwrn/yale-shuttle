@@ -1,0 +1,77 @@
+{
+  "scope": "Full Vite SPA with review-only outer Page fault injection; current real main boundary/recovery, actual saved trip",
+  "checks": [
+    "Runtime crash unmounts actual app control, focuses recovery heading; keyboard Reload restores actual destination and retains local preferences",
+    "Startup-persistent synthetic fault survives Reload; native reset disclosure/touch explicitly clears storage and report identity; actual TripPlanner restores valid session draft with both endpoints",
+    "After recovery, intentional app-header Refresh still clears the trip (existing policy preserved)"
+  ],
+  "errors": [],
+  "requests": 4,
+  "states": [
+    {
+      "name": "restored real trip",
+      "aria": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- button \"From 📍 Independent origin Swap start and destination\":\n  - text: From 📍 Independent origin\n  - button \"Swap start and destination\": ⇅\n- button \"To 🏁 Independent destination Save this destination\":\n  - text: To 🏁 Independent destination\n  - button \"Save this destination\": ☆\n- text: Leave Now\n- button \"Plan for later…\"\n- text: \"Shuttles that go there — none on the map yet Red Schedule: M–F 5:40a–7p Should be running now — no bus reporting yet Brown Schedule: M–F 5:45a–7p Should be running now — no bus reporting yet Orange Day Schedule: M–F 6a–6p Should be running now — no bus reporting yet Blue Day Schedule: M–F 7a–6p Should be running now — no bus reporting yet Blue Night Schedule: Daily 6p–1a Not running now · next Thu, Sep 17, 6:00 PM Blue West Schedule: Daily 6p–1a Not running now · next Thu, Sep 17, 6:00 PM Orange Night Schedule: Daily 6p–1a Not running now · next Thu, Sep 17, 6:00 PM Orange East Schedule: Daily 6p–1a Not running now · next Thu, Sep 17, 6:00 PM Blue Weekend Schedule: Sa/Su 7a–6p Not running now · next Sat, Sep 19, 7:00 AM Grocery Ham Schedule: Sa/Su 7a–6p Not running now · next Sat, Sep 19, 7:00 AM FlexiStop: ask the driver to drop you anywhere along the route · no service on holidays and recess Grocery TJ Schedule: Sa/Su 7a–6p Not running now · next Sat, Sep 26, 7:00 AM FlexiStop: ask the driver to drop you anywhere along the route · no service on holidays and recess\"\n- button \"Arrive by… Plan for class\"\n- text: Walking is the simplest available option for this trip.\n- button \"View Walk trip details\": 🚶 Walk 45 min 2:45p ›\n- button \"Clear\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+      "draft": {
+        "fromText": "Independent origin",
+        "fromLL": {
+          "lat": 41.324769,
+          "lon": -72.923522
+        },
+        "toText": "Independent destination",
+        "toLL": {
+          "lat": 41.297857,
+          "lon": -72.926763
+        },
+        "tripTime": "",
+        "tripTimeSetAt": 1789668000000,
+        "expandedKey": null,
+        "classBufferMin": 5,
+        "savedAt": 1789668000000
+      }
+    },
+    {
+      "name": "startup crash with reset explanation",
+      "aria": "- main \"The shuttle app couldn’t open\":\n  - heading \"The shuttle app couldn’t open\" [level=1]\n  - paragraph: Try reloading to get back to your trip. Reload keeps your saved data.\n  - button \"Reload\"\n  - group:\n    - text: Still having trouble?\n    - paragraph: Reset clears this app’s saved data in this browser, including saved and recent places, alerts, ride tracking and preferences.\n    - paragraph: Your submitted reports remain, but will no longer appear in “Your reports” on this browser. The trip plan in this tab is kept.\n    - button \"Reset saved data & reload\"\n  - group: Technical details",
+      "draft": {
+        "fromText": "Independent origin",
+        "fromLL": {
+          "lat": 41.324769,
+          "lon": -72.923522
+        },
+        "toText": "Independent destination",
+        "toLL": {
+          "lat": 41.297857,
+          "lon": -72.926763
+        },
+        "tripTime": "",
+        "tripTimeSetAt": 1789668000000,
+        "expandedKey": null,
+        "classBufferMin": 5,
+        "savedAt": 1789668000000
+      }
+    },
+    {
+      "name": "explicit reset restores actual trip",
+      "aria": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- button \"From 📍 Independent origin Swap start and destination\":\n  - text: From 📍 Independent origin\n  - button \"Swap start and destination\": ⇅\n- button \"To 🏁 Independent destination Save this destination\":\n  - text: To 🏁 Independent destination\n  - button \"Save this destination\": ☆\n- text: Leave Now\n- button \"Plan for later…\"\n- text: \"Shuttles that go there — none on the map yet Red Schedule: M–F 5:40a–7p Should be running now — no bus reporting yet Brown Schedule: M–F 5:45a–7p Should be running now — no bus reporting yet Orange Day Schedule: M–F 6a–6p Should be running now — no bus reporting yet Blue Day Schedule: M–F 7a–6p Should be running now — no bus reporting yet Blue Night Schedule: Daily 6p–1a Not running now · next Thu, Sep 17, 6:00 PM Blue West Schedule: Daily 6p–1a Not running now · next Thu, Sep 17, 6:00 PM Orange Night Schedule: Daily 6p–1a Not running now · next Thu, Sep 17, 6:00 PM Orange East Schedule: Daily 6p–1a Not running now · next Thu, Sep 17, 6:00 PM Blue Weekend Schedule: Sa/Su 7a–6p Not running now · next Sat, Sep 19, 7:00 AM Grocery Ham Schedule: Sa/Su 7a–6p Not running now · next Sat, Sep 19, 7:00 AM FlexiStop: ask the driver to drop you anywhere along the route · no service on holidays and recess Grocery TJ Schedule: Sa/Su 7a–6p Not running now · next Sat, Sep 26, 7:00 AM FlexiStop: ask the driver to drop you anywhere along the route · no service on holidays and recess\"\n- button \"Arrive by… Plan for class\"\n- text: Walking is the simplest available option for this trip.\n- button \"View Walk trip details\": 🚶 Walk 45 min 2:45p ›\n- button \"Clear\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+      "draft": {
+        "fromText": "Independent origin",
+        "fromLL": {
+          "lat": 41.324769,
+          "lon": -72.923522
+        },
+        "toText": "Independent destination",
+        "toLL": {
+          "lat": 41.297857,
+          "lon": -72.926763
+        },
+        "tripTime": "",
+        "tripTimeSetAt": 1789668000000,
+        "expandedKey": null,
+        "classBufferMin": 5,
+        "savedAt": 1789668000000
+      }
+    }
+  ],
+  "completed": true,
+  "resourcesClosed": true
+}

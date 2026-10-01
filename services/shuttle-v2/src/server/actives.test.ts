@@ -184,6 +184,28 @@ describe("depth: time in app and searches", () => {
     const row = bundle.sqlite.prepare("SELECT polls FROM daily_actives").get() as { polls: number };
     expect(row.polls).toBe(500);
   });
+
+  it("keeps poll and search totals across flushes and a process restart", () => {
+    const first = createActivesTracker(bundle, { sinceDay: OPEN_EPOCH });
+    first.seen(ID_A, "poll", T);
+    first.seen(ID_A, "search", T + 1_000);
+    first.flush(T + 1_000);
+    first.seen(ID_A, "poll", T + 2_000);
+    first.flush(T + 2_000);
+    first.stop();
+
+    const restarted = createActivesTracker(bundle, { sinceDay: OPEN_EPOCH });
+    restarted.seen(ID_A, "poll", T + 3_000);
+    restarted.seen(ID_A, "search", T + 4_000);
+    restarted.flush(T + 4_000);
+
+    const row = bundle.sqlite
+      .prepare("SELECT first_seen_ms, last_seen_ms, polls, searches FROM daily_actives WHERE anon_id = ?")
+      .get(ID_A) as { first_seen_ms: number; last_seen_ms: number; polls: number; searches: number };
+    expect(row).toEqual({ first_seen_ms: T, last_seen_ms: T + 4_000, polls: 3, searches: 2 });
+    expect(restarted.stats(T + 4_000).searchesToday).toBe(2);
+    restarted.stop();
+  });
 });
 
 describe("do they come back", () => {

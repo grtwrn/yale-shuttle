@@ -1,0 +1,16 @@
+{
+  "substitutions": [
+    [
+      "const [wLow, wHigh] = rawUpper ? [widened[0], high] : widened;",
+      "const [wLow, wHigh] = rawUpper ? [low, high] : widened;"
+    ],
+    [
+      "rawUpper && corrected >= eta ? corrected",
+      "rawUpper ? corrected"
+    ]
+  ],
+  "bundles": {
+    "baseline": "5993e5051f8da30b9d31884ad39da2859e8ef564a08f61ada118f32bbf07cd46",
+    "candidate": "160ec0b2287dd2456f1568a5c8247048e659285b6a4714d7cd5286156b25ff7d"
+  }
+}

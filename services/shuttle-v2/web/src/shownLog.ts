@@ -90,7 +90,8 @@ export type ShownSurface = "trip" | "ride" | "card";
  * whose instant is wrong cannot be paired with an arrival, which is the whole
  * point of the table.
  */
-export type ShownTuple = [string, number, number, number, number, number, number, ShownSurface];
+type LoggedSurface = ShownSurface | `${ShownSurface}-usual`;
+export type ShownTuple = [string, number, number, number, number, number, number, LoggedSurface];
 
 interface Pending {
   busName: string;
@@ -99,7 +100,7 @@ interface Pending {
   lowSec: number;
   highSec: number;
   stopsAhead: number;
-  surface: ShownSurface;
+  surface: LoggedSurface;
   /** Bucket start, epoch ms on THIS browser's clock — converted to an age on send. */
   at: number;
 }
@@ -201,7 +202,9 @@ export function noteShown(
     for (const a of arrivals) {
       if (pending.size >= SHOWN_MAX_BATCH) return;
       if (!Number.isFinite(a.eta) || a.eta < 0) continue;
-      const key = `${a.busName}:${a.stopId}:${at}:${surface}`;
+      // Riders always receive the current estimator, including on old URLs.
+      const loggedSurface: LoggedSurface = surface;
+      const key = `${a.busName}:${a.stopId}:${at}:${loggedSurface}`;
       if (pending.has(key)) continue;
       pending.set(key, {
         busName: a.busName,
@@ -210,7 +213,7 @@ export function noteShown(
         lowSec: Math.round(Math.max(0, a.low)),
         highSec: Math.round(Math.max(0, a.high)),
         stopsAhead: a.stopsAhead,
-        surface,
+        surface: loggedSurface,
         at,
       });
     }

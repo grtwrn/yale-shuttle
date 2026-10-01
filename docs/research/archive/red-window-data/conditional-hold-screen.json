@@ -1,0 +1,3010 @@
+{
+  "method": "Prior frozen at2026-09-14 00:00ET. Additive model trainbeforeSep10; residuals Sep10–11; testSep14–16. Separate fixed elapsed clocks0/60/180/300/420/600, scored only when true stand survived. Normalized candidate learns prior shape after dividing each valid prior stand by current lap factor. Missing/out-of-band lap falls back to current component distribution. Positive hold duration conditional on stopped; no pass detection or state classification evaluated. No served conformal widening or running minimum. Component screen only.",
+  "controlNote": "Matched-marginal control added after inspecting initial scores, solely to distinguish cohort/pass-zero/class-shrinkage effects from normalizing lap variation. Same valid-lap stopped prior rows and same knot math as normalized candidate; no hyperparameters fitted on test.",
+  "tailRule": "Prespecified fallback to current scaled marginal when fewer than5 actual calibration/normalization values survive at this elapsed clock; no dropped test visits. Exponential tail uses production dist.ts.",
+  "baseline": "Production stopModel class shrinkage + lapFactor + residual distribution reconstructed at prior midnight Sep14; contains no later test labels. Component baseline only: no live state mixture, display floor, bias or widening.",
+  "reports": [
+    {
+      "stop": 11,
+      "priorTable": {
+        "q": [
+          24,
+          115,
+          145,
+          187,
+          300,
+          355,
+          434,
+          496,
+          585,
+          713
+        ],
+        "qn": 168,
+        "pstop": 0.925,
+        "lapB": -0.00095,
+        "lapM": 3035,
+        "lapN": 3331
+      },
+      "trainN": 102,
+      "calibrationN": 58,
+      "testN": 58,
+      "trainLapN": 87,
+      "calLapN": 52,
+      "normalizedN": 139,
+      "normalizedQ": [
+        153.06937375361113,
+        207.27912136273358,
+        289.8094327868803,
+        343.63635902196745,
+        404.0366149880452,
+        448.6694625264553,
+        490.38235683026085,
+        526.0947619834869,
+        566.8532844259149,
+        659.9295162010201
+      ],
+      "summaries": [
+        {
+          "elapsed": 0,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 58,
+              "dates": 3,
+              "covered": 56,
+              "early": 0,
+              "late": 2,
+              "maeSec": 138.37364940784565,
+              "widthSec": 477.3693157734043,
+              "WIS": 78.23071896546855,
+              "earlyPoint120": 3,
+              "latePoint120": 24,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 58,
+              "dates": 3,
+              "covered": 54,
+              "early": 2,
+              "late": 2,
+              "maeSec": 135.67737156560108,
+              "widthSec": 441.23253872129726,
+              "WIS": 75.19927572646645,
+              "earlyPoint120": 3,
+              "latePoint120": 24,
+              "fallback": 9,
+              "minTailSupport": 139
+            },
+            "normalized_lap_shape": {
+              "n": 58,
+              "dates": 3,
+              "covered": 47,
+              "early": 5,
+              "late": 6,
+              "maeSec": 116.03607887147372,
+              "widthSec": 378.82236077306504,
+              "WIS": 67.40863640346551,
+              "earlyPoint120": 9,
+              "latePoint120": 13,
+              "fallback": 9,
+              "minTailSupport": 139
+            },
+            "conditional_additive": {
+              "n": 58,
+              "dates": 3,
+              "covered": 49,
+              "early": 8,
+              "late": 1,
+              "maeSec": 115.5757005768819,
+              "widthSec": 380.77979744042796,
+              "WIS": 71.75282977238379,
+              "earlyPoint120": 16,
+              "latePoint120": 7,
+              "fallback": 9,
+              "minTailSupport": 36
+            }
+          }
+        },
+        {
+          "elapsed": 60,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 55,
+              "dates": 3,
+              "covered": 53,
+              "early": 1,
+              "late": 1,
+              "maeSec": 131.60176781668247,
+              "widthSec": 449.06538007909114,
+              "WIS": 74.15257614724707,
+              "earlyPoint120": 5,
+              "latePoint120": 22,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 55,
+              "dates": 3,
+              "covered": 53,
+              "early": 1,
+              "late": 1,
+              "maeSec": 133.61536341580094,
+              "widthSec": 440.69170566891233,
+              "WIS": 74.44239220948704,
+              "earlyPoint120": 4,
+              "latePoint120": 22,
+              "fallback": 9,
+              "minTailSupport": 95
+            },
+            "normalized_lap_shape": {
+              "n": 55,
+              "dates": 3,
+              "covered": 49,
+              "early": 2,
+              "late": 4,
+              "maeSec": 113.75027787279691,
+              "widthSec": 375.3961721368643,
+              "WIS": 65.92106978592096,
+              "earlyPoint120": 9,
+              "latePoint120": 12,
+              "fallback": 9,
+              "minTailSupport": 127
+            },
+            "conditional_additive": {
+              "n": 55,
+              "dates": 3,
+              "covered": 45,
+              "early": 10,
+              "late": 0,
+              "maeSec": 115.13554301470566,
+              "widthSec": 358.7934339784624,
+              "WIS": 72.27083376273661,
+              "earlyPoint120": 16,
+              "latePoint120": 6,
+              "fallback": 9,
+              "minTailSupport": 25
+            }
+          }
+        },
+        {
+          "elapsed": 180,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 43,
+              "dates": 3,
+              "covered": 39,
+              "early": 4,
+              "late": 0,
+              "maeSec": 97.75776107536205,
+              "widthSec": 397.9792653002722,
+              "WIS": 59.99715633846508,
+              "earlyPoint120": 4,
+              "latePoint120": 11,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 43,
+              "dates": 3,
+              "covered": 39,
+              "early": 4,
+              "late": 0,
+              "maeSec": 98.28734751428891,
+              "widthSec": 396.1233275546672,
+              "WIS": 60.09615389851624,
+              "earlyPoint120": 4,
+              "latePoint120": 11,
+              "fallback": 8,
+              "minTailSupport": 33
+            },
+            "normalized_lap_shape": {
+              "n": 43,
+              "dates": 3,
+              "covered": 35,
+              "early": 5,
+              "late": 3,
+              "maeSec": 94.28112050476602,
+              "widthSec": 343.3837020392594,
+              "WIS": 55.98359639682844,
+              "earlyPoint120": 4,
+              "latePoint120": 9,
+              "fallback": 8,
+              "minTailSupport": 41
+            },
+            "conditional_additive": {
+              "n": 43,
+              "dates": 3,
+              "covered": 35,
+              "early": 8,
+              "late": 0,
+              "maeSec": 87.92380213207048,
+              "widthSec": 326.2800753028369,
+              "WIS": 55.44387184991831,
+              "earlyPoint120": 8,
+              "latePoint120": 4,
+              "fallback": 8,
+              "minTailSupport": 8
+            }
+          }
+        },
+        {
+          "elapsed": 300,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 35,
+              "dates": 3,
+              "covered": 33,
+              "early": 2,
+              "late": 0,
+              "maeSec": 82.94458049082296,
+              "widthSec": 354.99819359961515,
+              "WIS": 52.44410303711002,
+              "earlyPoint120": 3,
+              "latePoint120": 6,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 35,
+              "dates": 3,
+              "covered": 33,
+              "early": 2,
+              "late": 0,
+              "maeSec": 83.0771291162077,
+              "widthSec": 348.7382706015916,
+              "WIS": 52.1968329530888,
+              "earlyPoint120": 2,
+              "latePoint120": 7,
+              "fallback": 7,
+              "minTailSupport": 27
+            },
+            "normalized_lap_shape": {
+              "n": 35,
+              "dates": 3,
+              "covered": 32,
+              "early": 2,
+              "late": 1,
+              "maeSec": 80.30163449129721,
+              "widthSec": 291.88353119416564,
+              "WIS": 47.97937096189361,
+              "earlyPoint120": 3,
+              "latePoint120": 6,
+              "fallback": 7,
+              "minTailSupport": 27
+            },
+            "conditional_additive": {
+              "n": 35,
+              "dates": 3,
+              "covered": 32,
+              "early": 3,
+              "late": 0,
+              "maeSec": 76.74197406952311,
+              "widthSec": 302.51418469373766,
+              "WIS": 48.752927667386004,
+              "earlyPoint120": 4,
+              "latePoint120": 2,
+              "fallback": 7,
+              "minTailSupport": 3
+            }
+          }
+        },
+        {
+          "elapsed": 420,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 24,
+              "dates": 3,
+              "covered": 22,
+              "early": 2,
+              "late": 0,
+              "maeSec": 57.74423904232402,
+              "widthSec": 322.48619196312046,
+              "WIS": 41.64779966317235,
+              "earlyPoint120": 2,
+              "latePoint120": 2,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 24,
+              "dates": 3,
+              "covered": 22,
+              "early": 2,
+              "late": 0,
+              "maeSec": 57.80963553150101,
+              "widthSec": 320.743642703959,
+              "WIS": 41.388319942486916,
+              "earlyPoint120": 2,
+              "latePoint120": 3,
+              "fallback": 6,
+              "minTailSupport": 34
+            },
+            "normalized_lap_shape": {
+              "n": 24,
+              "dates": 3,
+              "covered": 21,
+              "early": 2,
+              "late": 1,
+              "maeSec": 56.30898281630554,
+              "widthSec": 252.8691563663622,
+              "WIS": 36.70202437990374,
+              "earlyPoint120": 2,
+              "latePoint120": 3,
+              "fallback": 6,
+              "minTailSupport": 46
+            },
+            "conditional_additive": {
+              "n": 24,
+              "dates": 3,
+              "covered": 22,
+              "early": 2,
+              "late": 0,
+              "maeSec": 56.286563519610716,
+              "widthSec": 271.6131775828392,
+              "WIS": 38.028312270360345,
+              "earlyPoint120": 2,
+              "latePoint120": 1,
+              "fallback": 6,
+              "minTailSupport": 0
+            }
+          }
+        },
+        {
+          "elapsed": 600,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 8,
+              "dates": 2,
+              "covered": 6,
+              "early": 2,
+              "late": 0,
+              "maeSec": 48.11237283812581,
+              "widthSec": 291.4895056170436,
+              "WIS": 36.199834444835396,
+              "earlyPoint120": 1,
+              "latePoint120": 0,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 8,
+              "dates": 2,
+              "covered": 6,
+              "early": 2,
+              "late": 0,
+              "maeSec": 47.57009162611142,
+              "widthSec": 294.2800137171034,
+              "WIS": 35.9732231013692,
+              "earlyPoint120": 1,
+              "latePoint120": 0,
+              "fallback": 1,
+              "minTailSupport": 16
+            },
+            "normalized_lap_shape": {
+              "n": 8,
+              "dates": 2,
+              "covered": 8,
+              "early": 0,
+              "late": 0,
+              "maeSec": 46.50930215243403,
+              "widthSec": 213.5715938640854,
+              "WIS": 29.741206975083703,
+              "earlyPoint120": 0,
+              "latePoint120": 0,
+              "fallback": 1,
+              "minTailSupport": 15
+            },
+            "conditional_additive": {
+              "n": 8,
+              "dates": 2,
+              "covered": 6,
+              "early": 2,
+              "late": 0,
+              "maeSec": 48.42958390141379,
+              "widthSec": 225.47707573205508,
+              "WIS": 31.233041788856827,
+              "earlyPoint120": 0,
+              "latePoint120": 0,
+              "fallback": 1,
+              "minTailSupport": 0
+            }
+          }
+        }
+      ],
+      "byDate": {
+        "2026-09-14": [
+          {
+            "elapsed": 0,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 28,
+                "dates": 1,
+                "covered": 27,
+                "early": 0,
+                "late": 1,
+                "maeSec": 152.01166627747688,
+                "widthSec": 504.0447849103834,
+                "WIS": 84.79200173396325,
+                "earlyPoint120": 2,
+                "latePoint120": 11,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 28,
+                "dates": 1,
+                "covered": 25,
+                "early": 2,
+                "late": 1,
+                "maeSec": 147.89852578896875,
+                "widthSec": 464.79031634140273,
+                "WIS": 81.37660467924594,
+                "earlyPoint120": 2,
+                "latePoint120": 11,
+                "fallback": 4,
+                "minTailSupport": 139
+              },
+              "normalized_lap_shape": {
+                "n": 28,
+                "dates": 1,
+                "covered": 19,
+                "early": 4,
+                "late": 5,
+                "maeSec": 112.8506783158595,
+                "widthSec": 396.9957157017061,
+                "WIS": 69.6319248794681,
+                "earlyPoint120": 5,
+                "latePoint120": 6,
+                "fallback": 4,
+                "minTailSupport": 139
+              },
+              "conditional_additive": {
+                "n": 28,
+                "dates": 1,
+                "covered": 24,
+                "early": 4,
+                "late": 0,
+                "maeSec": 105.29594426442804,
+                "widthSec": 381.27571608942753,
+                "WIS": 68.55604701970336,
+                "earlyPoint120": 7,
+                "latePoint120": 3,
+                "fallback": 4,
+                "minTailSupport": 36
+              }
+            }
+          },
+          {
+            "elapsed": 60,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 25,
+                "dates": 1,
+                "covered": 23,
+                "early": 1,
+                "late": 1,
+                "maeSec": 144.22237913013905,
+                "widthSec": 492.60411160227596,
+                "WIS": 81.67918253030783,
+                "earlyPoint120": 2,
+                "latePoint120": 11,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 25,
+                "dates": 1,
+                "covered": 23,
+                "early": 1,
+                "late": 1,
+                "maeSec": 148.43215065941888,
+                "widthSec": 482.7660138469578,
+                "WIS": 82.8156640007805,
+                "earlyPoint120": 2,
+                "latePoint120": 11,
+                "fallback": 4,
+                "minTailSupport": 115
+              },
+              "normalized_lap_shape": {
+                "n": 25,
+                "dates": 1,
+                "covered": 20,
+                "early": 1,
+                "late": 4,
+                "maeSec": 109.73989739986311,
+                "widthSec": 409.34527289168267,
+                "WIS": 68.38444113316723,
+                "earlyPoint120": 3,
+                "latePoint120": 6,
+                "fallback": 4,
+                "minTailSupport": 133
+              },
+              "conditional_additive": {
+                "n": 25,
+                "dates": 1,
+                "covered": 23,
+                "early": 2,
+                "late": 0,
+                "maeSec": 103.8731535839511,
+                "widthSec": 369.4708551064544,
+                "WIS": 67.52205446898252,
+                "earlyPoint120": 5,
+                "latePoint120": 3,
+                "fallback": 4,
+                "minTailSupport": 25
+              }
+            }
+          },
+          {
+            "elapsed": 180,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 23,
+                "dates": 1,
+                "covered": 23,
+                "early": 0,
+                "late": 0,
+                "maeSec": 94.12074072219082,
+                "widthSec": 409.79170814461435,
+                "WIS": 58.693027450371225,
+                "earlyPoint120": 2,
+                "latePoint120": 6,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 23,
+                "dates": 1,
+                "covered": 23,
+                "early": 0,
+                "late": 0,
+                "maeSec": 94.60205620052658,
+                "widthSec": 407.7045220179618,
+                "WIS": 58.71432020137299,
+                "earlyPoint120": 2,
+                "latePoint120": 6,
+                "fallback": 3,
+                "minTailSupport": 54
+              },
+              "normalized_lap_shape": {
+                "n": 23,
+                "dates": 1,
+                "covered": 20,
+                "early": 0,
+                "late": 3,
+                "maeSec": 90.72163624888573,
+                "widthSec": 348.70806596394397,
+                "WIS": 55.18163801198408,
+                "earlyPoint120": 2,
+                "latePoint120": 5,
+                "fallback": 3,
+                "minTailSupport": 72
+              },
+              "conditional_additive": {
+                "n": 23,
+                "dates": 1,
+                "covered": 20,
+                "early": 3,
+                "late": 0,
+                "maeSec": 83.37629862830332,
+                "widthSec": 320.89746697605773,
+                "WIS": 52.06080074247082,
+                "earlyPoint120": 4,
+                "latePoint120": 2,
+                "fallback": 3,
+                "minTailSupport": 8
+              }
+            }
+          },
+          {
+            "elapsed": 300,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 20,
+                "dates": 1,
+                "covered": 18,
+                "early": 2,
+                "late": 0,
+                "maeSec": 91.85448964300686,
+                "widthSec": 358.2244348463932,
+                "WIS": 56.47617797943586,
+                "earlyPoint120": 2,
+                "latePoint120": 4,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 20,
+                "dates": 1,
+                "covered": 18,
+                "early": 2,
+                "late": 0,
+                "maeSec": 91.1561398235814,
+                "widthSec": 351.57560924985785,
+                "WIS": 56.020421337782885,
+                "earlyPoint120": 2,
+                "latePoint120": 4,
+                "fallback": 3,
+                "minTailSupport": 27
+              },
+              "normalized_lap_shape": {
+                "n": 20,
+                "dates": 1,
+                "covered": 17,
+                "early": 2,
+                "late": 1,
+                "maeSec": 88.1152702668208,
+                "widthSec": 291.4720798399049,
+                "WIS": 51.87142916900505,
+                "earlyPoint120": 2,
+                "latePoint120": 4,
+                "fallback": 3,
+                "minTailSupport": 27
+              },
+              "conditional_additive": {
+                "n": 20,
+                "dates": 1,
+                "covered": 18,
+                "early": 2,
+                "late": 0,
+                "maeSec": 85.03550660763142,
+                "widthSec": 298.41603049347674,
+                "WIS": 52.812627945901134,
+                "earlyPoint120": 3,
+                "latePoint120": 1,
+                "fallback": 3,
+                "minTailSupport": 3
+              }
+            }
+          },
+          {
+            "elapsed": 420,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 12,
+                "dates": 1,
+                "covered": 10,
+                "early": 2,
+                "late": 0,
+                "maeSec": 69.77647326982844,
+                "widthSec": 338.7755392283654,
+                "WIS": 47.64514140821313,
+                "earlyPoint120": 2,
+                "latePoint120": 2,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 12,
+                "dates": 1,
+                "covered": 10,
+                "early": 2,
+                "late": 0,
+                "maeSec": 71.49045312853951,
+                "widthSec": 336.35035469828296,
+                "WIS": 47.72457185951069,
+                "earlyPoint120": 2,
+                "latePoint120": 3,
+                "fallback": 2,
+                "minTailSupport": 39
+              },
+              "normalized_lap_shape": {
+                "n": 12,
+                "dates": 1,
+                "covered": 9,
+                "early": 2,
+                "late": 1,
+                "maeSec": 69.64831875539123,
+                "widthSec": 259.07790225072387,
+                "WIS": 42.6368057686008,
+                "earlyPoint120": 2,
+                "latePoint120": 3,
+                "fallback": 2,
+                "minTailSupport": 53
+              },
+              "conditional_additive": {
+                "n": 12,
+                "dates": 1,
+                "covered": 10,
+                "early": 2,
+                "late": 0,
+                "maeSec": 67.65755273286659,
+                "widthSec": 275.1793568891803,
+                "WIS": 43.214966553502556,
+                "earlyPoint120": 2,
+                "latePoint120": 1,
+                "fallback": 2,
+                "minTailSupport": 0
+              }
+            }
+          },
+          {
+            "elapsed": 600,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 5,
+                "dates": 1,
+                "covered": 4,
+                "early": 1,
+                "late": 0,
+                "maeSec": 40.2356471366013,
+                "widthSec": 308.8281206339663,
+                "WIS": 34.5146805968655,
+                "earlyPoint120": 1,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 5,
+                "dates": 1,
+                "covered": 4,
+                "early": 1,
+                "late": 0,
+                "maeSec": 39.510698575966515,
+                "widthSec": 311.57802959375266,
+                "WIS": 34.27084472835794,
+                "earlyPoint120": 1,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 20
+              },
+              "normalized_lap_shape": {
+                "n": 5,
+                "dates": 1,
+                "covered": 5,
+                "early": 0,
+                "late": 0,
+                "maeSec": 47.92263507635171,
+                "widthSec": 213.1599296880864,
+                "WIS": 30.184873671322993,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 18
+              },
+              "conditional_additive": {
+                "n": 5,
+                "dates": 1,
+                "covered": 4,
+                "early": 1,
+                "late": 0,
+                "maeSec": 48.29490508723588,
+                "widthSec": 221.87814221908428,
+                "WIS": 30.948548989197082,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 13
+              }
+            }
+          }
+        ],
+        "2026-09-15": [
+          {
+            "elapsed": 0,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 21,
+                "dates": 1,
+                "covered": 20,
+                "early": 0,
+                "late": 1,
+                "maeSec": 129.6968321087746,
+                "widthSec": 449.42262803800475,
+                "WIS": 73.28011411148353,
+                "earlyPoint120": 0,
+                "latePoint120": 10,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 21,
+                "dates": 1,
+                "covered": 20,
+                "early": 0,
+                "late": 1,
+                "maeSec": 126.99362523388204,
+                "widthSec": 412.74006829811367,
+                "WIS": 69.93354117052657,
+                "earlyPoint120": 0,
+                "latePoint120": 10,
+                "fallback": 2,
+                "minTailSupport": 139
+              },
+              "normalized_lap_shape": {
+                "n": 21,
+                "dates": 1,
+                "covered": 20,
+                "early": 0,
+                "late": 1,
+                "maeSec": 112.3695521335902,
+                "widthSec": 349.38729398561435,
+                "WIS": 60.835331849596024,
+                "earlyPoint120": 2,
+                "latePoint120": 5,
+                "fallback": 2,
+                "minTailSupport": 139
+              },
+              "conditional_additive": {
+                "n": 21,
+                "dates": 1,
+                "covered": 17,
+                "early": 3,
+                "late": 1,
+                "maeSec": 112.29477912512051,
+                "widthSec": 367.076193903072,
+                "WIS": 64.49391401891025,
+                "earlyPoint120": 6,
+                "latePoint120": 2,
+                "fallback": 2,
+                "minTailSupport": 36
+              }
+            }
+          },
+          {
+            "elapsed": 60,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 21,
+                "dates": 1,
+                "covered": 21,
+                "early": 0,
+                "late": 0,
+                "maeSec": 122.12005747959282,
+                "widthSec": 410.3188740303459,
+                "WIS": 68.06127742855399,
+                "earlyPoint120": 1,
+                "latePoint120": 9,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 21,
+                "dates": 1,
+                "covered": 21,
+                "early": 0,
+                "late": 0,
+                "maeSec": 123.2321529065563,
+                "widthSec": 402.2545721981933,
+                "WIS": 67.89435578206496,
+                "earlyPoint120": 0,
+                "latePoint120": 9,
+                "fallback": 2,
+                "minTailSupport": 95
+              },
+              "normalized_lap_shape": {
+                "n": 21,
+                "dates": 1,
+                "covered": 21,
+                "early": 0,
+                "late": 0,
+                "maeSec": 110.56898022008133,
+                "widthSec": 337.3557687058918,
+                "WIS": 59.346711320419914,
+                "earlyPoint120": 3,
+                "latePoint120": 5,
+                "fallback": 2,
+                "minTailSupport": 127
+              },
+              "conditional_additive": {
+                "n": 21,
+                "dates": 1,
+                "covered": 15,
+                "early": 6,
+                "late": 0,
+                "maeSec": 113.24636656698948,
+                "widthSec": 338.6390540910764,
+                "WIS": 66.64495771746373,
+                "earlyPoint120": 7,
+                "latePoint120": 2,
+                "fallback": 2,
+                "minTailSupport": 25
+              }
+            }
+          },
+          {
+            "elapsed": 180,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 14,
+                "dates": 1,
+                "covered": 13,
+                "early": 1,
+                "late": 0,
+                "maeSec": 104.43887980273927,
+                "widthSec": 398.9566744701312,
+                "WIS": 63.132768773459176,
+                "earlyPoint120": 1,
+                "latePoint120": 5,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 14,
+                "dates": 1,
+                "covered": 13,
+                "early": 1,
+                "late": 0,
+                "maeSec": 105.24776695458691,
+                "widthSec": 396.91411383334844,
+                "WIS": 63.25900526710494,
+                "earlyPoint120": 1,
+                "latePoint120": 5,
+                "fallback": 2,
+                "minTailSupport": 73
+              },
+              "normalized_lap_shape": {
+                "n": 14,
+                "dates": 1,
+                "covered": 12,
+                "early": 2,
+                "late": 0,
+                "maeSec": 100.57593679606505,
+                "widthSec": 341.9514956220578,
+                "WIS": 57.8554840915072,
+                "earlyPoint120": 1,
+                "latePoint120": 4,
+                "fallback": 2,
+                "minTailSupport": 100
+              },
+              "conditional_additive": {
+                "n": 14,
+                "dates": 1,
+                "covered": 12,
+                "early": 2,
+                "late": 0,
+                "maeSec": 91.47504027035868,
+                "widthSec": 322.42459671099584,
+                "WIS": 58.5981069348512,
+                "earlyPoint120": 2,
+                "latePoint120": 2,
+                "fallback": 2,
+                "minTailSupport": 8
+              }
+            }
+          },
+          {
+            "elapsed": 300,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 12,
+                "dates": 1,
+                "covered": 12,
+                "early": 0,
+                "late": 0,
+                "maeSec": 75.23600662057932,
+                "widthSec": 346.2403626368359,
+                "WIS": 48.16135971598217,
+                "earlyPoint120": 1,
+                "latePoint120": 2,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 12,
+                "dates": 1,
+                "covered": 12,
+                "early": 0,
+                "late": 0,
+                "maeSec": 76.29679451535966,
+                "widthSec": 339.84106064195925,
+                "WIS": 48.088335547917175,
+                "earlyPoint120": 0,
+                "latePoint120": 3,
+                "fallback": 2,
+                "minTailSupport": 49
+              },
+              "normalized_lap_shape": {
+                "n": 12,
+                "dates": 1,
+                "covered": 12,
+                "early": 0,
+                "late": 0,
+                "maeSec": 74.01713972558595,
+                "widthSec": 280.4041765544214,
+                "WIS": 43.365991678823406,
+                "earlyPoint120": 1,
+                "latePoint120": 2,
+                "fallback": 2,
+                "minTailSupport": 65
+              },
+              "conditional_additive": {
+                "n": 12,
+                "dates": 1,
+                "covered": 11,
+                "early": 1,
+                "late": 0,
+                "maeSec": 71.20049918037604,
+                "widthSec": 298.6800334089091,
+                "WIS": 44.78732409734497,
+                "earlyPoint120": 1,
+                "latePoint120": 1,
+                "fallback": 2,
+                "minTailSupport": 3
+              }
+            }
+          },
+          {
+            "elapsed": 420,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 9,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 0,
+                "maeSec": 46.76740508544489,
+                "widthSec": 307.94466162124786,
+                "WIS": 36.118779136564825,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 9,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 0,
+                "maeSec": 45.25185219330653,
+                "widthSec": 306.71513276817575,
+                "WIS": 35.531626248980565,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 34
+              },
+              "normalized_lap_shape": {
+                "n": 9,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 0,
+                "maeSec": 43.9821451137354,
+                "widthSec": 238.59018409129334,
+                "WIS": 30.56672731066469,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 46
+              },
+              "conditional_additive": {
+                "n": 9,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 0,
+                "maeSec": 46.23660001901729,
+                "widthSec": 263.56377603996657,
+                "WIS": 32.98311840900354,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 0
+              }
+            }
+          },
+          {
+            "elapsed": 600,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 3,
+                "dates": 1,
+                "covered": 2,
+                "early": 1,
+                "late": 0,
+                "maeSec": 61.2402490073333,
+                "widthSec": 262.59181392217255,
+                "WIS": 39.00842419145189,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 3,
+                "dates": 1,
+                "covered": 2,
+                "early": 1,
+                "late": 0,
+                "maeSec": 61.002413376352926,
+                "widthSec": 265.44998725602113,
+                "WIS": 38.81052038972129,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 1,
+                "minTailSupport": 16
+              },
+              "normalized_lap_shape": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 44.15374727923791,
+                "widthSec": 214.2577008240837,
+                "WIS": 29.00176248135155,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 1,
+                "minTailSupport": 15
+              },
+              "conditional_additive": {
+                "n": 3,
+                "dates": 1,
+                "covered": 2,
+                "early": 1,
+                "late": 0,
+                "maeSec": 48.65404859171031,
+                "widthSec": 231.47529825367303,
+                "WIS": 31.70719645495639,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 1,
+                "minTailSupport": 0
+              }
+            }
+          }
+        ],
+        "2026-09-16": [
+          {
+            "elapsed": 0,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 9,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 0,
+                "maeSec": 116.190170622381,
+                "widthSec": 459.58790539651295,
+                "WIS": 69.36925056722787,
+                "earlyPoint120": 1,
+                "latePoint120": 3,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 9,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 0,
+                "maeSec": 117.91807764469061,
+                "widthSec": 434.4241060017298,
+                "WIS": 68.26763294834551,
+                "earlyPoint120": 1,
+                "latePoint120": 3,
+                "fallback": 3,
+                "minTailSupport": 139
+              },
+              "normalized_lap_shape": {
+                "n": 9,
+                "dates": 1,
+                "covered": 8,
+                "early": 1,
+                "late": 0,
+                "maeSec": 134.50144298844603,
+                "widthSec": 390.9648568324559,
+                "WIS": 75.82944954826392,
+                "earlyPoint120": 2,
+                "latePoint120": 2,
+                "fallback": 3,
+                "minTailSupport": 139
+              },
+              "conditional_additive": {
+                "n": 9,
+                "dates": 1,
+                "covered": 8,
+                "early": 1,
+                "late": 0,
+                "maeSec": 155.2126480475151,
+                "widthSec": 411.21201434181535,
+                "WIS": 98.63584620549462,
+                "earlyPoint120": 3,
+                "latePoint120": 2,
+                "fallback": 3,
+                "minTailSupport": 36
+              }
+            }
+          },
+          {
+            "elapsed": 60,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 9,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 0,
+                "maeSec": 118.66850495473435,
+                "widthSec": 418.53297329509377,
+                "WIS": 67.4583665379177,
+                "earlyPoint120": 2,
+                "latePoint120": 2,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 9,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 0,
+                "maeSec": 116.68511226065523,
+                "widthSec": 413.5052721615744,
+                "WIS": 66.46205556432338,
+                "earlyPoint120": 2,
+                "latePoint120": 2,
+                "fallback": 3,
+                "minTailSupport": 95
+              },
+              "normalized_lap_shape": {
+                "n": 9,
+                "dates": 1,
+                "covered": 8,
+                "early": 1,
+                "late": 0,
+                "maeSec": 132.31325148728268,
+                "widthSec": 369.8540558235268,
+                "WIS": 74.41854135196171,
+                "earlyPoint120": 3,
+                "latePoint120": 1,
+                "fallback": 3,
+                "minTailSupport": 127
+              },
+              "conditional_additive": {
+                "n": 9,
+                "dates": 1,
+                "covered": 7,
+                "early": 2,
+                "late": 0,
+                "maeSec": 150.82803647813964,
+                "widthSec": 376.1608172490521,
+                "WIS": 98.5889314621346,
+                "earlyPoint120": 4,
+                "latePoint120": 1,
+                "fallback": 3,
+                "minTailSupport": 25
+              }
+            }
+          },
+          {
+            "elapsed": 180,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 6,
+                "dates": 1,
+                "covered": 3,
+                "early": 3,
+                "late": 0,
+                "maeSec": 96.11039539863846,
+                "widthSec": 350.4176130006228,
+                "WIS": 57.67988806117206,
+                "earlyPoint120": 1,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 6,
+                "dates": 1,
+                "covered": 3,
+                "early": 3,
+                "late": 0,
+                "maeSec": 96.17331885634913,
+                "widthSec": 349.88358079511517,
+                "WIS": 58.01319654419181,
+                "earlyPoint120": 1,
+                "latePoint120": 0,
+                "fallback": 3,
+                "minTailSupport": 33
+              },
+              "normalized_lap_shape": {
+                "n": 6,
+                "dates": 1,
+                "covered": 3,
+                "early": 3,
+                "late": 0,
+                "maeSec": 93.23790547260955,
+                "widthSec": 326.3154553014386,
+                "WIS": 54.69003225114799,
+                "earlyPoint120": 1,
+                "latePoint120": 0,
+                "fallback": 3,
+                "minTailSupport": 41
+              },
+              "conditional_additive": {
+                "n": 6,
+                "dates": 1,
+                "covered": 3,
+                "early": 3,
+                "late": 0,
+                "maeSec": 97.0696765738387,
+                "widthSec": 355.9095239364527,
+                "WIS": 61.05242923029035,
+                "earlyPoint120": 2,
+                "latePoint120": 0,
+                "fallback": 3,
+                "minTailSupport": 8
+              }
+            }
+          },
+          {
+            "elapsed": 300,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 54.37948162390472,
+                "widthSec": 368.52124247221263,
+                "WIS": 42.69457670611575,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 56.33839613710831,
+                "widthSec": 365.4115194516797,
+                "WIS": 43.140233342481416,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 76
+              },
+              "normalized_lap_shape": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 53.34870838398515,
+                "widthSec": 340.5439587815487,
+                "WIS": 40.48583338009829,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 102
+              },
+              "conditional_additive": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 43.61765670538923,
+                "widthSec": 345.1718178347916,
+                "WIS": 37.55067342411585,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 3
+              }
+            }
+          },
+          {
+            "elapsed": 420,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 42.54580400294362,
+                "widthSec": 300.95339392775855,
+                "WIS": 34.24549426283178,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 40.75971515793025,
+                "widthSec": 300.4023245340122,
+                "WIS": 33.613393354910905,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 49
+              },
+              "normalized_lap_shape": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 39.932152167673316,
+                "widthSec": 270.8710896541223,
+                "WIS": 31.368790032832592,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 69
+              },
+              "conditional_additive": {
+                "n": 3,
+                "dates": 1,
+                "covered": 3,
+                "early": 0,
+                "late": 0,
+                "maeSec": 40.952497168367415,
+                "widthSec": 281.49666498609247,
+                "WIS": 32.417276721861974,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 0
+              }
+            }
+          },
+          {
+            "elapsed": 600,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 0
+              },
+              "matched_marginal_control": {
+                "n": 0
+              },
+              "normalized_lap_shape": {
+                "n": 0
+              },
+              "conditional_additive": {
+                "n": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "stop": 121,
+      "priorTable": {
+        "q": [
+          29,
+          84,
+          224,
+          325,
+          374,
+          427,
+          485,
+          532,
+          617,
+          737
+        ],
+        "qn": 180,
+        "pstop": 0.925,
+        "lapB": -0.0010265,
+        "lapM": 2825,
+        "lapN": 25668
+      },
+      "trainN": 112,
+      "calibrationN": 61,
+      "testN": 62,
+      "trainLapN": 98,
+      "calLapN": 56,
+      "normalizedN": 154,
+      "normalizedQ": [
+        128.38442857142857,
+        331.6387648573424,
+        471.8443145680019,
+        531.0518627728136,
+        597.8880970333006,
+        655.1348018508409,
+        696.038090837828,
+        725.6029505480086,
+        757.3770442897211,
+        845.2749374431078
+      ],
+      "summaries": [
+        {
+          "elapsed": 0,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 62,
+              "dates": 3,
+              "covered": 36,
+              "early": 1,
+              "late": 25,
+              "maeSec": 185.64475218817262,
+              "widthSec": 430.45274255541324,
+              "WIS": 110.85022378570916,
+              "earlyPoint120": 7,
+              "latePoint120": 32,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 62,
+              "dates": 3,
+              "covered": 33,
+              "early": 4,
+              "late": 25,
+              "maeSec": 178.7649063432518,
+              "widthSec": 412.5650247577255,
+              "WIS": 106.0565836808558,
+              "earlyPoint120": 9,
+              "latePoint120": 32,
+              "fallback": 7,
+              "minTailSupport": 154
+            },
+            "normalized_lap_shape": {
+              "n": 62,
+              "dates": 3,
+              "covered": 49,
+              "early": 9,
+              "late": 4,
+              "maeSec": 116.94643655255157,
+              "widthSec": 404.9259079022323,
+              "WIS": 74.84676820056448,
+              "earlyPoint120": 18,
+              "latePoint120": 4,
+              "fallback": 7,
+              "minTailSupport": 154
+            },
+            "conditional_additive": {
+              "n": 62,
+              "dates": 3,
+              "covered": 49,
+              "early": 9,
+              "late": 4,
+              "maeSec": 119.42022246674865,
+              "widthSec": 363.2446003811175,
+              "WIS": 76.51282575599544,
+              "earlyPoint120": 17,
+              "latePoint120": 6,
+              "fallback": 7,
+              "minTailSupport": 28
+            }
+          }
+        },
+        {
+          "elapsed": 60,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 56,
+              "dates": 3,
+              "covered": 28,
+              "early": 4,
+              "late": 24,
+              "maeSec": 174.89771213672424,
+              "widthSec": 365.2295480218414,
+              "WIS": 103.12909540523954,
+              "earlyPoint120": 8,
+              "latePoint120": 30,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 56,
+              "dates": 3,
+              "covered": 28,
+              "early": 4,
+              "late": 24,
+              "maeSec": 172.84939809013136,
+              "widthSec": 371.2897769169896,
+              "WIS": 102.46314116122105,
+              "earlyPoint120": 8,
+              "latePoint120": 29,
+              "fallback": 6,
+              "minTailSupport": 126
+            },
+            "normalized_lap_shape": {
+              "n": 56,
+              "dates": 3,
+              "covered": 48,
+              "early": 5,
+              "late": 3,
+              "maeSec": 106.7713280021995,
+              "widthSec": 373.29431609190016,
+              "WIS": 69.89390958236676,
+              "earlyPoint120": 12,
+              "latePoint120": 4,
+              "fallback": 6,
+              "minTailSupport": 140
+            },
+            "conditional_additive": {
+              "n": 56,
+              "dates": 3,
+              "covered": 44,
+              "early": 8,
+              "late": 4,
+              "maeSec": 116.53484849446683,
+              "widthSec": 350.0243788197641,
+              "WIS": 76.1544616031898,
+              "earlyPoint120": 13,
+              "latePoint120": 6,
+              "fallback": 6,
+              "minTailSupport": 17
+            }
+          }
+        },
+        {
+          "elapsed": 180,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 48,
+              "dates": 3,
+              "covered": 25,
+              "early": 4,
+              "late": 19,
+              "maeSec": 157.4957811282289,
+              "widthSec": 294.3281147438001,
+              "WIS": 91.55613939282614,
+              "earlyPoint120": 3,
+              "latePoint120": 26,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 48,
+              "dates": 3,
+              "covered": 25,
+              "early": 4,
+              "late": 19,
+              "maeSec": 155.6296937675188,
+              "widthSec": 293.3745031686526,
+              "WIS": 90.73729677830937,
+              "earlyPoint120": 3,
+              "latePoint120": 26,
+              "fallback": 4,
+              "minTailSupport": 47
+            },
+            "normalized_lap_shape": {
+              "n": 48,
+              "dates": 3,
+              "covered": 40,
+              "early": 5,
+              "late": 3,
+              "maeSec": 86.10444263175229,
+              "widthSec": 306.6115697956907,
+              "WIS": 59.220553682617115,
+              "earlyPoint120": 6,
+              "latePoint120": 4,
+              "fallback": 4,
+              "minTailSupport": 104
+            },
+            "conditional_additive": {
+              "n": 48,
+              "dates": 3,
+              "covered": 36,
+              "early": 8,
+              "late": 4,
+              "maeSec": 98.60886720527263,
+              "widthSec": 320.6166771102497,
+              "WIS": 66.07207082477159,
+              "earlyPoint120": 7,
+              "latePoint120": 6,
+              "fallback": 4,
+              "minTailSupport": 6
+            }
+          }
+        },
+        {
+          "elapsed": 300,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 38,
+              "dates": 3,
+              "covered": 28,
+              "early": 0,
+              "late": 10,
+              "maeSec": 136.7796933709911,
+              "widthSec": 259.15244442802845,
+              "WIS": 78.01644344735645,
+              "earlyPoint120": 0,
+              "latePoint120": 18,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 38,
+              "dates": 3,
+              "covered": 28,
+              "early": 0,
+              "late": 10,
+              "maeSec": 136.21456876570545,
+              "widthSec": 257.22269099639635,
+              "WIS": 77.71531063434281,
+              "earlyPoint120": 0,
+              "latePoint120": 18,
+              "fallback": 2,
+              "minTailSupport": 23
+            },
+            "normalized_lap_shape": {
+              "n": 38,
+              "dates": 3,
+              "covered": 33,
+              "early": 2,
+              "late": 3,
+              "maeSec": 69.80945175210867,
+              "widthSec": 262.12320479254396,
+              "WIS": 48.95811455162357,
+              "earlyPoint120": 1,
+              "latePoint120": 3,
+              "fallback": 2,
+              "minTailSupport": 80
+            },
+            "conditional_additive": {
+              "n": 38,
+              "dates": 3,
+              "covered": 32,
+              "early": 2,
+              "late": 4,
+              "maeSec": 83.77633221489594,
+              "widthSec": 292.5870026790192,
+              "WIS": 56.92241820001404,
+              "earlyPoint120": 1,
+              "latePoint120": 5,
+              "fallback": 2,
+              "minTailSupport": 1
+            }
+          }
+        },
+        {
+          "elapsed": 420,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 28,
+              "dates": 3,
+              "covered": 24,
+              "early": 0,
+              "late": 4,
+              "maeSec": 103.04130036124057,
+              "widthSec": 236.8201577167786,
+              "WIS": 63.43873975093462,
+              "earlyPoint120": 0,
+              "latePoint120": 9,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 28,
+              "dates": 3,
+              "covered": 24,
+              "early": 0,
+              "late": 4,
+              "maeSec": 103.57738623237718,
+              "widthSec": 233.59287135116253,
+              "WIS": 63.72461753619387,
+              "earlyPoint120": 0,
+              "latePoint120": 9,
+              "fallback": 1,
+              "minTailSupport": 21
+            },
+            "normalized_lap_shape": {
+              "n": 28,
+              "dates": 3,
+              "covered": 25,
+              "early": 0,
+              "late": 3,
+              "maeSec": 66.7398800142931,
+              "widthSec": 234.03651147910372,
+              "WIS": 47.07188200251118,
+              "earlyPoint120": 1,
+              "latePoint120": 3,
+              "fallback": 1,
+              "minTailSupport": 72
+            },
+            "conditional_additive": {
+              "n": 28,
+              "dates": 3,
+              "covered": 25,
+              "early": 0,
+              "late": 3,
+              "maeSec": 78.30724746973553,
+              "widthSec": 248.50133147852696,
+              "WIS": 53.875907021867974,
+              "earlyPoint120": 0,
+              "latePoint120": 4,
+              "fallback": 1,
+              "minTailSupport": 1
+            }
+          }
+        },
+        {
+          "elapsed": 600,
+          "arms": {
+            "current_scaled_marginal": {
+              "n": 11,
+              "dates": 3,
+              "covered": 9,
+              "early": 0,
+              "late": 2,
+              "maeSec": 82.9866774503174,
+              "widthSec": 233.3857274193374,
+              "WIS": 58.26560871661645,
+              "earlyPoint120": 0,
+              "latePoint120": 2,
+              "fallback": 0,
+              "minTailSupport": null
+            },
+            "matched_marginal_control": {
+              "n": 11,
+              "dates": 3,
+              "covered": 9,
+              "early": 0,
+              "late": 2,
+              "maeSec": 83.18300390345688,
+              "widthSec": 226.64935012778832,
+              "WIS": 58.61693638524246,
+              "earlyPoint120": 0,
+              "latePoint120": 2,
+              "fallback": 0,
+              "minTailSupport": 9
+            },
+            "normalized_lap_shape": {
+              "n": 11,
+              "dates": 3,
+              "covered": 9,
+              "early": 0,
+              "late": 2,
+              "maeSec": 79.78174096526075,
+              "widthSec": 188.7281462232998,
+              "WIS": 56.77516539061515,
+              "earlyPoint120": 1,
+              "latePoint120": 2,
+              "fallback": 0,
+              "minTailSupport": 33
+            },
+            "conditional_additive": {
+              "n": 11,
+              "dates": 3,
+              "covered": 8,
+              "early": 1,
+              "late": 2,
+              "maeSec": 83.66993268396993,
+              "widthSec": 181.9705674436357,
+              "WIS": 61.997310689616704,
+              "earlyPoint120": 0,
+              "latePoint120": 2,
+              "fallback": 0,
+              "minTailSupport": 12
+            }
+          }
+        }
+      ],
+      "byDate": {
+        "2026-09-14": [
+          {
+            "elapsed": 0,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 29,
+                "dates": 1,
+                "covered": 13,
+                "early": 0,
+                "late": 16,
+                "maeSec": 213.5634090859445,
+                "widthSec": 450.68323259895374,
+                "WIS": 131.97647222686336,
+                "earlyPoint120": 3,
+                "latePoint120": 17,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 29,
+                "dates": 1,
+                "covered": 12,
+                "early": 1,
+                "late": 16,
+                "maeSec": 205.4990993316482,
+                "widthSec": 431.51345344562975,
+                "WIS": 126.06809161055148,
+                "earlyPoint120": 4,
+                "latePoint120": 17,
+                "fallback": 3,
+                "minTailSupport": 154
+              },
+              "normalized_lap_shape": {
+                "n": 29,
+                "dates": 1,
+                "covered": 22,
+                "early": 4,
+                "late": 3,
+                "maeSec": 126.96999757394305,
+                "widthSec": 423.3268203210188,
+                "WIS": 82.82109806016554,
+                "earlyPoint120": 8,
+                "latePoint120": 3,
+                "fallback": 3,
+                "minTailSupport": 154
+              },
+              "conditional_additive": {
+                "n": 29,
+                "dates": 1,
+                "covered": 22,
+                "early": 4,
+                "late": 3,
+                "maeSec": 136.36890118620397,
+                "widthSec": 365.1760823376171,
+                "WIS": 87.22082277252188,
+                "earlyPoint120": 9,
+                "latePoint120": 5,
+                "fallback": 3,
+                "minTailSupport": 28
+              }
+            }
+          },
+          {
+            "elapsed": 60,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 27,
+                "dates": 1,
+                "covered": 10,
+                "early": 2,
+                "late": 15,
+                "maeSec": 205.2718223587394,
+                "widthSec": 386.382350706285,
+                "WIS": 123.64591401323686,
+                "earlyPoint120": 4,
+                "latePoint120": 17,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 27,
+                "dates": 1,
+                "covered": 10,
+                "early": 2,
+                "late": 15,
+                "maeSec": 202.92745663510118,
+                "widthSec": 391.266791920866,
+                "WIS": 122.76311554880469,
+                "earlyPoint120": 4,
+                "latePoint120": 16,
+                "fallback": 3,
+                "minTailSupport": 126
+              },
+              "normalized_lap_shape": {
+                "n": 27,
+                "dates": 1,
+                "covered": 22,
+                "early": 3,
+                "late": 2,
+                "maeSec": 119.71705715352172,
+                "widthSec": 392.44641573535563,
+                "WIS": 79.42467944305972,
+                "earlyPoint120": 6,
+                "latePoint120": 3,
+                "fallback": 3,
+                "minTailSupport": 142
+              },
+              "conditional_additive": {
+                "n": 27,
+                "dates": 1,
+                "covered": 20,
+                "early": 4,
+                "late": 3,
+                "maeSec": 132.23846241024827,
+                "widthSec": 352.8602773658326,
+                "WIS": 85.1665258893051,
+                "earlyPoint120": 7,
+                "latePoint120": 5,
+                "fallback": 3,
+                "minTailSupport": 17
+              }
+            }
+          },
+          {
+            "elapsed": 180,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 22,
+                "dates": 1,
+                "covered": 9,
+                "early": 1,
+                "late": 12,
+                "maeSec": 198.17009432807063,
+                "widthSec": 324.99588829259767,
+                "WIS": 118.55068529906181,
+                "earlyPoint120": 1,
+                "latePoint120": 15,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 22,
+                "dates": 1,
+                "covered": 9,
+                "early": 1,
+                "late": 12,
+                "maeSec": 195.80198889969373,
+                "widthSec": 323.94061433572654,
+                "WIS": 117.33056361052172,
+                "earlyPoint120": 1,
+                "latePoint120": 15,
+                "fallback": 2,
+                "minTailSupport": 81
+              },
+              "normalized_lap_shape": {
+                "n": 22,
+                "dates": 1,
+                "covered": 19,
+                "early": 1,
+                "late": 2,
+                "maeSec": 93.23582369548832,
+                "widthSec": 339.4027576098944,
+                "WIS": 67.26848042693906,
+                "earlyPoint120": 2,
+                "latePoint120": 3,
+                "fallback": 2,
+                "minTailSupport": 123
+              },
+              "conditional_additive": {
+                "n": 22,
+                "dates": 1,
+                "covered": 17,
+                "early": 2,
+                "late": 3,
+                "maeSec": 110.01918109912198,
+                "widthSec": 325.71704705705366,
+                "WIS": 75.15888399396951,
+                "earlyPoint120": 2,
+                "latePoint120": 5,
+                "fallback": 2,
+                "minTailSupport": 6
+              }
+            }
+          },
+          {
+            "elapsed": 300,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 20,
+                "dates": 1,
+                "covered": 12,
+                "early": 0,
+                "late": 8,
+                "maeSec": 166.17562301124204,
+                "widthSec": 275.0762082281314,
+                "WIS": 98.18383403566443,
+                "earlyPoint120": 0,
+                "latePoint120": 12,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 20,
+                "dates": 1,
+                "covered": 12,
+                "early": 0,
+                "late": 8,
+                "maeSec": 165.36568073219638,
+                "widthSec": 273.2616335416275,
+                "WIS": 97.82539283848868,
+                "earlyPoint120": 0,
+                "latePoint120": 12,
+                "fallback": 1,
+                "minTailSupport": 23
+              },
+              "normalized_lap_shape": {
+                "n": 20,
+                "dates": 1,
+                "covered": 17,
+                "early": 1,
+                "late": 2,
+                "maeSec": 82.23526808286559,
+                "widthSec": 278.86948093922325,
+                "WIS": 59.522299941701746,
+                "earlyPoint120": 1,
+                "latePoint120": 2,
+                "fallback": 1,
+                "minTailSupport": 80
+              },
+              "conditional_additive": {
+                "n": 20,
+                "dates": 1,
+                "covered": 16,
+                "early": 1,
+                "late": 3,
+                "maeSec": 107.41717079089472,
+                "widthSec": 296.1406415112966,
+                "WIS": 71.89618320486485,
+                "earlyPoint120": 1,
+                "latePoint120": 4,
+                "fallback": 1,
+                "minTailSupport": 1
+              }
+            }
+          },
+          {
+            "elapsed": 420,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 16,
+                "dates": 1,
+                "covered": 13,
+                "early": 0,
+                "late": 3,
+                "maeSec": 138.5515421882619,
+                "widthSec": 250.0071308502386,
+                "WIS": 83.90169661819711,
+                "earlyPoint120": 0,
+                "latePoint120": 7,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 16,
+                "dates": 1,
+                "covered": 13,
+                "early": 0,
+                "late": 3,
+                "maeSec": 139.4950029860238,
+                "widthSec": 247.05288207027857,
+                "WIS": 84.42035429885904,
+                "earlyPoint120": 0,
+                "latePoint120": 7,
+                "fallback": 1,
+                "minTailSupport": 21
+              },
+              "normalized_lap_shape": {
+                "n": 16,
+                "dates": 1,
+                "covered": 14,
+                "early": 0,
+                "late": 2,
+                "maeSec": 75.46342498969017,
+                "widthSec": 248.97651521059618,
+                "WIS": 56.39505490885819,
+                "earlyPoint120": 0,
+                "latePoint120": 2,
+                "fallback": 1,
+                "minTailSupport": 72
+              },
+              "conditional_additive": {
+                "n": 16,
+                "dates": 1,
+                "covered": 14,
+                "early": 0,
+                "late": 2,
+                "maeSec": 98.12973833038745,
+                "widthSec": 255.7093270865594,
+                "WIS": 68.56974335042517,
+                "earlyPoint120": 0,
+                "latePoint120": 3,
+                "fallback": 1,
+                "minTailSupport": 1
+              }
+            }
+          },
+          {
+            "elapsed": 600,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 8,
+                "dates": 1,
+                "covered": 6,
+                "early": 0,
+                "late": 2,
+                "maeSec": 99.42174084759651,
+                "widthSec": 241.9900560634447,
+                "WIS": 69.95921049394136,
+                "earlyPoint120": 0,
+                "latePoint120": 2,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 8,
+                "dates": 1,
+                "covered": 6,
+                "early": 0,
+                "late": 2,
+                "maeSec": 99.39281980807445,
+                "widthSec": 235.44599469850033,
+                "WIS": 70.52389322816823,
+                "earlyPoint120": 0,
+                "latePoint120": 2,
+                "fallback": 0,
+                "minTailSupport": 13
+              },
+              "normalized_lap_shape": {
+                "n": 8,
+                "dates": 1,
+                "covered": 6,
+                "early": 0,
+                "late": 2,
+                "maeSec": 96.96274813335214,
+                "widthSec": 201.30094240610563,
+                "WIS": 69.94011993740659,
+                "earlyPoint120": 1,
+                "latePoint120": 2,
+                "fallback": 0,
+                "minTailSupport": 49
+              },
+              "conditional_additive": {
+                "n": 8,
+                "dates": 1,
+                "covered": 6,
+                "early": 0,
+                "late": 2,
+                "maeSec": 99.89491631123505,
+                "widthSec": 187.2715185902943,
+                "WIS": 75.94878338623649,
+                "earlyPoint120": 0,
+                "latePoint120": 2,
+                "fallback": 0,
+                "minTailSupport": 15
+              }
+            }
+          }
+        ],
+        "2026-09-15": [
+          {
+            "elapsed": 0,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 23,
+                "dates": 1,
+                "covered": 15,
+                "early": 1,
+                "late": 7,
+                "maeSec": 161.97309135720124,
+                "widthSec": 413.58370739368104,
+                "WIS": 93.79410659661781,
+                "earlyPoint120": 2,
+                "latePoint120": 11,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 23,
+                "dates": 1,
+                "covered": 13,
+                "early": 3,
+                "late": 7,
+                "maeSec": 156.72356050792297,
+                "widthSec": 395.75346348375285,
+                "WIS": 90.08457381448503,
+                "earlyPoint120": 3,
+                "latePoint120": 11,
+                "fallback": 2,
+                "minTailSupport": 154
+              },
+              "normalized_lap_shape": {
+                "n": 23,
+                "dates": 1,
+                "covered": 18,
+                "early": 4,
+                "late": 1,
+                "maeSec": 107.64771301727512,
+                "widthSec": 388.13889138850755,
+                "WIS": 69.47848987262724,
+                "earlyPoint120": 7,
+                "latePoint120": 1,
+                "fallback": 2,
+                "minTailSupport": 154
+              },
+              "conditional_additive": {
+                "n": 23,
+                "dates": 1,
+                "covered": 17,
+                "early": 5,
+                "late": 1,
+                "maeSec": 107.42370117663539,
+                "widthSec": 354.9881415081782,
+                "WIS": 71.17821973477979,
+                "earlyPoint120": 6,
+                "latePoint120": 1,
+                "fallback": 2,
+                "minTailSupport": 28
+              }
+            }
+          },
+          {
+            "elapsed": 60,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 20,
+                "dates": 1,
+                "covered": 12,
+                "early": 1,
+                "late": 7,
+                "maeSec": 142.81638411833083,
+                "widthSec": 341.4415405956401,
+                "WIS": 81.96119613436666,
+                "earlyPoint120": 2,
+                "latePoint120": 10,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 20,
+                "dates": 1,
+                "covered": 12,
+                "early": 1,
+                "late": 7,
+                "maeSec": 141.21096668539425,
+                "widthSec": 350.10740633299304,
+                "WIS": 81.54348278106572,
+                "earlyPoint120": 2,
+                "latePoint120": 10,
+                "fallback": 1,
+                "minTailSupport": 126
+              },
+              "normalized_lap_shape": {
+                "n": 20,
+                "dates": 1,
+                "covered": 18,
+                "early": 1,
+                "late": 1,
+                "maeSec": 87.5279291615615,
+                "widthSec": 352.72724415481446,
+                "WIS": 58.47111843070145,
+                "earlyPoint120": 4,
+                "latePoint120": 1,
+                "fallback": 1,
+                "minTailSupport": 140
+              },
+              "conditional_additive": {
+                "n": 20,
+                "dates": 1,
+                "covered": 16,
+                "early": 3,
+                "late": 1,
+                "maeSec": 96.28144733948562,
+                "widthSec": 338.91288231944657,
+                "WIS": 67.54903573381065,
+                "earlyPoint120": 4,
+                "latePoint120": 1,
+                "fallback": 1,
+                "minTailSupport": 17
+              }
+            }
+          },
+          {
+            "elapsed": 180,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 19,
+                "dates": 1,
+                "covered": 12,
+                "early": 2,
+                "late": 5,
+                "maeSec": 120.85802362053032,
+                "widthSec": 264.3583141218828,
+                "WIS": 66.53541613391359,
+                "earlyPoint120": 1,
+                "latePoint120": 9,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 19,
+                "dates": 1,
+                "covered": 12,
+                "early": 2,
+                "late": 5,
+                "maeSec": 119.66839779264262,
+                "widthSec": 263.9821393414448,
+                "WIS": 66.21045655837645,
+                "earlyPoint120": 1,
+                "latePoint120": 9,
+                "fallback": 1,
+                "minTailSupport": 47
+              },
+              "normalized_lap_shape": {
+                "n": 19,
+                "dates": 1,
+                "covered": 15,
+                "early": 3,
+                "late": 1,
+                "maeSec": 77.25358010426935,
+                "widthSec": 275.39109593593093,
+                "WIS": 51.57295735204553,
+                "earlyPoint120": 3,
+                "latePoint120": 1,
+                "fallback": 1,
+                "minTailSupport": 104
+              },
+              "conditional_additive": {
+                "n": 19,
+                "dates": 1,
+                "covered": 14,
+                "early": 4,
+                "late": 1,
+                "maeSec": 86.90089991166899,
+                "widthSec": 313.7925524283632,
+                "WIS": 57.84356524162077,
+                "earlyPoint120": 3,
+                "latePoint120": 1,
+                "fallback": 1,
+                "minTailSupport": 6
+              }
+            }
+          },
+          {
+            "elapsed": 300,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 13,
+                "dates": 1,
+                "covered": 12,
+                "early": 0,
+                "late": 1,
+                "maeSec": 115.2240073128196,
+                "widthSec": 246.29970858773356,
+                "WIS": 60.719017356867205,
+                "earlyPoint120": 0,
+                "latePoint120": 5,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 13,
+                "dates": 1,
+                "covered": 12,
+                "early": 0,
+                "late": 1,
+                "maeSec": 115.59698585487197,
+                "widthSec": 244.8110579867391,
+                "WIS": 60.80322416737477,
+                "earlyPoint120": 0,
+                "latePoint120": 5,
+                "fallback": 1,
+                "minTailSupport": 41
+              },
+              "normalized_lap_shape": {
+                "n": 13,
+                "dates": 1,
+                "covered": 11,
+                "early": 1,
+                "late": 1,
+                "maeSec": 54.253483213943,
+                "widthSec": 248.50667290886864,
+                "WIS": 37.86121682405227,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 1,
+                "minTailSupport": 100
+              },
+              "conditional_additive": {
+                "n": 13,
+                "dates": 1,
+                "covered": 11,
+                "early": 1,
+                "late": 1,
+                "maeSec": 56.37374647605605,
+                "widthSec": 294.59545585894756,
+                "WIS": 41.0239925453382,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 1,
+                "minTailSupport": 1
+              }
+            }
+          },
+          {
+            "elapsed": 420,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 10,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 1,
+                "maeSec": 49.801230920497574,
+                "widthSec": 207.5554724033609,
+                "WIS": 34.006471860700074,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 10,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 1,
+                "maeSec": 49.81770330363675,
+                "widthSec": 203.7452064571013,
+                "WIS": 34.01868963246076,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 0,
+                "minTailSupport": 23
+              },
+              "normalized_lap_shape": {
+                "n": 10,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 1,
+                "maeSec": 49.28691000476146,
+                "widthSec": 198.27833447108077,
+                "WIS": 32.04399218004283,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 0,
+                "minTailSupport": 82
+              },
+              "conditional_additive": {
+                "n": 10,
+                "dates": 1,
+                "covered": 9,
+                "early": 0,
+                "late": 1,
+                "maeSec": 45.29452725248458,
+                "widthSec": 231.69506252763102,
+                "WIS": 31.823306037581734,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 0,
+                "minTailSupport": 31
+              }
+            }
+          },
+          {
+            "elapsed": 600,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 2,
+                "dates": 1,
+                "covered": 2,
+                "early": 0,
+                "late": 0,
+                "maeSec": 49.194689451046656,
+                "widthSec": 200.66666606626507,
+                "WIS": 29.776007554766558,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 2,
+                "dates": 1,
+                "covered": 2,
+                "early": 0,
+                "late": 0,
+                "maeSec": 49.14094178900339,
+                "widthSec": 193.75385131752648,
+                "WIS": 29.29723735083623,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 9
+              },
+              "normalized_lap_shape": {
+                "n": 2,
+                "dates": 1,
+                "covered": 2,
+                "early": 0,
+                "late": 0,
+                "maeSec": 49.10502297916016,
+                "widthSec": 141.91133123910737,
+                "WIS": 25.829096408993877,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 33
+              },
+              "conditional_additive": {
+                "n": 2,
+                "dates": 1,
+                "covered": 1,
+                "early": 1,
+                "late": 0,
+                "maeSec": 50.83494257579548,
+                "widthSec": 161.30872381086596,
+                "WIS": 27.903846416382752,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 12
+              }
+            }
+          }
+        ],
+        "2026-09-16": [
+          {
+            "elapsed": 0,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 10,
+                "dates": 1,
+                "covered": 8,
+                "early": 0,
+                "late": 2,
+                "maeSec": 159.1254670958681,
+                "widthSec": 410.5831023011284,
+                "WIS": 88.81317284127196,
+                "earlyPoint120": 2,
+                "latePoint120": 4,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 10,
+                "dates": 1,
+                "covered": 8,
+                "early": 0,
+                "late": 2,
+                "maeSec": 151.93084209815828,
+                "widthSec": 396.2811724929411,
+                "WIS": 84.75883337739096,
+                "earlyPoint120": 2,
+                "latePoint120": 4,
+                "fallback": 2,
+                "minTailSupport": 154
+              },
+              "normalized_lap_shape": {
+                "n": 10,
+                "dates": 1,
+                "covered": 9,
+                "early": 1,
+                "late": 0,
+                "maeSec": 109.2651737216523,
+                "widthSec": 390.1733998693182,
+                "WIS": 64.06825176197714,
+                "earlyPoint120": 3,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 154
+              },
+              "conditional_additive": {
+                "n": 10,
+                "dates": 1,
+                "covered": 10,
+                "early": 0,
+                "late": 0,
+                "maeSec": 97.86105314758848,
+                "widthSec": 376.6331581150273,
+                "WIS": 57.72922825686466,
+                "earlyPoint120": 2,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 28
+              }
+            }
+          },
+          {
+            "elapsed": 60,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 9,
+                "dates": 1,
+                "covered": 6,
+                "early": 1,
+                "late": 2,
+                "maeSec": 155.06722151155304,
+                "widthSec": 354.63337869340245,
+                "WIS": 88.61841573874274,
+                "earlyPoint120": 2,
+                "latePoint120": 3,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 9,
+                "dates": 1,
+                "covered": 6,
+                "early": 1,
+                "late": 2,
+                "maeSec": 152.92284779908212,
+                "widthSec": 358.4306665364641,
+                "WIS": 88.0513477321488,
+                "earlyPoint120": 2,
+                "latePoint120": 3,
+                "fallback": 2,
+                "minTailSupport": 126
+              },
+              "normalized_lap_shape": {
+                "n": 9,
+                "dates": 1,
+                "covered": 8,
+                "early": 1,
+                "late": 0,
+                "maeSec": 110.69724908298376,
+                "widthSec": 361.54262146616844,
+                "WIS": 66.6855803373218,
+                "earlyPoint120": 2,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 140
+              },
+              "conditional_additive": {
+                "n": 9,
+                "dates": 1,
+                "covered": 8,
+                "early": 1,
+                "late": 0,
+                "maeSec": 114.43156486930287,
+                "widthSec": 366.20889762670936,
+                "WIS": 68.24143734346423,
+                "earlyPoint120": 2,
+                "latePoint120": 0,
+                "fallback": 2,
+                "minTailSupport": 17
+              }
+            }
+          },
+          {
+            "elapsed": 180,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 7,
+                "dates": 1,
+                "covered": 4,
+                "early": 1,
+                "late": 2,
+                "maeSec": 129.10756716390824,
+                "widthSec": 279.29028527849675,
+                "WIS": 74.62952967599104,
+                "earlyPoint120": 1,
+                "latePoint120": 2,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 7,
+                "dates": 1,
+                "covered": 4,
+                "early": 1,
+                "late": 2,
+                "maeSec": 126.98314099820459,
+                "widthSec": 277.08885560312723,
+                "WIS": 73.7313101883171,
+                "earlyPoint120": 1,
+                "latePoint120": 2,
+                "fallback": 1,
+                "minTailSupport": 79
+              },
+              "normalized_lap_shape": {
+                "n": 7,
+                "dates": 1,
+                "covered": 6,
+                "early": 1,
+                "late": 0,
+                "maeSec": 87.71530043460712,
+                "widthSec": 288.2948371418268,
+                "WIS": 54.68483109772819,
+                "earlyPoint120": 1,
+                "latePoint120": 0,
+                "fallback": 1,
+                "minTailSupport": 122
+              },
+              "conditional_additive": {
+                "n": 7,
+                "dates": 1,
+                "covered": 5,
+                "early": 2,
+                "late": 0,
+                "maeSec": 94.52664905009877,
+                "widthSec": 323.10956712827203,
+                "WIS": 59.84803030441602,
+                "earlyPoint120": 2,
+                "latePoint120": 0,
+                "fallback": 1,
+                "minTailSupport": 6
+              }
+            }
+          },
+          {
+            "elapsed": 300,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 5,
+                "dates": 1,
+                "covered": 4,
+                "early": 0,
+                "late": 1,
+                "maeSec": 75.24075856123319,
+                "widthSec": 228.8745024123843,
+                "WIS": 42.32018892939648,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 5,
+                "dates": 1,
+                "covered": 4,
+                "early": 0,
+                "late": 1,
+                "maeSec": 73.21583646790855,
+                "widthSec": 225.33716664058096,
+                "WIS": 41.246406631876155,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 0,
+                "minTailSupport": 31
+              },
+              "normalized_lap_shape": {
+                "n": 5,
+                "dates": 1,
+                "covered": 5,
+                "early": 0,
+                "late": 0,
+                "maeSec": 60.55170462831175,
+                "widthSec": 230.54108310338296,
+                "WIS": 35.55330708299611,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 91
+              },
+              "conditional_additive": {
+                "n": 5,
+                "dates": 1,
+                "covered": 5,
+                "early": 0,
+                "late": 0,
+                "maeSec": 60.45970083188481,
+                "widthSec": 273.15046908209604,
+                "WIS": 38.36326488276801,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 37
+              }
+            }
+          },
+          {
+            "elapsed": 420,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 2,
+                "dates": 1,
+                "covered": 2,
+                "early": 0,
+                "late": 0,
+                "maeSec": 85.15971294878531,
+                "widthSec": 277.6477992161874,
+                "WIS": 46.8964242640076,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 2,
+                "dates": 1,
+                "covered": 2,
+                "early": 0,
+                "late": 0,
+                "maeSec": 85.0348668469062,
+                "widthSec": 275.1511100685407,
+                "WIS": 46.68836295353811,
+                "earlyPoint120": 0,
+                "latePoint120": 1,
+                "fallback": 0,
+                "minTailSupport": 70
+              },
+              "normalized_lap_shape": {
+                "n": 2,
+                "dates": 1,
+                "covered": 2,
+                "early": 0,
+                "late": 0,
+                "maeSec": 84.21637025877494,
+                "widthSec": 293.30736666727944,
+                "WIS": 47.62594786407695,
+                "earlyPoint120": 1,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 120
+              },
+              "conditional_additive": {
+                "n": 2,
+                "dates": 1,
+                "covered": 2,
+                "early": 0,
+                "late": 0,
+                "maeSec": 84.79092167077482,
+                "widthSec": 274.8687113687474,
+                "WIS": 46.588221314841434,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 47
+              }
+            }
+          },
+          {
+            "elapsed": 600,
+            "arms": {
+              "current_scaled_marginal": {
+                "n": 1,
+                "dates": 1,
+                "covered": 1,
+                "early": 0,
+                "late": 0,
+                "maeSec": 19.090146270626065,
+                "widthSec": 229.98922097262337,
+                "WIS": 21.695996821716914,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": null
+              },
+              "matched_marginal_control": {
+                "n": 1,
+                "dates": 1,
+                "covered": 1,
+                "early": 0,
+                "late": 0,
+                "maeSec": 21.588600895423184,
+                "widthSec": 222.0671911826158,
+                "WIS": 22.000679710648782,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 23
+              },
+              "normalized_lap_shape": {
+                "n": 1,
+                "dates": 1,
+                "covered": 1,
+                "early": 0,
+                "late": 0,
+                "maeSec": 3.687119592730795,
+                "widthSec": 181.7794067292381,
+                "WIS": 13.347666979526139,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 82
+              },
+              "conditional_additive": {
+                "n": 1,
+                "dates": 1,
+                "covered": 1,
+                "early": 0,
+                "late": 0,
+                "maeSec": 19.540043882197892,
+                "widthSec": 180.88664553590604,
+                "WIS": 18.572457663126368,
+                "earlyPoint120": 0,
+                "latePoint120": 0,
+                "fallback": 0,
+                "minTailSupport": 24
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "_publication": {
+    "originalSource": "red-window-data/conditional-hold-screen.json",
+    "originalSha256": "41df6871928082e1c525dee4467cff8d02f8ad767788d98fd26067fdf79f75f3",
+    "omittedArrays": [
+      {
+        "path": "reports[0].records",
+        "items": 892,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "reports[1].records",
+        "items": 972,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

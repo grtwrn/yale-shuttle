@@ -1,0 +1,182 @@
+{
+  "det/10/baseline": {
+    "n": 6968,
+    "coveragePct": 81.7,
+    "medianWidthSec": 746.7
+  },
+  "det/10/candidate": {
+    "n": 6968,
+    "coveragePct": 81.7,
+    "medianWidthSec": 747.3
+  },
+  "det/all/baseline": {
+    "n": 38062,
+    "coveragePct": 82.6,
+    "medianWidthSec": 411.8
+  },
+  "det/all/candidate": {
+    "n": 38062,
+    "coveragePct": 82.8,
+    "medianWidthSec": 412.8
+  },
+  "prox/10/baseline": {
+    "n": 6529,
+    "coveragePct": 91.2,
+    "medianWidthSec": 722.3
+  },
+  "prox/10/candidate": {
+    "n": 6529,
+    "coveragePct": 91.3,
+    "medianWidthSec": 722.8
+  },
+  "prox/all/baseline": {
+    "n": 37987,
+    "coveragePct": 88.4,
+    "medianWidthSec": 388.2
+  },
+  "prox/all/candidate": {
+    "n": 37987,
+    "coveragePct": 88.6,
+    "medianWidthSec": 386.9
+  },
+  "det/9/baseline": {
+    "n": 6747,
+    "coveragePct": 80.6,
+    "medianWidthSec": 626.9
+  },
+  "det/9/candidate": {
+    "n": 6747,
+    "coveragePct": 80.8,
+    "medianWidthSec": 627.9
+  },
+  "prox/9/baseline": {
+    "n": 6735,
+    "coveragePct": 90.4,
+    "medianWidthSec": 617.1
+  },
+  "prox/9/candidate": {
+    "n": 6735,
+    "coveragePct": 90.6,
+    "medianWidthSec": 621.1
+  },
+  "det/8/baseline": {
+    "n": 4621,
+    "coveragePct": 84.7,
+    "medianWidthSec": 514.6
+  },
+  "det/8/candidate": {
+    "n": 4621,
+    "coveragePct": 84.9,
+    "medianWidthSec": 516.3
+  },
+  "prox/8/baseline": {
+    "n": 4841,
+    "coveragePct": 90,
+    "medianWidthSec": 384.4
+  },
+  "prox/8/candidate": {
+    "n": 4841,
+    "coveragePct": 90.2,
+    "medianWidthSec": 384.4
+  },
+  "det/19/baseline": {
+    "n": 2045,
+    "coveragePct": 77,
+    "medianWidthSec": 825.6
+  },
+  "det/19/candidate": {
+    "n": 2045,
+    "coveragePct": 76.9,
+    "medianWidthSec": 826.5
+  },
+  "prox/19/baseline": {
+    "n": 1909,
+    "coveragePct": 82.8,
+    "medianWidthSec": 776.8
+  },
+  "prox/19/candidate": {
+    "n": 1909,
+    "coveragePct": 82.8,
+    "medianWidthSec": 776.9
+  },
+  "det/3/baseline": {
+    "n": 5420,
+    "coveragePct": 84,
+    "medianWidthSec": 335.6
+  },
+  "det/3/candidate": {
+    "n": 5420,
+    "coveragePct": 84.3,
+    "medianWidthSec": 335.6
+  },
+  "prox/3/baseline": {
+    "n": 5463,
+    "coveragePct": 86.7,
+    "medianWidthSec": 330.6
+  },
+  "prox/3/candidate": {
+    "n": 5463,
+    "coveragePct": 86.8,
+    "medianWidthSec": 330.8
+  },
+  "det/1/baseline": {
+    "n": 5354,
+    "coveragePct": 87.7,
+    "medianWidthSec": 279
+  },
+  "det/1/candidate": {
+    "n": 5354,
+    "coveragePct": 88.1,
+    "medianWidthSec": 279.6
+  },
+  "prox/1/baseline": {
+    "n": 5436,
+    "coveragePct": 91.4,
+    "medianWidthSec": 279.4
+  },
+  "prox/1/candidate": {
+    "n": 5436,
+    "coveragePct": 91.6,
+    "medianWidthSec": 280.2
+  },
+  "det/2/baseline": {
+    "n": 5657,
+    "coveragePct": 82.3,
+    "medianWidthSec": 294.8
+  },
+  "det/2/candidate": {
+    "n": 5657,
+    "coveragePct": 82.7,
+    "medianWidthSec": 295.6
+  },
+  "prox/2/baseline": {
+    "n": 5773,
+    "coveragePct": 84.1,
+    "medianWidthSec": 293.3
+  },
+  "prox/2/candidate": {
+    "n": 5773,
+    "coveragePct": 84.3,
+    "medianWidthSec": 294.5
+  },
+  "det/15/baseline": {
+    "n": 1250,
+    "coveragePct": 72.8,
+    "medianWidthSec": 432.9
+  },
+  "det/15/candidate": {
+    "n": 1250,
+    "coveragePct": 73,
+    "medianWidthSec": 432.9
+  },
+  "prox/15/baseline": {
+    "n": 1301,
+    "coveragePct": 79.9,
+    "medianWidthSec": 432.9
+  },
+  "prox/15/candidate": {
+    "n": 1301,
+    "coveragePct": 80.2,
+    "medianWidthSec": 432.2
+  }
+}

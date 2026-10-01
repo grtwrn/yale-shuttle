@@ -321,7 +321,9 @@ describe("the berth map mounts inert, so the card still scrolls", () => {
     // beside ✕ at top-right, same Escape (operator, 2026-09-02).
     expect(src).toContain("map-fs");
     expect(src).toMatch(/aria-label="Back"/);
-    expect(src).toMatch(/e\.key === "Escape"/);
+    expect(src).toContain("useMapFullscreen()");
+    const fullscreen = readFileSync(new URL("./useMapFullscreen.ts", import.meta.url), "utf8");
+    expect(fullscreen).toContain('event.key !== "Escape"');
     expect(src).toContain('aria-label={fullscreen ? "Exit fullscreen" : "Full map"}');
   });
 

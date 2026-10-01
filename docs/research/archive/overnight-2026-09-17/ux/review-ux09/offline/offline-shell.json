@@ -1,0 +1,30 @@
+{
+  "scope": "Built SPA, real service worker and local HTTP fixtures; browser network offline; no live backend",
+  "checks": [
+    "An open page loses live status after network failure; expired estimates are unavailable while routes remain",
+    "Cached app shell opens offline; Trip/Map explain unavailable status without stale bus counts; no API response exists in Cache Storage",
+    "Restored network automatically restores live routes/counts and clears interruption copy"
+  ],
+  "states": [
+    {
+      "name": "open-page-offline-expired",
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nLive bus updates interrupted. Times and positions may be out of date. Reconnecting…\nHide all\nRed\nBlue Day\nBlue Wknd\nBlue Night\nBlue West\nOrange\nOrg Night\nOrg East\nBrown\nPink\nGreen\nPurple\nGold\nGrocery TJ\nGrocery Ham\n307\n309\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRunning now\nRED\n★\n~loop 25 min · M–F 5:40a–7p\nLive count unavailable\n29 stops · live arrivals unavailable ›\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout"
+    },
+    {
+      "name": "cached-shell-offline-reload",
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nLive bus updates unavailable. Reconnecting…\nHide all\nRed\nBlue Day\nBlue Wknd\nBlue Night\nBlue West\nOrange\nOrg Night\nOrg East\nBrown\nPink\nGreen\nPurple\nGold\nGrocery TJ\nGrocery Ham\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRunning now\nRoute maps will appear when updates reconnect.\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout"
+    }
+  ],
+  "errors": [],
+  "cachePaths": [
+    "/",
+    "/assets/rider-CIGW-MKW.css",
+    "/assets/geo-BjWFh9tz.js",
+    "/assets/rider-CxadgW4T.js",
+    "/assets/pullToRefresh-DX1iMfdw.js",
+    "/icons/icon-192.png"
+  ],
+  "completed": true,
+  "requests": 3,
+  "resourcesClosed": true
+}

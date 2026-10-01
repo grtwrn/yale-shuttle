@@ -1,0 +1,69 @@
+{
+  "createdAt": "2026-09-18T19:56:13.670611+00:00",
+  "purpose": "Bounded causal bunching-regime remaining-wait screen for Red Winchester. No app/repo/production/watch changes. All families and subgroups prespecified.",
+  "priorWork": "Old broad stop-flag remaining-time models and additive departure-order/current-anchor binary classifiers were weak or inconsistent. This screen uses current causal route order, compact spacing regimes, equal-origin fitting and prespecified forecast-range subgroups; it does not rerun a best-stop search.",
+  "cohort": "Exactly original285 focal visits plus already-scored5 laterSep18 visits=290;160 training outcomes beforeSep14,113 Sep14\u201317,17 Sep18. All later outcomes already inspected. Newly captured afternoon outcomes stay unopened until all coefficients/support rules frozen.",
+  "landmarks": [
+    0,
+    60,
+    180,
+    300,
+    480
+  ],
+  "arms": [
+    "landmark_control",
+    "compact_spacing",
+    "supported_bunching_gate"
+  ],
+  "identity": "At each forecast origin use latest unconditional anchor from every bus across ALL routes, known atanchor+15s. Exclude currentbus, other route/day, invalid canonical occurrence and physicalanchor age>300s. Select nearest positive forward/backward modulo stop separation; any same-stop anchor makes ordering unknown. Equal nearest-gap ties also unknown. One peer can be ahead and behind but is flagged, not independent fleet evidence.",
+  "spacing": "Training-only median leg_sec from reached single-hop canonical Red legs with arrival+120s beforeSep14. Sum inter-stop times in forward and backward route order, no future realized peer trajectory and no extrapolated movement. This is a typical inter-stop-travel-time DISTANCE PROXY; it excludes prospective holds and is not actual time headway or arrival prediction.",
+  "regimes": {
+    "close_leader": "known forward peer and proxy<=180sec",
+    "close_follower": "known backward peer and proxy<=180sec",
+    "co_anchor": "another fresh peer has same latest stop anchor, not proof both stopped",
+    "distinct_close_balance": "two distinct ordered peers and either close; (backProxy\u2212forwardProxy)/(sum)",
+    "same_peer_close": "one bus plays both roles and either close"
+  },
+  "freshnessSeconds": 300,
+  "closeProxySeconds": 180,
+  "fitKnownDelaySeconds": 15,
+  "sensitivity": "Apply identical primary coefficients/support rules to anchor+120s inputs, do not refit/select a favorable timing model. Report identity/availability differences.",
+  "control": "Ten-feature landmark hazard: existing nine elapsed/lap/15minute-clock terms plus elapsed-at-origin/600. Ownlap is fixed atpin and missingness explicit. Fit current-age landmark remaining-time likelihood with L2=4,unpenalized intercept.",
+  "compactSpacingFeatures": [
+    "ahead known",
+    "log1p(forwardProxy/180) or0",
+    "ahead physical anchor age/300 or0",
+    "behind known",
+    "log1p(backwardProxy/180) or0",
+    "behind physical anchor age/300 or0",
+    "same peer",
+    "co-anchor"
+  ],
+  "gateFeatures": [
+    "closeleader",
+    "closefollower",
+    "coanchor",
+    "distinct-close normalizedbalance",
+    "samepeer-close",
+    "gate*aheadAge/300",
+    "gate*behindAge/300"
+  ],
+  "support": "Each added feature requires nonzero support from>=20 distinct training focalvisits and>=3 training dates. Gate activation only uses supported closeleader/closefollower/coanchor regime indicators; outside it all correction features arezero and forecast exactlymatchescontrol. Unsupported/missing/tied histories remain in every comparison.",
+  "fit": "Fit control once on preSep14. Fit each added arm as L2=10 regularized correction to fixed control logits; no correction intercept, no search/calibration, features in declared units. Every eligible landmarkorigin has equal likelihood weight. Overlapping residual histories are dependent and long holds contribute more origins: this is NOT one independent likelihood per hold.",
+  "forecast": "All neighbor/regime features fixed from forecast origin across the residual hazard. Future own elapsed time and deterministic clock advance. This directly learns remaining time conditional on an initial snapshot; it does not assume neighbors physically staystill or use actual later positions.15sec bins,censored exposure beyond1800residualsec, explicit continued tail.",
+  "metrics": "Full distribution: WIS80,MAE,p90,width,lower10th pinball,early/late missrates andseverity,distinctaffectedvisits,forecastavailability. Primary equal-origin/checkpoint metrics; fixed-age equalvisits plus visit-balanced descriptive totals. Report all arms/regimes/dates and supported/unsupported ownlap, missing/one-peer/co-anchor states.",
+  "forecastBands": "Prespecified CONTROL-predicted remaining median<=180,180\u2013480,>480sec (<=3,3\u20138,>8min), not actual outcome bins. Cross with gate/regime support and per-age; do not choose/deploy a favorable band from these reused data.",
+  "validation": "Input/time hashes; last-all-route identity and future-delete invariance; exact no-gate fallback; ordered finiteCDF includingtail; all valid short/long waits retained. Audit largestregressions, including known64318/65347 and any coanchor cases. No outcome-based exclusion.",
+  "runtimeComparator": "Retain actual nine-feature runtime current-wait component with160historical fit and true existing marginalfallback, separate from matched landmarkcontrol. Component gains must survive later continuouswarm fullpickup replay before any servingchange.",
+  "newAfternoon": "Root may capture AFTER PLANfreeze, but builder does not open newoutcomes until all coefficients/support rules are saved. Apply every frozen arm withoutrefit; report as small same-day extension,not independentdayconfirmation.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/red-rest-history-2026-09-18/own-history/cohort.json": "c8260e360d8d85f88d7d6a2019ba83dedc2d399bfa17c0cd957db76b0eb584c7",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-rest-history-2026-09-18/own-history/extension-cohort.json": "89b76162beb63a1e44d101284eb170690f8e0403e2295d70667dd3cf40f895e5",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-rest-history-2026-09-18/own-history/predictions.jsonl": "34b1b541ff34bccdb5a0745f2f71e752a6fdf477c4843f3524a19fb1b5529f8c",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-rest-history-2026-09-18/own-history/extension-predictions.jsonl": "7e8c2a37ab5c51e856514769d9ee0376cd34452e69dcf1bf496ab70dabf4fd8d",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-rest-history-2026-09-18/recordings.json": "ba808edd5eb18974a91087511d833c99b2410ec6461da5996d2ede71415d5142",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/outcomes-complete.db": "fe8f6efd8ba7a1d0eb472307eca02f3a76f7c1a3ecdcc9972f37cda520605283",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/recordings-followup.json": "5e19538a3fd4c7c3cae3d0cd201bdec959ac3e4887142dcd5f7c8930f0ce8fad",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/union-survival/screen.py": "8fcd0aba32330bba09d4d7b7b7b7b80ff35cf07058a6b6131d4bd88b6cc77911"
+  }
+}

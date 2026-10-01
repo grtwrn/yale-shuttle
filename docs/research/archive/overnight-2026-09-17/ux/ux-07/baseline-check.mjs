@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+const service=process.cwd(),out='/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-07';
+const {chromium}=createRequire(service+'/package.json')('playwright-core');
+const {seedTestId}=await import(service+'/scripts/testId.mjs');
+const feed=JSON.parse(await fs.readFile(service+'/web/src/__fixtures__/buses-payload.json','utf8'));feed.buses=[];delete feed.server_eta;
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});let ctx,page,mode='pending',pending=[];const report={errors:[]};
+try{
+ ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block',timezoneId:'America/New_York'});await seedTestId(ctx);page=await ctx.newPage();page.on('pageerror',e=>report.errors.push(e.message));await page.clock.install({time:new Date('2026-09-17T14:00:00-04:00')});
+ await page.route('**/*',async r=>{const u=new URL(r.request().url());if(u.hostname!=='empty-state.test')return r.abort();if(u.pathname==='/api/buses'){if(mode==='pending'){pending.push(r);return;}return mode==='fail'?r.fulfill({status:503,json:{error:'fixture'}}):r.fulfill({json:feed});}if(u.pathname==='/api/weather')return r.fulfill({status:204});if(u.pathname.startsWith('/api/'))return r.fulfill({json:{reports:[],results:[]}});const f=u.pathname==='/'?'/index.html':u.pathname;try{return r.fulfill({body:await fs.readFile(out+'/baseline-dist'+f),contentType:f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':'text/html'});}catch{return r.fulfill({status:404});}});
+ await page.goto('https://empty-state.test',{waitUntil:'domcontentloaded'});await page.getByText('😴 No shuttles running right now',{exact:true}).waitFor();report.loading=await page.locator('body').innerText();mode='fail';for(const r of pending)await r.fulfill({status:503,json:{error:'fixture'}});pending=[];await page.getByText('Live bus updates unavailable. Reconnecting…',{exact:true}).waitFor();report.failed=await page.locator('body').innerText();assert.match(report.failed,/No shuttles running/);await page.screenshot({path:out+'/baseline-failed.png',fullPage:true});
+ mode='empty';await page.clock.runFor(5500);await page.waitForTimeout(100);await page.locator('nav').getByRole('button',{name:'map',exact:true}).click();await page.locator('[id="route-card-Red"]').waitFor();mode='fail';await page.clock.runFor(5500);await page.waitForTimeout(100);report.failedMap=await page.locator('[id="route-card-Red"]').innerText();assert.match(report.failedMap,/no buses en route/);report.completed=true;
+}finally{if(page)await page.close();if(ctx)await ctx.close();await browser.close();report.resourcesClosed=true;await fs.writeFile(out+'/baseline.json',JSON.stringify(report,null,2));}console.log(JSON.stringify(report,null,2));

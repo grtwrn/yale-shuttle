@@ -1,0 +1,11 @@
+{
+  "outcome": "candidate",
+  "summary": "Restore keyboard focus after closing fullscreen trip maps\nFixed Back and Escape focus restoration across overview, walking and pickup-location maps. Trip data and ETA behavior are unchanged. Evidence saved in ux/ux-06/REPORT.md; HEAD and index preserved.",
+  "next_task": "Independently review UX-06 focus ownership and map lifecycle. Then continue trip-action/correct-bus/final-walk coverage, coordinating ETA's ordered-pickup research after its independent review.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-06/verify.sh — final exit 0: 51 tests, backend/frontend typechecks, Vite build, mobile/desktop and built-app browser checks.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-06/browser-final.sh — exit 0: 21 mobile and 18 desktop closing states; zero page errors; resources closed.",
+    "node --check services/shuttle-v2/scripts/fullscreen-map-check.mjs; git diff --check; git diff --cached --exit-code — passed. Exact HEAD and five source hashes verified.",
+    "Initial harness setup errors and outdated source-location assertion failure are preserved in REPORT.md. Full suite and complete staging remain controller gates."
+  ]
+}

@@ -35,6 +35,7 @@
  */
 
 import { quantile, residual, residualMedian, type Dist } from "./dist";
+import { releaseDist, releaseResidual, releaseModelEnabled, type ReleasePin } from './release';
 import { lapAt, lapFactor } from "./lap";
 import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
 import { applyHorizonBias, applyRouteScale, routeScale, widenBand } from "./params";
@@ -48,7 +49,11 @@ export const MAX_ETA_SEC = 90 * 60;
 /** Entries per stop: this lap and the next. */
 const MAX_OCCURRENCES = 2;
 
+export const DISTRIBUTION_QUANTILES = Array.from({ length: 50 }, (_, i) => (i + 0.5) / 50);
+
 export interface StopArrival {
+  /** Equal-mass quantile dots from the priced mixture, with display corrections. */
+  distribution?: number[] | undefined;
   stopId: number;
   /** 0 = the next time the bus reaches the stop, 1 = the time after. */
   occurrence: number;
@@ -58,53 +63,15 @@ export interface StopArrival {
   eta: number;
   low: number;
   high: number;
-  /**
-   * THE DRIVE FLOOR: the same chain with the stand ALREADY IN PROGRESS ended
-   * this second — quantile tau of (drive out of the stand + every stand and
-   * drive between there and here). It is what no departure can skip.
-   *
-   * Equal to `eta` whenever the lead is not resting, because there is then no
-   * current stand to remove; below the RAW `eta` while the lead rests, by the
-   * residual of that rest. It may exceed the SHOWN `eta`, and on a long stand
-   * it should: #119 holds the shown number down while the conditional median
-   * climbs, and the drive underneath it does not move.
-   *
-   * It exists because the DISPLAY needs a floor and had been RECONSTRUCTING
-   * one by subtraction — `eta - remainingStand`, with the stand read from a
-   * second computation (arrivals.ts `shownStandSec`) at a second clock, and
-   * the difference floored at zero. On a stand that has run past its table
-   * that subtraction collapses, and the card printed a low end of "<1 min"
-   * for a bus three hops and 472 m from the rider's stop (operator,
-   * 2026-09-10: `Red in <1-8, then 14 min`). The floor is a quantity the
-   * model already holds; it is served here rather than guessed there, so
-   * there is still exactly one arithmetic.
-   *
-   * NOT clamped by #119's floors: the clamp is a rule about the number a
-   * standing bus shows, and a drive is not standing time.
+  /** Median arrival in the scenario where the current rest ends now.
+   * Future regulated waits are recomputed using each path's earlier arrival.
+   * This is not a mathematical lower bound: leaving earlier can buy a longer
+   * later wait. It is independent of the display's standing clamp.
    */
   departNow: number;
-  /**
-   * THE BAND'S FLOOR, MEASURED AND NOT APPLIED: quantile 0.1 of `departNow`'s
-   * chain — the same rest-less chain, read at the band's own low quantile —
-   * and `low` itself when the lead is not resting. Sample for sample the
-   * lead chain is that chain plus a non-negative residual, so in the model
-   * `low` cannot honestly sit below this; it does only because #119's clamp
-   * shifts the band down with the shown number and the shift is floored at
-   * zero rather than here (0 s for twelve consecutive polls on the operator's
-   * 2026-09-10 case, "now-8 min" for a bus 595 m away).
-   *
-   * It is SERVED so the replay can score it and NOT enforced, because the
-   * measurement refused it (2026-09-11, gps-replay 9/9 and 9/10, Red and Blue
-   * Day, `scripts/eta-replay/band-coverage.mjs --floor fl`): the truth
-   * arrives before this q10 on 7-18% of pairs at 2-30 min — the rest-less
-   * chain prices the stands ahead at pooled medians and is pessimistic where
-   * a bus takes them short — so flooring at it cost 3-13 points of held-out
-   * coverage under the served widening, and the nightly fit would have to
-   * widen 5-10 min bands by ~45% to buy the coverage back. A floor at
-   * `departNow` itself (the median) is worse still: for a moving bus that IS
-   * `eta`, so it deletes the lower half of every moving band (Red 5-10 min
-   * moving coverage 77 -> 32%). The right fix is the chain's pessimism, not
-   * a floor on its band.
+  /** Legacy diagnostic: q10 of the leave-now scenario, capped at the shown
+   * point, or the displayed low when there is no attributed rest. Never
+   * enforced as a lower bound; regulation can change the later waits.
    */
   lowFloor: number;
   /** Mass of the lead cluster (1 on a plain loop). */
@@ -185,31 +152,31 @@ function addTerm(samples: Float64Array, d: Dist, term: number, scale = 1): void 
  * because the simulator prices the same bus for many riders in one poll.
  */
 const residualCache = new Map<string, Float64Array>();
-function residualDraws(d: Dist, r: number, term: number): Float64Array {
+function residualDraws(d: Dist, r: number, term: number, stable = false): Float64Array {
   let id = distIds.get(d);
   if (id === undefined) { id = nextDistId++; distIds.set(d, id); }
-  const key = `${id}|${Math.round(r / 5)}|${term}`;
+  const key = `${id}|${Math.round(r / 5)}|${term}|${stable}`;
   const hit = residualCache.get(key);
   if (hit) return hit;
   if (residualCache.size > 4096) residualCache.clear();
   const perm = permFor(term);
-  const f = residual(d, Math.round(r / 5) * 5);
+  const f = (stable ? releaseResidual : residual)(d, Math.round(r / 5) * 5);
   const out = new Float64Array(K);
   for (let k = 0; k < K; k++) out[k] = f(STRATA[perm[k]!]!);
   residualCache.set(key, out);
   return out;
 }
 
-function addResidual(samples: Float64Array, d: Dist, r: number, term: number, f = 1): void {
+function addResidual(samples: Float64Array, d: Dist, r: number, term: number, f = 1, stable = false): void {
   // A stand scaled by f is the variable f x X, so its residual given r seconds
   // already stood is f x (X's residual given r / f) — exactly, with no new
   // distribution to build and no new entry in the draw cache.
   if (f === 1) {
-    const draws = residualDraws(d, r, term);
+    const draws = residualDraws(d, r, term, stable);
     for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]!;
     return;
   }
-  const draws = residualDraws(d, r / f, term);
+  const draws = residualDraws(d, r / f, term, stable);
   for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]! * f;
 }
 
@@ -301,6 +268,10 @@ interface LapCorrection {
 }
 
 const ZERO = new Float64Array(K);
+
+/** Paired-replay control; joint lap paths are enabled for measured Red only. */
+let sampledFutureLap = true;
+export function setSampledFutureLap(on: boolean): void { sampledFutureLap = on; }
 
 /**
  * The departure the BELIEF has seen and the served lap clock has not.
@@ -456,6 +427,8 @@ interface Chain {
   standingAt: number;
   /** A rest ALREADY IN PROGRESS was billed into `start` (the residual term). */
   restsNow: boolean;
+  /** Joint sampled paths, indexed by hops to the target. */
+  sampled?: Float64Array[];
 }
 
 /**
@@ -465,7 +438,7 @@ interface Chain {
  * legs, the same tables, the same permutations, one term short — and it is
  * why the drive floor is not a second walk over the hops.
  */
-function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null, skipRest = false): Chain {
+function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null, skipRest = false, release?: { index: number; dist: Dist; elapsed: number }): Chain {
   const samples = new Float64Array(K);
   let measured = false;
   let standingAt = -1;
@@ -490,7 +463,10 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     // Term indices past the ring's own (2N + ...) so the residual draws are independent of the chain's.
     if (!hop.includesStand) {
       restsNow = true;
-      if (!skipRest) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
+      if (!skipRest) {
+        if (release?.index === j) addResidual(samples, release.dist, release.elapsed, 6 * tables.hops.length + j, 1, true);
+        else addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
+      }
     }
     addTerm(samples, hop.drive, 2 * j + 1);
     measured = hop.measured || tables.stops[j]!.measured;
@@ -520,6 +496,7 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
 
 /** The chain's samples at the stop `h` hops on (h >= 1), into `out`. */
 function chainAt(c: Chain, pre: ChainPrefix, h: number, out: Float64Array, lap: LapCorrection | null): void {
+  if (c.sampled) { out.set(c.sampled[h]!); return; }
   const a = pre.prefix[c.leg + h]!, b = pre.prefix[c.leg + 1]!;
   const s = c.start;
   if (!lap || !lap.bounds.length) {
@@ -528,6 +505,45 @@ function chainAt(c: Chain, pre: ChainPrefix, h: number, out: Float64Array, lap: 
   }
   const da = accAt(lap, c.leg + h), db = accAt(lap, c.leg + 1);
   for (let k = 0; k < K; k++) out[k] = s[k]! + a[k]! - b[k]! + da[k]! - db[k]!;
+}
+
+/** Joint forward simulation. An early arrival can buy a longer regulated
+ * wait; treating both as independent loses that negative dependence. Keep
+ * the same fixed uniforms and current-rest pricing as the nominal chain.
+ */
+function sampleFutureLaps(
+  c: Chain, tables: RouteTables, stops: readonly number[], ages: LapAges,
+  own: { stop: number; depT: number } | null,
+): void {
+  const N = tables.hops.length;
+  const departed = new Map<number, Float64Array>();
+  if (own && own.stop !== c.standingAt) departed.set(own.stop, new Float64Array(K).fill(own.depT));
+  if (c.standingAt >= 0) {
+    const drive = termDraws(tables.hops[c.leg]!.drive, 2 * c.leg + 1);
+    departed.set(c.standingAt, Float64Array.from(c.start, (t, k) => Math.max(0, t - drive[k]!)));
+  }
+  const paths: Float64Array[] = [ZERO, c.start];
+  for (let h = 1; h < 2 * N; h++) {
+    const s = (c.leg + h) % N;
+    const model = tables.stops[s]!;
+    const hop = tables.hops[s]!;
+    const current = paths[h]!;
+    const next = new Float64Array(K);
+    const dep = new Float64Array(K);
+    const previous = departed.get(s);
+    const marginal = termDraws(model.stand, 2 * s);
+    const drive = termDraws(hop.drive, 2 * s + 1);
+    for (let k = 0; k < K; k++) {
+      const lap = previous ? current[k]! - previous[k]! : lapAt(ages[stops[s]!], current[k]!);
+      const f = lapFactor(model.lap, lap);
+      const stand = marginal[k]!;
+      dep[k] = current[k]! + (hop.includesStand ? 0 : stand * f);
+      next[k] = dep[k]! + drive[k]!;
+    }
+    departed.set(s, dep);
+    paths.push(next);
+  }
+  c.sampled = paths;
 }
 
 // -- mixing and the clamp -----------------------------------------------------
@@ -574,9 +590,62 @@ export interface Floors {
    * never climb (#119's rule: `min(prev, raw)` on the standing term); the
    * arrival instant is deliberately NOT what is clamped — pinning that would
    * run the countdown to zero while the bus still sits.
+   *
+   * `armed` (see CEILING ARMS ON STANDING below): false while the entry is
+   * PROVISIONAL — recorded from the mixture before the standing hypothesis
+   * had cleared LEAD_SWITCH_MASS. A provisional ceiling holds the number
+   * flat exactly as an armed one does, but it is re-armed ONCE, from the
+   * standing variant's own number, the poll the mass clears. Absent means
+   * armed (an entry written by hand, or by a client that predates the flag).
    */
-  map: Map<number, { eta: number; standingAt: number; since: number }>;
+  map: Map<number, { eta: number; standingAt: number; since: number; armed?: boolean }>;
 }
+
+/**
+ * CEILING ARMS ON STANDING (2026-09-11). #119's ceiling used to be recorded
+ * on the first poll the lead situation stood — from the MIXTURE, while the
+ * moving hypothesis still held about half the mass. On every visit to Red's
+ * 344 Winchester layover that froze the countdown at the arrival poll's
+ * number (#310 -> Division / Prospect, 08:24 ET: 208 s shown from 08:25 to
+ * 08:32 while the true remainder fell 615 -> 165 s; the honest standing
+ * number was ~450 s). The ceiling is now armed only once the lead leg's
+ * standing mass has cleared LEAD_SWITCH_MASS, from the standing variant's
+ * own quantiles; until then the entry is provisional and holds the number
+ * exactly as before. So the countdown may rise ONCE, shortly after arrival,
+ * and then never again during that stand. The reset rules, the rest
+ * identity and the departure collapse are untouched.
+ *
+ * The switch exists for the paired replays (both arms from one tree); the
+ * measurement is in docs/eta-ring-posterior.md.
+ *
+ * WITH THE SWITCH OFF AND NO TRACE SET this is dead code at run time, and
+ * deliberately so: nothing extra is allocated per priced row and the clamp is
+ * master's `min(ceiling, mixture)` exactly. `arrival.test.ts` pins both — the
+ * import-time default, and every row of a stand against `min` recomputed from
+ * an unclamped pricing of the same belief.
+ */
+let armOnStanding = false; // measured 2026-09-11 and NOT shipped: see the commit below and docs — default OFF so a merge cannot ship it by accident
+export function setCeilingArmsOnStanding(on: boolean): void { armOnStanding = on; }
+export function ceilingArmsOnStanding(): boolean { return armOnStanding; }
+
+/** One clamp decision, for the replays that count them; never fires in production (no trace is set). */
+export interface ClampEvent {
+  stopIdx: number;
+  occurrence: number;
+  /** Ring index the lead stands at, and the rest's clock origin (the rest identity). */
+  clampAt: number;
+  since: number;
+  /** Mass of the lead cluster priced as this rest continuing (the standing variant). */
+  standMass: number;
+  /** The mixture's quantile tau (what master arms with) and the standing variant's own. */
+  mixture: number;
+  standing: number;
+  /** The ceiling in force before this poll, if any. */
+  prevCeiling: number | null;
+  action: "hold" | "arm" | "provisional" | "rearm";
+}
+let clampTrace: ((ev: ClampEvent) => void) | null = null;
+export function setClampTrace(fn: ((ev: ClampEvent) => void) | null): void { clampTrace = fn; }
 
 export function priceRoute(
   belief: Belief,
@@ -589,6 +658,8 @@ export function priceRoute(
   floors?: Floors,
   /** Seconds since this bus last departed each stop (`buses[].lap`); the lap correction is off without it. */
   lapAges?: LapAges | undefined,
+  includeDistribution = false,
+  releasePin?: ReleasePin,
 ): StopArrival[] {
   const sits = situations(belief, ring);
   if (sits.length === 0) return [];
@@ -596,19 +667,28 @@ export function priceRoute(
   const r = standingSec(belief, now);
   const pre = chainPrefix(tables);
   const restStop = belief.rested ? belief.restStop : -1;
+  const releaseFit = ring.routeId === '3' && releaseModelEnabled() && restStop >= 0 ? tables.stops[restStop]?.release : undefined;
+  let currentRelease: { index: number; dist: Dist; elapsed: number } | undefined;
+  if (releaseFit && releasePin && releaseFit.stopId === releasePin.stopId && restStop >= 0 && stops[restStop] === releasePin.stopId) {
+    const age = lapAges?.[releasePin.stopId], elapsed = (now - releasePin.since) / 1000;
+    if (elapsed >= 0 && age !== undefined) {
+      const d = releaseDist(releaseFit, releasePin.since, releasePin.lapAtPin ?? age - elapsed);
+      if (d) currentRelease = { index: restStop, dist: d, elapsed };
+    }
+  }
   // The lead chain is found first WITHOUT the lap correction, because the
   // correction is a walk forward from the lead's own leg; then every chain is
   // built again with it. `startChain` is scalar work, so the second pass costs
   // nothing measurable, and with no lap fit or no served ages the second pass
   // IS the first — `lapCorrection` returns null and every draw is unchanged.
   const pick = (cs: Chain[]) => cs.find((c) => c.sit.leg === belief.lead) ?? cs[0]!;
-  const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null));
+  const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null, false, currentRelease));
   const lead0 = pick(plain);
   const lap = lapAges && tables.stops.some((st) => st.lap)
     ? lapCorrection(tables, pre, stops, lapAges, lead0.leg, lead0.standingAt, lead0.sit.frac, r,
       ownDeparture(belief, stops, lapAges, lead0.standingAt, r, now))
     : null;
-  const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap)) : plain;
+  const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap, false, currentRelease)) : plain;
   const lead = pick(chains);
   // The drive floor's chain (`departNow` on every row): the lead's own chain
   // with the rest in progress ended this second. Built only when there IS one
@@ -617,6 +697,12 @@ export function priceRoute(
   const leadNow = lead.restsNow
     ? startChain(lead.sit, tables, r, restStop, N, lap, true)
     : null;
+  if (sampledFutureLap && ring.routeId === "3" && lapAges && tables.stops.some(st => st.lap)) {
+    for (const c of chains) sampleFutureLaps(c, tables, stops, lapAges,
+      ownDeparture(belief, stops, lapAges, c.standingAt, r, now));
+    if (leadNow) sampleFutureLaps(leadNow, tables, stops, lapAges,
+      ownDeparture(belief, stops, lapAges, leadNow.standingAt, r, now));
+  }
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
   // The clamp (#119): while the lead STANDS, the shown remainder may pause
@@ -644,7 +730,7 @@ export function priceRoute(
     const sid = stops[lead.standingAt]!;
     occ.set(lead.standingAt, 1);
     if (targetStopIds.has(sid)) {
-      out.push({ stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
+      out.push({ ...(includeDistribution ? { distribution: DISTRIBUTION_QUANTILES.map(() => 0) } : {}), stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
     }
   }
   for (let h = 1; h <= 2 * N; h++) {
@@ -660,6 +746,21 @@ export function priceRoute(
     if (leadMedian > MAX_ETA_SEC) break;
     const parts: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
     const all: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
+    // The lead cluster's parts priced as the rest at `clampAt` continuing —
+    // the standing variant (and a repositioning one): what the ceiling is
+    // armed from, and whose mass gates the arming.
+    //
+    // NULL unless somebody asked for it. The switch defaults off and no
+    // production caller sets the trace, so on every row a rider's browser
+    // prices this is two boolean reads and NO allocation: a refused
+    // experiment is kept for the next attempt, not paid for by the fleet
+    // on every poll for ever. (Review, 2026-09-12: the array and its
+    // per-cluster objects were built on every priced row regardless, while
+    // only the `mixedQuantiles` call below was guarded.)
+    const needStand = armOnStanding || clampTrace !== null;
+    const standParts: { s: Float64Array; w: number }[] | null = needStand && clampAt >= 0 ? [] : null;
+    let standMass = 0;
+    if (standParts !== null && lead.standingAt === clampAt) { standParts.push({ s: leadBuf, w: lead.sit.mass }); standMass = lead.sit.mass; }
     let mass = lead.sit.mass;
     for (let i = 0; i < chains.length; i++) {
       const c = chains[i]!;
@@ -689,6 +790,7 @@ export function priceRoute(
       if (c.sit.leg !== lead.sit.leg) continue;
       parts.push({ s: bufs[i]!, w: c.sit.mass });
       mass += c.sit.mass;
+      if (standParts !== null && c.standingAt === clampAt) { standParts.push({ s: bufs[i]!, w: c.sit.mass }); standMass += c.sit.mass; }
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
     // the RANGE is honest about the rest: while alternatives still hold a
@@ -718,16 +820,41 @@ export function priceRoute(
       low = Math.min(low, f10); high = Math.max(high, f90);
       fullMix = true;
     }
+    // Read the actual mixture while the chain samples are still available.
+    // This is optional for server transport; it never changes ETA arithmetic.
+    let distribution = includeDistribution
+      ? mixedQuantiles(fullMix ? all : parts, DISTRIBUTION_QUANTILES) : undefined;
     const key = chainKey(cur, o);
-    if (floors && clampAt >= 0) {
+    if (floors && clampAt >= 0 && currentRelease?.index !== clampAt) {
       const prev = floors.map.get(key);
-      if (prev && prev.standingAt === clampAt && prev.since === clockSince) {
-        const shown = Math.min(prev.eta, eta);
+      const held = prev !== undefined && prev.standingAt === clampAt && prev.since === clockSince ? prev : undefined;
+      const cleared = standMass >= LEAD_SWITCH_MASS;
+      const mixture = eta;
+      // The standing variant's own number is computed only for the trace
+      // (a replay counting the gap); production pays nothing for it.
+      let standing = clampTrace && standParts !== null && standParts.length > 0 ? (mixedQuantiles(standParts, [tau]) as [number])[0] : eta;
+      if (armOnStanding && cleared && standParts !== null && standParts.length > 0 && (!held || held.armed === false)) {
+        // Arming (or re-arming a provisional entry): the standing variant's
+        // own quantiles, not the mixture's. The one rise a stand may show.
+        const [s10, sT, s90] = mixedQuantiles(standParts, [0.1, tau, 0.9]) as [number, number, number];
+        standing = sT;
+        if (distribution) distribution = mixedQuantiles(standParts, DISTRIBUTION_QUANTILES);
+        eta = sT; low = s10; high = s90;
+        if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: held ? held.eta : null, action: held ? "rearm" : "arm" });
+        floors.map.set(key, { eta, standingAt: clampAt, since: clockSince, armed: true });
+      } else if (held) {
+        const shown = Math.min(held.eta, eta);
         const delta = shown - eta;
+        if (distribution) distribution = distribution.map(v => Math.max(0, v + delta));
         eta = shown; low = Math.max(0, low + delta); high = Math.max(0, high + delta);
-        floors.map.set(key, { eta: shown, standingAt: clampAt, since: clockSince });
+        if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: held.eta, action: "hold" });
+        floors.map.set(key, { eta: shown, standingAt: clampAt, since: clockSince, armed: held.armed !== false });
       } else {
-        floors.map.set(key, { eta, standingAt: clampAt, since: clockSince });
+        // Master's rule (and, with the switch on, the provisional entry
+        // while the standing mass is still short of the gate): the mixture.
+        const armed = !armOnStanding || cleared;
+        if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: null, action: armed ? "arm" : "provisional" });
+        floors.map.set(key, { eta, standingAt: clampAt, since: clockSince, armed });
       }
     }
     // The learned per-ROUTE correction (params.ts, docs/route-bias.md). The
@@ -776,14 +903,29 @@ export function priceRoute(
     // actually shown, so it must scale the band about that number, after the
     // floor clamp has moved it. At the default 1.0 it returns [low, high]
     // itself, so the served defaults are byte-identical to no widening.
-    const [wLow, wHigh] = widenBand(eta, low, high);
+    const rawUpper = currentRelease !== undefined;
+    // Division's immediate pickup after a supported Winchester hold has its
+    // own conditional release distribution. The older fleet-wide widening
+    // pushes that lower tail toward zero. Keep its modeled q10, but retain
+    // the legacy margin for other destinations and subsequent laps: those
+    // journeys have not passed the same pickup validation.
+    const rawLower = currentRelease !== undefined && sid === 48 && o === 0
+      && h <= (cur - currentRelease.index + N) % N;
+    const widened = widenBand(eta, low, high);
+    const wLow = rawLower ? low : widened[0];
+    const wHigh = rawUpper ? high : widened[1];
     const lowOut = Math.min(wLow, eta);
     // The floor is reported, never applied (see `lowFloor`); while
     // alternatives hold real mass the band is the full mixture's and an
     // alternative may put the bus AHEAD of the lead's stand, so there is no
     // rest-less floor to report there either.
     const floor = leadNow && !fullMix && Number.isFinite(nowLow) ? Math.min(nowLow, eta) : lowOut;
+    if (distribution) distribution = distribution.map(value => {
+      const corrected = applyHorizonBias(scale === 1 ? value : applyRouteScale(value, scale));
+      return Math.max(0, rawUpper && (rawLower || corrected >= eta) ? corrected : widenBand(eta, corrected, corrected)[0]);
+    });
     out.push({
+      ...(distribution ? { distribution } : {}),
       stopId: sid,
       occurrence: o,
       stopsAhead: h,

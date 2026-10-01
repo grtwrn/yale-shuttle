@@ -1,0 +1,31 @@
+{
+  "frames": 12654,
+  "first": "2026-09-16T11:04:43.166Z",
+  "last": "2026-09-17T17:14:00.913Z",
+  "framesByRoute": {
+    "3": 12654
+  },
+  "observationsByRoute": {
+    "3": 36516
+  },
+  "distinctBusCounts": {
+    "3": 4
+  },
+  "hashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/raw-frames.jsonl": "2f65e30e8986a7cada4f5527adb77444748367d62bf68e508c17edd0ba25bcb6",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/component-snapshots.v8": "9f1b40de541b78d8553042c11824b42c210d5139693a44cfc6bf9ed04de60d61",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/current-trace.jsonl": "672a196f2b29d18cda3c9d1742590af14d4ffa5dbe1ca6bfd18ba9010382d24a",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/trace-outcomes.json": "ec029ccb9932be0434156a567484ece3edf6daf0e8abb76edf42a180e2a36f87",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/planner.ts": "c6e48d8592052d44f66b4b39d1e222e31315af698f4ff58fb6febe7ff5f0cda9",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/tripRanking.ts": "21e62994f9d2c97b4af74b0d195091da739f88388a8bdf294ff7d052128536be",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/walk.ts": "689fa745fbff2f76d283c23e60f9303480e738364d0c6a1fea73031e8a222b44",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/journeyArrival.ts": "fcaf4c8da87b654dc40ede762c3a238a6c3e75830901acd32fa3e82f8d573e45",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/TransitMap.tsx": "f1fae3763c43fdd63f25f3cd918172a3fbe10ae4b02b95d99fd2f1e1f81d8577"
+  },
+  "limitations": [
+    "Archive contains only Red; absence of other routes is not evidence those routes were off.",
+    "Five saved V8 component snapshots contain only each focal bus entry, not all warm Red vehicle states.",
+    "Current trace saved only selected focal-bus targets11/48/4; it cannot reproduce every boarding/alighting option.",
+    "Existing rank/walk policies already address overlap, persistence and meaningful walking savings; measure baseline before proposing another rule."
+  ]
+}

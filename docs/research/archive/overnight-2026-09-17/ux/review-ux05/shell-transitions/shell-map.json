@@ -1,0 +1,69 @@
+{
+  "scope": "Unmodified built SPA; fabricated two-bus live wire on checked-in route network",
+  "checks": [
+    "Real planner/transport selects #307 on minimap; keyboard exposes route/bus identity; arrival detail retains following #309",
+    "Mobile fullscreen tap and Escape retain map toggle focus",
+    "Existing watcher parser reads the real card once, preserving Red and its window rather than counting map labels as cards",
+    "Fresh pickup timing present; subsequent stale wire removes pickup/wait labels",
+    "Fresh recovery restores timing, selected bus #307 and following #309",
+    "Network failure beyond the 45-second freshness limit clears map timing",
+    "Polling recovers map times after network failure",
+    "Empty fleet removes prior bus markers and waiting identity"
+  ],
+  "errors": [],
+  "canary": [
+    {
+      "busLines": [
+        "🚌 18 min"
+      ],
+      "routeLabel": "Red",
+      "mode": "shuttle",
+      "departed": false,
+      "totalMin": 22,
+      "arriveText": "2:23p",
+      "eta": {
+        "first": [
+          120,
+          540
+        ],
+        "second": null,
+        "median": [
+          240,
+          300
+        ],
+        "raw": "About 4 min ⓘ\nLikely 2–9 min",
+        "spread": true,
+        "bunched": false
+      },
+      "waitFallback": null,
+      "missedBus": null,
+      "walkToMin": 0,
+      "walkFromMin": 0
+    },
+    {
+      "busLines": [],
+      "routeLabel": "Walk",
+      "mode": "walk",
+      "departed": false,
+      "totalMin": 45,
+      "arriveText": "2:45p",
+      "eta": null,
+      "waitFallback": null,
+      "missedBus": null,
+      "walkToMin": 0,
+      "walkFromMin": 0
+    }
+  ],
+  "staleBeforeFade": [
+    {
+      "text": "🚌 (R) 2–9 min",
+      "opacity": "0"
+    },
+    {
+      "text": "🏁 (R) 2:23p",
+      "opacity": "0"
+    }
+  ],
+  "completed": true,
+  "resourcesClosed": true
+}

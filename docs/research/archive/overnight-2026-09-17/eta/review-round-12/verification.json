@@ -1,0 +1,22 @@
+{
+  "originalSamplesVerified": 487,
+  "candidateSetsIndependentlyVerified": 487,
+  "exactCollectionDatabaseChecks": 130,
+  "exactCollectionFieldsOtherThanLapUnchanged": 130,
+  "exactCollectionDifferenceUses": {
+    "lap": 70
+  },
+  "caseCoverage": {
+    "exactObservedAt": 0,
+    "uniqueCompatible": 8,
+    "ambiguousOnly": 14,
+    "noCompatibleReceipt": 16,
+    "nearbyRawAtSource": 26
+  },
+  "preservedDecisions": 38,
+  "preservedOutcomes": 1400,
+  "retainedRegressionSec": 442.82701916224846,
+  "inputHashesVerified": 12,
+  "checkoutClean": true,
+  "head": "8aa67bd7f3883598f9458d825d97a52cbc004e0f"
+}

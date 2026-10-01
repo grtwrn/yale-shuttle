@@ -1,0 +1,11 @@
+{
+  "hashesVerified": 8,
+  "allActualRingSequencesMatchRepairedDatabaseTopology": true,
+  "scoredTruths": 182918,
+  "connectedChains": 86683,
+  "connectedLegUses": 1920044,
+  "sources": 3045,
+  "targets": 3885,
+  "largeTailChangesRetained": 5021,
+  "sameCurrentHead": "98e535b99649e74ca599d2e33bcfdc46df83d30d"
+}

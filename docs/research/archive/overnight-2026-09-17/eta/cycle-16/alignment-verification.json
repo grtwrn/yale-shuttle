@@ -1,0 +1,285 @@
+{
+  "counts": {
+    "current:resolved": 5878,
+    "current:wireChecked": 8228,
+    "current:nonzeroHop": 8211,
+    "current:unresolved": 2350,
+    "current:zeroHop": 17,
+    "canonical:resolved": 5878,
+    "canonical:wireChecked": 8228,
+    "canonical:nonzeroHop": 8211,
+    "canonical:unresolved": 2350,
+    "canonical:zeroHop": 17,
+    "reviewFollowingCases": 8,
+    "rawLargeTailChangesPreserved": 5021
+  },
+  "alignedBusPolls": 186,
+  "priorVisits": 176,
+  "reviewCurrentCases": [
+    {
+      "arm": "current",
+      "key": [
+        220,
+        2,
+        "53",
+        1,
+        0
+      ],
+      "oldTarget": 57352,
+      "correctTarget": 56897
+    },
+    {
+      "arm": "current",
+      "key": [
+        1227,
+        2,
+        "49",
+        13,
+        0
+      ],
+      "oldTarget": 58178,
+      "correctTarget": 57578
+    },
+    {
+      "arm": "current",
+      "key": [
+        1383,
+        8,
+        "124",
+        7,
+        0
+      ],
+      "oldTarget": 58003,
+      "correctTarget": 57662
+    },
+    {
+      "arm": "current",
+      "key": [
+        1863,
+        8,
+        "124",
+        7,
+        0
+      ],
+      "oldTarget": 58335,
+      "correctTarget": 58003
+    },
+    {
+      "arm": "current",
+      "key": [
+        2331,
+        3,
+        "308",
+        9,
+        0
+      ],
+      "oldTarget": 58832,
+      "correctTarget": 58362
+    },
+    {
+      "arm": "current",
+      "key": [
+        4061,
+        15,
+        "304",
+        0,
+        0
+      ],
+      "oldTarget": 59748,
+      "correctTarget": 59456
+    },
+    {
+      "arm": "current",
+      "key": [
+        4265,
+        1,
+        "38",
+        3,
+        0
+      ],
+      "oldTarget": 59967,
+      "correctTarget": 59581
+    },
+    {
+      "arm": "current",
+      "key": [
+        5342,
+        3,
+        "316",
+        9,
+        0
+      ],
+      "oldTarget": 60693,
+      "correctTarget": 60261
+    },
+    {
+      "arm": "current",
+      "key": [
+        5618,
+        8,
+        "119",
+        5,
+        0
+      ],
+      "oldTarget": 60747,
+      "correctTarget": 60440
+    },
+    {
+      "arm": "current",
+      "key": [
+        5630,
+        8,
+        "119",
+        5,
+        0
+      ],
+      "oldTarget": 60747,
+      "correctTarget": 60440
+    },
+    {
+      "arm": "current",
+      "key": [
+        5666,
+        3,
+        "316",
+        24,
+        0
+      ],
+      "oldTarget": 60937,
+      "correctTarget": 60471
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        220,
+        2,
+        "53",
+        1,
+        0
+      ],
+      "oldTarget": 57352,
+      "correctTarget": 56897
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1227,
+        2,
+        "49",
+        13,
+        0
+      ],
+      "oldTarget": 58178,
+      "correctTarget": 57578
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1383,
+        8,
+        "124",
+        7,
+        0
+      ],
+      "oldTarget": 58003,
+      "correctTarget": 57662
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1863,
+        8,
+        "124",
+        7,
+        0
+      ],
+      "oldTarget": 58335,
+      "correctTarget": 58003
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        2331,
+        3,
+        "308",
+        9,
+        0
+      ],
+      "oldTarget": 58832,
+      "correctTarget": 58362
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4061,
+        15,
+        "304",
+        0,
+        0
+      ],
+      "oldTarget": 59748,
+      "correctTarget": 59456
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4265,
+        1,
+        "38",
+        3,
+        0
+      ],
+      "oldTarget": 59967,
+      "correctTarget": 59581
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5342,
+        3,
+        "316",
+        9,
+        0
+      ],
+      "oldTarget": 60693,
+      "correctTarget": 60261
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5618,
+        8,
+        "119",
+        5,
+        0
+      ],
+      "oldTarget": 60747,
+      "correctTarget": 60440
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5630,
+        8,
+        "119",
+        5,
+        0
+      ],
+      "oldTarget": 60747,
+      "correctTarget": 60440
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5666,
+        3,
+        "316",
+        24,
+        0
+      ],
+      "oldTarget": 60937,
+      "correctTarget": 60471
+    }
+  ],
+  "limitations": "Only exact prior-rest identities are established here. Other source alignment remains provisional; no missing case is reclassified using its residual. Original forecasts, outcomes and independent reviewer evidence stay unchanged."
+}

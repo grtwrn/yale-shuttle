@@ -1,0 +1,133 @@
+[
+    {
+        "id": "91854406a779d8",
+        "name": "small-sky-9130",
+        "state": "started",
+        "region": "ewr",
+        "image_ref": {
+            "registry": "registry.fly.io",
+            "repository": "yale-shuttle",
+            "tag": "deployment-01M2NFBE42S3432VDSKH37KVPD",
+            "digest": "sha256:c202be9e78d3fd4ebbee7dba28c5c4a13b646e0a8088dcbd6684c92a985124cc",
+            "labels": {
+                "GH_ACTION_NAME": "__run_3",
+                "GH_EVENT_NAME": "push",
+                "GH_REPO": "grtwrn/yale-shuttle",
+                "GH_SHA": "b2682b51660f4287c9ed043e7e962af97da051d1"
+            }
+        },
+        "instance_id": "01M2NFCAGW11FJR9WPYJ0K3YEH",
+        "private_ip": "fdaa:6b:d30b:a7b:811:a61f:314:2",
+        "created_at": "2026-04-18T02:56:50Z",
+        "updated_at": "2026-09-16T16:04:19Z",
+        "config": {
+            "env": {
+                "FLY_PROCESS_GROUP": "app",
+                "PORT": "8080",
+                "PRIMARY_REGION": "ewr",
+                "SHUTTLE_V2_DB": "/data/shuttle-v2.db",
+                "SHUTTLE_V2_DB_DIR": "/data",
+                "SHUTTLE_V2_STATIC_DIR": "/app/web/dist"
+            },
+            "init": {},
+            "guest": {
+                "cpu_kind": "shared",
+                "cpus": 1,
+                "memory_mb": 1024
+            },
+            "metadata": {
+                "fly_builder_id": "895904f643edd8",
+                "fly_flyctl_version": "0.4.104",
+                "fly_platform_version": "v2",
+                "fly_process_group": "app",
+                "fly_release_id": "rel_dg93zl8gdq90yjw0",
+                "fly_release_version": "481"
+            },
+            "mounts": [
+                {
+                    "encrypted": true,
+                    "path": "/data",
+                    "size_gb": 1,
+                    "volume": "vol_r68gzkzww9djx0d4",
+                    "name": "shuttle_data"
+                }
+            ],
+            "services": [
+                {
+                    "protocol": "tcp",
+                    "internal_port": 8080,
+                    "autostop": false,
+                    "autostart": true,
+                    "min_machines_running": 1,
+                    "ports": [
+                        {
+                            "port": 80,
+                            "handlers": [
+                                "http"
+                            ],
+                            "force_https": true
+                        },
+                        {
+                            "port": 443,
+                            "handlers": [
+                                "http",
+                                "tls"
+                            ]
+                        }
+                    ],
+                    "checks": [
+                        {
+                            "type": "http",
+                            "interval": "30s",
+                            "timeout": "5s",
+                            "grace_period": "15s",
+                            "method": "GET",
+                            "path": "/healthz"
+                        }
+                    ],
+                    "concurrency": {
+                        "type": "requests",
+                        "hard_limit": 200,
+                        "soft_limit": 150
+                    },
+                    "force_instance_key": null
+                }
+            ],
+            "image": "registry.fly.io/yale-shuttle:deployment-01M2NFBE42S3432VDSKH37KVPD",
+            "restart": {
+                "policy": "on-failure",
+                "max_retries": 10
+            }
+        },
+        "events": [
+            {
+                "type": "start",
+                "status": "started",
+                "request": {},
+                "source": "flyd",
+                "timestamp": 1789574659432
+            },
+            {
+                "type": "launch",
+                "status": "created",
+                "source": "user",
+                "timestamp": 1789574654623
+            },
+            {
+                "type": "launch",
+                "status": "pending",
+                "source": "flyd",
+                "timestamp": 1789574654493
+            }
+        ],
+        "checks": [
+            {
+                "name": "servicecheck-00-http-8080",
+                "status": "passing",
+                "output": "{\"ok\":true,\"pollStalenessMs\":42,\"collectorLagMs\":null,\"knownBuses\":0,\"pollSkipped\":0,\"droppedObservations\":0,\"build\":\"b2682b51660f\"}",
+                "updated_at": "2026-09-16T16:04:38.267Z"
+            }
+        ],
+        "host_status": "ok"
+    }
+]

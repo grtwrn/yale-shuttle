@@ -1,0 +1,29 @@
+[
+  {
+    "id": 65347,
+    "bus_name": "#309",
+    "stop_id": 11,
+    "pinned_at": 1789656652856,
+    "departed_at": 1789657152981,
+    "stand_sec": 500.125,
+    "outcome": "stopped"
+  },
+  {
+    "id": 65364,
+    "bus_name": "#309",
+    "stop_id": 48,
+    "pinned_at": 1789657232897,
+    "departed_at": 1789657262862,
+    "stand_sec": 29.965,
+    "outcome": "stopped"
+  },
+  {
+    "id": 65406,
+    "bus_name": "#309",
+    "stop_id": 4,
+    "pinned_at": 1789657462890,
+    "departed_at": 1789657468050,
+    "stand_sec": 5.16,
+    "outcome": "passed"
+  }
+]

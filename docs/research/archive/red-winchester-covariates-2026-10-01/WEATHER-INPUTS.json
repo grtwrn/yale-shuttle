@@ -1,0 +1,10 @@
+{
+ "note": "Weather files the frozen screen read (RED_EXP_WEATHER, default <RED_EXP_ROOT>/data/weather). Not covered by FREEZE.json; runner.py checks these hashes and reports a mismatch or missing file as plan drift. Later days come from daily forecast-YYYY-MM-DD.json fetches (past hours only); for overlapping hours the archive file wins, then the earliest-named forecast file.",
+ "recorded": "2026-10-01, after ys-reviewer reproduced the frozen screen byte-for-byte with these files",
+ "sha256": {
+  "archive-2026-09.json": "421b07841a2bbc72d78aeaa02b4d5835a7fc8a6d6ded2167ac8b2fcd9c7aa27b",
+  "forecast-recent.json": "69c94efb462c0d74e649251a89eff2204c513379993c932f4714a643ea058fdf"
+ },
+ "fetch": "https://api.open-meteo.com/v1/forecast?latitude=41.3083&longitude=-72.9279&hourly=temperature_2m,precipitation,rain,weather_code,wind_speed_10m&timezone=America%2FNew_York&past_days=7&forecast_days=1",
+ "required_hours": "06:00-19:00 ET on every usable archive day"
+}

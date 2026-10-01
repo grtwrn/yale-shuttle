@@ -52,6 +52,19 @@ const IssuesPanel: React.FC<{
   const [loadError, setLoadError] = useState(false);
   // Which report has its reply box open, and its draft text.
   const [replyFor, setReplyFor] = useState<number | null>(null);
+  const replyFileRef = useRef<HTMLInputElement | null>(null);
+  const replyAttachRef = useRef<HTMLButtonElement | null>(null);
+  const replyComposerRef = useRef<HTMLDivElement | null>(null);
+  const replyButtons = useRef(new Map<number, HTMLButtonElement>());
+  const pendingReplyFocus = useRef<number | null>(null);
+  const closeReply = (id: number, ownedFocus = replyComposerRef.current?.contains(document.activeElement)) => {
+    if (ownedFocus) pendingReplyFocus.current = id;
+    setReplyFor(null);
+    setReplyText("");
+    setReplyImage(null);
+    setReplyImageErr(null);
+    setReplyAttaching(false);
+  };
   // A screenshot on the reply, already downscaled (see screenshot.ts). Cleared
   // with the draft, so switching reports never carries a picture across.
   const [replyImage, setReplyImage] = useState<string | null>(null);
@@ -73,9 +86,18 @@ const IssuesPanel: React.FC<{
   };
   const [replyText, setReplyText] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  useEffect(() => {
+    // The Reply button stays disabled until the follow-up refresh finishes.
+    // Restore focus after that render, without stealing it from another action.
+    if (replyFor !== null || busyId !== null) return;
+    const id = pendingReplyFocus.current;
+    pendingReplyFocus.current = null;
+    if (id !== null && document.activeElement === document.body) replyButtons.current.get(id)?.focus();
+  }, [replyFor, busyId]);
   // Which row's action failed, and what to say about it — a 429 needs
   // different advice from a dropped connection (report #51).
   const [actionError, setActionError] = useState<{ id: number; text: string } | null>(null);
+  const [actionStatus, setActionStatus] = useState("");
 
   // Whether this browser has an id at all, read once on mount: with none, the
   // rider's reports can never be listed here and the empty state must say so
@@ -117,17 +139,19 @@ const IssuesPanel: React.FC<{
       | { action: "unarchive" }
       | { action: "set_priority"; priority: "urgent" | "normal" | "nice_to_have" },
   ) => {
+    // Disabling Send may blur it before the request returns. Remember ownership
+    // now; the closing effect still checks for focus moved elsewhere meanwhile.
+    const ownedFocus = replyComposerRef.current?.contains(document.activeElement);
     setBusyId(id);
     setActionError(null);
+    setActionStatus(action.action === "followup" ? "Sending reply…" : "Saving…");
     try {
       await postReportAction(id, action);
-      setReplyFor(null);
-      setReplyText("");
-      setReplyImage(null);
-      setReplyImageErr(null);
-      setReplyAttaching(false);
+      closeReply(id, ownedFocus);
+      setActionStatus(action.action === "followup" ? "Reply sent" : "Saved");
       await load();
     } catch (err) {
+      setActionStatus("");
       setActionError({ id, text: actionErrorText(err) });
     } finally {
       setBusyId(null);
@@ -143,7 +167,7 @@ const IssuesPanel: React.FC<{
 
       {loadError ? (
         <div style={{ ...CARD, alignItems: "flex-start" }}>
-          <span style={{ fontSize: 13, color: "#78909c" }}>
+          <span role="alert" style={{ fontSize: 13, color: "#78909c" }}>
             Couldn’t load your reports.
           </span>
           <button
@@ -159,9 +183,9 @@ const IssuesPanel: React.FC<{
           </button>
         </div>
       ) : reports === null ? (
-        <div style={{ fontSize: 13, color: "#78909c", padding: "8px 2px" }}>Loading…</div>
+        <div role="status" style={{ fontSize: 13, color: "#78909c", padding: "8px 2px" }}>Loading…</div>
       ) : reports.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#78909c", padding: "8px 2px", lineHeight: 1.5 }}>
+        <div role="status" style={{ fontSize: 13, color: "#78909c", padding: "8px 2px", lineHeight: 1.5 }}>
           {emptyReportsText(browserKeepsReports)}
         </div>
       ) : (
@@ -228,8 +252,10 @@ const IssuesPanel: React.FC<{
               ))}
 
               {replyFor === r.id ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div ref={replyComposerRef} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label htmlFor={`reply-message-${r.id}`} style={SECTION_LABEL}>Your reply</label>
                   <textarea
+                    id={`reply-message-${r.id}`}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     // Same as the feedback box: paste or drop a screenshot
@@ -260,28 +286,25 @@ const IssuesPanel: React.FC<{
                   {/* A follow-up can carry a screenshot too: "here's what I
                       meant" is usually a picture, and making the rider file a
                       second report to attach one loses the thread. */}
-                  <label style={{
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                    fontSize: 13, color: "#546e7a", cursor: "pointer",
-                    minHeight: 44, alignSelf: "flex-start",
-                  }}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = "";
-                        attachReplyScreenshot(file);
-                      }}
-                    />
-                    <span style={{
-                      border: "1px solid #bbb", borderRadius: 6,
-                      padding: "8px 12px", background: "#fff",
-                    }}>
-                      📎 {replyImage ? "Screenshot attached" : "Add screenshot or paste one"}
-                    </span>
-                  </label>
+                  <button ref={replyAttachRef} type="button"
+                    onClick={() => { if (!busy && !replyAttaching) replyFileRef.current?.click(); }}
+                    aria-disabled={busy || replyAttaching}
+                    style={{ fontSize: 13, color: "#546e7a", cursor: "pointer", fontFamily: "inherit",
+                      minHeight: 44, alignSelf: "flex-start", border: "1px solid #bbb", borderRadius: 6,
+                      padding: "8px 12px", background: "#fff" }}>
+                    📎 {replyImage ? "Replace screenshot" : "Add screenshot or paste one"}
+                  </button>
+                  <input
+                    ref={replyFileRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      attachReplyScreenshot(file);
+                    }}
+                  />
                   {replyImage && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <img
@@ -290,7 +313,8 @@ const IssuesPanel: React.FC<{
                         style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6, border: "1px solid #ddd" }}
                       />
                       <button
-                        onClick={() => { setReplyImage(null); setReplyImageErr(null); }}
+                        onClick={() => { setReplyImage(null); setReplyImageErr(null); replyAttachRef.current?.focus(); }}
+                        aria-label="Remove screenshot"
                         style={{
                           fontSize: 13, padding: "8px 12px", minHeight: 44,
                           border: "1px solid #bbb", borderRadius: 6, background: "#fff",
@@ -302,13 +326,12 @@ const IssuesPanel: React.FC<{
                     </div>
                   )}
                   {replyImageErr && (
-                    <span style={{ fontSize: 12, color: "#c62828" }}>{replyImageErr}</span>
+                    <span role="alert" style={{ fontSize: 12, color: "#c62828" }}>{replyImageErr}</span>
                   )}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={() => {
-                        setReplyFor(null); setReplyText("");
-                        setReplyImage(null); setReplyImageErr(null); setReplyAttaching(false);
+                        closeReply(r.id);
                       }}
                       style={{
                         fontSize: 13, padding: "8px 14px", minHeight: 44,
@@ -339,7 +362,7 @@ const IssuesPanel: React.FC<{
                     </button>
                   </div>
                   {actionError?.id === r.id && (
-                    <span style={{ fontSize: 12, color: "#c62828" }}>
+                    <span role="alert" style={{ fontSize: 12, color: "#c62828" }}>
                       {actionError.text}
                     </span>
                   )}
@@ -364,7 +387,14 @@ const IssuesPanel: React.FC<{
                     </button>
                   )}
                   <button
-                    onClick={() => { setReplyFor(r.id); setReplyText(""); setActionError(null); }}
+                    ref={(button) => {
+                      if (button) replyButtons.current.set(r.id, button);
+                      else replyButtons.current.delete(r.id);
+                    }}
+                    onClick={() => {
+                      setReplyFor(r.id); setReplyText(""); setActionError(null); setActionStatus("");
+                      setReplyImage(null); setReplyImageErr(null);
+                    }}
                     disabled={busy}
                     style={{
                       fontSize: 13, padding: "8px 12px", minHeight: 44,
@@ -380,8 +410,9 @@ const IssuesPanel: React.FC<{
                     onChange={(e) => void act(r.id, { action: "set_priority", priority: e.target.value as "urgent" | "normal" | "nice_to_have" })}
                     disabled={busy}
                     title="How urgent is this to you?"
+                    aria-label="Report priority"
                     style={{
-                      fontSize: 13, padding: "8px 6px", minHeight: 44,
+                      fontSize: 16, padding: "8px 6px", minHeight: 44,
                       border: "1px solid #bbb", borderRadius: 6,
                       background: "#fff", color: r.priority === "urgent" ? "#c62828" : "#546e7a",
                       fontFamily: "inherit",
@@ -405,7 +436,7 @@ const IssuesPanel: React.FC<{
                     {r.archived ? "Unarchive" : "Archive"}
                   </button>
                   {actionError?.id === r.id && (
-                    <span style={{ fontSize: 12, color: "#c62828" }}>
+                    <span role="alert" style={{ fontSize: 12, color: "#c62828" }}>
                       {actionError.text}
                     </span>
                   )}
@@ -416,6 +447,7 @@ const IssuesPanel: React.FC<{
         })}
         {reports.some((r) => r.archived) && (
           <button
+            aria-expanded={showArchived}
             onClick={() => setShowArchived((v) => !v)}
             style={{
               fontSize: 13, padding: "8px 12px", minHeight: 44,
@@ -430,6 +462,7 @@ const IssuesPanel: React.FC<{
         )}
         </>
       )}
+      <div role="status" style={{ fontSize: 13, color: "#546e7a" }}>{replyAttaching ? "Attaching screenshot…" : actionStatus}</div>
     </div>
   );
 };

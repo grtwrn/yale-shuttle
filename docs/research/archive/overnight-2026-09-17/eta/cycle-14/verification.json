@@ -1,0 +1,562 @@
+{
+  "inputHashesVerified": 7,
+  "currentBaselineExactArchivedReleaseOnRows": 150020,
+  "connectedJourneysVerified": 327,
+  "legUsesVerified": 6674,
+  "checkpointTruthsVerified": 3309,
+  "metrics": {
+    "full-development-score": {
+      "baseline": {
+        "n": 1908,
+        "sources": 78,
+        "targets": 94,
+        "MAE": 129.1169416274776,
+        "meanWidth": 645.1217128780315,
+        "WIS": 91.14195591887416,
+        "early": 56,
+        "late": 61
+      },
+      "candidate": {
+        "n": 1908,
+        "sources": 78,
+        "targets": 94,
+        "MAE": 129.11667412059128,
+        "meanWidth": 644.9187052657783,
+        "WIS": 91.13141959736097,
+        "early": 56,
+        "late": 61
+      }
+    },
+    "full-reused-afternoon-score": {
+      "baseline": {
+        "n": 600,
+        "sources": 24,
+        "targets": 26,
+        "MAE": 106.3625090140552,
+        "meanWidth": 657.9894601518583,
+        "WIS": 79.7186793738992,
+        "early": 5,
+        "late": 13
+      },
+      "candidate": {
+        "n": 600,
+        "sources": 24,
+        "targets": 26,
+        "MAE": 106.43022391379293,
+        "meanWidth": 657.9819055454099,
+        "WIS": 79.7403418016297,
+        "early": 5,
+        "late": 13
+      }
+    },
+    "full-next-occurrence-review": {
+      "baseline": {
+        "n": 801,
+        "sources": 54,
+        "targets": 65,
+        "MAE": 206.1876640367429,
+        "meanWidth": 1114.248922341857,
+        "WIS": 145.48338313990135,
+        "early": 23,
+        "late": 16
+      },
+      "candidate": {
+        "n": 801,
+        "sources": 54,
+        "targets": 65,
+        "MAE": 206.15410378461914,
+        "meanWidth": 1114.2628066674204,
+        "WIS": 145.48330269233992,
+        "early": 23,
+        "late": 16
+      }
+    }
+  },
+  "priorLegitimateCases": [
+    {
+      "source": 64318,
+      "record": {
+        "id": 64318,
+        "bus_name": "#309",
+        "stop_id": 11,
+        "pinned_at": 1789649768217,
+        "departed_at": 1789649928303,
+        "outcome": "stopped",
+        "how": "next"
+      },
+      "scoredCheckpoints": 11,
+      "status": "scored and retained"
+    },
+    {
+      "source": 58224,
+      "record": {
+        "id": 58224,
+        "bus_name": "#309",
+        "stop_id": 11,
+        "pinned_at": 1789567242326,
+        "departed_at": 1789567392398,
+        "outcome": "stopped",
+        "how": "next"
+      },
+      "scoredCheckpoints": 40,
+      "status": "scored and retained"
+    },
+    {
+      "source": 65347,
+      "record": {
+        "id": 65347,
+        "bus_name": "#309",
+        "stop_id": 11,
+        "pinned_at": 1789656652856,
+        "departed_at": 1789657152981,
+        "outcome": "stopped",
+        "how": "next"
+      },
+      "scoredCheckpoints": 28,
+      "status": "scored and retained"
+    },
+    {
+      "source": 48550,
+      "record": {
+        "id": 48550,
+        "bus_name": "#310",
+        "stop_id": 121,
+        "pinned_at": 1789414931026,
+        "departed_at": 1789415951182,
+        "outcome": "stopped",
+        "how": "clock"
+      },
+      "scoredCheckpoints": 0,
+      "status": "outside scored replay or no eligible chain; prior audit remains, not newly validated"
+    },
+    {
+      "source": 67957,
+      "record": {
+        "id": 67957,
+        "bus_name": "#316",
+        "stop_id": 11,
+        "pinned_at": 1789677551500,
+        "departed_at": 1789677901607,
+        "outcome": "stopped",
+        "how": "next"
+      },
+      "scoredCheckpoints": 48,
+      "status": "scored and retained"
+    },
+    {
+      "source": 68304,
+      "record": {
+        "id": 68304,
+        "bus_name": "#300",
+        "stop_id": 11,
+        "pinned_at": 1789680321828,
+        "departed_at": 1789680606912,
+        "outcome": "stopped",
+        "how": "next"
+      },
+      "scoredCheckpoints": 24,
+      "status": "scored and retained"
+    },
+    {
+      "source": 51469,
+      "record": {
+        "id": 51469,
+        "bus_name": "#316",
+        "stop_id": 121,
+        "pinned_at": 1789474877682,
+        "departed_at": 1789475427863,
+        "outcome": "stopped",
+        "how": "far"
+      },
+      "scoredCheckpoints": 0,
+      "status": "outside scored replay or no eligible chain; prior audit remains, not newly validated"
+    },
+    {
+      "source": 54002,
+      "record": {
+        "id": 54002,
+        "bus_name": "#316",
+        "stop_id": 121,
+        "pinned_at": 1789497120157,
+        "departed_at": 1789497150090,
+        "outcome": "stopped",
+        "how": "far"
+      },
+      "scoredCheckpoints": 0,
+      "status": "outside scored replay or no eligible chain; prior audit remains, not newly validated"
+    },
+    {
+      "source": 52633,
+      "record": {
+        "id": 52633,
+        "bus_name": "#310",
+        "stop_id": 121,
+        "pinned_at": 1789484065559,
+        "departed_at": 1789484475626,
+        "outcome": "stopped",
+        "how": "clock"
+      },
+      "scoredCheckpoints": 0,
+      "status": "outside scored replay or no eligible chain; prior audit remains, not newly validated"
+    },
+    {
+      "source": 52168,
+      "record": {
+        "id": 52168,
+        "bus_name": "#310",
+        "stop_id": 121,
+        "pinned_at": 1789480340081,
+        "departed_at": 1789480850120,
+        "outcome": "stopped",
+        "how": "clock"
+      },
+      "scoredCheckpoints": 0,
+      "status": "outside scored replay or no eligible chain; prior audit remains, not newly validated"
+    },
+    {
+      "source": 54777,
+      "record": {
+        "id": 54777,
+        "bus_name": "#316",
+        "stop_id": 121,
+        "pinned_at": 1789503790925,
+        "departed_at": 1789504261007,
+        "outcome": "stopped",
+        "how": "clock"
+      },
+      "scoredCheckpoints": 0,
+      "status": "outside scored replay or no eligible chain; prior audit remains, not newly validated"
+    },
+    {
+      "source": 53429,
+      "record": {
+        "id": 53429,
+        "bus_name": "#310",
+        "stop_id": 121,
+        "pinned_at": 1789491181365,
+        "departed_at": 1789491686527,
+        "outcome": "stopped",
+        "how": "far"
+      },
+      "scoredCheckpoints": 0,
+      "status": "outside scored replay or no eligible chain; prior audit remains, not newly validated"
+    }
+  ],
+  "largestRegressions": [
+    {
+      "cohort": "full-reused-afternoon-score",
+      "sourceId": 67419,
+      "targetId": 67448,
+      "target": 48,
+      "at": 1789672814167,
+      "phase": "approach",
+      "checkpointSec": -600,
+      "truthSec": 845.761,
+      "baseline": {
+        "eta": 1013.9831210687696,
+        "low": 635.7419430032403,
+        "high": 1346.5929756047562
+      },
+      "candidate": {
+        "eta": 1034.9373377163595,
+        "low": 634.4360011235981,
+        "high": 1344.2713348234222
+      },
+      "absErrorIncrease": 20.954216647589874
+    },
+    {
+      "cohort": "full-reused-afternoon-score",
+      "sourceId": 67419,
+      "targetId": 67495,
+      "target": 4,
+      "at": 1789672814167,
+      "phase": "approach",
+      "checkpointSec": -600,
+      "truthSec": 1271.833,
+      "baseline": {
+        "eta": 1383.5400210253383,
+        "low": 960.7487406634486,
+        "high": 1773.324661796089
+      },
+      "candidate": {
+        "eta": 1402.4175603664678,
+        "low": 974.15367768244,
+        "high": 1792.4753756583082
+      },
+      "absErrorIncrease": 18.877539341129477
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 60596,
+      "targetId": 60860,
+      "target": 48,
+      "at": 1789585388761,
+      "phase": "approach",
+      "checkpointSec": -120,
+      "truthSec": 2685.526,
+      "baseline": {
+        "eta": 2657.044499799669,
+        "low": 2065.95595657537,
+        "high": 3054.455057406607
+      },
+      "candidate": {
+        "eta": 2643.270418776462,
+        "low": 2065.9560256301625,
+        "high": 3054.455077146693
+      },
+      "absErrorIncrease": 13.774081023207145
+    },
+    {
+      "cohort": "full-reused-afternoon-score",
+      "sourceId": 67194,
+      "targetId": 67495,
+      "target": 4,
+      "at": 1789671227005,
+      "phase": "approach",
+      "checkpointSec": -120,
+      "truthSec": 2858.995,
+      "baseline": {
+        "eta": 2926.3547603790657,
+        "low": 2415.128871745301,
+        "high": 3319.6914457086104
+      },
+      "candidate": {
+        "eta": 2934.085101087575,
+        "low": 2415.128878109773,
+        "high": 3319.6906243780577
+      },
+      "absErrorIncrease": 7.730340708509175
+    },
+    {
+      "cohort": "full-next-occurrence-review",
+      "sourceId": 56968,
+      "targetId": 57525,
+      "target": 4,
+      "at": 1789557988298,
+      "phase": "standing",
+      "checkpointSec": 180,
+      "truthSec": 4408.352,
+      "baseline": {
+        "eta": 4378.511499151119,
+        "low": 3701.147772638763,
+        "high": 5022.887626447578
+      },
+      "candidate": {
+        "eta": 4371.627869863713,
+        "low": 3694.2274235650502,
+        "high": 5016.038917531793
+      },
+      "absErrorIncrease": 6.883629287405711
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 57100,
+      "targetId": 57158,
+      "target": 4,
+      "at": 1789558958392,
+      "phase": "standing",
+      "checkpointSec": 180,
+      "truthSec": 615.782,
+      "baseline": {
+        "eta": 521.3201304241472,
+        "low": 102.31279980818657,
+        "high": 989.4671235571712
+      },
+      "candidate": {
+        "eta": 515.3076821694665,
+        "low": 96.55863521687306,
+        "high": 983.3702435626989
+      },
+      "absErrorIncrease": 6.0124482546807485
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 56968,
+      "targetId": 57025,
+      "target": 4,
+      "at": 1789558108321,
+      "phase": "standing",
+      "checkpointSec": 300,
+      "truthSec": 600.049,
+      "baseline": {
+        "eta": 522.4671123896353,
+        "low": 185.84249718858402,
+        "high": 946.8289118182167
+      },
+      "candidate": {
+        "eta": 516.8694756277034,
+        "low": 180.5051976135939,
+        "high": 941.2306041422071
+      },
+      "absErrorIncrease": 5.597636761931881
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 56968,
+      "targetId": 57025,
+      "target": 4,
+      "at": 1789557988298,
+      "phase": "standing",
+      "checkpointSec": 180,
+      "truthSec": 720.072,
+      "baseline": {
+        "eta": 524.0542180754586,
+        "low": 103.96607468569078,
+        "high": 995.4607845953981
+      },
+      "candidate": {
+        "eta": 518.5113176992222,
+        "low": 98.70027494124326,
+        "high": 989.8796548078022
+      },
+      "absErrorIncrease": 5.542900376236389
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 63723,
+      "targetId": 63753,
+      "target": 48,
+      "at": 1789645556474,
+      "phase": "standing",
+      "checkpointSec": 300,
+      "truthSec": 165.024,
+      "baseline": {
+        "eta": 92.64907359623811,
+        "low": 0,
+        "high": 428.8927240194911
+      },
+      "candidate": {
+        "eta": 88.46275224134797,
+        "low": 0,
+        "high": 413.7509807678247
+      },
+      "absErrorIncrease": 4.18632135489014
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 63723,
+      "targetId": 63753,
+      "target": 48,
+      "at": 1789645436500,
+      "phase": "standing",
+      "checkpointSec": 180,
+      "truthSec": 284.998,
+      "baseline": {
+        "eta": 95.26429460337576,
+        "low": 0,
+        "high": 467.5002060454854
+      },
+      "candidate": {
+        "eta": 91.11574439247448,
+        "low": 0,
+        "high": 450.7833375396618
+      },
+      "absErrorIncrease": 4.148550210901277
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 56968,
+      "targetId": 56994,
+      "target": 48,
+      "at": 1789558228327,
+      "phase": "standing",
+      "checkpointSec": 420,
+      "truthSec": 230.01,
+      "baseline": {
+        "eta": 107.62644680251765,
+        "low": 0,
+        "high": 447.7114304122442
+      },
+      "candidate": {
+        "eta": 103.92506229401792,
+        "low": 0,
+        "high": 434.6714219551107
+      },
+      "absErrorIncrease": 3.7013845084997286
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 56968,
+      "targetId": 56994,
+      "target": 48,
+      "at": 1789558108321,
+      "phase": "standing",
+      "checkpointSec": 300,
+      "truthSec": 350.016,
+      "baseline": {
+        "eta": 107.66360430579942,
+        "low": 0,
+        "high": 487.572355556718
+      },
+      "candidate": {
+        "eta": 103.96302440151975,
+        "low": 0,
+        "high": 473.4977048039928
+      },
+      "absErrorIncrease": 3.700579904279664
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 56968,
+      "targetId": 56994,
+      "target": 48,
+      "at": 1789557988298,
+      "phase": "standing",
+      "checkpointSec": 180,
+      "truthSec": 470.039,
+      "baseline": {
+        "eta": 109.66046935140892,
+        "low": 0,
+        "high": 536.6164261649977
+      },
+      "candidate": {
+        "eta": 106.00385350613813,
+        "low": 0,
+        "high": 521.4525056607122
+      },
+      "absErrorIncrease": 3.656615845270778
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 57100,
+      "targetId": 57124,
+      "target": 48,
+      "at": 1789559198418,
+      "phase": "standing",
+      "checkpointSec": 420,
+      "truthSec": 120.738,
+      "baseline": {
+        "eta": 103.16520385234004,
+        "low": 0,
+        "high": 424.2621978557378
+      },
+      "candidate": {
+        "eta": 99.61560116183068,
+        "low": 0,
+        "high": 412.0023002447431
+      },
+      "absErrorIncrease": 3.54960269050936
+    },
+    {
+      "cohort": "full-development-score",
+      "sourceId": 57100,
+      "targetId": 57124,
+      "target": 48,
+      "at": 1789559078390,
+      "phase": "standing",
+      "checkpointSec": 300,
+      "truthSec": 240.766,
+      "baseline": {
+        "eta": 103.20783622096282,
+        "low": 0,
+        "high": 464.8357539591757
+      },
+      "candidate": {
+        "eta": 99.6591684808546,
+        "low": 0,
+        "high": 451.51743602710917
+      },
+      "absErrorIncrease": 3.5486677401082147
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "outcome": "research",
+  "summary": "The fixed cache diagnostic passed eight-route restart checks; complete Red replay showed essentially unchanged ETA accuracy. Preserved tail changes and regressions, verified inputs for the next full-fleet evaluation, and saved evidence in eta/cycle-14. Application files and HEAD remain unchanged.",
+  "next_task": "Review cycle-14/REVIEW_REQUEST.md, then evaluate the fixed diagnostic on the saved 12-route export using identical causal inputs, connected outcomes, both occurrences and rider decisions. Preserve repaired stop sequences and documented tail changes.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/run.sh — passed; 16,253 polls and 150,020 forecasts per arm.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/verify.py — passed; exact baseline parity, 6,674 connected leg uses and 3,309 checkpoint truths verified.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/run-fixture.sh — passed; both arms completed order and three fresh-process restart runs.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/compare_fixture.py — passed; diagnostic matched all 60 restored polls exactly.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/verify_export.py — passed; 197,354 recorded rows verified with no missing or extra rows.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/finish.py — passed; clean checkout/index, artifact integrity and screenshot budget verified."
+  ]
+}

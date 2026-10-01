@@ -1,0 +1,27 @@
+{
+  "head": "413c85ac5158ef5d4f5c0c50ecf7c8e9c43a1c97",
+  "base": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+  "checkout_clean": true,
+  "index_tree_unchanged": true,
+  "tracked_hashes": 913,
+  "builder_hashes": 63,
+  "scope": [
+    "services/shuttle-v2/scripts/weather-controls-check.mjs",
+    "services/shuttle-v2/web/src/TransitMap.tsx"
+  ],
+  "source_maps": [
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-ux-2026-09-17/services/shuttle-v2/web/dist/assets/rider-CNqoxkK-.js.map",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/entry-dist/assets/rider-aB0dKCWf.js.map"
+  ],
+  "passing_browser_reports": {
+    "browser/mobile/report.json": 6,
+    "browser/desktop/report.json": 6,
+    "extra-corrected/report.json": 6,
+    "supplemental/report.json": 8,
+    "browser/navigation/after-browser.json": 12,
+    "feed/empty-service.json": 8
+  },
+  "retained_initial_fixture_failure": true,
+  "shared_image_count": 456,
+  "shared_image_bytes": 20313553
+}

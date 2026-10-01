@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import type { FC, Ref } from "react";
 import type { RideEndReason } from "./rideEnd";
 
 /** Ending the bus ride should not discard the rider's final destination. */
@@ -7,7 +7,8 @@ export const RideFinish: FC<{
   reason?: RideEndReason;
   onFindShuttle: () => void;
   onDismiss: () => void;
-}> = ({ ride, reason, onFindShuttle, onDismiss }) => {
+  focusRef?: Ref<HTMLElement>;
+}> = ({ ride, reason, onFindShuttle, onDismiss, focusRef }) => {
   const hasDestination = !!ride.toText && Number.isFinite(ride.toLat) && Number.isFinite(ride.toLon);
   const explanation = reason === "bus-gone"
     ? "Your shuttle has been missing from live updates for 10 min, so tracking stopped. You may still be on board."
@@ -20,7 +21,7 @@ export const RideFinish: FC<{
   // when they deliberately end tracking before the planned exit stop.
   const href = `https://www.google.com/maps/dir/?api=1&destination=${ride.toLat},${ride.toLon}&travelmode=walking`;
   return (
-    <section aria-label="Finish your trip" style={{
+    <section ref={focusRef} tabIndex={-1} aria-label="Finish your trip" style={{
       width: "calc(100% - 32px)", maxWidth: 528, margin: "16px auto 8px",
       padding: 16, border: "1px solid #e0ddd8", borderRadius: 12, background: "#fff",
     }}>

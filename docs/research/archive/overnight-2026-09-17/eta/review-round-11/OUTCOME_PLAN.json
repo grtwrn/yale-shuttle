@@ -1,0 +1,9 @@
+{
+  "createdAt": "2026-09-18T08:12:02.690675+00:00",
+  "cohort": "All 38 cycle6 missing cases with pickup hops=29, representing 19 bus-polls/9 source visits; do not exclude after recorded departure.",
+  "forecastInputs": "Saved unmodified current-production-equivalent ordered decisions and frozen cycle6 diagnostic fallthrough on identical complete served frames. No new prediction using outcome labels.",
+  "identityRule": "Choose alternative bus from actual fallthrough journey trace, never from lowest observed duration. Source occurrence is first chronological visit to selected source whose observed departed_at is after forecast time; verify no earlier still-available or later skipped visit. Enforce source identity, route stop index and actual selected board stopsAhead vs served route position. No nearest-predicted-ETA matching.",
+  "connectivity": "Reuse exact reviewed connect() legs+visits identity checks from cycle2. Require a connected predecessor chain from most recent physically anchored alternative bus visit at poll to candidate source, then source to requested destination. If absent, retain unresolved with reason. Also audit second pickup and destination occurrences where wire offers them, missing chains stay explicit.",
+  "scores": "Alternative point errors scored against its own connected arrival; original focal fallback gets its own outcome only when original source departure is >=poll. Difference in observed arrival is a policy consequence, not paired forecast accuracy. Direct walking is modeled, not observed. Report count/date/source clustering, MAE/p90/early/late, all selected rows and all unresolved cases.",
+  "limits": "Retrospective recorded visits, reused history and reconstructed collector clocks; cannot prove physical boarding at earliest anchor, doors open, rider behavior, or improve raw-at-stop selection. No shipping criterion or threshold search."
+}

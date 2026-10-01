@@ -1,0 +1,35 @@
+{
+  "verdict": "approve",
+  "summary": "No blocking findings. Independently passed 105 tests, both typechecks, build and browser checks for focus, lifecycle and offline recovery. Checkout unchanged. Review saved in ux/independent-review-round-7.md.",
+  "head_sha": "ae4fec5d0115314174795d30f3f91c3f7c85614f",
+  "base_sha": "8de0eed1c6a869606272824fd3dcac753ce32836",
+  "next_task": "Controller proceeds through publication gates. Continue UX-06 trip-action/correct-bus/final-walk coverage; coordinate ETA's ordered-pickup join as a separate proposal.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux06 flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-06/verify.sh",
+      "exit_code": 0,
+      "result": "51 tests, backend/frontend typechecks, Vite build, mobile/desktop component checks and built-app browser checks passed."
+    },
+    {
+      "command": "npm test -- src/server/serverEta.test.ts src/server/serverEta.closure.test.ts web/src/etaSource.test.ts web/src/liveUpdates.test.ts",
+      "exit_code": 0,
+      "result": "54 transport, freshness, repeated-occurrence, restart and Docker import tests passed."
+    },
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux06/lifecycle flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux06/lifecycle.mjs",
+      "exit_code": 0,
+      "result": "Keyboard cycles, focus ownership, listener cleanup, missing/empty transitions and unmount/remount passed; zero page errors."
+    },
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux06 flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux06/shell-recovery.mjs",
+      "exit_code": 0,
+      "result": "Network-failure expiry, fullscreen focus, fresh recovery, both arrivals and reload/draft checks passed. Browser resources closed."
+    },
+    {
+      "command": "git diff --check 8de0eed1c6a869606272824fd3dcac753ce32836 ae4fec5d0115314174795d30f3f91c3f7c85614f && node --check services/shuttle-v2/scripts/fullscreen-map-check.mjs && git diff --exit-code && git diff --cached --exit-code && git status --porcelain=v1",
+      "exit_code": 0,
+      "result": "Passed. Exact HEAD/base independently verified; tracked checkout and index remain clean."
+    }
+  ]
+}

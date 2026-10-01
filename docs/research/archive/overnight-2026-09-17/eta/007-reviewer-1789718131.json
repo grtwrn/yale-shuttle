@@ -1,0 +1,50 @@
+{
+  "verdict": "research_only",
+  "summary": "Cycle-11 prototype independently verified with no blockers. All 9,376 decisions remain unchanged; build and browser checks pass. Checkout remains clean. Review saved in eta/independent-review-round-10.md. Production approval requires the combined UX consumer.",
+  "head_sha": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "base_sha": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "next_task": "Integrate cycle-11/eta-projection.patch with UX identity, wait labels and manual actions using INTEGRATION.md. Preserve both arrivals, walking caution, missing-destination unknownness and 38 unresolved cases. Run final application gates and fresh independent review.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-10/reproduce-light.sh",
+      "exit_code": 0,
+      "result": "9,376 exact paired comparisons, 17 boundary groups and 100 multi-option batches passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-10/reproduce-heavy.sh",
+      "exit_code": 0,
+      "result": "Both virtual TypeScript programs, isolated Vite build and 12 browser states per viewport passed."
+    },
+    {
+      "command": "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-10/direct-selector-audit.mts",
+      "exit_code": 0,
+      "result": "9,376 independent direct-selector/raw-gate comparisons passed."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-10/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Verified 82 built sources; preserved 1,400 outcomes, 38 unknown cases and the exact 442.827-second prior regression."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-10/extra-browser.sh",
+      "exit_code": 1,
+      "result": "Initial reviewer harness omitted navigation out of route details. Failure preserved; browser resources closed. No application defect."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-10/extra-browser.sh",
+      "exit_code": 0,
+      "result": "Corrected harness passed mobile/desktop failure recovery, future-plan clearing and physical-ride persistence/reload. Zero page errors; resources closed."
+    },
+    {
+      "command": "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-10/multi-option-review.mts",
+      "exit_code": 0,
+      "result": "100 heterogeneous shuttle batches passed; 87 contained distinct selected boarding identities."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-10/final-integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base and clean checkout verified; 75 builder files and 20 original build assets unchanged; 11 reproduced artifacts byte-identical."
+    }
+  ]
+}

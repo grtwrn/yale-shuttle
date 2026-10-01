@@ -1,0 +1,13 @@
+{
+  "outcome": "candidate",
+  "summary": "Clarify class-arrival uncertainty and future trip controls\nDistinct messages now explain missing forecasts, tight buffers, connection risk and possible lateness. Future controls use plain language and 44px targets. ETA calculations remain unchanged. Evidence and checkpoint saved; HEAD preserved.",
+  "next_task": "Independently review UX-01 using ux/ux-01/REPORT.md, especially partial availability and caution precedence. Controller runs full CI/staging before publication. Next builder task: UX-02 navigation/search accessibility.",
+  "tests": [
+    "npm test -- web/src/arriveBy.test.ts web/src/arriveByMessage.test.ts web/src/journeyArrival.test.ts — 22 passed",
+    "npm run typecheck — backend and frontend passed",
+    "(cd web && npx vite build) — passed",
+    "node ux/ux-01/browser-check.mjs — 13 scenarios; mobile/desktop layout, keyboard and error-state checks passed",
+    "node ux/ux-01/shell-check.mjs — built-app future planning, control sizes, focus and draft restoration passed",
+    "Final verification ran under the shared heavy lock; git diff --check passed. Exact commands and results: ux/ux-01/final-verify.log."
+  ]
+}

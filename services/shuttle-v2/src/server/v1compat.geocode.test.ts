@@ -318,6 +318,13 @@ describe("rankExternal", () => {
     const b = hit("B", 41.4, -72.8);
     expect(rankExternal(empty, [b, a]).map((h) => h.display_name)).toEqual(["B", "A"]);
   });
+
+  it("rejects a different house on an address search, even when its number matches", () => {
+    const wrong = { ...hit("30, Homestead Avenue, Hamden", 41.32, -72.92), type: "house" };
+    const right = { ...hit("30, Whitney Avenue, New Haven", 41.31, -72.92), type: "house" };
+    expect(rankExternal(network, [wrong, right], "30 Whitney Avenue")).toEqual([right]);
+    expect(rankExternal(network, [wrong], "30 Whitney Avenue")).toEqual([]);
+  });
 });
 
 /**
@@ -706,6 +713,28 @@ describe("a street address with a suffix (operator, 2026-09-03)", () => {
     // The house the rider typed leads.
     expect(hits[0]!.type).toBe("house");
     expect(hits[0]!.display_name).toContain("517");
+  });
+
+  it.each([
+    ["101 College Street", "101 College St"],
+    ["201 Munson Street", "201 Munson St"],
+    ["354 Canner Street", "354 Canner St"],
+  ])("asks both providers for %s using the abbreviated street suffix", async (query, expected) => {
+    const { geocoder, calls } = geocoderFor(() => json({ features: [] }), () => json([]));
+    await geocoder.lookup(query);
+    expect(calls.map((url) => new URL(url).searchParams.get("q"))).toEqual([expected, expected]);
+  });
+
+  it("falls back when Photon returns a house on the wrong street", async () => {
+    const wrong = () => json({ features: [
+      photonFeature({ housenumber: "30", street: "Homestead Avenue", city: "Hamden", type: "house" }, -72.92, 41.32),
+    ] });
+    const right = () => json([{ lat: "41.31", lon: "-72.92", display_name: "30, Whitney Avenue, New Haven", type: "house", class: "place" }]);
+    const { geocoder, calls } = geocoderFor(wrong, right);
+    const hits = await geocodeV1(network, "30 Whitney Avenue", geocoder);
+    expect(calls.some((url) => url.includes("nominatim"))).toBe(true);
+    expect(hits.some((hit) => hit.display_name.includes("Homestead"))).toBe(false);
+    expect(hits.some((hit) => hit.display_name.includes("Whitney Avenue"))).toBe(true);
   });
 
   it("puts the house ahead of the places that merely share the street's words", async () => {

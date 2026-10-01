@@ -1,0 +1,30 @@
+{
+  "scope": "Synthetic intercepted feed on unmodified built SPA; no accuracy claim",
+  "checks": [
+    "Initial hanging/aborted requests become unavailable at 45 seconds without claiming empty service; fresh empty recovers",
+    "Retained nonempty fleet expires during hanging polls and recovers without conflating absence of data and buses",
+    "Manual hidden-route choices survive reload; keyboard activation restores mode-control focus and subsequent Tab advances into restored cards",
+    "Filter recovery works despite storage-write failure"
+  ],
+  "snapshots": {
+    "stalledInitialRequest": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nLive bus updates unavailable. Reconnecting…\nLive shuttle status unavailable\nChoose a destination to check walking directions and route schedules.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+    "stalledRetainedFleet": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nLive bus updates interrupted. Times and positions may be out of date. Reconnecting…\nLive shuttle status unavailable\nChoose a destination to check walking directions and route schedules.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+    "automaticRecovery": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nHide all\nRed\nBlue Day\nBlue Wknd\nBlue Night\nBlue West\nOrange\nOrg Night\nOrg East\nBrown\nPink\nGreen\nPurple\nGold\nGrocery TJ\nGrocery Ham\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nFixture service notice·Check published schedules for planned service.\nRunning now\nNo shuttles reporting right now. Showing selected routes and schedules.\nBLUE DAY\n★\n~loop 22 min · M–F 7a–6p\n0 buses\n31 stops · no buses reporting ›\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout"
+  },
+  "errors": [],
+  "focusAfterAutomaticRecovery": {
+    "tag": "BODY",
+    "text": "\n    \n        * { box-sizing: border-box; }\n        body { margin: 0; }\n        @media (max-width: 6"
+  },
+  "nextTabAfterRecovery": {
+    "tag": "BUTTON",
+    "label": null,
+    "text": "Blue Day"
+  },
+  "offRouteEmptyMessage": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nHide all\nRed\nBlue Day\nBlue Wknd\nBlue Night\nBlue West\nOrange\nOrg Night\nOrg East\nBrown\nPink\nGreen\nPurple\nGold\nGrocery TJ\nGrocery Ham\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRunning now\nNo buses are reporting on your selected routes.\nShow selected routes\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+  "offRouteRecoveredCard": "RED\n★\n~loop 25 min · M–F 5:40a–7p\n2/2 buses\nDivision / Prospect\nAbout 4 min\nLikely 2–9 min\n2:07p\n🔔\nProspect / Hillside\nAbout 6 min\nLikely 4–11 min\n2:08p\n🔔\nSCL\nAbout 7 min\nLikely 5–12 min\n2:10p\n🔔\n130 Prospect Street (S)\nAbout 9 min\nLikely 7–14 min\n2:11p\n🔔\nand 25 more stops ›",
+  "completed": true,
+  "resourcesClosed": true,
+  "requests": 27,
+  "failedRequests": 0
+}

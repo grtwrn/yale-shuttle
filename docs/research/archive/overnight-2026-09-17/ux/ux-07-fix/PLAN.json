@@ -1,0 +1,12 @@
+{
+  "head": "a401ef5c7fe675e59e0ec0e2b4dbb474ba176b34",
+  "base": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "started": "2026-09-18T07:20:09.244931+00:00",
+  "scope": [
+    "guard recovery-button removal focus",
+    "truthful on-route/filter copy",
+    "extend existing built-SPA regression"
+  ],
+  "baseline_evidence": "../review-ux07/boundary-acceptance.json",
+  "constraints": "No filtering, count, ETA, poll or numerical changes; preserve HEAD/index."
+}

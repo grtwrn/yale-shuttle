@@ -1,0 +1,44 @@
+{
+  "head": "da51fcb0af70f554ef0b141aa07d4a390f3c7de0",
+  "base": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "scope": [
+    "services/shuttle-v2/scripts/crash-recovery-check.mjs",
+    "services/shuttle-v2/web/src/CrashRecovery.tsx",
+    "services/shuttle-v2/web/src/main.tsx"
+  ],
+  "trackedFilesPreserved": 907,
+  "builderFilesPreserved": 82,
+  "checkoutIndexTreeUnchanged": true,
+  "sourceAndBuiltBundleMatch": true,
+  "entryOutsideFallbackUnchanged": true,
+  "baselineMapSourceMatches": true,
+  "reports": {
+    "verified/mobile/crash-recovery.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": 6
+    },
+    "verified/desktop/crash-recovery.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": 6
+    },
+    "verified/feed/empty-service.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": 8
+    },
+    "extra-second/lifecycle.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": 3
+    },
+    "offline/offline-shell.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "checks": 3
+    }
+  },
+  "imageFiles": 297,
+  "imageBytes": 14058930
+}

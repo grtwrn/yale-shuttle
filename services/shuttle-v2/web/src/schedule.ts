@@ -135,6 +135,10 @@ export interface AlternationRule {
 export interface DateSpan { from: string; to: string; why: string }
 export interface RouteCalendar {
   alternation?: AlternationRule;
+  /** First ET day on which the old alternation no longer applies. */
+  alternationEndsOn?: string;
+  /** First ET day without any future scheduled service on this route. */
+  discontinuedFrom?: string;
   /** Published no-service spans, ET dates inclusive. */
   closures?: DateSpan[];
   /** One plain line the route's cards carry, from the published sheet. */
@@ -145,9 +149,12 @@ export interface RouteCalendar {
 const GROCERY_NOTE = "FlexiStop: ask the driver to drop you anywhere along the route · no service on holidays and recess";
 const GROCERY_SOURCE = "Yale\u2019s 2026 grocery shuttle calendar";
 const GROCERY_CLOSURES: DateSpan[] = [{ from: "2026-12-24", to: "2026-12-31", why: "winter recess" }];
+// Operator notice supplied September 18: Hamden becomes the main grocery
+// line, including Trader Joe's, on September 19; Milford is discontinued.
+export const GROCERY_CHANGE_DAY = "2026-09-19";
 export const ROUTE_CALENDAR: Record<string, RouteCalendar> = {
-  "Grocery TJ":  { alternation: { anchorDay: "2026-01-03", periodDays: 14, partner: "Grocery Ham" }, closures: GROCERY_CLOSURES, note: GROCERY_NOTE, source: GROCERY_SOURCE },
-  "Grocery Ham": { alternation: { anchorDay: "2026-01-10", periodDays: 14, partner: "Grocery TJ" }, closures: GROCERY_CLOSURES, note: GROCERY_NOTE, source: GROCERY_SOURCE },
+  "Grocery TJ":  { alternation: { anchorDay: "2026-01-03", periodDays: 14, partner: "Grocery Ham" }, discontinuedFrom: GROCERY_CHANGE_DAY, closures: GROCERY_CLOSURES, note: GROCERY_NOTE, source: GROCERY_SOURCE },
+  "Grocery Ham": { alternation: { anchorDay: "2026-01-10", periodDays: 14, partner: "Grocery TJ" }, alternationEndsOn: GROCERY_CHANGE_DAY, closures: GROCERY_CLOSURES, note: GROCERY_NOTE, source: GROCERY_SOURCE },
 };
 
 /** Days of an alternation cycle the line is on: one week from the anchor. */
@@ -203,8 +210,26 @@ export function isClosedOn(cal: RouteCalendar | undefined, d: Date): boolean {
 /** The calendar says the line runs on the ET date of `d` (alternation and closures; hours aside). */
 export function calendarAllows(cal: RouteCalendar | undefined, d: Date): boolean {
   if (!cal) return true;
+  if (cal.discontinuedFrom && etDayNumber(d) >= isoDayNumber(cal.discontinuedFrom)) return false;
   if (isClosedOn(cal, d)) return false;
+  if (cal.alternationEndsOn && etDayNumber(d) >= isoDayNumber(cal.alternationEndsOn)) return true;
   return !cal.alternation || isOnWeekAt(cal.alternation, d);
+}
+
+export function routeDiscontinuedAt(label: string, at: Date): boolean {
+  const day = ROUTE_CALENDAR[label]?.discontinuedFrom;
+  return !!day && etDayNumber(at) >= isoDayNumber(day);
+}
+
+/** Use the trip's ET date for planned trips; never the browser's timezone. */
+export function groceryServiceNotice(label: string, at = new Date()): string | null {
+  if (label !== 'Grocery TJ' && label !== 'Grocery Ham') return null;
+  if (etDayNumber(at) < isoDayNumber(GROCERY_CHANGE_DAY)) {
+    return "From Sep 19, 2026: Hamden becomes the main grocery route and serves Trader Joe’s; Milford service ends.";
+  }
+  return label === 'Grocery Ham'
+    ? "Hamden is the main grocery route, now serving Trader Joe’s. Milford service is discontinued."
+    : "Milford service ended Sep 19, 2026. Use Grocery Ham for Trader Joe’s in Hamden.";
 }
 
 export function fmtScheduleTime(min: number): string {
@@ -377,7 +402,8 @@ export function nextWindowStart(wins: readonly ScheduleWindow[], after: Date, ca
  *  open   the line runs at `at`
  *  off    the HOURS say open at `at`, yet the line is not out: `partner` is
  *         the line running instead when this one alternates ("not this
- *         weekend"), null otherwise ("not running today")
+ *         weekend"), null otherwise ("not running today"). Discontinued
+ *         service has an explicit off state even outside its former hours.
  *  next   the line's next start on a day the calendar allows; null when the
  *         windows are unknown or nothing opens within the horizon
  *
@@ -393,7 +419,7 @@ export function nextWindowStart(wins: readonly ScheduleWindow[], after: Date, ca
  */
 export interface ServiceState {
   open: boolean;
-  off: { partner: string | null } | null;
+  off: { partner: string | null; discontinued?: true } | null;
   next: Date | null;
 }
 
@@ -421,11 +447,15 @@ export function serviceStateAt(
   at: Date,
   live?: LiveEvidence,
 ): ServiceState {
+  // A stale upstream active flag cannot resurrect discontinued service.
+  // Actual reporting buses still use the separate, unchanged visibility gate.
+  if (routeDiscontinuedAt(label, at)) return { open: false, off: { partner: null, discontinued: true }, next: null };
   if (!wins) return { open: true, off: null, next: null };
   const cal = ROUTE_CALENDAR[label];
   const hoursOpen = isWindowActiveAt(wins, at);
   const today = !!live && etDayNumber(live.now) === etDayNumber(at);
-  const partner = cal?.alternation?.partner ?? null;
+  const partner = cal?.alternationEndsOn && etDayNumber(at) >= isoDayNumber(cal.alternationEndsOn)
+    ? null : cal?.alternation?.partner ?? null;
   let open: boolean;
   let overridden = false;
   if (today && live!.active === true) {
@@ -458,7 +488,8 @@ export function serviceStateAt(
     }
     const { mins } = etDayAndMinutes(t);
     const midnight = new Date(t.getTime() - mins * 60_000);
-    next = nextWindowStart(wins, midnight, cal?.closures ? { closures: cal.closures } : undefined) ?? next;
+    // Drop only the unreliable cycle; retain permanent retirement and closures.
+    next = nextWindowStart(wins, midnight, cal ? { ...cal, alternation: undefined } : undefined);
   }
   return { open, off, next };
 }

@@ -1,0 +1,20 @@
+{
+  "arm": "candidate",
+  "frames": 16253,
+  "emitted": 150020,
+  "parityChecks": 151,
+  "gaps": [
+    {
+      "at": 1789556683166,
+      "gapMs": null
+    },
+    {
+      "at": 1789642866201,
+      "gapMs": 45035866
+    }
+  ],
+  "routes": {
+    "3": 46790
+  },
+  "refitAt": 1789665240913
+}

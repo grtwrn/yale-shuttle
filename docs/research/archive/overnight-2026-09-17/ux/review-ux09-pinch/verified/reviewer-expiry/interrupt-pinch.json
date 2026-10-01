@@ -1,0 +1,14 @@
+{
+  "autoEnd": true,
+  "scope": "Independent held-pinch interruption probe; current built SPA; real clock; all network intercepted",
+  "errors": [],
+  "phases": [
+    "pinch begins",
+    "Natural age auto-end while fingers remain down",
+    "release held pinch after teardown",
+    "subsequent normal touch on finish view",
+    "complete"
+  ],
+  "completed": true,
+  "resourcesClosed": true
+}

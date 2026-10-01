@@ -1,0 +1,12 @@
+{
+  "legacyRows": 728,
+  "legacySortedGroups": 22,
+  "landmarks": 2044,
+  "weightSums": 570,
+  "legacyRouteFilter": "route_id=3, stop_id IN(11,121), ORDER BY departed_at in capture-legacy.py",
+  "captureScriptSha256": {
+    "capture.py": "62b5d6319dbe47af5ae67545d96561893624eee8d2ad566d07157dcb58de886d",
+    "capture-legacy.py": "c04fe088c7bfffafb7dac12653c939272be8a99164e69f01a71be71c7d0387a4"
+  },
+  "passed": true
+}

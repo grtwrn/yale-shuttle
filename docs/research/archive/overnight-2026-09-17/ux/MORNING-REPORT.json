@@ -1,0 +1,369 @@
+{
+  "round": 12,
+  "history": [
+    {
+      "round": 1,
+      "at": "2026-09-18T03:08:32.385385+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/282",
+      "merge": "948712e153cea1017e9471ce84851a41fae4508a",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 879,
+        "collectorLagMs": 760,
+        "knownBuses": 7,
+        "serverEta": {
+          "restored": 7,
+          "forecastAt": 1789700911616,
+          "checkpointAt": 1789700896752,
+          "beliefs": 7,
+          "steps": 4,
+          "failures": 0,
+          "lastStepMs": 64,
+          "rows": 237
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "948712e153ce"
+      },
+      "summary": "Keep class-arrival advice with its supporting route\nSupporting advice now includes the correct bus, window and trip action. Opening a hidden route also preserves its map. ETA math and ordering are unchanged. Evidence/checkpoint updated; HEAD preserved."
+    },
+    {
+      "round": 2,
+      "at": "2026-09-18T03:41:42.295456+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/283",
+      "merge": "cff3b2a6b7ad6cdd2f899bb4d564a4c03dae2d37",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 2783,
+        "collectorLagMs": 2746,
+        "knownBuses": 7,
+        "serverEta": {
+          "restored": 7,
+          "forecastAt": 1789702899540,
+          "checkpointAt": 1789702879745,
+          "beliefs": 7,
+          "steps": 5,
+          "failures": 0,
+          "lastStepMs": 77,
+          "rows": 230
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "cff3b2a6b7ad"
+      },
+      "summary": "Keep place search accessible and preserve keyboard focus\nAdded explicit input/list names, current navigation state and announced search errors. Fixed focus loss after selection and delayed blur closing a reopened editor. Evidence and checkpoints saved; HEAD preserved."
+    },
+    {
+      "round": 3,
+      "at": "2026-09-18T04:15:43.726325+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/284",
+      "merge": "e436041a9b4617cbf14ef82c37dc6978f6e7fa3c",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 4985,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 4,
+          "forecastAt": null,
+          "checkpointAt": 1789704908990,
+          "beliefs": 4,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 1,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "e436041a9b46"
+      },
+      "summary": "Make feedback errors visible and screenshot actions keyboard accessible\nAdded named fields, selected priorities, announced status and guarded focus restoration. Evidence and checkpoints saved in ux/ux-03. HEAD preserved; ready for independent review."
+    },
+    {
+      "round": 4,
+      "at": "2026-09-18T04:44:01.608563+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/285",
+      "merge": "6220b860a69f5567557926f41de59ed1af72d2f8",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 4045,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 0,
+          "forecastAt": null,
+          "checkpointAt": 1789706613864,
+          "beliefs": 0,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 1,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "6220b860a69f"
+      },
+      "summary": "Clarify past-trip summaries and preserve refresh focus\nHistorical context now precedes the graph; weighting details remain expandable. Refresh retains keyboard focus and announces loading/errors. Calculations and samples are unchanged. Evidence saved in ux/ux-04; HEAD preserved."
+    },
+    {
+      "round": 5,
+      "at": "2026-09-18T05:37:20.602903+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/286",
+      "merge": "8de0eed1c6a869606272824fd3dcac753ce32836",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 3161,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 0,
+          "forecastAt": null,
+          "checkpointAt": 1789709818483,
+          "beliefs": 0,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 1,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "8de0eed1c6a8"
+      },
+      "summary": "Keep minimap times attributable to routes and buses\nDisambiguated shared route initials, added bus numbers to compact waits, and named keyboard-accessible markers. Tested proposal and evidence saved in ux/ux-05/REPORT.md. HEAD and index preserved."
+    },
+    {
+      "round": 6,
+      "at": "2026-09-18T06:14:28.401500+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/287",
+      "merge": "2dbc060bf517225c219fba8cbc5cb343fb19312b",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 2003,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 0,
+          "forecastAt": null,
+          "checkpointAt": 1789712036959,
+          "beliefs": 0,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 2,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "2dbc060bf517"
+      },
+      "summary": "Restore keyboard focus after closing fullscreen trip maps\nFixed Back and Escape focus restoration across overview, walking and pickup-location maps. Trip data and ETA behavior are unchanged. Evidence saved in ux/ux-06/REPORT.md; HEAD and index preserved."
+    },
+    {
+      "round": 7,
+      "at": "2026-09-18T06:43:22.019222+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/288",
+      "merge": "373505d5076f21a08de69d9587be9b2a55956642",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 943,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 0,
+          "forecastAt": null,
+          "checkpointAt": 1789713776044,
+          "beliefs": 0,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 1,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "373505d5076f"
+      },
+      "summary": "Attribute trip steps and ride tracking to the correct bus\nExpanded details now show the bus and wait used by the journey, with explicit boarding choices and guarded keyboard focus. ETA calculations are unchanged. Evidence saved in ux/ux-06-trip/REPORT.md; HEAD and index preserved."
+    },
+    {
+      "round": 8,
+      "at": "2026-09-18T07:38:23.003244+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/290",
+      "merge": "7e29064475315c2d621b77cdca130c05737d1ab8",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 3528,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 0,
+          "forecastAt": null,
+          "checkpointAt": 1789717079850,
+          "beliefs": 0,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 1,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "7e2906447531"
+      },
+      "summary": "Preserve map recovery focus and describe filtered buses accurately\nFixed both review findings and added browser regressions. Filtering and ETA behavior remain unchanged. Evidence: ux/ux-07-fix/REPORT.md. HEAD and index preserved."
+    },
+    {
+      "round": 9,
+      "at": "2026-09-18T08:04:34.439392+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/291",
+      "merge": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 2454,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 0,
+          "forecastAt": null,
+          "checkpointAt": 1789718659452,
+          "beliefs": 0,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 2,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "8aa67bd7f388"
+      },
+      "summary": "Preserve keyboard focus when configuring stop alerts\nFixed Escape, arm/cancel focus and accessibility semantics. Evidence and checkpoints saved in ux/ux-08/REPORT.md. HEAD and index preserved; ready for independent review."
+    },
+    {
+      "round": 10,
+      "at": "2026-09-18T08:52:42.656429+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/292",
+      "merge": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 3786,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 0,
+          "forecastAt": null,
+          "checkpointAt": 1789721539291,
+          "beliefs": 0,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 1,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "98e535b99649"
+      },
+      "summary": "Keep get-off prompts current and preserve ride recovery focus\nUnavailable position now clears obsolete instructions. Prompt dismissal, ride completion and replanning preserve keyboard focus. Evidence: ux/ux-08-ride/REPORT.md. HEAD and index preserved."
+    },
+    {
+      "round": 11,
+      "at": "2026-09-18T10:56:47.904233+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/293",
+      "merge": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 4545,
+        "collectorLagMs": 4469,
+        "knownBuses": 11,
+        "serverEta": {
+          "restored": 10,
+          "forecastAt": 1789729003428,
+          "checkpointAt": 1789728988613,
+          "beliefs": 10,
+          "steps": 4,
+          "failures": 0,
+          "lastStepMs": 266,
+          "rows": 315
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "56a5258bd4c6"
+      },
+      "summary": "Make saved destinations and recent places usable by keyboard\nFixed selection, rename cancellation, deletion and focus recovery. Mobile and desktop browser checks pass. Evidence: ux/ux-10/REPORT.md. HEAD/index preserved; watcher untouched."
+    }
+  ],
+  "running": false,
+  "deadline": "2026-09-18T07:30:00-04:00",
+  "pid": 1012455,
+  "team": "ux",
+  "repo": "/home/gwarren/projects/yale-shuttle-watcher/overnight-ux-2026-09-17",
+  "heartbeat": "2026-09-18T11:30:03.814217+00:00",
+  "phase": "finished",
+  "preparation": null,
+  "base": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+  "branch": "overnight/ux-20260917-012",
+  "review": {
+    "verdict": "approve",
+    "summary": "No blocking findings. Weather keyboard access and focus recovery independently verified: 123 tests, both typechecks, build and six browser reports passed. Checkout unchanged. Evidence: ux/independent-review-round-18.md.",
+    "head_sha": "413c85ac5158ef5d4f5c0c50ecf7c8e9c43a1c97",
+    "base_sha": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+    "next_task": "Controller release gates, then UX11 Retry/weekday-filter audit using ux/ux-10-weather/NEXT.md.",
+    "blocking_findings": [],
+    "tests": [
+      {
+        "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/verify.sh",
+        "exit_code": 0,
+        "result": "84 tests, backend/frontend typechecks and Vite build passed."
+      },
+      {
+        "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux10-weather/integration.sh",
+        "exit_code": 1,
+        "result": "Three browser reports passed; reviewer probe then hit Playwright's refusal to click an ARIA-disabled control. Fixture failure preserved and corrected without application changes."
+      },
+      {
+        "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux10-weather/remaining.sh",
+        "exit_code": 0,
+        "result": "Corrected pointer probe, extra focus transitions, location recovery and feed states passed. Both shuttle slots preserved; 39 transport/restart/runtime-import tests passed. Browser resources closed."
+      },
+      {
+        "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux10-weather/integrity.py",
+        "exit_code": 0,
+        "result": "Exact head/base, clean checkout/index, 913 tracked files, 63 builder artifacts, bundle provenance and screenshot budget verified."
+      },
+      {
+        "command": "git diff --check 56a5258bd4c6a4869667a99d3b480b12a3ce61c9..HEAD",
+        "exit_code": 0,
+        "result": "Passed."
+      },
+      {
+        "command": "node --check services/shuttle-v2/scripts/weather-controls-check.mjs",
+        "exit_code": 0,
+        "result": "Passed."
+      }
+    ]
+  },
+  "log": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/012-builder-1789730933.jsonl",
+  "role_started": "2026-09-18T11:28:53.751799+00:00",
+  "model_pid": null,
+  "last_error": "Model interrupted by stop/deadline/log limit; source/artifacts preserved for recovery",
+  "consecutive_errors": 1,
+  "resume_phase": "retry_pending",
+  "finished_at": "2026-09-18T11:30:03.814197+00:00",
+  "last_result": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/012-reviewer-1789730457.json",
+  "builder": {
+    "outcome": "candidate",
+    "summary": "Make weather forecasts usable by keyboard\nAdded disclosure state, hourly keyboard scrolling and focus recovery. Weather values remain unchanged. Evidence: ux/ux-10-weather/REPORT.md. HEAD/index preserved; watcher untouched.",
+    "next_task": "Independently review the two-file proposal, then controller release gates. Next builder: UX11 Retry and weekday-filter focus audit using ux/ux-10-weather/NEXT.md.",
+    "tests": [
+      "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/verify.sh \u2014 passed 84 tests, both typechecks and Vite build.",
+      "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/browser.sh \u2014 three final browser reports passed; initial fixture timing failure retained.",
+      "From services/shuttle-v2: OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/supplemental-verified flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/supplemental.mjs \u2014 eight groups passed; zero page errors; resources closed.",
+      "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/verify-integrity.py \u2014 passed scope, HEAD/index, source/bundle parity and screenshot-budget checks.",
+      "node --check services/shuttle-v2/scripts/weather-controls-check.mjs \u2014 passed.",
+      "git diff --check \u2014 passed."
+    ]
+  },
+  "next_task": "Controller release gates, then UX11 Retry/weekday-filter audit using ux/ux-10-weather/NEXT.md.",
+  "pr": null,
+  "pr_url": "https://github.com/grtwrn/yale-shuttle/pull/293",
+  "reviewed_head": "8f20f201a6cb7935ac3af4b983c173830510a277",
+  "reviewed_base": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "has_app": true,
+  "merge_sha": null
+}

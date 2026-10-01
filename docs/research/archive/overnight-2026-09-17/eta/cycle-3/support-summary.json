@@ -1,0 +1,24 @@
+{
+  "confirmed120": {
+    "uniqueHistoricalResetEvents": 29,
+    "reasons": {
+      "121/phase_innovation": 9,
+      "11/missing_opposite_at_update": 2,
+      "121/gap_outside_30_90min": 2,
+      "11/gap_outside_30_90min": 3,
+      "11/phase_innovation": 10,
+      "121/missing_opposite_at_update": 3
+    }
+  },
+  "confirmed240": {
+    "uniqueHistoricalResetEvents": 29,
+    "reasons": {
+      "121/phase_innovation": 9,
+      "11/missing_opposite_at_update": 2,
+      "121/gap_outside_30_90min": 2,
+      "11/gap_outside_30_90min": 3,
+      "11/phase_innovation": 10,
+      "121/missing_opposite_at_update": 3
+    }
+  }
+}

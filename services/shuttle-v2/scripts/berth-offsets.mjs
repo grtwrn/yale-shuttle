@@ -86,6 +86,7 @@
 //
 //   node scripts/berth-offsets.mjs --payload buses.json [--json out.json] [--stop N]
 
+import { archiveTableFile } from "./archive-files.mjs";
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -170,7 +171,7 @@ const routeStops = new Map(
 const obs = new Map();                       // "stop:route" -> observations
 let visits = 0, stopped = 0, placed = 0;
 for (const day of dayList) {
-  const V = rj(join(ARCHIVE, day, "stop_visits.jsonl.gz")), POS = rj(join(ARCHIVE, day, "raw_positions.jsonl.gz"));
+  const V = rj(archiveTableFile(join(ARCHIVE, day), "stop_visits")), POS = rj(archiveTableFile(join(ARCHIVE, day), "raw_positions"));
   if (!V.length || !POS.length) continue;
   const byBus = new Map();
   for (const p of POS) { if (!byBus.has(p.bus_name)) byBus.set(p.bus_name, []); byBus.get(p.bus_name).push(p); }

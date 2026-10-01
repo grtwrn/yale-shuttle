@@ -1,0 +1,13 @@
+{
+  "outcome": "research",
+  "summary": "Longer service-role history added negligible value beyond two departures and did not justify an ETA change. Saved reproducible forecasts, regression audits and handoff in cycle-3. Application files and HEAD remain unchanged.",
+  "next_task": "Independently review cycle-3/RESULTS.md and REVIEW_REQUEST.md, then begin the Red-versus-walking decision audit described in cycle-4/INPUTS.md. The existing archive contains only Red; preserve that limitation.",
+  "tests": [
+    "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/run_role.py extract — passed; 1,070 temporal checks.",
+    "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/test_role_state.py — six tests passed.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock env OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/run_role.py fit — passed; eight fits, 4,332 forecasts, exact baseline/fallback checks.",
+    "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/score_role.py — passed; paired scores, tails and component continuation saved.",
+    "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/audit_results.py — passed; provenance, 24 metric recomputations and ten retained regression audits.",
+    "git diff --check && git diff --exit-code && git diff --cached --exit-code && git rev-parse HEAD && git status --porcelain — passed; clean at 948712e153cea1017e9471ce84851a41fae4508a. No application typecheck, build or staging run."
+  ]
+}

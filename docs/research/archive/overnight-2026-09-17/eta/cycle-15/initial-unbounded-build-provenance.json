@@ -1,0 +1,9 @@
+{
+  "original": "const mean = Math.max(0.5, Math.min(40, meanCells));",
+  "replacement": "const mean = Math.round(Math.max(0.5, Math.min(40, meanCells)) * 10) / 10;",
+  "substitutions": 1,
+  "bundles": {
+    "current": "74375fb350694293431fc0f68834da8c24fc4165ea7dcd1acb360706183ac8d7",
+    "canonical": "ef501d6b7e8dc53016c5d3f0f6365620367954970818530dba1c30ef0aad8b5d"
+  }
+}

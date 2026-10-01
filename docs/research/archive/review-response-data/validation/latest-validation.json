@@ -1,0 +1,12 @@
+{
+  "accepted": false,
+  "plan": {
+    "ready": false,
+    "reasons": [
+      "Need at least 15 distinct archived days for seven training days and separate correction fit, selection, calibration and test blocks; found 14."
+    ]
+  },
+  "reasons": [
+    "Need at least 15 distinct archived days for seven training days and separate correction fit, selection, calibration and test blocks; found 14."
+  ]
+}

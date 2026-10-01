@@ -1,0 +1,32 @@
+{
+  "createdAt": "2026-09-18T07:11:29.906802+00:00",
+  "head": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "question": "What exact pickup bus and within-snapshot occurrence metadata does the unchanged production selector already know, independently of destination availability?",
+  "scope": "Research-only contract and census; no source changes, model fitting, tracking replay, numerical/ranking/selection modification or new holdout. Reuse all 4688 existing historical decisions and both wire occurrences.",
+  "experiments": [
+    "Extract exact current production live options block, retain current pickupState argument and assert all 4688 outputs/rankings against previously reviewed ordered decisions.",
+    "Instrument actual pickLiveArrival and raw-at-stop branches; classify same visit, different bus, same bus later visit, raw-at-stop with or without modeled current pickup, unavailable and departed.",
+    "Apply a fixed missing-destination ablation to all input wires; report selector/identity changes and compare pickup attribution independently of destination rather than claiming observed outcomes.",
+    "Boundary fixtures: same bus later visit, different bus without destination, absent/folded destination, stale data, raw-at-stop with only next-lap row, normalization, and current snapshot identity changes."
+  ],
+  "contractConstraints": [
+    "Use existing selected rows; no second selector.",
+    "Forecast stopsAhead is relative to current snapshot and not a persistent physical visit ID.",
+    "Raw current observation without matching modeled pickup stays unlinked; never relabel next-lap row as current.",
+    "No boardable claim when departed/stale/future; no calibrated catch guarantee.",
+    "No UI code changes until cross-team review."
+  ],
+  "inputHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/TransitMap.tsx": "ce774d4a7252175dc5d5db9f995e006115743e05bbe66e3d643e4fa4b3718981",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/planner.ts": "c6e48d8592052d44f66b4b39d1e222e31315af698f4ff58fb6febe7ff5f0cda9",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/journeyArrival.ts": "e5dac7ae24c86324486d4e1b36bc64914b0ddf41578b3dca0169bdaef032134b",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/tripBusIdentity.ts": "732307c9cf41af88a09863afafe0f63c4454b6ca76d562cbc2c561fb92b3b25d",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/etaSource.ts": "d98b34b493788f091e1c8bcd2fcb576222b83b907ff33aaffbc27cb4473cf0ef",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/fleet-wire.jsonl.gz": "e849fec488e5d4326b2e091ba2b65db9cbc438ad41ec704d78634606d3289dc2",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/decisions.jsonl": "07c66b3ed3603b9949c743b1ea422aa55cd323021a80fe670e19ea96402c391b",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/calibration-payload.json": "24dbea4480e14e1c4168fe4c64f9f8cbbf3571d88959331dd833982f98895c6a",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/ordered-decisions.jsonl": "9db99d19530efecc6c7a972b7b7c1428050c3d41dfd335083ee52704b7dc3b97",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/paired-outcomes.json": "4838c1be68431b90c48775b2cf3a8208ca914660262f798eeb4592aed5ff6e32",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/missing-cases.json": "edd3dd518a0479e98d80373a485572519cd645b63394913c014dc03af64676ac"
+  }
+}

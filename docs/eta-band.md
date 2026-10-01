@@ -225,3 +225,259 @@ The 0-2 min band, moving: 65% of arrivals come before its low end, median
 horizon bias (b = +1 s at 0-2) cannot see because it pools standing with
 moving. A per-mode (or per-route) 0-2 offset is one number, and it is the
 bucket every rider is looking at when they decide to run.
+
+## F. The arrival clock as a promise — "by 2:23p" (2026-09-12)
+
+> **STATUS: REFUSED, TWICE, AND NO CODE SHIPPED.** This section is the record
+> of a design that was measured and rejected, not documentation of a live
+> feature. `arriveByClock` and its wiring were removed from the branch; what
+> remains here is the reasoning, the two measurements, and
+> `band-coverage.mjs --by-margin` so the tables stay reproducible. Sentences
+> below that describe the clock in the present tense describe the DESIGN AS
+> PROPOSED. **Riders were never exposed**: the clock never reached master
+> (`arriveByClock` appears zero times there), and the regime where its late
+> share peaks — a printed margin of one to two minutes — is unreachable on
+> master anyway, because `etaBand.ts:64` sets `RANGE_MIN_SHOWN_MIN = 3` and
+> line 121 declines below it. A 21% figure below is a measurement of a
+> proposal, not a live defect.
+
+
+The operator, reading a card whose countdown had just become a range: *"do we
+need ranges on the arrival time too? or just put latest time?"* The answer is
+the latest time, and the reason is that the two numbers in the right-hand
+column answer different questions. A countdown answers *how long from now*, and
+for that both ends of the band matter. An absolute clock answers *do I make my
+2:30* — and there only the upper end is load-bearing, because arriving early
+costs the rider nothing.
+
+**Where the number comes from.** Not `totalSec` with the board band's high end
+swapped in. That would be a ceiling on the WAIT with a mean for everything
+after it: `rideSec` is a sum of segment averages (`planner.ts`) and carries no
+uncertainty at all, so such a "ceiling" is missed whenever the ride runs long —
+which, on a line with a layover between the two stops, is most of the time.
+Instead the clock is the SAME bus's own forecast at the ALIGHT stop, an
+`UpcomingArrival` the estimator has already priced, whose `high` is the upper end of the band over
+the whole chain with the stands in it, plus the trailing walk (deterministic,
+`walk.ts`). The estimator pass that produces it is the one the card already
+makes: `computeUpcomingArrivals([boardStopId, alightStopId], …)` asks for both
+stops, so the alight row is in hand and no second arithmetic exists.
+
+**`high` is NOT a q90, and must never be described as one.** The chain's own
+upper quantile is the 90th percentile, but `eta/arrival.ts:779` applies
+`widenBand` LAST: the upper half-width is multiplied by the learned per-horizon
+`CONFORMAL` factor, which is fitted against what riders were actually shown and
+targets EIGHTY percent TWO-SIDED coverage. Production serves `fit-2026-09-11` —
+`{"0-2": 1, "2-5": 1.47, "5-10": 1.271, "10-30": 1.251}` — so at every horizon
+this clock can print (it declines under a printed minute of margin), `high` sits
+25-47% further above the median than q90 does. The direction favours the rider,
+which is why it would have shipped without a gate. **The proposed tooltip was
+wrong twice, in the same way both times**: it called the number a 90th
+percentile (it is not), and then called it the top of the countdown's range —
+a different quantity again, since that range is the BOARD stop's band while
+this was the ALIGHT stop's plus the walk, as a Green card printing "in 25-36
+min" beside "by 1:00p" showed plainly. The lesson outlived the feature: a
+display string must name what its number is ABOUT, and a test that pins the
+CURRENT phrasing will defend that phrasing once it turns out to be false —
+assert the absence of the specific false claims instead.
+
+**It is a fixed instant.** The seconds are decayed off `computedAtMs` exactly
+as the point and the band are (report #48). For an absolute clock that has the
+opposite and better effect: `nowMs + sec` comes to `computedAtMs + high + walk`
+at every render, so the promise does not creep forward between polls. A rider
+can look twice and read the same time.
+
+**It declines rather than degrade** — three ways, each falling back to the
+median clock the column printed before, never to a worse promise: no forecast
+(walk option, future-dated plan, or a pin whose alight row is absent); a
+promised instant EARLIER than the median total, which means the estimator's
+chain and the planner's segment-average sum disagree and the ceiling is not one
+(this also retires an elapsed promise, since `remainingSec` clamps at zero);
+and anything past `RANGE_MAX_SHOWN_MIN` printed minutes beyond the median, for
+the same measured reason the band caps there (Green's undecided out-and-back
+branch is a 43-minute span, and a preposition does not make it usable). When
+the promise would print the median's own minute the word is dropped with it.
+
+**Drawn in exactly one place**, and the exclusions are decisions:
+
+| surface | what it prints | why |
+|---|---|---|
+| trip card, right column | **"by 2:23p"** (replaces the median clock) | the operator's "the arrival time"; the column is `flexShrink: 0` and already fits future mode's wider range |
+| overview map 🏁 chip | unchanged (median instant at the alight stop) | a longer chip label merges with its neighbours and stacks — the operator's "this is an eye sore"; `chipCluster.ts` records that the standing range's wider labels are what made it worse |
+| Map tab stop rows | unchanged (10 px grey median clock) | that clock is a BUS reaching that stop, not the end of anyone's trip, and the row's countdown already carries the band |
+
+**Measured on the branch (2026-09-12).** The rendered span was probed in
+headless chromium at 390x844 against a staged build: the widest form
+`"by 12:58p"` is **60.1 px** on a 304 px row, a single 16 px line, `nowrap`,
+with `scrollWidth === clientWidth` at the span's column, the option row and the
+document — no overflow and no sideways scroll. The fallback `"12:29p"` is
+41.6 px. A screenshot of both branches on one page was taken during the trial (a live
+Blue Weekend card reading `by 12:15p`, the Walk card's plain `12:28p`, a Green
+card reading `by 1:00p`); it is NOT kept here, because the page it shows does
+not exist.
+
+**MEASURED, 2026-09-12 — and the promise does not hold as well as claimed.**
+One `gps-replay` with `PAIRS_OUT`, then `band-coverage.mjs` at the SERVED
+widening (`fit-2026-09-11`), `--floor none` (what the client applies since
+#240), truth = detector arrivals. Three corpora: a fresh replay of the 9/04
+snapshot through today's client (487,325 pairs) and the band work's saved
+9/09 and 9/10 pairs. The statistic is the **late share** — the truth arriving
+AFTER the band's high end, i.e. after the printed "by" instant. It is
+one-sided and it is the only way this clock can mislead a rider.
+
+Pooled, all modes, late %:
+
+| corpus | 0-2 | 2-5 | 5-10 | 10-30 |
+|---|---|---|---|---|
+| 9/04 (n 76k-160k) | 7.3 | 8.8 | 7.3 | 2.1 |
+| 9/09 (n 46k-76k) | 7.5 | 6.2 | 6.9 | 5.0 |
+| 9/10 (n 145k-232k) | 7.8 | 8.9 | 8.0 | 5.0 |
+
+Per route, late %, the two lines riders actually use:
+
+| | 0-2 | 2-5 | 5-10 | 10-30 |
+|---|---|---|---|---|
+| Red 9/09 (n 1.8k-6.5k) | 12.3 | **16.7** | **21.2** | 0.5 |
+| Red 9/10 (n 14k-38k) | 8.9 | 8.1 | **13.0** | **11.0** |
+| Red 9/04 (n 13k-22k) | 6.6 | **10.9** | 6.6 | 0.3 |
+| Blue Day 9/10 (n 14k-40k) | 6.0 | 8.3 | **10.9** | **12.2** |
+
+**Pooled it clears 9-in-10 everywhere. Per route it does not.** Red is late
+21.2% of the time at 5-10 min on 9/09 (n = 6,494) and 13.0% on 9/10
+(n = 38,253); Blue Day reaches 12.2% at 10-30 on 9/10. Red is the operator's
+own line and the founding complaint. Day-to-day movement is large on the same
+cell (Red 2-5: 16.7% -> 8.1%), so one day would have told whichever story it
+was sampled from.
+
+**And the failure is worst exactly where the clock speaks.** By DISPLAYED band
+width (9/04, standing/moving), late %:
+
+| width | <1 | 1 | 2 | 3 | 4-5 | 6+ |
+|---|---|---|---|---|---|---|
+| pooled | 8.6 / 4.1 | 13.5 / 10.9 | 13.1 / 9.6 | 9.7 / 8.4 | 11.2 / 9.6 | 2.6 / 2.0 |
+| Red | 7.4 / 3.2 | 11.9 / 13.3 | **14.1 / 20.0** | 8.6 / 11.8 | 2.3 / 5.0 | 0.2 / 0.7 |
+
+It is NOT monotone: the late share peaks at one to two printed minutes and
+only collapses past six. An earlier reading of this PR guessed the headline
+was an upper bound because the clock declines on sub-minute margins. **That
+guess was wrong** — the declining rows are the SAFE ones, and the rows the
+clock prints on are the dangerous ones.
+
+**Positive control, three ways.** Re-scored with widening removed, the late
+share rises at exactly the three horizons where `CONFORMAL != 1` (pooled 9/09
+2-5: 6.2 -> 10.7%, 5-10: 6.9 -> 9.5%; Red 2-5: 16.7 -> 23.2%) and is
+BYTE-IDENTICAL at `0-2`, where the served factor is 1.0 (7.5% both). A metric
+that moves where the input moves and is frozen where it does not is reading
+what it claims to read. The fresh 9/04 corpus reproduces this independently
+(pooled 2-5: 8.8 -> 13.2%, `0-2` identical at 7.3%).
+
+**Three limits, none of which rescue the number.** (1) These are the band's
+high end at stops 1-5 ahead, not at alight stops; nothing scores an
+alight-stop promise, and that scorer is still unbuilt. The WALK does not
+matter here — it is deterministic and adds to the promise and to the rider's
+real arrival equally, so it cancels; what does not transfer is WHICH stops and
+how far ahead. (2) The 9/04 snapshot predates #132's restart-split merge, so
+it carries short stands and scores worse overall (pooled coverage 56-72%
+against 79-84% on 9/09-9/10) — weight the later days. (3) The width buckets
+are `high - low`, while the clock's own gate is on `high - eta`, so they are
+adjacent questions, not the same one.
+
+**Verdict: the gate is NOT met as specified.** "About 9 times in 10" is true
+pooled and false on Red at 2-10 min and on both lines at the widths the clock
+prints. A promise that is late one time in five is worse than no promise, so
+this clock should not ship on these numbers. What the measurement suggests, if
+it is to be reworked: promise only where the margin is genuinely wide (the 6+
+bucket is late 2.0-2.6%) and otherwise print the plain clock — which is the
+same shape of rule as `RANGE_MIN_SHOWN_MIN`, and would need its own
+measurement on the `high - eta` gate rather than this one.
+
+### The rework: held out on a second day, and REFUSED again (2026-09-12)
+
+**Name the defect first, because it is not a missing feature — it is a missing
+safeguard.** The refused composer (`arriveByClock`) had five declines: two
+malformed-input guards, an incoherent-ceiling guard, a MAXIMUM
+(`> RANGE_MAX_SHOWN_MIN`), and the degenerate same-printed-minute case.
+**There was no minimum-margin decline at all.** Its neighbour in the same module has had one since 2026-09-11 —
+`displayBand` returns null below `RANGE_MIN_SHOWN_MIN` — so the promised clock
+printed in exactly the regime the band composer beside it refuses to print in.
+
+**And section C already measured that regime.** Containment of the printed band
+by printed width, 9/10: 3 min holds at Red 82/77 and Blue Day 78/71 (st/mv);
+2 min does not (58-79%); 1 min does not (59-73%); under a minute collapses
+(19-61%). Section C's own sentence is "a 1-2 minute band ... is a point wearing
+a dash". That is a two-sided statistic and this promise is one-sided, so it is
+not the same measurement — but the direction was in the tree, quoted in the
+header of the very module the clock was added to. The design prediction that
+the clock would only speak when confident was contradicted by evidence sitting
+a few lines above it.
+
+So the rework is not an invention; it restores a safeguard its neighbour
+already has. It was measured on the gate the clock actually uses — `high - eta`
+after widening (`band-coverage.mjs --by-margin`, added for this) — and NOT on
+`high - low`, the width bucket, which was flagged above as an adjacent
+question. The difference decides the answer.
+
+**Chosen on one day, reported on the other**, because two days bounds stability
+and does nothing about selection bias: the cell that swings 16.7% -> 8.1% looks
+good on whichever day it is picked from. This is the held-out shape the
+closed-loop work already uses.
+
+Late share among the pairs the promise WOULD print, at threshold T (n):
+
+| T (min) | Red 9/09 | Red 9/10 | Blue Day 9/09 | Blue Day 9/10 |
+|---|---|---|---|---|
+| >=1 | 16.7% (15,613) | 11.3% (96,708) | 6.1% (22,927) | 9.8% (89,163) |
+| >=2 | 12.4% (10,498) | 13.2% (75,129) | 5.9% (16,189) | 11.5% (60,728) |
+| >=3 | **8.0%** (5,984) | **16.0%** (42,063) | **6.6%** (8,680) | **12.3%** (29,223) |
+| >=4 | 8.1% (4,681) | 16.0% (34,682) | 7.2% (7,251) | 10.9% (26,052) |
+| >=5 | 7.4% (3,762) | 14.1% (25,180) | 7.2% (7,139) | 10.9% (25,304) |
+| >=6 | 6.2% (1,978) | 14.3% (14,148) | 7.5% (6,090) | 10.6% (20,823) |
+| >=7 | 5.1% (297) | 14.7% (3,789) | 8.4% (2,732) | 8.8% (6,645) |
+| >=8 | 1.4% (210) | 7.8% (956) | 3.7% (189) | 0.2% (816) |
+
+**Chosen on 9/09: T = 3 min**, the smallest cut where both binding routes clear
+ten percent (Red 8.0%, Blue Day 6.6%), with the neighbours either side quoted
+as the convention requires — T = 2 gives Red 12.4% and T = 4 gives Red 8.1%.
+
+**Held out on 9/10, it fails: Red 16.0% (n = 42,063), Blue Day 12.3%
+(n = 29,223).** Not a thin cell, not a boundary case — twice the chosen
+threshold's own number, on sixty thousand pairs.
+
+**Reversed, there is no cut to choose.** On 9/10 no threshold from 1 to 7
+clears Red at all (11.3-16.0%); only `>=8` does, at 7.8% on n = 956 with
+coverage collapsed to 51.6%, and its Blue Day partner is n = 816 at 35.0%.
+Held out on 9/09 those become n = 210 and n = 189. Those are the thin cells
+this document's own rule says to withhold rather than print.
+
+**Raising the threshold does not buy safety** — on 9/10 Red it RISES with T,
+11.3% -> 16.0%, holding 14-15% out to `>=7`. The mechanism is coherent: a wide
+upper margin is not a buffer, it is the model reporting that it does not know,
+and those rows are the ones with long stands ahead. Selecting for wide margins
+selects for hard cases.
+
+**The rule tested is per-row and route-agnostic on purpose.** A table of
+per-route cuts would have fitted each line's noise and would not generalise to
+a route added next month, and this repo has two standing precedents against
+that shape — CLAUDE.md's "fix that with a fold-aware selection rule, never with
+a per-route switch", and section A's note that a per-route `CONFORMAL` is a
+schema change to put to the operator rather than ship on two days. The rule
+fails on its own terms, per-row, so no per-route escape hatch is on the table.
+
+Only the 9/04 corpus supports a threshold (Red 0.3% at `>=3`), and it is the
+one predating #132's restart-split merge, pooled coverage 56-72% against 79-84%
+on the other days. Letting it decide would be letting the worst data carry the
+verdict because it flatters.
+
+**Verdict: the minimum-margin decline is NECESSARY BUT NOT SUFFICIENT.** It
+should exist regardless — the asymmetry with `displayBand` is a real defect and
+any revival of this clock must carry it — but it does not make the promise
+honest, so the clock stays refused on a second, independently chosen and
+held-out measurement rather than on the first one's authority. What would
+change the answer is not a display threshold: it is the STAND ESTIMATE, where
+the upper tail comes from, which section E already names as the dominant
+defect. Fix the chain, not the promise.
+
+**The alight-stop limit, narrowed.** Every number here is the band's high end
+at stops 1-5 ahead; nothing scores a promise at an alight stop and that scorer
+is still unbuilt. The WALK is not part of that gap — it is deterministic and
+adds to the promise and to the rider's real arrival alike, so it cancels
+exactly. What does not transfer is WHICH stops and HOW FAR ahead.

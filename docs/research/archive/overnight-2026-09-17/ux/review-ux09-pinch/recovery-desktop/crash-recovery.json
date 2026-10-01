@@ -1,0 +1,37 @@
+{
+  "scope": "Real main.tsx ErrorBoundary with fault-injected Page children; no live network",
+  "probe": false,
+  "checks": [
+    "Ordinary reload recovers from a transient render failure and preserves stored preferences, identity and tab draft",
+    "Persistent synthetic storage failure survives ordinary reload; explicit reset clears local storage once and preserves the existing session-storage scope",
+    "Blocked storage clear still reloads; mobile touch reset and keyboard reload/reset exercised",
+    "A blocked localStorage getter also still permits reset-triggered reload",
+    "A surviving external focus target is not stolen by crash recovery",
+    "Recovery heading receives focus; reload is first tab action; reset and technical details disclose independently; 44px controls and long-stack reflow pass"
+  ],
+  "states": [
+    {
+      "name": "initial-crash",
+      "text": "The shuttle app couldn’t open\n\nTry reloading to get back to your trip. Reload keeps your saved data.\n\nReload\nStill having trouble?\nTechnical details",
+      "focus": {
+        "tag": "H1",
+        "text": "The shuttle app couldn’t open"
+      },
+      "overflow": false,
+      "clearCount": null
+    },
+    {
+      "name": "reset-explanation",
+      "text": "The shuttle app couldn’t open\n\nTry reloading to get back to your trip. Reload keeps your saved data.\n\nReload\nStill having trouble?\n\nReset clears this app’s saved data in this browser, including saved and recent places, alerts, ride tracking and preferences.\n\nYour submitted reports remain, but will no longer appear in “Your reports” on this browser. The trip plan in this tab is kept.\n\nReset saved data & reload\nTechnical details",
+      "focus": {
+        "tag": "SUMMARY",
+        "text": "Still having trouble?"
+      },
+      "overflow": false,
+      "clearCount": null
+    }
+  ],
+  "errors": [],
+  "completed": true,
+  "resourcesClosed": true
+}

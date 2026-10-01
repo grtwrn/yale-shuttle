@@ -1,0 +1,20 @@
+{
+  "head": "9d85b47fea1bdfaa7f2d2413b055eb9b83871031",
+  "base": "2dbc060bf517225c219fba8cbc5cb343fb19312b",
+  "parent_and_merge_base": "2dbc060bf517225c219fba8cbc5cb343fb19312b",
+  "working_tree_and_index_clean": true,
+  "sources": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "3e99633c8413e0e919ff5485b6c7570a3d334fb97e211b13851d41900b1f6108",
+    "services/shuttle-v2/web/src/tripBusIdentity.ts": "732307c9cf41af88a09863afafe0f63c4454b6ca76d562cbc2c561fb92b3b25d",
+    "services/shuttle-v2/web/src/tripBusIdentity.test.ts": "6ae71d5d9af6d5ac10241e6db1f95f744d881f139b6b26287877e90ac8dd5379",
+    "services/shuttle-v2/web/src/TripBoardingActions.tsx": "e55783b8de5df4a73a596f38a8cb65fbe93b355327a6f8b37e0370a5f1fb09db",
+    "services/shuttle-v2/scripts/trip-identity-check.mjs": "de1b23617f52ad5873d1ec76573553b8ed4147adbf7abb9ee0e6405b0df03c0c"
+  },
+  "frozen_baseline_matches_base": true,
+  "numerical_options_sha256": "105a01ac51b521b5029ef37b850ea47650023a96076adbe881ccab89c59a1e1c",
+  "numerical_modules_match_base": true,
+  "screenshots": {
+    "count": 147,
+    "bytes": 6492165
+  }
+}

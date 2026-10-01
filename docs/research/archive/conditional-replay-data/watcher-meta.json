@@ -1,0 +1,24 @@
+{
+  "frames": 2122,
+  "emitted": 8142,
+  "changed": 6266,
+  "beliefChecks": 6111,
+  "gaps": [
+    {
+      "at": 1789556367145,
+      "gapMs": null
+    },
+    {
+      "at": 1789656043026,
+      "gapMs": 87199363
+    },
+    {
+      "at": 1789657982657,
+      "gapMs": 98092
+    }
+  ],
+  "params": "fit-2026-09-15",
+  "priorCutoff": "2026-09-14T04:00:00Z",
+  "candidatePatch": "normalized-patch.json",
+  "note": "Actual ServerEta output integer seconds; continuous within observed segments; no synthetic observations or watcher-run resets. Distributions/tables priorSep14; parameter version publishedbeforeSep16. Not original five-second production replay when watcher cadence is ten seconds."
+}

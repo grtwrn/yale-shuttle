@@ -1,0 +1,25 @@
+{
+  "head": "7f681d92a7d30331728d637216dabecf9d9e356c",
+  "base": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "parentAndMergeBaseExact": true,
+  "cleanCheckoutAndIndex": true,
+  "builderTestedSourcesExact": true,
+  "builtSourcesMatch": true,
+  "plannerRuntimeUnchanged": true,
+  "serverAndDockerUnchanged": true,
+  "browserReports": 6,
+  "pairedStates": 9376,
+  "builderEvidencePreserved": 44,
+  "imageFiles": 234,
+  "imageBytes": 11341460,
+  "sourceSha256": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "ce47aaf74b5affceb8e66ab4788bf7d3bb3d2249d504c7c918499cf5f3976ba4",
+    "services/shuttle-v2/web/src/planner.ts": "fcb61b8c27af38714cf8608a7c99b260f5a0b33c1b81b03be5c95e74b4ff1ed1",
+    "services/shuttle-v2/web/src/livePickupSelection.ts": "53f31c52212aabd4a65bcf3066483e24b687fe08994543fc961cf349f64f6ff2",
+    "services/shuttle-v2/web/src/livePickupSelection.test.ts": "bcd7ecabf650181e24df6721c67abd7501ba29583f38b99e7a90b7da6f4e960f",
+    "services/shuttle-v2/web/src/tripBusIdentity.ts": "7486dfc24ae1a3d31c98bcd36c426eb7371602bdbef7faf0ca14b116234ad5ef",
+    "services/shuttle-v2/web/src/tripBusIdentity.test.ts": "b4ebd17feb2e40cb13f3fd99375e2bdbabda25fcf20ac47b36bcd00d65e3f0ec",
+    "services/shuttle-v2/scripts/trip-identity-check.mjs": "5a20a9565cc478572a7fd459597040c38810b375ec6707a1575cce2f8769f884",
+    "services/shuttle-v2/scripts/pickup-selection-check.mjs": "0eb04e0e19a11cf4076565662fb5b34ad857b9aa93fb986c5bd9a08a93e3b88b"
+  }
+}

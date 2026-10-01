@@ -16,6 +16,7 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 import { buildApp } from "./app.js";
 import { PACE_KEY } from "./v1compat.js";
 import { resetRateLimits } from "./reports.js";
+import { ServerEta, type ServerEtaWire } from './serverEta.js';
 
 // A fake upstream that returns a fixed snapshot. The collector contract
 // is just "give me these three methods" so we don't need network access.
@@ -73,6 +74,7 @@ beforeEach(async () => {
   // refreshStaticIfNeeded call below does the static load synchronously.
   await (collector as unknown as { refreshStaticIfNeeded: (force: boolean) => Promise<void> })
     .refreshStaticIfNeeded(true);
+  vi.stubEnv("SHUTTLE_V2_DB", path.join(tmpDir, "test.db"));
   app = buildApp({
     collector,
     bundle,
@@ -90,9 +92,30 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   collector.stop();
   bundle.sqlite.close();
   fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+it('serves K10 on the default API and keeps an explicit previous-estimator override', async () => {
+  const engine = new ServerEta({ routes: ['Red'] });
+  vi.spyOn(engine, 'contribute').mockImplementation((_payload,_version,at,trial) => ({
+    v: 2, at, servedAt: at, buses: [], rows: [], distributions: [],
+    ...(trial ? { trial: { model: 'k10-test', changedRows: 0, validUntil: at + 1000 } } : {}),
+  }));
+  const testApp = buildApp({ collector, bundle, serverEta: engine, adminToken: TEST_ADMIN_TOKEN });
+  for (const query of ['', '?eta_model=k10', '?eta_model=unknown']) {
+    const body = await (await testApp.request('/api/buses'+query)).json() as { server_eta: ServerEtaWire };
+    expect(body.server_eta.trial?.model).toBe('k10-test');
+  }
+  const previous = await (await testApp.request('/api/buses?eta_model=usual')).json() as { server_eta: ServerEtaWire };
+  expect(previous.server_eta.trial).toBeUndefined();
+  const history = vi.spyOn(engine,'historyPosition').mockReturnValue(null);
+  await testApp.request('/api/journey-history?route=Red&bus=309&stop=48&eta=300');
+  expect(history.mock.calls.at(-1)?.[5]).toBe(true);
+  await testApp.request('/api/journey-history?route=Red&bus=309&stop=48&eta=300&eta_model=usual');
+  expect(history.mock.calls.at(-1)?.[5]).toBe(false);
 });
 
 describe("GET /healthz", () => {
@@ -126,12 +149,12 @@ describe("GET /healthz", () => {
 
 describe("body limits", () => {
   it("rejects an oversized report payload with 413", async () => {
-    // The limit is sized for a downscaled screenshot (3 MB); anything past it
+    // The limit is sized for a bounded screenshot batch (~8 MB); anything past it
     // is refused before parsing.
     const res = await app.request("/api/report", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ note: "x".repeat(3 * 1024 * 1024 + 1024) }),
+      body: JSON.stringify({ note: "x".repeat(8 * 1024 * 1024 + 128 * 1024) }),
     });
     expect(res.status).toBe(413);
   });
@@ -163,6 +186,75 @@ describe("report screenshots", () => {
     // ...and never to anyone without the token.
     const anon = await app.request(`/api/reports/${d.id}/image`);
     expect(anon.status).toBe(401);
+  });
+
+  it("stores every screenshot in order, preserves the legacy URL, and protects indexed images", async () => {
+    const jpeg = "data:image/jpeg;base64," + Buffer.from([0xff, 0xd8, 1, 2, 3, 4, 5, 6]).toString("base64");
+    const res = await app.request("/api/report", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ note: "two views", images: [PNG_1PX, jpeg], imageFile: "forged.jpg", imageFiles: ["forged.jpg"] }),
+    });
+    expect(res.status).toBe(200);
+    const { id, attachedCount } = await res.json() as { id: number; attachedCount: number };
+    expect(attachedCount).toBe(2);
+    const admin = { "x-admin-token": TEST_ADMIN_TOKEN };
+    for (const [index, type] of ["image/png", "image/jpeg"].entries()) {
+      const image = await app.request(`/api/reports/${id}/images/${index}`, { headers: admin });
+      expect(image.status).toBe(200);
+      expect(image.headers.get("content-type")).toBe(type);
+      expect((await app.request(`/api/reports/${id}/images/${index}`)).status).toBe(401);
+    }
+    expect((await app.request(`/api/reports/${id}/image`, { headers: admin })).headers.get("content-type")).toBe("image/png");
+    expect((await app.request(`/api/reports/${id}/images/2`, { headers: admin })).status).toBe(404);
+    expect((await app.request(`/api/reports/${id}/images/-1`, { headers: admin })).status).toBe(400);
+    const list = await (await app.request("/api/reports", { headers: admin })).json() as { reports: { context: string }[] };
+    const ctx = JSON.parse(list.reports[0]!.context);
+    expect(ctx.images).toBeUndefined();
+    expect(ctx.imageFiles).toHaveLength(2);
+    expect(ctx.imageFiles).not.toContain("forged.jpg");
+    expect(ctx.imageFile).toBe(ctx.imageFiles[0]);
+  });
+
+  it("rejects an invalid or oversized batch without logging a partial report", async () => {
+    const header = { "content-type": "application/json" };
+    for (const images of [[PNG_1PX, "bad"], Array(6).fill(PNG_1PX), "bad"]) {
+      const response = await app.request("/api/report", { method: "POST", headers: header, body: JSON.stringify({ note: "draft", images }) });
+      expect(response.status).toBe(400);
+    }
+    const big = Buffer.alloc(1_600_000); big[0] = 0xff; big[1] = 0xd8;
+    const data = "data:image/jpeg;base64," + big.toString("base64");
+    const response = await app.request("/api/report", { method: "POST", headers: header, body: JSON.stringify({ note: "draft", images: Array(4).fill(data) }) });
+    expect(response.status).toBe(413);
+    const list = await (await app.request("/api/reports", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).json() as { reports: unknown[] };
+    expect(list.reports).toEqual([]);
+  });
+
+  it("removes the entire batch after a filesystem or database failure", async () => {
+    const body = JSON.stringify({ note: "retain my draft", images: [PNG_1PX, PNG_1PX] });
+    const write = fs.writeFileSync;
+    let calls = 0;
+    const spy = vi.spyOn(fs, "writeFileSync").mockImplementation((...args) => {
+      if (++calls === 2) throw new Error("disk full");
+      return write(...args);
+    });
+    try {
+      expect((await app.request("/api/report", { method: "POST", headers: { "content-type": "application/json" }, body })).status).toBe(500);
+      expect(fs.readdirSync(path.join(tmpDir, "report-images"))).toEqual([]);
+    } finally { spy.mockRestore(); }
+    const insert = vi.spyOn(bundle.db, "insert").mockImplementationOnce(() => { throw new Error("database full"); });
+    try {
+      expect((await app.request("/api/report", { method: "POST", headers: { "content-type": "application/json" }, body })).status).toBe(500);
+      expect(fs.readdirSync(path.join(tmpDir, "report-images"))).toEqual([]);
+    } finally { insert.mockRestore(); }
+    const list = await (await app.request("/api/reports", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).json() as { reports: unknown[] };
+    expect(list.reports).toEqual([]);
+  });
+
+  it("cannot forge an attachment filename on a text report", async () => {
+    const res = await app.request("/api/report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ note: "text", imageFile: "forged.jpg", imageFiles: ["forged.jpg"] }) });
+    const { id, attachedCount } = await res.json() as { id: number; attachedCount: number };
+    expect(attachedCount).toBe(0);
+    expect((await app.request(`/api/reports/${id}/image`, { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).status).toBe(404);
   });
 
   it("keeps the report when the image is garbage", async () => {
@@ -226,6 +318,9 @@ describe("GET /api/buses", () => {
     const res = await app.request("/api/buses");
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
+    // Reusing a stale response resets the client's snapshot receipt clock:
+    // a continuing wait can jump backward, and stale ETAs stay available.
+    expect(res.headers.get("cache-control")).toBe("no-store");
     const body = (await res.json()) as Record<string, unknown>;
     expect(Object.keys(body).sort()).toEqual([
       "announcements",
@@ -2077,5 +2172,30 @@ describe("a replayed challenger in the scorecard (stage 4)", () => {
       expect((await jsonOf(res)).reason).toBe(reason);
     }
     expect((await post({ day: "2026-09-05", name: "x", rows: [] }, {})).status).toBe(401);
+  });
+});
+
+describe('public arrival history', () => {
+  it('keeps journey history usable without a live starting point and validates inputs', async () => {
+    const res = await app.request('/api/journey-history?route=Red&bus=308&stop=48&eta=300');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.json()).toMatchObject({ days: 30, journey: null, recent: [] });
+    expect((await app.request('/api/journey-history?route=Red&bus=308&stop=48&eta=300&limit=100')).status).toBe(200);
+    for (const limit of ['0', '101', '1.5', 'nope', '']) {
+      expect((await app.request('/api/journey-history?route=Red&bus=308&stop=48&eta=300&limit=' + limit)).status).toBe(400);
+    }
+    for (const query of ['', '?route=Red&bus=308&stop=nope&eta=300', '?route=Red&bus=308&stop=48&eta=-1', '?route=fake&bus=308&stop=48&eta=300']) {
+      expect((await app.request('/api/journey-history' + query)).status).toBe(400);
+    }
+  });
+  it('returns only bounded fleet evidence and validates its query', async () => {
+    const res = await app.request('/api/arrival-history?route=Red&stop=48&eta=300');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.json()).toMatchObject({ days: 30, trips: [], recent: [] });
+    for (const query of ['', '?route=Red&stop=nope&eta=300', '?route=Red&stop=48&eta=-1', '?route=fake&stop=48&eta=300']) {
+      expect((await app.request('/api/arrival-history' + query)).status).toBe(400);
+    }
   });
 });

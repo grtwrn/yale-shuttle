@@ -1,0 +1,25 @@
+{
+  "at": "2026-09-18T05:37:20.602637+00:00",
+  "team": "ux",
+  "pr": 286,
+  "merge": "8de0eed1c6a869606272824fd3dcac753ce32836",
+  "health": {
+    "ok": true,
+    "pollStalenessMs": 3161,
+    "collectorLagMs": null,
+    "knownBuses": 0,
+    "serverEta": {
+      "restored": 0,
+      "forecastAt": null,
+      "checkpointAt": 1789709818483,
+      "beliefs": 0,
+      "steps": 1,
+      "failures": 0,
+      "lastStepMs": 1,
+      "rows": 0
+    },
+    "pollSkipped": 0,
+    "droppedObservations": 0,
+    "build": "8de0eed1c6a8"
+  }
+}

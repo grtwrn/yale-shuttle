@@ -1,0 +1,304 @@
+{
+  "createdAt": "2026-09-18T20:00:03.479390+00:00",
+  "fits": {
+    "landmark_control": {
+      "coefficients": [
+        -4.865428635175428,
+        1.0552435643848517,
+        0.012583964366011407,
+        0.006185649283153974,
+        0.3465979396246844,
+        1.3046609735609351,
+        -0.4712905334763917,
+        1.4397184641043117,
+        -0.15928048888252194,
+        -0.00429986914702273
+      ],
+      "diagnostic": {
+        "iterations": 36,
+        "objective": 1863.8035803176517,
+        "maxGradient": 5.398754833563224e-05
+      }
+    },
+    "compact_spacing": {
+      "columns": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "coefficients": [
+        0.2615732777837277,
+        -0.24843500716339875,
+        -0.2136039851176345,
+        0.2615732777837277,
+        -0.0006492565567634679,
+        -0.11728170918093511,
+        -0.17213287258893273
+      ],
+      "diagnostic": {
+        "iterations": 23,
+        "objective": 1842.1379035766856,
+        "maxGradient": 0.0002108286778783608
+      }
+    },
+    "supported_bunching_gate": {
+      "columns": [
+        0,
+        3,
+        5,
+        6
+      ],
+      "coefficients": [
+        0.03175533764868758,
+        0.008002830348256492,
+        0.19404901180514247,
+        0.1069296046476537
+      ],
+      "diagnostic": {
+        "iterations": 11,
+        "objective": 1852.4461640903528,
+        "maxGradient": 8.538881739439397e-05
+      }
+    }
+  },
+  "supports": {
+    "regimes": [
+      {
+        "name": "close_leader",
+        "visits": 31,
+        "dates": 6,
+        "origins": 72,
+        "supported": true
+      },
+      {
+        "name": "close_follower",
+        "visits": 7,
+        "dates": 5,
+        "origins": 9,
+        "supported": false
+      },
+      {
+        "name": "co_anchor",
+        "visits": 6,
+        "dates": 3,
+        "origins": 9,
+        "supported": false
+      }
+    ],
+    "spacing": [
+      {
+        "name": "ahead_known",
+        "visits": 154,
+        "dates": 6,
+        "origins": 515,
+        "supported": true
+      },
+      {
+        "name": "log_forward",
+        "visits": 154,
+        "dates": 6,
+        "origins": 515,
+        "supported": true
+      },
+      {
+        "name": "ahead_age",
+        "visits": 154,
+        "dates": 6,
+        "origins": 515,
+        "supported": true
+      },
+      {
+        "name": "behind_known",
+        "visits": 154,
+        "dates": 6,
+        "origins": 515,
+        "supported": true
+      },
+      {
+        "name": "log_backward",
+        "visits": 154,
+        "dates": 6,
+        "origins": 515,
+        "supported": true
+      },
+      {
+        "name": "behind_age",
+        "visits": 154,
+        "dates": 6,
+        "origins": 515,
+        "supported": true
+      },
+      {
+        "name": "same_peer",
+        "visits": 91,
+        "dates": 6,
+        "origins": 208,
+        "supported": true
+      },
+      {
+        "name": "co_anchor",
+        "visits": 6,
+        "dates": 3,
+        "origins": 9,
+        "supported": false
+      }
+    ],
+    "gate": [
+      {
+        "name": "close_leader",
+        "visits": 31,
+        "dates": 6,
+        "origins": 72,
+        "supported": true
+      },
+      {
+        "name": "close_follower",
+        "visits": 0,
+        "dates": 0,
+        "origins": 0,
+        "supported": false
+      },
+      {
+        "name": "co_anchor",
+        "visits": 0,
+        "dates": 0,
+        "origins": 0,
+        "supported": false
+      },
+      {
+        "name": "distinct_close_balance",
+        "visits": 28,
+        "dates": 6,
+        "origins": 66,
+        "supported": true
+      },
+      {
+        "name": "same_peer_close",
+        "visits": 3,
+        "dates": 2,
+        "origins": 6,
+        "supported": false
+      },
+      {
+        "name": "gate_ahead_age",
+        "visits": 31,
+        "dates": 6,
+        "origins": 72,
+        "supported": true
+      },
+      {
+        "name": "gate_behind_age",
+        "visits": 31,
+        "dates": 6,
+        "origins": 72,
+        "supported": true
+      }
+    ]
+  },
+  "referenceLap": 3231.6625,
+  "tables": {
+    "sequence": [
+      121,
+      115,
+      45,
+      75,
+      30,
+      31,
+      41,
+      126,
+      36,
+      128,
+      120,
+      3,
+      147,
+      27,
+      11,
+      146,
+      49,
+      48,
+      104,
+      113,
+      4,
+      42,
+      98,
+      38,
+      39,
+      72,
+      117,
+      13,
+      14
+    ],
+    "edgeCosts": [
+      159.966,
+      69.975,
+      15.022,
+      137.598,
+      49.9995,
+      89.99,
+      50.083,
+      15.0935,
+      20.054000000000002,
+      85.15,
+      60.019499999999994,
+      30.008,
+      105.075,
+      45.037,
+      20.002,
+      15.011,
+      30.0105,
+      45.086,
+      39.983,
+      60.038,
+      105.21,
+      75.1825,
+      50.001,
+      15.078,
+      64.932,
+      30.0995,
+      35.131,
+      24.891,
+      105.033
+    ],
+    "edgeSupport": {
+      "121": 168,
+      "115": 166,
+      "45": 167,
+      "75": 160,
+      "30": 176,
+      "31": 167,
+      "41": 165,
+      "126": 164,
+      "36": 166,
+      "128": 144,
+      "120": 148,
+      "3": 167,
+      "147": 165,
+      "27": 154,
+      "11": 165,
+      "146": 162,
+      "49": 164,
+      "48": 157,
+      "104": 161,
+      "113": 163,
+      "4": 155,
+      "42": 162,
+      "98": 163,
+      "38": 167,
+      "39": 162,
+      "72": 158,
+      "117": 165,
+      "13": 165,
+      "14": 164
+    },
+    "totalTravelProxy": 1648.759
+  },
+  "trainingVisits": 160,
+  "trainingOrigins": 569,
+  "trainingRiskRows": 10957,
+  "sourceSha256": "c9c94a555781cee58106a8b327c98e287eb1feedcea2754e8773eca23fa891ba",
+  "planSha256": "7a7d9d66e3810c7fa2d47b847fc892798ee8672faee741b0a304ec7751f97c88"
+}

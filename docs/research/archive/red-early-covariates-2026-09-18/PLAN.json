@@ -1,0 +1,15 @@
+{
+  "purpose": "Re-check whether genuine early Winchester releases can be distinguished causally before the Red Division pickup.",
+  "createdBeforeNewScoring": true,
+  "baseCommit": "3b4a4a41b569916970b89c1bb121ae51dbc78d67",
+  "cohort": "All complete non-gap Red Winchester pinned stopped holds with closest approach <=75m; retain genuine short and long holds. Only previously demonstrated truncation65237 quarantined. Separate passed/incomplete/unsupported records counted.",
+  "outcome": "Departure within the next120 seconds at elapsed pinned wait0,60,180,300,480 seconds, conditional on still waiting. Each visit has total weight1 per availability contract.",
+  "training": "Outcome available before2026-09-14T04:00:00Z. No test fitting, thresholds or hyperparameter tuning.",
+  "evaluation": "September14–17 reused development, September18 separately, and observations after the prior10:12ET release separately. These are chronological diagnostics, not untouched full-ETA confirmation.",
+  "arms": ["clock", "lap_clock", "lap_clock_anchor", "lap_clock_ahead", "lap_clock_follower", "lap_clock_both", "lap_clock_anchor_both"],
+  "features": "Elapsed wait and15-minute clock phase; own lap at pin; elapsed since own last confirmed Union departure; pin-latched previous/next same-route bus identities; elapsed since their Winchester departure, last causal route progress, freshness, and training-only typical seconds to Winchester and Union. Two-shuttle identity coincidence explicit. No future actual neighbor arrival or departure is a feature.",
+  "availability": "Reuse independently audited Events extractor. Arrival+15sec primary, completed+120sec sensitivity. Previous departure identity known after>=120sec. Peer snapshots older than600sec or latest all-route assignment contradictory are unknown.",
+  "fit": "Fixed L2=4 logistic models; unpenalized intercept, training-only standardization. Missing indicators explicit, no outcome filtering by lap support or peer availability. No model selected for deployment by this screen.",
+  "metrics": ["visit-weighted Brier score", "log loss", "ROC AUC", "per-date results", "risk-group early departure counts", "retained individual early cases"],
+  "limitations": "Conditional true-rest component, not a full live-state ETA replay. Unknown exact historical receipt clocks use stated proxies. Anchor remaining times are typical travel proxies, not actual future times. No zero-stranding or nominal interval coverage conclusion. Driver identity not available."
+}

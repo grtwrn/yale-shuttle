@@ -1,0 +1,9 @@
+{
+  "outcome": "candidate",
+  "summary": "Preserve map recovery focus and describe filtered buses accurately\nFixed both review findings and added browser regressions. Filtering and ETA behavior remain unchanged. Evidence: ux/ux-07-fix/REPORT.md. HEAD and index preserved.",
+  "next_task": "Fresh independent review of both corrections, then resume UX08 alerts and on-board recovery.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-07-fix/verify.sh — final exit 0: 158 tests, backend/frontend typechecks, Vite build, mobile/desktop checks and original reviewer acceptance passed. Initial missing-import failure retained in verify.log.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-07-fix/verify-integrity.py — exit 0: preserved HEAD/index, unchanged numerical/filter behavior, tested bundle matches source, 78 prior artifacts preserved."
+  ]
+}

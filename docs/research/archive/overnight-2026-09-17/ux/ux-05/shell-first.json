@@ -1,0 +1,10 @@
+{
+  "scope": "Unmodified built SPA; fabricated two-bus live wire on checked-in route network",
+  "checks": [
+    "Real planner/transport selects #307 on minimap; keyboard exposes route/bus identity; arrival detail retains following #309",
+    "Mobile fullscreen tap and Escape retain map toggle focus"
+  ],
+  "errors": [],
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- status: Live bus updates interrupted. Times and positions may be out of date. Reconnecting…\n- button \"From 📍 Division / Prospect Swap start and destination\":\n  - text: From 📍 Division / Prospect\n  - button \"Swap start and destination\": ⇅\n- button \"To 🏁 Union Station (N) Save this destination\":\n  - text: To 🏁 Union Station (N)\n  - button \"Save this destination\": ☆\n- text: Leave Now\n- button \"Plan for later…\"\n- button \"Arrive by… Plan for class\"\n- button \"Overview — all 1 route ▴\"\n- img\n- button\n- button:\n  - img\n- 'button \"Red #307\"': 🚌\n- tooltip \"🚌 (R) 2–9 min\"\n- tooltip \"🏁 (R) 2:23p\"\n- button \"Zoom in\"\n- button \"Zoom out\"\n- link \"Leaflet\":\n  - /url: https://leafletjs.com\n- text: © OpenStreetMap contributors\n- button \"Fullscreen\": ⛶\n- text: Red\n- paragraph: When arrival timing is unclear, shorter walks and rides come first.\n- button \"View Walk trip details\": 🚶 Walk 45 min 2:45p ›\n- button \"View Red trip details\": \"Red ETA unavailable 🚌 10 min › ⏳ wait 4 min for #307\"\n- button \"Clear\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+  "resourcesClosed": true
+}

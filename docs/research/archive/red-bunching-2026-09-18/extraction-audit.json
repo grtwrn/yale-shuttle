@@ -1,0 +1,35 @@
+{
+  "totalVisits": 290,
+  "origins": 1045,
+  "trainingVisits": 160,
+  "trainingOrigins": 569,
+  "temporalLatestChecks": 77820,
+  "cohortCounts": {
+    "2026-09-03": 24,
+    "2026-09-04": 30,
+    "2026-09-08": 27,
+    "2026-09-09": 21,
+    "2026-09-10": 31,
+    "2026-09-11": 27,
+    "2026-09-14": 28,
+    "2026-09-15": 21,
+    "2026-09-16": 33,
+    "2026-09-17": 31,
+    "2026-09-18": 17
+  },
+  "availability": {
+    "15": {
+      "origins": 1045,
+      "orderedOrigins": 953,
+      "gateOrigins": 131,
+      "coAnchorOrigins": 10
+    },
+    "120": {
+      "origins": 1045,
+      "orderedOrigins": 909,
+      "gateOrigins": 179,
+      "coAnchorOrigins": 9
+    }
+  },
+  "identityChanges": 143
+}

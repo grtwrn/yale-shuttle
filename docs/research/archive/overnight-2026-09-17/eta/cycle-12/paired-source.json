@@ -1,0 +1,9 @@
+{
+  "currentSha256": "a1028bb2f6a12c0ab9274ea575bcfc07961a75bd2fce15912c4e08aad685e74a",
+  "diagnosticSha256": "eccc4877ce82c4700b082cceb5a1be21b6b1ea62a63dd9cef1cc3d814af13155",
+  "transform": {
+    "needle": "if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {",
+    "replacement": "if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes) && live.some(a => norm(a.busName) === norm(hereBus.bus_name) && a.stopsAhead === 0 && a.eta === 0)) {"
+  },
+  "currentEqualsReviewedProduction": true
+}

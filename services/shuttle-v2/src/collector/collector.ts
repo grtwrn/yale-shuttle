@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 
 import { calibrate } from "../calibrator/calibrator.js";
+import { ReleaseFitCache } from "../calibrator/releaseFit.js";
 import { LapFitCache } from "../calibrator/lapFit.js";
 import type { DB, DbBundle } from "../db/client.js";
 import {
@@ -25,6 +26,8 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } from "./departure.js";
 import { visitRowsOf } from "./visitRows.js";
+import { recoverOpenVisit, type OpenArrival } from "./visitRecovery.js";
+import { K10Tracker, K10_HISTORY_MS, K10_HISTORY_LIMIT, type K10RecoveryStats } from './k10Tracker.js';
 import type {
   BusObservation,
   BusState,
@@ -205,11 +208,14 @@ const RESUME_ARRIVAL_MAX_ROWS = 20;
 
 // Retention windows -----------------------------------------------------------
 
-const RAW_POSITION_RETAIN_MS = 6 * 60 * 60_000; // 6 h
+// The 03:40 ET archive must still contain the previous operating day's GPS,
+// including its first daytime runs. Six hours silently removed Red from the
+// nightly replay gate. 36 h also covers the fall DST transition and job delay.
+const RAW_POSITION_RETAIN_MS = 36 * 60 * 60_000;
 const ARRIVAL_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d
 const SEGMENT_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d (calibrator looks back 30 d)
 // Derived stop visits and legs are small (a few hundred rows a day) and belong
-// with arrivals/segments, not with the 6 h raw_positions window they came from.
+// with arrivals/segments, not with the 36 h raw_positions window they came from.
 const VISIT_RETAIN_MS = ARRIVAL_RETAIN_MS;
 const LEG_RETAIN_MS = SEGMENT_RETAIN_MS;
 /**
@@ -447,6 +453,8 @@ export class Collector {
    * same track. See `departure.ts`.
    */
   private readonly visitStates = new Map<string, VisitState>();
+  private readonly k10Clock = new K10Tracker();
+  private readonly k10HistoryStmt: Database.Statement;
   /** Names seen carried by two live ids at once, cumulative. */
   private contendedNameEvents = 0;
 
@@ -464,8 +472,8 @@ export class Collector {
    *
    * Loaded from `derived_paths` at construction and only ever added to or
    * upgraded — never cleared. That is deliberate and load-bearing: a route can
-   * only be derived while it is running, and `raw_positions` is swept after six
-   * hours, so for most of the day most routes have nothing to derive from. If
+   * only be derived from its latest six hours of GPS, so for most of the day
+   * most routes have nothing to derive from. If
    * this map tracked "what can we derive right now" instead of "the best we
    * have ever derived", every night route's geometry would vanish each morning.
    */
@@ -658,8 +666,17 @@ export class Collector {
     // invisible here, and an id reissue is precisely the case where the clock
     // is SUPPOSED to restart (see MAX_HANDOFF_GAP_MS). DESC because the scan
     // walks backwards from the present until the stand ends.
+    // The time-leading index bounds the fleet scan to one hour. Include all
+    // route assignments and provider IDs for this name: both matter to replay.
+    this.k10HistoryStmt = this.sqlite.prepare(
+      "SELECT bus_id AS busId, bus_name AS busName, route_id AS routeId, lat, lon, heading, " +
+        "last_stop_id AS lastStopId, collected_at AS collectedAt FROM raw_positions " +
+        "WHERE collected_at >= ? AND collected_at < ? AND bus_name = ? " +
+        "ORDER BY collected_at DESC, bus_id DESC LIMIT ?",
+    );
     this.recentBusSamplesStmt = this.sqlite.prepare(
-      "SELECT lat, lon, collected_at AS collectedAt FROM raw_positions " +
+      "SELECT bus_id AS busId, bus_name AS busName, route_id AS routeId, lat, lon, heading, " +
+        "last_stop_id AS lastStopId, collected_at AS collectedAt FROM raw_positions " +
         "WHERE bus_id = ? AND collected_at >= ? AND collected_at < ? " +
         "ORDER BY collected_at DESC LIMIT ?",
     );
@@ -841,6 +858,18 @@ export class Collector {
           });
         }
         reconcileTracks(this.livePositions, plan);
+        // Blue West's bus is assigned route 16 before it starts the route at
+        // 333 Cedar. With lastStopId=0, the detector's unbounded nearest-stop
+        // anchor records the deadhead as visits hundreds of metres from any
+        // stop. Keep those positions in the raw archive and on the live map,
+        // but wait until the bus is actually within the stop pin radius at
+        // Cedar, or upstream reports a served stop. The GPS reached Cedar
+        // ~25 s before lastStopId advanced, and those held fixes are the real
+        // first-stop stand; excluding them would lose its arrival clock.
+        const cedar = this.ref.get().stops.get(10);
+        const serving = observations.filter((o) => o.routeId !== 16 || o.lastStopId !== 0 ||
+          (cedar !== undefined && distanceMeters(o, cedar) <= AT_STOP_PIN_M));
+        this.recoverOpenVisits(serving, plan);
         // The same `step`, in the same order, as `stepMany` — `events` is
         // byte-for-byte what it returned before. The visit reducer rides
         // alongside and adds the departure observation the detector lacks.
@@ -848,12 +877,15 @@ export class Collector {
           this.ref.get(),
           this.states,
           this.visitStates,
-          observations,
+          serving,
           plan,
           (obs, anchorStop) => this.seedStationary(obs, anchorStop),
         );
         if (stepped.events.length > 0) this.persistEvents(stepped.events);
         if (stepped.visits.length > 0) this.persistVisits(stepped.visits);
+        this.k10Clock.update(this.ref.get(), observations, obs => this.k10HistoryStmt.all(
+          obs.collectedAt - K10_HISTORY_MS, obs.collectedAt, obs.busName, K10_HISTORY_LIMIT,
+        ).reverse() as BusObservation[]);
         this.updateLivePositions(observations, plan);
         this.notifyPollObserver();
       } catch (err) {
@@ -951,11 +983,12 @@ export class Collector {
    * exceeded the 5 s poll interval; `droppedObservations` rising means the
    * feed is emitting rows we refuse to trust.
    */
-  pollStats(): { skipped: number; droppedObservations: number; knownBuses: number } {
+  pollStats(): { skipped: number; droppedObservations: number; knownBuses: number; k10History: K10RecoveryStats } {
     return {
       skipped: this.pollSkipped,
       droppedObservations: this.droppedObservations,
       knownBuses: this.livePositions.size,
+      k10History: this.k10Clock.stats(),
     };
   }
 
@@ -964,15 +997,17 @@ export class Collector {
     return Date.now() - this.lastPollAttemptAt;
   }
 
-  /**
-   * Cache key for anything derived from collector state. Changes on every
-   * live-position update, calibration pass and topology swap — and on nothing
-   * else, so a reader that has already built a view of this version can serve
-   * it unchanged.
-   */
+  /** Only successful GPS observations advance this clock. Calibration and
+   * topology refreshes must not manufacture repeated position evidence. */
+  private observationCounter = 0;
+  observationVersion(): number { return this.observationCounter; }
+
+  /** Cache key for any collector state, including calibration and topology. */
   dataVersion(): number {
     return this.version;
   }
+
+  k10Evidence(now: number) { return this.k10Clock.snapshot(now); }
 
   /**
    * One slot for something that must run on every poll that produced new
@@ -1077,6 +1112,40 @@ export class Collector {
         error: (err as Error).message,
       });
       return null;
+    }
+  }
+
+  /** A fresh fix after a restart may be a shuffle within an existing stop.
+   * Restore the complete reducers before processing it; clocks alone cannot
+   * recover the preceding plateau or a departure candidate already in flight.
+   */
+  private recoverOpenVisits(observations: readonly BusObservation[], plan: TrackPlan): void {
+    // A previously contended name can become unique on this poll. Recognize
+    // its existing state under the new key before considering disk recovery.
+    reconcileTracks(this.states, plan);
+    reconcileTracks(this.visitStates, plan);
+    for (const obs of observations) {
+      const key = plan.keys.get(obs.busId) ?? obs.busName;
+      if (this.states.has(key) || plan.contendedNames.has(obs.busName)) continue;
+      try {
+        const rows = this.recentBusArrivalsStmt.all(obs.busId,
+          obs.collectedAt - STATIONARY_SEED_WINDOW_MS, obs.collectedAt, RESUME_ARRIVAL_MAX_ROWS) as OpenArrival[];
+        const latest = rows[0];
+        const stop = latest && this.ref.get().stops.get(latest.stopId);
+        if (!latest || latest.departedAt !== null || latest.routeId !== obs.routeId
+          || !stop || distanceMeters(obs, stop) > AT_STOP_PIN_M) continue;
+        const history = this.recentBusSamplesStmt.all(obs.busId,
+          obs.collectedAt - STATIONARY_SEED_WINDOW_MS, obs.collectedAt, STATIONARY_SEED_MAX_ROWS) as BusObservation[];
+        const restored = recoverOpenVisit(this.ref.get(), obs, history.reverse(), rows);
+        if (restored) {
+          this.states.set(key, restored.detector);
+          this.visitStates.set(key, restored.visit);
+          this.logger.info("collector.visit_recovered", { busName: obs.busName, stopId: latest.stopId,
+            enteredAt: restored.detector.enteredAt, samples: history.length });
+        }
+      } catch (err) {
+        this.logger.warn("collector.visit_recovery_failed", { busName: obs.busName, error: (err as Error).message });
+      }
     }
   }
 
@@ -1197,6 +1266,7 @@ export class Collector {
     // from `runPoll` — including the ticks where upstream returned nothing,
     // which never reach this method.
     this.version++;
+    this.observationCounter++;
   }
 
   /**
@@ -1210,6 +1280,7 @@ export class Collector {
    */
   private readonly lapClock = new Map<string, Map<number, number>>();
   private lapFitsCache: LapFitCache | null = null;
+  private releaseFitsCache: ReleaseFitCache | null = null;
 
   /** Seconds since this bus last departed each stop it has a record for. */
   lapAges(busName: string, nowMs: number): Record<string, number> | undefined {
@@ -1311,17 +1382,26 @@ export class Collector {
    * A cached get costs microseconds, so `lapFitMs` is ~0 on the 5-minute
    * cadence and names its own cost on the six-hourly refresh.
    */
+  private calibrateNetwork(network: TransitNetwork) {
+    if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
+    const fitAt = Date.now();
+    const lapFits = this.lapFitsCache.get();
+    const lapFitMs = Date.now() - fitAt;
+    if (!this.releaseFitsCache) this.releaseFitsCache = new ReleaseFitCache(this.sqlite);
+    const releaseAt = Date.now();
+    const releaseFits = this.releaseFitsCache.get();
+    const releaseFitMs = Date.now() - releaseAt;
+    const stats = calibrate(this.db, network, new Date(), lapFits, releaseFits);
+    return { ...stats, lapFitMs, releaseFitMs, releaseFitCount: releaseFits.size, loopHeldMs: stats.durationMs + lapFitMs + releaseFitMs };
+  }
+
   private runCalibrate(): void {
     try {
-      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
-      const fitAt = Date.now();
-      const lapFits = this.lapFitsCache.get();
-      const lapFitMs = Date.now() - fitAt;
-      const stats = calibrate(this.db, this.ref.get(), new Date(), lapFits);
+      const stats = this.calibrateNetwork(this.ref.get());
       // Calibration mutates the live network's stats in place, so readers
       // memoizing on dataVersion() must be told the segment/dwell numbers moved.
       this.version++;
-      this.logger.info("collector.calibrated", { ...stats, lapFitMs, loopHeldMs: stats.durationMs + lapFitMs });
+      this.logger.info("collector.calibrated", stats);
     } catch (err) {
       this.logger.error("collector.calibrate_failed", {
         error: (err as Error).message,
@@ -1407,7 +1487,7 @@ export class Collector {
       // Build fresh, run calibration into it, then swap — so the new network
       // is already calibrated when consumers start reading it.
       const rebuilt = TransitNetwork.build(stops, routes);
-      calibrate(this.db, rebuilt);
+      const stats = this.calibrateNetwork(rebuilt);
       this.ref.replace(rebuilt);
       this.version++;
       this.lastStaticRefreshAt = now;
@@ -1417,6 +1497,7 @@ export class Collector {
         stops: stops.length,
         routes: routes.length,
       });
+      this.logger.info("collector.calibrated", stats);
     } catch (err) {
       this.logUpstreamError("static_refresh", err);
       this.scheduleStaticRetry();

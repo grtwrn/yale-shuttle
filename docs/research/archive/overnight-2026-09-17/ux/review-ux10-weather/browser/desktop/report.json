@@ -1,0 +1,48 @@
+{
+  "source": "Actual built SPA, fixed clock and intercepted local fixtures",
+  "baseline": false,
+  "checks": [
+    "Native button exposes name/expanded/controls; Enter/Space/touch open/close; unit is a separate Tab stop; hourly region scrolls by keyboard",
+    "Dry/wet/rain-only values preserved; units persist; 360/390/430/640/1280px and 200% CSS zoom reflow; 44px targets and single-line 390px summaries",
+    "Async two-plus to one-hour forecast retains existing focus, disables the no-op and skips it in Tab order; recovery restores disclosure semantics",
+    "Removing a focused strip returns to the weather action; removing focused weather/unit controls returns to To; existing outside focus is preserved",
+    "Failed refresh retains still-current data; expired forecast eventually disappears instead of remaining live",
+    "Missing/expired/failed/pending initial weather leaves place entry usable; denied storage reads/writes leave unit changes usable during this visit"
+  ],
+  "errors": [],
+  "snapshots": {
+    "dry": "- button \"68°F · Clear · no rain expected\"",
+    "expanded": "- button \"20°C · Clear · no rain expected\" [expanded]\n- button \"Show temperature in Fahrenheit\": °F °C\n- region \"Hourly weather forecast\":\n  - text: 12pm 20°\n  - img \"0% chance of rain\"\n  - text: 1pm 21°\n  - img \"0% chance of rain\"\n  - text: 2pm 21°\n  - img \"0% chance of rain\"\n  - text: 3pm 22°\n  - img \"0% chance of rain\"\n  - text: 4pm 22°\n  - img \"0% chance of rain\"\n  - text: 5pm 23°\n  - img \"0% chance of rain\"\n  - text: 6pm 23°\n  - img \"0% chance of rain\"\n  - text: 7pm 24°\n  - img \"0% chance of rain\"\n  - text: 8pm 24°\n  - img \"0% chance of rain\"\n  - text: 9pm 25°\n  - img \"0% chance of rain\""
+  },
+  "geometry": [
+    {
+      "mode": "dry",
+      "text": "68°F · Clear · no rain expected",
+      "height": 15,
+      "width": 240.265625,
+      "font": "13px"
+    },
+    {
+      "mode": "wet",
+      "text": "68°F · rain by 1pm — umbrella",
+      "height": 15,
+      "width": 235.765625,
+      "font": "13px"
+    },
+    {
+      "mode": "rain-only",
+      "text": "rain by 1pm (45%)",
+      "height": 15,
+      "width": 240.265625,
+      "font": "13px"
+    }
+  ],
+  "keyboardScroll": {
+    "left": 40,
+    "width": 356,
+    "scrollWidth": 694,
+    "focused": true
+  },
+  "passed": true,
+  "closed": true
+}

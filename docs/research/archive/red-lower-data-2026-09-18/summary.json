@@ -1,0 +1,4034 @@
+{
+  "groups": [
+    {
+      "target": 4,
+      "phase": "approach",
+      "elapsed": -600,
+      "baseline": {
+        "n": 57,
+        "visits": 57,
+        "width": 873.2,
+        "meanLow": 941.4,
+        "early": 1,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 57,
+        "visits": 57,
+        "width": 873.2,
+        "meanLow": 941.4,
+        "early": 1,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 4,
+      "phase": "approach",
+      "elapsed": -300,
+      "baseline": {
+        "n": 57,
+        "visits": 57,
+        "width": 841.3,
+        "meanLow": 683.7,
+        "early": 1,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 57,
+        "visits": 57,
+        "width": 840.0,
+        "meanLow": 684.9,
+        "early": 1,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 4,
+      "phase": "approach",
+      "elapsed": -120,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 824.0,
+        "meanLow": 504.3,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 823.1,
+        "meanLow": 505.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 4,
+      "phase": "approach",
+      "elapsed": -60,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 829.6,
+        "meanLow": 435.7,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 828.5,
+        "meanLow": 436.8,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 4,
+      "phase": "departure",
+      "elapsed": 0,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 464.5,
+        "meanLow": 289.7,
+        "early": 4,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 412.8,
+        "meanLow": 341.4,
+        "early": 17,
+        "missWith60secBuffer": 4,
+        "late": 0
+      },
+      "newEarly": 13
+    },
+    {
+      "target": 4,
+      "phase": "departure",
+      "elapsed": 5,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 464.3,
+        "meanLow": 284.5,
+        "early": 4,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 412.2,
+        "meanLow": 336.6,
+        "early": 18,
+        "missWith60secBuffer": 5,
+        "late": 0
+      },
+      "newEarly": 14
+    },
+    {
+      "target": 4,
+      "phase": "departure",
+      "elapsed": 15,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 449.3,
+        "meanLow": 267.7,
+        "early": 2,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 404.6,
+        "meanLow": 312.4,
+        "early": 15,
+        "missWith60secBuffer": 2,
+        "late": 0
+      },
+      "newEarly": 13
+    },
+    {
+      "target": 4,
+      "phase": "departure",
+      "elapsed": 30,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 426.3,
+        "meanLow": 238.4,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 414.3,
+        "meanLow": 250.4,
+        "early": 1,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 1
+    },
+    {
+      "target": 4,
+      "phase": "departure",
+      "elapsed": 60,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 420.4,
+        "meanLow": 208.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 420.4,
+        "meanLow": 208.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 4,
+      "phase": "standing",
+      "elapsed": 0,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 800.4,
+        "meanLow": 378.4,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 797.5,
+        "meanLow": 381.3,
+        "early": 1,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 1
+    },
+    {
+      "target": 4,
+      "phase": "standing",
+      "elapsed": 60,
+      "baseline": {
+        "n": 58,
+        "visits": 58,
+        "width": 650.3,
+        "meanLow": 328.4,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 58,
+        "visits": 58,
+        "width": 594.2,
+        "meanLow": 384.5,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 4,
+      "phase": "standing",
+      "elapsed": 180,
+      "baseline": {
+        "n": 37,
+        "visits": 37,
+        "width": 599.6,
+        "meanLow": 337.4,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 37,
+        "visits": 37,
+        "width": 546.7,
+        "meanLow": 390.2,
+        "early": 2,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 2
+    },
+    {
+      "target": 4,
+      "phase": "standing",
+      "elapsed": 300,
+      "baseline": {
+        "n": 28,
+        "visits": 28,
+        "width": 551.2,
+        "meanLow": 322.3,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 28,
+        "visits": 28,
+        "width": 500.7,
+        "meanLow": 372.8,
+        "early": 3,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 3
+    },
+    {
+      "target": 4,
+      "phase": "standing",
+      "elapsed": 420,
+      "baseline": {
+        "n": 20,
+        "visits": 20,
+        "width": 493.5,
+        "meanLow": 309.0,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 20,
+        "visits": 20,
+        "width": 443.1,
+        "meanLow": 359.4,
+        "early": 4,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 4
+    },
+    {
+      "target": 4,
+      "phase": "standing",
+      "elapsed": 600,
+      "baseline": {
+        "n": 4,
+        "visits": 4,
+        "width": 425.5,
+        "meanLow": 300.5,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 4,
+        "visits": 4,
+        "width": 371.6,
+        "meanLow": 354.3,
+        "early": 1,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 1
+    },
+    {
+      "target": 48,
+      "phase": "approach",
+      "elapsed": -600,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 765.5,
+        "meanLow": 611.5,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 1
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 765.5,
+        "meanLow": 611.5,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 1
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "approach",
+      "elapsed": -300,
+      "baseline": {
+        "n": 59,
+        "visits": 59,
+        "width": 740.1,
+        "meanLow": 336.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 59,
+        "visits": 59,
+        "width": 738.3,
+        "meanLow": 337.8,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "approach",
+      "elapsed": -120,
+      "baseline": {
+        "n": 61,
+        "visits": 61,
+        "width": 754.7,
+        "meanLow": 145.7,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 61,
+        "visits": 61,
+        "width": 753.3,
+        "meanLow": 147.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "approach",
+      "elapsed": -60,
+      "baseline": {
+        "n": 61,
+        "visits": 61,
+        "width": 763.5,
+        "meanLow": 92.3,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 61,
+        "visits": 61,
+        "width": 762.3,
+        "meanLow": 93.5,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "departure",
+      "elapsed": 0,
+      "baseline": {
+        "n": 61,
+        "visits": 61,
+        "width": 260.2,
+        "meanLow": 14.6,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 61,
+        "visits": 61,
+        "width": 224.6,
+        "meanLow": 50.2,
+        "early": 1,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 1
+    },
+    {
+      "target": 48,
+      "phase": "departure",
+      "elapsed": 5,
+      "baseline": {
+        "n": 61,
+        "visits": 61,
+        "width": 256.8,
+        "meanLow": 12.7,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 61,
+        "visits": 61,
+        "width": 222.9,
+        "meanLow": 46.6,
+        "early": 3,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 3
+    },
+    {
+      "target": 48,
+      "phase": "departure",
+      "elapsed": 15,
+      "baseline": {
+        "n": 61,
+        "visits": 61,
+        "width": 205.8,
+        "meanLow": 14.6,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 2
+      },
+      "candidate": {
+        "n": 61,
+        "visits": 61,
+        "width": 180.5,
+        "meanLow": 39.9,
+        "early": 2,
+        "missWith60secBuffer": 0,
+        "late": 2
+      },
+      "newEarly": 2
+    },
+    {
+      "target": 48,
+      "phase": "departure",
+      "elapsed": 30,
+      "baseline": {
+        "n": 61,
+        "visits": 61,
+        "width": 73.4,
+        "meanLow": 26.5,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 7
+      },
+      "candidate": {
+        "n": 61,
+        "visits": 61,
+        "width": 68.5,
+        "meanLow": 31.4,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 7
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "departure",
+      "elapsed": 60,
+      "baseline": {
+        "n": 60,
+        "visits": 60,
+        "width": 158.0,
+        "meanLow": 17.8,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 13
+      },
+      "candidate": {
+        "n": 60,
+        "visits": 60,
+        "width": 158.0,
+        "meanLow": 17.8,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 13
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "standing",
+      "elapsed": 0,
+      "baseline": {
+        "n": 61,
+        "visits": 61,
+        "width": 720.3,
+        "meanLow": 36.9,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 61,
+        "visits": 61,
+        "width": 716.7,
+        "meanLow": 40.5,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "standing",
+      "elapsed": 60,
+      "baseline": {
+        "n": 60,
+        "visits": 60,
+        "width": 522.5,
+        "meanLow": 12.7,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 2
+      },
+      "candidate": {
+        "n": 60,
+        "visits": 60,
+        "width": 466.4,
+        "meanLow": 68.9,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 2
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "standing",
+      "elapsed": 180,
+      "baseline": {
+        "n": 38,
+        "visits": 38,
+        "width": 436.7,
+        "meanLow": 35.2,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 3
+      },
+      "candidate": {
+        "n": 38,
+        "visits": 38,
+        "width": 364.0,
+        "meanLow": 107.9,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 3
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "standing",
+      "elapsed": 300,
+      "baseline": {
+        "n": 29,
+        "visits": 29,
+        "width": 388.1,
+        "meanLow": 18.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 3
+      },
+      "candidate": {
+        "n": 29,
+        "visits": 29,
+        "width": 324.0,
+        "meanLow": 82.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 3
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "standing",
+      "elapsed": 420,
+      "baseline": {
+        "n": 21,
+        "visits": 21,
+        "width": 316.7,
+        "meanLow": 9.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 2
+      },
+      "candidate": {
+        "n": 21,
+        "visits": 21,
+        "width": 264.5,
+        "meanLow": 61.4,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 2
+      },
+      "newEarly": 0
+    },
+    {
+      "target": 48,
+      "phase": "standing",
+      "elapsed": 600,
+      "baseline": {
+        "n": 4,
+        "visits": 4,
+        "width": 221.7,
+        "meanLow": 22.1,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "candidate": {
+        "n": 4,
+        "visits": 4,
+        "width": 184.9,
+        "meanLow": 58.9,
+        "early": 0,
+        "missWith60secBuffer": 0,
+        "late": 0
+      },
+      "newEarly": 0
+    }
+  ],
+  "newEarlyCount": 58,
+  "newEarlyVisits": 19,
+  "newEarly": [
+    {
+      "at": 1789566262139,
+      "bus": "316",
+      "busId": 66432,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 9203923,
+      "observedAt": 1789566262139,
+      "source": 11,
+      "rested": true,
+      "since": 1789565842083,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T13:37:22.083",
+      "lastMovedAt": "2026-09-16T13:38:12.125",
+      "restStop": 14,
+      "forecast": {
+        "eta": 568.9001276007069,
+        "low": 327.7983996350428,
+        "high": 798.1802889462285
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 568.9001276007069,
+        "low": 327.7983996350428,
+        "high": 798.1802889462285
+      },
+      "candidate": {
+        "eta": 568.9001276007069,
+        "low": 390.619803456148,
+        "high": 798.1802889462285
+      },
+      "baselineRaw": {
+        "eta": 568.9001276007069,
+        "low": 327.7983996350428,
+        "high": 798.1802889462285
+      },
+      "candidateRaw": {
+        "eta": 568.9001276007069,
+        "low": 390.619803456148,
+        "high": 798.1802889462285
+      },
+      "journeyId": "3:58061:58110",
+      "sourceId": 58061,
+      "sourceStop": 11,
+      "targetVisitId": 58110,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.7930512900023,
+      "day": "2026-09-16",
+      "phase": "standing",
+      "checkpointSec": 420,
+      "checkpointDelaySec": 0.056,
+      "truthSec": 360.049
+    },
+    {
+      "at": 1789577140095,
+      "bus": "316",
+      "busId": 66432,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 20081879,
+      "observedAt": 1789577140095,
+      "source": 11,
+      "rested": true,
+      "since": 1789576830155,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T16:40:40.041",
+      "lastMovedAt": "2026-09-16T16:45:40.095",
+      "restStop": 14,
+      "forecast": {
+        "eta": 504.843245895881,
+        "low": 297.36266072044214,
+        "high": 733.2457563681363
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 331.34036141579816,
+      "baseline": {
+        "eta": 504.843245895881,
+        "low": 297.36266072044214,
+        "high": 733.2457563681363
+      },
+      "candidate": {
+        "eta": 504.843245895881,
+        "low": 359.03280351093156,
+        "high": 733.2457563681363
+      },
+      "baselineRaw": {
+        "eta": 504.843245895881,
+        "low": 297.36266072044214,
+        "high": 733.2457563681363
+      },
+      "candidateRaw": {
+        "eta": 504.843245895881,
+        "low": 359.03280351093156,
+        "high": 733.2457563681363
+      },
+      "journeyId": "3:59475:59525",
+      "sourceId": 59475,
+      "sourceStop": 11,
+      "targetVisitId": 59525,
+      "targetOutcome": "stopped",
+      "targetClosestM": 69.49438657797779,
+      "day": "2026-09-16",
+      "phase": "standing",
+      "checkpointSec": 300,
+      "checkpointDelaySec": 0.054,
+      "truthSec": 345.215
+    },
+    {
+      "at": 1789577175075,
+      "bus": "316",
+      "busId": 66432,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 20116859,
+      "observedAt": 1789577175075,
+      "source": 11,
+      "rested": true,
+      "since": 1789576830155,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T16:40:40.041",
+      "lastMovedAt": "2026-09-16T16:45:40.095",
+      "restStop": 14,
+      "forecast": {
+        "eta": 488.9481682015269,
+        "low": 295.9323198606259,
+        "high": 711.3778049362811
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 488.9481682015269,
+        "low": 295.9323198606259,
+        "high": 711.3778049362811
+      },
+      "candidate": {
+        "eta": 488.9481682015269,
+        "low": 353.9358855963137,
+        "high": 711.3778049362811
+      },
+      "baselineRaw": {
+        "eta": 488.9481682015269,
+        "low": 295.9323198606259,
+        "high": 711.3778049362811
+      },
+      "candidateRaw": {
+        "eta": 488.9481682015269,
+        "low": 353.9358855963137,
+        "high": 711.3778049362811
+      },
+      "journeyId": "3:59475:59525",
+      "sourceId": 59475,
+      "sourceStop": 11,
+      "targetVisitId": 59525,
+      "targetOutcome": "stopped",
+      "targetClosestM": 69.49438657797779,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 310.235
+    },
+    {
+      "at": 1789577185070,
+      "bus": "316",
+      "busId": 66432,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 20126854,
+      "observedAt": 1789577185070,
+      "source": 11,
+      "rested": true,
+      "since": 1789576830155,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T16:40:40.041",
+      "lastMovedAt": "2026-09-16T16:46:25.070",
+      "restStop": 14,
+      "forecast": {
+        "eta": 478.9337544060975,
+        "low": 286.5472743457874,
+        "high": 700.6788726468412
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 478.9337544060975,
+        "low": 286.5472743457874,
+        "high": 700.6788726468412
+      },
+      "candidate": {
+        "eta": 478.9337544060975,
+        "low": 344.45098247769835,
+        "high": 700.6788726468412
+      },
+      "baselineRaw": {
+        "eta": 478.9337544060975,
+        "low": 286.5472743457874,
+        "high": 700.6788726468412
+      },
+      "candidateRaw": {
+        "eta": 478.9337544060975,
+        "low": 344.45098247769835,
+        "high": 700.6788726468412
+      },
+      "journeyId": "3:59475:59525",
+      "sourceId": 59475,
+      "sourceStop": 11,
+      "targetVisitId": 59525,
+      "targetOutcome": "stopped",
+      "targetClosestM": 69.49438657797779,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.995,
+      "truthSec": 300.24
+    },
+    {
+      "at": 1789577190108,
+      "bus": "316",
+      "busId": 66432,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 20131892,
+      "observedAt": 1789577190108,
+      "source": null,
+      "rested": true,
+      "since": 1789576830155,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-16T16:46:30.108",
+      "restStop": 14,
+      "forecast": {
+        "eta": 462.29653078982545,
+        "low": 274.7128587432777,
+        "high": 679.4183870037774
+      },
+      "departNow": 398.8634875457995,
+      "lowFloor": 237.54508449556218,
+      "baseline": {
+        "eta": 462.29653078982545,
+        "low": 274.7128587432777,
+        "high": 679.4183870037774
+      },
+      "candidate": {
+        "eta": 462.29653078982545,
+        "low": 331.20064666448997,
+        "high": 679.4183870037774
+      },
+      "baselineRaw": {
+        "eta": 462.29653078982545,
+        "low": 274.7128587432777,
+        "high": 679.4183870037774
+      },
+      "candidateRaw": {
+        "eta": 462.29653078982545,
+        "low": 331.20064666448997,
+        "high": 679.4183870037774
+      },
+      "journeyId": "3:59475:59525",
+      "sourceId": 59475,
+      "sourceStop": 11,
+      "targetVisitId": 59525,
+      "targetOutcome": "stopped",
+      "targetClosestM": 69.49438657797779,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 0.033,
+      "truthSec": 295.202
+    },
+    {
+      "at": 1789584272484,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 3470524,
+      "observedAt": 1789584272484,
+      "source": 11,
+      "rested": true,
+      "since": 1789583852470,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T18:37:32.470",
+      "lastMovedAt": "2026-09-16T18:38:12.433",
+      "restStop": 14,
+      "forecast": {
+        "eta": 634.9713385838161,
+        "low": 375.10013489452473,
+        "high": 889.88820169892
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 634.9713385838161,
+        "low": 375.10013489452473,
+        "high": 889.88820169892
+      },
+      "candidate": {
+        "eta": 634.9713385838161,
+        "low": 424.7194777325572,
+        "high": 889.88820169892
+      },
+      "baselineRaw": {
+        "eta": 634.9713385838161,
+        "low": 375.10013489452473,
+        "high": 889.88820169892
+      },
+      "candidateRaw": {
+        "eta": 634.9713385838161,
+        "low": 424.7194777325572,
+        "high": 889.88820169892
+      },
+      "journeyId": "3:60375:60434",
+      "sourceId": 60375,
+      "sourceStop": 11,
+      "targetVisitId": 60434,
+      "targetOutcome": "passed",
+      "targetClosestM": 46.86216046447087,
+      "day": "2026-09-16",
+      "phase": "standing",
+      "checkpointSec": 420,
+      "checkpointDelaySec": 0.014,
+      "truthSec": 415.053
+    },
+    {
+      "at": 1789584362504,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 3560544,
+      "observedAt": 1789584362504,
+      "source": 11,
+      "rested": true,
+      "since": 1789583852470,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T18:37:32.470",
+      "lastMovedAt": "2026-09-16T18:45:17.744",
+      "restStop": 14,
+      "forecast": {
+        "eta": 549.7315419601855,
+        "low": 320.75737219165615,
+        "high": 804.8214016706921
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 549.7315419601855,
+        "low": 320.75737219165615,
+        "high": 804.8214016706921
+      },
+      "candidate": {
+        "eta": 549.7315419601855,
+        "low": 385.15340311869335,
+        "high": 804.8214016706921
+      },
+      "baselineRaw": {
+        "eta": 549.7315419601855,
+        "low": 320.75737219165615,
+        "high": 804.8214016706921
+      },
+      "candidateRaw": {
+        "eta": 549.7315419601855,
+        "low": 385.15340311869335,
+        "high": 804.8214016706921
+      },
+      "journeyId": "3:60375:60434",
+      "sourceId": 60375,
+      "sourceStop": 11,
+      "targetVisitId": 60434,
+      "targetOutcome": "passed",
+      "targetClosestM": 46.86216046447087,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 325.033
+    },
+    {
+      "at": 1789584372498,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 3570538,
+      "observedAt": 1789584372498,
+      "source": 11,
+      "rested": true,
+      "since": 1789583852470,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T18:37:32.470",
+      "lastMovedAt": "2026-09-16T18:46:07.485",
+      "restStop": 14,
+      "forecast": {
+        "eta": 541.1560634420243,
+        "low": 312.1836564765632,
+        "high": 797.0868380556191
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 322.3236194369184,
+      "baseline": {
+        "eta": 541.1560634420243,
+        "low": 312.1836564765632,
+        "high": 797.0868380556191
+      },
+      "candidate": {
+        "eta": 541.1560634420243,
+        "low": 377.9367248009979,
+        "high": 797.0868380556191
+      },
+      "baselineRaw": {
+        "eta": 541.1560634420243,
+        "low": 312.1836564765632,
+        "high": 797.0868380556191
+      },
+      "candidateRaw": {
+        "eta": 541.1560634420243,
+        "low": 377.9367248009979,
+        "high": 797.0868380556191
+      },
+      "journeyId": "3:60375:60434",
+      "sourceId": 60375,
+      "sourceStop": 11,
+      "targetVisitId": 60434,
+      "targetOutcome": "passed",
+      "targetClosestM": 46.86216046447087,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.994,
+      "truthSec": 315.039
+    },
+    {
+      "at": 1789584382497,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 3580537,
+      "observedAt": 1789584382497,
+      "source": null,
+      "rested": true,
+      "since": 1789583852470,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-16T18:46:22.497",
+      "restStop": 14,
+      "forecast": {
+        "eta": 508.63748997385767,
+        "low": 289.2543439209138,
+        "high": 756.3170665736069
+      },
+      "departNow": 401.75378047581967,
+      "lowFloor": 239.61886416114487,
+      "baseline": {
+        "eta": 508.63748997385767,
+        "low": 289.2543439209138,
+        "high": 756.3170665736069
+      },
+      "candidate": {
+        "eta": 508.63748997385767,
+        "low": 353.08323574037024,
+        "high": 756.3170665736069
+      },
+      "baselineRaw": {
+        "eta": 508.63748997385767,
+        "low": 289.2543439209138,
+        "high": 756.3170665736069
+      },
+      "candidateRaw": {
+        "eta": 508.63748997385767,
+        "low": 353.08323574037024,
+        "high": 756.3170665736069
+      },
+      "journeyId": "3:60375:60434",
+      "sourceId": 60375,
+      "sourceStop": 11,
+      "targetVisitId": 60434,
+      "targetOutcome": "passed",
+      "targetClosestM": 46.86216046447087,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 4.993,
+      "truthSec": 305.04
+    },
+    {
+      "at": 1789585388761,
+      "bus": "309",
+      "busId": 66434,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 27185380,
+      "observedAt": 1789585388761,
+      "source": 11,
+      "rested": true,
+      "since": 1789585243631,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T19:00:43.631",
+      "lastMovedAt": "2026-09-16T19:03:03.700",
+      "restStop": 14,
+      "forecast": {
+        "eta": 474.4439023121215,
+        "low": 283.4313132465343,
+        "high": 704.0367955486975
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 308.0100682706018,
+      "baseline": {
+        "eta": 474.4439023121215,
+        "low": 283.4313132465343,
+        "high": 704.0367955486975
+      },
+      "candidate": {
+        "eta": 474.4439023121215,
+        "low": 340.36053766865734,
+        "high": 704.0367955486975
+      },
+      "baselineRaw": {
+        "eta": 474.4439023121215,
+        "low": 283.4313132465343,
+        "high": 704.0367955486975
+      },
+      "candidateRaw": {
+        "eta": 474.4439023121215,
+        "low": 340.36053766865734,
+        "high": 704.0367955486975
+      },
+      "journeyId": "3:60521:60568",
+      "sourceId": 60521,
+      "sourceStop": 11,
+      "targetVisitId": 60568,
+      "targetOutcome": "passed",
+      "targetClosestM": 60.348801433835874,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.914,
+      "truthSec": 335.048
+    },
+    {
+      "at": 1789587999220,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 7197260,
+      "observedAt": 1789587999220,
+      "source": 11,
+      "rested": true,
+      "since": 1789587134088,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T19:32:44.077",
+      "lastMovedAt": "2026-09-16T19:45:59.287",
+      "restStop": 14,
+      "forecast": {
+        "eta": 473.9895905363044,
+        "low": 286.94749070261406,
+        "high": 694.8891231021418
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 473.9895905363044,
+        "low": 286.94749070261406,
+        "high": 694.8891231021418
+      },
+      "candidate": {
+        "eta": 473.9895905363044,
+        "low": 343.3619362385427,
+        "high": 694.8891231021418
+      },
+      "baselineRaw": {
+        "eta": 473.9895905363044,
+        "low": 286.94749070261406,
+        "high": 694.8891231021418
+      },
+      "candidateRaw": {
+        "eta": 473.9895905363044,
+        "low": 343.3619362385427,
+        "high": 694.8891231021418
+      },
+      "journeyId": "3:60836:60896",
+      "sourceId": 60836,
+      "sourceStop": 11,
+      "targetVisitId": 60896,
+      "targetOutcome": "passed",
+      "targetClosestM": 40.11024790723666,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 340.064
+    },
+    {
+      "at": 1789588004371,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 7202411,
+      "observedAt": 1789588004371,
+      "source": 11,
+      "rested": true,
+      "since": 1789587134088,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T19:32:44.077",
+      "lastMovedAt": "2026-09-16T19:46:44.371",
+      "restStop": 14,
+      "forecast": {
+        "eta": 471.9214885460816,
+        "low": 285.4825316118905,
+        "high": 692.0274601904031
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 305.16014080277864,
+      "baseline": {
+        "eta": 471.9214885460816,
+        "low": 285.4825316118905,
+        "high": 692.0274601904031
+      },
+      "candidate": {
+        "eta": 471.9214885460816,
+        "low": 341.73094987597545,
+        "high": 692.0274601904031
+      },
+      "baselineRaw": {
+        "eta": 471.9214885460816,
+        "low": 285.4825316118905,
+        "high": 692.0274601904031
+      },
+      "candidateRaw": {
+        "eta": 471.9214885460816,
+        "low": 341.73094987597545,
+        "high": 692.0274601904031
+      },
+      "journeyId": "3:60836:60896",
+      "sourceId": 60836,
+      "sourceStop": 11,
+      "targetVisitId": 60896,
+      "targetOutcome": "passed",
+      "targetClosestM": 40.11024790723666,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 0.151,
+      "truthSec": 334.913
+    },
+    {
+      "at": 1789588019335,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 7217375,
+      "observedAt": 1789588019335,
+      "source": null,
+      "rested": true,
+      "since": 1789587134088,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-16T19:46:59.335",
+      "restStop": 14,
+      "forecast": {
+        "eta": 451.3085131041989,
+        "low": 269.54869815221406,
+        "high": 666.9340667143006
+      },
+      "departNow": 397.26373787017303,
+      "lowFloor": 234.42520910257318,
+      "baseline": {
+        "eta": 451.3085131041989,
+        "low": 269.54869815221406,
+        "high": 666.9340667143006
+      },
+      "candidate": {
+        "eta": 451.3085131041989,
+        "low": 324.4172593256704,
+        "high": 666.9340667143006
+      },
+      "baselineRaw": {
+        "eta": 451.3085131041989,
+        "low": 269.54869815221406,
+        "high": 666.9340667143006
+      },
+      "candidateRaw": {
+        "eta": 451.3085131041989,
+        "low": 324.4172593256704,
+        "high": 666.9340667143006
+      },
+      "journeyId": "3:60836:60896",
+      "sourceId": 60836,
+      "sourceStop": 11,
+      "targetVisitId": 60896,
+      "targetOutcome": "passed",
+      "targetClosestM": 40.11024790723666,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 5.115,
+      "truthSec": 319.949
+    },
+    {
+      "at": 1789590654560,
+      "bus": "308",
+      "busId": 66453,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 33971394,
+      "observedAt": 1789590654560,
+      "source": 11,
+      "rested": true,
+      "since": 1789590344563,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T20:26:14.587",
+      "lastMovedAt": "2026-09-16T20:30:14.514",
+      "restStop": 14,
+      "forecast": {
+        "eta": 517.5684756680446,
+        "low": 310.97924742402796,
+        "high": 754.2599840388361
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 517.5684756680446,
+        "low": 310.97924742402796,
+        "high": 754.2599840388361
+      },
+      "candidate": {
+        "eta": 517.5684756680446,
+        "low": 372.20963057978827,
+        "high": 754.2599840388361
+      },
+      "baselineRaw": {
+        "eta": 517.5684756680446,
+        "low": 310.97924742402796,
+        "high": 754.2599840388361
+      },
+      "candidateRaw": {
+        "eta": 517.5684756680446,
+        "low": 372.20963057978827,
+        "high": 754.2599840388361
+      },
+      "journeyId": "3:61186:61235",
+      "sourceId": 61186,
+      "sourceStop": 11,
+      "targetVisitId": 61235,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.16640450173412,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 345.214
+    },
+    {
+      "at": 1789590664510,
+      "bus": "308",
+      "busId": 66453,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 33981344,
+      "observedAt": 1789590664510,
+      "source": 11,
+      "rested": true,
+      "since": 1789590344563,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T20:26:14.587",
+      "lastMovedAt": "2026-09-16T20:30:59.543",
+      "restStop": 14,
+      "forecast": {
+        "eta": 509.55178644879004,
+        "low": 303.63979645562256,
+        "high": 746.1723131108738
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 314.6554225825487,
+      "baseline": {
+        "eta": 509.55178644879004,
+        "low": 303.63979645562256,
+        "high": 746.1723131108738
+      },
+      "candidate": {
+        "eta": 509.55178644879004,
+        "low": 365.0023795882821,
+        "high": 746.1723131108738
+      },
+      "baselineRaw": {
+        "eta": 509.55178644879004,
+        "low": 303.63979645562256,
+        "high": 746.1723131108738
+      },
+      "candidateRaw": {
+        "eta": 509.55178644879004,
+        "low": 365.0023795882821,
+        "high": 746.1723131108738
+      },
+      "journeyId": "3:61186:61235",
+      "sourceId": 61186,
+      "sourceStop": 11,
+      "targetVisitId": 61235,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.16640450173412,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.95,
+      "truthSec": 335.264
+    },
+    {
+      "at": 1789590669660,
+      "bus": "308",
+      "busId": 66453,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 33986494,
+      "observedAt": 1789590669660,
+      "source": 11,
+      "rested": true,
+      "since": 1789590344563,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T20:26:14.587",
+      "lastMovedAt": "2026-09-16T20:31:09.660",
+      "restStop": 14,
+      "forecast": {
+        "eta": 502.1613879203295,
+        "low": 295.7228669298354,
+        "high": 736.9041133765609
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 502.1613879203295,
+        "low": 295.7228669298354,
+        "high": 736.9041133765609
+      },
+      "candidate": {
+        "eta": 502.1613879203295,
+        "low": 357.3796468209761,
+        "high": 736.9041133765609
+      },
+      "baselineRaw": {
+        "eta": 502.1613879203295,
+        "low": 295.7228669298354,
+        "high": 736.9041133765609
+      },
+      "candidateRaw": {
+        "eta": 502.1613879203295,
+        "low": 357.3796468209761,
+        "high": 736.9041133765609
+      },
+      "journeyId": "3:61186:61235",
+      "sourceId": 61186,
+      "sourceStop": 11,
+      "targetVisitId": 61235,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.16640450173412,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 0.1,
+      "truthSec": 330.114
+    },
+    {
+      "at": 1789591529609,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 10727649,
+      "observedAt": 1789591529609,
+      "source": 11,
+      "rested": true,
+      "since": 1789591204569,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T20:40:29.583",
+      "lastMovedAt": "2026-09-16T20:45:19.599",
+      "restStop": 14,
+      "forecast": {
+        "eta": 510.4758497983106,
+        "low": 302.136561019102,
+        "high": 741.1526019737638
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 333.9657211777111,
+      "baseline": {
+        "eta": 510.4758497983106,
+        "low": 302.136561019102,
+        "high": 741.1526019737638
+      },
+      "candidate": {
+        "eta": 510.4758497983106,
+        "low": 363.76752697786355,
+        "high": 741.1526019737638
+      },
+      "baselineRaw": {
+        "eta": 510.4758497983106,
+        "low": 302.136561019102,
+        "high": 741.1526019737638
+      },
+      "candidateRaw": {
+        "eta": 510.4758497983106,
+        "low": 363.76752697786355,
+        "high": 741.1526019737638
+      },
+      "journeyId": "3:61306:61363",
+      "sourceId": 61306,
+      "sourceStop": 11,
+      "targetVisitId": 61363,
+      "targetOutcome": "stopped",
+      "targetClosestM": 46.86216046447087,
+      "day": "2026-09-16",
+      "phase": "standing",
+      "checkpointSec": 300,
+      "checkpointDelaySec": 0.026,
+      "truthSec": 335.021
+    },
+    {
+      "at": 1789591549622,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 10747662,
+      "observedAt": 1789591549622,
+      "source": 11,
+      "rested": true,
+      "since": 1789591204569,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T20:40:29.583",
+      "lastMovedAt": "2026-09-16T20:45:19.599",
+      "restStop": 14,
+      "forecast": {
+        "eta": 501.2900599945584,
+        "low": 302.19238824846053,
+        "high": 728.5911502270484
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 501.2900599945584,
+        "low": 302.19238824846053,
+        "high": 728.5911502270484
+      },
+      "candidate": {
+        "eta": 501.2900599945584,
+        "low": 361.6741996078287,
+        "high": 728.5911502270484
+      },
+      "baselineRaw": {
+        "eta": 501.2900599945584,
+        "low": 302.19238824846053,
+        "high": 728.5911502270484
+      },
+      "candidateRaw": {
+        "eta": 501.2900599945584,
+        "low": 361.6741996078287,
+        "high": 728.5911502270484
+      },
+      "journeyId": "3:61306:61363",
+      "sourceId": 61306,
+      "sourceStop": 11,
+      "targetVisitId": 61363,
+      "targetOutcome": "stopped",
+      "targetClosestM": 46.86216046447087,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 315.008
+    },
+    {
+      "at": 1789591554827,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 10752867,
+      "observedAt": 1789591554827,
+      "source": 11,
+      "rested": true,
+      "since": 1789591204569,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T20:40:29.583",
+      "lastMovedAt": "2026-09-16T20:45:54.827",
+      "restStop": 14,
+      "forecast": {
+        "eta": 498.1641978068253,
+        "low": 299.5721932629796,
+        "high": 724.6250647381509
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 313.2151556030367,
+      "baseline": {
+        "eta": 498.1641978068253,
+        "low": 299.5721932629796,
+        "high": 724.6250647381509
+      },
+      "candidate": {
+        "eta": 498.1641978068253,
+        "low": 359.0092356926368,
+        "high": 724.6250647381509
+      },
+      "baselineRaw": {
+        "eta": 498.1641978068253,
+        "low": 299.5721932629796,
+        "high": 724.6250647381509
+      },
+      "candidateRaw": {
+        "eta": 498.1641978068253,
+        "low": 359.0092356926368,
+        "high": 724.6250647381509
+      },
+      "journeyId": "3:61306:61363",
+      "sourceId": 61306,
+      "sourceStop": 11,
+      "targetVisitId": 61363,
+      "targetOutcome": "stopped",
+      "targetClosestM": 46.86216046447087,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 0.205,
+      "truthSec": 309.803
+    },
+    {
+      "at": 1789591569598,
+      "bus": "316",
+      "busId": 66452,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 10767638,
+      "observedAt": 1789591569598,
+      "source": null,
+      "rested": true,
+      "since": 1789591204569,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-16T20:46:09.598",
+      "restStop": 14,
+      "forecast": {
+        "eta": 459.35751210628433,
+        "low": 269.77358370325965,
+        "high": 676.0467871795465
+      },
+      "departNow": 397.1239391442555,
+      "lowFloor": 231.52641945423534,
+      "baseline": {
+        "eta": 459.35751210628433,
+        "low": 269.77358370325965,
+        "high": 676.0467871795465
+      },
+      "candidate": {
+        "eta": 459.35751210628433,
+        "low": 326.7104113798216,
+        "high": 676.0467871795465
+      },
+      "baselineRaw": {
+        "eta": 459.35751210628433,
+        "low": 269.77358370325965,
+        "high": 676.0467871795465
+      },
+      "candidateRaw": {
+        "eta": 459.35751210628433,
+        "low": 326.7104113798216,
+        "high": 676.0467871795465
+      },
+      "journeyId": "3:61306:61363",
+      "sourceId": 61306,
+      "sourceStop": 11,
+      "targetVisitId": 61363,
+      "targetOutcome": "stopped",
+      "targetClosestM": 46.86216046447087,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 4.976,
+      "truthSec": 295.032
+    },
+    {
+      "at": 1789596160136,
+      "bus": "309",
+      "busId": 66434,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 37956755,
+      "observedAt": 1789596160136,
+      "source": 11,
+      "rested": true,
+      "since": 1789596025127,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T22:00:40.291",
+      "lastMovedAt": "2026-09-16T22:02:05.240",
+      "restStop": 14,
+      "forecast": {
+        "eta": 506.093483731436,
+        "low": 298.18016897745525,
+        "high": 759.1428070147534
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 506.093483731436,
+        "low": 298.18016897745525,
+        "high": 759.1428070147534
+      },
+      "candidate": {
+        "eta": 506.093483731436,
+        "low": 358.72242021964615,
+        "high": 759.1428070147534
+      },
+      "baselineRaw": {
+        "eta": 506.093483731436,
+        "low": 298.18016897745525,
+        "high": 759.1428070147534
+      },
+      "candidateRaw": {
+        "eta": 506.093483731436,
+        "low": 358.72242021964615,
+        "high": 759.1428070147534
+      },
+      "journeyId": "3:61907:61959",
+      "sourceId": 61907,
+      "sourceStop": 11,
+      "targetVisitId": 61959,
+      "targetOutcome": "passed",
+      "targetClosestM": 55.399390037526636,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 330.009
+    },
+    {
+      "at": 1789596170251,
+      "bus": "309",
+      "busId": 66434,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 37966870,
+      "observedAt": 1789596170251,
+      "source": 11,
+      "rested": true,
+      "since": 1789596025127,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T22:00:40.291",
+      "lastMovedAt": "2026-09-16T22:02:50.251",
+      "restStop": 14,
+      "forecast": {
+        "eta": 497.6678130914574,
+        "low": 290.0144949210344,
+        "high": 750.9881751575067
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 497.6678130914574,
+        "low": 290.0144949210344,
+        "high": 750.9881751575067
+      },
+      "candidate": {
+        "eta": 497.6678130914574,
+        "low": 351.1311791057278,
+        "high": 750.9881751575067
+      },
+      "baselineRaw": {
+        "eta": 497.6678130914574,
+        "low": 290.0144949210344,
+        "high": 750.9881751575067
+      },
+      "candidateRaw": {
+        "eta": 497.6678130914574,
+        "low": 351.1311791057278,
+        "high": 750.9881751575067
+      },
+      "journeyId": "3:61907:61959",
+      "sourceId": 61907,
+      "sourceStop": 11,
+      "targetVisitId": 61959,
+      "targetOutcome": "passed",
+      "targetClosestM": 55.399390037526636,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 5.115,
+      "truthSec": 319.894
+    },
+    {
+      "at": 1789596175160,
+      "bus": "309",
+      "busId": 66434,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 1,
+      "warmMs": 37971779,
+      "observedAt": 1789596175160,
+      "source": 11,
+      "rested": true,
+      "since": 1789596025127,
+      "lead": 14,
+      "pinnedSince": "2026-09-16T22:00:40.291",
+      "lastMovedAt": "2026-09-16T22:02:50.251",
+      "restStop": 14,
+      "forecast": {
+        "eta": 494.5156163351911,
+        "low": 286.9452569588189,
+        "high": 747.8813332186226
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 494.5156163351911,
+        "low": 286.9452569588189,
+        "high": 747.8813332186226
+      },
+      "candidate": {
+        "eta": 494.5156163351911,
+        "low": 348.2826947524756,
+        "high": 747.8813332186226
+      },
+      "baselineRaw": {
+        "eta": 494.5156163351911,
+        "low": 286.9452569588189,
+        "high": 747.8813332186226
+      },
+      "candidateRaw": {
+        "eta": 494.5156163351911,
+        "low": 348.2826947524756,
+        "high": 747.8813332186226
+      },
+      "journeyId": "3:61907:61959",
+      "sourceId": 61907,
+      "sourceStop": 11,
+      "targetVisitId": 61959,
+      "targetOutcome": "passed",
+      "targetClosestM": 55.399390037526636,
+      "day": "2026-09-16",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 0.024,
+      "truthSec": 314.985
+    },
+    {
+      "at": 1789649928303,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 48,
+      "stopsAhead": 3,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 4956864,
+      "observedAt": 1789649928303,
+      "source": 11,
+      "rested": true,
+      "since": 1789649768217,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T12:56:08.217",
+      "lastMovedAt": "2026-09-17T12:58:03.108",
+      "restStop": 14,
+      "forecast": {
+        "eta": 239.97591578921873,
+        "low": 28.498897231592668,
+        "high": 366.60645256979245
+      },
+      "departNow": 71.72531910582535,
+      "lowFloor": 51.321571838727664,
+      "baseline": {
+        "eta": 239.97591578921873,
+        "low": 28.498897231592668,
+        "high": 366.60645256979245
+      },
+      "candidate": {
+        "eta": 239.97591578921873,
+        "low": 103.2610813146453,
+        "high": 366.60645256979245
+      },
+      "baselineRaw": {
+        "eta": 239.97591578921873,
+        "low": 28.498897231592668,
+        "high": 366.60645256979245
+      },
+      "candidateRaw": {
+        "eta": 239.97591578921873,
+        "low": 103.2610813146453,
+        "high": 366.60645256979245
+      },
+      "journeyId": "3:64318:64338",
+      "sourceId": 64318,
+      "sourceStop": 11,
+      "targetVisitId": 64338,
+      "targetOutcome": "stopped",
+      "targetClosestM": 4.053598304352658,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 79.803
+    },
+    {
+      "at": 1789649938505,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 48,
+      "stopsAhead": 3,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 4967066,
+      "observedAt": 1789649938505,
+      "source": 11,
+      "rested": true,
+      "since": 1789649768217,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T12:56:08.217",
+      "lastMovedAt": "2026-09-17T12:58:58.505",
+      "restStop": 14,
+      "forecast": {
+        "eta": 226.78096774592422,
+        "low": 7.199445634523501,
+        "high": 353.8685314873291
+      },
+      "departNow": 71.72531910582535,
+      "lowFloor": 51.321571838727664,
+      "baseline": {
+        "eta": 226.78096774592422,
+        "low": 7.199445634523501,
+        "high": 353.8685314873291
+      },
+      "candidate": {
+        "eta": 226.78096774592422,
+        "low": 86.81668797505677,
+        "high": 353.8685314873291
+      },
+      "baselineRaw": {
+        "eta": 226.78096774592422,
+        "low": 7.199445634523501,
+        "high": 353.8685314873291
+      },
+      "candidateRaw": {
+        "eta": 226.78096774592422,
+        "low": 86.81668797505677,
+        "high": 353.8685314873291
+      },
+      "journeyId": "3:64318:64338",
+      "sourceId": 64318,
+      "sourceStop": 11,
+      "targetVisitId": 64338,
+      "targetOutcome": "stopped",
+      "targetClosestM": 4.053598304352658,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 5.202,
+      "truthSec": 69.601
+    },
+    {
+      "at": 1789649948273,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 48,
+      "stopsAhead": 3,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 4976834,
+      "observedAt": 1789649948273,
+      "source": null,
+      "rested": true,
+      "since": 1789649768217,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T12:59:03.138",
+      "restStop": 14,
+      "forecast": {
+        "eta": 171.92175679160647,
+        "low": 8.432644912782692,
+        "high": 276.2064543003909
+      },
+      "departNow": 57.40936239695787,
+      "lowFloor": 39.25078364216616,
+      "baseline": {
+        "eta": 171.92175679160647,
+        "low": 8.432644912782692,
+        "high": 276.2064543003909
+      },
+      "candidate": {
+        "eta": 171.92175679160647,
+        "low": 65.92377529666393,
+        "high": 276.2064543003909
+      },
+      "baselineRaw": {
+        "eta": 171.92175679160647,
+        "low": 8.432644912782692,
+        "high": 276.2064543003909
+      },
+      "candidateRaw": {
+        "eta": 171.92175679160647,
+        "low": 65.92377529666393,
+        "high": 276.2064543003909
+      },
+      "journeyId": "3:64318:64338",
+      "sourceId": 64318,
+      "sourceStop": 11,
+      "targetVisitId": 64338,
+      "targetOutcome": "stopped",
+      "targetClosestM": 4.053598304352658,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 4.97,
+      "truthSec": 59.833
+    },
+    {
+      "at": 1789651963507,
+      "bus": "300",
+      "busId": 66486,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 9097306,
+      "observedAt": 1789651963507,
+      "source": 11,
+      "rested": true,
+      "since": 1789651701561,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T13:28:21.561",
+      "lastMovedAt": "2026-09-17T13:32:23.507",
+      "restStop": 14,
+      "forecast": {
+        "eta": 471.60727358946997,
+        "low": 285.6003950220528,
+        "high": 694.7580529118378
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 471.60727358946997,
+        "low": 285.6003950220528,
+        "high": 694.7580529118378
+      },
+      "candidate": {
+        "eta": 471.60727358946997,
+        "low": 341.7193510995042,
+        "high": 694.7580529118378
+      },
+      "baselineRaw": {
+        "eta": 471.60727358946997,
+        "low": 285.6003950220528,
+        "high": 694.7580529118378
+      },
+      "candidateRaw": {
+        "eta": 471.60727358946997,
+        "low": 341.7193510995042,
+        "high": 694.7580529118378
+      },
+      "journeyId": "3:64603:64658",
+      "sourceId": 64603,
+      "sourceStop": 11,
+      "targetVisitId": 64658,
+      "targetOutcome": "stopped",
+      "targetClosestM": 48.57237146960709,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 320.07
+    },
+    {
+      "at": 1789651968609,
+      "bus": "300",
+      "busId": 66486,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 9102408,
+      "observedAt": 1789651968609,
+      "source": 11,
+      "rested": true,
+      "since": 1789651701561,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T13:28:21.561",
+      "lastMovedAt": "2026-09-17T13:32:48.609",
+      "restStop": 14,
+      "forecast": {
+        "eta": 469.04136773656205,
+        "low": 282.83613833960044,
+        "high": 691.84452842328
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 469.04136773656205,
+        "low": 282.83613833960044,
+        "high": 691.84452842328
+      },
+      "candidate": {
+        "eta": 469.04136773656205,
+        "low": 339.0283994447911,
+        "high": 691.84452842328
+      },
+      "baselineRaw": {
+        "eta": 469.04136773656205,
+        "low": 282.83613833960044,
+        "high": 691.84452842328
+      },
+      "candidateRaw": {
+        "eta": 469.04136773656205,
+        "low": 339.0283994447911,
+        "high": 691.84452842328
+      },
+      "journeyId": "3:64603:64658",
+      "sourceId": 64603,
+      "sourceStop": 11,
+      "targetVisitId": 64658,
+      "targetOutcome": "stopped",
+      "targetClosestM": 48.57237146960709,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 0.102,
+      "truthSec": 314.968
+    },
+    {
+      "at": 1789651978508,
+      "bus": "300",
+      "busId": 66486,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 9112307,
+      "observedAt": 1789651978508,
+      "source": null,
+      "rested": true,
+      "since": 1789651701561,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T13:32:53.496",
+      "restStop": 14,
+      "forecast": {
+        "eta": 441.16770039473056,
+        "low": 262.3897558273985,
+        "high": 656.4450426762254
+      },
+      "departNow": 397.45730937959763,
+      "lowFloor": 237.6767507110631,
+      "baseline": {
+        "eta": 441.16770039473056,
+        "low": 262.3897558273985,
+        "high": 656.4450426762254
+      },
+      "candidate": {
+        "eta": 441.16770039473056,
+        "low": 316.35803479358754,
+        "high": 656.4450426762254
+      },
+      "baselineRaw": {
+        "eta": 441.16770039473056,
+        "low": 262.3897558273985,
+        "high": 656.4450426762254
+      },
+      "candidateRaw": {
+        "eta": 441.16770039473056,
+        "low": 316.35803479358754,
+        "high": 656.4450426762254
+      },
+      "journeyId": "3:64603:64658",
+      "sourceId": 64603,
+      "sourceStop": 11,
+      "targetVisitId": 64658,
+      "targetOutcome": "stopped",
+      "targetClosestM": 48.57237146960709,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 0.001,
+      "truthSec": 305.069
+    },
+    {
+      "at": 1789656325854,
+      "bus": "316",
+      "busId": 66487,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 12894409,
+      "observedAt": 1789656325854,
+      "source": 11,
+      "rested": true,
+      "since": 1789655921359,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T14:38:41.359",
+      "lastMovedAt": "2026-09-17T14:45:25.854",
+      "restStop": 14,
+      "forecast": {
+        "eta": 515.3188545229732,
+        "low": 324.3700265935086,
+        "high": 736.6990946598203
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 515.3188545229732,
+        "low": 324.3700265935086,
+        "high": 736.6990946598203
+      },
+      "candidate": {
+        "eta": 515.3188545229732,
+        "low": 382.067753385873,
+        "high": 736.6990946598203
+      },
+      "baselineRaw": {
+        "eta": 515.3188545229732,
+        "low": 324.3700265935086,
+        "high": 736.6990946598203
+      },
+      "candidateRaw": {
+        "eta": 515.3188545229732,
+        "low": 382.067753385873,
+        "high": 736.6990946598203
+      },
+      "journeyId": "3:65237:65293",
+      "sourceId": 65237,
+      "sourceStop": 11,
+      "targetVisitId": 65293,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.62789695739245,
+      "day": "2026-09-17",
+      "phase": "standing",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 367.032
+    },
+    {
+      "at": 1789656360839,
+      "bus": "316",
+      "busId": 66487,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 12929394,
+      "observedAt": 1789656360839,
+      "source": 11,
+      "rested": true,
+      "since": 1789655921359,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T14:38:41.359",
+      "lastMovedAt": "2026-09-17T14:45:30.828",
+      "restStop": 14,
+      "forecast": {
+        "eta": 490.2159629972432,
+        "low": 302.3046197114251,
+        "high": 708.0760627147006
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 490.2159629972432,
+        "low": 302.3046197114251,
+        "high": 708.0760627147006
+      },
+      "candidate": {
+        "eta": 490.2159629972432,
+        "low": 359.08453013903096,
+        "high": 708.0760627147006
+      },
+      "baselineRaw": {
+        "eta": 490.2159629972432,
+        "low": 302.3046197114251,
+        "high": 708.0760627147006
+      },
+      "candidateRaw": {
+        "eta": 490.2159629972432,
+        "low": 359.08453013903096,
+        "high": 708.0760627147006
+      },
+      "journeyId": "3:65237:65293",
+      "sourceId": 65237,
+      "sourceStop": 11,
+      "targetVisitId": 65293,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.62789695739245,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 332.047
+    },
+    {
+      "at": 1789656370765,
+      "bus": "316",
+      "busId": 66487,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 12939320,
+      "observedAt": 1789656370765,
+      "source": 11,
+      "rested": true,
+      "since": 1789655921359,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T14:38:41.359",
+      "lastMovedAt": "2026-09-17T14:46:10.765",
+      "restStop": 14,
+      "forecast": {
+        "eta": 483.2184725747866,
+        "low": 294.978869610562,
+        "high": 699.4226328898459
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 483.2184725747866,
+        "low": 294.978869610562,
+        "high": 699.4226328898459
+      },
+      "candidate": {
+        "eta": 483.2184725747866,
+        "low": 351.85796806381336,
+        "high": 699.4226328898459
+      },
+      "baselineRaw": {
+        "eta": 483.2184725747866,
+        "low": 294.978869610562,
+        "high": 699.4226328898459
+      },
+      "candidateRaw": {
+        "eta": 483.2184725747866,
+        "low": 351.85796806381336,
+        "high": 699.4226328898459
+      },
+      "journeyId": "3:65237:65293",
+      "sourceId": 65237,
+      "sourceStop": 11,
+      "targetVisitId": 65293,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.62789695739245,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.926,
+      "truthSec": 322.121
+    },
+    {
+      "at": 1789656380927,
+      "bus": "316",
+      "busId": 66487,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 5,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 12949482,
+      "observedAt": 1789656380927,
+      "source": null,
+      "rested": true,
+      "since": 1789655921359,
+      "lead": 15,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T14:46:20.927",
+      "restStop": 14,
+      "forecast": {
+        "eta": 449.5004099961291,
+        "low": 269.93074751737913,
+        "high": 657.9679897106967
+      },
+      "departNow": 382.96425555034426,
+      "lowFloor": 276.950469405853,
+      "baseline": {
+        "eta": 449.5004099961291,
+        "low": 269.93074751737913,
+        "high": 657.9679897106967
+      },
+      "candidate": {
+        "eta": 449.5004099961291,
+        "low": 324.19010819658274,
+        "high": 657.9679897106967
+      },
+      "baselineRaw": {
+        "eta": 449.5004099961291,
+        "low": 269.93074751737913,
+        "high": 657.9679897106967
+      },
+      "candidateRaw": {
+        "eta": 449.5004099961291,
+        "low": 324.19010819658274,
+        "high": 657.9679897106967
+      },
+      "journeyId": "3:65237:65293",
+      "sourceId": 65237,
+      "sourceStop": 11,
+      "targetVisitId": 65293,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.62789695739245,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 5.088,
+      "truthSec": 311.959
+    },
+    {
+      "at": 1789657162971,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 48,
+      "stopsAhead": 3,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 12191532,
+      "observedAt": 1789657162971,
+      "source": 11,
+      "rested": true,
+      "since": 1789656652856,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T14:50:52.856",
+      "lastMovedAt": "2026-09-17T14:59:17.956",
+      "restStop": 14,
+      "forecast": {
+        "eta": 192.59951409767785,
+        "low": 0.5568479784548788,
+        "high": 318.7123877991669
+      },
+      "departNow": 71.72531910582535,
+      "lowFloor": 17.513043796348484,
+      "baseline": {
+        "eta": 192.59951409767785,
+        "low": 0.5568479784548788,
+        "high": 318.7123877991669
+      },
+      "candidate": {
+        "eta": 192.59951409767785,
+        "low": 73.09396223062325,
+        "high": 318.7123877991669
+      },
+      "baselineRaw": {
+        "eta": 192.59951409767785,
+        "low": 0.5568479784548788,
+        "high": 318.7123877991669
+      },
+      "candidateRaw": {
+        "eta": 192.59951409767785,
+        "low": 73.09396223062325,
+        "high": 318.7123877991669
+      },
+      "journeyId": "3:65347:65364",
+      "sourceId": 65347,
+      "sourceStop": 11,
+      "targetVisitId": 65364,
+      "targetOutcome": "stopped",
+      "targetClosestM": 15.873351666002648,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.99,
+      "truthSec": 69.926
+    },
+    {
+      "at": 1789657168118,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 48,
+      "stopsAhead": 3,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 12196679,
+      "observedAt": 1789657168118,
+      "source": 11,
+      "rested": true,
+      "since": 1789656652856,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T14:50:52.856",
+      "lastMovedAt": "2026-09-17T14:59:28.118",
+      "restStop": 14,
+      "forecast": {
+        "eta": 184.18543677605095,
+        "low": 0,
+        "high": 311.38190603461175
+      },
+      "departNow": 71.72531910582535,
+      "lowFloor": 51.321571838727664,
+      "baseline": {
+        "eta": 184.18543677605095,
+        "low": 0,
+        "high": 311.38190603461175
+      },
+      "candidate": {
+        "eta": 184.18543677605095,
+        "low": 65.75276411113461,
+        "high": 311.38190603461175
+      },
+      "baselineRaw": {
+        "eta": 184.18543677605095,
+        "low": 0,
+        "high": 311.38190603461175
+      },
+      "candidateRaw": {
+        "eta": 184.18543677605095,
+        "low": 65.75276411113461,
+        "high": 311.38190603461175
+      },
+      "journeyId": "3:65347:65364",
+      "sourceId": 65347,
+      "sourceStop": 11,
+      "targetVisitId": 65364,
+      "targetOutcome": "stopped",
+      "targetClosestM": 15.873351666002648,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 0.137,
+      "truthSec": 64.779
+    },
+    {
+      "at": 1789657072892,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 12101453,
+      "observedAt": 1789657072892,
+      "source": 11,
+      "rested": true,
+      "since": 1789656652856,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T14:50:52.856",
+      "lastMovedAt": "2026-09-17T14:51:42.828",
+      "restStop": 14,
+      "forecast": {
+        "eta": 648.5148861908153,
+        "low": 378.438267224821,
+        "high": 879.2319496091268
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 648.5148861908153,
+        "low": 378.438267224821,
+        "high": 879.2319496091268
+      },
+      "candidate": {
+        "eta": 648.5148861908153,
+        "low": 430.0061877347604,
+        "high": 879.2319496091268
+      },
+      "baselineRaw": {
+        "eta": 648.5148861908153,
+        "low": 378.438267224821,
+        "high": 879.2319496091268
+      },
+      "candidateRaw": {
+        "eta": 648.5148861908153,
+        "low": 430.0061877347604,
+        "high": 879.2319496091268
+      },
+      "journeyId": "3:65347:65406",
+      "sourceId": 65347,
+      "sourceStop": 11,
+      "targetVisitId": 65406,
+      "targetOutcome": "passed",
+      "targetClosestM": 68.74957089993501,
+      "day": "2026-09-17",
+      "phase": "standing",
+      "checkpointSec": 420,
+      "checkpointDelaySec": 0.036,
+      "truthSec": 389.998
+    },
+    {
+      "at": 1789657187851,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 5,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 12216412,
+      "observedAt": 1789657187851,
+      "source": null,
+      "rested": true,
+      "since": 1789656652856,
+      "lead": 15,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T14:59:38.012",
+      "restStop": 14,
+      "forecast": {
+        "eta": 455.3408287498073,
+        "low": 261.3524828128315,
+        "high": 667.2042418437242
+      },
+      "departNow": 382.96425555034426,
+      "lowFloor": 276.950469405853,
+      "baseline": {
+        "eta": 455.3408287498073,
+        "low": 261.3524828128315,
+        "high": 667.2042418437242
+      },
+      "candidate": {
+        "eta": 455.3408287498073,
+        "low": 316.9766894472034,
+        "high": 667.2042418437242
+      },
+      "baselineRaw": {
+        "eta": 455.3408287498073,
+        "low": 261.3524828128315,
+        "high": 667.2042418437242
+      },
+      "candidateRaw": {
+        "eta": 455.3408287498073,
+        "low": 316.9766894472034,
+        "high": 667.2042418437242
+      },
+      "journeyId": "3:65347:65406",
+      "sourceId": 65347,
+      "sourceStop": 11,
+      "targetVisitId": 65406,
+      "targetOutcome": "passed",
+      "targetClosestM": 68.74957089993501,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 30,
+      "checkpointDelaySec": 4.87,
+      "truthSec": 275.039
+    },
+    {
+      "at": 1789659955363,
+      "bus": "316",
+      "busId": 66487,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 16523918,
+      "observedAt": 1789659955363,
+      "source": 11,
+      "rested": true,
+      "since": 1789659534545,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T15:38:54.545",
+      "lastMovedAt": "2026-09-17T15:45:35.281",
+      "restStop": 14,
+      "forecast": {
+        "eta": 490.07952310048984,
+        "low": 295.48382866083716,
+        "high": 709.8274550493186
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 319.8636504032812,
+      "baseline": {
+        "eta": 490.07952310048984,
+        "low": 295.48382866083716,
+        "high": 709.8274550493186
+      },
+      "candidate": {
+        "eta": 490.07952310048984,
+        "low": 353.93198646491714,
+        "high": 709.8274550493186
+      },
+      "baselineRaw": {
+        "eta": 490.07952310048984,
+        "low": 295.48382866083716,
+        "high": 709.8274550493186
+      },
+      "candidateRaw": {
+        "eta": 490.07952310048984,
+        "low": 353.93198646491714,
+        "high": 709.8274550493186
+      },
+      "journeyId": "3:65720:65773",
+      "sourceId": 65720,
+      "sourceStop": 11,
+      "targetVisitId": 65773,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.140181669907328,
+      "day": "2026-09-17",
+      "phase": "standing",
+      "checkpointSec": 420,
+      "checkpointDelaySec": 0.818,
+      "truthSec": 339.966
+    },
+    {
+      "at": 1789659970332,
+      "bus": "316",
+      "busId": 66487,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 16538887,
+      "observedAt": 1789659970332,
+      "source": 11,
+      "rested": true,
+      "since": 1789659534545,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T15:38:54.545",
+      "lastMovedAt": "2026-09-17T15:45:35.281",
+      "restStop": 14,
+      "forecast": {
+        "eta": 483.45203413484774,
+        "low": 293.1259626195031,
+        "high": 702.0957433750627
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 483.45203413484774,
+        "low": 293.1259626195031,
+        "high": 702.0957433750627
+      },
+      "candidate": {
+        "eta": 483.45203413484774,
+        "low": 350.42208829858225,
+        "high": 702.0957433750627
+      },
+      "baselineRaw": {
+        "eta": 483.45203413484774,
+        "low": 293.1259626195031,
+        "high": 702.0957433750627
+      },
+      "candidateRaw": {
+        "eta": 483.45203413484774,
+        "low": 350.42208829858225,
+        "high": 702.0957433750627
+      },
+      "journeyId": "3:65720:65773",
+      "sourceId": 65720,
+      "sourceStop": 11,
+      "targetVisitId": 65773,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.140181669907328,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 324.997
+    },
+    {
+      "at": 1789659980324,
+      "bus": "316",
+      "busId": 66487,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 16548879,
+      "observedAt": 1789659980324,
+      "source": 11,
+      "rested": true,
+      "since": 1789659534545,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T15:38:54.545",
+      "lastMovedAt": "2026-09-17T15:46:20.324",
+      "restStop": 14,
+      "forecast": {
+        "eta": 474.7916124907957,
+        "low": 286.16668694727286,
+        "high": 692.0314915114865
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 474.7916124907957,
+        "low": 286.16668694727286,
+        "high": 692.0314915114865
+      },
+      "candidate": {
+        "eta": 474.7916124907957,
+        "low": 343.0092478377209,
+        "high": 692.0314915114865
+      },
+      "baselineRaw": {
+        "eta": 474.7916124907957,
+        "low": 286.16668694727286,
+        "high": 692.0314915114865
+      },
+      "candidateRaw": {
+        "eta": 474.7916124907957,
+        "low": 343.0092478377209,
+        "high": 692.0314915114865
+      },
+      "journeyId": "3:65720:65773",
+      "sourceId": 65720,
+      "sourceStop": 11,
+      "targetVisitId": 65773,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.140181669907328,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.992,
+      "truthSec": 315.005
+    },
+    {
+      "at": 1789659990308,
+      "bus": "316",
+      "busId": 66487,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 5,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 16558863,
+      "observedAt": 1789659990308,
+      "source": null,
+      "rested": true,
+      "since": 1789659534545,
+      "lead": 15,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T15:46:30.308",
+      "restStop": 14,
+      "forecast": {
+        "eta": 442.96770074868084,
+        "low": 263.6146923859309,
+        "high": 651.6776712973443
+      },
+      "departNow": 382.96425555034426,
+      "lowFloor": 276.950469405853,
+      "baseline": {
+        "eta": 442.96770074868084,
+        "low": 263.6146923859309,
+        "high": 651.6776712973443
+      },
+      "candidate": {
+        "eta": 442.96770074868084,
+        "low": 317.69892337987125,
+        "high": 651.6776712973443
+      },
+      "baselineRaw": {
+        "eta": 442.96770074868084,
+        "low": 263.6146923859309,
+        "high": 651.6776712973443
+      },
+      "candidateRaw": {
+        "eta": 442.96770074868084,
+        "low": 317.69892337987125,
+        "high": 651.6776712973443
+      },
+      "journeyId": "3:65720:65773",
+      "sourceId": 65720,
+      "sourceStop": 11,
+      "targetVisitId": 65773,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.140181669907328,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 4.976,
+      "truthSec": 305.021
+    },
+    {
+      "at": 1789664475829,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 19504390,
+      "observedAt": 1789664475829,
+      "source": 11,
+      "rested": true,
+      "since": 1789663875713,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T16:59:15.765",
+      "lastMovedAt": "2026-09-17T17:00:40.836",
+      "restStop": 14,
+      "forecast": {
+        "eta": 525.4803024634932,
+        "low": 305.15406396256253,
+        "high": 770.5338188059883
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 525.4803024634932,
+        "low": 305.15406396256253,
+        "high": 770.5338188059883
+      },
+      "candidate": {
+        "eta": 525.4803024634932,
+        "low": 369.1659520843066,
+        "high": 770.5338188059883
+      },
+      "baselineRaw": {
+        "eta": 525.4803024634932,
+        "low": 305.15406396256253,
+        "high": 770.5338188059883
+      },
+      "candidateRaw": {
+        "eta": 525.4803024634932,
+        "low": 369.1659520843066,
+        "high": 770.5338188059883
+      },
+      "journeyId": "3:66278:66330",
+      "sourceId": 66278,
+      "sourceStop": 11,
+      "targetVisitId": 66330,
+      "targetOutcome": "stopped",
+      "targetClosestM": 53.26622540316188,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 344.953
+    },
+    {
+      "at": 1789664485725,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 19514286,
+      "observedAt": 1789664485725,
+      "source": 11,
+      "rested": true,
+      "since": 1789663875713,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T16:59:15.765",
+      "lastMovedAt": "2026-09-17T17:01:25.725",
+      "restStop": 14,
+      "forecast": {
+        "eta": 511.9848759899746,
+        "low": 291.23520397735064,
+        "high": 756.2515186830245
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 511.9848759899746,
+        "low": 291.23520397735064,
+        "high": 756.2515186830245
+      },
+      "candidate": {
+        "eta": 511.9848759899746,
+        "low": 356.0950824270294,
+        "high": 756.2515186830245
+      },
+      "baselineRaw": {
+        "eta": 511.9848759899746,
+        "low": 291.23520397735064,
+        "high": 756.2515186830245
+      },
+      "candidateRaw": {
+        "eta": 511.9848759899746,
+        "low": 356.0950824270294,
+        "high": 756.2515186830245
+      },
+      "journeyId": "3:66278:66330",
+      "sourceId": 66278,
+      "sourceStop": 11,
+      "targetVisitId": 66330,
+      "targetOutcome": "stopped",
+      "targetClosestM": 53.26622540316188,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.896,
+      "truthSec": 335.057
+    },
+    {
+      "at": 1789664495955,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 5,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 19524516,
+      "observedAt": 1789664495955,
+      "source": null,
+      "rested": true,
+      "since": 1789663875713,
+      "lead": 15,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T17:01:35.955",
+      "restStop": 14,
+      "forecast": {
+        "eta": 468.60707550447466,
+        "low": 266.76794922773394,
+        "high": 696.418280478417
+      },
+      "departNow": 382.96425555034426,
+      "lowFloor": 276.950469405853,
+      "baseline": {
+        "eta": 468.60707550447466,
+        "low": 266.76794922773394,
+        "high": 696.418280478417
+      },
+      "candidate": {
+        "eta": 468.60707550447466,
+        "low": 326.44614894757046,
+        "high": 696.418280478417
+      },
+      "baselineRaw": {
+        "eta": 468.60707550447466,
+        "low": 266.76794922773394,
+        "high": 696.418280478417
+      },
+      "candidateRaw": {
+        "eta": 468.60707550447466,
+        "low": 326.44614894757046,
+        "high": 696.418280478417
+      },
+      "journeyId": "3:66278:66330",
+      "sourceId": 66278,
+      "sourceStop": 11,
+      "targetVisitId": 66330,
+      "targetOutcome": "stopped",
+      "targetClosestM": 53.26622540316188,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 5.126,
+      "truthSec": 324.827
+    },
+    {
+      "at": 1789668121109,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 23149670,
+      "observedAt": 1789668121109,
+      "source": 11,
+      "rested": true,
+      "since": 1789667516060,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T17:52:01.102",
+      "lastMovedAt": "2026-09-17T18:01:51.153",
+      "restStop": 14,
+      "forecast": {
+        "eta": 460.3856989155945,
+        "low": 278.94357634814327,
+        "high": 677.6457746322739
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 308.8764423444717,
+      "baseline": {
+        "eta": 460.3856989155945,
+        "low": 278.94357634814327,
+        "high": 677.6457746322739
+      },
+      "candidate": {
+        "eta": 460.3856989155945,
+        "low": 333.716667078217,
+        "high": 677.6457746322739
+      },
+      "baselineRaw": {
+        "eta": 460.3856989155945,
+        "low": 278.94357634814327,
+        "high": 677.6457746322739
+      },
+      "candidateRaw": {
+        "eta": 460.3856989155945,
+        "low": 333.716667078217,
+        "high": 677.6457746322739
+      },
+      "journeyId": "3:66730:66782",
+      "sourceId": 66730,
+      "sourceStop": 11,
+      "targetVisitId": 66782,
+      "targetOutcome": "stopped",
+      "targetClosestM": 46.50054931495223,
+      "day": "2026-09-17",
+      "phase": "standing",
+      "checkpointSec": 600,
+      "checkpointDelaySec": 0.007,
+      "truthSec": 300.095
+    },
+    {
+      "at": 1789670081242,
+      "bus": "300",
+      "busId": 66507,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 27215041,
+      "observedAt": 1789670081242,
+      "source": 11,
+      "rested": true,
+      "since": 1789669921247,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T18:32:01.247",
+      "lastMovedAt": "2026-09-17T18:34:01.228",
+      "restStop": 14,
+      "forecast": {
+        "eta": 497.74910679261126,
+        "low": 279.20420705428745,
+        "high": 875.8060526997559
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 497.74910679261126,
+        "low": 279.20420705428745,
+        "high": 875.8060526997559
+      },
+      "candidate": {
+        "eta": 497.74910679261126,
+        "low": 344.7460209016729,
+        "high": 875.8060526997559
+      },
+      "baselineRaw": {
+        "eta": 497.74910679261126,
+        "low": 279.20420705428745,
+        "high": 875.8060526997559
+      },
+      "candidateRaw": {
+        "eta": 497.74910679261126,
+        "low": 344.7460209016729,
+        "high": 875.8060526997559
+      },
+      "journeyId": "3:66982:67028",
+      "sourceId": 66982,
+      "sourceStop": 11,
+      "targetVisitId": 67028,
+      "targetOutcome": "stopped",
+      "targetClosestM": 73.70808959626481,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 330.652
+    },
+    {
+      "at": 1789670086329,
+      "bus": "300",
+      "busId": 66507,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 27220128,
+      "observedAt": 1789670086329,
+      "source": 11,
+      "rested": true,
+      "since": 1789669921247,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T18:32:01.247",
+      "lastMovedAt": "2026-09-17T18:34:46.329",
+      "restStop": 14,
+      "forecast": {
+        "eta": 495.99486538432376,
+        "low": 279.0663504336894,
+        "high": 880.7729846530017
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 305.8486857646011,
+      "baseline": {
+        "eta": 495.99486538432376,
+        "low": 279.0663504336894,
+        "high": 880.7729846530017
+      },
+      "candidate": {
+        "eta": 495.99486538432376,
+        "low": 344.19686858949854,
+        "high": 880.7729846530017
+      },
+      "baselineRaw": {
+        "eta": 495.99486538432376,
+        "low": 279.0663504336894,
+        "high": 880.7729846530017
+      },
+      "candidateRaw": {
+        "eta": 495.99486538432376,
+        "low": 344.19686858949854,
+        "high": 880.7729846530017
+      },
+      "journeyId": "3:66982:67028",
+      "sourceId": 66982,
+      "sourceStop": 11,
+      "targetVisitId": 67028,
+      "targetOutcome": "stopped",
+      "targetClosestM": 73.70808959626481,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 0.087,
+      "truthSec": 325.565
+    },
+    {
+      "at": 1789670096286,
+      "bus": "300",
+      "busId": 66507,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 27230085,
+      "observedAt": 1789670096286,
+      "source": 11,
+      "rested": true,
+      "since": 1789669921247,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T18:32:01.247",
+      "lastMovedAt": "2026-09-17T18:34:56.286",
+      "restStop": 14,
+      "forecast": {
+        "eta": 490.9203661141362,
+        "low": 275.2666110106271,
+        "high": 886.9264379502873
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 490.9203661141362,
+        "low": 275.2666110106271,
+        "high": 886.9264379502873
+      },
+      "candidate": {
+        "eta": 490.9203661141362,
+        "low": 340.12981077306955,
+        "high": 886.9264379502873
+      },
+      "baselineRaw": {
+        "eta": 490.9203661141362,
+        "low": 275.2666110106271,
+        "high": 886.9264379502873
+      },
+      "candidateRaw": {
+        "eta": 490.9203661141362,
+        "low": 340.12981077306955,
+        "high": 886.9264379502873
+      },
+      "journeyId": "3:66982:67028",
+      "sourceId": 66982,
+      "sourceStop": 11,
+      "targetVisitId": 67028,
+      "targetOutcome": "stopped",
+      "targetClosestM": 73.70808959626481,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 0.044,
+      "truthSec": 315.608
+    },
+    {
+      "at": 1789671852025,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 26880586,
+      "observedAt": 1789671852025,
+      "source": 11,
+      "rested": true,
+      "since": 1789671206953,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T18:53:26.953",
+      "lastMovedAt": "2026-09-17T19:03:37.156",
+      "restStop": 14,
+      "forecast": {
+        "eta": 443.68543403862674,
+        "low": 273.78516585930413,
+        "high": 675.2631284802383
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 443.68543403862674,
+        "low": 273.78516585930413,
+        "high": 675.2631284802383
+      },
+      "candidate": {
+        "eta": 443.68543403862674,
+        "low": 325.12170431938364,
+        "high": 675.2631284802383
+      },
+      "baselineRaw": {
+        "eta": 443.68543403862674,
+        "low": 273.78516585930413,
+        "high": 675.2631284802383
+      },
+      "candidateRaw": {
+        "eta": 443.68543403862674,
+        "low": 325.12170431938364,
+        "high": 675.2631284802383
+      },
+      "journeyId": "3:67188:67236",
+      "sourceId": 67188,
+      "sourceStop": 11,
+      "targetVisitId": 67236,
+      "targetOutcome": "passed",
+      "targetClosestM": 9.480687604403311,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 320.11
+    },
+    {
+      "at": 1789671861984,
+      "bus": "309",
+      "busId": 66491,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 26890545,
+      "observedAt": 1789671861984,
+      "source": 11,
+      "rested": true,
+      "since": 1789671206953,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T18:53:26.953",
+      "lastMovedAt": "2026-09-17T19:04:17.004",
+      "restStop": 14,
+      "forecast": {
+        "eta": 443.3317861041909,
+        "low": 272.88765686135326,
+        "high": 678.2774805933918
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.00363651668886,
+      "baseline": {
+        "eta": 443.3317861041909,
+        "low": 272.88765686135326,
+        "high": 678.2774805933918
+      },
+      "candidate": {
+        "eta": 443.3317861041909,
+        "low": 324.388837007837,
+        "high": 678.2774805933918
+      },
+      "baselineRaw": {
+        "eta": 443.3317861041909,
+        "low": 272.88765686135326,
+        "high": 678.2774805933918
+      },
+      "candidateRaw": {
+        "eta": 443.3317861041909,
+        "low": 324.388837007837,
+        "high": 678.2774805933918
+      },
+      "journeyId": "3:67188:67236",
+      "sourceId": 67188,
+      "sourceStop": 11,
+      "targetVisitId": 67236,
+      "targetOutcome": "passed",
+      "targetClosestM": 9.480687604403311,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.959,
+      "truthSec": 310.151
+    },
+    {
+      "at": 1789677731561,
+      "bus": "316",
+      "busId": 66508,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 10620472,
+      "observedAt": 1789677731561,
+      "source": 11,
+      "rested": true,
+      "since": 1789677551500,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T20:39:11.500",
+      "lastMovedAt": "2026-09-17T20:40:06.531",
+      "restStop": 14,
+      "forecast": {
+        "eta": 744.4640075356413,
+        "low": 436.23527743713703,
+        "high": 982.2938187910768
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 744.4640075356413,
+        "low": 436.23527743713703,
+        "high": 982.2938187910768
+      },
+      "candidate": {
+        "eta": 744.4640075356413,
+        "low": 494.88834274367827,
+        "high": 982.2938187910768
+      },
+      "baselineRaw": {
+        "eta": 744.4640075356413,
+        "low": 436.23527743713703,
+        "high": 982.2938187910768
+      },
+      "candidateRaw": {
+        "eta": 744.4640075356413,
+        "low": 494.88834274367827,
+        "high": 982.2938187910768
+      },
+      "journeyId": "3:67957:68015",
+      "sourceId": 67957,
+      "sourceStop": 11,
+      "targetVisitId": 68015,
+      "targetOutcome": "stopped",
+      "targetClosestM": 56.47518428348255,
+      "day": "2026-09-17",
+      "phase": "standing",
+      "checkpointSec": 180,
+      "checkpointDelaySec": 0.061,
+      "truthSec": 480.036
+    },
+    {
+      "at": 1789677851548,
+      "bus": "316",
+      "busId": 66508,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 10740459,
+      "observedAt": 1789677851548,
+      "source": null,
+      "rested": true,
+      "since": 1789677551500,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T20:44:01.537",
+      "restStop": 14,
+      "forecast": {
+        "eta": 595.0888765128086,
+        "low": 347.0974820523494,
+        "high": 839.6581861090917
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 595.0888765128086,
+        "low": 347.0974820523494,
+        "high": 839.6581861090917
+      },
+      "candidate": {
+        "eta": 595.0888765128086,
+        "low": 402.67995389132835,
+        "high": 839.6581861090917
+      },
+      "baselineRaw": {
+        "eta": 595.0888765128086,
+        "low": 347.0974820523494,
+        "high": 839.6581861090917
+      },
+      "candidateRaw": {
+        "eta": 595.0888765128086,
+        "low": 402.67995389132835,
+        "high": 839.6581861090917
+      },
+      "journeyId": "3:67957:68015",
+      "sourceId": 67957,
+      "sourceStop": 11,
+      "targetVisitId": 68015,
+      "targetOutcome": "stopped",
+      "targetClosestM": 56.47518428348255,
+      "day": "2026-09-17",
+      "phase": "standing",
+      "checkpointSec": 300,
+      "checkpointDelaySec": 0.048,
+      "truthSec": 360.049
+    },
+    {
+      "at": 1789677921541,
+      "bus": "316",
+      "busId": 66508,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 10810452,
+      "observedAt": 1789677921541,
+      "source": null,
+      "rested": true,
+      "since": 1789677551500,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T20:45:21.541",
+      "restStop": 14,
+      "forecast": {
+        "eta": 499.5716974638732,
+        "low": 289.5358861391974,
+        "high": 728.8741426902046
+      },
+      "departNow": 397.13295461295473,
+      "lowFloor": 233.5716201728632,
+      "baseline": {
+        "eta": 499.5716974638732,
+        "low": 289.5358861391974,
+        "high": 728.8741426902046
+      },
+      "candidate": {
+        "eta": 499.5716974638732,
+        "low": 348.3885422110498,
+        "high": 728.8741426902046
+      },
+      "baselineRaw": {
+        "eta": 499.5716974638732,
+        "low": 289.5358861391974,
+        "high": 728.8741426902046
+      },
+      "candidateRaw": {
+        "eta": 499.5716974638732,
+        "low": 348.3885422110498,
+        "high": 728.8741426902046
+      },
+      "journeyId": "3:67957:68015",
+      "sourceId": 67957,
+      "sourceStop": 11,
+      "targetVisitId": 68015,
+      "targetOutcome": "stopped",
+      "targetClosestM": 56.47518428348255,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 4.934,
+      "truthSec": 290.056
+    },
+    {
+      "at": 1789680616856,
+      "bus": "300",
+      "busId": 66507,
+      "route": 3,
+      "target": 48,
+      "stopsAhead": 3,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 37750655,
+      "observedAt": 1789680616856,
+      "source": 11,
+      "rested": true,
+      "since": 1789680321828,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T21:25:21.828",
+      "lastMovedAt": "2026-09-17T21:30:16.856",
+      "restStop": 14,
+      "forecast": {
+        "eta": 165.42573134944627,
+        "low": 5.50167600687157,
+        "high": 279.7031008837125
+      },
+      "departNow": 71.72531910582535,
+      "lowFloor": 51.321571838727664,
+      "baseline": {
+        "eta": 165.42573134944627,
+        "low": 5.50167600687157,
+        "high": 279.7031008837125
+      },
+      "candidate": {
+        "eta": 165.42573134944627,
+        "low": 66.25371193124599,
+        "high": 279.7031008837125
+      },
+      "baselineRaw": {
+        "eta": 165.42573134944627,
+        "low": 5.50167600687157,
+        "high": 279.7031008837125
+      },
+      "candidateRaw": {
+        "eta": 165.42573134944627,
+        "low": 66.25371193124599,
+        "high": 279.7031008837125
+      },
+      "journeyId": "3:68304:68322",
+      "sourceId": 68304,
+      "sourceStop": 11,
+      "targetVisitId": 68322,
+      "targetOutcome": "stopped",
+      "targetClosestM": 9.902489568987745,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.944,
+      "truthSec": 65.255
+    },
+    {
+      "at": 1789680501844,
+      "bus": "300",
+      "busId": 66507,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 37635643,
+      "observedAt": 1789680501844,
+      "source": 11,
+      "rested": true,
+      "since": 1789680321828,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T21:25:21.828",
+      "lastMovedAt": "2026-09-17T21:26:16.847",
+      "restStop": 14,
+      "forecast": {
+        "eta": 640.0460751021834,
+        "low": 384.12516759886216,
+        "high": 871.256968686437
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 640.0460751021834,
+        "low": 384.12516759886216,
+        "high": 871.256968686437
+      },
+      "candidate": {
+        "eta": 640.0460751021834,
+        "low": 432.8259221716721,
+        "high": 871.256968686437
+      },
+      "baselineRaw": {
+        "eta": 640.0460751021834,
+        "low": 384.12516759886216,
+        "high": 871.256968686437
+      },
+      "candidateRaw": {
+        "eta": 640.0460751021834,
+        "low": 432.8259221716721,
+        "high": 871.256968686437
+      },
+      "journeyId": "3:68304:68360",
+      "sourceId": 68304,
+      "sourceStop": 11,
+      "targetVisitId": 68360,
+      "targetOutcome": "stopped",
+      "targetClosestM": 63.76873858687667,
+      "day": "2026-09-17",
+      "phase": "standing",
+      "checkpointSec": 180,
+      "checkpointDelaySec": 0.016,
+      "truthSec": 430.152
+    },
+    {
+      "at": 1789680606912,
+      "bus": "300",
+      "busId": 66507,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 37740711,
+      "observedAt": 1789680606912,
+      "source": 11,
+      "rested": true,
+      "since": 1789680321828,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T21:25:21.828",
+      "lastMovedAt": "2026-09-17T21:29:26.912",
+      "restStop": 14,
+      "forecast": {
+        "eta": 536.957359876418,
+        "low": 322.0127961476903,
+        "high": 769.9563299710295
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 536.957359876418,
+        "low": 322.0127961476903,
+        "high": 769.9563299710295
+      },
+      "candidate": {
+        "eta": 536.957359876418,
+        "low": 384.08367340646913,
+        "high": 769.9563299710295
+      },
+      "baselineRaw": {
+        "eta": 536.957359876418,
+        "low": 322.0127961476903,
+        "high": 769.9563299710295
+      },
+      "candidateRaw": {
+        "eta": 536.957359876418,
+        "low": 384.08367340646913,
+        "high": 769.9563299710295
+      },
+      "journeyId": "3:68304:68360",
+      "sourceId": 68304,
+      "sourceStop": 11,
+      "targetVisitId": 68360,
+      "targetOutcome": "stopped",
+      "targetClosestM": 63.76873858687667,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 0,
+      "checkpointDelaySec": 0.0,
+      "truthSec": 325.084
+    },
+    {
+      "at": 1789680616856,
+      "bus": "300",
+      "busId": 66507,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 37750655,
+      "observedAt": 1789680616856,
+      "source": 11,
+      "rested": true,
+      "since": 1789680321828,
+      "lead": 14,
+      "pinnedSince": "2026-09-17T21:25:21.828",
+      "lastMovedAt": "2026-09-17T21:30:16.856",
+      "restStop": 14,
+      "forecast": {
+        "eta": 526.4728224024302,
+        "low": 310.63571370085526,
+        "high": 757.694864277146
+      },
+      "departNow": 420.37670620506333,
+      "lowFloor": 299.30887911888874,
+      "baseline": {
+        "eta": 526.4728224024302,
+        "low": 310.63571370085526,
+        "high": 757.694864277146
+      },
+      "candidate": {
+        "eta": 526.4728224024302,
+        "low": 373.7881085049113,
+        "high": 757.694864277146
+      },
+      "baselineRaw": {
+        "eta": 526.4728224024302,
+        "low": 310.63571370085526,
+        "high": 757.694864277146
+      },
+      "candidateRaw": {
+        "eta": 526.4728224024302,
+        "low": 373.7881085049113,
+        "high": 757.694864277146
+      },
+      "journeyId": "3:68304:68360",
+      "sourceId": 68304,
+      "sourceStop": 11,
+      "targetVisitId": 68360,
+      "targetOutcome": "stopped",
+      "targetClosestM": 63.76873858687667,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 5,
+      "checkpointDelaySec": 4.944,
+      "truthSec": 315.14
+    },
+    {
+      "at": 1789680621947,
+      "bus": "300",
+      "busId": 66507,
+      "route": 3,
+      "target": 4,
+      "stopsAhead": 6,
+      "occurrence": 0,
+      "segmentId": 2,
+      "warmMs": 37755746,
+      "observedAt": 1789680621947,
+      "source": null,
+      "rested": true,
+      "since": 1789680321828,
+      "lead": 14,
+      "pinnedSince": null,
+      "lastMovedAt": "2026-09-17T21:30:21.947",
+      "restStop": 14,
+      "forecast": {
+        "eta": 503.48796407025065,
+        "low": 295.23802927488055,
+        "high": 732.088751587687
+      },
+      "departNow": 406.7378976723896,
+      "lowFloor": 239.51095331152735,
+      "baseline": {
+        "eta": 503.48796407025065,
+        "low": 295.23802927488055,
+        "high": 732.088751587687
+      },
+      "candidate": {
+        "eta": 503.48796407025065,
+        "low": 356.42027057352277,
+        "high": 732.088751587687
+      },
+      "baselineRaw": {
+        "eta": 503.48796407025065,
+        "low": 295.23802927488055,
+        "high": 732.088751587687
+      },
+      "candidateRaw": {
+        "eta": 503.48796407025065,
+        "low": 356.42027057352277,
+        "high": 732.088751587687
+      },
+      "journeyId": "3:68304:68360",
+      "sourceId": 68304,
+      "sourceStop": 11,
+      "targetVisitId": 68360,
+      "targetOutcome": "stopped",
+      "targetClosestM": 63.76873858687667,
+      "day": "2026-09-17",
+      "phase": "departure",
+      "checkpointSec": 15,
+      "checkpointDelaySec": 0.035,
+      "truthSec": 310.049
+    }
+  ]
+}

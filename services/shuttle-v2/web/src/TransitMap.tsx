@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef, Fragment, type FC } from "react";
+import { pickupFallback } from "./planner";
+import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGES_MAX_DATA_URL_LENGTH } from "./reportAttachments";
+import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
 import L from "leaflet";
+import { cancelMapTouchZoom } from "./mapLifecycle";
 import "leaflet/dist/leaflet.css";
 import {
   stations, routes, stopToStation, routeNameMap,
@@ -8,17 +11,19 @@ import {
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
+import { computeUpcomingArrivals } from "./liveArrivals";
+import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
 import { liveAnchorStore } from "./eta";
-import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
+import { anchorIndexOnList, observedAtStop, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
-import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
+import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import {
-  computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec,
+  busReadyForEta, nextArrivalAfterPinned, shownStandSec,
   type DwellStat, type SegmentStat, type UpcomingArrival,
 } from "./arrivals";
 // Records what the screen actually said, sampled, deduplicated and posted from
@@ -30,12 +35,19 @@ import { noteShown } from "./shownLog";
 // from. All the reasoning lives there; this file only places the strings.
 import { berthFor, type Berth } from "./berths";
 import { BerthDisclosure } from "./BerthDisclosure";
-import { clusterChips } from "./chipCluster";
-import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
-import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";
-import { fmtBusLine } from "./bunching";
+import { useMapFullscreen } from "./useMapFullscreen";
+import { standChipFor } from "./standWait";
+import "./TripActions.css";
+import { MiniMapKey, type TimingRow } from "./MiniMapKey";
+import { isMilfordGroceryPlace, isMilfordGrocerySearch } from "./grocerySearch";
+import { TripServiceNotices } from "./TripServiceNotices";
+import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
+import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
+import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
+import { tripBusIdentity } from "./tripBusIdentity";
+import { TripBoardingActions } from "./TripBoardingActions";
 import {
-  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
+  fmtClock, fmtMin, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
@@ -43,25 +55,27 @@ import {
 import {
   CURRENT_LOCATION_TEXT, isCurrentLocationText, unresolvedEndpoint, unresolvedEndpointHint,
 } from "./endpoints";
+import { SavedPlaces } from "./SavedPlaces";
 import { loadRecents, recordRecent, samePlace, saveRecents, type SavedTrip } from "./recents";
 import { PlaceList, type PlaceRow } from "./PlaceList";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
 import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
 import {
   AT_STOP_WALK_SEC, computeLeaveAlert, deliverPing, ensureNotifyPermission,
-  findReminderOption, leaveAlertMessage, markFired, NO_PINGS_FIRED,
+  liveReminderInput, leaveAlertMessage, markFired, NO_PINGS_FIRED,
   notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
-  directPromotion, boardingVisitAllowed, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
+  directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
 } from "./planner";
+import { optionTier, stableTripOrder, type TripOrderState } from './tripRanking';
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 // "Tell me when Red gets to 344 Winchester" — every rule (arm, expire, the fire
 // decision, the words, storage) lives in stopAlerts.ts; this file places the 🔔
 // and hands the module the arrival the row already prints.
 import {
-  DEFAULT_LEAD_MIN, LEAD_CHOICES, alertKey, armStopAlert, disarmStopAlert, expireStopAlerts,
+  DEFAULT_LEAD_MIN, DEFAULT_LEAD_STOPS, LEAD_STOP_CHOICES, stopAlertEstimateSec, stopAlertEstimateText, stopAlertLeadLabel, alertKey, armStopAlert, disarmStopAlert, expireStopAlerts,
   findStopAlert, loadStopAlerts, saveStopAlerts, stepStopAlerts, stopAlertPermissionHint,
   type StopAlert,
 } from "./stopAlerts";
@@ -72,7 +86,7 @@ import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival } from "./rideArrival";
-import { getOffAlertTitle } from "./rideAlert";
+import { getOffAlertTitle, getOffPromptTitle } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -86,10 +100,10 @@ import {
   BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { lastBusVerdict } from "./lastBus";
-import { fmtSchedule, fmtWindows, isBusInService, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
+import { fmtSchedule, fmtWindows, groceryServiceNotice, isBusInService, routeDiscontinuedAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
 import { stopRowHighlight } from "./stopRow";
 import type { PublishedWindow } from "./schedule";
-import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
+import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imagesFromTransfer } from "./screenshot";
 import { AT_PLACE_M, walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
@@ -817,17 +831,11 @@ const TripMap: FC<{
   // Fullscreen toggle: an inset button the user can tap to expand the
   // map to the viewport. Leaflet's invalidateSize is called after the
   // DOM layout changes so tiles re-fit to the new container size.
-  const [fullscreen, setFullscreen] = useState(false);
+  const { fullscreen, wrapperRef, toggleRef, closeFullscreen, toggleFullscreen } = useMapFullscreen();
   useEffect(() => {
     // Give the browser one frame to apply the new style, then redraw.
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
     return () => clearTimeout(t);
-  }, [fullscreen]);
-  useEffect(() => {
-    if (!fullscreen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen]);
   const wrapperStyle: React.CSSProperties = fullscreen
     ? {
@@ -840,7 +848,7 @@ const TripMap: FC<{
         border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10,
       };
   return (
-    <div className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
+    <div ref={wrapperRef} className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
       {/* Desaturate the OSM tile layer so the route color, bus pin,
           and user/endpoint markers pop against a quieter background.
           Only the tile pane is filtered; SVG overlays (polylines,
@@ -858,7 +866,7 @@ const TripMap: FC<{
           this corner, so the stylesheet above drops it below the button. */}
       {fullscreen && (
         <button
-          onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+          onClick={(e) => { e.stopPropagation(); closeFullscreen(); }}
           title="Back"
           aria-label="Back"
           style={{
@@ -876,7 +884,8 @@ const TripMap: FC<{
         </button>
       )}
       <button
-        onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
+        ref={toggleRef}
+        onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
         title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         style={{
@@ -914,11 +923,7 @@ type OverviewOption = {
   // Detail view only: the bus's remaining path from where it is now to
   // the rider's pickup stop, drawn dashed (user request 2026-07-17).
   approach?: [number, number][];
-  // Time labels pinned to the stops (user request 2026-07-17): when the
-  // bus reaches the board stop ("🚌 4 min") and when the rider steps off
-  // at the alight stop ("10:26 AM"). Null when unknown (departed/future).
-  boardEta?: string | null;
-  arriveAt?: string | null;
+  busWait?: ReturnType<typeof mapWaitLabel>;
   /**
    * Detail view only: where this line actually pulls up at the PICKUP stop,
    * when that is measurably not where the stop is drawn (berths.ts).
@@ -935,105 +940,31 @@ const CombinedTripMap: FC<{
   from: LatLon;
   to: LatLon;
   options: OverviewOption[];
-}> = ({ from, to, options }) => {
+  timingKey: React.ReactNode;
+}> = ({ from, to, options, timingKey }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkersRef = useRef<Record<string, L.Marker>>({});
   const startMarkerRef = useRef<L.Marker | null>(null);
-  // Time chips (board 🚌 countdowns / alight 🏁 clocks) live on their own
-  // layer and are re-CLUSTERED on every zoom change: chips whose
-  // would-be INDIVIDUAL labels overlap at the current zoom merge into
-  // one chip (each time colored by its route), and split back apart once
-  // zooming in gives them room (user feedback 2026-07-17). Markers are
-  // keyed by cluster membership so a stable cluster updates in place
-  // per poll instead of flickering.
-  const chipLayerRef = useRef<L.LayerGroup | null>(null);
-  const chipMarkersRef = useRef<Record<string, L.Marker>>({});
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
-  const rebuildChips = () => {
-    const map = mapRef.current;
-    const grp = chipLayerRef.current;
-    if (!map || !grp) return;
-    type Chip = {
-      lat: number; lon: number; kind: "board" | "alight"; label: string;
-      part: string; w: number; x: number; y: number;
-    };
-    const chips: Chip[] = [];
-    for (const o of optionsRef.current) {
-      if (o.segCoords.length < 2) continue;
-      const ends = [
-        { c: o.segCoords[0], kind: "board" as const, text: o.boardEta },
-        { c: o.segCoords[o.segCoords.length - 1], kind: "alight" as const, text: o.arriveAt },
-      ];
-      for (const e of ends) {
-        if (!e.text) continue;
-        const p = map.latLngToContainerPoint([e.c.lat, e.c.lon]);
-        // "(B) 4 min" — route-initial tag so a time is attributable to
-        // its route even without judging the text color (user request
-        // 2026-07-17; also helps color-blind riders).
-        const tagged = `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
-        chips.push({
-          lat: e.c.lat, lon: e.c.lon, kind: e.kind, label: o.label,
-          part: `<span style="color:${o.color}">${tagged}</span>`,
-          // Estimated label footprint: emoji + padding + ~6 px/char at
-          // the chip's 10 px bold face. Merge decisions use these
-          // per-chip estimates, per the spec: "overlap of would-be
-          // individual labels".
-          w: 26 + tagged.length * 6,
-          x: p.x,
-          // Board chips render above their stop, alight chips below —
-          // baked into y so labels merge when the LABELS would collide,
-          // not merely when the dots are near.
-          y: p.y + (e.kind === "board" ? -14 : 14),
-        });
-      }
+  function layoutWaitLabels() {
+    if (!ref.current) return;
+    const tooltips = Object.values(busMarkersRef.current).flatMap(marker => {
+      const tooltip = marker.getTooltip();
+      return tooltip?.options.permanent ? [{ tooltip, marker }] : [];
+    });
+    for (const { tooltip } of tooltips) { tooltip.options.offset = L.point(0, -10); tooltip.update(); }
+    // Fullscreen/Back are siblings of the Leaflet container, inside the wrapper.
+    const obstacles = [...ref.current.parentElement!.querySelectorAll('.eta-tip, .leaflet-control, .bus-pin-sm, :scope > button')]
+      .filter(e => !e.querySelector('.bus-wait-label')).map(e => e.getBoundingClientRect());
+    for (const { tooltip, marker } of tooltips) {
+      const element = tooltip.getElement();
+      if (!element) continue;
+      const shift = placeWaitLabel(element.getBoundingClientRect(), ref.current.getBoundingClientRect(), obstacles,
+        marker.getElement()?.getBoundingClientRect());
+      tooltip.options.offset = L.point(shift.x, -10 + shift.y); tooltip.update();
+      obstacles.push(element.getBoundingClientRect());
     }
-    // Union-find over overlapping label rectangles.
-    // Which chips share a box: pure geometry, and it lives in chipCluster.ts
-    // so the arrangement that broke it can be written down. It could not be
-    // reproduced by driving the live site — six trips, no overlap — because it
-    // needs a particular spread of board and alight stops.
-    const groups = clusterChips(chips);
-    const seen = new Set<string>();
-    for (const members of groups.map((idx) => idx.map((i) => chips[i]))) {
-      const boards = members.filter((m) => m.kind === "board");
-      const alights = members.filter((m) => m.kind === "alight");
-      // Merged times stack VERTICALLY (user request 2026-07-17), emoji on
-      // the first line only — an invisible copy indents the rest so the
-      // times line up in a column.
-      const stack = (emoji: string, parts: string[]) =>
-        parts
-          .map((p, k) => (k === 0 ? `${emoji} ${p}` : `<span style="visibility:hidden">${emoji}</span> ${p}`))
-          .join("<br/>");
-      const lines: string[] = [];
-      if (boards.length) lines.push(stack("🚌", boards.map((m) => m.part)));
-      if (alights.length) lines.push(stack("🏁", alights.map((m) => m.part)));
-      const lat = members.reduce((s, m) => s + m.lat, 0) / members.length;
-      const lon = members.reduce((s, m) => s + m.lon, 0) / members.length;
-      const dir: "top" | "bottom" = boards.length ? "top" : "bottom";
-      const sig = members.map((m) => `${m.kind[0]}:${m.label}`).sort().join("|");
-      seen.add(sig);
-      const html = lines.join("<br/>");
-      const existing = chipMarkersRef.current[sig];
-      if (existing) {
-        existing.setLatLng([lat, lon]);
-        existing.setTooltipContent(html);
-      } else {
-        chipMarkersRef.current[sig] = L.marker([lat, lon], {
-          icon: L.divIcon({ className: "", html: "", iconSize: [0, 0] }),
-          keyboard: false, interactive: false,
-        }).bindTooltip(html, {
-          permanent: true, direction: dir,
-          offset: [0, dir === "top" ? -10 : 10],
-          className: "eta-tip", opacity: 0.95,
-        }).addTo(grp);
-      }
-    }
-    for (const [sig, m] of Object.entries(chipMarkersRef.current)) {
-      if (!seen.has(sig)) { grp.removeLayer(m); delete chipMarkersRef.current[sig]; }
-    }
-  };
+  }
   // Build/teardown when the set of endpoints or options changes.
   useEffect(() => {
     if (!ref.current) return;
@@ -1076,8 +1007,7 @@ const CombinedTripMap: FC<{
           }).addTo(map);
         }
       }
-      // Plain rings with hover labels — the permanent time chips are a
-      // separate zoom-clustered layer (see rebuildChips above).
+      // Stop rings identify pickup and drop-off; times live in the key.
       L.circleMarker([board.lat, board.lon], {
         radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
       }).addTo(map).bindTooltip(`Board ${o.label}`, { direction: "top" });
@@ -1113,15 +1043,11 @@ const CombinedTripMap: FC<{
       L.polyline([[alight.lat, alight.lon], [to.lat, to.lon]], walkStyle).addTo(map);
     }
 
-    // Time-chip layer + zoom-driven re-clustering. rebuildChips reads
-    // everything through refs, so this mount-time closure stays valid
-    // across renders. First build happens AFTER fitBounds — projecting
-    // before the map has a view throws.
-    chipLayerRef.current = L.layerGroup().addTo(map);
-    map.on("zoomend", rebuildChips);
+    map.on("zoomend moveend resize", layoutWaitLabels);
 
-    map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 15 });
-    rebuildChips();
+    // Leave room above the northern stops for the waiting bus label.
+    // Tight endpoint-only bounds clipped it at 320px.
+    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [28, 88], paddingBottomRight: [28, 40], maxZoom: 15 });
     const sizeTimer = setTimeout(() => { if (mapRef.current === map) map.invalidateSize(); }, 60);
 
     return () => {
@@ -1133,13 +1059,10 @@ const CombinedTripMap: FC<{
       map.remove();
       mapRef.current = null;
       busMarkersRef.current = {};
-      chipLayerRef.current = null;
-      chipMarkersRef.current = {};
       approachLayersRef.current = {};
       startMarkerRef.current = null;
     };
-    // NOTE: boardEta/arriveAt are deliberately NOT in this key — they tick
-    // every poll and re-cluster in place via the effect below.
+    // Timing updates do not rebuild the geography.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     to.lat, to.lon,
@@ -1150,13 +1073,6 @@ const CombinedTripMap: FC<{
       road: o.road,
     }))),
   ]);
-
-  // Re-cluster the time-chips as ETAs tick (stable clusters update their
-  // tooltip content in place — no map rebuild, no flicker).
-  useEffect(() => {
-    rebuildChips();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options]);
 
   // Dashed approach polylines (bus → pickup, details view) — updated in
   // place as the bus advances so the map never rebuilds for them.
@@ -1204,12 +1120,14 @@ const CombinedTripMap: FC<{
       color: string,
       label: string,
       dim: boolean,
+      wait: OverviewOption['busWait'] = null,
     ) => {
       seenKeys.add(key);
       const latlng: [number, number] = [pos.lat, pos.lon];
       const existing = busMarkersRef.current[key];
       if (existing) {
         existing.setLatLng(latlng);
+        updateWait(existing, label, color, wait);
         return;
       }
       const icon = L.divIcon({
@@ -1223,20 +1141,52 @@ const CombinedTripMap: FC<{
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       });
-      busMarkersRef.current[key] = L.marker(latlng, { icon, zIndexOffset: dim ? 900 : 1000 })
-        .addTo(map)
-        .bindTooltip(label, { direction: "top" });
+      const marker = busMarkersRef.current[key] = L.marker(latlng, { icon, zIndexOffset: dim ? 900 : 1000 })
+        .addTo(map);
+      updateWait(marker, label, color, wait);
+    };
+    const updateWait = (marker: L.Marker, label: string, color: string, wait: OverviewOption['busWait']) => {
+      const permanent = !!wait;
+      const content = document.createElement('div');
+      content.title = wait ? `${label}. ${wait.elapsed}. ${wait.typical}. Typical total wait is historical context, not time remaining.` : label;
+      // Leaflet's div icon otherwise exposes only the bus emoji. Keep the
+      // keyboard/touch marker named even when its hover tooltip is closed.
+      const icon = marker.getElement();
+      if (icon) {
+        icon.setAttribute('aria-label', content.title);
+        icon.title = content.title;
+      }
+      content.className = wait ? 'bus-wait-label' : '';
+      if (wait) {
+        content.setAttribute('role', 'img');
+        content.setAttribute('aria-label', content.title);
+        content.style.whiteSpace = 'nowrap';
+        const route = document.createElement('span');
+        route.className = 'bus-wait-route';
+        route.textContent = label; route.style.color = color;
+        const time = document.createElement('span');
+        time.textContent = wait.compact;
+        time.style.display = 'block';
+        time.style.color = wait.overdue ? '#8a5300' : '#374151';
+        content.append(route, document.createTextNode(' '), time);
+      } else content.textContent = label;
+      const tooltip = marker.getTooltip();
+      if (tooltip && !!tooltip.options.permanent === permanent) marker.setTooltipContent(content);
+      else {
+        marker.unbindTooltip();
+        marker.bindTooltip(content, { permanent, direction: 'top', offset: [0, permanent ? -10 : -16], className: permanent ? 'eta-tip bus-wait-tip' : 'eta-tip', opacity: 0.98 });
+      }
     };
     for (const o of options) {
       if (o.bus) {
-        upsert(`${o.label}-${o.bus.name}`, o.bus, o.color, o.bus.name ? `${o.label} #${o.bus.name}` : o.label, false);
+        upsert(`${o.label}-${o.bus.name}`, o.bus, o.color, o.bus.name ? `${o.label} #${o.bus.name}` : o.label, false, o.busWait);
       }
       if (o.passedBus) {
         upsert(
           `${o.label}-passed-${o.passedBus.name}`,
           o.passedBus,
           o.color,
-          o.passedBus.name ? `#${o.passedBus.name} — just passed` : "Just passed",
+          o.passedBus.name ? `${o.label} #${o.passedBus.name} — just passed` : `${o.label} — just passed`,
           true,
         );
       }
@@ -1248,35 +1198,31 @@ const CombinedTripMap: FC<{
         delete busMarkersRef.current[key];
       }
     }
+    layoutWaitLabels();
   }, [options]);
 
   // Fullscreen toggle — matches the per-option TripMap behavior.
-  const [fullscreen, setFullscreen] = useState(false);
+  const { fullscreen, wrapperRef, toggleRef, closeFullscreen, toggleFullscreen } = useMapFullscreen();
   useEffect(() => {
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
     return () => clearTimeout(t);
-  }, [fullscreen]);
-  useEffect(() => {
-    if (!fullscreen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen]);
   const wrapperStyle: React.CSSProperties = fullscreen
     ? {
         position: "fixed", inset: 0, zIndex: 9999,
         borderRadius: 0, border: "none", overflow: "hidden", marginTop: 0,
+        display: "flex", flexDirection: "column", background: "#fff",
       }
     : {
         // Tall enough to actually read the geography (user feedback:
         // 200px was too small a glance) while the option rows stay
         // reachable in the first screenful.
-        position: "relative", height: 320, borderRadius: 6,
+        position: "relative", borderRadius: 6,
         border: "1px solid #e0ddd8", overflow: "hidden", marginTop: 6,
       };
 
   return (
-    <div className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
+    <div ref={wrapperRef} className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
       <style>{`
         .trip-map-wrap .leaflet-tile-pane {
           filter: grayscale(0.9) contrast(0.95) brightness(1.05);
@@ -1289,7 +1235,9 @@ const CombinedTripMap: FC<{
           border-radius: 6px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.25);
         }
+        .trip-map-wrap .bus-wait-tip::before { display: none; }
       `}</style>
+      <div className="trip-map-canvas" style={{ position: "relative", height: fullscreen ? undefined : 320, minHeight: fullscreen ? 180 : undefined, flex: fullscreen ? '1 1 0' : undefined }}>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
       {/* Back, top-left, beside the ✕ rather than instead of it: on a phone
           the expanded map fills the screen and the thumb that got there came
@@ -1297,7 +1245,7 @@ const CombinedTripMap: FC<{
           this corner, so the stylesheet above drops it below the button. */}
       {fullscreen && (
         <button
-          onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+          onClick={(e) => { e.stopPropagation(); closeFullscreen(); }}
           title="Back"
           aria-label="Back"
           style={{
@@ -1315,7 +1263,8 @@ const CombinedTripMap: FC<{
         </button>
       )}
       <button
-        onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
+        ref={toggleRef}
+        onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
         title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         style={{
@@ -1329,21 +1278,9 @@ const CombinedTripMap: FC<{
       >
         {fullscreen ? "✕" : "⛶"}
       </button>
-      {/* Legend: route color chips so the user can tell which
-          polyline is which option without hovering. */}
-      <div style={{
-        position: "absolute", bottom: 8, left: 8, zIndex: 1000,
-        background: "rgba(255,255,255,0.92)", borderRadius: 6,
-        padding: "4px 8px", fontSize: 10, color: "#263238",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
-        display: "flex", flexDirection: "column", gap: 2,
-      }}>
-        {options.map((o, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 10, height: 3, background: o.color, borderRadius: 1 }} />
-            <span style={{ fontWeight: 600, color: o.color }}>{o.label}</span>
-          </div>
-        ))}
+      </div>
+      <div style={{ background: '#fff', borderTop: '1px solid #e0ddd8', flexShrink: 0, maxHeight: fullscreen ? '40dvh' : undefined, overflowY: fullscreen ? 'auto' : undefined }}>
+        {timingKey}
       </div>
     </div>
   );
@@ -1414,7 +1351,9 @@ const AllRoutesMap: FC<{
   // upstream refresh), not per poll. Routes/stops are static for a session.
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
-    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
+    // Filters rebuild this map and changing tabs removes it. As on trip maps,
+    // disable CSS zoom: map.stop() does not cancel its delayed completion.
+    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true, zoomAnimation: false });
     mapRef.current = map;
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
@@ -1486,6 +1425,7 @@ const AllRoutesMap: FC<{
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
+      cancelMapTouchZoom(map);
       try { map.stop(); } catch { /* mid-animation teardown */ }
       map.remove();
       mapRef.current = null;
@@ -1629,8 +1569,13 @@ const AllRoutesMap: FC<{
 };
 
 
+type LiveBusStatus = "loading" | "unavailable" | "ready";
+
 const TripPlanner: FC<{
   buses: BusData[];
+  busStatus: LiveBusStatus;
+  lastBusUpdateAt: number | null;
+  busUpdateFailed: boolean;
   stopNames: Record<number, string>;
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
@@ -1670,7 +1615,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [initialDraft] = useState(loadTripDraft);
   const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
   const [toText, setToText] = useState(initialDraft?.toText ?? "");
@@ -1693,6 +1638,19 @@ const TripPlanner: FC<{
   const [toExpanded, setToExpanded] = useState(false);
   const fromInputRef = useRef<HTMLInputElement | null>(null);
   const toInputRef = useRef<HTMLInputElement | null>(null);
+  const fromSummaryRef = useRef<HTMLDivElement | null>(null);
+  const toSummaryRef = useRef<HTMLDivElement | null>(null);
+  const fromBlurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toBlurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPlaceBlur = (which: "from" | "to") => {
+    const timer = which === "from" ? fromBlurRef : toBlurRef;
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => () => {
+    if (fromBlurRef.current !== null) clearTimeout(fromBlurRef.current);
+    if (toBlurRef.current !== null) clearTimeout(toBlurRef.current);
+  }, []);
   const [searching, setSearching] = useState<"from" | "to" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Expansion state is keyed by OPTION IDENTITY (route label; "Walk" for
@@ -1708,7 +1666,7 @@ const TripPlanner: FC<{
   // engine effect below (after the options memo) feeds it live data.
   // Declared HERE, before any hook that references it — see the TDZ
   // warning at the top of this file's conventions.
-  const [reminder, setReminder] = useState<{ routeLabel: string } | null>(null);
+  const [reminder, setReminder] = useState<{ routeLabel: string; boardStopId: number; alightStopId: number } | null>(null);
   // In-app fallback banner when a system notification can't be shown
   // (permission denied, or iOS Safari where the page-context
   // Notification API doesn't exist at all).
@@ -1815,9 +1773,21 @@ const TripPlanner: FC<{
     return () => clearTimeout(id);
   }, [searching]);
 
+  const returnPlaceFocus = (which: "from" | "to") => {
+    const input = which === "from" ? fromInputRef : toInputRef;
+    const summary = which === "from" ? fromSummaryRef : toSummaryRef;
+    if (document.activeElement !== input.current) return;
+    // Picking removes the editor. Keep the keyboard position on its summary,
+    // without reopening the phone keyboard or stealing focus if the rider
+    // has already moved to another control while React commits the pick.
+    requestAnimationFrame(() => {
+      if (document.activeElement === document.body) summary.current?.focus({ preventScroll: true });
+    });
+  };
   // Settle the From box on a known place — a geocoder pick, a recent, a
   // saved or popular destination — without going back to the geocoder.
   const commitFrom = (display: string, ll: LatLon) => {
+    returnPlaceFocus("from");
     fromAbortRef.current?.abort();
     fromAbortRef.current = null;
     setFromLL({ lat: ll.lat, lon: ll.lon });
@@ -1837,12 +1807,19 @@ const TripPlanner: FC<{
   };
   // Same label the row carried, town and all — the pill must not quietly
   // drop the word that made the rider pick this one over its namesake.
-  const pickFrom = (g: GeocodeResult) => commitFrom(suggLabel(g, fromSugg), g);
+  const tripPlaceLabel = (g: GeocodeResult, siblings: GeocodeResult[]) => {
+    const label = suggLabel(g, siblings);
+    // Keep the town when trimming an external grocery result. It identifies
+    // the retired service and must survive selection, saved trips and reloads.
+    return isMilfordGroceryPlace(g) && !/\bmilford\b/i.test(label) ? `${label} (Milford)` : label;
+  };
+  const pickFrom = (g: GeocodeResult) => commitFrom(tripPlaceLabel(g, fromSugg), g);
   const pickTo = (g: GeocodeResult) => {
+    returnPlaceFocus("to");
     toAbortRef.current?.abort();
     toAbortRef.current = null;
     setToLL({ lat: g.lat, lon: g.lon });
-    const display = suggLabel(g, toSugg);
+    const display = tripPlaceLabel(g, toSugg);
     setToText(display);
     // Remember what we landed on so the pill can be restored if the
     // rider later opens edit mode and bails without re-picking.
@@ -1984,8 +1961,6 @@ const TripPlanner: FC<{
   };
 
   const [awaitingLocation, setAwaitingLocation] = useState(false);
-  const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
-  const [editingSavedMode, setEditingSavedMode] = useState(false);
   const useCurrent = () => {
     console.log("[locate] 📍 clicked; userLatLon:", userLatLon);
     if (userLatLon) {
@@ -2049,6 +2024,10 @@ const TripPlanner: FC<{
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
 
+  // Choices are scoped to the initial plan. Once a fallback is selected it
+  // remains the pickup when its card opens; opening cannot revert to the old stop.
+  const [pickupChoices, setPickupChoices] = useState<{ plan: TripOption[]; byRoute: Map<string, TripOption> } | null>(null);
+
   // Collapse the "show more" list whenever a new trip is planned.
   useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
 
@@ -2059,7 +2038,7 @@ const TripPlanner: FC<{
   // current plan has no shuttle in it. Rosters change a few times an hour;
   // plans with a shuttle already re-derive their waits live and are left alone.
   const busRoster = useMemo(
-    () => buses.map((b) => `${b.route_id}:${b.bus_name}`).sort().join(","),
+    () => buses.map((b) => `${b.route_id}:${b.bus_name}`).sort().join(",") + `:${liveEtaAvailable(buses)}`,
     [buses],
   );
   const prevRosterRef = useRef(busRoster);
@@ -2090,14 +2069,23 @@ const TripPlanner: FC<{
     return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours, { labels: liveLabels, now: new Date(), active: routeActive });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, routeActive, refreshKey, liveLabelsKey]);
+  const etaFresh = !busUpdateFailed && liveEtaAvailable(buses);
   const options: TripOption[] | null = useMemo(() => {
     if (tripTimeError || !stableOptions) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
-    if (isFutureMode) return stableOptions;
-    return stableOptions.map((o) => {
-      if (o.mode !== "shuttle") return o;
+    if (isFutureMode) return stableOptions.map(o => ({ ...o, livePickupSelection: undefined }));
+    return stableOptions.map((initial) => {
+      const o = pickupChoices?.plan === stableOptions ? pickupChoices.byRoute.get(initial.routeLabel) ?? initial : initial;
+      if (o.mode !== "shuttle") {
+        // A live origin moves with the rider for both alternatives.
+        const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
+        if (!from || !toLL) return { ...o, livePickupSelection: undefined };
+        const totalSec = walkSecFromMeters(haversineMeters(from, toLL));
+        return { ...o, livePickupSelection: undefined, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
+      }
+      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, livePickupSelection: undefined, etaUnavailable: true, journeyArrival: undefined };
       // Re-derive wait from current arrivals. Simpler than it used to
       // be — a large pinned.eta *by itself* doesn't mean "just
       // passed" (it could just mean the bus is on the far side of
@@ -2145,7 +2133,7 @@ const TripPlanner: FC<{
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
       const busesAtBoard = cfg
-        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, visits))
+        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && liveBusAvailable(b, cfg.label, nowMs) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, visits))
         : [];
       const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
       if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {
@@ -2153,23 +2141,30 @@ const TripPlanner: FC<{
         // shared with planTrip). Beyond that the bus will be gone before
         // they arrive, so fall through to the normal math.
         const waitSec = 0;
-        const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
+        const board = live.find(a => norm(a.busName) === norm(hereBus.bus_name) && a.stopsAhead === 0 && a.eta === 0);
+        const forecastBoard = atStopJourneyBoard(visits, o.routeLabel, hereBus.bus_name, o.boardStopId, o.alightStopId);
+        const arrival = journeyArrival(forecastBoard, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs, 'at-stop');
+        const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
+          : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
-          ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
-          busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
+          ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+          rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
+          livePickupSelection: rawPickupSelection(hereBus.bus_name, o.boardStopId, nowMs),
+          journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
+          busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
         };
       }
 
       if (live.length === 0) {
         // No future arrival and no bus parked at the stop — truly unreachable.
-        return { ...o, departed: true };
+        return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
       }
       // Which arrival to follow — pinned-bus loyalty, its catchability
       // bounds, the report-#49 dominance switch, and the departed verdict
       // all live in pickLiveArrival (planner.ts), where they are unit
       // tested. `live` is non-empty here, so the pick exists.
       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
-      if (!picked) return { ...o, departed: true };
+      if (!picked) return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
       const { match, boardable, departed, missedBus } = picked;
       // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
       // the one the rider can see coming, which must not vanish while it is
@@ -2185,16 +2180,39 @@ const TripPlanner: FC<{
       // lie when they cannot. The countdown was not the problem; the total
       // was, and the total now waits for a bus the rider can board.
       const waitSec = Math.max(0, boardable.eta - effectiveWalkToSec);
-      const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
+      const arrival = departed ? undefined : journeyArrival(boardable, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs);
+      const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
+        : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
       return {
-        ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
+        ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+        rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - waitSec - o.walkFromSec) : o.rideSec,
+        livePickupSelection: forecastPickupSelection(picked, nowMs),
+        journeyArrival: arrival, busName: match.busName, departed, missedBus,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
-        busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
+        busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, tripTimeError, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+
+  useEffect(() => {
+    if (!stableOptions || !options || !etaFresh || !effectiveFromLL || !toLL
+      || (targetDate && targetDate.getTime() - Date.now() > 60_000)) return;
+    const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
+    const fresh = planTrip(from, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), liveAnchorStore);
+    const replacements = options.flatMap(current => {
+      const candidate = fresh.find(o => o.routeLabel === current.routeLabel);
+      const replacement = pickupFallback(current, candidate, expandedKey === current.routeLabel || reminder?.routeLabel === current.routeLabel);
+      return replacement ? [replacement] : [];
+    });
+    if (!replacements.length) return;
+    setPickupChoices(prev => {
+      const byRoute = new Map(prev?.plan === stableOptions ? prev.byRoute : []);
+      for (const replacement of replacements) byRoute.set(replacement.routeLabel, replacement);
+      return { plan: stableOptions, byRoute };
+    });
+  }, [options, stableOptions, etaFresh, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, effectiveFromLL, toLL, fromText, userLatLon, expandedKey, reminder]);
 
   // Origin and destination are the same place (report: setting one's own
   // location as the destination "gets confused"). Keyed on effectiveFromLL,
@@ -2210,26 +2228,24 @@ const TripPlanner: FC<{
   // one interval read fresh data.
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const reminderContextRef = useRef({ buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null });
+  reminderContextRef.current = { buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null };
 
   // The reminder engine: once armed, check every second (piggybacking on
-  // the same remainingSec countdown the on-screen ETA uses, so the ping
-  // and the number the rider watches always agree). computeLeaveAlert
+  // selected boarding window, using the table's rounding and clock). computeLeaveAlert
   // decides IF a ping fires; this effect only delivers it.
   useEffect(() => {
     if (!reminder) return;
-    const { routeLabel } = reminder;
+    const { routeLabel, boardStopId, alightStopId } = reminder;
     const check = () => {
-      const o = findReminderOption(optionsRef.current, routeLabel);
-      if (!o) {
+      const input = liveReminderInput(optionsRef.current, routeLabel,
+        { ...reminderContextRef.current, boardStopId, alightStopId, nowMs: Date.now() });
+      if (!input) {
         // Option gone / departed / no live bus (route stopped running,
         // plan cleared) — quietly disarm.
         setReminder(null);
         return;
       }
-      const input = {
-        busEtaSec: o.busEtaSec, computedAtMs: o.computedAtMs,
-        walkToSec: o.walkToSec, nowMs: Date.now(),
-      };
       const ping = computeLeaveAlert(input, reminderFiredRef.current);
       if (!ping) return;
       reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
@@ -2251,53 +2267,22 @@ const TripPlanner: FC<{
     return () => clearInterval(id);
   }, [reminder]);
 
-  // `slowerThanWalk` — the commute-vs-direct-walk test — now lives in
-  // planner.ts, where `mostDirectOption` needs the same verdict about which
-  // options are worth offering at all.
-  // Shared row/map order: competitive / slower-than-walk / departed,
-  // fastest first within each tier by live total.
-  const optionTier = (o: TripOption) => (o.departed ? 2 : slowerThanWalk(o) ? 1 : 0);
-  const sortOptions = (list: TripOption[]) =>
-    [...list].sort((a, b) => optionTier(a) - optionTier(b) || a.totalSec - b.totalSec);
-  // Display order with HYSTERESIS (user feedback 2026-07-17: fastest
-  // first, but "make sure there's some stability — avoid flicker").
-  // Each render starts from the previously displayed order; a lower card
-  // climbs only for a better tier or a ≥90 s faster live total, so small
-  // wait-noise oscillations never reorder the list mid-glance.
-  const displayOrderRef = useRef<string[]>([]);
+  // Route quality uses planned travel, not differences between two noisy ETAs.
+  // Clearly separated destination windows can change rank after 30 seconds.
+  const displayOrderRef = useRef<TripOrderState | null>(null);
   const orderDestRef = useRef<string>("");
   const orderedOptions = useMemo(() => {
-    if (!options) { displayOrderRef.current = []; return null; }
-    // New destination → forget the old trip's ranking entirely.
-    const destKey = `${toLL?.lat},${toLL?.lon}`;
+    if (!options) { displayOrderRef.current = null; return null; }
+    const originKey = isCurrentLocationText(fromText) || !fromText.trim() ? "current" : `${fromLL?.lat},${fromLL?.lon}`;
+    const destKey = `${originKey}|${toLL?.lat},${toLL?.lon}|${targetDate?.getTime()}|${refreshKey}`;
     if (orderDestRef.current !== destKey) {
       orderDestRef.current = destKey;
-      displayOrderRef.current = [];
+      displayOrderRef.current = null;
     }
-    const byKey = new Map(options.map((o) => [o.routeLabel, o]));
-    const kept = displayOrderRef.current.filter((k) => byKey.has(k));
-    const fresh = sortOptions(options.filter((o) => !kept.includes(o.routeLabel))).map((o) => o.routeLabel);
-    const arr = [...kept, ...fresh];
-    const HYST_SEC = 90;
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let i = 0; i + 1 < arr.length; i++) {
-        const a = byKey.get(arr[i])!;
-        const b = byKey.get(arr[i + 1])!;
-        if (
-          optionTier(b) < optionTier(a) ||
-          (optionTier(b) === optionTier(a) && b.totalSec < a.totalSec - HYST_SEC)
-        ) {
-          [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-          changed = true;
-        }
-      }
-    }
-    displayOrderRef.current = arr;
-    return arr.map((k) => byKey.get(k)!);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options, toLL?.lat, toLL?.lon]);
+    const ranked = stableTripOrder(options, displayOrderRef.current, Date.now());
+    displayOrderRef.current = ranked.state;
+    return ranked.options;
+  }, [options, fromText, fromLL?.lat, fromLL?.lon, toLL?.lat, toLL?.lon, targetDate, refreshKey]);
 
   // Which of those the collapsed list shows — computed ONCE per render and
   // shared by the map overview and the rows below, so the two cannot disagree
@@ -2338,7 +2323,7 @@ const TripPlanner: FC<{
     if (!userLatLon || !options || !stopCoords) { setAutoDetectOffer(null); return; }
     const norm = (s: string) => s.replace(/^#/, "");
     for (const o of options) {
-      if (o.mode !== "shuttle" || o.departed) continue;
+      if (o.mode !== "shuttle" || o.departed || o.etaUnavailable) continue;
       const board = stopCoords[o.boardStopId];
       if (!board || haversineMeters(userLatLon, board) > 60) continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
@@ -2347,7 +2332,7 @@ const TripPlanner: FC<{
         segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel);
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
-        && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
+        && liveBusAvailable(b, cfg.label, Date.now()) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
@@ -2365,7 +2350,7 @@ const TripPlanner: FC<{
     // the board stop with you on it is exactly what flags them departed.
     let aboard: { option: TripOption; bus: BusData; key: string } | null = null;
     for (const o of options) {
-      if (o.mode !== "shuttle") continue;
+      if (o.mode !== "shuttle" || o.etaUnavailable) continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) continue;
       const busNear = buses.find(b =>
@@ -2587,6 +2572,471 @@ const TripPlanner: FC<{
     flex: 1, minWidth: 0, fontSize: 16, padding: "12px 14px",
     minHeight: 48, border: "1px solid #ccc", borderRadius: 8, fontFamily: "inherit",
   };
+  // Reuse bus selection and predictions between the key and details.
+  const buildTripTiming = (o: TripOption) => {
+    const shuttleCtx = (() => {
+      if (o.mode !== "shuttle") return null;
+      const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+      if (!cfg) return null;
+      const allStops: number[] = [];
+      const seen = new Set<number>();
+      for (const rid of cfg.routeIds) {
+        for (const sid of (routeStops[rid] ?? [])) {
+          if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
+        }
+      }
+      const bi = allStops.indexOf(o.boardStopId);
+      if (bi === -1) return null;
+      const normBus = (s: string) => s.replace(/^#/, "");
+      // Include the on-route check so a depot-parked ghost
+      // (e.g., Red #122 in Hamden) doesn't pin to an option.
+      const busMatch = buses.find((b) =>
+        normBus(b.bus_name) === normBus(o.busName) &&
+        cfg.busRouteIds.includes(b.route_id) &&
+        isBusOnRoute(b, allStops, stopCoords),
+      ) ?? null;
+      let stopsAway: number | null = null;
+      if (busMatch) {
+        const busIdx = anchorIndexOnList(
+          busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+        );
+        if (busIdx >= 0) {
+          stopsAway = observedAtStop(busMatch, o.boardStopId, stopCoords)
+            ? 0 : (bi - busIdx + allStops.length) % allStops.length;
+        }
+      }
+      // How many buses are really on this line — the same on-route
+      // test the pin uses, so a depot ghost cannot make "2 buses out"
+      // of one. The last-bus warning below reads this.
+      const liveCount = buses.filter((b) =>
+        cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, allStops, stopCoords),
+      ).length;
+      return { busMatch, stopsAway, normBus, cfg, liveCount, allStops };
+    })();
+    // Compute the live ETA once for the key and expanded trip details.
+    //
+    // NOT walkToSec + waitSec: waitSec clamps at 0 once the bus will
+    // beat the rider to the stop, which froze the readout at the
+    // constant walk time ("in 1:49" for a full minute) while the bus
+    // visibly closed in — report #48.
+    const busEtaLive = o.mode === "shuttle" && !o.etaUnavailable && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
+      ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
+      : null;
+    // Strictly follow the pinned arrival; a previous, uncatchable bus
+    // must never masquerade as the next shuttle.
+    const nextArrLive = busEtaLive !== null && !o.departed
+      ? nextArrivalAfterPinned(
+          computeUpcomingArrivals(
+            // dwellTimes matters here: #32 made a dwell able to cancel
+            // the waiting inside a segment, and hoisting this call must
+            // not quietly drop that argument.
+            [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
+          ).filter((a) => a.routeLabel === o.routeLabel),
+          o.busName,
+          busEtaLive,
+        )
+      : null;
+
+    // Is this the last one, and will there be another? Judged
+    // against the PUBLISHED close (the same `route_hours` the
+    // "Runs …" caption shows), the second bus above when the card
+    // can see it — one headway when it cannot — and the live count;
+    // see lastBus.ts. It is computed AFTER `nextArrLive` for exactly
+    // that reason: the countdown's own second slot is the evidence,
+    // and reading the headway prior instead printed a warning under
+    // Blue Day while withholding it from a Red card whose "then 14
+    // min" said the same thing. Plain render-time arithmetic, no
+    // hook, so it cannot trip the TDZ hazard this component is known
+    // for. It only ever ADDS a line: the option is never hidden or
+    // moved.
+    const lastBus = shuttleCtx
+      ? lastBusVerdict({
+          label: o.routeLabel,
+          published: publishedWindowFor(shuttleCtx.cfg, routeHours),
+          now: new Date(),
+          busEtaSec: busEtaLive,
+          nextBusEtaSec: nextArrLive?.eta ?? null,
+          liveCount: shuttleCtx.liveCount,
+          future: isFuture,
+        })
+      : null;
+    return { shuttleCtx, busEtaLive, nextArrLive, lastBus };
+  };
+  const timingCache = new Map<TripOption, ReturnType<typeof buildTripTiming>>();
+  const getTripTiming = (o: TripOption) => {
+    let timing = timingCache.get(o);
+    if (!timing) { timing = buildTripTiming(o); timingCache.set(o, timing); }
+    return timing;
+  };
+
+  const renderTripStops = (o: TripOption) => {
+    if (o.mode !== "shuttle") return null;
+    const { busEtaLive } = getTripTiming(o);
+    // Stop list, two sections. ALWAYS shown with the route —
+    // the "Stops ▾" toggle was removed on 2026-09-03 (operator:
+    // "we'll always want to show the drop-down"), and it had
+    // auto-opened since 2026-07-17 anyway, so the control's only
+    // remaining job was to take the list away. First the
+    // APPROACH (the stops
+    // the bus still has to clear to reach the pickup, muted,
+    // with typical hold times and a live "been sitting here"
+    // counter at its current stop), then the board→alight
+    // ride. The 2026-07-16 cockpit cull stands otherwise —
+    // no embedded map/iframe/pace flags/strikethroughs.
+    const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+    if (!cfg) return null;
+    const allStops: number[] = [];
+    const seen = new Set<number>();
+    for (const rid of cfg.routeIds) {
+      for (const sid of (routeStops[rid] ?? [])) {
+        if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
+      }
+    }
+    const bi = allStops.indexOf(o.boardStopId);
+    const ai = allStops.indexOf(o.alightStopId);
+    if (bi === -1 || ai === -1) return null;
+    const segStops = bi <= ai
+      ? allStops.slice(bi, ai + 1)
+      : [...allStops.slice(bi), ...allStops.slice(0, ai + 1)];
+    const normBus = (s: string) => s.replace(/^#/, "");
+    const busMatch = buses.find((b) =>
+      normBus(b.bus_name) === normBus(o.busName) &&
+      cfg.busRouteIds.includes(b.route_id) &&
+      isBusOnRoute(b, allStops, stopCoords),
+    );
+    // THE number the rider reads on the "🚌 #316 · N stops away"
+    // line below. Ungated it oscillated 3/4/4/2/4 across polls
+    // beside a countdown that was not moving; it now comes from
+    // the same gated anchor the countdown does.
+    const busAnchorIdx = busMatch
+      ? observedAtStop(busMatch, o.boardStopId, stopCoords)
+        ? bi
+        : anchorIndexOnList(
+            busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+          )
+      : -1;
+    const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
+    // Follow the loop to the pickup even when the bus is currently on a
+    // stop the rider will visit AFTER boarding. That is an earlier visit,
+    // not evidence the rider is already aboard (report #121: Phelps Gate
+    // before a Mansfield / Division pickup hid the rest of Blue West's loop).
+    // A watched bus explicitly marked departed still belongs on the ride.
+    const stopsAway = busAnchorIdx >= 0 ? (bi - busAnchorIdx + allStops.length) % allStops.length : 0;
+    const approachStops = busAnchorIdx >= 0 && stopsAway > 0 && !o.departed
+      ? (busAnchorIdx <= bi
+          ? allStops.slice(busAnchorIdx, bi)
+          : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
+      : [];
+    // Same point + complete window as the card and mini-map,
+    // without the legacy rounded-width switch (reports 113/114).
+    const boardArrival = approachStops.length > 0 && busEtaLive !== null && !o.departed
+      ? mapArrivalLabel({ eta: busEtaLive, low: o.busLowSec, high: o.busHighSec, computedAtMs: o.computedAtMs })
+      : null;
+    // Dwell readouts: the typical hold at a stop, plus the live
+    // elapsed while the bus is parked at its current stop.
+    const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
+    // The hold SHOWN must be the hold BILLED — see shownStandSec
+    // (report #73: "it says arrive in 8 but expected dwell is
+    // 10", which was the median on screen and a low quantile in
+    // the arithmetic).
+    //
+    // So this reads the same records computeUpcomingArrivals
+    // prices from, through the same predicates, and nothing else.
+    // Two ways it has drifted before:
+    //
+    //  - It used to prefer a per-bus dwell (dwellsByBus, n >= 5)
+    //    while the arithmetic only ever read the ROUTE dwell:
+    //    "held 5 min of ~5" beside a countdown charging a
+    //    different ~5. It could not fire only because the server
+    //    hardcodes dwells_by_bus to {} (src/server/v1compat.ts)
+    //    — a latent trap, not a working feature.
+    //  - Once the stand/drive split went live (Red, Blue Day)
+    //    the chip kept quoting `dwell.med`, the arrival-to-
+    //    arrival median that CONTAINS DRIVE TIME, while the
+    //    countdown priced the conditional standing quantiles:
+    //    "⏸ 3 min / ~10 min" beside "5 min" (2026-09-04).
+    //
+    // If per-bus dwells are ever really served, thread them into
+    // computeUpcomingArrivals FIRST; display follows billing.
+    // The chip reads the model's own stand table (see
+    // shownStandSec), the one the countdown is billed from.
+    const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
+    /**
+     * M:SS for the live pause chip, so a hold keeps its seconds
+     * past the first minute.
+     *
+     * `fmtShort` drops to whole minutes at 60 s, which is right
+     * for a figure a rider glances at but wrong for one they are
+     * watching tick: the operator, watching a bus stand at a
+     * layover — "after it gets to 1 min we lose the seconds but I
+     * like those". A hold is the one number on this screen that
+     * moves every second and is worth watching move.
+     *
+     * NOT `min`-suffixed, and that is a deliberate exception to
+     * the app's "spell minutes `min`" rule rather than an
+     * oversight: the rule exists so a bare `m` is never read as
+     * miles, and `2:15` cannot be. It reads as a stopwatch,
+     * which is what it is. Minutes past the hour never appear —
+     * a layover running over 59 minutes would print `62:10`,
+     * which is still a duration and still unambiguous.
+     */
+    const fmtMmss = (s: number) => {
+      const t = Math.max(0, Math.round(s));
+      return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+    };
+    /**
+     * WHERE THE BUS IS STANDING — the estimator's answer, not a
+     * second reading of the payload.
+     *
+     * This used to derive the hold straight from
+     * `at_stop_id`/`at_stop_since`. That agreed with the price
+     * until #130 shipped the approach zone, and then stopped: a
+     * bus taking its layover short of the marker publishes no
+     * `at_stop_id`, so the countdown priced it as standing while
+     * the chip beside it showed nothing and the row read as a bus
+     * still rolling. Report #102 is a rider seeing exactly that —
+     * "a bus sitting in a garage lot was counted down as if on
+     * its way".
+     *
+     * `resolveStandingStop` is the one the price uses. The hold
+     * shown must be the hold billed, and now the STOP shown is
+     * the stop billed too.
+     */
+    const standing = busMatch
+      ? resolveStandingStop(
+          busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+        )
+      : null;
+    const liveElapsedSec = standing ? standing.standingSec : null;
+    /** The chip's clock and words — one composition for both stop lists. */
+    const standChip = standChipFor(standing, routeDwells, dwellTimes ?? undefined);
+    /**
+     * The hold to show at `sid`. `elapsed` is passed only for the
+     * stop the bus is actually standing at — everywhere else
+     * there is no remainder to state, so the typical hold is
+     * the honest answer. Same table, same pools, same clock as
+     * the countdown (shownStandSec).
+     */
+    const standAt = (sid: number, elapsed: number | null) => {
+      const stat = routeDwells[String(sid)];
+      if (!stat || stat.n < 3) return null;
+      return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
+    };
+    return (
+      <div data-testid="trip-stop-list" role="region" aria-label={`${o.routeLabel} stops`}
+        style={{ padding: "10px 12px", borderTop: "1px solid #eceff1" }} onClick={(e) => e.stopPropagation()}>
+        {approachStops.length > 0 && busMatch && (
+          // Name the vehicle this approach belongs to. Report #41
+          // said the list showed "only 3 stops" on an 11-stop
+          // approach; with the bus unnamed there was no way for
+          // the rider (or us) to tell whether the anchor was wrong
+          // or they were simply watching a different shuttle.
+          <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>
+            🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} away
+          </div>
+        )}
+        {approachStops.length > 0 && (
+          <div data-testid="trip-approach-stops" aria-label="Stops before pickup" style={{ position: "relative", paddingLeft: 16, marginBottom: 4 }}>
+            <span style={{
+              position: "absolute", left: 6, top: 6, bottom: 0,
+              borderLeft: `2px dashed ${o.color}`, opacity: 0.4,
+            }} />
+            {approachStops.map((sid, j) => {
+              const isBusHere = j === 0;
+              const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+              const showLive = isBusHere && standing?.stopId === sid && liveElapsedSec != null;
+              const stand = standAt(sid, showLive ? liveElapsedSec : null);
+              const hl = stopRowHighlight(isBusHere, false, o.color);
+              return (
+                <div key={sid} data-stop-id={sid} data-bus-here={isBusHere || undefined} style={{
+                  position: "relative", display: "flex", alignItems: "center",
+                  padding: hl.banded ? "4px 6px" : "2px 0",
+                  marginLeft: hl.banded ? -6 : 0,
+                  borderRadius: 4,
+                  background: hl.background,
+                  opacity: isBusHere ? 1 : 0.65,
+                }}>
+                  <span style={{
+                    position: "absolute", left: hl.banded ? -7 : -13, top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 7, height: 7, borderRadius: "50%",
+                    background: "#fff", border: `2px solid ${o.color}`,
+                    boxSizing: "border-box",
+                  }} />
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: isBusHere ? 700 : 400,
+                    color: hl.color,
+                    marginLeft: 10,
+                  }}>
+                    {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
+                    {name}
+                    {showLive && (
+                      // "⏸ 3:21 · leaves in 1-6 min" — the clock the
+                      // rider watches tick, then WHAT IS LEFT of the
+                      // stand, bounded.
+                      //
+                      // It used to be "3:21 / ~4:48": elapsed over the
+                      // stop's TYPICAL hold. Two shapes have now failed
+                      // here for the same reason — a rider subtracts.
+                      // First Y was `dwell.med`, an arrival-to-arrival
+                      // figure containing drive time ("3 of 10" → they
+                      // expected seven more minutes and the app said
+                      // four). Then Y became the typical hold, honest
+                      // about the STOP and still wrong about the BUS:
+                      // at 3:21 into the operator's 2026-09-07 stand it
+                      // implied 1:27 more when the model's own answer
+                      // was 3:15 and the truth 5:55. The right number
+                      // was already here — the tooltip has always said
+                      // "about N still to go".
+                      //
+                      // So the chip states the remainder, and states it
+                      // as a pair or a ceiling rather than a point,
+                      // because a stand that has run long ends at no
+                      // predictable second (standWait.ts). The typical
+                      // hold keeps its place in the tooltip, where a
+                      // rider reads it as context instead of subtracting
+                      // from it.
+                      //
+                      // AND IT NAMES WHICH QUANTITY IT IS. "<1-8 min
+                      // left" sat twelve pixels under a row reading "in
+                      // 2-9 min" and a bubble reading "(R) 2-9 min"
+                      // (operator, 2026-09-11). Both were right —
+                      // reproduced from production, the remainder is
+                      // q10/q50/q90 = 56/241/487 s and the drive floor to
+                      // the board stop 72 s, so 2-9 IS (<1-8) + the
+                      // drive — but nothing on screen said the 8 minutes
+                      // were a DEPARTURE. `standChipFor` says it.
+                      //
+                      // Composed in standWait.ts, not here, so the Map
+                      // tab's route-card rows print the identical string
+                      // for the identical bus (a source-level test in
+                      // standWait.test.ts fails if either site composes
+                      // its own).
+                      <span style={{
+                              fontSize: 10, fontWeight: 700, marginLeft: 6,
+                              // Amber once the stand has outlasted the stop's
+                              // typical hold. The typical figure itself left
+                              // the chip (it was the misleading half), so this
+                              // is what carries "this is running long" at a
+                              // glance; the tooltip names the figure.
+                              color: standChip?.overdue ? "#8a5300" : "#5f6368",
+                            }}
+                            title={standChip
+                              ? standChip.title
+                              : "Time the bus has been sitting here"}>
+                        ⏸ {standChip ? standChip.clock : fmtMmss(liveElapsedSec!)}
+                        {standChip ? ` · ${standChip.text}` : ""}
+                      </span>
+                    )}
+                    {showLive && standing?.approach && (
+                      // WHERE it is waiting, in one word.
+                      //
+                      // Report #102: a bus holding in the Science
+                      // Park Garage lot showed as "here" at
+                      // 344 Winchester, 144 m away. The countdown
+                      // is right — it IS taking that layover — but
+                      // a rider standing at the marker looks up
+                      // and sees no bus.
+                      //
+                      // Deliberately NOT a "~" prefix on the
+                      // clock, which was the first draft: this UI
+                      // already spends "~" on approximate
+                      // DURATIONS (the hold beside it), so
+                      // the same mark for approximate PLACE reads
+                      // as fuzziness about the number instead.
+                      // A word cannot be misread that way.
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "#9aa0a6", marginLeft: 4 }}
+                            title="Holding just short of the stop, not at the kerb">
+                        nearby
+                      </span>
+                    )}
+                    {!showLive && stand != null && stand.sec >= 180 && (
+                      // One figure, before the bus arrives and
+                      // after. This was briefly a "5-9 min"
+                      // range, because the ETA billed a low
+                      // quantile ahead of the stop and the
+                      // median once the bus was standing there,
+                      // and report #77 saw the number change on
+                      // arrival. The estimator no longer bills
+                      // two prices, so there is nothing left to
+                      // disagree and nothing to show a spread
+                      // for.
+                      <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
+                            title="Typical hold at this stop">
+                        ⏸ ~{fmtShort(stand.sec)}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div data-testid="trip-ride-stops" aria-label="Stops after boarding" style={{ position: "relative", paddingLeft: 16 }}>
+        <span style={{
+          position: "absolute", left: 6, top: 6, bottom: 6,
+          width: 2, background: o.color, opacity: 0.6,
+        }} />
+        {segStops.map((sid, j) => {
+          const isBoard = j === 0;
+          const isAlight = j === segStops.length - 1;
+          const isEnd = isBoard || isAlight;
+          const isBusHere = approachStops.length === 0 && j === busSegPos;
+          const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+          const hl = stopRowHighlight(isBusHere, isEnd, o.color);
+          return (
+            <div key={sid} data-stop-id={sid} data-bus-here={isBusHere || undefined} style={{
+              position: "relative", display: "flex", alignItems: "center",
+              padding: hl.banded ? "4px 6px" : "2px 0",
+              marginLeft: hl.banded ? -6 : 0,
+              borderRadius: 4,
+              background: hl.background,
+            }}>
+              <span style={{
+                position: "absolute", left: hl.banded ? -8 : -14, top: "50%",
+                transform: "translateY(-50%)",
+                width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
+                borderRadius: "50%",
+                background: isEnd ? o.color : "#fff",
+                border: `2px solid ${o.color}`,
+                boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
+                boxSizing: "border-box",
+              }} />
+              <span style={{
+                fontSize: 14,
+                fontWeight: isEnd || isBusHere ? 700 : 400,
+                color: hl.color,
+                marginLeft: 10,
+              }}>
+                {isBoard && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
+                {isAlight && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
+                {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
+                {name}
+                {isBoard && boardArrival && (
+                  <span style={{ display: 'block', fontSize: 10, color: '#5f6368', marginTop: 2 }}>
+                    Arrival: {boardArrival.point}{boardArrival.window ? ` · ${boardArrival.window}` : ''}
+                  </span>
+                )}
+                {isBusHere && standing?.stopId === sid && liveElapsedSec != null && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
+                        title={standing.approach
+                          ? "The bus is waiting for this stop — it is holding just short of the marker"
+                          : "Time the bus has been sitting here"}>
+                    ⏸ {fmtMmss(liveElapsedSec)}
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+        </div>
+      </div>
+    );
+
+  };
+  // End trip stop list.
+
   // Minimum 44×44 hit target (iOS/Material guideline). The clear-×
   // buttons were ~20px before and hard to hit on phones.
   const btnStyle: React.CSSProperties = {
@@ -2596,85 +3046,12 @@ const TripPlanner: FC<{
     display: "inline-flex", alignItems: "center", justifyContent: "center",
   };
 
-  const renderTripRow = (t: SavedTrip, onDelete: () => void, starred: boolean) => {
-    const editing = editingSavedId === t.id;
-    return (
-    <div key={t.id} style={{
-      display: "flex", alignItems: "center", gap: 6,
-      padding: "5px 8px", borderRadius: 4, background: "#fff",
-      border: "1px solid #e0ddd8", cursor: editing ? "default" : "pointer",
-    }} onClick={() => { if (!editing) applyDestination(t); }}>
-      {starred && <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>}
-      {editing ? (
-        <input
-          defaultValue={t.toText}
-          autoFocus
-          onClick={(e) => e.stopPropagation()}
-          onBlur={(e) => {
-            const v = e.currentTarget.value.trim();
-            if (v && v !== t.toText) onRenameSaved(t.id, v);
-            setEditingSavedId(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") setEditingSavedId(null);
-          }}
-          style={{
-            flex: 1, minWidth: 0, fontSize: 11, padding: "2px 6px",
-            border: "1px solid #c5e1a5", background: "#f1f8e9",
-            borderRadius: 4, fontFamily: "inherit", color: "#263238",
-          }}
-        />
-      ) : (
-        <span style={{
-          flex: 1, minWidth: 0, fontSize: 11, color: "#263238",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          <span style={{ color: "#9e9e9e", marginRight: 4 }}>→</span>
-          <span style={{ color: "#C62828", fontWeight: 600 }}>{t.toText}</span>
-        </span>
-      )}
-      {starred && !editing && (
-        <button
-          onClick={(e) => { e.stopPropagation(); setEditingSavedId(t.id); }}
-          style={{
-            border: "none", background: "transparent", color: "#9e9e9e",
-            fontSize: 12, cursor: "pointer", padding: "0 2px", lineHeight: 1,
-          }}
-          title="Rename"
-        >✎</button>
-      )}
-      {!starred && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            // Promote this recent destination into Saved. Use a fresh id so
-            // the entries stay unique even if the user later re-visits and
-            // a new recent record is generated.
-            onSaveTrip({ ...t, id: `t${Date.now().toString(36)}` });
-            onDelete();
-          }}
-          style={{
-            border: "none", background: "transparent", color: "#2E7D32",
-            fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1,
-          }}
-          title="Save destination"
-        >☆</button>
-      )}
-      <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{
-        border: "none", background: "transparent", color: "#9e9e9e",
-        fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1,
-      }} title="Remove">✕</button>
-    </div>
-    );
-  };
-
   // The rows under each box, rendered by one PlaceList for both ends.
   const suggRows = (list: GeocodeResult[], pick: (g: GeocodeResult) => void): PlaceRow[] =>
     list.map((g) => ({
       key: `${g.lat},${g.lon},${g.display_name}`,
       icon: suggIcon(g),
-      label: suggLabel(g, list),
+      label: tripPlaceLabel(g, list),
       onPick: () => pick(g),
     }));
   // What the From box offers BEFORE the rider types (operator, 2026-09-06:
@@ -2695,6 +3072,7 @@ const TripPlanner: FC<{
         // Collapse to the pill the way a pick does. The blur handler below
         // restores `prevFromTextRef`, so it must already say 📍.
         prevFromTextRef.current = CURRENT_LOCATION_TEXT;
+        returnPlaceFocus("from");
         useCurrent();
         fromInputRef.current?.blur();
         setFromExpanded(false);
@@ -2738,6 +3116,12 @@ const TripPlanner: FC<{
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
   const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
+  const grocerySearchNotice = isMilfordGrocerySearch(fromText, fromSugg)
+    || isMilfordGrocerySearch(toText, toSugg)
+    ? groceryServiceNotice('Grocery Ham', targetDate ?? new Date()) : null;
+  const overviewShuttles = (showAllOptions ? orderedOptions ?? [] : visibleOptions ?? [])
+    .filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
+  const overviewRouteLabels = overviewShuttles.length ? overviewShuttles : potentialRoutes.map(p => p.label);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {/* In-app fallback for a leave-time ping when a system notification
@@ -2776,6 +3160,7 @@ const TripPlanner: FC<{
           full input; after a pick, auto-collapses back. */}
       {!showFromRow ? null : !fromExpanded ? (
         <div
+          ref={fromSummaryRef}
           onClick={() => {
             prevFromTextRef.current = fromText;
             setFromText("");
@@ -2846,11 +3231,13 @@ const TripPlanner: FC<{
       ) : (
       <div style={{ marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 34, flexShrink: 0 }}>From</span>
+          <label htmlFor="trip-from" style={{ fontSize: 11, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 34, flexShrink: 0 }}>From</label>
           <input ref={fromInputRef}
+                 id="trip-from"
                  inputMode="search"
                  enterKeyHint="search"
                  value={fromText}
+                 onFocus={() => cancelPlaceBlur("from")}
                  onChange={(e) => {
                    setFromText(e.target.value);
                    // Typing invalidates any prior coord (locked pick or
@@ -2899,7 +3286,7 @@ const TripPlanner: FC<{
                  aria-autocomplete="list"
                  aria-controls="from-suggestions"
                  aria-activedescendant={
-                   fromActive >= 0 ? `from-suggestions-${fromActive}` : undefined
+                   fromRows[fromActive] ? `from-suggestions-${fromActive}` : undefined
                  }
                  onBlur={() => {
                    // Bail-out path: if they opened edit mode and
@@ -2907,7 +3294,11 @@ const TripPlanner: FC<{
                    // pill text (and coord state) rather than leaving
                    // a half-edited field. The 180 ms delay lets a
                    // suggestion click land first.
-                   setTimeout(() => {
+                   // A new editing session cancels this delayed departure;
+                   // the old callback must not close the newly focused box.
+                   cancelPlaceBlur("from");
+                   fromBlurRef.current = setTimeout(() => {
+                     fromBlurRef.current = null;
                      if (!fromText && prevFromTextRef.current) {
                        setFromText(prevFromTextRef.current);
                        setFromExpanded(false);
@@ -2927,10 +3318,20 @@ const TripPlanner: FC<{
                  placeholder="📍 Current location"
                  style={inputStyle} />
         </div>
-        <PlaceList id="from-suggestions" rows={fromRows} active={fromActive} onHover={setFromActive} />
+        <PlaceList id="from-suggestions" label="From suggestions" rows={fromRows} active={fromActive} onHover={setFromActive} />
       </div>
       )}
 
+      {grocerySearchNotice && (
+        <div id="grocery-search-notice" role="status" style={{
+          marginBottom: 8, padding: "10px 12px", borderRadius: 8,
+          background: "#FFF8E1", border: "1px solid #FFE082",
+          color: "#795548", fontSize: 13, lineHeight: 1.45,
+        }}>
+          <strong style={{ display: "block", marginBottom: 2 }}>Grocery route update</strong>
+          {grocerySearchNotice}
+        </div>
+      )}
       {/* To — the raw input while the rider is searching (no "To"
           label, just the placeholder as the whole prompt). Once a
           destination is locked AND the rider isn't actively editing,
@@ -2942,6 +3343,7 @@ const TripPlanner: FC<{
         // can type fresh — same interaction pattern as Google Maps'
         // destination field.
         <div
+          ref={toSummaryRef}
           onClick={() => {
             // Cache the current text so we can restore it if the
             // rider bails out without picking a new destination.
@@ -3003,9 +3405,12 @@ const TripPlanner: FC<{
           {/* "To" label only once a destination has been locked — until
               then the placeholder alone is the prompt. */}
           {toLL && (
-            <span style={{ fontSize: 11, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 34, flexShrink: 0 }}>To</span>
+            <label htmlFor="trip-to" style={{ fontSize: 11, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 34, flexShrink: 0 }}>To</label>
           )}
           <input ref={toInputRef}
+                 id="trip-to"
+                 aria-label="To"
+                 onFocus={() => cancelPlaceBlur("to")}
                  inputMode="search"
                  enterKeyHint="search"
                  value={toText} onChange={(e) => { setToText(e.target.value); setToLL(null); }}
@@ -3041,11 +3446,11 @@ const TripPlanner: FC<{
                    (e.target as HTMLInputElement).blur();
                  }}
                  role="combobox"
-                 aria-expanded={toSugg.length > 0}
+                 aria-expanded={toRows.length > 0}
                  aria-autocomplete="list"
                  aria-controls="to-suggestions"
                  aria-activedescendant={
-                   toActive >= 0 ? `to-suggestions-${toActive}` : undefined
+                   toRows[toActive] ? `to-suggestions-${toActive}` : undefined
                  }
                  onBlur={() => {
                    // If the rider opened edit mode on a locked
@@ -3054,7 +3459,9 @@ const TripPlanner: FC<{
                    // the previous pill rather than leaving them in a
                    // half-edited state. The 180 ms delay lets an
                    // in-progress suggestion click register first.
-                   setTimeout(() => {
+                   cancelPlaceBlur("to");
+                   toBlurRef.current = setTimeout(() => {
+                     toBlurRef.current = null;
                      if (toLL && !toText && prevToTextRef.current) {
                        setToText(prevToTextRef.current);
                        setToExpanded(false);
@@ -3083,7 +3490,7 @@ const TripPlanner: FC<{
             </button>
           )}
         </div>
-        <PlaceList id="to-suggestions" rows={toRows} active={toActive} onHover={setToActive} />
+        <PlaceList id="to-suggestions" label="To suggestions" rows={toRows} active={toActive} onHover={setToActive} />
       </div>
       )}
       {/* Only while the start still depends on GPS. Once the rider has a
@@ -3097,14 +3504,14 @@ const TripPlanner: FC<{
         </div>
       )}
 
-      {/* "When" is hidden until a destination is locked — same
+      {/* Departure is hidden until a destination is locked — same
           treatment as Google Maps, where the depart/arrive picker only
           appears after you've set where you're going. Default is
           "Now" (tripTime = ""), so leaving this hidden changes
           nothing functionally. */}
       {toLL && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <span style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>When</span>
+          <span style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Leave</span>
           {tripTime ? (
             <>
               <input
@@ -3124,7 +3531,7 @@ const TripPlanner: FC<{
               <button onClick={() => setTripTime("")} style={{
                 fontSize: 14, padding: "8px 14px", border: "1px solid #bbb",
                 background: "#fff", color: "#546e7a", borderRadius: 6,
-                fontFamily: "inherit", cursor: "pointer", minHeight: 40,
+                fontFamily: "inherit", cursor: "pointer", minHeight: 44,
               }}>Now</button>
             </>
           ) : (
@@ -3139,7 +3546,7 @@ const TripPlanner: FC<{
               }} style={{
                 fontSize: 14, padding: "8px 14px", border: "1px solid #bbb",
                 background: "#fff", color: "#546e7a", borderRadius: 6,
-                fontFamily: "inherit", cursor: "pointer", minHeight: 40,
+                fontFamily: "inherit", cursor: "pointer", minHeight: 44,
               }}>Plan for later…</button>
             </>
           )}
@@ -3153,11 +3560,11 @@ const TripPlanner: FC<{
       {isFuture && targetDate && (
         <div style={{ fontSize: 13, color: "#1976D2", marginBottom: 10, padding: "0 2px" }}>
           Planning for {targetDate.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-          {" · routes filtered by published hours, wait = ½ typical headway"}
+          {" · Estimated from service hours and typical wait and travel times. Check live arrivals near departure."}
         </div>
       )}
 
-      {error && <div style={{ fontSize: 13, color: "#C62828", marginBottom: 8 }}>{error}</div>}
+      {error && <div role="alert" style={{ fontSize: 13, color: "#C62828", marginBottom: 8 }}>{error}</div>}
 
       {/* Loading indicator: shown whenever a geocode is in flight (user
           typed + is resolving to a coordinate) or a "From" lookup is
@@ -3339,6 +3746,10 @@ const TripPlanner: FC<{
         );
       })()}
       {/* Results */}
+      {options && !alreadyThere && !detailOpen && (
+        <TripServiceNotices routeLabels={overviewRouteLabels} announcements={announcements}
+          at={targetDate ?? new Date()} groceryNoticeVisible={!!grocerySearchNotice} />
+      )}
       {/* A trip of no distance is not a trip. Say the true thing FIRST.
           Measured on master with the rider standing at Phelps Gate and Phelps
           Gate as the destination: the walk-only shape lit the fallback below,
@@ -3387,7 +3798,9 @@ const TripPlanner: FC<{
       {options && !alreadyThere && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
-            {potentialRoutes.some((p) => p.activeNow)
+            {busStatus !== "ready"
+              ? "Shuttle routes for this trip — live status unavailable"
+              : potentialRoutes.some((p) => p.activeNow)
               ? "Shuttles that go there — none on the map yet"
               : "Shuttles that go there — not running now"}
           </div>
@@ -3416,12 +3829,12 @@ const TripPlanner: FC<{
                   </span>
                   <span style={{ fontSize: 12, color: "#546e7a", marginLeft: "auto", textAlign: "right" }}>
                     {p.schedule && (
-                      <div>Runs {p.schedule}</div>
+                      <div>Schedule: {p.schedule}</div>
                     )}
                     {/* activeNow is judged against the PUBLISHED timetable
                         when the server supplied one, so this reads "the
                         published schedule says running". */}
-                    {p.activeNow ? (
+                    {busStatus !== "ready" ? null : p.activeNow ? (
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
                         Should be running now — no bus reporting yet
                       </div>
@@ -3435,7 +3848,7 @@ const TripPlanner: FC<{
                       // that is simply the other one's this week.
                       <>
                         <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
-                          {p.off.partner ? "Not this weekend" : "Not running today"}{nextDayStr ? ` · next ${nextDayStr}` : ""}
+                          {p.off.discontinued ? "Milford service discontinued" : p.off.partner ? "Not this weekend" : "Not running today"}{nextDayStr ? ` · next ${nextDayStr}` : ""}
                         </div>
                         {p.off.partner && (
                           <div style={{ fontSize: 11, color: "#78909c", marginTop: 2 }}>
@@ -3485,7 +3898,7 @@ const TripPlanner: FC<{
           )}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
-              style — map first, cards below. Open by default (see
+              style — map first, clickable timing key below. Open by default (see
               overviewExpanded init). Built from the same segCoords +
               busMatch we compute per option below. */}
           {effectiveFromLL && toLL && (() => {
@@ -3497,10 +3910,9 @@ const TripPlanner: FC<{
             const _sortedForMap = orderedOptions ?? [];
             // Same rule as the list below — the map shows what the list shows.
             const _visibleForMap = showAllOptions ? _sortedForMap : (visibleOptions ?? []);
-            // Route-details view open: the map narrows to just that route,
-            // like Google Maps' directions-detail screen.
+            // Route-details view open: the map narrows to just that route.
             const _mapOpts = expandedKey
-              ? _visibleForMap.filter((o) => o.routeLabel === expandedKey)
+              ? _sortedForMap.filter((o) => o.routeLabel === expandedKey)
               : _visibleForMap;
             for (const o of _mapOpts) {
               if (o.mode !== "shuttle") continue;
@@ -3513,6 +3925,7 @@ const TripPlanner: FC<{
                   if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
                 }
               }
+              const routeCoords = allStops.map((sid) => stopCoords[sid]).filter((c): c is LatLon => !!c);
               const bi = allStops.indexOf(o.boardStopId);
               const ai = allStops.indexOf(o.alightStopId);
               if (bi === -1 || ai === -1) continue;
@@ -3550,9 +3963,11 @@ const TripPlanner: FC<{
                 // The gated anchor, off the app's one live store — the dashed
                 // approach must start where the cards and the countdown say
                 // the bus is (liveAnchor.ts).
-                const busIdx = anchorIndexOnList(
-                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
-                );
+                const busIdx = observedAtStop(busMatch, o.boardStopId, stopCoords)
+                  ? bi
+                  : anchorIndexOnList(
+                      busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                    );
                 if (busIdx >= 0 && busIdx !== bi) {
                   const upstream = busIdx <= bi
                     ? allStops.slice(busIdx, bi + 1)
@@ -3561,12 +3976,12 @@ const TripPlanner: FC<{
                     .map((sid) => stopCoords[sid])
                     .filter((c): c is LatLon => !!c);
                   if (upCoords.length >= 2) {
-                    approach = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], upCoords)
+                    approach = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], upCoords, routeCoords)
                       ?? upCoords.map((c) => [c.lat, c.lon] as [number, number]);
                   }
                 }
               }
-              const road = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], segCoords);
+              const road = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], segCoords, routeCoords);
               overviewOpts.push({
                 label: o.routeLabel,
                 color: o.color,
@@ -3575,48 +3990,40 @@ const TripPlanner: FC<{
                 approach,
                 bus: busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null,
                 passedBus: passedMatch ? { lat: passedMatch.lat, lon: passedMatch.lon, name: normBus(passedMatch.bus_name) } : null,
-                // The bus's own arrival at the board stop, counted down from
-                // when it was computed. (walk + wait) is NOT that number:
-                // waitSec clamps at 0 when the bus beats the rider there, so
-                // the sum froze at the walk time — report #48. Rider steps
-                // off at total minus the trailing walk.
-                // The SAME answer the card's countdown gives, in the chip's
-                // shorter words. It used to be `fmtMin` of the point number
-                // alone, so a bus mid-layover read `<1-9 min` on its row and a
-                // definitive `1 min` on the map (operator, 2026-09-10). That
-                // point is the median of a standing bus's departure
-                // distribution — it legitimately moves while the bus sits,
-                // which is why the card stopped showing one — and the chip was
-                // watched going 5 -> 1 -> 2 min with nothing happening.
-                // `chipCountdownText` picks the range when there is one and
-                // deliberately does not decay it by wall clock; the point
-                // number still is, for report #48's reason.
-                // Only where the rider is actually boarding, and only for the
-                // line they picked: `berthFor` answers null for all but ten
-                // stop/route cells and the map is unchanged wherever it does.
                 berth: berthFor(o.boardStopId, cfg.busRouteIds),
-                boardEta: o.departed ? null : stopEtaText(
-                  // The same composition the Map tab's stop rows use, so a bus
-                  // standing mid-layover cannot read as a range here and a point
-                  // there: `arrivalBand` off the pinned arrival's own band, the
-                  // standing floor from `standRest`.
-                  standRest,
-                  {
-                    eta: remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
-                    low: o.busLowSec, high: o.busHighSec,
-                    departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs,
-                  },
-                  dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
-                ),
-                arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
+                busWait: o.etaUnavailable ? null : mapWaitLabel(standRest,
+                  dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined),
               });
             }
-            if (overviewOpts.length < 1) return null;
+            const timingRows: TimingRow[] = _mapOpts.map(o => {
+              const { shuttleCtx, busEtaLive, nextArrLive, lastBus } = getTripTiming(o);
+              return {
+                option: o,
+                pickup: busEtaLive !== null && !o.departed && !isFuture ? {
+                  routeLabel: o.routeLabel, busName: o.busName,
+                  etaSec: busEtaLive, lowSec: o.busLowSec, highSec: o.busHighSec,
+                  distributionSec: o.busDistribution, stopId: o.boardStopId,
+                  computedAtMs: o.computedAtMs, nextSec: nextArrLive?.eta,
+                  nextBusName: nextArrLive?.busName, stopsAway: shuttleCtx?.stopsAway,
+                  atPickup: !!shuttleCtx?.busMatch && observedAtStop(shuttleCtx.busMatch, o.boardStopId, stopCoords),
+                  holdingAt: shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
+                    ? stopNames[shuttleCtx.busMatch.at_stop_id] : undefined,
+                } : undefined,
+                status: o.mode === 'walk' ? '—' : o.departed ? 'Missed' : o.etaUnavailable ? 'Unavailable' : isFuture ? 'Scheduled' : 'Unavailable',
+                note: lastBus?.headline ?? (o.missedBus && !o.departed ? 'Showing next bus' : undefined),
+              };
+            });
+            const timingKey = <div data-testid="map-trip-panel">
+              <MiniMapKey rows={timingRows} destination={toText}
+                onSelectRoute={detailOpen ? undefined : setExpandedKey}
+                departureMs={isFuture ? targetDate?.getTime() : undefined} />
+              {detailOpen && _mapOpts[0] && renderTripStops(_mapOpts[0])}
+            </div>;
             // "All N routes" was a lie whenever options sat behind "Show N
             // more routes" (map-bot report #28: header said ALL 2 ROUTES over
             // a 5-option list). Only claim "all" when the list really is.
             const _totalShuttle = _sortedForMap.filter((o) => o.mode === "shuttle").length;
-            const _overviewLabel = expandedKey
+            const _overviewLabel = overviewOpts.length === 0 ? 'Arrival estimates' : expandedKey
               ? `${expandedKey} route`
               : overviewOpts.length < _totalShuttle
                 ? `Overview — top ${overviewOpts.length} of ${_totalShuttle} routes`
@@ -3628,7 +4035,7 @@ const TripPlanner: FC<{
             const _hoursCfg = expandedKey
               ? ROUTE_LISTS.find((c) => c.label === expandedKey)
               : undefined;
-            const _hours = _hoursCfg ? routeHoursCaption(_hoursCfg, routeHours) : null;
+            const _hours = _hoursCfg ? routeHoursCaption(_hoursCfg, routeHours, targetDate ?? new Date()) : null;
             return (
               <div style={{
                 marginBottom: 12,
@@ -3639,6 +4046,7 @@ const TripPlanner: FC<{
                 boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
               }}>
                 <button
+                  disabled={overviewOpts.length === 0}
                   onClick={() => setOverviewExpanded((v) => !v)}
                   style={{
                     width: "100%",
@@ -3646,7 +4054,8 @@ const TripPlanner: FC<{
                     background: "transparent", border: "none",
                     padding: "4px 4px", cursor: "pointer", fontFamily: "inherit",
                   }}
-                  title={overviewExpanded ? "Collapse overview" : "Expand overview"}
+                  title={overviewExpanded ? "Collapse map" : "Expand map"}
+                  aria-label={overviewExpanded ? "Collapse map" : "Expand map"}
                 >
                   <span style={{
                     fontSize: 10, color: "#78909c",
@@ -3665,7 +4074,7 @@ const TripPlanner: FC<{
                     {overviewExpanded ? "▴" : "▾"}
                   </span>
                 </button>
-                {overviewExpanded && (
+                {overviewExpanded && overviewOpts.length > 0 ? (
                   <CombinedTripMap
                     // Live GPS when From is "current location" — the origin
                     // frozen at search time left the you-pin stranded while
@@ -3673,14 +4082,15 @@ const TripPlanner: FC<{
                     from={fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL}
                     to={toLL}
                     options={overviewOpts}
+                    timingKey={timingKey}
                   />
-                )}
+                ) : timingKey}
               </div>
             );
           })()}
           {options.length === 1 && options[0].mode === "walk" && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
-              Walking beats every shuttle here — no bus nearby saves time.
+              Walking is the simplest available option for this trip.
             </div>
           )}
           {(() => {
@@ -3693,7 +4103,7 @@ const TripPlanner: FC<{
             // Still shown either way (riders want to see every route);
             // only judged when walking is a real alternative — the walk
             // card itself is suppressed >60 min.
-            // Fastest-first with hysteresis — see orderedOptions above.
+            // Shorter walks/rides among overlapping arrival windows; see orderedOptions.
             const _tier = optionTier;
             const _sorted = orderedOptions ?? [];
             // Shuttles-plus-walk visibility rule — see topVisibleOptions.
@@ -3724,22 +4134,22 @@ const TripPlanner: FC<{
             // tags read like the app is broken.
             const _allShuttlesSlower =
               _sorted.some((o) => o.mode === "shuttle") &&
-              _sorted.every((o) => o.mode === "walk" || _tier(o) > 0);
+              _sorted.every((o) => o.mode === "walk" || (!o.etaUnavailable && _tier(o) > 0));
             return <>
           {_allShuttlesSlower && !_detailOpen && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
               Walking wins right now — every shuttle is slower, but the routes are listed in case you'd rather ride.
             </div>
           )}
-          <div style={{
+          {_detailOpen && <div data-testid="trip-detail-panel" style={{
             background: "#fff", borderRadius: 12, marginBottom: 8,
             border: "1px solid #e8eaed", boxShadow: "0 1px 2px rgba(60,64,67,0.08)",
             overflow: "hidden",
           }}>
-          {_visible.map((o, i) => {
+          {_visible.map((o) => {
             // Details mode: only the tapped route renders; the other rows
             // hide until the rider taps ← back.
-            if (_detailOpen && o.routeLabel !== expandedKey) return null;
+            if (o.routeLabel !== expandedKey) return null;
             // Stable identity for expansion state — one option per route,
             // so the label alone is unique ("Walk" for the walk option).
             const oKey = o.routeLabel;
@@ -3750,416 +4160,20 @@ const TripPlanner: FC<{
             // route breakdown read the same values. Mirrors the anchor-
             // advance logic in computeUpcomingArrivals so the count
             // doesn't disagree with the bus pin on the mini-map.
-            const shuttleCtx = (() => {
-              if (o.mode !== "shuttle") return null;
-              const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
-              if (!cfg) return null;
-              const allStops: number[] = [];
-              const seen = new Set<number>();
-              for (const rid of cfg.routeIds) {
-                for (const sid of (routeStops[rid] ?? [])) {
-                  if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
-                }
-              }
-              const bi = allStops.indexOf(o.boardStopId);
-              if (bi === -1) return null;
-              const normBus = (s: string) => s.replace(/^#/, "");
-              // Include the on-route check so a depot-parked ghost
-              // (e.g., Red #122 in Hamden) doesn't pin to an option.
-              const busMatch = buses.find((b) =>
-                normBus(b.bus_name) === normBus(o.busName) &&
-                cfg.busRouteIds.includes(b.route_id) &&
-                isBusOnRoute(b, allStops, stopCoords),
-              ) ?? null;
-              let stopsAway: number | null = null;
-              if (busMatch) {
-                const busIdx = anchorIndexOnList(
-                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
-                );
-                if (busIdx >= 0) {
-                  stopsAway = (bi - busIdx + allStops.length) % allStops.length;
-                }
-              }
-              // How many buses are really on this line — the same on-route
-              // test the pin uses, so a depot ghost cannot make "2 buses out"
-              // of one. The last-bus warning below reads this.
-              const liveCount = buses.filter((b) =>
-                cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, allStops, stopCoords),
-              ).length;
-              return { busMatch, stopsAway, normBus, cfg, liveCount, allStops };
-            })();
-            // Live bus ETA, hoisted to row scope so the TOP line can carry it
-            // beside the total (operator, 2026-09-03: "could this go on the
-            // top line ... between total time and arrival time?"). Computed
-            // ONCE here and consumed both there and by the departed warning
-            // below, so the two can never disagree.
-            //
-            // NOT walkToSec + waitSec: waitSec clamps at 0 once the bus will
-            // beat the rider to the stop, which froze the readout at the
-            // constant walk time ("in 1:49" for a full minute) while the bus
-            // visibly closed in — report #48.
-            const busEtaLive = o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
-              ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
-              : null;
-            /**
-             * THE STAND THE LEAD BUS IS IN, resolved once at ROW scope so the
-             * top line's countdown and the pause chip further down cannot
-             * disagree about it (CLAUDE.md: "the hold SHOWN must be the hold
-             * BILLED"). Same resolver the price uses, same tables, same clock.
-             *
-             * While a bus stands at a layover the countdown is not a point:
-             * #119 forbids it to rise, so it flattens and never tells the
-             * rider the wait has run long, and letting it rise instead
-             * promises a departure later than the bus may actually make
-             * (10:28 against a 9:16 truth, 2026-09-07). standWait.ts turns the
-             * model's own q10/q90 into a range floored by the drive — see the
-             * header there for the measured case.
-             */
-            const standCtx = o.mode === "shuttle" && !o.departed && shuttleCtx?.busMatch
-              ? standWaitFor(
-                  resolveStandingStop(
-                    shuttleCtx.busMatch, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                  ),
-                  dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {},
-                  dwellTimes ?? undefined,
-                )
-              : null;
-            // THE ROW'S RANGE: the pinned arrival's own 10-90 band, when it is
-            // wide enough to print (etaBand.ts) — standing OR moving — through
-            // the one composer every surface reads (`arrivalBand`): decayed
-            // with the point, and for a standing bus floored at departNow +
-            // the shortest stand still left.
-            const leadBand = o.mode === "shuttle" && !o.departed && busEtaLive !== null
-              ? arrivalBand(standCtx, { low: o.busLowSec, high: o.busHighSec, departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs })
-              : null;
-            // The bus AFTER the pinned one (user request 2026-07-17) — lets
-            // riders judge "can I skip this one?" at a glance. Strictly later
-            // than the pinned arrival so an earlier, uncatchable bus never
-            // masquerades as "next"; the same vehicle a loop later counts.
-            const nextArrLive = busEtaLive !== null && !o.departed
-              ? nextArrivalAfterPinned(
-                  computeUpcomingArrivals(
-                    // dwellTimes matters here: #32 made a dwell able to cancel
-                    // the waiting inside a segment, and hoisting this call must
-                    // not quietly drop that argument.
-                    [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
-                  ).filter((a) => a.routeLabel === o.routeLabel),
-                  o.busName,
-                  busEtaLive,
-                )
-              : null;
-            /**
-             * THE SAME STAND RESOLUTION FOR SLOT 2's BUS. `standCtx` above is
-             * built from the PINNED vehicle alone, which is why the Orange
-             * Night card at 22:28 read "in 25, 25 min": #51 had overtaken #49
-             * and become the pin, so the bus that was standing — the one whose
-             * arrival was a 14-minute-wide question — was in slot 2 and got a
-             * bare point (bunching.ts).
-             *
-             * Its band is NEVER DRAWN (two intervals do not fit the span). It
-             * exists so `fmtBusLine` can tell whether the two buses are
-             * distinguishable at all, and it reads the same resolver, the same
-             * tables and the same clock as slot 1's, so the two cannot answer
-             * differently about the same stand.
-             */
-            const nextBand = nextArrLive && shuttleCtx && !o.departed
-              ? (() => {
-                  const norm = shuttleCtx.normBus;
-                  const nextBus = buses.find((b) =>
-                    norm(b.bus_name) === norm(nextArrLive.busName) &&
-                    shuttleCtx.cfg.busRouteIds.includes(b.route_id) &&
-                    isBusOnRoute(b, shuttleCtx.allStops, stopCoords),
-                  ) ?? null;
-                  if (!nextBus) return null;
-                  // Only a STANDING slot-2 bus contributes its band, exactly
-                  // as #216 gated it; the band itself is the model's own
-                  // (its arrival row) through the same composer as slot 1's.
-                  const standing = resolveStandingStop(
-                    nextBus, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                  );
-                  if (!standing) return null;
-                  return arrivalBand(
-                    standWaitFor(standing, dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined),
-                    { low: nextArrLive.low, high: nextArrLive.high, departNow: nextArrLive.departNow },
-                  );
-                })()
-              : null;
-            // Is this the last one, and will there be another? Judged
-            // against the PUBLISHED close (the same `route_hours` the
-            // "Runs …" caption shows), the second bus above when the card
-            // can see it — one headway when it cannot — and the live count;
-            // see lastBus.ts. It is computed AFTER `nextArrLive` for exactly
-            // that reason: the countdown's own second slot is the evidence,
-            // and reading the headway prior instead printed a warning under
-            // Blue Day while withholding it from a Red card whose "then 14
-            // min" said the same thing. Plain render-time arithmetic, no
-            // hook, so it cannot trip the TDZ hazard this component is known
-            // for. It only ever ADDS a line: the option is never hidden or
-            // moved.
-            const lastBus = shuttleCtx
-              ? lastBusVerdict({
-                  label: o.routeLabel,
-                  published: publishedWindowFor(shuttleCtx.cfg, routeHours),
-                  now: new Date(),
-                  busEtaSec: busEtaLive,
-                  nextBusEtaSec: nextArrLive?.eta ?? null,
-                  liveCount: shuttleCtx.liveCount,
-                  future: isFuture,
-                })
-              : null;
-            // Whether line 2's left column draws the trip's legs. EVERY
-            // collapsed shuttle row has one: the ride. This used to also
-            // require a walk at one end or the other, so a rider already at
-            // the stop whose destination is on it got a blank second line —
-            // the one card on screen that did not say what the trip was made
-            // of, next to four that did (visible on #115's own screenshot:
-            // "Blue Day  in 4, 9 min" and then nothing). The walk legs inside
-            // are each guarded on their own duration, so a 0 s walk is still
-            // omitted and a bus-only trip reads "🚌 17 min".
-            //
-            // It is also the single gate for the separator: "most direct"
-            // carries its own leading "·" and would open the column with an
-            // orphaned bullet if nothing were drawn before it. The arrival
-            // clock used to sit to its left and always supplied that
-            // neighbour; it is the right column now, so the separator has to
-            // ask.
-            const legsShown = !isExpanded && o.mode === "shuttle";
+            const { shuttleCtx, lastBus } = getTripTiming(o);
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
               // key would remount every card's map/tracker on reorder.
-              <div key={oKey} style={{
-                padding: "12px 16px",
-                borderBottom: !isExpanded && i < _visible.length - 1 ? "1px solid #f1f3f4" : "none",
-                cursor: isExpanded ? "default" : "pointer",
-                opacity: o.departed ? 0.7 : 1,
-              }}
-              role={isExpanded ? undefined : "button"}
-              tabIndex={isExpanded ? undefined : 0}
-              aria-label={isExpanded ? undefined : `View ${o.routeLabel} trip details`}
-              onKeyDown={isExpanded ? undefined : (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setExpandedKey(oKey);
-                }
-              }}
-              onClick={isExpanded ? undefined : () => setExpandedKey(oKey)}>
-                {/* The back control lives at the TOP of the details page
-                    (above the map) — see the detailOpen bar. */}
-                {/* Lines 1 and 2 are ONE two-column block (operator,
-                    2026-09-04): the left column is the line and how it is
-                    made — pill + countdown over the walk/ride legs — and the
-                    right column is the two clock facts, how long it takes
-                    over when you land, right-aligned and flush with each
-                    other. The arrival used to lead line 2 with the duration
-                    alone on the right, so the two numbers a rider compares
-                    across cards ("23 min", "arrive 10:33a") sat on opposite
-                    sides of the card and never lined up.
-
-                    The chevron is a THIRD column, vertically centred across
-                    both rows, because the slot it used to occupy — the right
-                    end of line 2 — is now the arrival clock. Putting it back
-                    there would either shove the clock out of alignment with
-                    the duration or stack under it. It is decoration, not the
-                    control: the whole card carries the onClick, so the tap
-                    target is the full row, and the chevron still gets 44 px
-                    of height so a stylus-precise tap on the glyph itself
-                    lands. */}
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  marginBottom: (!o.departed || !isExpanded) ? 8 : 0,
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Line 1: THE LINE LEADS (operator, 2026-09-04) — route
-                        pill top-left, the two-bus countdown beside it, the
-                        total duration on the right. The total used to hold
-                        the top-left slot with the pill a row below it, so
-                        picking "the Blue one" off a five-card list meant
-                        reading five durations first. Reading order is now
-                        line → when it comes → how long it takes → what the
-                        trip is made of and when you land (line 2). */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                        {/* Pill colour comes off the option, i.e. off ROUTE_LISTS —
-                            the one source. The walk option keeps its outlined
-                            chip: it is an option, not a line. */}
-                        {o.mode === "walk" ? (
-                          <span style={{
-                            fontSize: 13, fontWeight: 600, color: "#5f6368",
-                            background: "transparent", border: "1px solid #dadce0",
-                            borderRadius: 6, padding: "2px 8px", flexShrink: 0,
-                          }}>🚶 Walk</span>
-                        ) : (
-                          <span style={{
-                            fontSize: 13, fontWeight: 600, color: "#fff", background: o.color,
-                            borderRadius: 6, padding: "3px 8px", flexShrink: 0,
-                            maxWidth: 168, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>{o.routeLabel}</span>
-                        )}
-                        {/* The live bus, directly right of the line it belongs to.
-                            No glyph: the pill already says this is a shuttle, and
-                            the operator asked for the "in" to follow the line with
-                            nothing between them (2026-09-04). Secondary weight so
-                            the pill and the total frame the row; nowrap + ellipsis
-                            so a narrow phone clips the second figure rather than
-                            wrapping the row in two.
-
-                            The canary reads this line as TEXT and used to key on
-                            the glyph — scripts/canary-metrics.mjs now accepts both
-                            forms, because it watches production, which is always a
-                            deploy behind this.
-
-                            Shown EXPANDED as well as collapsed (operator,
-                            2026-09-08, comparing the two cards side by side:
-                            "were just missing some data in the route plan
-                            region, that should look like trip overview
-                            region"). Opening a card used to drop the pair —
-                            the one figure that says when the NEXT bus comes if
-                            this one is missed — so the detail view carried
-                            less than the summary it came from. The leg strip
-                            below spells out this bus's wait; the pair is about
-                            the one after it. */}
-                        {busEtaLive !== null && !o.departed && (
-                          <span title={leadBand ? bandTitle(leadBand, busEtaLive) : undefined} style={{
-                            fontSize: 13, color: "#5f6368", fontWeight: 500,
-                            minWidth: 0, overflow: "hidden",
-                            textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>
-                            {/* ONE composer for all four forms — the pair,
-                                the pinned bus's range, and either of those
-                                collapsed to a single statement when the two
-                                buses have bunched (bunching.ts). Slot 2's own
-                                band goes in as evidence and is never drawn. */}
-                            {fmtBusLine({
-                              leadSec: busEtaLive,
-                              leadBand,
-                              nextSec: nextArrLive?.eta ?? null,
-                              nextBand,
-                            })}
-                          </span>
-                        )}
-                      </span>
-                      {/* Duration, right-aligned. "Departed" takes the same slot —
-                          it is what that number would have said. */}
-                      {o.departed ? (
-                        <span style={{ fontSize: 16, fontWeight: 600, color: "#5f6368", flexShrink: 0 }}>Departed</span>
-                      ) : (
-                        <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap", flexShrink: 0 }}>
-                          {fmtMin(o.totalSec)}
-                        </span>
-                      )}
-                    </div>
-                    {/* No badges: FASTEST is implied by sort order — the top card
-                        is the recommendation, Google-style — and
-                        slower-than-walking is already communicated by the tier
-                        sort + the "walking wins" banner. */}
-                    {/* Line 2: what the trip is made of on the left, when you
-                        land on the right. The legs used to be led by the route
-                        pill — the pill has moved to line 1, so the ride between
-                        the walks is drawn in the same ink as them rather than
-                        repeating the name. Collapsed rows only: the details
-                        view's step list carries the same durations (user
-                        feedback 2026-07-17). Every leg is optional — a walk of
-                        0 s is omitted and the wait, when there is one, has its
-                        own line below — so the row carries a minHeight: a
-                        Departed card with no walks would otherwise collapse to
-                        nothing and the card would jump a line shorter than its
-                        neighbours. */}
-                    {(!o.departed || !isExpanded) && (
-                    <div style={{
-                      display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-                      gap: 8, marginTop: 4, minHeight: 18,
-                    }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
-                        {legsShown && (
-                          <>
-                            {o.walkToSec > 0 && (
-                              <>
-                                <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
-                                <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
-                              </>
-                            )}
-                            {/* The ride leg, named and timed like the walks
-                                either side of it. It was a bare coloured bar whose
-                                only label was a `title` nobody on a phone can
-                                reach — the operator: "the horizonal bar should say
-                                ride X min or bus icon instead of 'ride'". The
-                                expanded card already spells it this way. Colour
-                                stays on the pill on line 1, so this reads in the
-                                same ink as the walks and cannot land on a light
-                                route colour. */}
-                            <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>
-                              🚌 {fmtMin(o.rideSec)}
-                            </span>
-                            {o.walkFromSec > 0 && (
-                              <>
-                                <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
-                                <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
-                              </>
-                            )}
-                          </>
-                        )}
-                        {/* Why a slower row is on screen: this is the route that
-                            runs straight there — least walking + riding of any
-                            option, whatever the wait happens to be right now.
-                            Plain grey text, not a badge: FASTEST was removed from
-                            these rows deliberately and this is an explanation, not
-                            a ranking. */}
-                        {!isExpanded && o.mode === "shuttle" && _direct && o.routeLabel === _direct.routeLabel && (
-                          <span data-testid="most-direct" style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>
-                            {legsShown ? "· most direct" : "most direct"}
-                          </span>
-                        )}
-                      </span>
-                      {/* When you land, right-aligned under the duration. It
-                          never shrinks and never wraps: on a narrow phone the
-                          legs on the left wrap to a second line instead, because
-                          future mode prints a RANGE here ("10:33a – 10:56a")
-                          and a clipped clock is a wrong clock, whereas a leg
-                          list that runs onto two lines is merely longer.
-                          Suppressed on a Departed card — nothing goes under the
-                          word "Departed", which is not a duration and has no
-                          arrival to quote. */}
-                      {!o.departed && (
-                        <span style={{
-                          fontSize: 13, fontWeight: 500, color: "#202124",
-                          whiteSpace: "nowrap", flexShrink: 0, textAlign: "right",
-                        }}>
-                          {/* Live mode: the bare clock — the start is always
-                              "now" (user feedback 2026-07-17), and sitting
-                              directly under the duration in a right-aligned
-                              column, the number no longer needs a word to say
-                              what it is (operator, 2026-09-04: "remove
-                              'arrive' from arrival time and just show the
-                              time"). Future mode already printed a bare range,
-                              since the start is the chosen departure; the two
-                              modes now agree. */}
-                          {isFuture
-                            ? `${fmtClock(0, targetDate!)} – ${fmtClock(o.totalSec, targetDate!)}`
-                            : fmtClock(o.totalSec)}
-                        </span>
-                      )}
-                    </div>
-                    )}
-                  </div>
-                  {/* Rows navigate (Google-style ›); the details view
-                      exits via ← All routes instead. */}
-                  {!isExpanded && (
-                    <span style={{
-                      fontSize: 16, color: "#9aa0a6", flexShrink: 0, lineHeight: 1.2,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      minHeight: 44, width: 12,
-                    }}>›</span>
-                  )}
-                </div>
-                {/* Last-bus warning — shown in BOTH the collapsed row and the
-                    details view, because the rider decides in either. Two
+              <div key={oKey} style={{ padding: "12px 16px", opacity: o.departed ? 0.7 : 1 }}>
+                {/* Last-bus warning — the key carries the headline; the
+                    details view adds the full explanation. Two
                     nowrap lines (measured at 390px, see lastBus.test.ts);
                     explicit background and colour because the rider app has
                     no dark theme to inherit from. Amber like the service
                     banners; the headline turns red once the published
                     hours have actually ended. */}
-                {lastBus && (
+                {isExpanded && lastBus && (
                   <div
                     data-testid="last-bus"
                     data-kind={lastBus.kind}
@@ -4184,18 +4198,7 @@ const TripPlanner: FC<{
                     in Ym (HH:MM)"; the detailed walk/wait/ride breakdown
                     is deferred to the expanded view so the card stays
                     scannable when the user just wants to pick one. */}
-                {o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null && (() => {
-                  const { busMatch, stopsAway, normBus } = shuttleCtx;
-                  // Both hoisted to row scope — the top line shows the same
-                  // numbers, and computing them twice was how they could
-                  // disagree.
-                  const busEta = busEtaLive ?? 0;
-                  const nextArr = nextArrLive;
-                  // The stops-away/dwell/accuracy/bias readouts that used
-                  // to be derived here were cut with their UI (2026-07-13
-                  // "redundant route info") — the status line + step list
-                  // is the whole story now. The calibration data still
-                  // feeds the ETAs themselves.
+                {isExpanded && o.mode === "shuttle" && !o.etaUnavailable && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null && (() => {
                   return (
                     <>
                       {o.missedBus && !o.departed && (
@@ -4250,17 +4253,13 @@ const TripPlanner: FC<{
                     </>
                   );
                 })()}
-                {/* No bus pin yet — the option was planned off the
-                    schedule (future mode, or no live bus on that route
-                    right now). Fall back to the plain wait summary so
-                    the card isn't blank. Collapsed only — the expanded
-                    step list has its own wait line. */}
-                {!isExpanded && o.mode === "shuttle" && (!shuttleCtx?.busMatch || shuttleCtx.stopsAway === null) && (
-                  <div style={{ fontSize: 13, color: "#5f6368", fontWeight: 500, lineHeight: 1.4 }}>
-                    ⏳ wait {fmtWait(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
-                  </div>
-                )}
                 {isExpanded && o.mode === "shuttle" && (() => {
+                  const tripBus = tripBusIdentity(o);
+                  const leaveInput = liveReminderInput([o], o.routeLabel,
+                    { ...reminderContextRef.current, nowMs: Date.now() });
+                  const reminderActive = reminder?.routeLabel === o.routeLabel
+                    && reminder.boardStopId === o.boardStopId && reminder.alightStopId === o.alightStopId;
+                  const reminderBus = leaveInput?.laterVisit ? `#${leaveInput.busName}'s return` : `#${leaveInput?.busName}`;
                   const boardCoord = stopCoords[o.boardStopId];
                   const navHref = boardCoord
                     ? `https://www.google.com/maps/dir/?api=1&destination=${boardCoord.lat},${boardCoord.lon}&travelmode=walking`
@@ -4275,18 +4274,23 @@ const TripPlanner: FC<{
                   // one Google Maps can navigate to.
                   const cfgBerth = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
                   const berth = cfgBerth ? berthFor(o.boardStopId, cfgBerth.busRouteIds) : null;
+                  const groceryNotice = groceryServiceNotice(o.routeLabel, targetDate ?? new Date());
                   return (
                     <div style={{
                       fontSize: 14, color: "#5f6368", lineHeight: 1.6,
-                      marginTop: 10, paddingTop: 10,
-                      borderTop: "1px solid #dadce0",
                     }} onClick={(e) => e.stopPropagation()}>
                       {/* Service banners from Yale's own map, shown only when
                           they name THIS option's line (or name no line at all).
                           A stop relocation belongs at decision time, in the
                           card the rider is already reading — not on a page
                           they'll never visit. */}
-                      {announcementsForRoute(o.routeLabel, announcements).map((a) => (
+                      {groceryNotice && (
+                        <div role="note" style={{ background: "#FFF8E1", border: "1px solid #FFE082", borderRadius: 6, padding: "6px 8px", marginBottom: 8, fontSize: 12.5, color: "#795548", lineHeight: 1.45 }}>
+                          {groceryNotice}
+                        </div>
+                      )}
+                      {announcementsForRoute(o.routeLabel, announcements)
+                        .filter(a => !(groceryNotice && isGroceryTransitionAnnouncement(a))).map((a) => (
                         <div key={a.id} style={{
                           display: "flex", gap: 6, alignItems: "flex-start",
                           background: "#FFF8E1", border: "1px solid #FFE082",
@@ -4297,198 +4301,88 @@ const TripPlanner: FC<{
                           <span>{a.message}</span>
                         </div>
                       ))}
-                      {/* THE single description of the trip — one chip line,
-                          walk › wait › ride › walk (user feedback 2026-07-17:
-                          "could be one line"). The colored pill carries the
-                          RIDE TIME + bus number, not the route name — the
-                          route is named in the map header above, and stop
-                          names live in the stop list below / the map.
-                          The walk chip is duration only — the live meters
-                          readout was cut 2026-07-17 ("don't need the
-                          distance"). */}
-                      {(() => {
-                        const busNo = shuttleCtx?.busMatch
-                          ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
-                          : (o.busName ? o.busName.replace(/^#/, "") : null);
-                        const waitText = waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
-                        const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
-                        return (
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
-                            {o.walkToSec >= 60 && (<>
-                              <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
-                              {sep}
-                            </>)}
-                            {waitText && (<>
-                              <span style={{ whiteSpace: "nowrap" }}>⏳ {waitText}</span>
-                              {sep}
-                            </>)}
-                            <span style={{
-                              fontWeight: 600, color: "#fff", background: o.color,
-                              borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap",
-                            }}>🚌 {busNo ? `#${busNo} · ` : ""}{fmtMin(o.rideSec)}</span>
-                            {o.walkFromSec >= 60 && (<>
-                              {sep}
-                              <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
-                            </>)}
-                          </div>
-                        );
-                      })()}
-                      {/* Where the bus really pulls up, when that is not the
-                          stop's own dot — FOLDED by default since 2026-09-11
-                          (operator: "maybe we can collapse the stop location by
-                          default and put a drop-down button next to directions
-                          to published stop that has an ! alert"). The warning
-                          beside Directions is the summary; the map, the heading
-                          and the count are behind it, and are not mounted until
-                          the rider asks. BerthDisclosure.tsx owns the fold and
-                          the row; BerthInset.tsx the picture and the copy.
-
-                          A card with no berth takes the branch below and is
-                          unchanged, down to the button's own words. */}
-                      {berth ? (
-                        <BerthDisclosure
-                          berth={berth}
-                          published={stopCoords[o.boardStopId]}
-                          routeLabel={o.routeLabel}
-                          color={o.color}
-                          stopName={boardName}
-                          path={routePaths[String(berth.routeId)] ?? []}
-                          navHref={navHref}
-                          boardName={boardName}
-                        />
-                      ) : (
-                      /* Directions is the card's one prominent action
-                         (user request 2026-07-17: "make it more
-                         obvious"). */
-                      navHref && (
-                        <a
-                          href={navHref}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title={`Walking directions to ${boardName}`}
-                          style={{
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            gap: 6, marginTop: 12, minHeight: 44, borderRadius: 8,
-                            border: "1.5px solid #1a73e8", color: "#1a73e8",
-                            fontWeight: 600, fontSize: 14,
-                            textDecoration: "none", fontFamily: "inherit",
-                          }}
-                        >🧭 Directions to stop</a>
-                      ))}
-                      {/* One flat row of quiet secondary links — the old
-                          nested disclosures (More ▾ → Stops ▾ → Route ▾)
-                          made riders dig three levels for a stop list. The
-                          Stops toggle itself is gone — the list is always
-                          open now. */}
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        style={{
-                          marginTop: 10, paddingTop: 4, borderTop: "1px dashed #dadce0",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          gap: 2, flexWrap: "wrap",
-                        }}>
-                        {/* Manual way into ride tracking. Auto-detect (the
-                            "On <route> #N?" offer) is the usual path, but it
-                            needs a GPS fix good enough to place the rider
-                            within 60 m of the board stop — indoors, in a
-                            urban canyon, or with location permission at
-                            city-block precision it simply never fires, and
-                            without this the ride page is unreachable. */}
-                        {o.mode === "shuttle" && (
-                          <>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onBoard({
-                                  routeLabel: o.routeLabel, color: o.color,
-                                  busName: o.busName,
-                                  boardStopId: o.boardStopId, alightStopId: o.alightStopId,
-                                  startedAt: Date.now(),
-                                  ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),
-                                });
-                              }}
-                              title="Track this ride now — use this if the app didn't notice you boarding"
+                      {tripBus.different && (
+                        <p style={{ margin: "0 0 8px", fontSize: 13, lineHeight: 1.4 }}>
+                          Trip uses #{tripBus.ride}. #{tripBus.pickup} may reach pickup before you.
+                        </p>
+                      )}
+                      {tripBus.laterVisit && (
+                        <p style={{ margin: "0 0 8px", fontSize: 13, lineHeight: 1.4 }}>
+                          Trip uses #{tripBus.ride} on a later visit.
+                        </p>
+                      )}
+                      <div className="trip-actions" role="group" aria-label="Trip actions">
+                        <div>
+                          {berth ? (
+                            <BerthDisclosure
+                              berth={berth}
+                              published={stopCoords[o.boardStopId]}
+                              routeLabel={o.routeLabel}
+                              color={o.color}
+                              stopName={boardName}
+                              path={routePaths[String(berth.routeId)] ?? []}
+                              navHref={navHref}
+                              boardName={boardName}
+                            />
+                          ) : navHref && (
+                            <a
+                              href={navHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={`Walking directions to ${boardName}`}
                               style={{
-                                fontSize: 13, fontWeight: 500, padding: "0 8px",
-                                minHeight: 44, display: "inline-flex", alignItems: "center",
-                                border: "none", background: "transparent",
-                                color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                gap: 6, minHeight: 44, borderRadius: 8,
+                                border: "1.5px solid #1a73e8", color: "#1a73e8",
+                                fontWeight: 600, fontSize: 14,
+                                textDecoration: "none", fontFamily: "inherit",
                               }}
-                            >
-                              🚌 I'm on it
-                            </button>
-                          </>
-                        )}
-                        {/* Leave-time reminder. Hidden when the rider is
-                            effectively at the stop already (walk < 60 s —
-                            they can see the bus, a ping is noise) or when
-                            there's no live bus ETA to count down (future
-                            mode / departed). One reminder at a time: arming
-                            here silently replaces any other armed option,
-                            and the button label is the whole armed-state
-                            UI — no modal. */}
-                        {o.mode === "shuttle" && !o.departed && o.busEtaSec != null && o.walkToSec >= AT_STOP_WALK_SEC && (
-                          <>
-                            <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
+                            >🧭 Directions to stop</a>
+                          )}
+                        </div>
+                        <div className="trip-action-grid" onTouchStart={(e) => e.stopPropagation()}>
+                          {/* Keep both named choices when the trip uses a later bus. */}
+                          <TripBoardingActions {...tripBus} onBoard={(busName) => onBoard({
+                            routeLabel: o.routeLabel, color: o.color, busName,
+                            boardStopId: o.boardStopId, alightStopId: o.alightStopId,
+                            startedAt: Date.now(),
+                            ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),
+                          })} />
+                          {/* Only offer a leave reminder while there is a live,
+                              catchable pickup and a walk left to make. */}
+                          {o.walkToSec >= AT_STOP_WALK_SEC && leaveInput && (
                             <button
+                              className="trip-action-button"
+                              aria-pressed={reminderActive}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (reminder?.routeLabel === o.routeLabel) {
-                                  setReminder(null); // tap again to cancel
+                                if (reminderActive) {
+                                  setReminder(null);
                                   return;
                                 }
                                 reminderFiredRef.current = NO_PINGS_FIRED;
                                 setReminderBanner(null);
-                                // Permission ask must come from this tap —
-                                // never on load. Fire-and-forget: if it's
-                                // denied we fall back to the in-app banner.
                                 void ensureNotifyPermission();
-                                setReminder({ routeLabel: o.routeLabel });
+                                setReminder({ routeLabel: o.routeLabel, boardStopId: o.boardStopId, alightStopId: o.alightStopId });
                               }}
-                              title={reminder?.routeLabel === o.routeLabel
+                              title={reminderActive
                                 ? "Reminding you when it's time to leave — tap to cancel"
-                                : "Ping me 5 min before it's time to leave, and again when it's time to go"}
-                              style={{
-                                fontSize: 13, padding: "0 8px",
-                                minHeight: 44, display: "inline-flex", alignItems: "center",
-                                border: "none", background: "transparent",
-                                color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
-                                fontWeight: reminder?.routeLabel === o.routeLabel ? 700 : 500,
-                              }}
+                                : `Remind me before the pickup window for ${reminderBus}, allowing time to walk`}
                             >
-                              {reminder?.routeLabel === o.routeLabel ? "🔔 Reminding you" : "🔔 Remind me"}
+                              {reminderActive ? `🔔 Reminding you for ${reminderBus}` : `🔔 Remind me for ${reminderBus}`}
                             </button>
-                          </>
-                        )}
-                        {/* Always reached: this whole row renders only for a
-                            shuttle option, so "I'm on it" always precedes
-                            Report and the separator is unconditional. */}
-                        <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); reportOption(o); }}
-                          title="Report that this route is wrong or confusing"
-                          style={{
-                            fontSize: 13, fontWeight: 500, padding: "0 8px",
-                            minHeight: 44, display: "inline-flex", alignItems: "center",
-                            border: "none", background: "transparent",
-                            color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
-                          }}
-                        >
-                          🚩 Report
-                        </button>
+                          )}
+                          <button
+                            className="trip-action-button"
+                            onClick={(e) => { e.stopPropagation(); reportOption(o); }}
+                            title="Report that this route is wrong or confusing"
+                          >🚩 Report</button>
+                          <YaleTrackerPreview routeLabel={o.routeLabel} color={o.color} />
+                        </div>
                         {reportStatus && (
-                          <span style={{ fontSize: 12, color: "#5f6368" }}>
-                            {reportStatus}
-                          </span>
+                          <span role="status" style={{ fontSize: 12, color: "#5f6368" }}>{reportStatus}</span>
                         )}
                       </div>
-                      {/* Restored from v1: one tap to the operator's own view
-                          of THIS route, for when a rider doubts what we show. */}
-                      {o.mode === "shuttle" && (
-                        <YaleTrackerPreview routeLabel={o.routeLabel} color={o.color} />
-                      )}
                     </div>
                   );
                 })()}
@@ -4497,399 +4391,11 @@ const TripPlanner: FC<{
                     <TripMap from={fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL} to={toLL} color={o.color} />
                   </div>
                 )}
-                {isExpanded && o.mode === "shuttle" && (() => {
-                  // Stop list, two sections. ALWAYS shown with the route —
-                  // the "Stops ▾" toggle was removed on 2026-09-03 (operator:
-                  // "we'll always want to show the drop-down"), and it had
-                  // auto-opened since 2026-07-17 anyway, so the control's only
-                  // remaining job was to take the list away. First the
-                  // APPROACH (the stops
-                  // the bus still has to clear to reach the pickup, muted,
-                  // with typical hold times and a live "been sitting here"
-                  // counter at its current stop), then the board→alight
-                  // ride. The 2026-07-16 cockpit cull stands otherwise —
-                  // no embedded map/iframe/pace flags/strikethroughs.
-                  const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
-                  if (!cfg) return null;
-                  const allStops: number[] = [];
-                  const seen = new Set<number>();
-                  for (const rid of cfg.routeIds) {
-                    for (const sid of (routeStops[rid] ?? [])) {
-                      if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
-                    }
-                  }
-                  const bi = allStops.indexOf(o.boardStopId);
-                  const ai = allStops.indexOf(o.alightStopId);
-                  if (bi === -1 || ai === -1) return null;
-                  const segStops = bi <= ai
-                    ? allStops.slice(bi, ai + 1)
-                    : [...allStops.slice(bi), ...allStops.slice(0, ai + 1)];
-                  const normBus = (s: string) => s.replace(/^#/, "");
-                  const busMatch = buses.find((b) =>
-                    normBus(b.bus_name) === normBus(o.busName) &&
-                    cfg.busRouteIds.includes(b.route_id) &&
-                    isBusOnRoute(b, allStops, stopCoords),
-                  );
-                  // THE number the rider reads on the "🚌 #316 · N stops away"
-                  // line below. Ungated it oscillated 3/4/4/2/4 across polls
-                  // beside a countdown that was not moving; it now comes from
-                  // the same gated anchor the countdown does.
-                  const busAnchorIdx = busMatch
-                    ? anchorIndexOnList(
-                        busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
-                      )
-                    : -1;
-                  const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
-                  // Approach: bus's current stop → the stop before the
-                  // pickup, only while the bus is genuinely upstream.
-                  const stopsAway = busAnchorIdx >= 0 ? (bi - busAnchorIdx + allStops.length) % allStops.length : 0;
-                  const approachStops = busAnchorIdx >= 0 && stopsAway > 0 && busSegPos === -1
-                    ? (busAnchorIdx <= bi
-                        ? allStops.slice(busAnchorIdx, bi)
-                        : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
-                    : [];
-                  // WHEN THE BUS REACHES THE RIDER, on the BOARD row that
-                  // ends the approach. The approach list's only number used to
-                  // be the pause chip's DEPARTURE from the stop the bus stands
-                  // at, three rows up from a stop the list never priced — and
-                  // a rider compared it with the row's ARRIVAL band and saw
-                  // two answers (operator, 2026-09-11: "map says 1-8 but route
-                  // list says 1-4"). These are the row's own `leadBand` and
-                  // `busEtaLive`, the two values `fmtBusLine` prints on the
-                  // top line, so the list cannot print a different arrival
-                  // (etaBand.ts `boardArrivalText`; a source-level test in
-                  // standWait.test.ts pins both call sites to them). Only while
-                  // the bus is upstream: at the board stop the row already
-                  // carries 🚌 and its clock, and past it there is no arrival.
-                  const boardArrival = approachStops.length > 0 && busEtaLive !== null && !o.departed
-                    ? boardArrivalText(leadBand, busEtaLive)
-                    : null;
-                  // Dwell readouts: the typical hold at a stop, plus the live
-                  // elapsed while the bus is parked at its current stop.
-                  const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
-                  // The hold SHOWN must be the hold BILLED — see shownStandSec
-                  // (report #73: "it says arrive in 8 but expected dwell is
-                  // 10", which was the median on screen and a low quantile in
-                  // the arithmetic).
-                  //
-                  // So this reads the same records computeUpcomingArrivals
-                  // prices from, through the same predicates, and nothing else.
-                  // Two ways it has drifted before:
-                  //
-                  //  - It used to prefer a per-bus dwell (dwellsByBus, n >= 5)
-                  //    while the arithmetic only ever read the ROUTE dwell:
-                  //    "held 5 min of ~5" beside a countdown charging a
-                  //    different ~5. It could not fire only because the server
-                  //    hardcodes dwells_by_bus to {} (src/server/v1compat.ts)
-                  //    — a latent trap, not a working feature.
-                  //  - Once the stand/drive split went live (Red, Blue Day)
-                  //    the chip kept quoting `dwell.med`, the arrival-to-
-                  //    arrival median that CONTAINS DRIVE TIME, while the
-                  //    countdown priced the conditional standing quantiles:
-                  //    "⏸ 3 min / ~10 min" beside "5 min" (2026-09-04).
-                  //
-                  // If per-bus dwells are ever really served, thread them into
-                  // computeUpcomingArrivals FIRST; display follows billing.
-                  // The chip reads the model's own stand table (see
-                  // shownStandSec), the one the countdown is billed from.
-                  const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
-                  /**
-                   * M:SS for the live pause chip, so a hold keeps its seconds
-                   * past the first minute.
-                   *
-                   * `fmtShort` drops to whole minutes at 60 s, which is right
-                   * for a figure a rider glances at but wrong for one they are
-                   * watching tick: the operator, watching a bus stand at a
-                   * layover — "after it gets to 1 min we lose the seconds but I
-                   * like those". A hold is the one number on this screen that
-                   * moves every second and is worth watching move.
-                   *
-                   * NOT `min`-suffixed, and that is a deliberate exception to
-                   * the app's "spell minutes `min`" rule rather than an
-                   * oversight: the rule exists so a bare `m` is never read as
-                   * miles, and `2:15` cannot be. It reads as a stopwatch,
-                   * which is what it is. Minutes past the hour never appear —
-                   * a layover running over 59 minutes would print `62:10`,
-                   * which is still a duration and still unambiguous.
-                   */
-                  const fmtMmss = (s: number) => {
-                    const t = Math.max(0, Math.round(s));
-                    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-                  };
-                  /**
-                   * WHERE THE BUS IS STANDING — the estimator's answer, not a
-                   * second reading of the payload.
-                   *
-                   * This used to derive the hold straight from
-                   * `at_stop_id`/`at_stop_since`. That agreed with the price
-                   * until #130 shipped the approach zone, and then stopped: a
-                   * bus taking its layover short of the marker publishes no
-                   * `at_stop_id`, so the countdown priced it as standing while
-                   * the chip beside it showed nothing and the row read as a bus
-                   * still rolling. Report #102 is a rider seeing exactly that —
-                   * "a bus sitting in a garage lot was counted down as if on
-                   * its way".
-                   *
-                   * `resolveStandingStop` is the one the price uses. The hold
-                   * shown must be the hold billed, and now the STOP shown is
-                   * the stop billed too.
-                   */
-                  const standing = busMatch
-                    ? resolveStandingStop(
-                        busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                      )
-                    : null;
-                  const liveElapsedSec = standing ? standing.standingSec : null;
-                  /** The chip's clock and words — one composition for both stop lists. */
-                  const standChip = standChipFor(standing, routeDwells, dwellTimes ?? undefined);
-                  /**
-                   * The hold to show at `sid`. `elapsed` is passed only for the
-                   * stop the bus is actually standing at — everywhere else
-                   * there is no remainder to state, so the typical hold is
-                   * the honest answer. Same table, same pools, same clock as
-                   * the countdown (shownStandSec).
-                   */
-                  const standAt = (sid: number, elapsed: number | null) => {
-                    const stat = routeDwells[String(sid)];
-                    if (!stat || stat.n < 3) return null;
-                    return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
-                  };
-                  return (
-                    <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
-                      {approachStops.length > 0 && busMatch && (
-                        // Name the vehicle this approach belongs to. Report #41
-                        // said the list showed "only 3 stops" on an 11-stop
-                        // approach; with the bus unnamed there was no way for
-                        // the rider (or us) to tell whether the anchor was wrong
-                        // or they were simply watching a different shuttle.
-                        <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>
-                          🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} away
-                        </div>
-                      )}
-                      {approachStops.length > 0 && (
-                        <div style={{ position: "relative", paddingLeft: 16, marginBottom: 4 }}>
-                          <span style={{
-                            position: "absolute", left: 6, top: 6, bottom: 0,
-                            borderLeft: `2px dashed ${o.color}`, opacity: 0.4,
-                          }} />
-                          {approachStops.map((sid, j) => {
-                            const isBusHere = j === 0;
-                            const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const showLive = isBusHere && standing?.stopId === sid && liveElapsedSec != null;
-                            const stand = standAt(sid, showLive ? liveElapsedSec : null);
-                            const hl = stopRowHighlight(isBusHere, false, o.color);
-                            return (
-                              <div key={sid} style={{
-                                position: "relative", display: "flex", alignItems: "center",
-                                padding: hl.banded ? "4px 6px" : "2px 0",
-                                marginLeft: hl.banded ? -6 : 0,
-                                borderRadius: 4,
-                                background: hl.background,
-                                opacity: isBusHere ? 1 : 0.65,
-                              }}>
-                                <span style={{
-                                  position: "absolute", left: hl.banded ? -7 : -13, top: "50%",
-                                  transform: "translateY(-50%)",
-                                  width: 7, height: 7, borderRadius: "50%",
-                                  background: "#fff", border: `2px solid ${o.color}`,
-                                  boxSizing: "border-box",
-                                }} />
-                                <span style={{
-                                  fontSize: 13,
-                                  fontWeight: isBusHere ? 700 : 400,
-                                  color: hl.color,
-                                  marginLeft: 10,
-                                }}>
-                                  {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
-                                  {name}
-                                  {showLive && (
-                                    // "⏸ 3:21 · leaves in 1-6 min" — the clock the
-                                    // rider watches tick, then WHAT IS LEFT of the
-                                    // stand, bounded.
-                                    //
-                                    // It used to be "3:21 / ~4:48": elapsed over the
-                                    // stop's TYPICAL hold. Two shapes have now failed
-                                    // here for the same reason — a rider subtracts.
-                                    // First Y was `dwell.med`, an arrival-to-arrival
-                                    // figure containing drive time ("3 of 10" → they
-                                    // expected seven more minutes and the app said
-                                    // four). Then Y became the typical hold, honest
-                                    // about the STOP and still wrong about the BUS:
-                                    // at 3:21 into the operator's 2026-09-07 stand it
-                                    // implied 1:27 more when the model's own answer
-                                    // was 3:15 and the truth 5:55. The right number
-                                    // was already here — the tooltip has always said
-                                    // "about N still to go".
-                                    //
-                                    // So the chip states the remainder, and states it
-                                    // as a pair or a ceiling rather than a point,
-                                    // because a stand that has run long ends at no
-                                    // predictable second (standWait.ts). The typical
-                                    // hold keeps its place in the tooltip, where a
-                                    // rider reads it as context instead of subtracting
-                                    // from it.
-                                    //
-                                    // AND IT NAMES WHICH QUANTITY IT IS. "<1-8 min
-                                    // left" sat twelve pixels under a row reading "in
-                                    // 2-9 min" and a bubble reading "(R) 2-9 min"
-                                    // (operator, 2026-09-11). Both were right —
-                                    // reproduced from production, the remainder is
-                                    // q10/q50/q90 = 56/241/487 s and the drive floor to
-                                    // the board stop 72 s, so 2-9 IS (<1-8) + the
-                                    // drive — but nothing on screen said the 8 minutes
-                                    // were a DEPARTURE. `standChipFor` says it.
-                                    //
-                                    // Composed in standWait.ts, not here, so the Map
-                                    // tab's route-card rows print the identical string
-                                    // for the identical bus (a source-level test in
-                                    // standWait.test.ts fails if either site composes
-                                    // its own).
-                                    <span style={{
-                                            fontSize: 10, fontWeight: 700, marginLeft: 6,
-                                            // Amber once the stand has outlasted the stop's
-                                            // typical hold. The typical figure itself left
-                                            // the chip (it was the misleading half), so this
-                                            // is what carries "this is running long" at a
-                                            // glance; the tooltip names the figure.
-                                            color: standChip?.overdue ? "#8a5300" : "#5f6368",
-                                          }}
-                                          title={standChip
-                                            ? standChip.title
-                                            : "Time the bus has been sitting here"}>
-                                      ⏸ {standChip ? standChip.clock : fmtMmss(liveElapsedSec!)}
-                                      {standChip ? ` · ${standChip.text}` : ""}
-                                    </span>
-                                  )}
-                                  {showLive && standing?.approach && (
-                                    // WHERE it is waiting, in one word.
-                                    //
-                                    // Report #102: a bus holding in the Science
-                                    // Park Garage lot showed as "here" at
-                                    // 344 Winchester, 144 m away. The countdown
-                                    // is right — it IS taking that layover — but
-                                    // a rider standing at the marker looks up
-                                    // and sees no bus.
-                                    //
-                                    // Deliberately NOT a "~" prefix on the
-                                    // clock, which was the first draft: this UI
-                                    // already spends "~" on approximate
-                                    // DURATIONS (the hold beside it), so
-                                    // the same mark for approximate PLACE reads
-                                    // as fuzziness about the number instead.
-                                    // A word cannot be misread that way.
-                                    <span style={{ fontSize: 10, fontWeight: 600, color: "#9aa0a6", marginLeft: 4 }}
-                                          title="Holding just short of the stop, not at the kerb">
-                                      nearby
-                                    </span>
-                                  )}
-                                  {!showLive && stand != null && stand.sec >= 180 && (
-                                    // One figure, before the bus arrives and
-                                    // after. This was briefly a "5-9 min"
-                                    // range, because the ETA billed a low
-                                    // quantile ahead of the stop and the
-                                    // median once the bus was standing there,
-                                    // and report #77 saw the number change on
-                                    // arrival. The estimator no longer bills
-                                    // two prices, so there is nothing left to
-                                    // disagree and nothing to show a spread
-                                    // for.
-                                    <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
-                                          title="Typical hold at this stop">
-                                      ⏸ ~{fmtShort(stand.sec)}
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                      <div style={{ position: "relative", paddingLeft: 16 }}>
-                      <span style={{
-                        position: "absolute", left: 6, top: 6, bottom: 6,
-                        width: 2, background: o.color, opacity: 0.6,
-                      }} />
-                      {segStops.map((sid, j) => {
-                        const isBoard = j === 0;
-                        const isAlight = j === segStops.length - 1;
-                        const isEnd = isBoard || isAlight;
-                        const isBusHere = j === busSegPos;
-                        const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                        const hl = stopRowHighlight(isBusHere, isEnd, o.color);
-                        return (
-                          <div key={sid} style={{
-                            position: "relative", display: "flex", alignItems: "center",
-                            padding: hl.banded ? "4px 6px" : "2px 0",
-                            marginLeft: hl.banded ? -6 : 0,
-                            borderRadius: 4,
-                            background: hl.background,
-                          }}>
-                            <span style={{
-                              position: "absolute", left: hl.banded ? -8 : -14, top: "50%",
-                              transform: "translateY(-50%)",
-                              width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
-                              borderRadius: "50%",
-                              background: isEnd ? o.color : "#fff",
-                              border: `2px solid ${o.color}`,
-                              boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
-                              boxSizing: "border-box",
-                            }} />
-                            <span style={{
-                              fontSize: 14,
-                              fontWeight: isEnd || isBusHere ? 700 : 400,
-                              color: hl.color,
-                              marginLeft: 10,
-                            }}>
-                              {isBoard && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
-                              {isAlight && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
-                              {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
-                              {name}
-                              {isBoard && boardArrival && (
-                                // The pause chip's size and ink, so the two read as
-                                // one pair: "leaves in <1-4 min" where the bus is,
-                                // "arrives in 1-8 min" where the rider boards.
-                                // MEASURED at 390 px beside the BOARD tag (the
-                                // probe in pr-preview/approach-board-row): at 10 px
-                                // the widest form a band can print, "arrives in
-                                // 23-36 min", is 99 px and sits on the line beside
-                                // Division/Prospect, Prospect/Canner and LEPH/60
-                                // College; at 11 px it is 108 px and still fits,
-                                // but the chip's own size is what settles it —
-                                // before #237 dropped the median, 11 px orphaned
-                                // the "min" of "arrives in 4 (2-10) min" on the
-                                // operator's own stop. `nowrap` so a long stop name
-                                // ("130 Prospect Street (S)") moves the whole
-                                // phrase to the next line rather than breaking it.
-                                // A real space before it, not margin alone, so a
-                                // screen reader (and the canary's innerText) does
-                                // not hear "Prospectarrives".
-                                <>{" "}<span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 3, whiteSpace: "nowrap" }}
-                                      title={leadBand && busEtaLive !== null
-                                        ? bandTitle(leadBand, busEtaLive)
-                                        : "When this bus reaches your stop"}>
-                                  {boardArrival}
-                                </span></>
-                              )}
-                              {isBusHere && standing?.stopId === sid && liveElapsedSec != null && (
-                                <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                      title={standing.approach
-                                        ? "The bus is waiting for this stop — it is holding just short of the marker"
-                                        : "Time the bus has been sitting here"}>
-                                  ⏸ {fmtMmss(liveElapsedSec)}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      </div>
-                    </div>
-                  );
-                })()}
+
               </div>
             );
           })}
-          </div>
+          </div>}
             {_hidden > 0 && !_detailOpen && (
               <button
                 onClick={() => setShowAllOptions(true)}
@@ -4957,10 +4463,12 @@ const TripPlanner: FC<{
         const firstTimer = savedTrips.length === 0 && recentTrips.length === 0;
         return (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 13, color: buses.length > 0 ? "#2E7D32" : "#78909c", padding: "0 2px", fontWeight: 600 }}>
-              {buses.length > 0
-                ? `🚌 ${buses.length} shuttle${buses.length === 1 ? "" : "s"} running now on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
-                : "😴 No shuttles running right now"}
+            <div role="status" style={{ fontSize: 13, color: busStatus === "ready" && buses.length > 0 ? "#2E7D32" : "#78909c", padding: "0 2px", fontWeight: 600 }}>
+              {busStatus === "loading" ? "Loading shuttle information…"
+                : busStatus === "unavailable" ? "Live shuttle status unavailable"
+                : buses.length > 0
+                  ? `🚌 ${buses.length} shuttle${buses.length === 1 ? "" : "s"} reporting on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
+                  : "No shuttles reporting right now"}
             </div>
             {/* WHY nothing is running, in Yale's own words. A system-wide
                 notice names no route, so the per-option banners never showed
@@ -4975,14 +4483,17 @@ const TripPlanner: FC<{
                 background: "#fff8e1", border: "1px solid #ffe082",
                 fontSize: 13, color: "#5d4037", lineHeight: 1.45,
               }}>
+                {busStatus !== "ready" && <span>Last received notice: </span>}
                 <span style={{ fontWeight: 700 }}>{a.title}</span>
                 <span style={{ margin: "0 6px" }}>·</span>
                 <span>{a.message}</span>
               </div>
             ))}
-            {firstTimer && buses.length > 0 && (
+            {firstTimer && (
               <div style={{ fontSize: 12, color: "#78909c", padding: "2px 2px 0" }}>
-                Pick a destination — we compare walking against every shuttle.
+                {busStatus === "ready" && buses.length > 0
+                  ? "Pick a destination — we compare walking against every shuttle."
+                  : "Choose a destination to check walking directions and route schedules."}
               </div>
             )}
             {firstTimer && (
@@ -5013,136 +4524,23 @@ const TripPlanner: FC<{
       {/* Saved + Recent are hidden whenever we have a live trip on
           screen — the destination search is what the user is acting on.
           They come back automatically once the destination is cleared. */}
-      {!options && savedTrips.length > 0 && (
-        <div style={{ marginTop: 20, marginBottom: 8 }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 3, padding: "0 2px",
-          }}>
-            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Saved destinations</span>
-            <button
-              onClick={() => {
-                setEditingSavedMode((v) => !v);
-                setEditingSavedId(null);
-              }}
-              style={{
-                border: "none", background: "transparent",
-                color: editingSavedMode ? "#2E7D32" : "#90a4ae",
-                fontSize: 12, fontWeight: editingSavedMode ? 700 : 400,
-                cursor: "pointer", padding: "0 4px", lineHeight: 1,
-              }}
-              title={editingSavedMode ? "Done editing" : "Rename or delete"}
-            >{editingSavedMode ? "Done" : "✎"}</button>
-          </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 4,
-            maxHeight: 180, overflowY: "auto",
-          }}>
-            {savedTrips.map((t) => {
-              const editing = editingSavedMode;
-              if (editing) {
-                // Edit mode stretches to a full row so the input is
-                // comfortable AND the ✕ delete button lives far from the
-                // regular tap target to avoid accidental removal.
-                return (
-                  <div key={t.id} style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "4px 8px", borderRadius: 8,
-                    background: "#f1f8e9", border: "1px solid #c5e1a5",
-                    gridColumn: "1 / -1",
-                  }} onClick={(e) => e.stopPropagation()}>
-                    <span style={{ color: "#2E7D32", fontSize: 11 }}>★</span>
-                    <input
-                      defaultValue={t.toText}
-                      onBlur={(e) => {
-                        const v = e.currentTarget.value.trim();
-                        if (v && v !== t.toText) onRenameSaved(t.id, v);
-                        setEditingSavedId(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.currentTarget.blur();
-                        if (e.key === "Escape") setEditingSavedId(null);
-                      }}
-                      style={{
-                        flex: 1, minWidth: 0, fontSize: 12, padding: "2px 6px",
-                        border: "1px solid #cfd8dc", background: "#fff",
-                        borderRadius: 4,
-                        fontFamily: "inherit", color: "#263238", outline: "none",
-                      }}
-                    />
-                    <button
-                      onMouseDown={(e) => {
-                        // Fire before input's onBlur so we don't commit a
-                        // half-edited name when the user is really just
-                        // removing the entry.
-                        e.preventDefault(); e.stopPropagation();
-                        setEditingSavedId(null);
-                        onDeleteSaved(t.id);
-                      }}
-                      style={{
-                        fontSize: 11, padding: "3px 8px",
-                        border: "1px solid #C62828", background: "#fff",
-                        color: "#C62828", borderRadius: 4,
-                        fontFamily: "inherit", cursor: "pointer",
-                      }}
-                      title="Delete this saved destination"
-                    >✕ delete</button>
-                  </div>
-                );
-              }
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => applyDestination(t)}
-                  title="Tap to plan"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44,
-                    padding: "3px 10px", borderRadius: 999,
-                    background: "#fff",
-                    border: "1px solid #c5e1a5",
-                    fontSize: 11, color: "#263238", cursor: "pointer",
-                    maxWidth: "100%",
-                  }}
-                >
-                  <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>
-                  <span style={{
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    color: "#C62828", fontWeight: 600,
-                  }}>{t.toText}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {!options && recentTrips.length > 0 && (
-        <div style={{ marginTop: savedTrips.length > 0 ? 8 : 20, marginBottom: 10 }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 3, padding: "0 2px",
-          }}>
-            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Recent places</span>
-            <button
-              onClick={onClearRecents}
-              style={{
-                border: "none", background: "transparent",
-                color: "#90a4ae",
-                fontSize: 12, fontWeight: 400,
-                cursor: "pointer", padding: "0 4px", lineHeight: 1,
-              }}
-              title="Clear all recent places"
-            >Clear all</button>
-          </div>
-          <div style={{
-            display: "flex", flexDirection: "column", gap: 4,
-            maxHeight: 320, overflowY: "auto",
-          }}>
-            {recentTrips.map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
-          </div>
-        </div>
-      )}
+      {!options && <SavedPlaces
+        saved={savedTrips} recent={recentTrips}
+        onPick={(place) => {
+          const active = document.activeElement;
+          applyDestination(place);
+          setToExpanded(false);
+          requestAnimationFrame(() => {
+            if (document.activeElement === active || document.activeElement === document.body) {
+              toSummaryRef.current?.focus({ preventScroll: true });
+            }
+          });
+        }}
+        onSave={onSaveTrip} onRename={onRenameSaved}
+        onDeleteSaved={onDeleteSaved} onDeleteRecent={onDeleteRecent}
+        onClearRecent={onClearRecents}
+        focusDestination={() => (toSummaryRef.current ?? toInputRef.current)?.focus({ preventScroll: true })}
+      />}
       {autoDetectOffer && (
         <div style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
@@ -5423,12 +4821,14 @@ const RouteThumb: FC<{
   color: string;
   label: string;
   dashed?: boolean;
-}> = ({ thumb, color, label, dashed }) => {
+  busStatus: LiveBusStatus;
+}> = ({ thumb, color, label, dashed, busStatus }) => {
   const busNames = thumb.buses.map((b) => b.name).join(", ");
   const caption = `${label} route map: ${thumb.stops.length} stops, `
-    + (thumb.buses.length === 0
-      ? "no buses running"
-      : `${thumb.buses.length} ${thumb.buses.length === 1 ? "bus" : "buses"} live (${busNames})`);
+    + (busStatus !== "ready" ? "live bus positions unavailable"
+      : thumb.buses.length === 0
+        ? "no buses reporting"
+        : `${thumb.buses.length} ${thumb.buses.length === 1 ? "bus" : "buses"} reporting (${busNames})`);
   return (
     <svg
       viewBox={thumb.viewBox}
@@ -5467,6 +4867,7 @@ const RouteThumb: FC<{
 
 const StopList: FC<{
   buses: BusData[];
+  busStatus: LiveBusStatus;
   stopNames: Record<number, string>;
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
@@ -5493,9 +4894,9 @@ const StopList: FC<{
   // Stop-arrival alerts (stopAlerts.ts). The arms live in the page shell, not
   // here: this list unmounts on a tab switch and an armed alert must not.
   stopAlerts?: readonly StopAlert[];
-  onArmStopAlert?: (routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number) => void;
+  onArmStopAlert?: (routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number, leadStops?: number) => void;
   onDisarmStopAlert?: (routeLabel: string, stopId: number) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate, stopAlerts, onArmStopAlert, onDisarmStopAlert }) => {
+}> = ({ buses, busStatus, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate, stopAlerts, onArmStopAlert, onDisarmStopAlert }) => {
   // Which route the rider has tapped into, by primary route id. Local state on
   // purpose: leaving the tab unmounts this list, so isolation never survives a
   // visit. The effect covers the case where the view changes underneath us
@@ -5508,6 +4909,14 @@ const StopList: FC<{
    * switch. One at a time: opening a second closes the first.
    */
   const [alertChooserFor, setAlertChooserFor] = useState<string | null>(null);
+  const closeAlertChooser = (triggerId: string) => {
+    // This disclosure removes its focused choices. Return to the bell on
+    // explicit close/arm, before removing them; no delayed focus to steal
+    // from another view or from the browser's permission prompt.
+    // Find the currently rendered bell: polling may have reordered its row.
+    document.getElementById(triggerId)?.focus();
+    setAlertChooserFor(null);
+  };
 
   // ── ONE estimator, one anchor, for the whole page ──────────────────────
   //
@@ -5571,6 +4980,8 @@ const StopList: FC<{
   const restByBus: Record<number, Record<string, { stopId: number; standingSec: number; approach: boolean }>> = {};
   /** Buses on the line that the estimator will actually price from. */
   const onRouteCounts: Record<number, number> = {};
+  const startingCounts: Record<number, number> = {};
+  let alertArrivals: UpcomingArrival[] = [];
   const normBusName = (s: string) => s.replace(/^#/, "");
   {
     // One clock for the whole page: the anchor and the ETA must be answers
@@ -5596,10 +5007,11 @@ const StopList: FC<{
       restByStop[idx] = {};
       restByBus[idx] = {};
       onRouteCounts[idx] = 0;
+      startingCounts[idx] = 0;
       for (const sid of stops) targets.push(sid);
     });
 
-    const live = computeUpcomingArrivals(
+    const live = alertArrivals = computeUpcomingArrivals(
       targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
     );
     // Sorted by eta ascending, so the first entry for a (line, stop) is this
@@ -5630,6 +5042,10 @@ const StopList: FC<{
         // stop it is not serving, above a list with no times in it, is two
         // contradictory claims on one card.
         if (!isBusOnRoute(bus, canonical, stopCoords)) continue;
+        if (!busReadyForEta(bus, cfg.label, canonical)) {
+          startingCounts[idx]!++;
+          continue;
+        }
         onRouteCounts[idx]!++;
         const i = anchorIndexOnList(bus, cfg, routeStops, stopCoords, stops, nowMs, liveAnchorStore);
         if (i < 0) continue;
@@ -5677,7 +5093,8 @@ const StopList: FC<{
         const restAtStop = restByStop[listIdx] ?? {};
         const restForBus = restByBus[listIdx] ?? {};
         const onRoute = onRouteCounts[listIdx] ?? 0;
-        const hasBuses = onRoute > 0;
+        const starting = startingCounts[listIdx] ?? 0;
+        const hasBuses = onRoute + starting > 0;
         const primaryRouteId = cfg.routeIds[0];
         const isFav = favorites.has(primaryRouteId);
         const isolated = isolatedRouteId === primaryRouteId;
@@ -5741,15 +5158,16 @@ const StopList: FC<{
         // ROUTE_CALENDAR) says so beside its hours, so "0/1 bus" under
         // "Sa/Su 7a–5p" on a Sunday does not read as a bus that failed to
         // come out.
-        const off = routeBuses.length === 0
+        const off = busStatus === "ready" && routeBuses.length === 0
           ? serviceStateAt(published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, new Date(), {
               labels: new Set(buses.map((b) => ROUTE_ID_LABEL[b.route_id]).filter((l): l is string => !!l)),
               now: new Date(),
               active: routeActiveFor(cfg, routeActive),
             }).off
           : null;
-        const schedule = off ? `${hoursText} · ${off.partner ? "not this weekend" : "not running today"}` : hoursText;
-        const routeNote = ROUTE_CALENDAR[cfg.label]?.note ?? null;
+        const schedule = routeDiscontinuedAt(cfg.label, new Date()) ? "Milford service discontinued Sep 19, 2026"
+          : off ? `${hoursText} · ${off.partner ? "not this weekend" : "not running today"}` : hoursText;
+        const routeNote = groceryServiceNotice(cfg.label) ?? ROUTE_CALENDAR[cfg.label]?.note ?? null;
         const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
           + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
 
@@ -5791,6 +5209,7 @@ const StopList: FC<{
           const armedAlert = stopAlerts ? findStopAlert(stopAlerts, cfg.label, stopId) : undefined;
           const chooserKey = `${listIdx}:${stopId}`;
           const chooserOpen = alertChooserFor === chooserKey;
+          const chooserId = `stop-alert-chooser-${listView}-${listIdx}-${stopId}`;
 
           return (
             <Fragment key={key}>
@@ -5851,24 +5270,10 @@ const StopList: FC<{
                 return (
                   <span style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
                     <span style={{ fontSize: 12, color: cfg.color, fontWeight: 700, opacity: e.estimated ? 0.5 : 1 }}>
-                      {/* `fmtMin(eta)`, the trip card's own rule — not the LOW
-                          end of the interval, which is what this row used to
-                          print. Two surfaces now share an estimator; printing
-                          its answer through two different transforms would put
-                          them a minute or two apart again for no reason, and
-                          `Math.round(low / 60)` could reach "0 min" for a bus
-                          at the kerb, which PR #98 already established is not a
-                          countdown. The interval has not gone: it is the clock
-                          time beside it. */}
-                      {/* The RANGE when the bus supplying this arrival is
-                          standing, the point otherwise — `stopEtaText` falls
-                          through to `fmtMin(eta)`, so every non-standing row is
-                          byte-identical to what this printed before. Same
-                          composition as the trip card's minimap chip. */}
-                      {e.estimated ? "~" : ""}{stopEtaText(
-                        restForBus[normBusName(e.busName)] ?? null,
-                        e, routeDwells, dwellTimes,
-                      )}
+                      {(() => {
+                        const label = mapArrivalLabel(e);
+                        return label && <>{label.point}{label.window && <span style={{ display: 'block', fontSize: 10, fontWeight: 400 }}>{label.window}</span>}</>;
+                      })()}
                     </span>
                     <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
                       {fmtClock(e.eta)}
@@ -5933,6 +5338,7 @@ const StopList: FC<{
                   is untouched). */}
               {onArmStopAlert && (
                 <button
+                  id={`${chooserId}-trigger`}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (armedAlert) {
@@ -5942,11 +5348,21 @@ const StopList: FC<{
                     }
                     setAlertChooserFor(chooserOpen ? null : chooserKey);
                   }}
+                  aria-expanded={chooserOpen && !armedAlert}
+                  aria-controls={chooserOpen && !armedAlert ? chooserId : undefined}
+                  aria-pressed={!!armedAlert}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && chooserOpen && !armedAlert) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      closeAlertChooser(`${chooserId}-trigger`);
+                    }
+                  }}
                   aria-label={armedAlert
                     ? `Cancel the alert for ${cfg.label} at ${name}`
                     : `Alert me when ${cfg.label} reaches ${name}`}
                   title={armedAlert
-                    ? `Alerting you ${armedAlert.leadMin} min before ${cfg.label} reaches ${name} — tap to cancel`
+                    ? `Alerting you ${stopAlertLeadLabel(armedAlert)} before ${cfg.label} reaches ${name} — tap to cancel`
                     : `Alert me when ${cfg.label} reaches ${name}`}
                   style={{
                     flexShrink: 0, width: 44, minHeight: 44,
@@ -5974,7 +5390,18 @@ const StopList: FC<{
                 honest limit of phase 1 — the ping needs this page alive. */}
             {chooserOpen && !armedAlert && (
               <div
+                id={chooserId}
+                role="group"
+                aria-label={`Alert for ${cfg.label} at ${name}`}
+                aria-describedby={`${chooserId}-hint`}
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeAlertChooser(`${chooserId}-trigger`);
+                  }
+                }}
                 style={{
                   padding: "8px 10px 10px 26px", background: `${cfg.color}0D`,
                   borderLeft: `4px solid ${cfg.color}`, borderRadius: 4,
@@ -5984,37 +5411,39 @@ const StopList: FC<{
                 <span style={{ fontSize: 12.5, color: "#37474f", lineHeight: 1.3 }}>
                   Alert me when <strong style={{ color: cfg.color }}>{cfg.label}</strong> reaches {name}
                 </span>
-                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  {LEAD_CHOICES.map((m) => (
+                <span style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  {LEAD_STOP_CHOICES.map((m) => (
                     <button
                       key={m}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setAlertChooserFor(null);
-                        onArmStopAlert?.(primaryRouteId!, cfg.label, stopId, name, m);
+                        closeAlertChooser(`${chooserId}-trigger`);
+                        onArmStopAlert?.(primaryRouteId!, cfg.label, stopId, name, DEFAULT_LEAD_MIN, m);
                       }}
-                      title={`Ping me ${m} min before it arrives, and again when it gets here`}
+                      title={`Ping me ${m} stop${m === 1 ? "" : "s"} before it arrives, and again when it gets here`}
                       style={{
                         minHeight: 44, padding: "0 12px", borderRadius: 12,
                         border: `1px solid ${cfg.color}`,
-                        background: m === DEFAULT_LEAD_MIN ? cfg.color : "#fff",
-                        color: m === DEFAULT_LEAD_MIN ? "#fff" : cfg.color,
+                        background: m === DEFAULT_LEAD_STOPS ? cfg.color : "#fff",
+                        color: m === DEFAULT_LEAD_STOPS ? "#fff" : cfg.color,
                         fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
                         whiteSpace: "nowrap",
                       }}
-                    >{m} min</button>
+                    ><span style={{ display: "block" }}>{m} stop{m === 1 ? "" : "s"}</span>
+                      <span style={{ display: "block", fontSize: 11, fontWeight: 400 }}>{stopAlertEstimateText(stopAlertEstimateSec(alertArrivals, cfg.label, stopId, m))}</span>
+                    </button>
                   ))}
                   <button
-                    onClick={(e) => { e.stopPropagation(); setAlertChooserFor(null); }}
-                    aria-label="Cancel"
+                    onClick={(e) => { e.stopPropagation(); closeAlertChooser(`${chooserId}-trigger`); }}
+                    aria-label="Cancel alert setup"
                     style={{
                       minHeight: 44, width: 44, border: "none", background: "transparent",
                       color: "#78909c", fontSize: 15, cursor: "pointer", fontFamily: "inherit",
                     }}
                   >✕</button>
                 </span>
-                <span style={{ fontSize: 11, color: "#78909c", lineHeight: 1.35, flexBasis: "100%" }}>
-                  {stopAlertPermissionHint(notifyPermissionState())}
+                <span id={`${chooserId}-hint`} style={{ fontSize: 11, color: "#78909c", lineHeight: 1.35, flexBasis: "100%" }}>
+                  Estimates update with the live bus. {stopAlertPermissionHint(notifyPermissionState())}
                 </span>
               </div>
             )}
@@ -6130,7 +5559,7 @@ const StopList: FC<{
                   {loopSec > 0 && schedule ? " · " : ""}
                   {schedule}
                 </span>
-                <span>{busLabel}</span>
+                <span>{busStatus === "ready" ? busLabel : "Live count unavailable"}</span>
                 {routeNote && (
                   <span style={{ flexBasis: "100%", lineHeight: 1.4 }}>{routeNote}</span>
                 )}
@@ -6171,6 +5600,7 @@ const StopList: FC<{
                       color={cfg.color}
                       label={cfg.label}
                       dashed={cfg.dashed}
+                      busStatus={busStatus}
                     />
                   </div>
                 )}
@@ -6195,11 +5625,15 @@ const StopList: FC<{
                       // arrivals off it (7,566 rows in a day — Pink, Blue Night
                       // and Green, docs/card-vs-trip.md). Declining to answer
                       // is right; declining silently is not.
-                      : routeBuses.length === 0
-                        ? `${stops.length} stops · no buses en route ›`
+                      : busStatus !== "ready"
+                        ? `${stops.length} stops · live arrivals unavailable ›`
+                        : routeBuses.length === 0
+                        ? `${stops.length} stops · no buses reporting ›`
+                        : starting > 0 && onRoute === 0
+                          ? `${stops.length} stops · bus entering service ›`
                         : onRoute === 0
                           ? `${stops.length} stops · ${routeBuses.length} bus${routeBuses.length === 1 ? "" : "es"} off route ›`
-                          : `${stops.length} stops ›`}
+                          : `${stops.length} stops · live arrivals unavailable ›`}
                   </button>
                 )}
               </>
@@ -6267,7 +5701,9 @@ const RideRouteMap: FC<{
   // polyline, its stops with board emphasised + alight as 🚏, fit to the ride leg.
   useEffect(() => {
     if (!ref.current || mapRef.current || !cfg) return;
-    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
+    // Done can remove the map during a zoom. Keep zoom immediate, as on trip
+    // maps, so a delayed CSS transition cannot run after teardown.
+    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true, zoomAnimation: false });
     mapRef.current = map;
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
@@ -6339,7 +5775,10 @@ const RideRouteMap: FC<{
     const legStops = legIds?.map((id) => stopCoords[id]);
     let focusPts = pts;
     if (legStops && legStops.every((p): p is LatLon => !!p && Number.isFinite(p.lat) && Number.isFinite(p.lon))) {
-      focusPts = buildStopSequencePolyline(focusRouteId ? routePaths[focusRouteId] : undefined, legStops)
+      focusPts = buildStopSequencePolyline(
+        focusRouteId ? routePaths[focusRouteId] : undefined, legStops,
+        (focusRouteId ? routeStops[focusRouteId] : undefined)?.map((id) => stopCoords[id]).filter((p): p is LatLon => !!p),
+      )
         ?? legStops.map((p) => [p.lat, p.lon] as [number, number]);
       if (dest) focusPts.push([dest.lat, dest.lon]);
     }
@@ -6352,6 +5791,7 @@ const RideRouteMap: FC<{
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
+      cancelMapTouchZoom(map);
       try { map.stop(); } catch { /* mid-animation teardown */ }
       map.remove();
       mapRef.current = null; busLayerRef.current = null; youMarkerRef.current = null;
@@ -6622,11 +6062,19 @@ const OnBusBanner: FC<{
   const getOffAlertRef = useRef<string | null>(null);
   const [getOffPopup, setGetOffPopup] = useState<string | null>(null);
   const getOffButtonRef = useRef<HTMLButtonElement | null>(null);
+  const rideDoneRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (!getOffPopup) return;
     const previous = document.activeElement as HTMLElement | null;
-    getOffButtonRef.current?.focus();
-    return () => { if (previous?.isConnected) previous.focus(); };
+    const button = getOffButtonRef.current;
+    button?.focus();
+    return () => {
+      // Restore only focus owned by this prompt. A restored ride may have
+      // opened before anything was focused; Done is its persistent fallback.
+      if (document.activeElement !== button && document.activeElement !== document.body) return;
+      const target = previous?.isConnected && previous !== document.body ? previous : rideDoneRef.current;
+      target?.focus();
+    };
   }, [getOffPopup]);
   useEffect(() => {
     if (stopsRemaining === null || stopsRemaining > 2) return;
@@ -6670,6 +6118,7 @@ const OnBusBanner: FC<{
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="get-off-prompt-title"
+        aria-describedby="get-off-prompt-description"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
@@ -6695,11 +6144,12 @@ const OnBusBanner: FC<{
           boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
         }}>
           <div style={{ fontSize: 36, lineHeight: 1 }}>🔔</div>
-          <div id="get-off-prompt-title" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
-            {getOffAlertTitle(stopsRemaining) ?? getOffPopup}
+          <div id="get-off-prompt-title" aria-live="polite" aria-atomic="true" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
+            {getOffPromptTitle(stopsRemaining)}
           </div>
-          <div style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
-            {ride.routeLabel} → {alightName}
+          <div id="get-off-prompt-description" style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
+            {ride.routeLabel}{ride.busName ? ` #${normBus(ride.busName)}` : ""} → {alightName}
+            {stopsRemaining === null && <p style={{ margin: "8px 0 0" }}>Check the stop signs for your exit while live updates recover.</p>}
           </div>
           <button
             ref={getOffButtonRef}
@@ -6729,6 +6179,7 @@ const OnBusBanner: FC<{
         </div>
       </div>
       <button
+        ref={rideDoneRef}
         onClick={onEnd}
         style={{
           flexShrink: 0, fontSize: 13, fontWeight: 600, padding: "6px 14px",
@@ -6774,10 +6225,27 @@ const TransitMap: FC = () => {
   const busUpdatesStartedAt = useRef(Date.now());
   const [lastBusUpdateAt, setLastBusUpdateAt] = useState<number | null>(null);
   const [busUpdateFailed, setBusUpdateFailed] = useState(false);
+  // A valid position snapshot can arrive without usable ETA rows. Keep that
+  // distinction for counts/empty-state copy; the existing ETA warning stays on.
+  const [busSnapshotFailed, setBusSnapshotFailed] = useState(false);
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
   const [finishedRide, setFinishedRide] = useState<(BoardedRide & { endReason?: RideEndReason }) | null>(null);
+  const rideFinishRef = useRef<HTMLElement | null>(null);
+  const mainNavRef = useRef<HTMLElement | null>(null);
+  const finishReturnFocusRef = useRef(false);
+  useEffect(() => {
+    // Ending/removing a ride view removes its controls. Keep the next step
+    // reachable, without taking focus from a surviving control on auto-end.
+    if (document.activeElement === document.body) {
+      if (finishedRide) rideFinishRef.current?.focus();
+      else if (finishReturnFocusRef.current) {
+        mainNavRef.current?.querySelector<HTMLButtonElement>('[aria-current="page"]')?.focus();
+      }
+    }
+    finishReturnFocusRef.current = false;
+  }, [finishedRide]);
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
   // Go mode was retired 2026-07-17 ("too complicated") and its plumbing
   // deleted 2026-08-31. Clear anything an older build left in localStorage so
@@ -6842,6 +6310,17 @@ const TransitMap: FC = () => {
   // running the filter is moot, so fall back to showing everything
   // (activeFilter) instead of an empty page.
   const [activeOnly, setActiveOnly] = useState(true);
+  const mapModeButtonRef = useRef<HTMLButtonElement>(null);
+  const mapRecoveryButtonRef = useRef<HTMLButtonElement | null>(null);
+  const setMapRecoveryButtonRef = useCallback((button: HTMLButtonElement | null) => {
+    // A poll can reveal the selected routes without a click. Restore focus
+    // only from this disappearing action, while the map mode remains mounted.
+    if (!button && mapRecoveryButtonRef.current === document.activeElement
+        && mapModeButtonRef.current?.isConnected) {
+      mapModeButtonRef.current.focus();
+    }
+    mapRecoveryButtonRef.current = button;
+  }, []);
   const activeFilter = activeOnly && buses.length > 0;
   // Which lines have a bus ON ROUTE right now, as toggle labels — the same
   // test the route cards use (isBusOnRoute over the merged stop list), so a
@@ -6897,14 +6376,14 @@ const TransitMap: FC = () => {
    */
   const [stopAlertBanner, setStopAlertBanner] = useState<string | null>(null);
   const armStopAlertFor = (
-    routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number,
+    routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number, leadStops?: number,
   ) => {
     // The permission ask must come from this tap — never on load. Fire and
     // forget: denied, the banner below carries the ping instead.
     void ensureNotifyPermission();
     setStopAlertBanner(null);
     setStopAlerts((prev) => armStopAlert(prev, {
-      routeId, routeLabel, stopId, stopName, leadMin, createdAt: Date.now(),
+      routeId, routeLabel, stopId, stopName, leadMin, leadStops, createdAt: Date.now(),
     }));
   };
   const disarmStopAlertFor = (routeLabel: string, stopId: number) => {
@@ -6957,7 +6436,12 @@ const TransitMap: FC = () => {
   // tabs has to bring it into view as well as open it — expanding a form
   // several screens below the tap looks like nothing happened.
   const feedbackRef = useRef<HTMLDivElement | null>(null);
+  const feedbackButtonRef = useRef<HTMLButtonElement | null>(null);
+  const feedbackFileRef = useRef<HTMLInputElement | null>(null);
+  const feedbackAttachRef = useRef<HTMLButtonElement | null>(null);
   const openFeedback = () => {
+    setFeedbackStatus(null);
+    setFeedbackError(null);
     setFeedbackOpen(true);
     // Next frame: the composer has to exist before it can be scrolled to.
     // Both calls are optional-chained — an older engine without smooth
@@ -6968,7 +6452,16 @@ const TransitMap: FC = () => {
   };
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSending, setFeedbackSending] = useState(false);
+  const closeFeedback = (ownedFocus = feedbackRef.current?.contains(document.activeElement)) => {
+    setFeedbackOpen(false);
+    // Only replace focus lost with the composer; an async send must not take
+    // it away from navigation or another control the rider has reached.
+    if (ownedFocus) requestAnimationFrame(() => {
+      if (document.activeElement === document.body) feedbackButtonRef.current?.focus();
+    });
+  };
   // "Install app" affordance. Three situations, three behaviours:
   //   - Chrome (Android/desktop): the browser hands us a beforeinstallprompt
   //     event; the button replays it, which opens the REAL install dialog.
@@ -7014,37 +6507,62 @@ const TransitMap: FC = () => {
   // Attached screenshot as a JPEG data URL, already downscaled. Phones produce
   // 12 MP screenshots; nobody triages bugs at 12 MP, and the server caps the
   // upload at 2 MB, so the browser shrinks to <=1280 px before anything is sent.
-  const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
+  const [feedbackImages, setFeedbackImages] = useState<string[]>([]);
+  const feedbackAttachGeneration = useRef(0);
+  const feedbackAttachBusy = useRef(false);
   const [feedbackPriority, setFeedbackPriority] = useState<"urgent" | "normal" | "nice_to_have">("normal");
   const [feedbackImageErr, setFeedbackImageErr] = useState<string | null>(null);
   /** A pasted screenshot is still being downscaled; Send waits for it. */
   const [feedbackAttaching, setFeedbackAttaching] = useState(false);
   // Shared with the Issues tab's reply box — one downscale, one set of
   // limits, one wording for the failures (web/src/screenshot.ts).
-  const attachScreenshot = (file: File | undefined | null) => {
+  const resetFeedbackImages = () => {
+    feedbackAttachGeneration.current++;
+    feedbackAttachBusy.current = false;
+    setFeedbackAttaching(false);
+    setFeedbackImages([]);
+  };
+  const attachScreenshots = async (files: File[]) => {
+    if (!files.length || feedbackSending || feedbackAttachBusy.current) return;
+    if (files.length + feedbackImages.length > REPORT_IMAGE_MAX_COUNT) {
+      setFeedbackImageErr(`Attach up to ${REPORT_IMAGE_MAX_COUNT} screenshots`);
+      return;
+    }
     setFeedbackImageErr(null);
-    if (!file) return;
-    // Decoding a 12 MP screenshot takes long enough on a phone that a rider
-    // can tap Send first and post a report with no picture and no warning.
+    feedbackAttachBusy.current = true;
     setFeedbackAttaching(true);
-    void downscaleToDataUrl(file).then((res) => {
-      setFeedbackAttaching(false);
-      if ("error" in res) setFeedbackImageErr(attachErrorText(res.error));
-      else setFeedbackImage(res.dataUrl);
-    });
+    const generation = feedbackAttachGeneration.current;
+    const added: string[] = [];
+    // Decode sequentially: five full-resolution phone images at once waste memory.
+    for (const file of files) {
+      const res = await downscaleToDataUrl(file);
+      if (generation !== feedbackAttachGeneration.current) return;
+      if ("error" in res) {
+        setFeedbackImageErr(attachErrorText(res.error));
+      } else if ([...feedbackImages, ...added, res.dataUrl].reduce((n, url) => n + url.length, 0) > REPORT_IMAGES_MAX_DATA_URL_LENGTH) {
+        setFeedbackImageErr("Screenshots are too large together — remove one and try again");
+      } else {
+        added.push(res.dataUrl);
+      }
+    }
+    setFeedbackImages(prev => [...prev, ...added]);
+    feedbackAttachBusy.current = false;
+    setFeedbackAttaching(false);
   };
   const sendFeedback = async () => {
     const msg = feedbackText.trim();
-    if (!msg) return;
+    if (!msg || feedbackSending || feedbackAttachBusy.current) return;
+    const ownedFocus = feedbackRef.current?.contains(document.activeElement);
     setFeedbackSending(true);
-    setFeedbackStatus(null);
+    setFeedbackError(null);
+    setFeedbackStatus("Sending…");
     try {
       const res = await fetch("/api/report", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...anonIdHeader() },
         body: JSON.stringify({
           note: msg,
-          image: feedbackImage ?? undefined,
+          images: feedbackImages.length ? feedbackImages : undefined,
           priority: feedbackPriority,
           source: "feedback",
           client: {
@@ -7058,16 +6576,16 @@ const TransitMap: FC = () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
       setFeedbackText("");
-      setFeedbackImage(null);
+      resetFeedbackImages();
       setFeedbackPriority("normal");
-      setFeedbackOpen(false);
+      closeFeedback(ownedFocus);
       setMyReportsBump((b) => b + 1);
       setFeedbackStatus(d?.id ? `Thanks — logged (#${d.id})` : "Thanks — logged");
     } catch {
-      setFeedbackStatus("Couldn't send — try again");
+      setFeedbackStatus(null);
+      setFeedbackError("Couldn't send — try again");
     }
     setFeedbackSending(false);
-    setTimeout(() => setFeedbackStatus(null), 6_000);
   };
   // Seed userLatLon from localStorage so reloads don't flash "Tap
   // to set start" while the GPS watcher warms up. CRITICAL: the
@@ -7516,7 +7034,7 @@ const TransitMap: FC = () => {
         // Rider counting rides along on this poll rather than adding a beacon
         // of its own — see anonId.ts. Absent when storage is unavailable, which
         // the server treats as "uncounted", never as an error.
-        const res = await fetch("/api/buses", {
+        const res = await fetch('/api/buses', {
           signal: controller.signal,
           headers: anonIdHeader(),
         });
@@ -7531,6 +7049,7 @@ const TransitMap: FC = () => {
         latestApplied = mySeq;
         setLastBusUpdateAt(Date.now());
         setBusUpdateFailed(false);
+        setBusSnapshotFailed(false);
         // The estimator's learned parameters, before anything that prices a
         // row with them (docs/closed-loop.md, stage 3). Absent, malformed or
         // out of range and this resets to the compiled constants, which is
@@ -7540,7 +7059,10 @@ const TransitMap: FC = () => {
         // Drop out-of-service ghosts (see isBusInService) before anything
         // downstream — map markers, planner, and arrival boards all read
         // this state.
-        setBuses(((data.buses ?? []) as BusData[]).filter((b) => isBusInService(b)));
+        const liveBuses = ((data.buses ?? []) as BusData[]).filter((b) => isBusInService(b));
+        const etaReady = attachServerEta(liveBuses, data.server_eta);
+        setBusUpdateFailed(!etaReady && liveBuses.length > 0);
+        setBuses(liveBuses);
         if (data.routes) setRouteStops(data.routes);
         if (data.stop_names) setStopNames(data.stop_names);
         if (data.segments) setSegmentTimes(data.segments);
@@ -7566,6 +7088,7 @@ const TransitMap: FC = () => {
         // Replaced requests and unmounts are not connection failures.
         if (!stopped && !controller.signal.aborted && mySeq > latestApplied) {
           setBusUpdateFailed(true);
+          setBusSnapshotFailed(true);
         }
       }
     };
@@ -7634,6 +7157,10 @@ const TransitMap: FC = () => {
   // label and the toggle grouping key live beside the colour in ROUTE_LISTS.
   const legendRoutes = LEGEND_ROUTES;
   const busUpdateNotice = liveUpdateMessage(lastBusUpdateAt, busUpdatesStartedAt.current, Date.now(), busUpdateFailed, document.hidden);
+  // Use the same freshness policy for the position snapshot. An empty array
+  // before a successful poll (or retained after a failure) cannot prove no service.
+  const busStatus: LiveBusStatus = liveUpdateMessage(lastBusUpdateAt, busUpdatesStartedAt.current, Date.now(), busSnapshotFailed, document.hidden)
+    ? "unavailable" : lastBusUpdateAt === null ? "loading" : "ready";
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F5F3EF", minHeight: "100vh",
@@ -7693,7 +7220,7 @@ const TransitMap: FC = () => {
       {/* View tabs — the tabs themselves are hidden while on a bus, since the
           ride page is its own view, but the row stays so Refresh never
           disappears. */}
-      <div className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
+      <nav ref={mainNavRef} aria-label="Main" className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
         <div style={{
           display: "flex", gap: 4, padding: "4px 4px 6px", fontSize: 11,
           overflowX: "auto", WebkitOverflowScrolling: "touch",
@@ -7705,6 +7232,7 @@ const TransitMap: FC = () => {
           {!boardedRide && (["trip", "map", "issues"] as const).map((v) => (
             <button
               key={v}
+              aria-current={listView === v ? "page" : undefined}
               onClick={() => { setListView(v); }}
               style={{
                 // These are the app's primary navigation and were the
@@ -7760,7 +7288,7 @@ const TransitMap: FC = () => {
             ↻
           </button>
         </div>
-      </div>
+      </nav>
 
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
@@ -7828,9 +7356,10 @@ const TransitMap: FC = () => {
       )}
 
       {!boardedRide && finishedRide && (
-        <RideFinish ride={finishedRide} reason={finishedRide.endReason}
-          onDismiss={() => setFinishedRide(null)}
+        <RideFinish ride={finishedRide} reason={finishedRide.endReason} focusRef={rideFinishRef}
+          onDismiss={() => { finishReturnFocusRef.current = true; setFinishedRide(null); }}
           onFindShuttle={() => {
+            finishReturnFocusRef.current = true;
             if (finishedRide.toText && Number.isFinite(finishedRide.toLat) && Number.isFinite(finishedRide.toLon)) {
               setPendingTrip({ toText: finishedRide.toText, toLat: finishedRide.toLat!,
                 toLon: finishedRide.toLon!, recoverRide: true });
@@ -7889,7 +7418,7 @@ const TransitMap: FC = () => {
               {stopAlerts.map((a) => (
                 <span
                   key={alertKey(a.routeLabel, a.stopId)}
-                  title={`Alerting you ${a.leadMin} min before ${a.routeLabel} reaches ${a.stopName}, and again when it gets there`}
+                  title={`Alerting you ${stopAlertLeadLabel(a)} before ${a.routeLabel} reaches ${a.stopName}, and again when it gets there`}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0,
                     padding: "2px 2px 2px 8px", borderRadius: 12, whiteSpace: "nowrap",
@@ -7901,7 +7430,7 @@ const TransitMap: FC = () => {
                   🔔
                   <strong style={{ color: ROUTE_COLOR[a.routeLabel] ?? "#546e7a" }}>{a.routeLabel}</strong>
                   <span>at {a.stopName}</span>
-                  <span style={{ color: "#90a4ae" }}>· {a.leadMin} min</span>
+                  <span style={{ color: "#90a4ae" }}>· {stopAlertLeadLabel(a)}</span>
                   <button
                     onClick={() => disarmStopAlertFor(a.routeLabel, a.stopId)}
                     aria-label={`Cancel the alert for ${a.routeLabel} at ${a.stopName}`}
@@ -7943,7 +7472,7 @@ const TransitMap: FC = () => {
             {LEGEND_ROUTES.map((r) => {
               const off = mapHidden.has(r.toggleLabel);
               // On, but not drawn: "Running now" is on and this line has no
-              // bus. Outlined in its own colour rather than dimmed — a filled
+              // on-route bus. Outlined in its own colour rather than dimmed — a filled
               // chip at half opacity loses its white text — so the three
               // states read apart: filled = on the map, outlined = switched on
               // but idle, grey = switched off. Still 44 px and still tappable.
@@ -7953,7 +7482,7 @@ const TransitMap: FC = () => {
                   key={r.toggleLabel}
                   onClick={() => setMapHiddenPersisted(toggleOne(mapHidden, r.toggleLabel))}
                   aria-pressed={!off}
-                  title={idle ? `No ${r.label} bus right now — hidden by "Running now"` : undefined}
+                  title={idle ? `${r.label} has no on-route bus in the last update — hidden by "Running now"` : undefined}
                   style={{
                     padding: "3px 10px", borderRadius: 10,
                     border: `${r.dashed ? "1px dashed" : "1px solid"} ${off ? "#cfd8dc" : r.color}`,
@@ -7969,23 +7498,6 @@ const TransitMap: FC = () => {
               );
             })}
           </div>
-          {allHidden(LEGEND_TOGGLES, mapHidden) ? (
-            <div style={{
-              width: "100%", maxWidth: 800, margin: "0 auto",
-              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
-            }}>
-              Every line is switched off — tap one above to put it back on the map and in the cards below.
-            </div>
-          ) : allHidden(LEGEND_TOGGLES, mapDrawnHidden) ? (
-            // The chips leave something on, but none of it has a bus: say so,
-            // or an empty map under lit chips reads as broken.
-            <div style={{
-              width: "100%", maxWidth: 800, margin: "0 auto",
-              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
-            }}>
-              None of the lines switched on has a bus right now — the map shows only running lines. Tap "Every route" below to see them all.
-            </div>
-          ) : null}
           <AllRoutesMap
             // Shorter here than it was as a whole page: the route cards sit
             // below it now and must be reachable without a long scroll.
@@ -8016,6 +7528,7 @@ const TransitMap: FC = () => {
               background: "#fff8e1", border: "1px solid #ffe082",
               fontSize: 13, color: "#5d4037", lineHeight: 1.45,
             }}>
+              {busStatus !== "ready" && <span>Last received notice: </span>}
               <span style={{ fontWeight: 700 }}>{a.title}</span>
               <span style={{ margin: "0 6px" }}>·</span>
               <span>{a.message}</span>
@@ -8026,7 +7539,9 @@ const TransitMap: FC = () => {
             padding: "8px 12px 6px", display: "flex", gap: 6, alignItems: "center",
           }}>
             <button
+              ref={mapModeButtonRef}
               onClick={() => setActiveOnly(!activeOnly)}
+              aria-pressed={activeOnly}
               style={{
                 padding: "4px 14px", borderRadius: 12, minHeight: 44, flexShrink: 0,
                 border: activeOnly ? "1px solid #1a1a2e" : "1px solid #bbb",
@@ -8045,13 +7560,37 @@ const TransitMap: FC = () => {
               width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
               padding: "6px 12px 12px", fontSize: 13, color: "#78909c",
             }}>
-              {allHidden(LEGEND_TOGGLES, mapHidden)
-                ? "No lines selected — tap a line above."
-                : "None of the selected lines has a bus right now — tap \"Every route\" to see them all."}
+              <div>{allHidden(LEGEND_TOGGLES, mapHidden)
+                ? "All routes are hidden. Choose a route above or show all."
+                : busStatus === "ready"
+                  ? "Your selected routes are hidden by the Running now filter."
+                  : "Your selected routes are hidden by the Running now filter. Live status is unavailable."}</div>
+              <button
+                ref={setMapRecoveryButtonRef}
+                onClick={() => {
+                  if (allHidden(LEGEND_TOGGLES, mapHidden)) setMapHiddenPersisted(new Set());
+                  setActiveOnly(false);
+                  // This recovery button disappears; keep keyboard focus on
+                  // the persistent mode control rather than dropping to body.
+                  mapModeButtonRef.current?.focus();
+                }}
+                style={{ minHeight: 44, marginTop: 4, padding: "4px 12px", borderRadius: 8,
+                  border: "1px solid #bbb", background: "#fff", color: "#1a73e8",
+                  font: "inherit", cursor: "pointer" }}
+              >{allHidden(LEGEND_TOGGLES, mapHidden) ? "Show all routes" : "Show selected routes"}</button>
+            </div>
+          )}
+          {!allHidden(LEGEND_TOGGLES, mapDrawnHidden) && buses.length === 0 && (
+            <div role="status" style={{ width: "100%", maxWidth: 800, padding: "6px 12px 12px", fontSize: 13, color: "#78909c" }}>
+              {busStatus === "loading" ? "Loading shuttle information…"
+                : busStatus === "unavailable"
+                  ? Object.keys(routeStops).length > 0 ? "Route maps and schedules remain available. Live shuttle status is unavailable." : "Route maps will appear when updates reconnect."
+                  : "No shuttles reporting right now. Showing selected routes and schedules."}
             </div>
           )}
           <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
             <StopList
+              busStatus={busStatus}
               buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
               routePaths={routePaths}
               segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
@@ -8075,6 +7614,8 @@ const TransitMap: FC = () => {
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
         <TripPlanner
+          busStatus={busStatus}
+          lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
           routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
           routeHours={routeHours} routeActive={routeActive}
@@ -8320,6 +7861,7 @@ const TransitMap: FC = () => {
       {listView === "all" && (
         <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
           <StopList
+            busStatus={busStatus}
             buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
             routePaths={routePaths}
             segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} routeActive={routeActive} tick={tick}
@@ -8364,7 +7906,8 @@ const TransitMap: FC = () => {
               </button>
             )}
             <button
-              onClick={() => setFeedbackOpen(true)}
+              ref={feedbackButtonRef}
+              onClick={openFeedback}
               style={{
                 fontSize: 13, padding: "8px 14px", minHeight: 44,
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -8376,9 +7919,6 @@ const TransitMap: FC = () => {
               💬 Send feedback
             </button>
             <ContributeButton />
-            {feedbackStatus && (
-              <span style={{ fontSize: 12, color: "#78909c" }}>{feedbackStatus}</span>
-            )}
           </div>
         ) : null}
         {!feedbackOpen && iosHintOpen && showInstall ? (
@@ -8400,13 +7940,14 @@ const TransitMap: FC = () => {
             border: "1px solid #e0ddd8", borderRadius: 10, background: "#fff",
             padding: 12, display: "flex", flexDirection: "column", gap: 8,
           }}>
-            <div style={{
+            <label htmlFor="feedback-message" style={{
               fontSize: 11, color: "#78909c", textTransform: "uppercase",
               letterSpacing: 1,
             }}>
               Feedback
-            </div>
-            <textarea
+            </label>
+            <textarea disabled={feedbackSending}
+              id="feedback-message"
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               // Paste or drop a screenshot straight in (operator request,
@@ -8416,17 +7957,17 @@ const TransitMap: FC = () => {
               // text paste is untouched — imageFromTransfer returns null and
               // the event runs as normal.
               onPaste={(e) => {
-                const file = imageFromTransfer(e.clipboardData);
-                if (!file) return;
+                const files = imagesFromTransfer(e.clipboardData);
+                if (!files.length) return;
                 e.preventDefault();
-                attachScreenshot(file);
+                void attachScreenshots(files);
               }}
               onDragOver={(e) => { if (dragCarriesFile(e.dataTransfer)) e.preventDefault(); }}
               onDrop={(e) => {
-                const file = imageFromTransfer(e.dataTransfer);
-                if (!file) return;
+                const files = imagesFromTransfer(e.dataTransfer);
+                if (!files.length) return;
                 e.preventDefault();
-                attachScreenshot(file);
+                void attachScreenshots(files);
               }}
               placeholder="Anything on your mind — bugs, ideas, confusing bits…"
               autoFocus
@@ -8437,16 +7978,17 @@ const TransitMap: FC = () => {
                 fontFamily: "inherit", resize: "vertical", minHeight: 80,
               }}
             />
-            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <div role="group" aria-label="How urgent?" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>
                 How urgent?
               </span>
               {([["urgent", "🔴 Urgent"], ["normal", "Normal"], ["nice_to_have", "💡 Nice to have"]] as const).map(([v, label]) => (
                 <button
                   key={v}
+                  aria-pressed={feedbackPriority === v}
                   onClick={() => setFeedbackPriority(v)}
                   style={{
-                    fontSize: 12, padding: "6px 10px", minHeight: 36,
+                    fontSize: 12, padding: "6px 10px", minHeight: 44,
                     border: feedbackPriority === v ? "1.5px solid #1976D2" : "1px solid #ccc",
                     borderRadius: 14,
                     background: feedbackPriority === v ? "#E3F2FD" : "#fff",
@@ -8459,40 +8001,46 @@ const TransitMap: FC = () => {
               ))}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              {feedbackImage ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <img src={feedbackImage} alt="attached screenshot"
+              <button ref={feedbackAttachRef} type="button"
+                onClick={() => { if (!feedbackSending && !feedbackAttaching) feedbackFileRef.current?.click(); }}
+                aria-disabled={feedbackSending || feedbackAttaching}
+                style={{ fontSize: 13, color: "#1976D2", cursor: "pointer", fontFamily: "inherit",
+                  border: "1px solid #bbb", borderRadius: 6, background: "#fff",
+                  minHeight: 44, padding: "8px 12px" }}>
+                📎 {feedbackImages.length ? "Add screenshots" : "Attach screenshots"}
+              </button>
+              <input ref={feedbackFileRef} type="file" accept="image/*" multiple hidden
+                onChange={(e) => { void attachScreenshots(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+              <span style={{ fontSize: 12, color: "#78909c" }}>{feedbackImages.length}/{REPORT_IMAGE_MAX_COUNT} · or paste/drop images</span>
+              {feedbackImages.map((image, index) => (
+                <div key={index} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <img src={image} alt={`attached screenshot ${index + 1}`}
                     style={{ height: 44, borderRadius: 4, border: "1px solid #ccc" }} />
-                  <button onClick={() => setFeedbackImage(null)} title="Remove screenshot"
+                  <button
+                    aria-label={`Remove screenshot ${index + 1}`}
+                    disabled={feedbackSending || feedbackAttaching}
+                    onClick={() => { setFeedbackImages(prev => prev.filter((_, i) => i !== index)); setFeedbackImageErr(null); feedbackAttachRef.current?.focus(); }} title="Remove screenshot"
                     style={{ border: "none", background: "transparent", color: "#c62828",
                       fontSize: 13, cursor: "pointer", minHeight: 44, padding: "0 6px" }}>
                     ✕ remove
                   </button>
                 </div>
-              ) : (
-                <label style={{
-                  fontSize: 13, color: "#1976D2", cursor: "pointer",
-                  minHeight: 44, display: "inline-flex", alignItems: "center", padding: "0 4px",
-                }}>
-                  📎 Attach screenshot <span style={{ color: "#90a4ae" }}>&nbsp;or paste one</span>
-                  <input type="file" accept="image/*" hidden
-                    onChange={(e) => { attachScreenshot(e.target.files?.[0]); e.target.value = ""; }} />
-                </label>
-              )}
+              ))}
               {feedbackImageErr && (
-                <span style={{ fontSize: 12, color: "#c62828" }}>{feedbackImageErr}</span>
+                <span role="alert" style={{ fontSize: 12, color: "#c62828" }}>{feedbackImageErr}</span>
               )}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button
+              <button disabled={feedbackSending}
                 onClick={() => {
-                  setFeedbackOpen(false);
+                  closeFeedback();
                   setFeedbackText("");
-                  setFeedbackImage(null);
+                  resetFeedbackImages();
                   setFeedbackImageErr(null);
+                  setFeedbackError(null);
                 }}
                 style={{
-                  fontSize: 13, padding: "8px 14px", minHeight: 40,
+                  fontSize: 13, padding: "8px 14px", minHeight: 44,
                   border: "1px solid #bbb", borderRadius: 6,
                   background: "#fff", color: "#546e7a",
                   cursor: "pointer", fontFamily: "inherit", flex: 1,
@@ -8504,7 +8052,7 @@ const TransitMap: FC = () => {
                 onClick={sendFeedback}
                 disabled={feedbackSending || feedbackAttaching || !feedbackText.trim()}
                 style={{
-                  fontSize: 13, padding: "8px 14px", minHeight: 40,
+                  fontSize: 13, padding: "8px 14px", minHeight: 44,
                   border: "1px solid #1976D2", borderRadius: 6,
                   background: feedbackSending || feedbackAttaching || !feedbackText.trim() ? "#90CAF9" : "#1976D2",
                   color: "#fff",
@@ -8515,8 +8063,10 @@ const TransitMap: FC = () => {
                 {feedbackSending ? "Sending…" : feedbackAttaching ? "Attaching…" : "Send"}
               </button>
             </div>
+            {feedbackError && <div role="alert" style={{ fontSize: 13, color: "#c62828" }}>{feedbackError}</div>}
           </div>
         )}
+        <div role="status" style={{ fontSize: 12, color: "#546e7a" }}>{feedbackAttaching ? "Attaching screenshots…" : feedbackStatus}</div>
       </div>
 
       {/* Beta notice — persistent, and the tap opens the feedback composer

@@ -143,7 +143,7 @@ async function browserSmoke(base, { markAsTest }) {
 
     // Walk every tab — today's crash only fired once a specific card rendered,
     // so touching each surface matters more than staring at the home screen.
-    for (const tab of ["All", "Map", "Trip"]) {
+    for (const tab of ["Map", "Trip"]) {
       const btn = page.getByRole("button", { name: tab, exact: true }).first();
       if (await btn.count()) {
         await btn.click().catch(() => {});
@@ -152,6 +152,15 @@ async function browserSmoke(base, { markAsTest }) {
         if (t.includes("App crashed")) fail(`browser smoke: crash on ${tab} tab\n${t.slice(0, 500)}`);
       }
     }
+
+    // There is one rider experience. Old comparison URLs must also request
+    // the current forecast, without exposing estimator implementation choices.
+    const defaultPoll = page.waitForRequest(r => new URL(r.url()).pathname === '/api/buses'
+      && !new URL(r.url()).searchParams.has('eta_model'));
+    await page.goto(new URL('/?eta_model=usual', base).href, { waitUntil: 'domcontentloaded' });
+    await defaultPoll;
+    if (await page.getByText(/^(Updated estimates|Previous estimates|Use previous estimates|Use updated estimates)$/).count())
+      fail('browser smoke: estimator chooser is visible to riders');
 
     const fatal = errors.filter((e) => !e.startsWith("console:"));
     if (fatal.length) fail(`browser smoke: page errors:\n  ${fatal.join("\n  ")}`);
@@ -212,6 +221,10 @@ await waitForHealthy(STAGE_URL, 90_000);
 log("  ✓ healthy (migrations applied to an empty DB, collector polling)");
 await apiSmoke(STAGE_URL);
 await browserSmoke(STAGE_URL, { markAsTest: false });
+run("stop-count notification browser regression", "node", ["scripts/stop-alert-controls-check.mjs"], { env: { ...process.env, OUT: path.join(stageDir, "stop-alert-controls") } });
+run("map pause wording browser regression", "node", ["scripts/map-pause-label-check.mjs"], { env: { ...process.env, OUT: path.join(stageDir, "map-pause-labels") } });
+run("Blue pickup transition browser regression", "node", ["scripts/blue-pickup-fallback-check.mjs"]);
+run("feedback attachment browser regression", "node", ["scripts/feedback-accessibility-check.mjs"]);
 killStaging();
 
 if (STAGE_ONLY) {

@@ -1,0 +1,8 @@
+{
+  "arm": "canonical",
+  "mode": "cold",
+  "frames": 78,
+  "window": 78,
+  "sameProcessMatches": null,
+  "restored": 3
+}

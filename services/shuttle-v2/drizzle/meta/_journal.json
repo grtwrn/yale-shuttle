@@ -120,6 +120,13 @@
       "when": 1788784800000,
       "tag": "0016_model_params",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1789574400000,
+      "tag": "0017_eta_checkpoint",
+      "breakpoints": true
     }
   ]
 }

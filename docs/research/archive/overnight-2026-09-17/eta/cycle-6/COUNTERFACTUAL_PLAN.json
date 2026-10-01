@@ -1,0 +1,12 @@
+{
+  "createdAt": "2026-09-18T05:32:04.322246+00:00",
+  "status": "Frozen after missing-case classification, before counterfactual evaluation; exploratory reused cases, no holdout",
+  "arms": {
+    "ordered_pickup_join": "In the existing raw-at-stop override, keep zero-hop board first. Only for the journey distribution, otherwise take an existing same-bus canonical pickup preceding its FIRST destination row. Retain raw countdown, distribution and identity semantics. No synthetic zero, ETA epsilon, model/tracking/horizon change.",
+    "require_zero_fallthrough": "Use existing raw override only if a modeled zero-hop/zero-ETA board exists; otherwise execute unchanged ordinary pickLiveArrival branch. Diagnostic comparison; may select a different bus/lap whose outcome must remain unmatched."
+  },
+  "scope": "All 4688 saved decisions, stable plan unchanged, stateful ranking computed separately per arm/session; use only each saved live wire. Destination labels applied later, by exact bus/source/occurrence. Both upcoming row identities retained.",
+  "hashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/shell-live.generated.mts": "393ae22c2d00720a5416ed5581ebb8ceff309b49f75da6247e70430dd4ebdba3"
+  }
+}

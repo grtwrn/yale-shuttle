@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { cdf, fromQuantiles, quantile, residual, type Dist } from "./dist";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { cdf, fromQuantiles, point, quantile, residual, type Dist } from "./dist";
 import { stepBelief, type Belief } from "./filter";
 import { buildRing, type Ring } from "./ring";
 import { buildTables, hiddenRest, PACE_KEY, type RouteTables } from "./tables";
-import { K, priceRoute, type Floors } from "./arrival";
+import { ceilingArmsOnStanding, K, priceRoute, setCeilingArmsOnStanding, setClampTrace, setSampledFutureLap, type ClampEvent, type Floors } from "./arrival";
+import { LEAD_SWITCH_MASS } from "./filter";
 import type { LatLon } from "../geo";
 
 // The same rectangular loop as filter.test.ts.
@@ -39,6 +40,73 @@ function setup(): { ring: Ring; tables: RouteTables } {
 }
 const since = new Date(0).toISOString().replace("Z", "");
 function standAt1(t: number) { return { lat: corners[0]!.lat, lon: corners[0]!.lon, stationary_since: since }; }
+
+describe("joint future lap paths on Red", () => {
+  afterEach(() => setSampledFutureLap(true));
+  const fitted = () => buildTables(STOPS, COORDS, {
+    ...SEGS, "1-2": { ...SEGS["1-2"], dq: [200,280,360,440,520,600,680,760,840,920], dqn: 10000 },
+  }, { ...DWELLS, "2": { med: 400, n: 10000, q: Array(10).fill(400), qn: 10000,
+    pstop: 1, lapB: -0.002, lapM: 2000, lapN: 10000 } });
+  function moving(ring: Ring) {
+    let b: Belief | undefined;
+    for (let i = 0; i < 5; i++) b = stepBelief(b, ring, at(100 + i * 30, 0), i * 5000, STOPS);
+    return b!;
+  }
+  it("lets slower travel buy a shorter future wait without changing the tracking belief", () => {
+    const ring = buildRing("3", PATH, STOPS, COORDS)!;
+    const tables = fitted(), belief = moving(ring);
+    tables.stops[1]!.stand = point(400);
+    // Isolate travel-time uncertainty from uncertainty about which leg the
+    // bus occupies: one known moving cell, a broad drive, one regulated wait.
+    let cell = 0;
+    for (let c = 0; c < ring.C; c++) if (ring.leg[c] === 0
+      && Math.abs(ring.frac[c]! - .25) < Math.abs(ring.frac[cell]! - .25)) cell = c;
+    belief.p.fill(0); belief.p[ring.C + cell] = 1; belief.lead = 0;
+    const before = structuredClone(belief);
+    const read = () => priceRoute(belief, ring, tables, STOPS, new Set([3]), 20000, .5, undefined, { 2: 1500 }, true)[0]!;
+    setSampledFutureLap(false); const independent = read();
+    setSampledFutureLap(true); const joint = read();
+    expect(joint.high - joint.low).toBeLessThan((independent.high - independent.low) * .7);
+    expect(Math.abs(joint.eta - independent.eta)).toBeLessThan(50);
+    expect(joint.low).toBeLessThanOrEqual(joint.eta);
+    expect(joint.eta).toBeLessThanOrEqual(joint.high);
+    expect(joint.distribution).toEqual([...joint.distribution!].sort((a,b) => a-b));
+    expect(belief).toEqual(before);
+  });
+  it("leaves other routes, absent lap clocks, and unfitted tables unchanged", () => {
+    for (const route of ["1", "3", "13"]) {
+      const ring = buildRing(route, PATH, STOPS, COORDS)!, b = moving(ring);
+      for (const tables of [fitted(), setup().tables]) {
+        for (const ages of [undefined, { 2: 1500 }]) {
+          if (route === "3" && tables.stops[1]!.lap && ages) continue;
+          const read = () => priceRoute(b, ring, tables, STOPS, new Set(STOPS), 20000, .5, undefined, ages, true);
+          setSampledFutureLap(false); const before = read();
+          setSampledFutureLap(true); expect(read()).toEqual(before);
+        }
+      }
+    }
+  });
+  it("prices both later occurrences with finite ordered quantiles through departure", () => {
+    const ring = buildRing("3", PATH, STOPS, COORDS)!;
+    const tables = buildTables(STOPS, COORDS, SEGS, { ...DWELLS,
+      "1": { ...DWELLS["1"], lapB: -.0009, lapM: 1000, lapN: 1000 },
+      "2": { ...DWELLS["2"], lapB: -.0009, lapM: 1000, lapN: 1000 } });
+    let b: Belief | undefined;
+    for (let t = 0; t <= 300000; t += 15000) b = stepBelief(b, ring, standAt1(t), t, STOPS);
+    for (let i = 0; i < 10; i++) {
+      const now = 300000 + i * 5000;
+      if (i) b = stepBelief(b, ring, at(i * 35, 0), now, STOPS);
+      const rows = priceRoute(b!, ring, tables, STOPS, new Set(STOPS), now, .5, undefined, { 1: 1200+i*5, 2: 800+i*5 }, true);
+      expect(rows.some(r => r.occurrence === 1)).toBe(true);
+      for (const r of rows) {
+        expect([r.low, r.eta, r.high, r.departNow, r.lowFloor].every(Number.isFinite)).toBe(true);
+        expect(r.low).toBeLessThanOrEqual(r.eta);
+        expect(r.high).toBeGreaterThanOrEqual(r.eta);
+        expect(r.distribution).toEqual([...r.distribution!].sort((a,b) => a-b));
+      }
+    }
+  });
+});
 
 /** Exact convolution of independent distributions on a 1 s grid, as a CDF sampler. */
 function convolve(ds: Dist[], maxSec = 4000): (p: number) => number {
@@ -318,4 +386,258 @@ describe("the band's floor (lowFloor) — the rest-less chain at the band's own 
     }
     expect(rows).toBeGreaterThan(50);
   });
+});
+
+describe("the ceiling arms on the standing hypothesis, not the mixture (2026-09-11)", () => {
+  // The variant is what this block measures, so arm it per test — and leave
+  // the module on the SHIPPED default, so nothing that runs later in this file
+  // can read an armed switch as the default.
+  beforeEach(() => { setCeilingArmsOnStanding(true); });
+  afterEach(() => { setCeilingArmsOnStanding(false); setClampTrace(null); });
+
+  /**
+   * A bus driving down the 4 -> 1 leg on fresh fixes and then repeating its fix
+   * at the marker with no server clock. `stepM` is the approach speed, which is
+   * what decides how much moving mass survives the arrival poll: at 35 m a poll
+   * the belief is already ~0.85 standing when the bus reaches the stop (the
+   * MEDIAN production rest — measured, the standing mass clears the gate on the
+   * arrival poll itself for 53% of Red rests >= 60 s), and at 70 m a poll it is
+   * not, which is the other half. Each poll is returned with the clamp decision
+   * taken on it, so an assertion can never drift out of alignment with the
+   * series the way an index into a slice can.
+   */
+  function arrive(ring: Ring, tables: RouteTables, standPolls: number, stepM = 35) {
+    const floors: Floors = { map: new Map() };
+    const evs: ClampEvent[] = [];
+    setClampTrace((e) => { if (e.occurrence === 0 && e.stopIdx === 1) evs.push(e); });
+    const polls: { ev?: ClampEvent; shown: number; standing: boolean }[] = [];
+    let b: Belief | undefined;
+    let now = 0;
+    const price = (standing: boolean) => {
+      const before = evs.length;
+      const row = priceRoute(b!, ring, tables, STOPS, new Set([2]), now, 0.5, floors).find((x) => x.stopId === 2 && x.occurrence === 0);
+      if (row) polls.push({ ev: evs.length > before ? evs[evs.length - 1] : undefined, shown: row.eta, standing });
+    };
+    for (let y = 9 * stepM; y >= 0; y -= stepM) {
+      now += 5000;
+      b = stepBelief(b, ring, { lat: at(0, y).lat, lon: at(0, y).lon }, now, STOPS);
+      price(false);
+    }
+    for (let i = 0; i < standPolls; i++) {
+      now += 5000;
+      b = stepBelief(b, ring, { lat: at(0, 0).lat, lon: at(0, 0).lon }, now, STOPS);
+      price(true);
+    }
+    setClampTrace(null);
+    return { polls, evs, floors, belief: b!, now };
+  }
+  const rises = (xs: number[]) => xs.slice(1).filter((x, i) => x > xs[i]! + 1e-6).length;
+  const standing = (r: { polls: { shown: number; standing: boolean }[] }) => r.polls.filter((p) => p.standing).map((p) => p.shown);
+
+  it("where the mass clears the gate on the arrival poll, master arms from the mixture and the variant from the standing hypothesis", () => {
+    const { ring, tables } = setup();
+    setCeilingArmsOnStanding(false);
+    const m = arrive(ring, tables, 20);
+    setCeilingArmsOnStanding(true);
+    const v = arrive(ring, tables, 20);
+    const mArm = m.polls.find((p) => p.ev)!, vArm = v.polls.find((p) => p.ev)!;
+    // Both arm on the same poll: this fixture is already past the gate there.
+    expect(mArm.ev!.action).toBe("arm");
+    expect(vArm.ev!.action).toBe("arm");
+    expect(vArm.ev!.standMass).toBeGreaterThanOrEqual(LEAD_SWITCH_MASS);
+    // Master's ceiling IS the mixture; the variant's is the standing variant's
+    // own quantile, which is higher by what the moving half of the mixture cost.
+    expect(Math.abs(mArm.shown - mArm.ev!.mixture)).toBeLessThan(1e-6);
+    expect(Math.abs(vArm.shown - vArm.ev!.standing)).toBeLessThan(1e-6);
+    expect(vArm.shown).toBeGreaterThan(mArm.shown + 20);
+    // The rider-visible invariant #119 exists for: neither arm ever climbs.
+    expect(rises(standing(m))).toBe(0);
+    expect(rises(standing(v))).toBe(0);
+  });
+
+  it("below the gate the entry is written provisional, and re-arms exactly once — the poll the mass clears", () => {
+    const { ring, tables } = setup();
+    const v = arrive(ring, tables, 20, 70);
+    const prov = v.evs.filter((e) => e.action === "provisional");
+    expect(prov.length).toBeGreaterThan(0);
+    for (const e of prov) expect(e.standMass).toBeLessThan(LEAD_SWITCH_MASS);
+    const rearms = v.evs.filter((e) => e.action === "rearm");
+    expect(rearms.length).toBe(1);
+    expect(rearms[0]!.standMass).toBeGreaterThanOrEqual(LEAD_SWITCH_MASS);
+    // A provisional entry holds the number exactly as master's ceiling does,
+    // so the one rise a stand may show is the arming and nothing else.
+    expect(rises(standing(v))).toBeLessThanOrEqual(1);
+  });
+
+  it("the variant never shows less than master while the bus stands, and both land on the same number as the rest runs out", () => {
+    const { ring, tables } = setup();
+    setCeilingArmsOnStanding(false);
+    const m = arrive(ring, tables, 20);
+    setCeilingArmsOnStanding(true);
+    const v = arrive(ring, tables, 20);
+    expect(v.polls.length).toBe(m.polls.length);
+    for (let i = 0; i < m.polls.length; i++) expect(v.polls[i]!.shown).toBeGreaterThanOrEqual(m.polls[i]!.shown - 1e-6);
+    // Before the stand the two are byte-identical.
+    const pre = m.polls.filter((p) => !p.standing).length - 1;
+    for (let i = 0; i < pre; i++) expect(v.polls[i]!.shown).toBe(m.polls[i]!.shown);
+    // The gap is the arming, not a permanent offset: the conditional residual
+    // converges as the stand outlives its own table.
+    const mv = standing(m), vv = standing(v);
+    expect(Math.abs(vv.at(-1)! - mv.at(-1)!)).toBeLessThan(1);
+  });
+
+  it("arms once per rest identity and holds it flat through a longer stand", () => {
+    const { ring, tables } = setup();
+    const v = arrive(ring, tables, 140);
+    expect(v.evs.filter((e) => e.action === "rearm" || e.action === "arm").length).toBe(1);
+    expect(rises(standing(v))).toBeLessThanOrEqual(1);
+    // Never reads "now" for a bus still standing: it decays, it does not run out.
+    for (const x of standing(v)) expect(x).toBeGreaterThan(quantile(tables.hops[0]!.drive, 0.5) - 1);
+  });
+
+  it("departure still collapses on the poll it is seen", () => {
+    const { ring, tables } = setup();
+    const r = arrive(ring, tables, 60);
+    const before = standing(r).at(-1)!;
+    const floors: Floors = { map: new Map() };
+    // Re-price the last standing poll into fresh floors so the ceiling is armed here too.
+    priceRoute(r.belief, ring, tables, STOPS, new Set([2]), r.now, 0.5, floors);
+    const now = r.now + 5000;
+    const b = stepBelief(r.belief, ring, { lat: at(35, 0).lat, lon: at(35, 0).lon }, now, STOPS);
+    const dep = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors).find((x) => x.stopId === 2 && x.occurrence === 0)!;
+    expect(dep.standingAt).toBe(-1);
+    expect(dep.eta).toBeLessThan(before - 60);
+    expect(dep.eta).toBeLessThan(quantile(tables.hops[0]!.drive, 0.9) + 5);
+  });
+
+  it("with the switch off the rule is master's: armed from the mixture, and no entry is ever provisional", () => {
+    const { ring, tables } = setup();
+    setCeilingArmsOnStanding(false);
+    const r = arrive(ring, tables, 10);
+    expect(r.evs[0]!.action).toBe("arm");
+    expect(r.evs.filter((e) => e.action === "provisional" || e.action === "rearm").length).toBe(0);
+    for (const v of r.floors.map.values()) expect(v.armed).toBe(true);
+  });
+});
+
+/**
+ * THE INSTRUMENT'S COST (review, 2026-09-12). This branch is a measured
+ * negative result, kept for the next attempt — so the one thing it may not do
+ * is cost the fleet anything. With `armOnStanding` off and no clamp trace set
+ * (production, permanently) `priceRoute` allocates nothing extra per row and
+ * must price every row by master's rule, the running `min(ceiling, mixture)`
+ * over one rest identity. Captured at IMPORT time so no test ordering can make
+ * the default assertion pass.
+ */
+const DEFAULT_ARMS_ON_STANDING = ceilingArmsOnStanding();
+
+describe("the refused experiment is off by default, and costs nothing when it is (2026-09-12)", () => {
+  afterEach(() => { setCeilingArmsOnStanding(false); setClampTrace(null); });
+
+  /**
+   * The 4 -> 1 leg driven in on fresh fixes, then a stand at the marker. Each
+   * poll is priced TWICE: once into a throwaway `Floors` (no held entry, so
+   * master's else-branch runs and the number IS the mixture — the raw one), and
+   * once into the running floors. The pair is what makes "master's rule" a
+   * measurement rather than a reading of the source.
+   */
+  function series(ring: Ring, tables: RouteTables, standPolls: number, trace: boolean) {
+    const floors: Floors = { map: new Map() };
+    if (trace) setClampTrace(() => {});
+    const out: { shown: number; raw: number; standingAt: number }[] = [];
+    let b: Belief | undefined;
+    let now = 0;
+    const poll = (pos: LatLon) => {
+      now += 5000;
+      b = stepBelief(b, ring, { lat: pos.lat, lon: pos.lon }, now, STOPS);
+      const raw = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, { map: new Map() }).find((x) => x.stopId === 2 && x.occurrence === 0);
+      const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors).find((x) => x.stopId === 2 && x.occurrence === 0);
+      if (row && raw) out.push({ shown: row.eta, raw: raw.eta, standingAt: row.standingAt });
+    };
+    for (let y = 9 * 35; y >= 0; y -= 35) poll(at(0, y));
+    for (let i = 0; i < standPolls; i++) poll(at(0, 0));
+    setClampTrace(null);
+    return { rows: out, floors };
+  }
+
+  it("is off by default, so every other caller prices exactly as before", () => {
+    expect(DEFAULT_ARMS_ON_STANDING).toBe(false);
+  });
+
+  it("with the switch off every row is master's rule exactly: min(ceiling, mixture), and nothing is ever provisional", () => {
+    const { ring, tables } = setup();
+    setCeilingArmsOnStanding(false);
+    const { rows, floors } = series(ring, tables, 30, false);
+    expect(rows.length).toBeGreaterThan(30);
+    let clamped = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]!;
+      if (Math.abs(r.shown - r.raw) < 1e-9) continue; // no ceiling in force, or it did not bind
+      // The only other thing the shown number may be is the running minimum
+      // over this rest — master's `min(prev, eta)`, and never a rise.
+      expect(i).toBeGreaterThan(0);
+      expect(r.shown).toBeCloseTo(Math.min(rows[i - 1]!.shown, r.raw), 9);
+      expect(r.shown).toBeLessThan(r.raw);
+      clamped++;
+    }
+    // The path was really exercised: this stand does bind the ceiling.
+    expect(clamped).toBeGreaterThan(5);
+    // Every entry armed, so none of them can re-arm on a later poll.
+    for (const v of floors.map.values()) expect(v.armed).toBe(true);
+  });
+
+  it("setting the clamp trace changes no number — it is an observation, not a rule", () => {
+    const { ring, tables } = setup();
+    setCeilingArmsOnStanding(false);
+    const off = series(ring, tables, 30, false).rows;
+    const on = series(ring, tables, 30, true).rows;
+    expect(on.length).toBe(off.length);
+    for (let i = 0; i < off.length; i++) expect(on[i]!.shown).toBe(off[i]!.shown);
+  });
+});
+
+it('does not switch the priced visit when the held route branch crosses the situation cutoff', () => {
+  const { ring, tables } = setup();
+  const b = stepBelief(undefined, ring, { ...at(450, 0) }, 0, STOPS);
+  b.lead = 0;
+  b.rested = false;
+  b.restStop = -1;
+  const here = ring.stopCell[0]! + Math.floor((ring.stopCell[1]! - ring.stopCell[0]!) / 2);
+  const alternative = ring.stopCell[2]! + 3;
+  const price = (mass: number) => {
+    b.p.fill(0);
+    b.p[ring.C + here] = mass;
+    b.p[ring.C + alternative] = 1 - mass;
+    return priceRoute(b, ring, tables, STOPS, new Set([2]), 5000, 0.5)
+      .find(row => row.stopId === 2 && row.occurrence === 0)!;
+  };
+  const before = price(0.011), after = price(0.009);
+  expect(before.stopsAhead).toBe(1);
+  expect(after.stopsAhead).toBe(1);
+  expect(after.eta).toBeCloseTo(before.eta, 6);
+  expect(after.eta).toBeLessThan(100);
+  // The competing branch remains in the uncertainty window. Holding the
+  // displayed route position must not pretend the posterior is concentrated.
+  expect(after.high).toBeGreaterThan(after.eta + 200);
+  // A held index with effectively zero probability must not resurrect a
+  // disproven visit (recorded Green #325 had only ~1e-33 on its old branch).
+  expect(price(1e-33).eta).toBeGreaterThan(after.eta + 200);
+});
+
+it('exports a non-Gaussian mixture without changing the priced forecasts or their state', () => {
+  const { ring, tables } = setup();
+  const b = stepBelief(undefined, ring, at(450, 0), 0, STOPS);
+  b.p.fill(0); b.lead = 0; b.rested = false; b.restStop = -1;
+  b.p[ring.C + 15] = 0.5;
+  b.p[ring.C + ring.stopCell[2]! + 5] = 0.5;
+  const without = priceRoute(b, ring, tables, STOPS, new Set([2]), 5000, 0.5);
+  const withDots = priceRoute(b, ring, tables, STOPS, new Set([2]), 5000, 0.5, undefined, undefined, true);
+  expect(withDots.map(({ distribution: _, ...row }) => row)).toEqual(without);
+  const dots = withDots[0]!.distribution!;
+  expect(dots).toHaveLength(50);
+  expect(dots.every((v, i) => Number.isFinite(v) && v >= 0 && (!i || v >= dots[i - 1]!))).toBe(true);
+  // Distinct route branches remain distinct clusters, not a bell curve drawn
+  // through low/median/high. No new samples are generated by the browser.
+  expect(dots[24]! - dots[23]!).toBeLessThan(40);
+  expect(dots[25]! - dots[24]!).toBeGreaterThan(50);
 });

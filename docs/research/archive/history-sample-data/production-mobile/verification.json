@@ -1,0 +1,24 @@
+{
+  "source": "https://yale-shuttle.fly.dev",
+  "errors": [],
+  "checks": [
+    "390px and 320px layouts",
+    "buffer changes destination target",
+    "destination distribution has 50 server outcomes, deadline and walking markers",
+    "mini-map shows one compact arrival window per route without width cutoffs",
+    "hollow historical dots display dated observed trips",
+    "recorded waits are the primary pickup graph; current forecast expands separately",
+    "pickup distribution and following-shuttle wording",
+    "history failure leaves live distribution and forecast usable",
+    "deadline survives reload",
+    "trip details, pickup gap and Escape focus still work",
+    "passed deadline rejected",
+    "empty time remains editable",
+    "failed feed suppresses shuttle recommendation",
+    "clear returns to normal planner"
+  ],
+  "comparison": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach LEPH / 60 College by 10:02 AM · 10 min before class.\n\nRed may fit your buffer\n\nThe estimated window fits your target if you catch the bus at Division / Prospect. Check the pickup and walking times.\n\nEstimated arrival at destination\n\nRed · #300\n9:43 AM–9:58 AM\nWindow fits buffer · View trip ›\nWalk\nAbout 10:05 AM\nMay use your buffer · View trip ›\nSee possible arrival times ▾\nHow to read these times ▾",
+  "route": "Red",
+  "pickupDetails": "Red arrival\n×\n\nAbout 6 min\n\nLikely arrival window: 1–14 min\n\nUse the early end of the estimated window when deciding when to reach your stop.\n\nShuttle\n#300\nStops to pickup\n4\nFollowing shuttle · #316\nAbout 12 min later\n\nThe following arrival is estimated in about 19 min from now. Both arrival estimates can change.\n\nPast trips to this stop\n\nCanal / Munson → Division / Prospect\n\nMeasured from departure at the starting stop. These are full stop-to-stop times; the live estimate accounts for this shuttle’s current progress.\n\nTravel time after departure\n0 min\n8 min\n15 min\n\n71 recorded trips across 10 dates. Each dot is one completed journey.\n\nObserved median: 8 min\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 9:00 AM · #309\nSep 17, 8:47 AM · #316\nSep 17, 8:35 AM · #300\nAbout these records ▾\n\nComparison captured Sep 17, 9:27 AM\n\nRefresh comparison\nForecast for this shuttle ▾",
+  "historyQueries": []
+}

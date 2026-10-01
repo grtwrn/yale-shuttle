@@ -1,0 +1,16 @@
+{
+  "head": "7e29064475315c2d621b77cdca130c05737d1ab8",
+  "indexUnchanged": true,
+  "numericalAndEngineUnchanged": true,
+  "baselineAndCandidateBundlesMatch": true,
+  "reports": [
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08/release/stop-alert-controls.json",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08/release/desktop/stop-alert-controls.json"
+  ],
+  "images": 209,
+  "imageBytes": 9272460,
+  "sourceSha256": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "3c2ac6fefcb8b6e57e0c8aff7df42820907b1a0b38a76b34f289ded1749a1974",
+    "services/shuttle-v2/scripts/stop-alert-controls-check.mjs": "ff309df1a5dab87b890ae88e2b0f6abc932007be3bb012be5fd3eec4937a353a"
+  }
+}

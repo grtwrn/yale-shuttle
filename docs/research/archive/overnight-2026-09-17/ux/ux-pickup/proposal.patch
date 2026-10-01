@@ -1,0 +1,570 @@
+diff --git a/services/shuttle-v2/scripts/trip-identity-check.mjs b/services/shuttle-v2/scripts/trip-identity-check.mjs
+index a84bde6..51425c6 100644
+--- a/services/shuttle-v2/scripts/trip-identity-check.mjs
++++ b/services/shuttle-v2/scripts/trip-identity-check.mjs
+@@ -48,7 +48,7 @@ try{
+  assert.equal(option.busName,'307');assert.equal(option.journeyArrival.busName,'309');
+  assert.equal(option.boardStopId,48);assert.equal(option.alightStopId,121);
+  assert(option.walkFromSec>=60,'fixture has a final walk');
+- assert.match(report.after,/Trip time uses #309. #307 may reach pickup before you/);
++ assert.match(report.after,/Trip uses #309. #307 may reach pickup before you/);
+  assert(report.after.includes(`🚌 #309 · ${Math.floor(option.rideSec/60)} min`),'ride duration matches the chosen journey');
+  assert.match(report.after,/⏳ 17 min/);assert(!report.after.includes('⏳ now-2 min'));
+  assert.match(report.after,/GET OFFUnion Station/);
+@@ -77,13 +77,13 @@ try{
+  const wire=feed.server_eta;delete feed.server_eta;
+  await page.clock.runFor(5500);await page.waitForTimeout(100);
+  await page.getByText('ETA unavailable',{exact:true}).first().waitFor();
+- assert.equal(await page.getByText(/Trip time uses #309/).count(),0);
++ assert.equal(await page.getByText(/Trip uses #309/).count(),0);
+  assert.equal(await page.getByRole('button',{name:/I'm on #309/}).count(),0);
+  assert(await page.getByRole('button',{name:"🚌 I'm on it",exact:true}).evaluate(e=>e===document.activeElement),'missing journey returns focus to persistent boarding action');
+  feed.server_eta=wire;await page.clock.runFor(5500);await page.waitForTimeout(100);await action.waitFor();
+  const directions=page.getByRole('link',{name:'🧭 Directions to stop',exact:true});await directions.focus();
+  wire.servedAt=wire.at+60000;await page.clock.runFor(5500);await page.waitForTimeout(100);
+- assert.equal(await page.getByText(/Trip time uses #309/).count(),0);
++ assert.equal(await page.getByText(/Trip uses #309/).count(),0);
+  assert(await directions.evaluate(e=>e===document.activeElement),'stale transition preserves external focus');
+  wire.servedAt=wire.at;await page.clock.runFor(5500);await page.waitForTimeout(100);await action.waitFor();
+  report.checks.push('Both pickup identities, Back/draft, missing and stale wire removal, and fresh recovery preserved');
+@@ -110,7 +110,7 @@ try{
+  wire.rows.sort((a,b)=>a[2]-b[2]);wire.distributions=wire.rows.map(r=>Array.from({length:50},(_,i)=>r[3]+i*(r[4]-r[3])/49));
+  await page.clock.runFor(5500);await page.waitForTimeout(100);
+  await page.getByRole('button',{name:"🚌 I'm on it",exact:true}).waitFor();
+- assert.equal(await page.getByText(/Trip time uses/).count(),0);
++ assert.equal(await page.getByText(/Trip uses/).count(),0);
+  assert.match(await page.locator('body').innerText(),/🚌 #307 · 1[78] min/);
+  assert.deepEqual(report.errors,[]);report.completed=true;
+ 
+diff --git a/services/shuttle-v2/web/src/TransitMap.tsx b/services/shuttle-v2/web/src/TransitMap.tsx
+index e3c840d..ec290da 100644
+--- a/services/shuttle-v2/web/src/TransitMap.tsx
++++ b/services/shuttle-v2/web/src/TransitMap.tsx
+@@ -40,6 +40,7 @@ import { ArrivalDetails } from "./ArrivalDetails";
+ import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
+ import { ArriveBy } from "./ArriveBy";
+ import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
++import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
+ import { tripBusIdentity } from "./tripBusIdentity";
+ import { TripBoardingActions } from "./TripBoardingActions";
+ import {
+@@ -2186,16 +2187,16 @@ const TripPlanner: FC<{
+     // For future-mode (user picked a date >60s out) we can't refresh
+     // against live buses — keep the memoized numbers.
+     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
+-    if (isFutureMode) return stableOptions;
++    if (isFutureMode) return stableOptions.map(o => ({ ...o, livePickupSelection: undefined }));
+     return stableOptions.map((o) => {
+       if (o.mode !== "shuttle") {
+         // A live origin moves with the rider for both alternatives.
+         const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
+-        if (!from || !toLL) return o;
++        if (!from || !toLL) return { ...o, livePickupSelection: undefined };
+         const totalSec = walkSecFromMeters(haversineMeters(from, toLL));
+-        return { ...o, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
++        return { ...o, livePickupSelection: undefined, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
+       }
+-      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, etaUnavailable: true, journeyArrival: undefined };
++      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, livePickupSelection: undefined, etaUnavailable: true, journeyArrival: undefined };
+       // Re-derive wait from current arrivals. Simpler than it used to
+       // be — a large pinned.eta *by itself* doesn't mean "just
+       // passed" (it could just mean the bus is on the far side of
+@@ -2259,6 +2260,7 @@ const TripPlanner: FC<{
+         return {
+           ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+           rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
++          livePickupSelection: rawPickupSelection(hereBus.bus_name, o.boardStopId, nowMs),
+           journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
+           busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
+         };
+@@ -2266,14 +2268,14 @@ const TripPlanner: FC<{
+ 
+       if (live.length === 0) {
+         // No future arrival and no bus parked at the stop — truly unreachable.
+-        return { ...o, journeyArrival: undefined, departed: true };
++        return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
+       }
+       // Which arrival to follow — pinned-bus loyalty, its catchability
+       // bounds, the report-#49 dominance switch, and the departed verdict
+       // all live in pickLiveArrival (planner.ts), where they are unit
+       // tested. `live` is non-empty here, so the pick exists.
+       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
+-      if (!picked) return { ...o, journeyArrival: undefined, departed: true };
++      if (!picked) return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
+       const { match, boardable, departed, missedBus } = picked;
+       // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
+       // the one the rider can see coming, which must not vanish while it is
+@@ -2295,6 +2297,7 @@ const TripPlanner: FC<{
+       return {
+         ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+         rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - waitSec - o.walkFromSec) : o.rideSec,
++        livePickupSelection: forecastPickupSelection(picked, nowMs),
+         journeyArrival: arrival, busName: match.busName, departed, missedBus,
+         // The floor rides with the pin: one row of one estimator pass, so the
+         // range's low end cannot be built from a different bus's drive.
+@@ -4329,10 +4332,9 @@ const TripPlanner: FC<{
+                           distance"). */}
+                       {(() => {
+                         const busNo = tripBus.ride;
+-                        // The pickup band's bus can differ from the journey's.
+-                        // In that case use the journey's existing wait estimate;
+-                        // never apply the approaching bus's window to this ride.
+-                        const waitText = o.etaUnavailable ? null : tripBus.different
++                        // A later pickup (including the same bus next lap) must use
++                        // its selected wait, even without a destination forecast.
++                        const waitText = o.etaUnavailable ? null : tripBus.separateWait
+                           ? fmtWait(o.waitSec) : waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
+                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
+                         return (
+@@ -4358,7 +4360,12 @@ const TripPlanner: FC<{
+                       })()}
+                       {tripBus.different && (
+                         <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.4 }}>
+-                          Trip time uses #{tripBus.ride}. #{tripBus.pickup} may reach pickup before you.
++                          Trip uses #{tripBus.ride}. #{tripBus.pickup} may reach pickup before you.
++                        </p>
++                      )}
++                      {tripBus.laterVisit && (
++                        <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.4 }}>
++                          Trip uses #{tripBus.ride} on a later visit.
+                         </p>
+                       )}
+                       {/* Where the bus really pulls up, when that is not the
+diff --git a/services/shuttle-v2/web/src/planner.ts b/services/shuttle-v2/web/src/planner.ts
+index b3cfffe..18a642d 100644
+--- a/services/shuttle-v2/web/src/planner.ts
++++ b/services/shuttle-v2/web/src/planner.ts
+@@ -15,6 +15,7 @@ import {
+ import type { PublishedWindow } from "./schedule";
+ import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
+ import type { JourneyArrival } from './journeyArrival';
++import type { LivePickupSelection } from './livePickupSelection';
+ 
+ export type TripOption = {
+   mode: "shuttle" | "walk";
+@@ -64,6 +65,8 @@ export type TripOption = {
+   computedAtMs?: number;
+   /** Destination arrival for the catchable bus, including the final walk. */
+   journeyArrival?: JourneyArrival;
++  /** Existing countdown and selected boarding evidence, independent of destination availability. */
++  livePickupSelection?: LivePickupSelection;
+   etaUnavailable?: boolean;
+ };
+ 
+diff --git a/services/shuttle-v2/web/src/tripBusIdentity.test.ts b/services/shuttle-v2/web/src/tripBusIdentity.test.ts
+index d284e6f..698bd3d 100644
+--- a/services/shuttle-v2/web/src/tripBusIdentity.test.ts
++++ b/services/shuttle-v2/web/src/tripBusIdentity.test.ts
+@@ -1,19 +1,45 @@
+ import { describe, expect, it } from 'vitest';
++import { forecastPickupSelection, rawPickupSelection } from './livePickupSelection';
+ import { tripBusIdentity } from './tripBusIdentity';
+ 
+ const journeyArrival = { busName: '309', pointMs: 1000, lowMs: 900, highMs: 1200, catchRisk: false, estimated: false };
+ describe('trip bus attribution', () => {
+   it('keeps the visible approaching bus distinct from the bus used for the journey', () => {
+-    expect(tripBusIdentity({ busName: '#307', journeyArrival })).toEqual({ pickup: '307', ride: '309', different: true });
++    expect(tripBusIdentity({ busName: '#307', journeyArrival })).toEqual({ pickup: '307', ride: '309', different: true, laterVisit: false, separateWait: true });
+   });
+   it('normalizes the same vehicle without creating a second boarding action', () => {
+-    expect(tripBusIdentity({ busName: '#309', journeyArrival })).toEqual({ pickup: '309', ride: '309', different: false });
++    expect(tripBusIdentity({ busName: '#309', journeyArrival })).toEqual({ pickup: '309', ride: '309', different: false, laterVisit: false, separateWait: false });
+   });
+   it.each([{ etaUnavailable: true }, { departed: true }])('does not present an unusable journey as the selected ride: %j', flags => {
+-    expect(tripBusIdentity({ busName: '307', journeyArrival, ...flags })).toEqual({ pickup: '307', ride: '307', different: false });
++    expect(tripBusIdentity({ busName: '307', journeyArrival, ...flags })).toEqual({ pickup: '307', ride: '307', different: false, laterVisit: false, separateWait: false });
+   });
+   it('keeps missing and future journey identities unknown', () => {
+-    expect(tripBusIdentity({ busName: '307' })).toEqual({ pickup: '307', ride: '307', different: false });
+-    expect(tripBusIdentity({ busName: '' })).toEqual({ pickup: '', ride: '', different: false });
++    expect(tripBusIdentity({ busName: '307', journeyArrival: { ...journeyArrival, busName: '' } }))
++      .toMatchObject({ pickup: '307', ride: '307', different: false });
++    expect(tripBusIdentity({ busName: '307' })).toEqual({ pickup: '307', ride: '307', different: false, laterVisit: false, separateWait: false });
++    expect(tripBusIdentity({ busName: '' })).toEqual({ pickup: '', ride: '', different: false, laterVisit: false, separateWait: false });
++  });
++});
++
++const pickup = { busName: '307', stopId: 48, stopsAhead: 1, eta: 20, low: 0, high: 60 };
++const selected = (busName: string, stopsAhead: number) => forecastPickupSelection({
++  match: pickup, boardable: { ...pickup, busName, stopsAhead, eta: 1200 }, departed: false,
++}, 1000);
++describe('destination-independent pickup identity', () => {
++  it('retains the selected bus without destination timing', () => {
++    expect(tripBusIdentity({ busName: '#307', livePickupSelection: selected('309', 1) }))
++      .toEqual({ pickup: '307', ride: '309', different: true, laterVisit: false, separateWait: true });
++  });
++  it('uses the later pickup wait with a single physical vehicle action', () => {
++    expect(tripBusIdentity({ busName: '#307', livePickupSelection: selected('#307', 30) }))
++      .toEqual({ pickup: '307', ride: '307', different: false, laterVisit: true, separateWait: true });
++  });
++  it.each([{ departed: true }, { etaUnavailable: true }])('clears unusable metadata: %j', flags => {
++    expect(tripBusIdentity({ busName: '307', livePickupSelection: selected('309', 1), ...flags }))
++      .toMatchObject({ ride: '307', different: false, laterVisit: false, separateWait: false });
++  });
++  it('keeps raw-current separate from a later forecast', () => {
++    expect(tripBusIdentity({ busName: '307', livePickupSelection: rawPickupSelection('#307', 48, 1000) }))
++      .toMatchObject({ ride: '307', different: false, laterVisit: false, separateWait: false });
+   });
+ });
+diff --git a/services/shuttle-v2/web/src/tripBusIdentity.ts b/services/shuttle-v2/web/src/tripBusIdentity.ts
+index 54bf18e..dd383a2 100644
+--- a/services/shuttle-v2/web/src/tripBusIdentity.ts
++++ b/services/shuttle-v2/web/src/tripBusIdentity.ts
+@@ -1,12 +1,15 @@
+ import type { TripOption } from './planner';
+ 
+-/** The pickup countdown can follow a bus the walk model cannot catch.
+- * Attribute the ride to the existing destination forecast without changing
+- * either selection. Keep both identities available for manual boarding. */
+-export function tripBusIdentity(option: Pick<TripOption, 'busName' | 'journeyArrival' | 'etaUnavailable' | 'departed'>) {
++/** The countdown may precede the pickup used for the trip. Destination
++ * availability must not erase that selected vehicle or occurrence. */
++export function tripBusIdentity(option: Pick<TripOption, 'busName' | 'journeyArrival' | 'livePickupSelection' | 'etaUnavailable' | 'departed'>) {
+   const normalize = (name: string) => name.replace(/^#/, '');
+   const pickup = normalize(option.busName);
+-  const ride = !option.etaUnavailable && !option.departed && option.journeyArrival?.busName
+-    ? normalize(option.journeyArrival.busName) : pickup;
+-  return { pickup, ride, different: !!pickup && !!ride && pickup !== ride };
++  const usable = !option.etaUnavailable && !option.departed;
++  const selection = usable ? option.livePickupSelection : undefined;
++  const ride = normalize(selection?.boarding.busName
++    || (usable ? option.journeyArrival?.busName : undefined) || pickup);
++  const different = !!pickup && !!ride && pickup !== ride;
++  const laterVisit = selection?.relation === 'same-bus-later-visit';
++  return { pickup, ride, different, laterVisit, separateWait: different || laterVisit };
+ }
+diff --git a/services/shuttle-v2/scripts/pickup-selection-check.mjs b/services/shuttle-v2/scripts/pickup-selection-check.mjs
+new file mode 100644
+index 0000000..ade171f
+--- /dev/null
++++ b/services/shuttle-v2/scripts/pickup-selection-check.mjs
+@@ -0,0 +1,197 @@
++import fs from 'node:fs/promises';
++import assert from 'node:assert/strict';
++import {createRequire} from 'node:module';
++const service=process.cwd(), O=process.env.OUT;
++if (!O) throw new Error('Set OUT to a fresh evidence directory');
++await fs.mkdir(O,{recursive:true});
++const mobile=process.env.VIEWPORT!=='desktop';
++const {chromium}=createRequire(service+'/package.json')('playwright-core');
++const {seedTestId}=await import(service+'/scripts/testId.mjs');
++const now=Date.parse('2026-09-17T14:00:00-04:00');
++const feed=JSON.parse(await fs.readFile(service+'/web/src/__fixtures__/buses-payload.json','utf8'));
++feed.stop_names=Object.fromEntries(JSON.parse(await fs.readFile(service+'/src/server/__fixtures__/stops.json','utf8')).map(s=>[s.id,s.name]));
++const seq=feed.routes['3'],start=seq.indexOf(48),previous=(start+seq.length-1)%seq.length;
++feed.buses=['307','309'].map((bus_name,i)=>({bus_name,bus_id:i+1,route_id:3,...feed.stop_coords[seq[previous]],last_stop_id:seq[previous],heading:180,observed_at:now}));
++const rows=[];
++for(let i=0;i<2;i++)for(let h=0;h<seq.length*2;h++){
++ const eta=300+i*900+h*90;rows.push([i,seq[(start+h)%seq.length],eta,eta-120,eta+240,h+1,0,eta-120,eta-120]);
++}
++rows.sort((a,b)=>a[2]-b[2]);
++const refreshDots=()=>{feed.server_eta.rows.sort((a,b)=>a[2]-b[2]);feed.server_eta.distributions=feed.server_eta.rows.map(r=>Array.from({length:50},(_,i)=>r[3]+i*(r[4]-r[3])/49));};
++feed.server_eta={v:2,at:now,servedAt:now,buses:['307','309'].map(b=>[b,'Red',previous,null]),rows};refreshDots();
++const report={scope:'Actual built SPA with synthetic wire: selected pickup identity, wait, lifecycle and manual actions.',viewport:mobile?'mobile':'desktop',states:[],errors:[],feedRequests:0};
++let failure=false;
++const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});let context,page;
++try{
++ context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:900},isMobile:mobile,hasTouch:mobile,timezoneId:'America/New_York',serviceWorkers:'block'});await seedTestId(context);
++ await context.addInitScript(({now,fromLL,toLL})=>{
++  const D=Date;window.Date=class extends D{constructor(...a){super(...(a.length?a:[now]));}static now(){return now;}};
++  sessionStorage.setItem('shuttle-trip-draft',JSON.stringify({fromText:'Research origin',fromLL,toText:'Research destination',toLL,tripTime:'',expandedKey:null,savedAt:now}));
++ },{now,fromLL:{lat:feed.stop_coords[48].lat,lon:feed.stop_coords[48].lon-0.0017},toLL:feed.stop_coords[121]});
++ page=await context.newPage();page.setDefaultTimeout(8000);page.on('pageerror',e=>report.errors.push(e.message));
++ await page.route('**/*',async r=>{
++  const u=new URL(r.request().url());if(u.hostname!=='pickup-contract.test')return r.abort();
++  if(u.pathname==='/api/buses'){report.feedRequests++;return failure?r.fulfill({status:503,json:{error:'fixture'}}):r.fulfill({json:feed});}
++  if(u.pathname==='/api/weather')return r.fulfill({status:204});
++  if(u.pathname.startsWith('/api/'))return r.fulfill({json:{reports:[],results:[],routes:[]}});
++  const file=u.pathname==='/'?'/index.html':u.pathname;try{return r.fulfill({body:await fs.readFile(service+'/web/dist'+file),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});}catch{return r.fulfill({status:404});}
++ });
++ await page.goto('https://pickup-contract.test',{waitUntil:'domcontentloaded'});
++ await page.getByRole('button',{name:'View Red trip details',exact:true}).click();
++ async function getOption(expected){
++  await page.waitForFunction(expected=>{
++   const root=document.getElementById('root'),k=Object.keys(root).find(k=>k.startsWith('__reactContainer$'));if(!k)return false;
++   const stack=[root[k].stateNode?.current??root[k]];let n=0;
++   while(stack.length&&n++<10000){const f=stack.pop();if(f.child)stack.push(f.child);if(f.sibling)stack.push(f.sibling);let h=f.memoizedState,c=0;
++    while(h&&typeof h==='object'&&c++<500){const m=h.memoizedState;
++     if(Array.isArray(m)&&Array.isArray(m[0]))for(const o of m[0])if(o?.mode==='shuttle'&&o.routeLabel==='Red'&&(Object.hasOwn(o,'departed')||o.etaUnavailable)&&o.busName===(expected.pickup??'307')
++      &&Boolean(o.etaUnavailable)===Boolean(expected.unavailable)&&Boolean(o.journeyArrival)===expected.journey
++      &&(!expected.bus||o.journeyArrival?.busName===expected.bus)&&(!expected.close||o.busEtaSec<30)
++      &&(!expected.relation||o.livePickupSelection?.relation===expected.relation)
++      &&(expected.departed===undefined||o.departed===expected.departed)){
++       window.__contractOption=o;return true;
++      }
++     h=h.next;
++    }
++   }return false;
++  },expected);return page.evaluate(()=>window.__contractOption);
++ }
++ async function capture(name,expected){const option=await getOption(expected);await page.waitForTimeout(100);const text=await page.locator('body').innerText();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));const state={name,option,text};report.states.push(state);return state;}
++ async function refresh(){await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));}
++ await capture('initial same bus',{journey:true,bus:'307'});
++ for(const r of feed.server_eta.rows)if(r[0]===0){r[2]-=280;r[3]=Math.max(0,r[3]-280);r[4]-=280;r[7]=Math.max(0,r[7]-280);r[8]=Math.max(0,r[8]-280);}refreshDots();await refresh();
++ const distinct=await capture('different selected bus with destination',{journey:true,bus:'309',close:true});
++ assert.match(distinct.text,/I'm on #309/);assert.match(distinct.text,/I'm on #307/);
++ const chosenAction=page.getByRole('button',{name:/I'm on #309/});await chosenAction.focus();
++ const allRows=structuredClone(feed.server_eta.rows),target=distinct.option.alightStopId;
++ feed.server_eta.rows=allRows.filter(r=>r[1]!==target);refreshDots();await refresh();
++ const missing=await capture('destination disappears, wait still belongs to #309',{journey:false,close:true});
++ assert.equal(missing.option.waitSec,distinct.option.waitSec);assert.equal(missing.option.busEtaSec,distinct.option.busEtaSec);
++ assert.match(missing.text,/I'm on #309/);assert.match(missing.text,/I'm on #307/);
++ assert.match(missing.text,/⏳ 17 min/);assert.doesNotMatch(missing.text,/⏳ now-2 min/);
++ assert(await chosenAction.evaluate(e=>e===document.activeElement),'destination loss preserves selected action focus');
++ await page.screenshot({path:O+'/selected-bus-missing-destination.png',fullPage:true});
++ // Keep the physical bus roster stable: only the other bus's forecast rows
++ // disappear. The existing saved plan must not be regenerated for this probe.
++ feed.server_eta.rows=allRows.filter(r=>r[0]===0);refreshDots();await refresh();
++ const sameLater=await capture('same vehicle later visit, first visit remains countdown',{journey:true,bus:'307',close:true});
++ assert.ok(sameLater.option.waitSec>2000);assert.match(sameLater.text,/I'm on it/);
++ assert.match(sameLater.text,/⏳ 41 min/);assert.match(sameLater.text,/Trip uses #307 on a later visit/);
++ const singleAction=page.getByRole('button',{name:/I'm on/});assert.equal(await singleAction.count(),1);
++ assert(await singleAction.evaluate(e=>e===document.activeElement),'removed distinct-vehicle action returns focus');
++ const arrivalDetails=page.getByRole('button',{name:/Red arrival details/}).first();
++ await arrivalDetails.focus();await page.keyboard.press('Enter');
++ const arrivalDialog=page.getByRole('dialog',{name:'Red arrival',exact:true});await arrivalDialog.waitFor();
++ assert.match(await arrivalDialog.innerText(),/Next pass by this shuttle/);
++ await page.keyboard.press('Escape');assert(await arrivalDetails.evaluate(e=>e===document.activeElement));
++ feed.server_eta.rows=allRows.filter(r=>r[0]===0&&r[1]!==target);refreshDots();await refresh();
++ const laterMissing=await capture('same vehicle later visit without destination',{journey:false,close:true});assert.equal(laterMissing.option.waitSec,sameLater.option.waitSec);
++ assert.match(laterMissing.text,/⏳ 41 min/);assert.match(laterMissing.text,/Trip uses #307 on a later visit/);
++ assert.equal(await page.getByRole('button',{name:/I'm on/}).count(),1);
++ for(const width of (mobile?[360,390,430]:[1280,640])){
++  await page.setViewportSize({width,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
++ }
++ await page.setViewportSize({width:mobile?390:1280,height:844});
++ await page.screenshot({path:O+'/later-visit.png',fullPage:true});
++ feed.server_eta.rows=allRows;refreshDots();await refresh();
++ const recovered=await capture('destination and distinct bus recover',{journey:true,bus:'309',close:true});assert.equal(recovered.option.waitSec,distinct.option.waitSec);assert.match(recovered.text,/I'm on #309/);
++ feed.server_eta.servedAt=now+45000;await refresh();
++ const stale=await capture('forecast expires, live identity unavailable',{journey:false,unavailable:true});assert.doesNotMatch(stale.text,/I'm on #309/);
++ feed.server_eta.servedAt=now;await refresh();await capture('fresh forecast recovers',{journey:true,bus:'309',close:true});
++ const relations=['same-visit','different-bus','different-bus','same-bus-later-visit','same-bus-later-visit','different-bus',undefined,'different-bus'];
++ const previous=process.env.BASELINE ? JSON.parse(await fs.readFile(process.env.BASELINE,'utf8')) : null;
++ for(let i=0;i<report.states.length;i++){
++  const current=report.states[i].option,selection=current.livePickupSelection;
++  assert.equal(selection?.relation,relations[i],report.states[i].name);
++  if(selection){
++   assert.equal(selection.selectedAtMs,now);assert.equal(selection.countdown.busName,'307');
++   assert.equal(selection.boarding.busName,relations[i]==='different-bus'?'309':'307');
++   assert.equal(selection.countdown.etaSec,current.busEtaSec);
++   assert.equal(Math.max(0,selection.boarding.etaSec-current.walkToSec),current.waitSec);
++   assert.equal(selection.boarding.stopId,current.boardStopId);
++  }
++  const {livePickupSelection,...existing}=current;
++  if(previous) assert.deepEqual(JSON.parse(JSON.stringify(existing)),previous.states[i].option,'exact serialized baseline option '+report.states[i].name);
++ }
++ assert.deepEqual(report.states[1].option.livePickupSelection,report.states[2].option.livePickupSelection);
++ assert.deepEqual(report.states[3].option.livePickupSelection,report.states[4].option.livePickupSelection);
++ assert.equal(await page.getByRole('button',{name:/I'm on #309/}).count(),1);
++ const action=page.getByRole('button',{name:/I'm on #309/});await action.focus();await page.keyboard.press('Tab');
++ report.keyboardTabPassed=await page.evaluate(()=>document.activeElement!==document.body);assert.ok(report.keyboardTabPassed);
++ // Exercise raw evidence and departed clearing in the real compiled shell.
++ feed.buses[0].at_stop_id=48;feed.buses[0].at_stop_since=new Date(now-60000).toISOString().slice(0,19);
++ feed.dwells['3']??={};feed.dwells['3']['48']={med:600,sd:10,n:10};await refresh();
++ const raw=await capture('raw current pickup with walking caution',{journey:true,bus:'307',close:true,relation:'raw-current'});
++ assert.equal(raw.option.waitSec,0);assert.equal(raw.option.busEtaSec,0);assert.equal(raw.option.journeyArrival.catchRisk,true);
++ assert.equal(raw.option.livePickupSelection.boarding.source,'raw-at-stop');
++ assert.equal(raw.option.livePickupSelection.boarding.stopsAhead,undefined);
++ feed.server_eta.rows=allRows.filter(r=>r[1]!==target);refreshDots();await refresh();
++ const rawMissing=await capture('raw pickup with no destination forecast',{journey:false,close:true,relation:'raw-current'});
++ assert.deepEqual(rawMissing.option.livePickupSelection,raw.option.livePickupSelection);
++ delete feed.buses[0].at_stop_id;delete feed.buses[0].at_stop_since;
++ const sole=structuredClone(allRows.find(r=>r[0]===1&&r[1]===48&&r[5]===1));
++ sole[2]=20;sole[3]=0;sole[4]=60;sole[7]=0;sole[8]=0;feed.server_eta.rows=[sole];refreshDots();await refresh();
++ const departed=await capture('departed without pinned tolerance clears selection',{journey:false,close:true,departed:true,pickup:'309'});
++ assert.equal(departed.option.livePickupSelection,undefined);
++ feed.server_eta.rows=allRows;refreshDots();await refresh();
++ await capture('catchable selection recovers after departed',{journey:true,bus:'309',close:true,relation:'different-bus',departed:false});
++ failure=true;await refresh();
++ const failed=await capture('review: polling failure clears metadata',{journey:false,unavailable:true});
++ assert.equal(failed.option.livePickupSelection,undefined);
++ failure=false;await refresh();await capture('review: poll recovery',{journey:true,bus:'309',close:true,relation:'different-bus'});
++ const savedWire=feed.server_eta;delete feed.server_eta;await refresh();
++ const missingWire=await capture('review: missing server ETA clears metadata',{journey:false,unavailable:true});
++ assert.equal(missingWire.option.livePickupSelection,undefined);
++ feed.server_eta=savedWire;await refresh();await capture('review: transport recovery',{journey:true,bus:'309',close:true,relation:'different-bus'});
++ const readStorage=()=>page.evaluate(()=>({local:{...localStorage},session:{...sessionStorage}}));
++ assert.doesNotMatch(JSON.stringify(await readStorage()),/livePickupSelection/);
++ // Enter a real future plan through the public UI, then inspect the current
++ // hooks' computed option array (identified by this additive own property).
++ await page.getByRole('button',{name:'← All routes',exact:true}).click();
++ await page.getByRole('button',{name:'Plan for later…',exact:true}).click();
++ await page.getByLabel('Departure time',{exact:true}).fill('2026-09-17T15:00');
++ await page.getByText(/Estimated from service hours and typical wait and travel times/).waitFor();
++ await page.waitForFunction(()=>{
++  const root=document.getElementById('root'),k=Object.keys(root).find(k=>k.startsWith('__reactContainer$'));
++  const stack=[root[k].stateNode?.current??root[k]];let visited=0,found=false;
++  while(stack.length&&visited++<10000){const f=stack.pop();if(f.child)stack.push(f.child);if(f.sibling)stack.push(f.sibling);
++   let h=f.memoizedState,c=0;while(h&&typeof h==='object'&&c++<500){const m=h.memoizedState;
++    if(Array.isArray(m)&&Array.isArray(m[0])&&m[0].some(o=>o?.mode&&Object.hasOwn(o,'livePickupSelection'))){
++     found=true;if(m[0].some(o=>o?.livePickupSelection!==undefined))return false;
++    }h=h.next;
++   }
++  }return found;
++ });
++ report.futurePlanCleared=true;
++ assert.doesNotMatch(JSON.stringify(await readStorage()),/livePickupSelection/);
++ await page.getByRole('button',{name:'Now',exact:true}).click();
++ const details=page.getByRole('button',{name:'View Red trip details',exact:true});
++ if(await details.count())await details.click();
++ await getOption({journey:true,bus:'309',relation:'different-bus',close:true});
++ assert.equal(await page.getByRole('button',{name:/I'm on #309/}).count(),1);
++
++ // A new departure plan legitimately changes the pin. Establish a fresh
++ // ordinary pickup before testing its later visit; do not force the selector
++ // to retain an occurrence across replanning.
++ feed.server_eta.rows=structuredClone(allRows);
++ for(const r of feed.server_eta.rows)if(r[0]===0){r[2]+=280;r[3]+=280;r[4]+=280;r[7]+=280;r[8]+=280;}
++ refreshDots();await page.reload();
++ await page.getByRole('button',{name:'View Red trip details',exact:true}).click();
++ await getOption({journey:true,bus:'307',relation:'same-visit'});
++ // Manual selection is a physical vehicle, never a saved forecast occurrence.
++ feed.server_eta.rows=allRows.filter(r=>r[0]===0&&r[1]!==target);refreshDots();await refresh();
++ await capture('single physical vehicle can be tracked without a destination forecast',{journey:false,close:true,relation:'same-bus-later-visit',departed:false});
++ const board=page.getByRole('button',{name:"🚌 I'm on it",exact:true});
++ await board.focus();if(mobile)await board.tap();else await page.keyboard.press('Enter');
++ const done=page.getByRole('button',{name:'Done',exact:true});await done.waitFor();
++ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')));
++ assert.equal(saved.busName,'307');assert.equal(saved.boardStopId,48);assert.equal(saved.livePickupSelection,undefined);assert.equal(saved.stopsAhead,undefined);
++ await page.reload();await done.waitFor();assert.match(await page.locator('body').innerText(),/Red #307/);
++ await done.focus();await page.keyboard.press('Enter');
++ assert.equal(report.errors.length,0);report.completed=true;
++}finally{
++ if(!report.completed&&page)report.failureSnapshot=await page.locator('body').ariaSnapshot().catch(()=>null);
++ if(page)await page.close();if(context)await context.close();await browser.close();report.resourcesClosed=true;
++ await fs.writeFile(O+'/browser-'+(mobile?'mobile':'desktop')+'.json',JSON.stringify(report,null,2)+'\n');
++}
++console.log(JSON.stringify({completed:report.completed,states:report.states.length,errors:report.errors,resourcesClosed:report.resourcesClosed}));
+diff --git a/services/shuttle-v2/web/src/livePickupSelection.test.ts b/services/shuttle-v2/web/src/livePickupSelection.test.ts
+new file mode 100644
+index 0000000..491c11f
+--- /dev/null
++++ b/services/shuttle-v2/web/src/livePickupSelection.test.ts
+@@ -0,0 +1,74 @@
++import { describe, expect, it } from 'vitest';
++import { forecastPickupSelection, rawPickupSelection } from './livePickupSelection';
++import { pickLiveArrival, rideBoardArrivals } from './planner';
++import { compareDeadline } from './arriveBy';
++import { journeyArrival } from './journeyArrival';
++import type { UpcomingArrival } from './arrivals';
++
++const row = (busName: string, stopId: number, stopsAhead: number, eta: number): UpcomingArrival => ({
++  busName, routeLabel: 'Red', color: 'red', stopId, stopsAhead, eta,
++  low: Math.max(0, eta - 20), high: eta + 80, departNow: eta, lowFloor: 0, estimated: false,
++});
++const first = row('#307', 48, 1, 20), later = row('307', 48, 30, 1200);
++const dest = row('307', 121, 10, 500), laterDest = row('307', 121, 39, 1800);
++const other = row('309', 48, 3, 300), otherDest = row('309', 121, 12, 800);
++const select = (rows: UpcomingArrival[], walk: number) => pickLiveArrival(rideBoardArrivals(rows, 48, 121), '#307', walk);
++
++describe('projection of the actual selected pickup', () => {
++  it.each([
++    { rows: [first, dest, later, laterDest], walk: 200, relation: 'same-bus-later-visit', bus: '307' },
++    { rows: [first, other, dest, otherDest, later, laterDest], walk: 100, relation: 'different-bus', bus: '309' },
++  ])('preserves $relation when destination rows disappear', ({ rows, walk, relation, bus }) => {
++    const before = structuredClone(rows);
++    const picked = select(rows, walk)!;
++    const withoutDestination = rows.filter(r => r.stopId !== 121);
++    const missing = select(withoutDestination, walk)!;
++    const metadata = forecastPickupSelection(picked, 1000);
++    expect(metadata).toMatchObject({ relation, boarding: { busName: bus }, countdown: { busName: '307' } });
++    expect(forecastPickupSelection(missing, 1000)).toEqual(metadata);
++    expect(journeyArrival(missing.boardable, withoutDestination, 121, walk, 0, 1000)).toBeUndefined();
++    expect(rows).toEqual(before);
++  });
++  it('follows actual folded-route selection when destination missingness changes it', () => {
++    const foldFirst = row('307', 48, 1, 20), returned = row('307', 48, 6, 150), target = row('307', 121, 9, 500);
++    expect(forecastPickupSelection(select([foldFirst, returned, target], 0), 1000)?.boarding)
++      .toMatchObject({ stopsAhead: 6 });
++    expect(forecastPickupSelection(select([foldFirst, returned], 0), 1000)?.boarding)
++      .toMatchObject({ stopsAhead: 1 });
++  });
++  it('retains the pinned walking tolerance without inventing a catchability guarantee', () => {
++    const picked = select([first, dest], 129)!;
++    expect(picked.departed).toBe(false);
++    expect(picked.boardable).toBe(first);
++    expect(forecastPickupSelection(picked, 1000)?.relation).toBe('same-visit');
++  });
++  it('clears absent or departed selections', () => {
++    expect(forecastPickupSelection(null, 1000)).toBeUndefined();
++    expect(forecastPickupSelection(select([first, dest], 1000), 1000)).toBeUndefined();
++  });
++  it('compares occurrence evidence rather than equal times or object identity', () => {
++    expect(forecastPickupSelection({ match: first, boardable: { ...first, stopsAhead: 30 }, departed: false }, 1000)?.relation)
++      .toBe('same-bus-later-visit');
++    expect(forecastPickupSelection({ match: first, boardable: { ...first, busName: '307', eta: 999 }, departed: false }, 1000)?.relation)
++      .toBe('same-visit');
++  });
++  it('keeps raw-current evidence free of an invented forecast occurrence', () => {
++    const raw = { source: 'raw-at-stop', busName: '307', stopId: 48 };
++    expect(rawPickupSelection('#307', 48, 1000)).toEqual({ selectedAtMs: 1000, countdown: raw, boarding: raw, relation: 'raw-current' });
++  });
++});
++
++
++describe('pickup evidence is not a destination forecast', () => {
++  it.each(['different-bus', 'same-bus-later-visit', 'raw-current'] as const)('retains unknown class arrival for %s', relation => {
++    const selected = relation === 'raw-current' ? rawPickupSelection('307', 48, 1000)
++      : forecastPickupSelection({ match: first, boardable: relation === 'different-bus' ? other : later, departed: false }, 1000);
++    const result = compareDeadline([{
++      mode: 'shuttle', routeLabel: 'Red', color: 'red', busName: '307', boardStopId: 48, alightStopId: 121,
++      walkToSec: 100, walkFromSec: 0, waitSec: 200, rideSec: 500, totalSec: 800, directWalkSec: 1500,
++      livePickupSelection: selected,
++    }], 2_000_000, 5, 1000, 1000, false);
++    expect(result.shuttle?.status).toBe('unknown');
++    expect(result.recommendation).toBeUndefined();
++  });
++});
+diff --git a/services/shuttle-v2/web/src/livePickupSelection.ts b/services/shuttle-v2/web/src/livePickupSelection.ts
+new file mode 100644
+index 0000000..10f898a
+--- /dev/null
++++ b/services/shuttle-v2/web/src/livePickupSelection.ts
+@@ -0,0 +1,46 @@
++import type { UpcomingArrival } from './arrivals';
++import type { LiveArrivalPick } from './planner';
++
++/** Evidence within one live selection, not a durable physical visit ID. */
++export type PickupEvidence =
++  | { source: 'forecast'; busName: string; stopId: number; stopsAhead: number;
++      etaSec: number; lowSec: number; highSec: number }
++  | { source: 'raw-at-stop'; busName: string; stopId: number };
++
++export type LivePickupSelection = {
++  /** Client computation time; transport freshness is checked by the caller. */
++  selectedAtMs: number;
++  countdown: PickupEvidence;
++  boarding: PickupEvidence;
++  relation: 'same-visit' | 'different-bus' | 'same-bus-later-visit' | 'raw-current';
++};
++
++type PickupRow = Pick<UpcomingArrival, 'busName' | 'stopId' | 'stopsAhead' | 'eta' | 'low' | 'high'>;
++const normalize = (name: string) => name.replace(/^#/, '');
++
++function forecast(row: PickupRow): Extract<PickupEvidence, { source: 'forecast' }> {
++  return { source: 'forecast', busName: normalize(row.busName), stopId: row.stopId,
++    stopsAhead: row.stopsAhead, etaSec: row.eta, lowSec: row.low, highSec: row.high };
++}
++
++/** Project the exact current selector result. Never choose or re-price a bus.
++ * Both rows belong to one boarding stop in the same route/forecast snapshot.
++ * The selector orders a later same-bus pickup after the countdown occurrence.
++ * Relative stopsAhead must not be persisted or compared across polls as an ID. */
++export function forecastPickupSelection(
++  picked: LiveArrivalPick<PickupRow> | null, selectedAtMs: number,
++): LivePickupSelection | undefined {
++  if (!picked || picked.departed) return undefined;
++  const countdown = forecast(picked.match), boarding = forecast(picked.boardable);
++  const relation = countdown.busName !== boarding.busName ? 'different-bus'
++    : countdown.stopId === boarding.stopId && countdown.stopsAhead === boarding.stopsAhead
++      ? 'same-visit' : 'same-bus-later-visit';
++  return { selectedAtMs, countdown, boarding, relation };
++}
++
++/** Preserve the raw override's chosen vehicle without borrowing a next-lap row.
++ * This is existing sensor/selection evidence, not a guarantee of catchability. */
++export function rawPickupSelection(busName: string, stopId: number, selectedAtMs: number): LivePickupSelection {
++  const raw: PickupEvidence = { source: 'raw-at-stop', busName: normalize(busName), stopId };
++  return { selectedAtMs, countdown: raw, boarding: raw, relation: 'raw-current' };
++}

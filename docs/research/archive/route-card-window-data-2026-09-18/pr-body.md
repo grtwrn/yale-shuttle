@@ -1,0 +1,5 @@
+Route cards showed only one destination-arrival clock, leaving riders unable to judge the arrival window. Live shuttle cards now show “At destination (est.)” with both bounds from the existing joined journey forecast, including the final walk. Bounds round outward and remain legible on narrow phones.
+
+The window follows the catchable bus and its correct destination visit. Walking, future plans and missing destination windows stay explicitly approximate point estimates; stale and departed options suppress the destination clock. Future planning no longer presents a departure-to-arrival span as an arrival uncertainty range. Pickup timing, catch warnings, ranking and ETA calculations retain their behavior.
+
+Validation: backend/frontend typecheck; 34 focused tests; production Vite build; built-SPA browser checks at 360, 390 and 1280 px covering different buses, later visits, missing destination, stale/recovery, future planning, walking and expanded details. Root independently reviewed the implementation and phone screenshot. Full CI passed: all 2,807 tests, typechecks, production build, throwaway-database staging and real-browser smoke.

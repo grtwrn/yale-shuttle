@@ -1,0 +1,20 @@
+{
+  "exactRecomputedScoreArtifacts": 3,
+  "sourceMeansImproved": 6,
+  "sourceMeansWorsened": 2,
+  "nonzeroAccessDecisionsUnchanged": 2344,
+  "changedInterval": {
+    "earlyMiss": 7,
+    "lateMiss": 6,
+    "meanWidthSec": 886.4333333333333
+  },
+  "selectedPairedMAE": [
+    316.0512746760462,
+    305.679667906172
+  ],
+  "jumps": [
+    117,
+    83
+  ],
+  "limits": "Selected repeated history: no independent-date inference and no comparable baseline distribution on 30 restored rows."
+}

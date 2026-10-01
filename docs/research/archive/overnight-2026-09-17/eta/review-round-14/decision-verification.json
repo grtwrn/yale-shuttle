@@ -1,0 +1,14 @@
+{
+  "counts": {
+    "pairedDecisions": 2036,
+    "visibleOrderDifferences": 0,
+    "boardingVehicleDifferences": 0,
+    "pickupSelectionMetadataDifferences": 14,
+    "journeyAvailabilityDifferences": 0,
+    "cautionDifferences": 0,
+    "syntheticPointDeadlineDifferences": 0
+  },
+  "sessions": 20,
+  "cautionField": "journeyArrival.catchRisk",
+  "note": "The interrupted script compared an absent top-level catchRisk field. This independent check uses the actual nested journey field and also finds zero differences. Saved forecasts/options unchanged; no browser assertion."
+}

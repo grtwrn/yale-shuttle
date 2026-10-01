@@ -1,0 +1,224 @@
+{
+  "scope": "Built SPA, held browser touch gesture through map removal, normal clock, synthetic intercepted feed",
+  "cases": [
+    {
+      "name": "ride-done",
+      "phases": [
+        "pinch begins",
+        "remove map with fingers still down",
+        "release or cancel held fingers after removal",
+        "normal touch on surviving page",
+        "complete"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "listenersDuring": {
+        "touchmove": 1,
+        "touchend": 1,
+        "touchcancel": 1
+      },
+      "listenersAfterRemoval": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "completed": true
+    },
+    {
+      "name": "ride-expiry",
+      "phases": [
+        "pinch begins",
+        "remove map with fingers still down",
+        "release or cancel held fingers after removal",
+        "normal touch on surviving page",
+        "complete"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "listenersDuring": {
+        "touchmove": 1,
+        "touchend": 1,
+        "touchcancel": 1
+      },
+      "listenersAfterRemoval": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "completed": true
+    },
+    {
+      "name": "system-filter",
+      "phases": [
+        "pinch begins",
+        "remove map with fingers still down",
+        "release or cancel held fingers after removal",
+        "normal touch on surviving page",
+        "complete"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "listenersDuring": {
+        "touchmove": 1,
+        "touchend": 1,
+        "touchcancel": 1
+      },
+      "listenersAfterRemoval": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "completed": true
+    },
+    {
+      "name": "system-nav",
+      "phases": [
+        "pinch begins",
+        "remove map with fingers still down",
+        "release or cancel held fingers after removal",
+        "normal touch on surviving page",
+        "complete"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "listenersDuring": {
+        "touchmove": 1,
+        "touchend": 1,
+        "touchcancel": 1
+      },
+      "listenersAfterRemoval": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "completed": true
+    },
+    {
+      "name": "ride-unmoved",
+      "phases": [
+        "pinch begins",
+        "remove map with fingers still down",
+        "release or cancel held fingers after removal",
+        "normal touch on surviving page",
+        "complete"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "listenersDuring": {
+        "touchmove": 1,
+        "touchend": 1,
+        "touchcancel": 1
+      },
+      "listenersAfterRemoval": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "completed": true
+    },
+    {
+      "name": "system-unmoved",
+      "phases": [
+        "pinch begins",
+        "remove map with fingers still down",
+        "release or cancel held fingers after removal",
+        "normal touch on surviving page",
+        "complete"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "listenersDuring": {
+        "touchmove": 1,
+        "touchend": 1,
+        "touchcancel": 1
+      },
+      "listenersAfterRemoval": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "completed": true
+    },
+    {
+      "name": "ride-queued",
+      "phases": [
+        "pinch begins",
+        "remove map with fingers still down",
+        "release or cancel held fingers after removal",
+        "normal touch on surviving page",
+        "complete"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "listenersDuring": {
+        "touchmove": 1,
+        "touchend": 1,
+        "touchcancel": 1
+      },
+      "listenersAfterRemoval": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "completed": true
+    },
+    {
+      "name": "ride-cancel",
+      "phases": [
+        "pinch begins",
+        "remove map with fingers still down",
+        "release or cancel held fingers after removal",
+        "normal touch on surviving page",
+        "complete"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "listenersDuring": {
+        "touchmove": 1,
+        "touchend": 1,
+        "touchcancel": 1
+      },
+      "listenersAfterRemoval": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      },
+      "completed": true
+    }
+  ],
+  "errors": [],
+  "completed": true,
+  "resourcesClosed": true
+}

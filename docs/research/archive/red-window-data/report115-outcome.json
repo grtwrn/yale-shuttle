@@ -1,0 +1,348 @@
+{
+  "visits": [
+    {
+      "id": 65251,
+      "bus_name": "#309",
+      "stop_id": 3,
+      "pinned_at": 1789656431192,
+      "departed_at": 1789656451214,
+      "stand_sec": 9.973,
+      "outcome": "passed"
+    },
+    {
+      "id": 65256,
+      "bus_name": "#309",
+      "stop_id": 147,
+      "pinned_at": 1789656481434,
+      "departed_at": 1789656491228,
+      "stand_sec": 0,
+      "outcome": "passed"
+    },
+    {
+      "id": 65275,
+      "bus_name": "#309",
+      "stop_id": 27,
+      "pinned_at": 1789656571369,
+      "departed_at": 1789656611206,
+      "stand_sec": 35.003,
+      "outcome": "stopped"
+    },
+    {
+      "id": 65347,
+      "bus_name": "#309",
+      "stop_id": 11,
+      "pinned_at": 1789656652856,
+      "departed_at": 1789657152981,
+      "stand_sec": 500.125,
+      "outcome": "stopped"
+    },
+    {
+      "id": 65351,
+      "bus_name": "#309",
+      "stop_id": 146,
+      "pinned_at": 1789657173148,
+      "departed_at": 1789657192951,
+      "stand_sec": 14.939,
+      "outcome": "stopped"
+    },
+    {
+      "id": 65356,
+      "bus_name": "#309",
+      "stop_id": 49,
+      "pinned_at": 1789657202972,
+      "departed_at": 1789657207886,
+      "stand_sec": 0,
+      "outcome": "passed"
+    }
+  ],
+  "positions": [
+    {
+      "bus_name": "#309",
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "heading": 346,
+      "last_stop_id": 147,
+      "collected_at": 1789656601399
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "heading": 346,
+      "last_stop_id": 147,
+      "collected_at": 1789656606329
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "heading": 346,
+      "last_stop_id": 147,
+      "collected_at": 1789656611206
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.321506,
+      "lon": -72.929398,
+      "heading": 30,
+      "last_stop_id": 27,
+      "collected_at": 1789656616220
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.321498,
+      "lon": -72.929033,
+      "heading": 91,
+      "last_stop_id": 27,
+      "collected_at": 1789656621222
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.322151,
+      "lon": -72.92882,
+      "heading": 14,
+      "last_stop_id": 27,
+      "collected_at": 1789656628060
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.32274,
+      "lon": -72.928651,
+      "heading": 11,
+      "last_stop_id": 27,
+      "collected_at": 1789656632754
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.323015,
+      "lon": -72.928562,
+      "heading": 13,
+      "last_stop_id": 27,
+      "collected_at": 1789656637744
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.323311,
+      "lon": -72.928451,
+      "heading": 15,
+      "last_stop_id": 27,
+      "collected_at": 1789656642744
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.323913,
+      "lon": -72.928235,
+      "heading": 15,
+      "last_stop_id": 27,
+      "collected_at": 1789656647747
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324228,
+      "lon": -72.92814,
+      "heading": 12,
+      "last_stop_id": 27,
+      "collected_at": 1789656652856
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324228,
+      "lon": -72.92814,
+      "heading": 12,
+      "last_stop_id": 27,
+      "collected_at": 1789656657917
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324228,
+      "lon": -72.92814,
+      "heading": 12,
+      "last_stop_id": 27,
+      "collected_at": 1789656662881
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "heading": 343,
+      "last_stop_id": 27,
+      "collected_at": 1789656667748
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "heading": 343,
+      "last_stop_id": 27,
+      "collected_at": 1789656672761
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "heading": 343,
+      "last_stop_id": 27,
+      "collected_at": 1789656677846
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "heading": 343,
+      "last_stop_id": 27,
+      "collected_at": 1789656682759
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "heading": 343,
+      "last_stop_id": 27,
+      "collected_at": 1789656687958
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324769,
+      "lon": -72.928284,
+      "heading": 353,
+      "last_stop_id": 27,
+      "collected_at": 1789656692886
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324769,
+      "lon": -72.928284,
+      "heading": 353,
+      "last_stop_id": 27,
+      "collected_at": 1789656697822
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656702828
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656707954
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656712830
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656717992
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656722888
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656727808
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656732929
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656737827
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656742895
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656747991
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656752857
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656757841
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656762842
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656767811
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656772924
+    },
+    {
+      "bus_name": "#309",
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "heading": 195,
+      "last_stop_id": 27,
+      "collected_at": 1789656777940
+    }
+  ]
+}

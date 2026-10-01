@@ -1,0 +1,56 @@
+{
+  "title": "Red 344 Winchester hold covariate screen",
+  "request": "Garrett, #yale-shuttle 2026-10-01 11:39 ET: find covariates for the wait-time spread at 344 Winchester (Red stop 11) to better predict Red arrival times; dedicated Red rider Division/Prospect -> School of Public Health.",
+  "scope": "Offline component screen. No app, production, watcher or archive changes. Read-only inputs: the nightly production archive /Users/grtwrn/shuttle-archive (selected manifests, SHA-256 verified), Open-Meteo hourly reanalysis for New Haven, Yale FAS/SEAS Fall 2026 standard class meeting times.",
+  "dev_to": "2026-09-18",
+  "dev_smoke_from": "2026-09-14",
+  "test_from": "2026-09-21",
+  "test_to": "2026-09-30",
+  "extension": "Every service day after test_to is scored by the same frozen code as its own fold (kind=extension) and reported separately; it never changes the frozen verdict.",
+  "labels": {
+    "hold": "Production cohort (src/calibrator/releaseFit.ts): Red stop_visits at stop 11 with outcome=stopped, how!=gap, closest_m<=75, pinned_at and departed_at present, departed_at>=pinned_at; only the audited restart truncation (#316, pin 1789656325854) excluded. y = departed_at - pinned_at seconds. Outcome available to training at max(departure+120 s, first_moved_at+confirm_sec).",
+    "lap": "Production own lap: pin minus the bus's latest Winchester departure at least 120 s before pin, valid only with an intervening Union Station (121) departure on the same service day. Supported if 0.65-1.65 x the training median lap (900-7200 s laps).",
+    "pickup": "Same vehicle's first Division/Prospect (48) arrivals.arrived_at after the Winchester departure, within 20 min and before its next Winchester arrival (production pairing truth).",
+    "checkpoints_hold": "Remaining hold at ages 0, 60, 180, 300, 480 s after pin, for holds still waiting at that age.",
+    "checkpoints_pickup": "Time from pin+age to the Division arrival at ages 60, 180, 300, 420 s, for holds still waiting at that age."
+  },
+  "baseline": "B0 = production form exactly: nine-feature 15-s discrete-time logistic departure hazard (intercept, log1p(t/60), t/600, hinges at 300 and 600 s, centred lap/600, missing-lap flag, 15-minute clock sin/cos), L2 penalty 4 on non-intercept terms, right-censored exposure at 1800 s, exponential tail continuation (web/src/eta/release.ts). Verified before freezing: refit at the documented 2026-09-17 13:14:00.913 ET cutoff gives n=259, 10 dates, reference lap 3210.248 s and the nine coefficients of docs/research/archive/release-integration-data/runtime-fits.json to 4 decimals.",
+  "training": "One fold per test service day. Training = holds whose outcome was available before 00:00 ET of the test day and pinned within the previous 30 days (production's rolling window; production refits every 6 h, so a daily refit is equally conservative for every arm). Lap reference, departure phase, demand and operator-ETA centring come from that fold's training holds only.",
+  "covariates_causal": "Every covariate is computed from events observable before pin (60 s availability delay for other buses' anchors, 15 s for co-presence, 120 s for departures) or from a deterministic clock (pin + elapsed t). The focal hold's own departure and future neighbour paths never enter. Weather uses the latest completed Open-Meteo hour (reanalysis; live use would need an observation feed).",
+  "arms": {
+    "B0": "baseline (production form)",
+    "W": "weather: wet flag (>=0.1 mm in the latest completed hour or the hour before), temperature (T-20)/10",
+    "C": "class-change clock: within 15 min after a standard class end; within 20 min before a standard class start (evaluated at pin+t)",
+    "FS": "active fleet: <=2 distinct Red vehicles anchored at any Red stop in the last 20 min (60 s delay)",
+    "SH": "shift/service entry: first or second Winchester loop of the day; hours since the bus's first Red anchor today /10; another Red bus entered service in the last 30 min; a Red bus seen 20-50 min ago but not in the last 20 min",
+    "LL": "own hourly slot (dispatcher-intent proxy): previous own Winchester departure snapped to the training 15-min departure-phase grid + 1 h; before-slot flag and remaining slack/600 at pin+t; zero without a supported lap",
+    "DM": "demand/load proxy: total stand seconds and count of stopped non-regulator stops by this bus since its latest Union departure (centred on training means)",
+    "UE": "operator (upstream) ETA to Division at pin: clipped deviation from the training median /60, >=900 s flag, missing flag",
+    "CP": "co-presence: another Red bus pinned and still at Winchester / at Union as of pin-15 s; another bus left Winchester in the last 10 min (replication of a previously weak family)",
+    "INT": "interactions: lap x 15-min phase (sin, cos), fleet<=2 x phase (sin, cos)",
+    "ALL": "all of W, C, FS, SH, LL, DM, UE, CP, INT with penalty 4",
+    "ALL_R": "same columns with penalty 20 on the added terms"
+  },
+  "support": "An added column is used only if it is nonzero in exposure rows of >=20 distinct training holds on >=3 training dates; otherwise it is zeroed for that fold (coefficient exactly 0). Reported per fold.",
+  "pickup_arms": {
+    "P0": "production's logged rider-surface (trip/card/ride) prediction to Division for that vehicle in (checkpoint-30 s, checkpoint]; smallest predicted_sec at the latest instant; low/high as the 10/90 band.",
+    "RCAL": "recalibration control: P0 point + training residual quantiles (rows from rcal_first_day onward, per age if >=30 rows else pooled).",
+    "H_<arm>": "component forecast: arm's remaining-hold quantile grid convolved with the training empirical Winchester-departure->Division drive distribution (assumed independent)."
+  },
+  "rcal_first_day": "2026-09-18",
+  "metrics": {
+    "primary": "Mean weighted interval score (7 quantiles: 5,10,25,50,75,90,95) of remaining hold over all (hold, age) checkpoints of lap-supported test holds (production's domain), arm minus B0.",
+    "secondary": "log score of the 15-s departure bin; MAE of the median; 10/90 pinball; 80% coverage, below-q10 and above-q90 rates, width; per day, per age; all holds including unsupported; pickup WIS80 vs P0, RCAL and H_B0 on checkpoints where P0 exists; pickup WIS80 of H arms vs H_B0 on all checkpoints.",
+    "uncertainty": "Bus-day cluster bootstrap (2000 draws, seed 20261001) of the checkpoint-weighted mean difference; Bonferroni over the 11 candidate arms (99.545% interval) for the decision."
+  },
+  "decision": {
+    "rule": "An arm is a 'candidate' (worth a full production-estimator replay, not deployment) only if ALL hold on the frozen test days: Bonferroni CI upper bound of the primary difference < 0; better (mean difference < 0) on at least min_day_fraction of test days with at least min_days days; below-q10 and above-q90 rates each not worse than B0 by more than max_tail_increase; mean log score not worse than B0. Otherwise 'not supported'. Production comparison is reported for every arm; 'beats production' additionally requires the pickup Bonferroni CI vs P0 below 0 on matched checkpoints.",
+    "min_day_fraction": 0.75,
+    "min_days": 5,
+    "max_tail_increase": 0.02
+  },
+  "descriptive": "Variance decomposition of hold seconds and log(hold+15): Shapley R^2 over covariate groups (LAP, PHASE15, LL, W, C, FS, SH, DM, UE, CP), incremental R^2 over lap+phase, day and bus fixed-effect R^2, and the pin->Division variance split into hold, drive and covariance. In-sample and descriptive only.",
+  "seen_before_freeze": "Before freezing: dev-period (<= 2026-09-18) outcomes, feature support and a dev smoke run of this code (folds 09-14..09-18). For test days only: hold counts per day, Red visit counts/outcome labels per day (archive inventory), counts of logged production predictions to Division, and hourly weather. No test-period hold duration, residual, pickup outcome or score was computed or printed before the freeze. The interrupted first session (11:47-12:05 ET) had started checking the baseline reproduction; its transcript was cut off and this check was redone on the dev cutoff above.",
+  "not_testable": "Weekend regime (Red runs weekdays only in the archive). Rain effect has very few wet service hours (one wet test day, 09-28).",
+  "multiplicity": "11 candidate arms, one primary metric, Bonferroni. No post-hoc subsets; every secondary breakdown above is reported for every arm."
+}

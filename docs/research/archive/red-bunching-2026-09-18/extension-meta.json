@@ -1,0 +1,26 @@
+{
+  "openedAt": "2026-09-18T20:06:30.952295+00:00",
+  "fitFrozenAt": "2026-09-18T20:00:03.479390+00:00",
+  "fitSha256": "1cc1e4e92d6fea1caebc1882665d1f82d4a4f8a80aeaa7f901461d168481e654",
+  "captureSha256": "2b76dd942e0698aabb7434394af7da1c0d29e2f9b189879902c51401bedacd02",
+  "oldCapturedAt": 1789750650143,
+  "newCapturedAt": 1789761479658,
+  "newVisitIds": [
+    72874,
+    73143,
+    73267,
+    73480,
+    73580,
+    73702,
+    73860,
+    73978
+  ],
+  "newVisits": 8,
+  "supportedVisits": 7,
+  "excluded": {
+    "not_newly_available_outcome": 1,
+    "not_eligible_complete_stopped": 2
+  },
+  "oldOutcomeChanges": [],
+  "limitations": "Coefficients, gates, travel proxies, and support frozen before capture opened. All three arms scored unchanged. Small same-day extension; not an independent-day validation. Outcome readiness is a conservative proxy, not exact publication time."
+}

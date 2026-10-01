@@ -1,0 +1,115 @@
+{
+  "method": "Contemporaneous prior-date modern visits paired with unique overlapping same-bus same-stop legacy arrivals whose departure is within120s. Diagnostic selection, not validation. Lap-difference summary excludes unmatched overnight/definition gaps>=1200s. Does not prove which clock is ground truth.",
+  "results": [
+    {
+      "stop": 11,
+      "priorVisits": 160,
+      "matched": 155,
+      "excluded": {
+        "0 legacy matches": 5
+      },
+      "summary": {
+        "pinMinusLegacyArrivalSec": {
+          "n": 155,
+          "median": 15.068,
+          "p10": 11.897800000000002,
+          "p90": 25.1024
+        },
+        "departureModernMinusLegacySec": {
+          "n": 155,
+          "median": -15.019,
+          "p10": -20.072200000000002,
+          "p90": -10.05
+        },
+        "holdModernMinusLegacySec": {
+          "n": 155,
+          "median": -34.756,
+          "p10": -49.9976,
+          "p90": -24.94300000000003
+        },
+        "lapModernMinusLegacySec": {
+          "n": 134,
+          "median": 34.81099999999992,
+          "p10": 24.922200000000156,
+          "p90": 45.06570000000024
+        },
+        "modernLapSec": {
+          "n": 136,
+          "median": 3216.3945,
+          "p10": 2895.8175,
+          "p90": 3627.142
+        },
+        "legacyLapSec": {
+          "n": 155,
+          "median": 3236.023,
+          "p10": 2882.1048,
+          "p90": 6962.1388
+        }
+      }
+    },
+    {
+      "stop": 121,
+      "priorVisits": 173,
+      "matched": 114,
+      "excluded": {
+        "0 legacy matches": 59
+      },
+      "summary": {
+        "pinMinusLegacyArrivalSec": {
+          "n": 114,
+          "median": 54.8655,
+          "p10": 0.0,
+          "p90": 80.017
+        },
+        "departureModernMinusLegacySec": {
+          "n": 114,
+          "median": -90.06049999999999,
+          "p10": -110.0978,
+          "p90": -54.8833
+        },
+        "holdModernMinusLegacySec": {
+          "n": 114,
+          "median": -145.09199999999998,
+          "p10": -174.8003,
+          "p90": -86.63329999999999
+        },
+        "lapModernMinusLegacySec": {
+          "n": 97,
+          "median": 150.08500000000004,
+          "p10": 105.13500000000003,
+          "p90": 202.12200000000004
+        },
+        "modernLapSec": {
+          "n": 100,
+          "median": 3151.1215,
+          "p10": 2819.7026,
+          "p90": 3525.8963
+        },
+        "legacyLapSec": {
+          "n": 114,
+          "median": 3029.33,
+          "p10": 2673.1961,
+          "p90": 5827.005200000007
+        }
+      }
+    }
+  ],
+  "_publication": {
+    "originalSource": "red-window-data/lap-clock-audit.json",
+    "originalSha256": "095dde93c91740c1f6f84636fe1356e862b5457bb877c6b569d03f71bb20d0f8",
+    "omittedArrays": [
+      {
+        "path": "results[0].pairs",
+        "items": 155,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "results[1].pairs",
+        "items": 114,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "verdict": "approve",
+  "summary": "No blocking findings. Weather keyboard access and focus recovery independently verified: 123 tests, both typechecks, build and six browser reports passed. Checkout unchanged. Evidence: ux/independent-review-round-18.md.",
+  "head_sha": "413c85ac5158ef5d4f5c0c50ecf7c8e9c43a1c97",
+  "base_sha": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+  "next_task": "Controller release gates, then UX11 Retry/weekday-filter audit using ux/ux-10-weather/NEXT.md.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/verify.sh",
+      "exit_code": 0,
+      "result": "84 tests, backend/frontend typechecks and Vite build passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux10-weather/integration.sh",
+      "exit_code": 1,
+      "result": "Three browser reports passed; reviewer probe then hit Playwright's refusal to click an ARIA-disabled control. Fixture failure preserved and corrected without application changes."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux10-weather/remaining.sh",
+      "exit_code": 0,
+      "result": "Corrected pointer probe, extra focus transitions, location recovery and feed states passed. Both shuttle slots preserved; 39 transport/restart/runtime-import tests passed. Browser resources closed."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux10-weather/integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base, clean checkout/index, 913 tracked files, 63 builder artifacts, bundle provenance and screenshot budget verified."
+    },
+    {
+      "command": "git diff --check 56a5258bd4c6a4869667a99d3b480b12a3ce61c9..HEAD",
+      "exit_code": 0,
+      "result": "Passed."
+    },
+    {
+      "command": "node --check services/shuttle-v2/scripts/weather-controls-check.mjs",
+      "exit_code": 0,
+      "result": "Passed."
+    }
+  ]
+}

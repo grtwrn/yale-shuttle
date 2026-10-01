@@ -1,0 +1,76 @@
+{
+  "hashReferences": 15,
+  "fitProvenanceHashes": 3,
+  "thresholdPairs": 191,
+  "thresholds": {
+    "121": 467.6855999231334,
+    "11": 358.04905006885525
+  },
+  "independentStates": 1070,
+  "historyEventUses": 14864,
+  "weightSums": 1070,
+  "models": 8,
+  "maxGradient": 2.9245214363537997e-06,
+  "forecasts": 4332,
+  "maxForecastDifference": 1.1368683772161603e-13,
+  "scoreRows": 480,
+  "regressionRecords": 10,
+  "fitChecks": [
+    {
+      "stop": 11,
+      "contract": "confirmed120",
+      "history": "two",
+      "objective": 320.3035836305266,
+      "maxGradient": 2.7706677194760942e-06
+    },
+    {
+      "stop": 11,
+      "contract": "confirmed120",
+      "history": "recursive",
+      "objective": 320.18398986763236,
+      "maxGradient": 2.0964245850407792e-07
+    },
+    {
+      "stop": 11,
+      "contract": "confirmed240",
+      "history": "two",
+      "objective": 320.3035836305266,
+      "maxGradient": 2.7706677194760942e-06
+    },
+    {
+      "stop": 11,
+      "contract": "confirmed240",
+      "history": "recursive",
+      "objective": 320.18398986763236,
+      "maxGradient": 2.0964245850407792e-07
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed120",
+      "history": "two",
+      "objective": 362.1546761316756,
+      "maxGradient": 1.6048803952450896e-08
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed120",
+      "history": "recursive",
+      "objective": 362.1565120690444,
+      "maxGradient": 2.9245214363537997e-06
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed240",
+      "history": "two",
+      "objective": 362.1546761316756,
+      "maxGradient": 1.6048803952450896e-08
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed240",
+      "history": "recursive",
+      "objective": 362.1565120690444,
+      "maxGradient": 2.9245214363537997e-06
+    }
+  ]
+}

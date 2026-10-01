@@ -1,0 +1,4 @@
+{
+  "checks": 18,
+  "scope": "Exact artifact transform plus current planner gates/journey helper. Synthetic occurrence safety; not a submitted app test or all-route live validation."
+}

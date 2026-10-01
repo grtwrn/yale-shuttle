@@ -1,0 +1,13 @@
+{
+  "purpose": "Check whether causal current route order reveals a departure signal obscured by120-second departure-order identity lag.",
+  "frozenBeforeScoring": true,
+  "cohort": "Same285 Winchester holds and160 pre-Sep14 training outcomes as earlier early-release screen. Preserve all original valid short/long holds and missing snapshots.",
+  "outcome": "Departure in next120 seconds at elapsed0,60,180,300,480, conditional on still waiting. This is a clue/measurement screen, not a remaining-wait or endpoint ETA model.",
+  "identity": "At each landmark choose nearest positive forward and backward modulo stop-index gaps from every bus's latest unconditional all-route anchor. Physical+15sec primary and+120sec sensitivity. Reject non-Red, invalid, other-day and >600sec-old anchors. No pin/outcome/actual future departure condition. Co-location and equal-gap ties explicitly unknown. One peer may be both ahead and behind; record it.",
+  "features": "Existing lap/elapsed/15minute-clock baseline; own Union age control; known peer flags, normalized topological gap and anchor age, overlap/same-peer flags. Gaps are route-stop order, not exact GPS distance or true minutes-away.",
+  "arms": ["lap_clock", "lap_clock_union", "plus_physical_ahead", "plus_physical_both"],
+  "fit": "Fixed L2=4 logistic model, training-only standardization, equal landmark weights in fitting. Do not use outcome-dependent inverse eligible-landmark weights in fit. No tuning or selected stop/horizon search.",
+  "evaluation": "Later dates separated; primary fixed-age equal-visit Brier/log-loss plus checkpoint and visit-balanced descriptive aggregates. Grouping by visit/date; no calibrated probability claim or further minimum ETA based on classification.",
+  "audit": "Compare identity for known70927; verify equal-time unknown rules and that deleting unknown future anchors cannot change earlier selected peers. Retain missingness and count identity disagreements with old confirmed-departure order.",
+  "deployment": "None from this screen alone. A gain would need full conditional distributions and warm endpoint replay. No app/prod changes."
+}

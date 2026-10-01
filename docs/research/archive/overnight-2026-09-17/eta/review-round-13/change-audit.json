@@ -1,0 +1,1462 @@
+{
+  "counts": {
+    "currentNegativeLow": 137,
+    "canonicalNegativeLow": 136,
+    "bandChangeOver60": 5
+  },
+  "numericBackwardLeadTransitions": {
+    "current": [],
+    "canonical": []
+  },
+  "backwardMeaning": "lead is shown leg index. Modulo delta>14 marks a numerical backward change, not proof of physically reversing or a new tracker violation. Compare exact events; do not enforce monotonic ETA.",
+  "changedWindows": {
+    "lead": [
+      {
+        "bus": "#300",
+        "start": 1789667326188,
+        "end": 1789667326188,
+        "polls": 1,
+        "values": [
+          [
+            21,
+            22
+          ]
+        ]
+      },
+      {
+        "bus": "#300",
+        "start": 1789672719141,
+        "end": 1789672719141,
+        "polls": 1,
+        "values": [
+          [
+            6,
+            5
+          ]
+        ]
+      },
+      {
+        "bus": "#300",
+        "start": 1789672814167,
+        "end": 1789672814167,
+        "polls": 1,
+        "values": [
+          [
+            7,
+            6
+          ]
+        ]
+      },
+      {
+        "bus": "#300",
+        "start": 1789674236088,
+        "end": 1789674251100,
+        "polls": 4,
+        "values": [
+          [
+            21,
+            20
+          ]
+        ]
+      },
+      {
+        "bus": "#300",
+        "start": 1789678121697,
+        "end": 1789678121697,
+        "polls": 1,
+        "values": [
+          [
+            25,
+            24
+          ]
+        ]
+      },
+      {
+        "bus": "#300",
+        "start": 1789679976781,
+        "end": 1789679976781,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            11
+          ]
+        ]
+      },
+      {
+        "bus": "#300",
+        "start": 1789680626927,
+        "end": 1789680626927,
+        "polls": 1,
+        "values": [
+          [
+            15,
+            14
+          ]
+        ]
+      },
+      {
+        "bus": "#308",
+        "start": 1789561446162,
+        "end": 1789561446162,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            11
+          ]
+        ]
+      },
+      {
+        "bus": "#308",
+        "start": 1789562931755,
+        "end": 1789562931755,
+        "polls": 1,
+        "values": [
+          [
+            24,
+            25
+          ]
+        ]
+      },
+      {
+        "bus": "#308",
+        "start": 1789568037359,
+        "end": 1789568037359,
+        "polls": 1,
+        "values": [
+          [
+            5,
+            4
+          ]
+        ]
+      },
+      {
+        "bus": "#308",
+        "start": 1789577155070,
+        "end": 1789577155070,
+        "polls": 1,
+        "values": [
+          [
+            23,
+            24
+          ]
+        ]
+      },
+      {
+        "bus": "#308",
+        "start": 1789584607569,
+        "end": 1789584607569,
+        "polls": 1,
+        "values": [
+          [
+            24,
+            25
+          ]
+        ]
+      },
+      {
+        "bus": "#308",
+        "start": 1789593739927,
+        "end": 1789593739927,
+        "polls": 1,
+        "values": [
+          [
+            6,
+            5
+          ]
+        ]
+      },
+      {
+        "bus": "#308",
+        "start": 1789596085142,
+        "end": 1789596085142,
+        "polls": 1,
+        "values": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789559133410,
+        "end": 1789559133410,
+        "polls": 1,
+        "values": [
+          [
+            6,
+            5
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789562666653,
+        "end": 1789562666653,
+        "polls": 1,
+        "values": [
+          [
+            2,
+            1
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789566357148,
+        "end": 1789566357148,
+        "polls": 1,
+        "values": [
+          [
+            4,
+            3
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789570269093,
+        "end": 1789570269093,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            9
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789572034364,
+        "end": 1789572034364,
+        "polls": 1,
+        "values": [
+          [
+            26,
+            27
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789573564049,
+        "end": 1789573564049,
+        "polls": 1,
+        "values": [
+          [
+            12,
+            11
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789579056781,
+        "end": 1789579056781,
+        "polls": 1,
+        "values": [
+          [
+            23,
+            22
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789582322209,
+        "end": 1789582322209,
+        "polls": 1,
+        "values": [
+          [
+            21,
+            20
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789646026525,
+        "end": 1789646026525,
+        "polls": 1,
+        "values": [
+          [
+            12,
+            13
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789648950161,
+        "end": 1789648950161,
+        "polls": 1,
+        "values": [
+          [
+            5,
+            4
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789655941478,
+        "end": 1789655941478,
+        "polls": 1,
+        "values": [
+          [
+            4,
+            3
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789659549632,
+        "end": 1789659549632,
+        "polls": 1,
+        "values": [
+          [
+            6,
+            5
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789659815280,
+        "end": 1789659815280,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            9
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789667431049,
+        "end": 1789667431049,
+        "polls": 1,
+        "values": [
+          [
+            12,
+            13
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789668861133,
+        "end": 1789668861133,
+        "polls": 1,
+        "values": [
+          [
+            23,
+            24
+          ]
+        ]
+      },
+      {
+        "bus": "#309",
+        "start": 1789670366889,
+        "end": 1789670366889,
+        "polls": 1,
+        "values": [
+          [
+            5,
+            4
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789558243324,
+        "end": 1789558243324,
+        "polls": 1,
+        "values": [
+          [
+            7,
+            8
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789559789187,
+        "end": 1789559789187,
+        "polls": 1,
+        "values": [
+          [
+            21,
+            22
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789562461648,
+        "end": 1789562461648,
+        "polls": 1,
+        "values": [
+          [
+            12,
+            13
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789566887302,
+        "end": 1789566887302,
+        "polls": 1,
+        "values": [
+          [
+            23,
+            22
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789568672560,
+        "end": 1789568672560,
+        "polls": 1,
+        "values": [
+          [
+            4,
+            3
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789569033417,
+        "end": 1789569033417,
+        "polls": 1,
+        "values": [
+          [
+            7,
+            8
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789572901138,
+        "end": 1789572901138,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            11
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789575990808,
+        "end": 1789575990808,
+        "polls": 1,
+        "values": [
+          [
+            5,
+            4
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789576190830,
+        "end": 1789576190830,
+        "polls": 1,
+        "values": [
+          [
+            6,
+            5
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789577895565,
+        "end": 1789577895565,
+        "polls": 1,
+        "values": [
+          [
+            23,
+            24
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789580021866,
+        "end": 1789580021866,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            11
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789583237404,
+        "end": 1789583237404,
+        "polls": 1,
+        "values": [
+          [
+            6,
+            5
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789586834169,
+        "end": 1789586834169,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            9
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789588544280,
+        "end": 1789588569276,
+        "polls": 6,
+        "values": [
+          [
+            21,
+            20
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789588919341,
+        "end": 1789588919341,
+        "polls": 1,
+        "values": [
+          [
+            25,
+            24
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789590674552,
+        "end": 1789590674552,
+        "polls": 1,
+        "values": [
+          [
+            7,
+            6
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789591714610,
+        "end": 1789591714610,
+        "polls": 1,
+        "values": [
+          [
+            18,
+            17
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789595084976,
+        "end": 1789595084976,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            9
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789644806460,
+        "end": 1789644806460,
+        "polls": 1,
+        "values": [
+          [
+            7,
+            6
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789645861549,
+        "end": 1789645861549,
+        "polls": 1,
+        "values": [
+          [
+            18,
+            17
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789646411560,
+        "end": 1789646411560,
+        "polls": 1,
+        "values": [
+          [
+            23,
+            22
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789666180929,
+        "end": 1789666180929,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            11
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789669226159,
+        "end": 1789669226159,
+        "polls": 1,
+        "values": [
+          [
+            4,
+            3
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789680682111,
+        "end": 1789680682111,
+        "polls": 1,
+        "values": [
+          [
+            7,
+            8
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789680986919,
+        "end": 1789680986919,
+        "polls": 1,
+        "values": [
+          [
+            10,
+            11
+          ]
+        ]
+      }
+    ],
+    "restStop": [
+      {
+        "bus": "#308",
+        "start": 1789586168970,
+        "end": 1789586179040,
+        "polls": 3,
+        "values": [
+          [
+            -1,
+            5
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789563556914,
+        "end": 1789563631988,
+        "polls": 16,
+        "values": [
+          [
+            23,
+            22
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789579631815,
+        "end": 1789579691808,
+        "polls": 13,
+        "values": [
+          [
+            6,
+            -1
+          ]
+        ]
+      },
+      {
+        "bus": "#316",
+        "start": 1789676921327,
+        "end": 1789676936361,
+        "polls": 4,
+        "values": [
+          [
+            7,
+            6
+          ]
+        ]
+      }
+    ]
+  },
+  "largestUnrestrictedBandChanges": [
+    {
+      "at": 1789596500179,
+      "bus": "#309",
+      "target": 4,
+      "hops": 1,
+      "current": {
+        "eta": 5.266439148637129,
+        "low": 3.112399257819832,
+        "high": 8.092774158039616
+      },
+      "canonical": {
+        "eta": 5.266702871544337,
+        "low": 3.1123994137017843,
+        "high": 3761.302095284889
+      },
+      "maxBandDelta": 3753.2093211268498
+    },
+    {
+      "at": 1789670426971,
+      "bus": "#300",
+      "target": 4,
+      "hops": 1,
+      "current": {
+        "eta": 8.532182473477947,
+        "low": 5.012771070635303,
+        "high": 13.03406819632209
+      },
+      "canonical": {
+        "eta": 8.416647664896601,
+        "low": 4.944892828707375,
+        "high": 3755.5546981038833
+      },
+      "maxBandDelta": 3742.520629907561
+    },
+    {
+      "at": 1789596500179,
+      "bus": "#309",
+      "target": 4,
+      "hops": 30,
+      "current": {
+        "eta": 3753.12956613353,
+        "low": 3233.925334392109,
+        "high": 4181.123293318533
+      },
+      "canonical": {
+        "eta": 3753.1297383293104,
+        "low": 3233.925334777269,
+        "high": 7482.36806684028
+      },
+      "maxBandDelta": 3301.2447735217474
+    },
+    {
+      "at": 1789670426971,
+      "bus": "#300",
+      "target": 4,
+      "hops": 30,
+      "current": {
+        "eta": 3756.561195280803,
+        "low": 3237.8261457484214,
+        "high": 4175.654449790265
+      },
+      "canonical": {
+        "eta": 3756.5465909623053,
+        "low": 3237.65842932572,
+        "high": 7465.052495167555
+      },
+      "maxBandDelta": 3289.39804537729
+    },
+    {
+      "at": 1789660280391,
+      "bus": "#316",
+      "target": 4,
+      "hops": 30,
+      "current": {
+        "eta": 3816.6613822091476,
+        "low": 3274.679878069933,
+        "high": 7793.528596866775
+      },
+      "canonical": {
+        "eta": 3817.6689498110836,
+        "low": 3274.679921419507,
+        "high": 7860.147041224619
+      },
+      "maxBandDelta": 66.61844435784406
+    }
+  ],
+  "regressionAndTailAudits": [
+    {
+      "forecast": {
+        "bus": "308",
+        "targetId": 59826,
+        "at": 1789575805795,
+        "target": 48,
+        "occurrence": 1,
+        "sourceIds": [
+          59364
+        ],
+        "truthSec": 4176.142,
+        "baseline": {
+          "eta": 4292.592903579065,
+          "low": 3528.4588562165036,
+          "high": 4890.50969264422
+        },
+        "candidate": {
+          "eta": 4331.892188338645,
+          "low": 3528.4530693798743,
+          "high": 4890.506160844405
+        },
+        "rawBaseline": {
+          "eta": 4292.592903579065,
+          "low": 3528.4588562165036,
+          "high": 4890.50969264422
+        },
+        "rawCandidate": {
+          "eta": 4331.892188338645,
+          "low": 3528.4530693798743,
+          "high": 4890.506160844405
+        },
+        "maxBandDelta": 39.29928475957968,
+        "absErrorIncrease": 39.29928475957968
+      },
+      "target": {
+        "id": 59826,
+        "bus_name": "#308",
+        "stop_id": 48,
+        "arrived_at": 1789579981937,
+        "departed_at": 1789580016987,
+        "outcome": "stopped",
+        "how": "far",
+        "closest_m": 3.018316566181401
+      },
+      "sources": [
+        {
+          "id": 59364,
+          "bus_name": "#308",
+          "stop_id": 11,
+          "pinned_at": 1789575820980,
+          "departed_at": 1789576365870,
+          "outcome": "stopped",
+          "how": "next"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "316",
+        "targetId": 58618,
+        "at": 1789565827109,
+        "target": 48,
+        "occurrence": 1,
+        "sourceIds": [
+          57806,
+          58061
+        ],
+        "truthSec": 4216.962,
+        "baseline": {
+          "eta": 4267.5881017115635,
+          "low": 3518.794772330165,
+          "high": 4861.31442860329
+        },
+        "candidate": {
+          "eta": 4304.790808310659,
+          "low": 3518.7966966749964,
+          "high": 4861.3156030620075
+        },
+        "rawBaseline": {
+          "eta": 4267.5881017115635,
+          "low": 3518.794772330165,
+          "high": 4861.31442860329
+        },
+        "rawCandidate": {
+          "eta": 4304.790808310659,
+          "low": 3518.7966966749964,
+          "high": 4861.3156030620075
+        },
+        "maxBandDelta": 37.20270659909511,
+        "absErrorIncrease": 37.20270659909511
+      },
+      "target": {
+        "id": 58618,
+        "bus_name": "#316",
+        "stop_id": 48,
+        "arrived_at": 1789570044071,
+        "departed_at": 1789570069056,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 6.4087560333653215
+      },
+      "sources": [
+        {
+          "id": 57806,
+          "bus_name": "#316",
+          "stop_id": 121,
+          "pinned_at": 1789564126886,
+          "departed_at": 1789564521921,
+          "outcome": "stopped",
+          "how": "far"
+        },
+        {
+          "id": 58061,
+          "bus_name": "#316",
+          "stop_id": 11,
+          "pinned_at": 1789565842083,
+          "departed_at": 1789566367155,
+          "outcome": "stopped",
+          "how": "next"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "309",
+        "targetId": 58260,
+        "at": 1789566357148,
+        "target": 48,
+        "occurrence": 0,
+        "sourceIds": [
+          57990
+        ],
+        "truthSec": 1130.148,
+        "baseline": {
+          "eta": 1529.5747283315568,
+          "low": 1003.1393004125907,
+          "high": 2021.2430125709798
+        },
+        "candidate": {
+          "eta": 1566.1700521219277,
+          "low": 997.0758306817922,
+          "high": 2048.995046121575
+        },
+        "rawBaseline": {
+          "eta": 1529.5747283315568,
+          "low": 1003.1393004125907,
+          "high": 2021.2430125709798
+        },
+        "rawCandidate": {
+          "eta": 1566.1700521219277,
+          "low": 997.0758306817922,
+          "high": 2048.995046121575
+        },
+        "maxBandDelta": 36.59532379037091,
+        "absErrorIncrease": 36.59532379037091
+      },
+      "target": {
+        "id": 58260,
+        "bus_name": "#309",
+        "stop_id": 48,
+        "arrived_at": 1789567487296,
+        "departed_at": 1789567547321,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 19.135548591046078
+      },
+      "sources": [
+        {
+          "id": 57990,
+          "bus_name": "#309",
+          "stop_id": 121,
+          "pinned_at": 1789565792097,
+          "departed_at": 1789565847088,
+          "outcome": "stopped",
+          "how": "far"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "316",
+        "targetId": 58618,
+        "at": 1789568672560,
+        "target": 48,
+        "occurrence": 0,
+        "sourceIds": [
+          58332
+        ],
+        "truthSec": 1371.511,
+        "baseline": {
+          "eta": 1397.3639691425276,
+          "low": 991.0027475510509,
+          "high": 1750.3175809895845
+        },
+        "candidate": {
+          "eta": 1430.6237402295471,
+          "low": 996.633558275488,
+          "high": 1775.2287819365201
+        },
+        "rawBaseline": {
+          "eta": 1397.3639691425276,
+          "low": 991.0027475510509,
+          "high": 1750.3175809895845
+        },
+        "rawCandidate": {
+          "eta": 1430.6237402295471,
+          "low": 996.633558275488,
+          "high": 1775.2287819365201
+        },
+        "maxBandDelta": 33.259771087019544,
+        "absErrorIncrease": 33.259771087019544
+      },
+      "target": {
+        "id": 58618,
+        "bus_name": "#316",
+        "stop_id": 48,
+        "arrived_at": 1789570044071,
+        "departed_at": 1789570069056,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 6.4087560333653215
+      },
+      "sources": [
+        {
+          "id": 58332,
+          "bus_name": "#316",
+          "stop_id": 121,
+          "pinned_at": 1789567902587,
+          "departed_at": 1789568122366,
+          "outcome": "stopped",
+          "how": "far"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "316",
+        "targetId": 59487,
+        "at": 1789575990808,
+        "target": 48,
+        "occurrence": 0,
+        "sourceIds": [
+          59251
+        ],
+        "truthSec": 1264.274,
+        "baseline": {
+          "eta": 1278.8961693184535,
+          "low": 873.949272478688,
+          "high": 1640.9054765936448
+        },
+        "candidate": {
+          "eta": 1309.3536739048855,
+          "low": 869.4727479596984,
+          "high": 1673.9676476133343
+        },
+        "rawBaseline": {
+          "eta": 1278.8961693184535,
+          "low": 873.949272478688,
+          "high": 1640.9054765936448
+        },
+        "rawCandidate": {
+          "eta": 1309.3536739048855,
+          "low": 869.4727479596984,
+          "high": 1673.9676476133343
+        },
+        "maxBandDelta": 33.06217101968946,
+        "absErrorIncrease": 30.457504586431924
+      },
+      "target": {
+        "id": 59487,
+        "bus_name": "#316",
+        "stop_id": 48,
+        "arrived_at": 1789577255082,
+        "departed_at": 1789577295090,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 20.735924402422462
+      },
+      "sources": [
+        {
+          "id": 59251,
+          "bus_name": "#316",
+          "stop_id": 121,
+          "pinned_at": 1789575095700,
+          "departed_at": 1789575325721,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "309",
+        "targetId": 57297,
+        "at": 1789559133410,
+        "target": 4,
+        "occurrence": 0,
+        "sourceIds": [
+          56958
+        ],
+        "truthSec": 1432.488,
+        "baseline": {
+          "eta": 1559.4830756807962,
+          "low": 1075.4391024437837,
+          "high": 2026.1346308709653
+        },
+        "candidate": {
+          "eta": 1589.8958215800578,
+          "low": 1075.3462736175843,
+          "high": 2048.3995621438394
+        },
+        "rawBaseline": {
+          "eta": 1559.4830756807962,
+          "low": 1075.4391024437837,
+          "high": 2026.1346308709653
+        },
+        "rawCandidate": {
+          "eta": 1589.8958215800578,
+          "low": 1075.3462736175843,
+          "high": 2048.3995621438394
+        },
+        "maxBandDelta": 30.41274589926161,
+        "absErrorIncrease": 30.41274589926161
+      },
+      "target": {
+        "id": 57297,
+        "bus_name": "#309",
+        "stop_id": 4,
+        "arrived_at": 1789560565898,
+        "departed_at": 1789560590959,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 56.2235641229436
+      },
+      "sources": [
+        {
+          "id": 56958,
+          "bus_name": "#309",
+          "stop_id": 121,
+          "pinned_at": 1789558203381,
+          "departed_at": 1789558273406,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "309",
+        "targetId": 61534,
+        "at": 1789590609589,
+        "target": 4,
+        "occurrence": 0,
+        "sourceIds": [
+          61157
+        ],
+        "truthSec": 2610.31,
+        "baseline": {
+          "eta": 2316.034035350983,
+          "low": 1870.513099661592,
+          "high": 2686.743682725636
+        },
+        "candidate": {
+          "eta": 2286.1695279917403,
+          "low": 1870.5038844912144,
+          "high": 2686.738007995049
+        },
+        "rawBaseline": {
+          "eta": 2316.034035350983,
+          "low": 1870.513099661592,
+          "high": 2686.743682725636
+        },
+        "rawCandidate": {
+          "eta": 2286.1695279917403,
+          "low": 1870.5038844912144,
+          "high": 2686.738007995049
+        },
+        "maxBandDelta": 29.864507359242452,
+        "absErrorIncrease": 29.864507359242452
+      },
+      "target": {
+        "id": 61534,
+        "bus_name": "#309",
+        "stop_id": 4,
+        "arrived_at": 1789593219899,
+        "departed_at": 1789593254792,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 49.46653402762064
+      },
+      "sources": [
+        {
+          "id": 61157,
+          "bus_name": "#309",
+          "stop_id": 121,
+          "pinned_at": 1789590144454,
+          "departed_at": 1789590304514,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "309",
+        "targetId": 58296,
+        "at": 1789566357148,
+        "target": 4,
+        "occurrence": 0,
+        "sourceIds": [
+          57990
+        ],
+        "truthSec": 1465.19,
+        "baseline": {
+          "eta": 1891.3360445152173,
+          "low": 1451.4164964805884,
+          "high": 2347.9426731970125
+        },
+        "candidate": {
+          "eta": 1921.114780073469,
+          "low": 1454.6584414064764,
+          "high": 2352.854430743303
+        },
+        "rawBaseline": {
+          "eta": 1891.3360445152173,
+          "low": 1451.4164964805884,
+          "high": 2347.9426731970125
+        },
+        "rawCandidate": {
+          "eta": 1921.114780073469,
+          "low": 1454.6584414064764,
+          "high": 2352.854430743303
+        },
+        "maxBandDelta": 29.77873555825181,
+        "absErrorIncrease": 29.77873555825181
+      },
+      "target": {
+        "id": 58296,
+        "bus_name": "#309",
+        "stop_id": 4,
+        "arrived_at": 1789567822338,
+        "departed_at": 1789567832340,
+        "outcome": "passed",
+        "how": "far",
+        "closest_m": 44.41010108723389
+      },
+      "sources": [
+        {
+          "id": 57990,
+          "bus_name": "#309",
+          "stop_id": 121,
+          "pinned_at": 1789565792097,
+          "departed_at": 1789565847088,
+          "outcome": "stopped",
+          "how": "far"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "309",
+        "targetId": 67204,
+        "at": 1789667431049,
+        "target": 48,
+        "occurrence": 1,
+        "sourceIds": [
+          66488,
+          66730
+        ],
+        "truthSec": 4505.939,
+        "baseline": {
+          "eta": 4394.567683721508,
+          "low": 3604.5479516466703,
+          "high": 4961.558666531312
+        },
+        "candidate": {
+          "eta": 4365.259370731558,
+          "low": 3596.032784832186,
+          "high": 4950.331402651595
+        },
+        "rawBaseline": {
+          "eta": 4394.567683721508,
+          "low": 3604.5479516466703,
+          "high": 4961.558666531312
+        },
+        "rawCandidate": {
+          "eta": 4365.259370731558,
+          "low": 3596.032784832186,
+          "high": 4950.331402651595
+        },
+        "maxBandDelta": 29.308312989949627,
+        "absErrorIncrease": 29.308312989949627
+      },
+      "target": {
+        "id": 67204,
+        "bus_name": "#309",
+        "stop_id": 48,
+        "arrived_at": 1789671936988,
+        "departed_at": 1789671936988,
+        "outcome": "passed",
+        "how": "far",
+        "closest_m": 7.292758254142682
+      },
+      "sources": [
+        {
+          "id": 66488,
+          "bus_name": "#309",
+          "stop_id": 121,
+          "pinned_at": 1789665655931,
+          "departed_at": 1789666150959,
+          "outcome": "stopped",
+          "how": "far"
+        },
+        {
+          "id": 66730,
+          "bus_name": "#309",
+          "stop_id": 11,
+          "pinned_at": 1789667521102,
+          "departed_at": 1789668146228,
+          "outcome": "stopped",
+          "how": "next"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "309",
+        "targetId": 61534,
+        "at": 1789590614514,
+        "target": 4,
+        "occurrence": 0,
+        "sourceIds": [
+          61157
+        ],
+        "truthSec": 2605.385,
+        "baseline": {
+          "eta": 2313.7321421497263,
+          "low": 1870.1956601626807,
+          "high": 2683.6724036441065
+        },
+        "candidate": {
+          "eta": 2284.44328278634,
+          "low": 1870.1872264360843,
+          "high": 2683.6667289118595
+        },
+        "rawBaseline": {
+          "eta": 2313.7321421497263,
+          "low": 1870.1956601626807,
+          "high": 2683.6724036441065
+        },
+        "rawCandidate": {
+          "eta": 2284.44328278634,
+          "low": 1870.1872264360843,
+          "high": 2683.6667289118595
+        },
+        "maxBandDelta": 29.28885936338611,
+        "absErrorIncrease": 29.28885936338611
+      },
+      "target": {
+        "id": 61534,
+        "bus_name": "#309",
+        "stop_id": 4,
+        "arrived_at": 1789593219899,
+        "departed_at": 1789593254792,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 49.46653402762064
+      },
+      "sources": [
+        {
+          "id": 61157,
+          "bus_name": "#309",
+          "stop_id": 121,
+          "pinned_at": 1789590144454,
+          "departed_at": 1789590304514,
+          "outcome": "stopped",
+          "how": "clock"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    },
+    {
+      "forecast": {
+        "bus": "316",
+        "targetId": 66228,
+        "at": 1789660280391,
+        "target": 4,
+        "occurrence": 1,
+        "sourceIds": [
+          65720
+        ],
+        "truthSec": 3675.304,
+        "baseline": {
+          "eta": 3816.6613822091476,
+          "low": 3274.679878069933,
+          "high": 7793.528596866775
+        },
+        "candidate": {
+          "eta": 3817.6689498110836,
+          "low": 3274.679921419507,
+          "high": 7860.147041224619
+        },
+        "rawBaseline": {
+          "eta": 3816.6613822091476,
+          "low": 3274.679878069933,
+          "high": 7793.528596866775
+        },
+        "rawCandidate": {
+          "eta": 3817.6689498110836,
+          "low": 3274.679921419507,
+          "high": 7860.147041224619
+        },
+        "maxBandDelta": 66.61844435784406,
+        "absErrorIncrease": 1.007567601935989
+      },
+      "target": {
+        "id": 66228,
+        "bus_name": "#316",
+        "stop_id": 4,
+        "arrived_at": 1789663955695,
+        "departed_at": 1789664015673,
+        "outcome": "stopped",
+        "how": "clock",
+        "closest_m": 49.91531552525795
+      },
+      "sources": [
+        {
+          "id": 65720,
+          "bus_name": "#316",
+          "stop_id": 11,
+          "pinned_at": 1789659534545,
+          "departed_at": 1789659970332,
+          "outcome": "stopped",
+          "how": "next"
+        }
+      ],
+      "decision": "Retain. Exact connected endpoint already verified; no measurement-error exclusion supported."
+    }
+  ]
+}

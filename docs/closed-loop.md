@@ -4,8 +4,14 @@
 data … build the closed loop." And, the same day: "can the nightly learning be
 increased to hourly?"
 
-**Status:** all four stages are built. This document says what each one is,
-what it writes, and the rules the last two decide by.
+**Current status (2026-09-17): automatic parameter promotion is blocked pending
+independent validation provenance.** The live champion and ordinary live table
+refreshes continue. Re-estimation can produce diagnostics, but legacy replay
+pairs lack bus/target-visit identity, outcome-availability timestamps, and a
+verified pre-test champion vintage. They cannot certify calibrated intervals.
+The current chronological blocks, cache rules and release gate are described in
+[calibration-validation.md](calibration-validation.md). The older stages below
+record the original implementation; its pooled promotion rule is superseded.
 
 ## The four stages
 
@@ -170,25 +176,48 @@ needs exactly that to compare a challenger.
 
 ## Stage 2 — the archive
 
-The production volume is 1 GB with ~430 MB free; `raw_positions` is swept
-after 6 h, the census after ~4 weekdays, `predictions_log`'s upstream rows
-after 7 days. Nothing a replay needs survives on the volume long enough to
-learn from, so the Pi keeps it.
+The production volume is 1 GB; `raw_positions` is swept after 36 h, the
+census after ~4 weekdays, `predictions_log`'s upstream rows after 7 days.
+The raw window covers the previous operating day at the 03:40 ET archive,
+including the fall DST transition. Before September 16, its six-hour window
+deleted daytime Red positions before archiving. The Pi keeps the long-term
+recordings needed for replay and calibration comparisons.
 
 `scripts/archive-day.mjs [YYYY-MM-DD]` (default: yesterday in ET) pulls, for
 that ET day, `arrivals`, `stop_visits`, `legs`, `predictions_log`,
 `upstream_etas`, `scorecard_days` and `raw_positions` from production through
 `GET /api/archive/day?day=&table=` — admin header only, one table and one ET
-day per request, streamed as JSONL, and refused for any other table. Positions
-are the one table retention has usually beaten by 03:40: when the endpoint
-returns fewer rows than the Pi's own capture (`~/shuttle-captures/
-positions-YYYYMMDD.jsonl`, UTC-named, so an ET day spans two files) the
-capture is used, filtered to the ET day and de-duplicated on
-(bus_id, collected_at); the manifest says which source won. Everything lands
-in `~/shuttle-archive/YYYY-MM-DD/<table>.jsonl.gz` beside a `manifest.json`
-(rows, bytes, sha256, source, the server build, the schema's column list per
-table) and days older than 180 are removed. `scripts/archive-check.mjs` lists
-which days are complete and which tables a day is missing.
+day per request, streamed as JSONL, and refused for any other table. The 36-hour position retention covers the normal 03:40 export. Any independent
+Pi capture (`~/shuttle-captures/positions-YYYYMMDD.jsonl`, UTC-named) is merged
+by (bus_id, collected_at), with the server winning overlaps. Capture rows do
+not certify a failed server stream or establish full-day service coverage.
+
+Every export attempt has immutable files in
+`~/shuttle-archive/YYYY-MM-DD/snapshots/<attempt>/<table>.jsonl.gz` plus its own
+manifest. The day's top-level `manifest.json` atomically selects the files
+readers should use via each table's `file` field. Legacy top-level table files
+remain supported. Each selected table records its capture time, build, columns,
+row count, bytes, source and SHA-256. Older snapshots and manifests are retained
+with the day and pruned after 180 days.
+
+A retry can replace a selected table only after a complete, correctly framed
+server stream, verification of the older file, and a row-identity comparison
+showing that every older observation remains. Missing or conflicting rows keep
+the older selection; matching counts alone are insufficient. Ordinary arrival
+completion (null departure/dwell becoming numbers) and advancing non-final
+scorecards may update; other changes require review of the preserved snapshots.
+An incomplete server download stays incomplete even if a capture has some rows.
+All other tables are still attempted, and a rejected replacement exits nonzero.
+The attempt manifest and `lastAttempt` distinguish a failed retry from the
+preserved archive. Readers must resolve files through the selected manifest;
+they must not assume `<table>.jsonl.gz` is at the top level.
+
+`scripts/archive-check.mjs` verifies selected file sizes and hashes. Its
+"complete" status establishes transport/file integrity, not service coverage,
+GPS plausibility or settled labels. Simultaneous archivers are prevented by a
+per-day `.archive-lock` directory. A crash leaves the lock for inspection; only
+remove it once no archiver is running. In-progress snapshots never become the
+selected manifest; after a failed publication all prior files remain intact.
 
 The crontab line (not installed by the PR; the operator's call):
 
@@ -203,7 +232,8 @@ table did not exist yet) in 4.7 s; Sat 9/5 to 1.3 MB. With the census on, a
 weekday adds ~320k rows (~40 MB raw, ~4–5 MB gzipped), so budget **~8 MB a
 weekday, ~3 MB a weekend day, under 1.5 GB for 180 days** — on a root
 filesystem with 42 GB free. A partial day (a hand run at noon) is a legitimate
-archive of what existed; re-running the day after 03:40 replaces it.
+archive of what existed; re-running after 03:40 saves a new snapshot and
+selects only verified, non-regressing replacements.
 
 `archive-check.mjs` reads the manifests and prints rows per table, size,
 source and completeness per day plus the gaps in the last N days, and exits

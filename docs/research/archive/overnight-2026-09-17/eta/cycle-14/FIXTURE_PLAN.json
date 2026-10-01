@@ -1,0 +1,28 @@
+{
+  "createdAt": "2026-09-18T09:06:28.791427+00:00",
+  "input": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/src/server/__fixtures__/live-frames.json",
+  "sha256": "056d60f3bdc5c47aa56d67ab8e8901c381bc147c1a8890b04ac1e5e4026ef0eb",
+  "routes": [
+    1,
+    2,
+    3,
+    8,
+    9,
+    10,
+    15,
+    19
+  ],
+  "frames": 40,
+  "arms": [
+    "current",
+    "canonical"
+  ],
+  "modes": [
+    "normal",
+    "reversed bus order",
+    "fresh process from poll10",
+    "fresh process from poll20",
+    "fresh process from poll30"
+  ],
+  "purpose": "Multiple-route determinism including folded/repeated routes9/10. All available fixture frames. Full wires, occurrence keys and ModelEntry/seenAt compared. This is functional parity on fixed captured static payload, not chronological calibration or connected-outcome accuracy."
+}

@@ -215,6 +215,28 @@ export function buildRing(
   const ringCoords = order.map((i) => coords[i]!);
   ringCoords.push(ringCoords[0]!);
 
+  // Green's outbound Building 800 call is at the kerb, but the published
+  // line passes 99 m behind it on this leg. Without that short spur, its
+  // outbound stop cell cannot enter the 75 m standing zone and a GPS fix at
+  // the kerb is far likelier on the return occurrence of the same stop. Add
+  // the kerb to both sides of this one measured call so the ring can retain
+  // its outbound branch while the shuttle serves it.
+  if (key.startsWith("9|")) {
+    const i = ringStops.findIndex((sid, j) => sid === 25
+      && ringStops[(j - 1 + N) % N] === 26 && ringStops[(j + 1) % N] === 23);
+    if (i > 0) {
+      const marker = ringCoords[i]!;
+      const start = legs[i]!.slice[0]!;
+      const offset = haversineMeters(marker, { lat: start[0], lon: start[1] });
+      if (offset > NEAR_STOP_M && offset < 120) {
+        const point: [number, number] = [marker.lat, marker.lon];
+        legs = legs.map((item, j) => j === i - 1
+          ? { ...item, slice: [...item.slice, point] }
+          : j === i ? { ...item, slice: [point, ...item.slice] } : item);
+      }
+    }
+  }
+
   const lat: number[] = [], lon: number[] = [], metre: number[] = [], leg: number[] = [], frac: number[] = [];
   const stopCell: number[] = [], legM: number[] = [];
   let cum = 0;

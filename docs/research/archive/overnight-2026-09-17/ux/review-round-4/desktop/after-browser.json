@@ -1,0 +1,112 @@
+{
+  "mode": "after",
+  "desktop": true,
+  "checks": [
+    "Named feedback, selected 44px priorities, keyboard file chooser (Enter/Space), decoding error, replace/cancel/remove, image and priority retained through failed send; success resets and restores focus",
+    "Reply completion preserves navigation focus; named 16px report priority and keyboard archived disclosure",
+    "Named reply, keyboard attachment, 429 and 503 announced with draft/image retained, successful reply threaded with status and focus return; cancel restores focus; 360/390/430/1280/640 CSS-pixel reflow",
+    "Issues loading, failed fetch, keyboard retry and empty state announced; all requests intercepted, no production submissions"
+  ],
+  "snapshots": {
+    "feedback": "- text: Feedback\n- textbox \"Feedback\":\n  - /placeholder: Anything on your mind — bugs, ideas, confusing bits…\n  - text: \"Fixture feedback: please make the pickup sign easier to find.\"\n- group \"How urgent?\":\n  - text: How urgent?\n  - button \"🔴 Urgent\"\n  - button \"Normal\" [pressed]\n  - button \"💡 Nice to have\"\n- button \"📎 Attach screenshot\"\n- text: or paste one\n- button \"Cancel\"\n- button \"Send\"",
+    "priorityHeights": [
+      {
+        "text": "🔴 Urgent",
+        "height": 44,
+        "pressed": "false"
+      },
+      {
+        "text": "Normal",
+        "height": 44,
+        "pressed": "true"
+      },
+      {
+        "text": "💡 Nice to have",
+        "height": 44,
+        "pressed": "false"
+      }
+    ],
+    "afterPrioritiesFocus": {
+      "tag": "BUTTON",
+      "text": "📎 Attach screenshot"
+    },
+    "feedbackErrorVisible": true,
+    "reply": "- text: Your reply\n- textbox \"Your reply\":\n  - /placeholder: Add anything that helps…\n  - text: \"Fixture follow-up: I waited beside the signed stop.\"\n- button \"📎 Add screenshot or paste one\"\n- button \"Cancel\"\n- button \"Send\"",
+    "afterReplyFocus": {
+      "tag": "BUTTON",
+      "text": "📎 Add screenshot or paste one"
+    },
+    "replyFailure": "- text: Your reply\n- textbox \"Your reply\":\n  - /placeholder: Add anything that helps…\n  - text: \"Fixture follow-up: I waited beside the signed stop.\"\n- button \"📎 Add screenshot or paste one\"\n- button \"Cancel\"\n- button \"Send\"\n- alert: Too many changes at once — give it a moment"
+  },
+  "requests": [
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/report",
+      "method": "POST"
+    },
+    {
+      "path": "/api/report",
+      "method": "POST"
+    },
+    {
+      "path": "/api/report",
+      "method": "POST"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports/901/update",
+      "method": "POST"
+    },
+    {
+      "path": "/api/my-reports/901/update",
+      "method": "POST"
+    },
+    {
+      "path": "/api/my-reports/901/update",
+      "method": "POST"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports/901/update",
+      "method": "POST"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "Service Worker registration blocked by Playwright"
+  ],
+  "completed": true
+}

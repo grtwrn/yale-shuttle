@@ -1,0 +1,14 @@
+{
+  "pairedDecisions": 2036,
+  "sessions": 20,
+  "choiceDifferences": 14,
+  "visibleOrderDifferences": 0,
+  "cautionDifferences": 0,
+  "journeyAvailabilityDifferences": 0,
+  "syntheticPointDeadlineDifferences": 0,
+  "changedOptionDecisions": 1567,
+  "limits": "Actual current extracted numerical options/planner/ranking on allfleet wire; prior selected Red-origin geometries, hypothetical stationary walkers and synthetic 15/30/45minute point deadlines. Full actual chosen-bus connected rider outcomes remain separate; this is not browser verification or deadline probability validation.",
+  "pickupSelectionMetadataDifferences": 14,
+  "boardingVehicleDifferences": 0,
+  "auditNote": "Additional direct comparison of already-saved paired decisions distinguishes changed relative-hop metadata from actual selected vehicle; original choiceDifferences retained for provenance."
+}

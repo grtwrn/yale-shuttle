@@ -1,0 +1,22 @@
+{
+  "run": "https://github.com/grtwrn/yale-shuttle/actions/runs/35326403882",
+  "health": {
+    "ok": true,
+    "pollStalenessMs": 3786,
+    "collectorLagMs": null,
+    "knownBuses": 0,
+    "serverEta": {
+      "restored": 0,
+      "forecastAt": null,
+      "checkpointAt": 1789721539291,
+      "beliefs": 0,
+      "steps": 1,
+      "failures": 0,
+      "lastStepMs": 1,
+      "rows": 0
+    },
+    "pollSkipped": 0,
+    "droppedObservations": 0,
+    "build": "98e535b99649"
+  }
+}

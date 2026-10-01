@@ -1,0 +1,17 @@
+{
+  "counts": {
+    "current:resolved": 1752,
+    "current:wireChecked": 2795,
+    "current:nonzeroHop": 2790,
+    "current:unresolved": 1043,
+    "current:zeroHop": 5,
+    "canonical:resolved": 1752,
+    "canonical:wireChecked": 2795,
+    "canonical:nonzeroHop": 2790,
+    "canonical:unresolved": 1043,
+    "canonical:zeroHop": 5
+  },
+  "alignedBusPolls": 64,
+  "priorVisits": 61,
+  "limitations": "New6000:9000 alignment checks only. Previous19reviewer cases are preserved and not regenerated. Other source identities remain provisional."
+}

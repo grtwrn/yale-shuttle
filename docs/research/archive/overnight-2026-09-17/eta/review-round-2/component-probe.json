@@ -1,0 +1,427 @@
+{
+  "scope": "Internal lead-cluster sample means before display corrections. Means add exactly; these are not served medians, calibrated probabilities or candidate interventions. Actual clocks are separate outcome labels.",
+  "rowChecks": 25,
+  "sampleIdentities": 5120,
+  "cases": [
+    {
+      "sourceId": 57454,
+      "at": 1789561896251,
+      "leadClusterMass": 1,
+      "parts": [
+        {
+          "mass": 0.9307562729652199,
+          "standing": false,
+          "leg": 0
+        },
+        {
+          "mass": 0.06924372703478006,
+          "standing": true,
+          "leg": 0
+        }
+      ],
+      "secondOccurrenceGate": {
+        "rawLeadDivisionMedian": 5170.617247005586,
+        "rawLeadRoseMedian": 5499.972175080443,
+        "existingMaxSec": 5400,
+        "roseOmitted": true
+      },
+      "sampledMeansBeforeDisplayCorrections": {
+        "preWin": 1391.4901389788824,
+        "wait": 294.2507065268515,
+        "postDivision": 78.13554651565035,
+        "postRose": 417.6890708694796,
+        "totalDivision": 1763.8763920213846,
+        "totalRose": 2103.429916375213
+      },
+      "retrospectiveActualSec": {
+        "preWin": 2355.64,
+        "wait": 175.066,
+        "postDivision": 85.007,
+        "postRose": 485.045,
+        "totalDivision": 2615.713,
+        "totalRose": 3015.751
+      },
+      "meanErrorPredictedMinusActual": {
+        "preWin": -964.1498610211174,
+        "wait": 119.1847065268515,
+        "postDivision": -6.871453484349658,
+        "postRose": -67.3559291305204,
+        "totalDivision": -851.8366079786156,
+        "totalRose": -912.3210836247872
+      },
+      "displayed": [
+        {
+          "target": 11,
+          "stopsAhead": 14,
+          "eta": 1511.9274527124055,
+          "low": 1227.839554694958,
+          "high": 1880.1876120753063
+        },
+        {
+          "target": 48,
+          "stopsAhead": 17,
+          "eta": 1957.3153431261605,
+          "low": 1629.482116002436,
+          "high": 2278.8474743142087
+        },
+        {
+          "target": 4,
+          "stopsAhead": 20,
+          "eta": 2318.469941689489,
+          "low": 1956.1371853730134,
+          "high": 2665.328568688972
+        },
+        {
+          "target": 11,
+          "stopsAhead": 43,
+          "eta": 5175.145555007007,
+          "low": 4627.385657971186,
+          "high": 5692.449027557718
+        },
+        {
+          "target": 48,
+          "stopsAhead": 46,
+          "eta": 5689.911529900423,
+          "low": 4879.5968093732,
+          "high": 6332.943122196594
+        }
+      ]
+    },
+    {
+      "sourceId": 57990,
+      "at": 1789565907428,
+      "leadClusterMass": 1,
+      "parts": [
+        {
+          "mass": 0.6481908167598724,
+          "standing": false,
+          "leg": 0
+        },
+        {
+          "mass": 0.35180918324012755,
+          "standing": true,
+          "leg": 0
+        }
+      ],
+      "secondOccurrenceGate": {
+        "rawLeadDivisionMedian": 5237.735064092121,
+        "rawLeadRoseMedian": 5587.826881130493,
+        "existingMaxSec": 5400,
+        "roseOmitted": true
+      },
+      "sampledMeansBeforeDisplayCorrections": {
+        "preWin": 1371.2302711806103,
+        "wait": 406.6731400579803,
+        "postDivision": 78.13554651565036,
+        "postRose": 417.6890708694798,
+        "totalDivision": 1856.0389577542405,
+        "totalRose": 2195.59248210807
+      },
+      "retrospectiveActualSec": {
+        "preWin": 1340.093,
+        "wait": 144.877,
+        "postDivision": 94.898,
+        "postRose": 429.94,
+        "totalDivision": 1579.868,
+        "totalRose": 1914.91
+      },
+      "meanErrorPredictedMinusActual": {
+        "preWin": 31.13727118061024,
+        "wait": 261.79614005798027,
+        "postDivision": -16.762453484349635,
+        "postRose": -12.250929130520205,
+        "totalDivision": 276.1709577542406,
+        "totalRose": 280.68248210806973
+      },
+      "displayed": [
+        {
+          "target": 11,
+          "stopsAhead": 14,
+          "eta": 1490.3858061356011,
+          "low": 1216.4971137888813,
+          "high": 1856.6449318844593
+        },
+        {
+          "target": 48,
+          "stopsAhead": 17,
+          "eta": 2054.7451638094262,
+          "low": 1648.0210229270165,
+          "high": 2466.67916846506
+        },
+        {
+          "target": 4,
+          "stopsAhead": 20,
+          "eta": 2412.8307122032156,
+          "low": 1958.6703682583895,
+          "high": 2855.82520128506
+        },
+        {
+          "target": 11,
+          "stopsAhead": 43,
+          "eta": 5263.702692373985,
+          "low": 4672.858180877546,
+          "high": 5792.618391218291
+        },
+        {
+          "target": 48,
+          "stopsAhead": 46,
+          "eta": 5765.791742389673,
+          "low": 4895.350678779862,
+          "high": 6505.838099149404
+        }
+      ]
+    },
+    {
+      "sourceId": 58510,
+      "at": 1789569358329,
+      "leadClusterMass": 1,
+      "parts": [
+        {
+          "mass": 0.9310739410436626,
+          "standing": false,
+          "leg": 0
+        },
+        {
+          "mass": 0.06892605895633738,
+          "standing": true,
+          "leg": 0
+        }
+      ],
+      "secondOccurrenceGate": {
+        "rawLeadDivisionMedian": 5124.271134822825,
+        "rawLeadRoseMedian": 5450.656392925153,
+        "existingMaxSec": 5400,
+        "roseOmitted": true
+      },
+      "sampledMeansBeforeDisplayCorrections": {
+        "preWin": 1376.8394074992957,
+        "wait": 250.40939545175596,
+        "postDivision": 78.13554651565035,
+        "postRose": 417.68907086947974,
+        "totalDivision": 1705.3843494667021,
+        "totalRose": 2044.9378738205307
+      },
+      "retrospectiveActualSec": {
+        "preWin": 1290.811,
+        "wait": 165.089,
+        "postDivision": 95.043,
+        "postRose": 405.014,
+        "totalDivision": 1550.943,
+        "totalRose": 1860.914
+      },
+      "meanErrorPredictedMinusActual": {
+        "preWin": 86.02840749929578,
+        "wait": 85.32039545175596,
+        "postDivision": -16.90745348434966,
+        "postRose": 12.675070869479725,
+        "totalDivision": 154.44134946670215,
+        "totalRose": 184.02387382053075
+      },
+      "displayed": [
+        {
+          "target": 11,
+          "stopsAhead": 14,
+          "eta": 1496.4724546115604,
+          "low": 1216.2719388293592,
+          "high": 1863.1340016957588
+        },
+        {
+          "target": 48,
+          "stopsAhead": 17,
+          "eta": 1900.3088590755754,
+          "low": 1580.6918723421766,
+          "high": 2176.94396764252
+        },
+        {
+          "target": 4,
+          "stopsAhead": 20,
+          "eta": 2246.893978677319,
+          "low": 1922.279624974333,
+          "high": 2563.391273613872
+        },
+        {
+          "target": 11,
+          "stopsAhead": 43,
+          "eta": 5134.669975153829,
+          "low": 4583.689886177137,
+          "high": 5664.635078432239
+        },
+        {
+          "target": 48,
+          "stopsAhead": 46,
+          "eta": 5639.84598367808,
+          "low": 4849.779372096594,
+          "high": 6250.373749304797
+        }
+      ]
+    },
+    {
+      "sourceId": 61538,
+      "at": 1789593364850,
+      "leadClusterMass": 1,
+      "parts": [
+        {
+          "mass": 0.9304524898440306,
+          "standing": false,
+          "leg": 0
+        },
+        {
+          "mass": 0.06954751015596933,
+          "standing": true,
+          "leg": 0
+        }
+      ],
+      "secondOccurrenceGate": {
+        "rawLeadDivisionMedian": 5173.140100797186,
+        "rawLeadRoseMedian": 5499.826816969591,
+        "existingMaxSec": 5400,
+        "roseOmitted": true
+      },
+      "sampledMeansBeforeDisplayCorrections": {
+        "preWin": 1371.335360969929,
+        "wait": 298.07182613793503,
+        "postDivision": 78.13554651565035,
+        "postRose": 417.68907086947974,
+        "totalDivision": 1747.5427336235148,
+        "totalRose": 2087.096257977343
+      },
+      "retrospectiveActualSec": {
+        "preWin": 2170.204,
+        "wait": 94.977,
+        "postDivision": 75.098,
+        "postRose": 380.066,
+        "totalDivision": 2340.279,
+        "totalRose": 2645.247
+      },
+      "meanErrorPredictedMinusActual": {
+        "preWin": -798.8686390300711,
+        "wait": 203.09482613793503,
+        "postDivision": 3.037546515650348,
+        "postRose": 37.62307086947976,
+        "totalDivision": -592.7362663764852,
+        "totalRose": -558.1507420226567
+      },
+      "displayed": [
+        {
+          "target": 11,
+          "stopsAhead": 14,
+          "eta": 1490.4622722879246,
+          "low": 1216.4961914332455,
+          "high": 1856.7753724005888
+        },
+        {
+          "target": 48,
+          "stopsAhead": 17,
+          "eta": 1941.8404613778866,
+          "low": 1601.2712482844465,
+          "high": 2266.0368250293322
+        },
+        {
+          "target": 4,
+          "stopsAhead": 20,
+          "eta": 2299.9237983323537,
+          "low": 1935.0230330419458,
+          "high": 2650.7080904991744
+        },
+        {
+          "target": 11,
+          "stopsAhead": 43,
+          "eta": 5184.251569327375,
+          "low": 4622.190730626459,
+          "high": 5713.276527061106
+        },
+        {
+          "target": 48,
+          "stopsAhead": 46,
+          "eta": 5696.864195599498,
+          "low": 4863.665894013772,
+          "high": 6324.44527009138
+        }
+      ]
+    },
+    {
+      "sourceId": 63523,
+      "at": 1789644161347,
+      "leadClusterMass": 1,
+      "parts": [
+        {
+          "mass": 0.6446020049704905,
+          "standing": false,
+          "leg": 0
+        },
+        {
+          "mass": 0.35539799502950953,
+          "standing": true,
+          "leg": 0
+        }
+      ],
+      "secondOccurrenceGate": {
+        "rawLeadDivisionMedian": 5191.786634923396,
+        "rawLeadRoseMedian": 5527.865201982434,
+        "existingMaxSec": 5400,
+        "roseOmitted": true
+      },
+      "sampledMeansBeforeDisplayCorrections": {
+        "preWin": 1368.0413843503984,
+        "wait": 338.61641568590585,
+        "postDivision": 78.13554651565036,
+        "postRose": 417.6890708694797,
+        "totalDivision": 1784.7933465519545,
+        "totalRose": 2124.3468709057843
+      },
+      "retrospectiveActualSec": {
+        "preWin": 1100.108,
+        "wait": 370.027,
+        "postDivision": 90.016,
+        "postRose": 445.176,
+        "totalDivision": 1560.151,
+        "totalRose": 1915.311
+      },
+      "meanErrorPredictedMinusActual": {
+        "preWin": 267.93338435039846,
+        "wait": -31.410584314094137,
+        "postDivision": -11.880453484349644,
+        "postRose": -27.48692913052031,
+        "totalDivision": 224.64234655195446,
+        "totalRose": 209.03587090578435
+      },
+      "displayed": [
+        {
+          "target": 11,
+          "stopsAhead": 14,
+          "eta": 1488.069370532621,
+          "low": 1215.5546650426372,
+          "high": 1852.3156205184666
+        },
+        {
+          "target": 48,
+          "stopsAhead": 17,
+          "eta": 1965.3476240264483,
+          "low": 1587.8426717191128,
+          "high": 2364.3248192442206
+        },
+        {
+          "target": 4,
+          "stopsAhead": 20,
+          "eta": 2325.846793619983,
+          "low": 1933.124751540471,
+          "high": 2756.6203891945843
+        },
+        {
+          "target": 11,
+          "stopsAhead": 43,
+          "eta": 5220.841338258966,
+          "low": 4597.064078609783,
+          "high": 5774.828013730738
+        },
+        {
+          "target": 48,
+          "stopsAhead": 46,
+          "eta": 5701.389183001444,
+          "low": 4862.34139657688,
+          "high": 6378.451510300321
+        }
+      ]
+    }
+  ]
+}

@@ -91,6 +91,58 @@ export const P_REPEAT_MOVE_ZONE = 0.5;
  */
 export const SHUFFLE_PER_POLL = 0.03;
 export const P_DEPART_ON_FRESH = 0.76;
+/**
+ * The same two rates for a fresh fix that has NOT left the rest — the bus
+ * shuffling at the kerb, which is 91-93% of every fresh fix a standing bus
+ * publishes. MEASURED against the detector's own departure instants
+ * (`stop_visits.departed_at`, verified equal to `last_at_rest_at` on 511 of
+ * 511 Red visits) over the archive of 2026-09-03..09-09, a fresh fix labelled
+ * a DEPARTURE when it is the first one after the last poll still at rest and a
+ * REPOSITION otherwise:
+ *
+ *   P(departure | fresh fix, still within REST_RADIUS_M of the rest point)
+ *       Red 31.2% (n=3,282)   Blue Day 35.5% (n=3,834)   pooled 33.5% (n=7,116)
+ *   P(departure | fresh fix, beyond it)
+ *       Red 71.0% (n=  231)   Blue Day 76.3% (n=  350)   pooled 74.2% (n=  581)
+ *   repositions per standing poll
+ *       Red 0.1148 (2,325 / 20,253)  Blue Day 0.1188 (2,557 / 21,516)
+ *
+ * So the pooled `P_DEPART_ON_FRESH` and `SHUFFLE_PER_POLL` above are the
+ * BEYOND-rest numbers — 0.76 against a measured 0.742, right — applied to both
+ * cases, and the belief is consequently about twice as departure-happy as the
+ * feed warrants on the fix that matters. Instrumented on the 9/10 replay, the
+ * standing mass's mean pDepart is 0.61-0.68 for a fix inside the rest and
+ * 0.72-0.75 for one beyond, against those measured 0.335 and 0.742: the model
+ * is calibrated for the bus that left and charges the same evidence to the bus
+ * that shuffled. That is the standing trough at its source — half the lead
+ * cluster is walked out of the stand on the first kerb shuffle, the mixture
+ * median lands in the standing part's lower tail, and #119's ratchet keeps it
+ * for the rest of the stand.
+ *
+ * The step cannot discriminate and must not be used to: the fresh fix's own
+ * displacement is 32 m at the median whether it is a departure or a shuffle
+ * (this measurement, both classes, both routes), exactly as
+ * docs/departure-derivation.md says. WHERE it lands is the evidence, not how
+ * far it moved.
+ *
+ * These are deliberately NOT in `MP`: the daily fit's own counter
+ * (`estimateVisitRates` in scripts/reestimate-lib.mjs) counts the detector's
+ * `shuffles` field — repositions big enough to open a departure candidate,
+ * 0.51 per visit against the 1.94 fresh fixes a visit actually publishes — and
+ * pools every stop class and both zone cases, so it cannot see this split. If
+ * this ships, teach that counter the split before serving either number.
+ */
+export const SHUFFLE_PER_POLL_IN_REST = 0.117;
+export const P_DEPART_ON_FRESH_IN_REST = 0.335;
+
+/**
+ * The conditioning above, off by default. Two DISPLAY rules for this defect
+ * were measured and refused (PRs #244, #245); this one is a belief change, so
+ * it is switched rather than assumed, and every gate is run paired on it.
+ */
+let kerbShuffleEvidence = false;
+export function setKerbShuffleEvidence(on: boolean): void { kerbShuffleEvidence = on; }
+export function kerbShuffleEvidenceOn(): boolean { return kerbShuffleEvidence; }
 /** Off-stop run -> stand hazard per second (a light, a queue). docs/eta-error-budget.md. */
 export const HOLD_ENTER_PER_S = 0.01612;
 /** Off-stop stand -> run hazard per second. */
@@ -201,7 +253,7 @@ export interface Belief {
   lastStopId: number | null;
   /** The leg the screen shows the bus on (hysteresis, see `leadLeg`). -1 before the first step. */
   lead: number;
-  /** When the mass first left `lead` for a leg BEHIND it, else null (see `leadLeg`). */
+  /** When the mass first left `lead` for a leg BEHIND it (or a jump ahead the feed cannot judge), else null (see `leadLeg`). */
   leadDisagreeSince: number | null;
   /** True when this step saw a fresh fix. */
   fresh: boolean;
@@ -371,8 +423,8 @@ const SHUFFLE_KERNEL: ReadonlyArray<readonly [number, number]> = [
  * mod N. From priors.ts: `last_stop_id` is the last stop PASSED, with 60-75% of
  * its mass on {nearest - 1, nearest} and a long tail both ways. Applied
  * tempered (square root), only on the poll the reading changes, never obeyed.
- * A stop that occurs twice in the sequence (routes 9 and 10) gets the best of
- * its occurrences.
+ * Green's repeated outbound stops use the nearby forward occurrence when a
+ * warm belief can distinguish it. Otherwise both occurrences remain possible.
  */
 function lastStopLikelihood(offset: number, N: number): number {
   if (offset === 0) return 0.5;
@@ -480,10 +532,18 @@ function applyLastStop(b: Belief, ring: Ring, bus: FilterBus, stops: readonly nu
   const occurrences: number[] = [];
   for (let i = 0; i < N; i++) if (stops[i] === lsid) occurrences.push(i);
   if (occurrences.length === 0) return;
+  // Green's Building 800/900 occur on both sides of the fold. A changed
+  // last-stop reading follows the previous leg, even when the return marker
+  // lies near the same GPS fix. Resolve only when exactly one occurrence is
+  // within the next two legs of a warm belief. Leave cold readings symmetric;
+  // other routes retain their existing observation model.
+  const nearby = b.lead < 0 || !ring.key.startsWith("9|") ? []
+    : occurrences.filter(i => (i - b.lead + N) % N <= 2);
+  const plausible = nearby.length === 1 ? nearby : occurrences;
   const w = new Float64Array(N);
   for (let i = 0; i < N; i++) {
     let best = 0;
-    for (const lastIdx of occurrences) best = Math.max(best, lastStopLikelihood(((i - lastIdx) % N + N) % N, N));
+    for (const lastIdx of plausible) best = Math.max(best, lastStopLikelihood(((i - lastIdx) % N + N) % N, N));
     w[i] = Math.sqrt(best);
   }
   for (let c = 0; c < C; c++) {
@@ -562,7 +622,9 @@ export function legMass(b: Belief, ring: Ring): Float64Array {
  *    marker must not trigger it;
  *  - a candidate far ahead (a fold's other branch, a lap) must carry
  *    LEAD_SWITCH_MASS first — what stops the number racing across the gap as
- *    a branch weight passes 0.5 (#88);
+ *    a branch weight passes 0.5 (#88) — and the feed's last stop must put
+ *    the bus there (`lastStopReading`): a jump it contradicts is not taken,
+ *    one it cannot judge is held like a wrap behind;
  *  - a candidate BEHIND is a wrap of N - k legs, which a bus cannot do
  *    (anchorGate.ts, THE RING), so the lead holds; released only after
  *    LEAD_MAX_HOLD_MS of sustained disagreement, the gate's own rule for a
@@ -582,15 +644,44 @@ export function leadLeg(b: Belief, ring: Ring, prev: number, now: number, state?
     const next = (prev + 1) % N;
     return 1 - m[prev]! >= LEAD_SWITCH_MASS ? next : prev;
   }
-  if (ahead <= N / 2) {
+  const feed = ahead <= N / 2 && m[best]! >= LEAD_SWITCH_MASS ? lastStopReading(b, ring, best) : "confirms";
+  if (ahead <= N / 2 && feed !== "unknown") {
     if (state) state.leadDisagreeSince = null;
-    return m[best]! >= LEAD_SWITCH_MASS ? best : prev;
+    return m[best]! >= LEAD_SWITCH_MASS && feed === "confirms" ? best : prev;
   }
   if (m[best]! < LEAD_SWITCH_MASS) { if (state) state.leadDisagreeSince = null; return prev; }
   if (!state) return prev;
   if (state.leadDisagreeSince === null) { state.leadDisagreeSince = now; return prev; }
   if (now - state.leadDisagreeSince >= LEAD_MAX_HOLD_MS) { state.leadDisagreeSince = null; return best; }
   return prev;
+}
+
+/**
+ * Does the feed put the bus where a far-ahead jump would land? It confirms the
+ * jump when the candidate is at most LEAD_FOLLOW_LEGS legs past an occurrence
+ * of `last_stop_id`, contradicts it when the ring carries that stop and none
+ * of its occurrences is that close, and cannot say when there is no last stop
+ * the ring carries (TransLoc sends 0 when it cannot place the bus).
+ *
+ * A detour can put the fix ON another leg of the same loop: on 2026-09-25,
+ * road-race day, Red buses ran down Temple St alongside the Chapel St leg, a
+ * dozen legs ahead of College St where the feed had them. Taking that jump
+ * wrapped the ride past its exit ("5 stops" -> "21 stops") and the true
+ * position then read as a wrap BEHIND and was held (incident 5a7ad1d). #127
+ * stood beside that leg for five minutes with the feed's last stop against
+ * it, so a contradicted jump is not released on a timer; the next stop the
+ * bus passes confirms the leg it is really on. A ring whose sequence the
+ * belief does not index cannot be read, and keeps the jump as it was.
+ */
+function lastStopReading(b: Belief, ring: Ring, best: number): "confirms" | "contradicts" | "unknown" {
+  if (ring.stops.length !== ring.N) return "confirms";
+  let known = false;
+  for (let i = 0; i < ring.N; i++) {
+    if (ring.stops[i] !== b.lastStopId) continue;
+    known = true;
+    if (((best - i) % ring.N + ring.N) % ring.N <= LEAD_FOLLOW_LEGS) return "confirms";
+  }
+  return known ? "contradicts" : "unknown";
 }
 
 /**
@@ -614,6 +705,26 @@ export function stepBelief(
   const C = ring.C;
   const dt = Math.max(1, Math.min(60, (now - prev.seenAt) / 1000));
   const fresh = prev.lastFix === null || prev.lastFix.lat !== bus.lat || prev.lastFix.lon !== bus.lon;
+  // A repeated physical stop can name either direction of a folded route.
+  // Fresh movement plus a changed served stop ends the old kerb visit even
+  // inside the rest radius. Reacquire instead of carrying its branch/clock
+  // into the next visit. Layovers and stationary hint changes retain memory.
+  const restId = prev.restStop >= 0 ? stops[prev.restStop] : undefined;
+  const foldedDeparture = fresh && prev.rested && !prev.restApproach
+    && restId !== undefined && ring.layover[prev.restStop] !== 1
+    && stops.filter(id => id === restId).length > 1
+    && prev.lastStopId === restId && bus.last_stop_id != null
+    && bus.last_stop_id !== restId && stops.includes(bus.last_stop_id);
+  if (foldedDeparture) {
+    // On Purple, the next stop reading can uniquely follow the very pass the
+    // warm belief has tracked. Resetting then discards direction evidence at
+    // the fold, where the return road lies closer to the same GPS fix.
+    const nextOnSamePass = ring.key.startsWith("10|") && prev.lead === prev.restStop
+      && stops.filter((id, i) => id === bus.last_stop_id
+        && (i - prev.lead + ring.N) % ring.N > 0
+        && (i - prev.lead + ring.N) % ring.N <= 2).length === 1;
+    if (!nextOnSamePass) return initBelief(ring, bus, now, stops);
+  }
   // Has the fix left the rest? The collector's own rule (STATIONARY_RADIUS_M):
   // inside the radius the bus is still where it came to rest, whatever the
   // published line says.
@@ -629,7 +740,11 @@ export function stepBelief(
     // = 1 - P_REPEAT_MOVE. Without the first factor a single crawl repeat
     // left a standing ghost that fresh fixes never cancelled (review, 9).
     const stood = prev.rested ? standingSec(prev, prev.seenAt) : 0;
-    const shufflePoll = MP.SHUFFLE_PER_POLL * (dt / 5);
+    // The fix moved but stayed where the bus came to rest: the kerb shuffle,
+    // whose measured departure share is half the pooled one. `leftRest` is the
+    // discriminator already computed above, so this costs no new geometry.
+    const inRestFix = kerbShuffleEvidence && prev.rested && !leftRest;
+    const shufflePoll = (inRestFix ? SHUFFLE_PER_POLL_IN_REST : MP.SHUFFLE_PER_POLL) * (dt / 5);
     const fromStand = 1 - MP.P_REPEAT_STAND;
     const departKern = Float64Array.from(DEPART_KERNEL);
     for (let c = 0; c < C; c++) {
@@ -654,7 +769,7 @@ export function stepBelief(
             const hd = hazard(table, stood) * dt;
             pDepart = hd / (hd + shufflePoll);
           } else {
-            pDepart = MP.P_DEPART_ON_FRESH;
+            pDepart = inRestFix ? P_DEPART_ON_FRESH_IN_REST : MP.P_DEPART_ON_FRESH;
           }
         }
         // Through `advance`, so a first step that lands ON a stop cell is
@@ -840,8 +955,8 @@ function advance(q: Float64Array, ring: Ring, c: number, m: number, kern: Float6
 
 /**
  * Situations: the posterior collapsed to (anchor leg, mode) with the
- * mass-weighted mean position within the leg, dropping anything under
- * `minMass`.
+ * mass-weighted mean position within the leg. Prune below `minMass`, except
+ * the held lead may survive down to the filter's propagation floor.
  */
 export interface Situation {
   leg: number;
@@ -886,7 +1001,10 @@ export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
   let total = 0;
   for (let k = 0; k < 2 * N; k++) {
     const m = mass[k]!;
-    if (m < minMass) continue;
+    // Pruning must not silently switch the priced branch while leadLeg still
+    // holds it. Keep its meaningful mass, using the propagation floor to
+    // exclude numerical remnants of a physically disproven branch.
+    if (m < PROPAGATE_MIN || (m < minMass && (k >> 1) !== b.lead)) continue;
     let zoneKey = -1, best = 0;
     if (k % 2 === 0) {
       for (const [zk, zm] of zoneMass) {

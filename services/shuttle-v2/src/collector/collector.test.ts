@@ -2,7 +2,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { openDb, type DbBundle } from "../db/client.js";
 import { arrivals, legs, rawPositions, segments, stopVisits } from "../db/schema.js";
@@ -115,6 +115,7 @@ let logs: LogLine[];
 // (rather than a reimplementation) is the whole point — the bug being guarded
 // against lives in its await boundaries.
 type Internals = {
+  runRetention: () => void;
   runPoll: () => Promise<void>;
   refreshStaticIfNeeded: (force: boolean) => Promise<void>;
   states: Map<string, BusState>;
@@ -137,9 +138,31 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   collector.stop();
   bundle.sqlite.close();
   fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+it("retains the previous operating day's GPS until the overnight archive, then expires it", () => {
+  // 03:40 ET after the fall DST transition: yesterday's midnight is 28 h
+  // 40 min ago. Both it and the morning Red service must survive the sweep.
+  const now = Date.parse("2026-11-02T08:40:00Z");
+  vi.spyOn(Date, "now").mockReturnValue(now);
+  const times = [
+    now - 37 * 60 * 60_000,
+    Date.parse("2026-11-01T04:00:00Z"),
+    Date.parse("2026-11-01T12:00:00Z"),
+    now - 60_000,
+  ];
+  bundle.db.insert(rawPositions).values(times.map((at, i) => ({
+    busId: i + 1, busName: `#${i + 1}`, routeId: 10,
+    lat: 41.31, lon: -72.93, heading: 90, collectedAt: new Date(at),
+  }))).run();
+  inner().runRetention();
+  const remaining = bundle.db.select().from(rawPositions).all()
+    .map(row => row.collectedAt.getTime()).sort((a, b) => a - b);
+  expect(remaining).toEqual(times.slice(1));
 });
 
 describe("runPoll re-entrancy", () => {
@@ -287,6 +310,46 @@ describe("upstream payload sanitisation", () => {
     expect(live).toHaveLength(1);
     expect(live[0]!.heading).toBe(0);
   });
+
+  it("archives and shows Blue West's incoming bus without inventing stop visits", async () => {
+    const cedar: Stop = { id: 10, name: "333 Cedar", lat: 41.303254, lon: -72.934247 };
+    const mansfield: Stop = { id: 163, name: "Mansfield / Division", lat: 41.32486, lon: -72.9247 };
+    vi.spyOn(upstream, "stops").mockResolvedValue([...stops, cedar, mansfield]);
+    vi.spyOn(upstream, "routes").mockResolvedValue([...routes,
+      { id: 16, name: "Blue West", shortName: "BW", color: "#00838F", stops: [10, 163] },
+    ]);
+    await inner().refreshStaticIfNeeded(true);
+
+    const incoming = (lat: number, lon: number, lastStop: number) =>
+      bus({ id: 66904, name: "#127", route: 16, lat, lon, lastStop });
+    const clock = vi.spyOn(Date, "now");
+    clock.mockReturnValue(Date.parse("2026-09-26T21:55:35Z"));
+    await poll([incoming(41.339441, -72.935181, 0)]);
+    clock.mockReturnValue(Date.parse("2026-09-26T22:00:35Z"));
+    await poll([incoming(41.319058, -72.933916, 0)]);
+    expect(collector.getLiveBuses()).toHaveLength(1);
+    expect(bundle.db.select().from(rawPositions).all()).toHaveLength(2);
+    expect(bundle.db.select().from(arrivals).all()).toHaveLength(0);
+    expect(bundle.db.select().from(stopVisits).all()).toHaveLength(0);
+
+    // The archived handoff: #127 first reached Cedar at 18:08:25 and held
+    // there while lastStopId was still 0. Upstream advanced it only at 18:08:50.
+    for (const [at, lat, lon, lastStop] of [
+      ["2026-09-26T22:08:25Z", 41.302809, -72.934055, 0],
+      ["2026-09-26T22:08:30Z", 41.303078, -72.934174, 0],
+      ["2026-09-26T22:08:35Z", 41.303078, -72.934174, 0],
+      ["2026-09-26T22:08:40Z", 41.303078, -72.934174, 0],
+      ["2026-09-26T22:08:45Z", 41.303078, -72.934174, 0],
+      ["2026-09-26T22:08:50Z", 41.303343, -72.934353, 10],
+    ] as const) {
+      clock.mockReturnValue(Date.parse(at));
+      await poll([incoming(lat, lon, lastStop)]);
+    }
+    expect(bundle.db.select().from(rawPositions).all()).toHaveLength(8);
+    const recorded = bundle.db.select().from(arrivals).all();
+    expect(recorded).toMatchObject([{ routeId: 16, stopId: 10 }]);
+    expect(recorded[0]!.arrivedAt.getTime()).toBe(Date.parse("2026-09-26T22:08:25Z"));
+  });
 });
 
 describe("state pruning", () => {
@@ -318,6 +381,40 @@ describe("state pruning", () => {
 });
 
 describe("static refresh", () => {
+  it("keeps fitted Winchester waits on a replacement network and its retry", async () => {
+    const redStops = stops.map((s, i) => ({ ...s, id: [11, 121, 48][i]! }));
+    vi.spyOn(upstream, "stops").mockResolvedValue(redStops);
+    const routeFetch = vi.spyOn(upstream, "routes").mockResolvedValue([
+      { id: 3, name: "Red", shortName: "R", color: "#f00", stops: [11, 121, 48] },
+    ]);
+    const at = Date.now() - 600_000;
+    bundle.db.insert(stopVisits).values({
+      busId: 7, busName: "#7", anchorBusId: 7, routeId: 3, stopId: 11, stopIndex: 0,
+      anchoredAt: new Date(at), pinnedAt: new Date(at), arrivedAt: new Date(at),
+      departedAt: new Date(at + 300_000), standSec: 300, insideSec: 300,
+      outcome: "stopped", how: "next", confidence: 1, closestM: 5,
+      steps: 3, restPolls: 8, shuffles: 0,
+      dow: 4, hour: 12,
+    }).run();
+    const release = { stopId: 11, referenceLap: 3000, n: 100, days: 4,
+      coefficients: [-4, 1, 0, 0, 0, 1, 0, 1, 0] };
+    const fitted = collector as unknown as {
+      lapFitsCache: { get(): ReadonlyMap<string, unknown> };
+      releaseFitsCache: { get(): ReadonlyMap<string, unknown> };
+    };
+    fitted.lapFitsCache = { get: () => new Map([["3:11", { b: -0.001, m: 3000, n: 100 }]]) };
+    fitted.releaseFitsCache = { get: () => new Map([["3:11", release]]) };
+    await inner().refreshStaticIfNeeded(true);
+    const first = collector.ref.get();
+    expect(first.getDwellStats(3, 11)).toMatchObject({ release, lapB: -0.001 });
+    routeFetch.mockRejectedValueOnce(new Error("temporary topology fetch failure"));
+    await inner().refreshStaticIfNeeded(true);
+    expect(collector.ref.get()).toBe(first);
+    await inner().refreshStaticIfNeeded(true);
+    expect(collector.ref.get()).not.toBe(first);
+    expect(collector.ref.get().getDwellStats(3, 11)).toMatchObject({ release, lapB: -0.001 });
+  });
+
   it("guards against overlapping refreshes", async () => {
     let calls = 0;
     const slowUpstream = {

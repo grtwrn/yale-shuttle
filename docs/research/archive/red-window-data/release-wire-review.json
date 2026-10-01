@@ -1,0 +1,1250 @@
+{
+  "method": "Independent read-only gate/transition audit of the simple wire hazard switch.",
+  "inputSha256": "76a1bb44e1a53fb113006fe6e8ac769895916ab6aec556208fa7dadf87fc13aa",
+  "checks": "Fresh-frame timestamps integral; every selected hazard row satisfies visible gate; checkpoint MAE/WIS/counts recomputed; every transition classified; retrospective departure endpoint distinguished from first subsequent raw coordinate change (first_moved_at is not a final-run availability timestamp).",
+  "originCount": 50,
+  "missingLapOriginCount": 6,
+  "transitions": [
+    {
+      "target": 48,
+      "transitions": 5018,
+      "types": [
+        {
+          "beforeMode": "production_fallback",
+          "afterMode": "production_fallback",
+          "n": 1815,
+          "shadowUp60": 0,
+          "shadowUp120": 0,
+          "absoluteShadowUp60": 0,
+          "productionUp60": 0,
+          "episodesWithShadowUp60": 0,
+          "maxShadowUpSec": 27.398136017483864,
+          "gateFailuresBeforeEntry": null,
+          "gateFailuresAfterExit": null
+        },
+        {
+          "beforeMode": "production_fallback",
+          "afterMode": "wire_pin_hazard",
+          "n": 96,
+          "shadowUp60": 38,
+          "shadowUp120": 10,
+          "absoluteShadowUp60": 41,
+          "productionUp60": 0,
+          "episodesWithShadowUp60": 29,
+          "maxShadowUpSec": 195.7393111610885,
+          "gateFailuresBeforeEntry": {
+            "lead hops different": 33,
+            "collector stop not Winchester": 65,
+            "collector pinned flag false": 65,
+            "no pin clock": 65,
+            "outside75m": 61
+          },
+          "gateFailuresAfterExit": {}
+        },
+        {
+          "beforeMode": "wire_pin_hazard",
+          "afterMode": "production_fallback",
+          "n": 96,
+          "shadowUp60": 0,
+          "shadowUp120": 0,
+          "absoluteShadowUp60": 0,
+          "productionUp60": 5,
+          "episodesWithShadowUp60": 0,
+          "maxShadowUpSec": 45.54694778276263,
+          "gateFailuresBeforeEntry": {},
+          "gateFailuresAfterExit": {
+            "collector stop not Winchester": 94,
+            "collector pinned flag false": 94,
+            "no pin clock": 94,
+            "outside75m": 82,
+            "lead hops different": 3
+          }
+        },
+        {
+          "beforeMode": "wire_pin_hazard",
+          "afterMode": "wire_pin_hazard",
+          "n": 3011,
+          "shadowUp60": 0,
+          "shadowUp120": 0,
+          "absoluteShadowUp60": 0,
+          "productionUp60": 9,
+          "episodesWithShadowUp60": 0,
+          "maxShadowUpSec": 6.531914413395953,
+          "gateFailuresBeforeEntry": null,
+          "gateFailuresAfterExit": null
+        }
+      ]
+    },
+    {
+      "target": 4,
+      "transitions": 7525,
+      "types": [
+        {
+          "beforeMode": "production_fallback",
+          "afterMode": "production_fallback",
+          "n": 4473,
+          "shadowUp60": 0,
+          "shadowUp120": 0,
+          "absoluteShadowUp60": 0,
+          "productionUp60": 0,
+          "episodesWithShadowUp60": 0,
+          "maxShadowUpSec": 41.15450960985589,
+          "gateFailuresBeforeEntry": null,
+          "gateFailuresAfterExit": null
+        },
+        {
+          "beforeMode": "production_fallback",
+          "afterMode": "wire_pin_hazard",
+          "n": 91,
+          "shadowUp60": 6,
+          "shadowUp120": 1,
+          "absoluteShadowUp60": 8,
+          "productionUp60": 0,
+          "episodesWithShadowUp60": 4,
+          "maxShadowUpSec": 130.8890753751756,
+          "gateFailuresBeforeEntry": {
+            "lead hops different": 31,
+            "collector stop not Winchester": 62,
+            "collector pinned flag false": 62,
+            "no pin clock": 62,
+            "outside75m": 58
+          },
+          "gateFailuresAfterExit": {}
+        },
+        {
+          "beforeMode": "wire_pin_hazard",
+          "afterMode": "production_fallback",
+          "n": 91,
+          "shadowUp60": 7,
+          "shadowUp120": 0,
+          "absoluteShadowUp60": 7,
+          "productionUp60": 11,
+          "episodesWithShadowUp60": 7,
+          "maxShadowUpSec": 115.66050306783609,
+          "gateFailuresBeforeEntry": {},
+          "gateFailuresAfterExit": {
+            "collector stop not Winchester": 90,
+            "collector pinned flag false": 90,
+            "no pin clock": 90,
+            "outside75m": 78,
+            "lead hops different": 2
+          }
+        },
+        {
+          "beforeMode": "wire_pin_hazard",
+          "afterMode": "wire_pin_hazard",
+          "n": 2870,
+          "shadowUp60": 0,
+          "shadowUp120": 0,
+          "absoluteShadowUp60": 0,
+          "productionUp60": 16,
+          "episodesWithShadowUp60": 0,
+          "maxShadowUpSec": 2.754833970329514,
+          "gateFailuresBeforeEntry": null,
+          "gateFailuresAfterExit": null
+        }
+      ]
+    }
+  ],
+  "departureMovement": [
+    {
+      "target": 48,
+      "age": 0,
+      "n": 47,
+      "changed": 47,
+      "shadowEarly": 30,
+      "earlyWithFinalRunCoordinateChangeObserved": 0,
+      "allWithFinalRunCoordinateChangeObserved": 0,
+      "earlyLowerExcessSec": [
+        6.412383966407091,
+        1.508961177471761,
+        24.760861131072545,
+        23.96808865347934,
+        5.828086003033832,
+        22.8984837662353,
+        23.69299681981157,
+        15.064888675371819,
+        15.27226638247761,
+        7.685888603515281,
+        24.598718687153024,
+        20.347972439066993,
+        7.140588278038976,
+        15.734881922923947,
+        1.1066112483409682,
+        23.46130183398064,
+        14.925178487501555,
+        6.692122420045138,
+        30.56162330240312,
+        8.649855918749935,
+        10.196948368542337,
+        62.21944512013141,
+        14.037215584677412,
+        32.59545888085779,
+        41.66295965877465,
+        8.776906871870295,
+        8.382431850478227,
+        24.040462495894275,
+        32.27708022847824,
+        35.81776786938265
+      ]
+    },
+    {
+      "target": 48,
+      "age": 5,
+      "n": 47,
+      "changed": 45,
+      "shadowEarly": 30,
+      "earlyWithFinalRunCoordinateChangeObserved": 30,
+      "allWithFinalRunCoordinateChangeObserved": 47,
+      "earlyLowerExcessSec": [
+        4.285373857161986,
+        15.201890638139787,
+        29.018652058888577,
+        32.11205246185399,
+        10.78954350866367,
+        31.511864038847456,
+        30.064088327310927,
+        23.66457088276435,
+        23.549712021983325,
+        11.793317022267388,
+        28.500422029796283,
+        27.86449252389461,
+        16.00007576246928,
+        20.278838871746586,
+        5.318144177647369,
+        31.167762172993974,
+        18.93320733590437,
+        11.737282020519018,
+        35.66654354101472,
+        17.05994272919493,
+        1.9845831472356679,
+        67.20955150457138,
+        18.6456497677937,
+        36.75520930956018,
+        48.51284561233214,
+        18.394652478986615,
+        16.955419437284036,
+        28.881057162031183,
+        36.405157170642596,
+        42.70355966441413
+      ]
+    },
+    {
+      "target": 48,
+      "age": 15,
+      "n": 47,
+      "changed": 12,
+      "shadowEarly": 10,
+      "earlyWithFinalRunCoordinateChangeObserved": 10,
+      "allWithFinalRunCoordinateChangeObserved": 47,
+      "earlyLowerExcessSec": [
+        5.724527073626007,
+        19.203517693006035,
+        36.71632081922715,
+        5.147405888036545,
+        20.001477387865563,
+        13.592535868871096,
+        35.218621686415275,
+        45.97011830583958,
+        21.162899142245564,
+        52.10902320976045
+      ]
+    },
+    {
+      "target": 48,
+      "age": 30,
+      "n": 47,
+      "changed": 0,
+      "shadowEarly": 0,
+      "earlyWithFinalRunCoordinateChangeObserved": 0,
+      "allWithFinalRunCoordinateChangeObserved": 47,
+      "earlyLowerExcessSec": []
+    },
+    {
+      "target": 4,
+      "age": 0,
+      "n": 45,
+      "changed": 45,
+      "shadowEarly": 12,
+      "earlyWithFinalRunCoordinateChangeObserved": 0,
+      "allWithFinalRunCoordinateChangeObserved": 0,
+      "earlyLowerExcessSec": [
+        95.26147360172817,
+        40.7163939235337,
+        52.236375299793565,
+        0.7147408532239297,
+        2.5332663342163073,
+        19.657985797322965,
+        43.95304459818561,
+        28.511895585346167,
+        19.779266216491067,
+        83.00076953780041,
+        22.467245788445382,
+        30.990791029430227
+      ]
+    },
+    {
+      "target": 4,
+      "age": 5,
+      "n": 45,
+      "changed": 43,
+      "shadowEarly": 13,
+      "earlyWithFinalRunCoordinateChangeObserved": 13,
+      "allWithFinalRunCoordinateChangeObserved": 45,
+      "earlyLowerExcessSec": [
+        98.776826302297,
+        47.509192700325684,
+        58.747110175768626,
+        8.58955150640162,
+        6.446023055691171,
+        25.916694737360785,
+        47.38570291983001,
+        3.325844754253808,
+        36.00512264455119,
+        24.0225711199858,
+        88.35134295077461,
+        29.77024904347462,
+        36.63771666566049
+      ]
+    },
+    {
+      "target": 4,
+      "age": 15,
+      "n": 45,
+      "changed": 12,
+      "shadowEarly": 4,
+      "earlyWithFinalRunCoordinateChangeObserved": 4,
+      "allWithFinalRunCoordinateChangeObserved": 45,
+      "earlyLowerExcessSec": [
+        29.356138611926156,
+        13.700829744168345,
+        39.555819333940576,
+        91.14657587642392
+      ]
+    },
+    {
+      "target": 4,
+      "age": 30,
+      "n": 45,
+      "changed": 0,
+      "shadowEarly": 0,
+      "earlyWithFinalRunCoordinateChangeObserved": 0,
+      "allWithFinalRunCoordinateChangeObserved": 45,
+      "earlyLowerExcessSec": []
+    }
+  ],
+  "newUpwardJumps": [
+    {
+      "id": 65347,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789656672761,
+      "dt": 5.013,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": 1.3932820008576527,
+      "shadow": 195.7393111610885,
+      "secondsSincePin": 19.905,
+      "secondsSinceDeparture": -480.22
+    },
+    {
+      "id": 64318,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789649878114,
+      "dt": 4.982,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 184.9549725474003,
+      "secondsSincePin": 109.897,
+      "secondsSinceDeparture": -50.189
+    },
+    {
+      "id": 65347,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789656657917,
+      "dt": 5.061,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -18.922655308429057,
+      "shadow": 183.65076814311902,
+      "secondsSincePin": 5.061,
+      "secondsSinceDeparture": -495.064
+    },
+    {
+      "id": 58061,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789565847088,
+      "dt": 5.005,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -14.748070046467035,
+      "shadow": 150.81586272109394,
+      "secondsSincePin": 5.005,
+      "secondsSinceDeparture": -520.067
+    },
+    {
+      "id": 58224,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789567342286,
+      "dt": 4.98,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 147.83213587186157,
+      "secondsSincePin": 99.96,
+      "secondsSinceDeparture": -50.112
+    },
+    {
+      "id": 65119,
+      "target": 48,
+      "bus": "#300",
+      "at": 1789654944327,
+      "dt": 4.887,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -15.134277877415911,
+      "shadow": 147.8278471329649,
+      "secondsSincePin": 4.887,
+      "secondsSinceDeparture": -655.256
+    },
+    {
+      "id": 65347,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789657112906,
+      "dt": 4.844,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 145.25304158211605,
+      "secondsSincePin": 460.05,
+      "secondsSinceDeparture": -40.075
+    },
+    {
+      "id": 58717,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789570769151,
+      "dt": 4.994,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 142.3488526287652,
+      "secondsSincePin": 125.017,
+      "secondsSinceDeparture": -45.078
+    },
+    {
+      "id": 65347,
+      "target": 4,
+      "bus": "#309",
+      "at": 1789656672761,
+      "dt": 5.013,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": 36.75703585876204,
+      "shadow": 130.8890753751756,
+      "secondsSincePin": 19.905,
+      "secondsSinceDeparture": -480.22
+    },
+    {
+      "id": 66158,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789663155641,
+      "dt": 5.012,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": -3.085318023850334,
+      "shadow": 124.2522866018437,
+      "secondsSincePin": 0.0,
+      "secondsSinceDeparture": -394.979
+    },
+    {
+      "id": 60263,
+      "target": 48,
+      "bus": "#308",
+      "at": 1789583007484,
+      "dt": 5.047,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -13.75553321132287,
+      "shadow": 123.88867633113676,
+      "secondsSincePin": 5.047,
+      "secondsSinceDeparture": -434.934
+    },
+    {
+      "id": 60375,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789584317744,
+      "dt": 5.126,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 116.67356019979002,
+      "secondsSincePin": 465.274,
+      "secondsSinceDeparture": -44.76
+    },
+    {
+      "id": 63611,
+      "target": 4,
+      "bus": "#300",
+      "at": 1789644761525,
+      "dt": 5.099,
+      "beforeMode": "wire_pin_hazard",
+      "afterMode": "production_fallback",
+      "beforeGateFailures": [],
+      "afterGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "production": 115.01886821434732,
+      "shadow": 115.66050306783609,
+      "secondsSincePin": 480.17,
+      "secondsSinceDeparture": -64.906
+    },
+    {
+      "id": 65347,
+      "target": 4,
+      "bus": "#309",
+      "at": 1789656657917,
+      "dt": 5.061,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": 13.95030472562405,
+      "shadow": 115.05824683937419,
+      "secondsSincePin": 5.061,
+      "secondsSinceDeparture": -495.064
+    },
+    {
+      "id": 65720,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789659539516,
+      "dt": 4.971,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -11.813658669574409,
+      "shadow": 114.53559869444223,
+      "secondsSincePin": 4.971,
+      "secondsSinceDeparture": -430.816
+    },
+    {
+      "id": 64109,
+      "target": 48,
+      "bus": "#300",
+      "at": 1789647824926,
+      "dt": 5.037,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": -2.758035249489353,
+      "shadow": 113.64680047677575,
+      "secondsSincePin": 0.0,
+      "secondsSinceDeparture": -580.792
+    },
+    {
+      "id": 56968,
+      "target": 4,
+      "bus": "#308",
+      "at": 1789558303499,
+      "dt": 5.047,
+      "beforeMode": "wire_pin_hazard",
+      "afterMode": "production_fallback",
+      "beforeGateFailures": [],
+      "afterGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "production": 102.23590355979468,
+      "shadow": 113.20442499263424,
+      "secondsSincePin": 495.217,
+      "secondsSinceDeparture": -64.83
+    },
+    {
+      "id": 60375,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789583857453,
+      "dt": 4.983,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -14.078427643701048,
+      "shadow": 112.02067494900382,
+      "secondsSincePin": 4.983,
+      "secondsSinceDeparture": -505.051
+    },
+    {
+      "id": 58600,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789569548351,
+      "dt": 5.02,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -11.007597916716577,
+      "shadow": 109.84002929009563,
+      "secondsSincePin": 9.942,
+      "secondsSinceDeparture": -425.63
+    },
+    {
+      "id": 64725,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789652358643,
+      "dt": 5.11,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -10.318270989334906,
+      "shadow": 107.05278269324162,
+      "secondsSincePin": 10.047,
+      "secondsSinceDeparture": -384.918
+    },
+    {
+      "id": 66278,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789664435721,
+      "dt": 5.01,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 101.73130314320122,
+      "secondsSincePin": 79.956,
+      "secondsSinceDeparture": -40.108
+    },
+    {
+      "id": 59364,
+      "target": 48,
+      "bus": "#308",
+      "at": 1789575830813,
+      "dt": 5.018,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -10.992608512217885,
+      "shadow": 99.94695047056149,
+      "secondsSincePin": 9.833,
+      "secondsSinceDeparture": -535.057
+    },
+    {
+      "id": 61854,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789595600020,
+      "dt": 5.003,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 97.98305065268278,
+      "secondsSincePin": 70.003,
+      "secondsSinceDeparture": -30.011
+    },
+    {
+      "id": 58956,
+      "target": 48,
+      "bus": "#308",
+      "at": 1789572229404,
+      "dt": 5.006,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -13.32171408134235,
+      "shadow": 96.15602141891384,
+      "secondsSincePin": 9.955,
+      "secondsSinceDeparture": -591.685
+    },
+    {
+      "id": 57100,
+      "target": 4,
+      "bus": "#316",
+      "at": 1789559173411,
+      "dt": 4.993,
+      "beforeMode": "wire_pin_hazard",
+      "afterMode": "production_fallback",
+      "beforeGateFailures": [],
+      "afterGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "production": 0.0,
+      "shadow": 91.65218315356157,
+      "secondsSincePin": 395.037,
+      "secondsSinceDeparture": -55.023
+    },
+    {
+      "id": 61186,
+      "target": 48,
+      "bus": "#308",
+      "at": 1789590614514,
+      "dt": 4.925,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 91.65068326908022,
+      "secondsSincePin": 239.927,
+      "secondsSinceDeparture": -40.046
+    },
+    {
+      "id": 59364,
+      "target": 4,
+      "bus": "#308",
+      "at": 1789576310895,
+      "dt": 5.057,
+      "beforeMode": "wire_pin_hazard",
+      "afterMode": "production_fallback",
+      "beforeGateFailures": [],
+      "afterGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "production": 78.87593561134594,
+      "shadow": 89.1560548931069,
+      "secondsSincePin": 489.915,
+      "secondsSinceDeparture": -54.975
+    },
+    {
+      "id": 58061,
+      "target": 4,
+      "bus": "#316",
+      "at": 1789565847088,
+      "dt": 5.005,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": 15.140400036486653,
+      "shadow": 87.73791619558074,
+      "secondsSincePin": 5.005,
+      "secondsSinceDeparture": -520.067
+    },
+    {
+      "id": 57226,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789560029213,
+      "dt": 5.001,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 86.48693814633472,
+      "secondsSincePin": 185.024,
+      "secondsSinceDeparture": -45.075
+    },
+    {
+      "id": 57789,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789564246916,
+      "dt": 4.907,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": -3.2528029868296358,
+      "shadow": 84.93786700785807,
+      "secondsSincePin": 0.0,
+      "secondsSinceDeparture": -180.041
+    },
+    {
+      "id": 57463,
+      "target": 48,
+      "bus": "#308",
+      "at": 1789561851214,
+      "dt": 4.939,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 82.94805377270325,
+      "secondsSincePin": 94.881,
+      "secondsSinceDeparture": -65.047
+    },
+    {
+      "id": 65119,
+      "target": 4,
+      "bus": "#300",
+      "at": 1789654944327,
+      "dt": 4.887,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": 16.00227904796236,
+      "shadow": 82.64861575322243,
+      "secondsSincePin": 4.887,
+      "secondsSinceDeparture": -655.256
+    },
+    {
+      "id": 66158,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789663510620,
+      "dt": 4.808,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 81.47928633548254,
+      "secondsSincePin": 354.979,
+      "secondsSinceDeparture": -40.0
+    },
+    {
+      "id": 59805,
+      "target": 48,
+      "bus": "#308",
+      "at": 1789579691808,
+      "dt": 5.008,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": -1.83523381680547,
+      "shadow": 81.36752182299139,
+      "secondsSincePin": 0.0,
+      "secondsSinceDeparture": -200.026
+    },
+    {
+      "id": 61306,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789591229583,
+      "dt": 5.007,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": -3.11904561506708,
+      "shadow": 76.40993600632203,
+      "secondsSincePin": 0.0,
+      "secondsSinceDeparture": -320.039
+    },
+    {
+      "id": 58061,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789566312144,
+      "dt": 4.923,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 75.0732569783595,
+      "secondsSincePin": 470.061,
+      "secondsSinceDeparture": -55.011
+    },
+    {
+      "id": 61907,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789596120134,
+      "dt": 5.025,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 74.68129320848503,
+      "secondsSincePin": 79.843,
+      "secondsSinceDeparture": -40.002
+    },
+    {
+      "id": 59475,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789577135065,
+      "dt": 4.978,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 72.76299019747518,
+      "secondsSincePin": 295.024,
+      "secondsSinceDeparture": -40.01
+    },
+    {
+      "id": 59056,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789573222186,
+      "dt": 4.874,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "lead hops different"
+      ],
+      "afterGateFailures": [],
+      "production": -8.441756172158819,
+      "shadow": 72.66040069444301,
+      "secondsSincePin": 4.874,
+      "secondsSinceDeparture": -381.939
+    },
+    {
+      "id": 59805,
+      "target": 48,
+      "bus": "#308",
+      "at": 1789579866816,
+      "dt": 4.986,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 72.5154798547805,
+      "secondsSincePin": 175.008,
+      "secondsSinceDeparture": -25.018
+    },
+    {
+      "id": 57581,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789562746719,
+      "dt": 5.046,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 72.50627796235288,
+      "secondsSincePin": 185.073,
+      "secondsSinceDeparture": -34.988
+    },
+    {
+      "id": 61306,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789591519599,
+      "dt": 5.012,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 71.01859856965214,
+      "secondsSincePin": 290.016,
+      "secondsSinceDeparture": -30.023
+    },
+    {
+      "id": 64206,
+      "target": 48,
+      "bus": "#316",
+      "at": 1789649126182,
+      "dt": 5.009,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 69.70591089149723,
+      "secondsSincePin": 262.972,
+      "secondsSinceDeparture": -30.006
+    },
+    {
+      "id": 60263,
+      "target": 48,
+      "bus": "#308",
+      "at": 1789583407550,
+      "dt": 5.02,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 69.41666037130133,
+      "secondsSincePin": 405.113,
+      "secondsSinceDeparture": -34.868
+    },
+    {
+      "id": 65347,
+      "target": 4,
+      "bus": "#309",
+      "at": 1789657112906,
+      "dt": 4.844,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 64.1555416363874,
+      "secondsSincePin": 460.05,
+      "secondsSinceDeparture": -40.075
+    },
+    {
+      "id": 57789,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789564386908,
+      "dt": 4.952,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 63.712682309919074,
+      "secondsSincePin": 139.992,
+      "secondsSinceDeparture": -40.049
+    },
+    {
+      "id": 63838,
+      "target": 48,
+      "bus": "#309",
+      "at": 1789646411560,
+      "dt": 4.989,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 63.37881260853251,
+      "secondsSincePin": 325.027,
+      "secondsSinceDeparture": -60.08
+    },
+    {
+      "id": 58224,
+      "target": 4,
+      "bus": "#309",
+      "at": 1789567342286,
+      "dt": 4.98,
+      "beforeMode": "production_fallback",
+      "afterMode": "wire_pin_hazard",
+      "beforeGateFailures": [
+        "collector stop not Winchester",
+        "collector pinned flag false",
+        "no pin clock",
+        "outside75m"
+      ],
+      "afterGateFailures": [],
+      "production": 0.0,
+      "shadow": 61.02098888196156,
+      "secondsSincePin": 99.96,
+      "secondsSinceDeparture": -50.112
+    }
+  ]
+}

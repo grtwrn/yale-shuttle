@@ -1,0 +1,25 @@
+{
+  "recordMultisetsReproduced": {
+    "connected-pairs.jsonl": 183123,
+    "lagged-origin-records.jsonl": 8228,
+    "post-arrival-transitions.jsonl": 2737,
+    "unpaired-arrivals.jsonl": 206,
+    "tracking-changes.jsonl": 341,
+    "large-tail-changes.jsonl": 5021,
+    "unresolved-source-identities.jsonl": 13352,
+    "label-changes.jsonl": 5570
+  },
+  "allSummaryFieldsEqualExceptTieOrder": true,
+  "verificationFilesEqual": true,
+  "riderInputsByteIdentical": true,
+  "labelAccounting": {
+    "same-target-prior-origin": 5335,
+    "newly-resolved": 216,
+    "moved-to-transition": 11,
+    "retargeted": 8
+  },
+  "retainedPriorRegressions": 25,
+  "largestNewlyResolvedErrorSec": 1574.321,
+  "largestPointRegressionSec": 69.0,
+  "limits": "Reproduction proves arithmetic and record preservation; legacy visit identity remains provisional."
+}

@@ -1,3 +1,4 @@
+import type { ReleaseFit } from "../../web/src/eta/release.js";
 import { sql } from "drizzle-orm";
 
 import type { DB } from "../db/client.js";
@@ -129,6 +130,7 @@ export function calibrate(
   now: Date = new Date(),
   /** The lap fits (src/calibrator/lapFit.ts), refreshed on their own slow cadence by the caller. */
   lapFits: ReadonlyMap<string, LapFit> = new Map(),
+  releaseFits: ReadonlyMap<string, ReleaseFit> = new Map(),
 ): CalibrationStats {
   const t0 = Date.now();
   const nowMs = now.getTime();
@@ -158,6 +160,11 @@ export function calibrate(
     loadStopOccurrenceShares(db, SPLIT_WINDOW_DAYS, nowMs),
   );
   const lapFitCount = attachLapFits(dwellStats, lapFits);
+  for (const [key, release] of releaseFits) {
+    if (key !== '3:11') continue; // Full-arrival validation accepted Winchester only.
+    const current = dwellStats.get(key);
+    if (current) dwellStats.set(key, { ...current, release });
+  }
   const driveCount = attachDrives(segmentStats, driveGroups);
   const legQuantileCount = attachLegQuantiles(segmentStats, legGroups);
   const ownPace = computePace(legGroups, network);
@@ -285,7 +292,8 @@ function loadSegmentGroups(
       group_concat(${SEG_VALUE}) AS allValues,
       group_concat(CASE WHEN ${inWindow} THEN ${SEG_VALUE} END) AS windowValues
     FROM segments
-    WHERE started_at >= ${cutoff}
+    WHERE started_at >= ${cutoff} AND started_at <= ${nowMs}
+      AND started_at + MAX(0, travel_sec) * 1000 <= ${nowMs}
     GROUP BY route_id, from_stop_id, to_stop_id
   `);
   return rows.map((r) => ({
@@ -316,7 +324,8 @@ function loadDwellGroups(
       group_concat(${DWELL_VALUE}) AS allValues,
       group_concat(CASE WHEN ${inWindow} THEN ${DWELL_VALUE} END) AS windowValues
     FROM arrivals
-    WHERE arrived_at >= ${cutoff} AND dwell_sec IS NOT NULL
+    WHERE arrived_at >= ${cutoff} AND arrived_at <= ${nowMs} AND dwell_sec IS NOT NULL
+      AND MAX(COALESCE(departed_at, arrived_at), arrived_at + MAX(0, dwell_sec) * 1000) <= ${nowMs}
     GROUP BY route_id, stop_id
   `);
   return rows.map((r) => ({
@@ -351,6 +360,17 @@ function loadDwellGroups(
 const STAND_VALUE = sql.raw(losslessText("CASE WHEN outcome = 'passed' THEN 0 ELSE (departed_at - pinned_at) / 1000.0 END"));
 const DRIVE_VALUE = sql.raw(losslessText("(COALESCE(to_pinned_at, arrived_at) - departed_at) / 1000.0"));
 const LEG_VALUE = sql.raw(losslessText("leg_sec"));
+/** Earliest possible availability from recorded evidence. `confirm_sec` starts
+ * at the final candidate's movement; `first_moved_at` may be an earlier shuffle.
+ * Unpinned passes legitimately have no departure clock: keep them in P(stop)'s
+ * denominator using their known anchor lower bound, not an invented departure.
+ * This excludes known future evidence but is NOT an exact ingestion timestamp
+ * for legacy records. Replay promotion must retain that limitation. */
+const VISIT_AVAILABLE_AFTER = sql.raw(`(
+  CASE WHEN departed_at IS NULL AND outcome = 'passed'
+    THEN MAX(anchored_at, COALESCE(first_moved_at, anchored_at))
+    ELSE MAX(departed_at, COALESCE(first_moved_at, departed_at)) END
+  ) + MAX(0, COALESCE(confirm_sec, 0)) * 1000`);
 
 interface StandGroupRow { routeId: number; stopId: number; n: number; allValues: string | null }
 interface StandOccurrenceRow extends StandGroupRow { stopIndex: number }
@@ -360,7 +380,10 @@ interface DriveGroupRow { routeId: number; fromStopId: number; toStopId: number;
  * The four split loaders are bounded ABOVE at `nowMs` as well as below. In
  * production that is the wall clock and changes nothing; in a time-travelled
  * replay (scripts/eta-replay/model-patch.ts, MODEL_NOW) it is what keeps a
- * table built "as of 9/3" from seeing 9/4's visits.
+ * table built "as of 9/3" from seeing 9/4's visits. Both start and completion
+ * must precede the cutoff; a visit starting yesterday can finish tomorrow.
+ * Legacy rows lack exact write/arrival-confirmation timestamps, so these bounds
+ * prevent known future outcomes without claiming exact historical availability.
  */
 export function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
   const cutoff = nowMs - windowDays * 86_400_000;
@@ -372,6 +395,7 @@ export function loadStandGroups(db: DB, windowDays: number, nowMs: number): Valu
       group_concat(${STAND_VALUE}) AS allValues
     FROM stop_visits
     WHERE anchored_at >= ${cutoff} AND anchored_at <= ${nowMs}
+      AND ${VISIT_AVAILABLE_AFTER} <= ${nowMs}
       AND pinned_at IS NOT NULL
       AND (
         (outcome = 'stopped' AND departed_at IS NOT NULL AND departed_at >= pinned_at)
@@ -407,6 +431,7 @@ export function loadStandOccurrenceGroups(db: DB, windowDays: number, nowMs: num
       group_concat(${STAND_VALUE}) AS allValues
     FROM stop_visits
     WHERE anchored_at >= ${cutoff} AND anchored_at <= ${nowMs}
+      AND ${VISIT_AVAILABLE_AFTER} <= ${nowMs}
       AND pinned_at IS NOT NULL
       AND (
         (outcome = 'stopped' AND departed_at IS NOT NULL AND departed_at >= pinned_at)
@@ -442,6 +467,7 @@ export function loadDriveGroups(db: DB, windowDays: number, nowMs: number): Valu
       group_concat(${DRIVE_VALUE}) AS allValues
     FROM legs
     WHERE departed_at >= ${cutoff} AND departed_at <= ${nowMs}
+      AND MAX(arrived_at, COALESCE(to_pinned_at, arrived_at)) <= ${nowMs}
       AND hops = 1
       AND COALESCE(to_pinned_at, arrived_at) > departed_at
     GROUP BY route_id, from_stop_id, to_stop_id
@@ -473,6 +499,7 @@ export function loadLegGroups(db: DB, windowDays: number, nowMs: number): ValueG
       group_concat(${LEG_VALUE}) AS allValues
     FROM legs
     WHERE departed_at >= ${cutoff} AND departed_at <= ${nowMs}
+      AND MAX(arrived_at, COALESCE(to_pinned_at, arrived_at)) <= ${nowMs}
       AND hops = 1
       AND leg_sec > 0
     GROUP BY route_id, from_stop_id, to_stop_id
@@ -504,6 +531,7 @@ export function loadStopShares(db: DB, windowDays: number, nowMs: number): Map<s
       COUNT(*) AS total
     FROM stop_visits
     WHERE anchored_at >= ${cutoff} AND anchored_at <= ${nowMs}
+      AND ${VISIT_AVAILABLE_AFTER} <= ${nowMs}
       AND outcome IN ('stopped', 'passed')
     GROUP BY route_id, stop_id
   `);
@@ -524,6 +552,7 @@ export function loadStopOccurrenceShares(db: DB, windowDays: number, nowMs: numb
       COUNT(*) AS total
     FROM stop_visits
     WHERE anchored_at >= ${cutoff} AND anchored_at <= ${nowMs}
+      AND ${VISIT_AVAILABLE_AFTER} <= ${nowMs}
       AND outcome IN ('stopped', 'passed')
     GROUP BY route_id, stop_id, stop_index
   `);

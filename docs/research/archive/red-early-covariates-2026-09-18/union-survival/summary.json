@@ -1,0 +1,80 @@
+{
+  "verdict": "Small signal, not enough standalone benefit to prioritize full ETA replay now; retain as a low-cost possible combined-model feature.",
+  "maxCoefficientDelta": 6.974381729918377e-07,
+  "maxSupportedRuntimeQuantileDeltaSec": 0.00017625935527121328,
+  "newBoundCrossings": [
+    {
+      "id": 45643,
+      "bus": "#316",
+      "day": "2026-09-14",
+      "elapsed": 0,
+      "truthRemaining": 59.98,
+      "baselineLow": 57.61141779136945,
+      "candidateLow": 60.26832792432732,
+      "baselineHigh": 264.43829223806955,
+      "candidateHigh": 268.8380433920873,
+      "newEarly": true,
+      "newLate": false,
+      "earlyShortfall": 0.28832792432732646,
+      "lateShortfall": 0
+    },
+    {
+      "id": 58717,
+      "bus": "#309",
+      "day": "2026-09-16",
+      "elapsed": 60,
+      "truthRemaining": 110.095,
+      "baselineLow": 105.66603915973548,
+      "candidateLow": 111.51572210040325,
+      "baselineHigh": 360.1705204220608,
+      "candidateHigh": 371.86359848618844,
+      "newEarly": true,
+      "newLate": false,
+      "earlyShortfall": 1.4207221004032533,
+      "lateShortfall": 0
+    },
+    {
+      "id": 70719,
+      "bus": "#306",
+      "day": "2026-09-18",
+      "elapsed": 300,
+      "truthRemaining": 340.054,
+      "baselineLow": 77.47722721876403,
+      "candidateLow": 75.17137198974973,
+      "baselineHigh": 342.2514391696752,
+      "candidateHigh": 333.0231865898945,
+      "newEarly": false,
+      "newLate": true,
+      "earlyShortfall": 0,
+      "lateShortfall": 7.030813410105452
+    }
+  ],
+  "oldNewEarlyDistinctVisits": [
+    19,
+    21
+  ],
+  "sep18LateDistinctVisits": [
+    2,
+    2
+  ],
+  "applicationChanged": false,
+  "deployed": false,
+  "report": "REPORT.md",
+  "hashes": {
+    "runtime-comparator.mts": "8130eeb8740c5bfae08e52c8a1db4308fe898ef898b99af03687c13514169b88",
+    "screen.py": "8fcd0aba32330bba09d4d7b7b7b7b80ff35cf07058a6b6131d4bd88b6cc77911",
+    "finish.py": "133e90b2c74d5d26064ff39f5872fbea7c12a4da8fbdec632ebf1af1be2fd8df",
+    "regression-audit.json": "19759de5d02e0f3a141deacb0a5c3a468feba9b69304f89ab5b7af15620e59b9",
+    "REPORT.md": "d9d044196657402316a1a45ee9cc6a77668ebe7183ebf62ed0755a639d81284b",
+    "fits.json": "ede9106a66edb5ef2a558e9fb7439015c78193ec3af158ab1807351a7b691285",
+    "runtime-comparator.log": "e4781295b8ff2a10b5009ad383a44c8d7140d2de062b551a1208628986cec54c",
+    "scores.json": "ca901c86e52f8459fedf014291935997c3e45270e30d907da257b1ec0cea20f7",
+    "top-regressions.json": "87ea02251e113d7782d0eaf369b351be5c6eaef7296ee36dd421e2acea76954b",
+    "runtime-input.json": "7958ae870150c12b0b7fa310d461b54ee8d0c0ffbd8168c88093b82e22f15315",
+    "predictions.jsonl": "883322b0dc84f845eed9c51b9c9baa7eca00c0ebc9bc712bee65dbfb1e9e6446",
+    "runtime-gated-scores.json": "8685f92ab0aff53631b584e1fb3a403207d9d13f99f655485f8d7329fc714b64",
+    "screen.log": "a3e2a6aeeccc1b7dbb455396eb04f484e2043edbcfa4bc4c70e1169f36a04a2f",
+    "PLAN.json": "183afcd863d035155515b77c2fcd0a2c037b6c1c666590859e3221114d0efb48",
+    "runtime-comparator.json": "911b05f5320d26cf5b730c7e0ac3c08f1e9eeb54bf05f14882509443b9ebf8ec"
+  }
+}

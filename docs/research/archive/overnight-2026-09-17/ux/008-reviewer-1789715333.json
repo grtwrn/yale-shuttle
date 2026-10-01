@@ -1,0 +1,33 @@
+{
+  "verdict": "changes_requested",
+  "summary": "Main availability improvements pass 210 tests, typechecks, build and standard browser checks. Two boundary issues require correction. Review saved in ux/independent-review-round-9.md; source and Git state unchanged.",
+  "head_sha": "a401ef5c7fe675e59e0ec0e2b4dbb474ba176b34",
+  "base_sha": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "next_task": "Fix guarded focus restoration on automatic recovery-button removal and truthful off-route reporting copy. Add both browser regressions, then request fresh independent review.",
+  "blocking_findings": [
+    "P2 — services/shuttle-v2/web/src/TransitMap.tsx:8048: A successful empty-fleet poll removes the focused Show selected routes button and leaves focus on BODY. Restore focus to the persistent mode control when the removed button owns focus, preserving external focus.",
+    "P2 — services/shuttle-v2/web/src/TransitMap.tsx:8046 and :7965: Running now excludes off-route buses, but the new message and chip title claim no buses reported. A fresh two-bus Red snapshot reproduces this contradiction. Describe the on-route/filter condition without changing filtering or ETA behavior."
+  ],
+  "tests": [
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux07 flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-07/verify.sh",
+      "exit_code": 0,
+      "result": "158 tests, backend/frontend typechecks, Vite build and mobile/desktop browser checks passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux07/extra.sh",
+      "exit_code": 0,
+      "result": "52 transport/restart/Docker-closure/journey/deadline tests passed; additional browser lifecycle checks recorded both findings."
+    },
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux07 flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux07/boundary-acceptance.mjs",
+      "exit_code": 1,
+      "result": "Both blocking findings reproduced. External-focus control passed; no page errors; all browser resources closed."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux07/verify-integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base, clean checkout/index, committed bundle source, unchanged numerical/filter behavior and preserved builder artifacts verified."
+    }
+  ]
+}

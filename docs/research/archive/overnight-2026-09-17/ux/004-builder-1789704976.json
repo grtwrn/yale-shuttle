@@ -1,0 +1,11 @@
+{
+  "outcome": "candidate",
+  "summary": "Clarify past-trip summaries and preserve refresh focus\nHistorical context now precedes the graph; weighting details remain expandable. Refresh retains keyboard focus and announces loading/errors. Calculations and samples are unchanged. Evidence saved in ux/ux-04; HEAD preserved.",
+  "next_task": "Independently review ux/ux-04/REPORT.md, especially refresh focus, date semantics and historical-versus-forecast distinctions. Controller retains publication gates. Next builder task: UX-05 minimap attribution and overlaps.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-04/verify.sh — exit 0; date-verify.log records 26 tests, backend/frontend typechecks, Vite build and mobile/desktop browser checks.",
+    "Browser checks passed for keyboard/touch, refresh recovery, pending-request races, 1–100 trips, midnight dates, retained short/long observations and both arrival identities.",
+    "node --check services/shuttle-v2/scripts/arrival-history-check.mjs; git diff --check; git diff --cached --exit-code — passed.",
+    "Full suite and complete staging smoke remain controller/CI gates."
+  ]
+}

@@ -1,7 +1,7 @@
 # Build context: services/shuttle-v2/ (i.e. `flyctl deploy` invoked from here).
 
 # ---- Frontend build ---------------------------------------------------------
-FROM node:20-slim AS web
+FROM node:22-slim AS web
 WORKDIR /app
 # Vite aliases `@shuttle/schema` to ../src/schema/api.ts, which imports zod.
 # Node module resolution walks UP from the importing file's location, so it
@@ -21,7 +21,7 @@ RUN npm ci
 RUN npx vite build
 
 # ---- Backend build (better-sqlite3 native module) --------------------------
-FROM node:20-slim AS backend
+FROM node:22-slim AS backend
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -37,18 +37,19 @@ COPY drizzle.config.ts tsconfig.json ./
 # the whole point of the server-side belief. Only web/dist reaches the runtime
 # image otherwise, so the sources have to be copied explicitly.
 #
-# The list is the import closure of `src/server/serverEta.ts`, and
+# The list covers the server estimator and planner's shared imports, and
 # `serverEta.closure.test.ts` recomputes it and fails if this COPY has fallen
 # behind — an import added here and forgotten here would pass every gate and
 # then crash the production process on boot.
-COPY web/src/anchor.ts web/src/arrivals.ts web/src/geo.ts web/src/liveAnchor.ts \
-     web/src/map-data.ts web/src/routes.ts ./web/src/
+COPY web/src/anchor.ts web/src/arrivals.ts web/src/geo.ts web/src/liveAnchor.ts web/src/etaSource.ts \
+     web/src/map-data.ts web/src/routes.ts web/src/walk.ts web/src/reportAttachments.ts ./web/src/
 COPY web/src/eta/arrival.ts web/src/eta/dist.ts web/src/eta/filter.ts \
+     web/src/eta/conformal.mjs web/src/eta/conformal.d.mts \
      web/src/eta/index.ts web/src/eta/lap.ts web/src/eta/params.ts \
-     web/src/eta/ring.ts web/src/eta/tables.ts ./web/src/eta/
+     web/src/eta/release.ts web/src/eta/ring.ts web/src/eta/tables.ts ./web/src/eta/
 
 # ---- Runtime ---------------------------------------------------------------
-FROM node:20-slim
+FROM node:22-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata curl \
     && ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime \

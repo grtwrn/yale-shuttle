@@ -1,0 +1,12 @@
+{
+  "scope": "Unmodified built SPA; fabricated two-bus live wire on checked-in route network",
+  "checks": [
+    "Real planner/transport selects #307 on minimap; keyboard exposes route/bus identity; arrival detail retains following #309",
+    "Mobile fullscreen tap and Escape retain map toggle focus"
+  ],
+  "errors": [],
+  "before": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n← All routes\nRED ROUTE · Runs M–F 5:40a–7p\n▴\n🚌\n🚌 (R) 2–9 min\n🏁 (R) 2:23p\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\nRed\nAbout 4 min ⓘ\nLikely 2–9 min\n22 min\n2:23p\n🚶 2 min\n›\n⏳ <1-6 min\n›\n🚌 #307 · 18 min\n🧭 Directions to stop\n⚠ 55 m past\n▾\n🚌 I'm on it\n·\n🔔 Remind me\n·\n🚩 Report\n📱 Yale tracker\n▾\n🚌 #307 · 1 stop away\n🚌Division/Sheffield\nBOARDDivision/Prospect\nArrival: About 4 min · Likely 2–9 min\nProspect/Hillside\nSCL\n130 Prospect Street (S)\nCollege/Wall (S)\nPhelps Gate\nCollege/Crown\nCollege/George\nLEPH/60 College\nGilbert/Cedar\nAmistad/Cedar\nAmistad/Church St South\nGET OFFUnion Station (N)\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+  "after": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n← All routes\nRED ROUTE · Runs M–F 5:40a–7p\n▴\n🚌\n🚌 (R) <1–5 min\n🏁 (R) 3:01p\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\nRed\nAbout <1 min ⓘ\nLikely <1–5 min\n61 min\n3:01p\n🚶 2 min\n›\n⏳ now-2 min\n›\n🚌 #307 · 18 min\n🧭 Directions to stop\n⚠ 55 m past\n▾\n🚌 I'm on it\n·\n🔔 Remind me\n·\n🚩 Report\n📱 Yale tracker\n▾\n🚌 #307 · 1 stop away\n🚌Division/Sheffield\nBOARDDivision/Prospect\nArrival: About <1 min · Likely <1–5 min\nProspect/Hillside\nSCL\n130 Prospect Street (S)\nCollege/Wall (S)\nPhelps Gate\nCollege/Crown\nCollege/George\nLEPH/60 College\nGilbert/Cedar\nAmistad/Cedar\nAmistad/Church St South\nGET OFFUnion Station (N)\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+  "completed": true,
+  "resourcesClosed": true
+}

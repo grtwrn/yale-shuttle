@@ -1,0 +1,132 @@
+[
+  {
+    "health": {
+      "ok": true,
+      "pollStalenessMs": 1929,
+      "collectorLagMs": 1892,
+      "knownBuses": 7,
+      "serverEta": {
+        "restored": 7,
+        "forecastAt": 1789608591394,
+        "checkpointAt": 1789608561516,
+        "beliefs": 7,
+        "steps": 7,
+        "failures": 0,
+        "lastStepMs": 75,
+        "rows": 223
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "6807e27120a4"
+    },
+    "requestMs": 143,
+    "forecastAge": 1950,
+    "rows": 223,
+    "buses": 7,
+    "distributionRows": 223
+  },
+  {
+    "health": {
+      "ok": true,
+      "pollStalenessMs": 2140,
+      "collectorLagMs": 2103,
+      "knownBuses": 7,
+      "serverEta": {
+        "restored": 7,
+        "forecastAt": 1789608596389,
+        "checkpointAt": 1789608596389,
+        "beliefs": 7,
+        "steps": 8,
+        "failures": 0,
+        "lastStepMs": 85,
+        "rows": 223
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "6807e27120a4"
+    },
+    "requestMs": 160,
+    "forecastAge": 2165,
+    "rows": 223,
+    "buses": 7,
+    "distributionRows": 223
+  },
+  {
+    "health": {
+      "ok": true,
+      "pollStalenessMs": 2374,
+      "collectorLagMs": 2328,
+      "knownBuses": 7,
+      "serverEta": {
+        "restored": 7,
+        "forecastAt": 1789608601403,
+        "checkpointAt": 1789608596389,
+        "beliefs": 7,
+        "steps": 9,
+        "failures": 0,
+        "lastStepMs": 128,
+        "rows": 222
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "6807e27120a4"
+    },
+    "requestMs": 164,
+    "forecastAge": 2388,
+    "rows": 222,
+    "buses": 7,
+    "distributionRows": 222
+  },
+  {
+    "health": {
+      "ok": true,
+      "pollStalenessMs": 2673,
+      "collectorLagMs": 2633,
+      "knownBuses": 7,
+      "serverEta": {
+        "restored": 7,
+        "forecastAt": 1789608606395,
+        "checkpointAt": 1789608596389,
+        "beliefs": 7,
+        "steps": 10,
+        "failures": 0,
+        "lastStepMs": 51,
+        "rows": 222
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "6807e27120a4"
+    },
+    "requestMs": 298,
+    "forecastAge": 2850,
+    "rows": 222,
+    "buses": 7,
+    "distributionRows": 222
+  },
+  {
+    "health": {
+      "ok": true,
+      "pollStalenessMs": 3045,
+      "collectorLagMs": 2955,
+      "knownBuses": 7,
+      "serverEta": {
+        "restored": 7,
+        "forecastAt": 1789608611446,
+        "checkpointAt": 1789608596389,
+        "beliefs": 7,
+        "steps": 11,
+        "failures": 0,
+        "lastStepMs": 87,
+        "rows": 225
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "6807e27120a4"
+    },
+    "requestMs": 140,
+    "forecastAge": 3014,
+    "rows": 225,
+    "buses": 7,
+    "distributionRows": 225
+  }
+]

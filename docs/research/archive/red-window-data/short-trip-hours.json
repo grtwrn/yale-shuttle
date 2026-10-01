@@ -1,0 +1,2324 @@
+{
+  "method": "All qualifying exact-linked Red Winchester source visits in local Sep3–16 recording; stopped targets only; no time-of-day matching. Separate pin, departure, 55s and405s clocks. Short thresholds120s toDivision and420s toRosenkranz are descriptive, not fitted or safety bounds. Residual cohorts condition on remaining atsource at that elapsed clock, not live posterior stand state. Endpoint labels are collector stop proxies, not door-open truth.",
+  "sourceVisits": 235,
+  "connected": {
+    "48": 182,
+    "4": 120
+  },
+  "exclusions": {
+    "source incomplete/non-stopped/gap/distant": 17,
+    "4: target did not have qualifying stopped visit": 55,
+    "48: target did not have qualifying stopped visit": 16,
+    "4: missing/ambiguous exact next leg": 28,
+    "48: missing/ambiguous exact arrival visit": 4,
+    "4: missing/ambiguous exact arrival visit": 15,
+    "48: missing/ambiguous exact next leg": 16
+  },
+  "failures": [
+    {
+      "sourceId": 1355,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 1515,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 1806,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 2126,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 12
+    },
+    {
+      "sourceId": 2359,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 2359,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 2631,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 2753,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 2942,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 3143,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 3143,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 3957,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 16
+    },
+    {
+      "sourceId": 4321,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 17
+    },
+    {
+      "sourceId": 5360,
+      "target": 48,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 5360,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 5618,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 8
+    },
+    {
+      "sourceId": 5772,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 8
+    },
+    {
+      "sourceId": 5836,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 8
+    },
+    {
+      "sourceId": 5836,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 8
+    },
+    {
+      "sourceId": 6131,
+      "target": 48,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 9
+    },
+    {
+      "sourceId": 6131,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 9
+    },
+    {
+      "sourceId": 6229,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 9
+    },
+    {
+      "sourceId": 6354,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 6882,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 6882,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 7109,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 7220,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 11
+    },
+    {
+      "sourceId": 7326,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 7542,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 12
+    },
+    {
+      "sourceId": 7708,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 12
+    },
+    {
+      "sourceId": 7960,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 7960,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 8031,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 8200,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 8319,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 8514,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 14
+    },
+    {
+      "sourceId": 8791,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 15
+    },
+    {
+      "sourceId": 9202,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 16
+    },
+    {
+      "sourceId": 9727,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 17
+    },
+    {
+      "sourceId": 9727,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 17
+    },
+    {
+      "sourceId": 16065,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 16192,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 17044,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 9
+    },
+    {
+      "sourceId": 17562,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 17674,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 18155,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 18265,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 12
+    },
+    {
+      "sourceId": 18486,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 12
+    },
+    {
+      "sourceId": 18611,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 12
+    },
+    {
+      "sourceId": 18911,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 19053,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 19432,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 15
+    },
+    {
+      "sourceId": 20376,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 17
+    },
+    {
+      "sourceId": 20376,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 17
+    },
+    {
+      "sourceId": 20523,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 17
+    },
+    {
+      "sourceId": 22091,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 22270,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 7
+    },
+    {
+      "sourceId": 23008,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 9
+    },
+    {
+      "sourceId": 23908,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 24100,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 24466,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 12
+    },
+    {
+      "sourceId": 24466,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 12
+    },
+    {
+      "sourceId": 25172,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 25281,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 25679,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 15
+    },
+    {
+      "sourceId": 25679,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 15
+    },
+    {
+      "sourceId": 28950,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 8
+    },
+    {
+      "sourceId": 29191,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 9
+    },
+    {
+      "sourceId": 29402,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 9
+    },
+    {
+      "sourceId": 29402,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 9
+    },
+    {
+      "sourceId": 29904,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 30272,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 11
+    },
+    {
+      "sourceId": 30355,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 31206,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 31414,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 31647,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 14
+    },
+    {
+      "sourceId": 31925,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 15
+    },
+    {
+      "sourceId": 32238,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 16
+    },
+    {
+      "sourceId": 32238,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 16
+    },
+    {
+      "sourceId": 32349,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 16
+    },
+    {
+      "sourceId": 32657,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 17
+    },
+    {
+      "sourceId": 32723,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 17
+    },
+    {
+      "sourceId": 32723,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 17
+    },
+    {
+      "sourceId": 32779,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 17
+    },
+    {
+      "sourceId": 32779,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 17
+    },
+    {
+      "sourceId": 34401,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 34492,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 34607,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 35484,
+      "target": 48,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 9
+    },
+    {
+      "sourceId": 35484,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 9
+    },
+    {
+      "sourceId": 35991,
+      "target": 48,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 35991,
+      "target": 4,
+      "reason": "missing/ambiguous exact arrival visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 36326,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 11
+    },
+    {
+      "sourceId": 36326,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 11
+    },
+    {
+      "sourceId": 36443,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 37256,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 13
+    },
+    {
+      "sourceId": 37460,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 37563,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 14
+    },
+    {
+      "sourceId": 37873,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 15
+    },
+    {
+      "sourceId": 37873,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 15
+    },
+    {
+      "sourceId": 37953,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 15
+    },
+    {
+      "sourceId": 38305,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 16
+    },
+    {
+      "sourceId": 38788,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 17
+    },
+    {
+      "sourceId": 38788,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 17
+    },
+    {
+      "sourceId": 45102,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 45185,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 7
+    },
+    {
+      "sourceId": 45185,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 7
+    },
+    {
+      "sourceId": 45288,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 7
+    },
+    {
+      "sourceId": 45288,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 7
+    },
+    {
+      "sourceId": 45756,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 9
+    },
+    {
+      "sourceId": 45756,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 9
+    },
+    {
+      "sourceId": 46235,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 9
+    },
+    {
+      "sourceId": 46235,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 9
+    },
+    {
+      "sourceId": 46496,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 10
+    },
+    {
+      "sourceId": 46677,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 10
+    },
+    {
+      "sourceId": 46677,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 10
+    },
+    {
+      "sourceId": 47054,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 11
+    },
+    {
+      "sourceId": 47054,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 11
+    },
+    {
+      "sourceId": 47451,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 12
+    },
+    {
+      "sourceId": 47451,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 12
+    },
+    {
+      "sourceId": 47891,
+      "target": 48,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 14
+    },
+    {
+      "sourceId": 47891,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 14
+    },
+    {
+      "sourceId": 48243,
+      "target": 48,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 48243,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 48738,
+      "target": 4,
+      "reason": "missing/ambiguous exact next leg",
+      "hour": 16
+    },
+    {
+      "sourceId": 48950,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 16
+    },
+    {
+      "sourceId": 52858,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 11
+    },
+    {
+      "sourceId": 53422,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 12
+    },
+    {
+      "sourceId": 54010,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 14
+    },
+    {
+      "sourceId": 54785,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 16
+    },
+    {
+      "sourceId": 55191,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 17
+    },
+    {
+      "sourceId": 56968,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 57100,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 7
+    },
+    {
+      "sourceId": 58224,
+      "target": 4,
+      "reason": "target did not have qualifying stopped visit",
+      "hour": 10
+    }
+  ],
+  "summary": [
+    {
+      "target": 48,
+      "clock": "pin",
+      "overall": {
+        "n": 182,
+        "dates": 9,
+        "short": 1,
+        "min": 110.3,
+        "p10": 210.2,
+        "median": 442.6,
+        "p90": 730.5
+      },
+      "byHour": {
+        "7": {
+          "n": 19,
+          "dates": 8,
+          "short": 0,
+          "min": 280.0,
+          "p10": 332.0,
+          "median": 525.0,
+          "p90": 823.0
+        },
+        "8": {
+          "n": 17,
+          "dates": 8,
+          "short": 0,
+          "min": 210.1,
+          "p10": 265.0,
+          "median": 505.0,
+          "p90": 722.2
+        },
+        "9": {
+          "n": 19,
+          "dates": 8,
+          "short": 0,
+          "min": 185.0,
+          "p10": 215.0,
+          "median": 415.0,
+          "p90": 734.9
+        },
+        "10": {
+          "n": 19,
+          "dates": 9,
+          "short": 1,
+          "min": 110.3,
+          "p10": 193.0,
+          "median": 515.0,
+          "p90": 723.1
+        },
+        "11": {
+          "n": 17,
+          "dates": 8,
+          "short": 0,
+          "min": 195.0,
+          "p10": 227.5,
+          "median": 480.7,
+          "p90": 645.9
+        },
+        "12": {
+          "n": 17,
+          "dates": 8,
+          "short": 0,
+          "min": 180.1,
+          "p10": 208.2,
+          "median": 655.2,
+          "p90": 803.0
+        },
+        "13": {
+          "n": 13,
+          "dates": 8,
+          "short": 0,
+          "min": 184.9,
+          "p10": 206.0,
+          "median": 270.0,
+          "p90": 655.4
+        },
+        "14": {
+          "n": 18,
+          "dates": 8,
+          "short": 0,
+          "min": 190.0,
+          "p10": 217.0,
+          "median": 302.5,
+          "p90": 598.6
+        },
+        "15": {
+          "n": 17,
+          "dates": 7,
+          "short": 0,
+          "min": 175.0,
+          "p10": 216.2,
+          "median": 440.1,
+          "p90": 594.8
+        },
+        "16": {
+          "n": 15,
+          "dates": 7,
+          "short": 0,
+          "min": 215.0,
+          "p10": 226.1,
+          "median": 450.1,
+          "p90": 634.7
+        },
+        "17": {
+          "n": 11,
+          "dates": 8,
+          "short": 0,
+          "min": 150.0,
+          "p10": 175.0,
+          "median": 220.1,
+          "p90": 400.0
+        }
+      },
+      "byBus": {
+        "#119": {
+          "n": 9,
+          "dates": 1,
+          "short": 0,
+          "min": 150.0,
+          "p10": 170.0,
+          "median": 300.1,
+          "p90": 805.1
+        },
+        "#304": {
+          "n": 30,
+          "dates": 4,
+          "short": 0,
+          "min": 145.1,
+          "p10": 214.3,
+          "median": 400.2,
+          "p90": 675.2
+        },
+        "#306": {
+          "n": 13,
+          "dates": 2,
+          "short": 0,
+          "min": 180.1,
+          "p10": 234.0,
+          "median": 385.1,
+          "p90": 543.7
+        },
+        "#307": {
+          "n": 9,
+          "dates": 1,
+          "short": 0,
+          "min": 210.2,
+          "p10": 254.0,
+          "median": 360.0,
+          "p90": 686.1
+        },
+        "#308": {
+          "n": 5,
+          "dates": 2,
+          "short": 0,
+          "min": 215.0,
+          "p10": 237.2,
+          "median": 440.1,
+          "p90": 578.0
+        },
+        "#309": {
+          "n": 21,
+          "dates": 3,
+          "short": 0,
+          "min": 190.7,
+          "p10": 205.0,
+          "median": 375.8,
+          "p90": 785.4
+        },
+        "#310": {
+          "n": 48,
+          "dates": 6,
+          "short": 1,
+          "min": 110.3,
+          "p10": 213.7,
+          "median": 460.0,
+          "p90": 781.5
+        },
+        "#316": {
+          "n": 47,
+          "dates": 7,
+          "short": 0,
+          "min": 175.0,
+          "p10": 218.0,
+          "median": 505.0,
+          "p90": 683.1
+        }
+      }
+    },
+    {
+      "target": 48,
+      "clock": "departure",
+      "overall": {
+        "n": 182,
+        "dates": 9,
+        "short": 168,
+        "min": 55.0,
+        "p10": 65.1,
+        "median": 85.0,
+        "p90": 114.4
+      },
+      "byHour": {
+        "7": {
+          "n": 14,
+          "dates": 8,
+          "short": 14,
+          "min": 75.0,
+          "p10": 79.8,
+          "median": 90.0,
+          "p90": 103.5
+        },
+        "8": {
+          "n": 20,
+          "dates": 8,
+          "short": 14,
+          "min": 70.1,
+          "p10": 79.5,
+          "median": 97.5,
+          "p90": 166.1
+        },
+        "9": {
+          "n": 17,
+          "dates": 8,
+          "short": 14,
+          "min": 65.0,
+          "p10": 70.0,
+          "median": 85.0,
+          "p90": 135.9
+        },
+        "10": {
+          "n": 18,
+          "dates": 9,
+          "short": 17,
+          "min": 60.0,
+          "p10": 68.4,
+          "median": 77.7,
+          "p90": 99.9
+        },
+        "11": {
+          "n": 18,
+          "dates": 8,
+          "short": 17,
+          "min": 55.1,
+          "p10": 63.6,
+          "median": 80.1,
+          "p90": 96.4
+        },
+        "12": {
+          "n": 18,
+          "dates": 8,
+          "short": 17,
+          "min": 59.9,
+          "p10": 60.0,
+          "median": 77.5,
+          "p90": 110.0
+        },
+        "13": {
+          "n": 14,
+          "dates": 8,
+          "short": 14,
+          "min": 65.0,
+          "p10": 65.0,
+          "median": 72.8,
+          "p90": 107.0
+        },
+        "14": {
+          "n": 16,
+          "dates": 8,
+          "short": 16,
+          "min": 60.0,
+          "p10": 72.5,
+          "median": 89.9,
+          "p90": 107.7
+        },
+        "15": {
+          "n": 15,
+          "dates": 7,
+          "short": 15,
+          "min": 55.0,
+          "p10": 62.0,
+          "median": 84.8,
+          "p90": 93.0
+        },
+        "16": {
+          "n": 18,
+          "dates": 7,
+          "short": 18,
+          "min": 60.0,
+          "p10": 70.1,
+          "median": 90.0,
+          "p90": 114.9
+        },
+        "17": {
+          "n": 14,
+          "dates": 8,
+          "short": 12,
+          "min": 59.9,
+          "p10": 70.2,
+          "median": 85.0,
+          "p90": 119.0
+        }
+      },
+      "byBus": {
+        "#119": {
+          "n": 9,
+          "dates": 1,
+          "short": 7,
+          "min": 70.0,
+          "p10": 70.0,
+          "median": 100.0,
+          "p90": 135.0
+        },
+        "#304": {
+          "n": 30,
+          "dates": 4,
+          "short": 30,
+          "min": 60.0,
+          "p10": 64.5,
+          "median": 82.9,
+          "p90": 105.0
+        },
+        "#306": {
+          "n": 13,
+          "dates": 2,
+          "short": 13,
+          "min": 65.1,
+          "p10": 66.0,
+          "median": 80.0,
+          "p90": 90.0
+        },
+        "#307": {
+          "n": 9,
+          "dates": 1,
+          "short": 9,
+          "min": 70.0,
+          "p10": 82.0,
+          "median": 89.9,
+          "p90": 94.1
+        },
+        "#308": {
+          "n": 5,
+          "dates": 2,
+          "short": 5,
+          "min": 80.0,
+          "p10": 82.0,
+          "median": 90.0,
+          "p90": 104.2
+        },
+        "#309": {
+          "n": 21,
+          "dates": 3,
+          "short": 19,
+          "min": 70.1,
+          "p10": 70.7,
+          "median": 85.9,
+          "p90": 109.9
+        },
+        "#310": {
+          "n": 48,
+          "dates": 6,
+          "short": 46,
+          "min": 59.9,
+          "p10": 70.2,
+          "median": 85.0,
+          "p90": 114.9
+        },
+        "#316": {
+          "n": 47,
+          "dates": 7,
+          "short": 39,
+          "min": 55.0,
+          "p10": 60.0,
+          "median": 80.1,
+          "p90": 187.1
+        }
+      }
+    },
+    {
+      "target": 48,
+      "clock": "55",
+      "overall": {
+        "n": 180,
+        "dates": 9,
+        "short": 1,
+        "min": 90.1,
+        "p10": 159.5,
+        "median": 392.5,
+        "p90": 676.5
+      },
+      "byHour": {
+        "7": {
+          "n": 19,
+          "dates": 8,
+          "short": 0,
+          "min": 225.0,
+          "p10": 277.0,
+          "median": 470.1,
+          "p90": 768.0
+        },
+        "8": {
+          "n": 16,
+          "dates": 8,
+          "short": 0,
+          "min": 155.1,
+          "p10": 212.7,
+          "median": 480.4,
+          "p90": 667.6
+        },
+        "9": {
+          "n": 20,
+          "dates": 8,
+          "short": 0,
+          "min": 130.0,
+          "p10": 160.0,
+          "median": 337.6,
+          "p90": 678.0
+        },
+        "10": {
+          "n": 17,
+          "dates": 9,
+          "short": 1,
+          "min": 90.1,
+          "p10": 173.9,
+          "median": 465.0,
+          "p90": 676.1
+        },
+        "11": {
+          "n": 17,
+          "dates": 8,
+          "short": 0,
+          "min": 140.0,
+          "p10": 201.3,
+          "median": 425.7,
+          "p90": 590.9
+        },
+        "12": {
+          "n": 18,
+          "dates": 8,
+          "short": 0,
+          "min": 125.1,
+          "p10": 153.7,
+          "median": 595.2,
+          "p90": 747.3
+        },
+        "13": {
+          "n": 13,
+          "dates": 8,
+          "short": 0,
+          "min": 129.9,
+          "p10": 151.0,
+          "median": 215.0,
+          "p90": 600.4
+        },
+        "14": {
+          "n": 18,
+          "dates": 8,
+          "short": 0,
+          "min": 135.0,
+          "p10": 162.0,
+          "median": 247.5,
+          "p90": 543.6
+        },
+        "15": {
+          "n": 15,
+          "dates": 7,
+          "short": 0,
+          "min": 120.0,
+          "p10": 178.1,
+          "median": 412.7,
+          "p90": 544.5
+        },
+        "16": {
+          "n": 17,
+          "dates": 7,
+          "short": 0,
+          "min": 160.0,
+          "p10": 171.2,
+          "median": 390.1,
+          "p90": 571.5
+        },
+        "17": {
+          "n": 10,
+          "dates": 7,
+          "short": 0,
+          "min": 120.0,
+          "p10": 134.1,
+          "median": 172.6,
+          "p90": 361.6
+        }
+      },
+      "byBus": {
+        "#119": {
+          "n": 8,
+          "dates": 1,
+          "short": 0,
+          "min": 120.0,
+          "p10": 126.9,
+          "median": 368.0,
+          "p90": 752.5
+        },
+        "#304": {
+          "n": 30,
+          "dates": 4,
+          "short": 1,
+          "min": 90.1,
+          "p10": 159.3,
+          "median": 345.2,
+          "p90": 620.2
+        },
+        "#306": {
+          "n": 13,
+          "dates": 2,
+          "short": 0,
+          "min": 125.1,
+          "p10": 179.0,
+          "median": 330.1,
+          "p90": 488.7
+        },
+        "#307": {
+          "n": 9,
+          "dates": 1,
+          "short": 0,
+          "min": 155.2,
+          "p10": 199.0,
+          "median": 305.0,
+          "p90": 631.1
+        },
+        "#308": {
+          "n": 5,
+          "dates": 2,
+          "short": 0,
+          "min": 160.0,
+          "p10": 182.2,
+          "median": 385.1,
+          "p90": 523.0
+        },
+        "#309": {
+          "n": 21,
+          "dates": 3,
+          "short": 0,
+          "min": 135.7,
+          "p10": 150.0,
+          "median": 320.8,
+          "p90": 730.4
+        },
+        "#310": {
+          "n": 47,
+          "dates": 6,
+          "short": 0,
+          "min": 135.0,
+          "p10": 163.1,
+          "median": 410.0,
+          "p90": 727.0
+        },
+        "#316": {
+          "n": 47,
+          "dates": 7,
+          "short": 0,
+          "min": 120.0,
+          "p10": 163.0,
+          "median": 450.0,
+          "p90": 628.1
+        }
+      }
+    },
+    {
+      "target": 48,
+      "clock": "405",
+      "overall": {
+        "n": 76,
+        "dates": 9,
+        "short": 9,
+        "min": 90.1,
+        "p10": 115.4,
+        "median": 248.3,
+        "p90": 398.8
+      },
+      "byHour": {
+        "7": {
+          "n": 9,
+          "dates": 6,
+          "short": 0,
+          "min": 135.8,
+          "p10": 167.2,
+          "median": 310.1,
+          "p90": 475.1
+        },
+        "8": {
+          "n": 9,
+          "dates": 6,
+          "short": 0,
+          "min": 120.0,
+          "p10": 152.7,
+          "median": 290.0,
+          "p90": 332.1
+        },
+        "9": {
+          "n": 8,
+          "dates": 5,
+          "short": 2,
+          "min": 115.0,
+          "p10": 115.5,
+          "median": 272.8,
+          "p90": 357.5
+        },
+        "10": {
+          "n": 9,
+          "dates": 6,
+          "short": 1,
+          "min": 110.0,
+          "p10": 142.8,
+          "median": 236.2,
+          "p90": 363.9
+        },
+        "11": {
+          "n": 6,
+          "dates": 5,
+          "short": 2,
+          "min": 108.1,
+          "p10": 111.6,
+          "median": 179.0,
+          "p90": 335.1
+        },
+        "12": {
+          "n": 13,
+          "dates": 7,
+          "short": 0,
+          "min": 135.0,
+          "p10": 144.7,
+          "median": 275.2,
+          "p90": 400.9
+        },
+        "13": {
+          "n": 3,
+          "dates": 3,
+          "short": 0,
+          "min": 125.1,
+          "p10": 138.3,
+          "median": 191.3,
+          "p90": 286.3
+        },
+        "14": {
+          "n": 5,
+          "dates": 5,
+          "short": 1,
+          "min": 100.8,
+          "p10": 116.9,
+          "median": 165.1,
+          "p90": 263.1
+        },
+        "15": {
+          "n": 6,
+          "dates": 3,
+          "short": 1,
+          "min": 110.0,
+          "p10": 145.0,
+          "median": 192.2,
+          "p90": 405.7
+        },
+        "16": {
+          "n": 7,
+          "dates": 4,
+          "short": 2,
+          "min": 90.1,
+          "p10": 102.1,
+          "median": 176.2,
+          "p90": 279.9
+        },
+        "17": {
+          "n": 1,
+          "dates": 1,
+          "short": 0,
+          "min": 160.1,
+          "p10": 160.1,
+          "median": 160.1,
+          "p90": 160.1
+        }
+      },
+      "byBus": {
+        "#119": {
+          "n": 4,
+          "dates": 1,
+          "short": 0,
+          "min": 141.0,
+          "p10": 190.4,
+          "median": 350.4,
+          "p90": 412.5
+        },
+        "#304": {
+          "n": 11,
+          "dates": 4,
+          "short": 1,
+          "min": 115.0,
+          "p10": 120.0,
+          "median": 235.0,
+          "p90": 365.1
+        },
+        "#306": {
+          "n": 3,
+          "dates": 2,
+          "short": 1,
+          "min": 115.0,
+          "p10": 120.9,
+          "median": 144.6,
+          "p90": 173.1
+        },
+        "#307": {
+          "n": 4,
+          "dates": 1,
+          "short": 0,
+          "min": 260.2,
+          "p10": 261.7,
+          "median": 267.5,
+          "p90": 309.2
+        },
+        "#308": {
+          "n": 1,
+          "dates": 1,
+          "short": 0,
+          "min": 245.1,
+          "p10": 245.1,
+          "median": 245.1,
+          "p90": 245.1
+        },
+        "#309": {
+          "n": 9,
+          "dates": 2,
+          "short": 1,
+          "min": 100.8,
+          "p10": 124.2,
+          "median": 268.7,
+          "p90": 437.0
+        },
+        "#310": {
+          "n": 21,
+          "dates": 6,
+          "short": 0,
+          "min": 160.1,
+          "p10": 176.2,
+          "median": 310.1,
+          "p90": 435.2
+        },
+        "#316": {
+          "n": 23,
+          "dates": 7,
+          "short": 6,
+          "min": 90.1,
+          "p10": 110.0,
+          "median": 160.9,
+          "p90": 330.2
+        }
+      }
+    },
+    {
+      "target": 4,
+      "clock": "pin",
+      "overall": {
+        "n": 120,
+        "dates": 9,
+        "short": 2,
+        "min": 380.1,
+        "p10": 524.4,
+        "median": 795.1,
+        "p90": 1132.1
+      },
+      "byHour": {
+        "7": {
+          "n": 9,
+          "dates": 5,
+          "short": 0,
+          "min": 670.1,
+          "p10": 711.4,
+          "median": 990.1,
+          "p90": 1217.1
+        },
+        "8": {
+          "n": 14,
+          "dates": 7,
+          "short": 0,
+          "min": 640.3,
+          "p10": 689.6,
+          "median": 1010.6,
+          "p90": 1371.2
+        },
+        "9": {
+          "n": 15,
+          "dates": 7,
+          "short": 0,
+          "min": 495.0,
+          "p10": 566.0,
+          "median": 745.0,
+          "p90": 1084.4
+        },
+        "10": {
+          "n": 15,
+          "dates": 8,
+          "short": 1,
+          "min": 405.7,
+          "p10": 489.0,
+          "median": 770.2,
+          "p90": 963.2
+        },
+        "11": {
+          "n": 8,
+          "dates": 7,
+          "short": 0,
+          "min": 692.2,
+          "p10": 736.3,
+          "median": 838.3,
+          "p90": 1059.2
+        },
+        "12": {
+          "n": 10,
+          "dates": 6,
+          "short": 0,
+          "min": 685.0,
+          "p10": 846.9,
+          "median": 1007.6,
+          "p90": 1130.8
+        },
+        "13": {
+          "n": 6,
+          "dates": 5,
+          "short": 0,
+          "min": 520.0,
+          "p10": 522.5,
+          "median": 560.0,
+          "p90": 587.6
+        },
+        "14": {
+          "n": 9,
+          "dates": 6,
+          "short": 0,
+          "min": 505.1,
+          "p10": 521.1,
+          "median": 782.4,
+          "p90": 1073.5
+        },
+        "15": {
+          "n": 17,
+          "dates": 8,
+          "short": 0,
+          "min": 430.1,
+          "p10": 503.6,
+          "median": 750.1,
+          "p90": 1155.1
+        },
+        "16": {
+          "n": 10,
+          "dates": 6,
+          "short": 0,
+          "min": 460.2,
+          "p10": 554.6,
+          "median": 679.3,
+          "p90": 988.1
+        },
+        "17": {
+          "n": 7,
+          "dates": 6,
+          "short": 1,
+          "min": 380.1,
+          "p10": 425.1,
+          "median": 590.2,
+          "p90": 886.1
+        }
+      },
+      "byBus": {
+        "#119": {
+          "n": 8,
+          "dates": 1,
+          "short": 0,
+          "min": 455.0,
+          "p10": 503.9,
+          "median": 1017.5,
+          "p90": 1325.9
+        },
+        "#304": {
+          "n": 18,
+          "dates": 4,
+          "short": 0,
+          "min": 500.1,
+          "p10": 547.3,
+          "median": 765.2,
+          "p90": 1034.0
+        },
+        "#306": {
+          "n": 6,
+          "dates": 2,
+          "short": 0,
+          "min": 505.1,
+          "p10": 590.7,
+          "median": 747.5,
+          "p90": 887.6
+        },
+        "#307": {
+          "n": 6,
+          "dates": 1,
+          "short": 0,
+          "min": 540.1,
+          "p10": 577.5,
+          "median": 690.1,
+          "p90": 965.1
+        },
+        "#308": {
+          "n": 3,
+          "dates": 2,
+          "short": 0,
+          "min": 495.0,
+          "p10": 524.1,
+          "median": 640.3,
+          "p90": 728.2
+        },
+        "#309": {
+          "n": 15,
+          "dates": 3,
+          "short": 0,
+          "min": 524.9,
+          "p10": 564.1,
+          "median": 721.7,
+          "p90": 1313.7
+        },
+        "#310": {
+          "n": 33,
+          "dates": 6,
+          "short": 1,
+          "min": 405.7,
+          "p10": 484.1,
+          "median": 905.1,
+          "p90": 1147.2
+        },
+        "#316": {
+          "n": 31,
+          "dates": 7,
+          "short": 1,
+          "min": 380.1,
+          "p10": 525.1,
+          "median": 770.2,
+          "p90": 1075.1
+        }
+      }
+    },
+    {
+      "target": 4,
+      "clock": "departure",
+      "overall": {
+        "n": 120,
+        "dates": 9,
+        "short": 72,
+        "min": 255.0,
+        "p10": 319.1,
+        "median": 405.1,
+        "p90": 646.6
+      },
+      "byHour": {
+        "7": {
+          "n": 6,
+          "dates": 4,
+          "short": 1,
+          "min": 350.0,
+          "p10": 402.5,
+          "median": 475.1,
+          "p90": 507.5
+        },
+        "8": {
+          "n": 16,
+          "dates": 7,
+          "short": 3,
+          "min": 365.0,
+          "p10": 385.0,
+          "median": 552.6,
+          "p90": 792.6
+        },
+        "9": {
+          "n": 12,
+          "dates": 7,
+          "short": 6,
+          "min": 255.0,
+          "p10": 355.6,
+          "median": 420.0,
+          "p90": 525.6
+        },
+        "10": {
+          "n": 15,
+          "dates": 8,
+          "short": 13,
+          "min": 280.0,
+          "p10": 286.1,
+          "median": 370.8,
+          "p90": 419.1
+        },
+        "11": {
+          "n": 10,
+          "dates": 7,
+          "short": 9,
+          "min": 300.1,
+          "p10": 331.5,
+          "median": 357.6,
+          "p90": 413.0
+        },
+        "12": {
+          "n": 11,
+          "dates": 6,
+          "short": 8,
+          "min": 275.2,
+          "p10": 354.7,
+          "median": 390.1,
+          "p90": 481.5
+        },
+        "13": {
+          "n": 7,
+          "dates": 6,
+          "short": 5,
+          "min": 320.1,
+          "p10": 350.1,
+          "median": 410.0,
+          "p90": 441.0
+        },
+        "14": {
+          "n": 8,
+          "dates": 6,
+          "short": 6,
+          "min": 325.1,
+          "p10": 339.1,
+          "median": 397.7,
+          "p90": 562.3
+        },
+        "15": {
+          "n": 12,
+          "dates": 8,
+          "short": 7,
+          "min": 310.0,
+          "p10": 337.0,
+          "median": 410.0,
+          "p90": 827.1
+        },
+        "16": {
+          "n": 13,
+          "dates": 7,
+          "short": 9,
+          "min": 260.4,
+          "p10": 315.0,
+          "median": 390.1,
+          "p90": 549.1
+        },
+        "17": {
+          "n": 10,
+          "dates": 7,
+          "short": 5,
+          "min": 265.0,
+          "p10": 301.1,
+          "median": 425.0,
+          "p90": 513.2
+        }
+      },
+      "byBus": {
+        "#119": {
+          "n": 8,
+          "dates": 1,
+          "short": 4,
+          "min": 345.0,
+          "p10": 359.1,
+          "median": 422.5,
+          "p90": 888.8
+        },
+        "#304": {
+          "n": 18,
+          "dates": 4,
+          "short": 13,
+          "min": 260.4,
+          "p10": 294.1,
+          "median": 392.4,
+          "p90": 475.0
+        },
+        "#306": {
+          "n": 6,
+          "dates": 2,
+          "short": 5,
+          "min": 325.1,
+          "p10": 330.1,
+          "median": 360.0,
+          "p90": 578.0
+        },
+        "#307": {
+          "n": 6,
+          "dates": 1,
+          "short": 5,
+          "min": 280.0,
+          "p10": 307.5,
+          "median": 385.0,
+          "p90": 437.6
+        },
+        "#308": {
+          "n": 3,
+          "dates": 2,
+          "short": 2,
+          "min": 365.0,
+          "p10": 370.0,
+          "median": 390.1,
+          "p90": 462.3
+        },
+        "#309": {
+          "n": 15,
+          "dates": 3,
+          "short": 8,
+          "min": 305.5,
+          "p10": 350.0,
+          "median": 415.3,
+          "p90": 679.7
+        },
+        "#310": {
+          "n": 33,
+          "dates": 6,
+          "short": 19,
+          "min": 295.1,
+          "p10": 337.0,
+          "median": 410.1,
+          "p90": 681.2
+        },
+        "#316": {
+          "n": 31,
+          "dates": 7,
+          "short": 16,
+          "min": 255.0,
+          "p10": 305.1,
+          "median": 405.0,
+          "p90": 565.1
+        }
+      }
+    },
+    {
+      "target": 4,
+      "clock": "55",
+      "overall": {
+        "n": 118,
+        "dates": 9,
+        "short": 5,
+        "min": 325.1,
+        "p10": 470.0,
+        "median": 740.1,
+        "p90": 1077.8
+      },
+      "byHour": {
+        "7": {
+          "n": 9,
+          "dates": 5,
+          "short": 0,
+          "min": 615.1,
+          "p10": 656.4,
+          "median": 935.1,
+          "p90": 1162.1
+        },
+        "8": {
+          "n": 14,
+          "dates": 7,
+          "short": 0,
+          "min": 585.3,
+          "p10": 634.6,
+          "median": 955.6,
+          "p90": 1316.2
+        },
+        "9": {
+          "n": 15,
+          "dates": 7,
+          "short": 0,
+          "min": 440.0,
+          "p10": 511.0,
+          "median": 690.0,
+          "p90": 1029.4
+        },
+        "10": {
+          "n": 14,
+          "dates": 7,
+          "short": 1,
+          "min": 410.1,
+          "p10": 497.6,
+          "median": 730.1,
+          "p90": 911.2
+        },
+        "11": {
+          "n": 8,
+          "dates": 7,
+          "short": 0,
+          "min": 637.2,
+          "p10": 681.3,
+          "median": 783.3,
+          "p90": 1004.2
+        },
+        "12": {
+          "n": 10,
+          "dates": 6,
+          "short": 0,
+          "min": 630.0,
+          "p10": 791.9,
+          "median": 952.6,
+          "p90": 1075.8
+        },
+        "13": {
+          "n": 6,
+          "dates": 5,
+          "short": 0,
+          "min": 465.0,
+          "p10": 467.5,
+          "median": 505.0,
+          "p90": 532.6
+        },
+        "14": {
+          "n": 9,
+          "dates": 6,
+          "short": 0,
+          "min": 450.1,
+          "p10": 466.1,
+          "median": 727.4,
+          "p90": 1018.5
+        },
+        "15": {
+          "n": 15,
+          "dates": 8,
+          "short": 1,
+          "min": 375.1,
+          "p10": 505.1,
+          "median": 700.1,
+          "p90": 1111.8
+        },
+        "16": {
+          "n": 12,
+          "dates": 6,
+          "short": 1,
+          "min": 405.2,
+          "p10": 445.7,
+          "median": 574.4,
+          "p90": 913.1
+        },
+        "17": {
+          "n": 6,
+          "dates": 5,
+          "short": 2,
+          "min": 325.1,
+          "p10": 362.6,
+          "median": 622.7,
+          "p90": 832.6
+        }
+      },
+      "byBus": {
+        "#119": {
+          "n": 7,
+          "dates": 1,
+          "short": 0,
+          "min": 469.9,
+          "p10": 644.1,
+          "median": 1014.9,
+          "p90": 1297.4
+        },
+        "#304": {
+          "n": 18,
+          "dates": 4,
+          "short": 0,
+          "min": 445.1,
+          "p10": 492.3,
+          "median": 710.2,
+          "p90": 979.0
+        },
+        "#306": {
+          "n": 6,
+          "dates": 2,
+          "short": 0,
+          "min": 450.1,
+          "p10": 535.7,
+          "median": 692.5,
+          "p90": 832.6
+        },
+        "#307": {
+          "n": 6,
+          "dates": 1,
+          "short": 0,
+          "min": 485.1,
+          "p10": 522.5,
+          "median": 635.1,
+          "p90": 910.1
+        },
+        "#308": {
+          "n": 3,
+          "dates": 2,
+          "short": 0,
+          "min": 440.0,
+          "p10": 469.1,
+          "median": 585.3,
+          "p90": 673.2
+        },
+        "#309": {
+          "n": 15,
+          "dates": 3,
+          "short": 0,
+          "min": 469.9,
+          "p10": 509.1,
+          "median": 666.7,
+          "p90": 1258.7
+        },
+        "#310": {
+          "n": 32,
+          "dates": 6,
+          "short": 3,
+          "min": 375.1,
+          "p10": 506.1,
+          "median": 850.1,
+          "p90": 1093.7
+        },
+        "#316": {
+          "n": 31,
+          "dates": 7,
+          "short": 2,
+          "min": 325.1,
+          "p10": 470.1,
+          "median": 715.2,
+          "p90": 1020.1
+        }
+      }
+    },
+    {
+      "target": 4,
+      "clock": "405",
+      "overall": {
+        "n": 56,
+        "dates": 9,
+        "short": 11,
+        "min": 290.1,
+        "p10": 390.1,
+        "median": 587.6,
+        "p90": 840.7
+      },
+      "byHour": {
+        "7": {
+          "n": 4,
+          "dates": 3,
+          "short": 0,
+          "min": 725.1,
+          "p10": 731.1,
+          "median": 775.1,
+          "p90": 829.6
+        },
+        "8": {
+          "n": 8,
+          "dates": 6,
+          "short": 0,
+          "min": 575.0,
+          "p10": 582.2,
+          "median": 790.1,
+          "p90": 1028.5
+        },
+        "9": {
+          "n": 6,
+          "dates": 4,
+          "short": 2,
+          "min": 375.1,
+          "p10": 382.6,
+          "median": 550.1,
+          "p90": 700.9
+        },
+        "10": {
+          "n": 8,
+          "dates": 6,
+          "short": 2,
+          "min": 290.1,
+          "p10": 342.7,
+          "median": 487.7,
+          "p90": 598.6
+        },
+        "11": {
+          "n": 6,
+          "dates": 5,
+          "short": 3,
+          "min": 395.0,
+          "p10": 400.0,
+          "median": 477.7,
+          "p90": 657.3
+        },
+        "12": {
+          "n": 10,
+          "dates": 5,
+          "short": 1,
+          "min": 350.2,
+          "p10": 449.0,
+          "median": 602.6,
+          "p90": 725.8
+        },
+        "14": {
+          "n": 4,
+          "dates": 3,
+          "short": 1,
+          "min": 390.2,
+          "p10": 439.6,
+          "median": 590.2,
+          "p90": 776.5
+        },
+        "15": {
+          "n": 4,
+          "dates": 3,
+          "short": 0,
+          "min": 510.1,
+          "p10": 510.1,
+          "median": 647.7,
+          "p90": 903.7
+        },
+        "16": {
+          "n": 5,
+          "dates": 4,
+          "short": 2,
+          "min": 350.1,
+          "p10": 366.1,
+          "median": 500.1,
+          "p90": 716.2
+        },
+        "17": {
+          "n": 1,
+          "dates": 1,
+          "short": 0,
+          "min": 475.1,
+          "p10": 475.1,
+          "median": 475.1,
+          "p90": 475.1
+        }
+      },
+      "byBus": {
+        "#119": {
+          "n": 5,
+          "dates": 1,
+          "short": 1,
+          "min": 410.2,
+          "p10": 512.1,
+          "median": 690.0,
+          "p90": 1000.4
+        },
+        "#304": {
+          "n": 8,
+          "dates": 3,
+          "short": 2,
+          "min": 390.1,
+          "p10": 393.6,
+          "median": 530.8,
+          "p90": 669.5
+        },
+        "#306": {
+          "n": 2,
+          "dates": 2,
+          "short": 1,
+          "min": 390.0,
+          "p10": 396.1,
+          "median": 420.1,
+          "p90": 444.1
+        },
+        "#307": {
+          "n": 3,
+          "dates": 1,
+          "short": 1,
+          "min": 290.1,
+          "p10": 341.1,
+          "median": 545.2,
+          "p90": 569.1
+        },
+        "#309": {
+          "n": 7,
+          "dates": 2,
+          "short": 1,
+          "min": 405.1,
+          "p10": 461.5,
+          "median": 725.3,
+          "p90": 970.7
+        },
+        "#310": {
+          "n": 17,
+          "dates": 6,
+          "short": 1,
+          "min": 390.2,
+          "p10": 490.1,
+          "median": 685.0,
+          "p90": 829.1
+        },
+        "#316": {
+          "n": 14,
+          "dates": 7,
+          "short": 4,
+          "min": 350.1,
+          "p10": 354.7,
+          "median": 562.6,
+          "p90": 708.6
+        }
+      }
+    }
+  ],
+  "_publication": {
+    "originalSource": "red-window-data/short-trip-hours.json",
+    "originalSha256": "a27015660ff50a9817fb5a58853e3cc6a75e4084c9304e182b755d436c35968a",
+    "omittedArrays": [
+      {
+        "path": "observations",
+        "items": 1034,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

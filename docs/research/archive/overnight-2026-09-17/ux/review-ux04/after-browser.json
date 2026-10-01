@@ -1,0 +1,205 @@
+{
+  "phase": "after",
+  "desktop": false,
+  "requests": [
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "600",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "480",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "480",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "480",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "410",
+      "eta": "480",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "410",
+      "eta": "480",
+      "limit": "100"
+    }
+  ],
+  "checks": [
+    "lazy loading, standing context, keyboard disclosures, hollow history / filled forecast, short and long trips, 360/390/430/1280/640 CSS-pixel reflow",
+    "refresh focus/reentry guard, loading/error status, retry/timeout/older-request race, one/few/100/dominant/empty/unmatched/old snapshots, stable snapshot on ETA update, following/same-bus/missing arrival, touch open, Escape pending close"
+  ],
+  "errors": [],
+  "states": [
+    {
+      "scenario": "standing",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nTypical past trip: 11 min\n\nRecent trips count more. These are past trips, not a live forecast.\n\n8 recorded trips across 2 dates · Sep 15 – Sep 16\n\nRemaining wait + travel\n0 min\n23 min\n45 min\n\nEach hollow dot is one completed journey. Darker, thicker dots are more recent.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "departure",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMeasured from departure at the starting stop. These are full stop-to-stop times; the live estimate accounts for this shuttle’s current progress.\n\nTypical past trip: 11 min\n\nRecent trips count more. These are past trips, not a live forecast.\n\n8 recorded trips across 2 dates · Sep 15 – Sep 16\n\nTravel time after departure\n0 min\n23 min\n45 min\n\nEach hollow dot is one completed journey. Darker, thicker dots are more recent.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "few",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nNot enough comparable evidence for a typical time.\n\nRecent trips count more. These are past trips, not a live forecast.\n\n2 recorded trips across 1 date · Sep 16\n\nRemaining wait + travel\n0 min\n3 min\n5 min\n\nEach hollow dot is one completed journey. Darker, thicker dots are more recent.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "one",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nNot enough comparable evidence for a typical time.\n\nRecent trips count more. These are past trips, not a live forecast.\n\n1 recorded trip across 1 date · Sep 16\n\nRemaining wait + travel\n0 min\n1 min\n2 min\n\nEach hollow dot is one completed journey. Darker, thicker dots are more recent.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "many",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nTypical past trip: 11 min\n\nRecent trips count more. These are past trips, not a live forecast.\n\n100 recorded trips across 25 dates · Aug 23 – Sep 16\n\nRemaining wait + travel\n0 min\n23 min\n45 min\n\nEach hollow dot is one completed journey. Darker, thicker dots are more recent.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "dominant",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nNot enough comparable evidence for a typical time.\n\nRecent trips count more. These are past trips, not a live forecast.\n\n100 recorded trips across 2 dates · Aug 19 – Sep 17\n\nRemaining wait + travel\n0 min\n23 min\n45 min\n\nEach hollow dot is one completed journey. Darker, thicker dots are more recent.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "midnight",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nTypical past trip: 12 min\n\nRecent trips count more. These are past trips, not a live forecast.\n\n8 recorded trips across 2 dates · Sep 15 – Sep 16\n\nRemaining wait + travel\n0 min\n23 min\n45 min\n\nEach hollow dot is one completed journey. Darker, thicker dots are more recent.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "empty",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nNo comparable completed journeys among the recent records.\n\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "unmatched",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 2:00 PM\n\nPast trips cannot be matched to this shuttle’s current position yet.\n\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    },
+    {
+      "scenario": "failed",
+      "text": "Past trips to this stop\n\nRecorded trips are unavailable right now.\n\nRefresh comparison"
+    },
+    {
+      "scenario": "malformed",
+      "text": "Past trips to this stop\n\nRecorded trips are unavailable right now.\n\nRefresh comparison"
+    },
+    {
+      "scenario": "old-snapshot",
+      "text": "Past trips to this stop\n\nComparison captured Sep 17, 1:00 PM\n\nWinchester / Mansfield → Laboratory of Epidemiology and Public Health / 60 College Street\n\nMatched to buses still waiting at Winchester / Mansfield after 2 min. Times include the remaining stop wait and travel.\n\nTypical past trip: 11 min\n\nRecent trips count more. These are past trips, not a live forecast.\n\n8 recorded trips across 2 dates · Sep 15 – Sep 16\n\nRemaining wait + travel\n0 min\n23 min\n45 min\n\nEach hollow dot is one completed journey. Darker, thicker dots are more recent.\n\nDates and recorded times ▾\nRecent recorded arrivals at this stop\nSep 17, 1:00 PM · #316\nAbout these records ▾\nRefresh comparison"
+    }
+  ],
+  "refreshFocusWhilePending": {
+    "tag": "BUTTON",
+    "text": "Refreshing comparison…"
+  },
+  "controls": [
+    {
+      "name": "Dates and recorded times ▾",
+      "height": 44
+    },
+    {
+      "name": "About these records ▾",
+      "height": 44
+    },
+    {
+      "name": "Refresh comparison",
+      "height": 44
+    }
+  ]
+}
