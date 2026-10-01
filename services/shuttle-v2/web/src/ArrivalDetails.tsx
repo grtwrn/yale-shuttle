@@ -41,6 +41,11 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
   const extent = Math.max(60, etaSec, band?.highSec ?? 0);
   const position = (sec: number) => `${Math.max(0, Math.min(100, 100 * sec / extent))}%`;
   const valueStyle = { margin: 0, fontWeight: 600, textAlign: 'right' as const };
+  // In the route table the arrival is plain text: tapping it falls through to
+  // the row, which opens that route's details rather than an arrival chart.
+  if (table) return <span data-testid="route-pickup" style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: '4px 0', boxSizing: 'border-box', fontSize: 12, fontWeight: 600, color: '#374151' }}>
+    <span data-testid={band ? 'pickup-range' : undefined}>{compact}</span>
+  </span>;
   return <>
     <button type="button" aria-haspopup="dialog" aria-label={`${routeLabel} arrival details: ${pickup}${band ? `, likely ${band.text}` : ''}${next ? `, next in ${next}` : ''}`}
       onKeyDown={e => e.stopPropagation()}

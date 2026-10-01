@@ -94,9 +94,10 @@ try {
       await checkKey();
       assert.equal(await page.locator('.map-fs').getByTestId('trip-stop-list').count(), 1);
       await page.screenshot({ path: path.join(out, 'red-fullscreen-390.png') });
-      await table.getByRole('button', { name: /^Red arrival details:/ }).click();
-      assert(await page.getByRole('dialog').isVisible(), 'key cannot open arrival details');
-      await page.getByRole('button', { name: 'Close arrival details' }).click();
+      // The pickup time is plain text: no arrival chart opens from the key.
+      assert.equal(await table.getByRole('button', { name: /arrival details:/ }).count(), 0);
+      await table.getByTestId('route-pickup').click();
+      assert.equal(await page.getByRole('dialog').count(), 0, 'key still opens an arrival chart');
     }
     report.runs.push({ width, waiting, table: await table.innerText(), overview });
     await context.close();
