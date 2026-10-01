@@ -84,3 +84,24 @@ test('recorded West Haven poll does not board another bus at the stop',async()=>
  assert.deepEqual(h.clicks,[]);
  assert.equal(run.unnamedBusSamples,1);
 });
+
+// Purple run 1790862386350: boarded #119 at West Haven at 13:54:32Z on a card
+// quoting "🚌 54 min". The fixed 50 min cap ended the run at 14:44:32Z with
+// #119 914 m out; it reached Building 400 at 14:50:32Z, 56 min after boarding.
+test('a quoted 54 min ride is ridden to arrival, not cut off at 50 min',async()=>{
+ const fromWestHaven={...trip,origin:{label:'West Haven Train Station',...westHaven,stopId:127}};
+ const b119={bus_name:'#119',route_id:10,lat:41.271266,lon:-72.963392,last_stop_id:24,stationary:true,at_stop_id:127};
+ const h=current=await harness(feedWith([b119]),fromWestHaven);
+ await h.poll("Purple\t\nAt stop\n\t10:35a – 11:04a\n\n🚌 54 min\nBOARD🚌West Haven Train Station⏸ 0:26\nBuilding 900\nGET OFFBuilding 400",[b119]);
+ assert.equal(h.watcher.status().run.phase,'riding');
+ const riding="Purple · Bus #119· ~4 min to your stop";
+ vi.setSystemTime(Date.now()+50*60000);
+ await h.poll(riding,[{bus_name:'#119',route_id:10,lat:41.261782,lon:-72.986077,last_stop_id:127,stationary:false}]);
+ assert.equal(h.watcher.status().run?.phase,'riding');
+ vi.setSystemTime(Date.now()+6*60000);
+ await h.poll(riding,[{bus_name:'#119',route_id:10,lat:41.255429,lon:-72.993517,last_stop_id:23,stationary:true,at_stop_id:22}]);
+ const run=h.watcher.status().run;
+ assert.equal(run.phase,'arrived');
+ assert.equal(run.rideCapMin,81);
+ assert.deepEqual(await h.journeys(),[]);
+});

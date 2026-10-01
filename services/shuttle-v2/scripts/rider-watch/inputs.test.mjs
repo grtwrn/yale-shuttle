@@ -1,6 +1,6 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {labeledStopId,destinationMatches,selectDestination,followedBusName} from './inputs.mjs';
+import {labeledStopId,destinationMatches,selectDestination,followedBusName,quotedRideMin,rideCapMin} from './inputs.mjs';
 const names={145:'Science Park Garage',98:'Phelps Gate',48:'Division / Prospect'};
 test('recorded Brown boarding prompt resolves on the first poll',()=>{
  const text="BOARD🚌Science Park Garage⏸ 14:04\nWinchester/Sachem\nGET OFFPhelps Gate\n🚌 On Brown #309?";
@@ -72,4 +72,15 @@ test('selection uses Enter and rejects an unrelated selected result',async()=>{
  assert.deepEqual(actions,[intended.display_name,'Enter']);
  page.evaluate=async()=>({toLL:{lat:0,lon:0}});
  await assert.rejects(selectDestination(page,intended),/within 80 m/);
+});
+// Purple run 1790862386350 pickup card, 2026-10-01T13:54:32Z.
+test('the ride cap covers the quoted ride, bounded to 50–90 min',()=>{
+ const pickup="Purple\t\nAt stop\n\t10:35a – 11:04a\n\n🚌 54 min\nBOARD🚌West Haven Train Station⏸ 0:26\nGET OFFBuilding 400\n🚌 On Purple #119?";
+ assert.equal(quotedRideMin(pickup),54);
+ assert.equal(rideCapMin(54),81);
+ for(const text of [undefined,'','🚌 <1 min\nBOARDX','🚌 20 min\n🚌 30 min'])
+  assert.equal(quotedRideMin(text),null);
+ assert.equal(rideCapMin(null),50);
+ assert.equal(rideCapMin(20),50);
+ assert.equal(rideCapMin(120),90);
 });
