@@ -36,7 +36,7 @@ import { noteShown } from "./shownLog";
 import { berthFor, type Berth } from "./berths";
 import { BerthDisclosure } from "./BerthDisclosure";
 import { useMapFullscreen } from "./useMapFullscreen";
-import { standChipFor } from "./standWait";
+import { rideHoldText, standChipFor } from "./standWait";
 import "./TripActions.css";
 import { MiniMapKey, type TimingRow } from "./MiniMapKey";
 import { isMilfordGroceryPlace, isMilfordGrocerySearch } from "./grocerySearch";
@@ -47,7 +47,7 @@ import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelecti
 import { tripBusIdentity } from "./tripBusIdentity";
 import { TripBoardingActions } from "./TripBoardingActions";
 import {
-  fmtClock, fmtMin, formatEtaRange, remainingSec,
+  fmtClock, fmtDateTime, fmtMin, fmtWeekday, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
@@ -85,7 +85,7 @@ import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
-import { isUnambiguousRideArrival } from "./rideArrival";
+import { isUnambiguousRideArrival, rideHeadline, rideInWindow, rideLappedExit } from "./rideArrival";
 import { getOffAlertTitle, getOffPromptTitle } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
@@ -367,6 +367,20 @@ function saveBoardedRide(r: BoardedRide | null): void {
   } catch {
     /* quota / private mode — best effort */
   }
+}
+// This ride's bus has been seen carrying it — past the pickup, up to the exit
+// — the evidence `rideLappedExit` needs before a bus between the exit and the
+// pickup may read as having passed the exit rather than still coming to pick
+// the rider up. Kept beside the ride, so a reload (the 2026-09-17 restart
+// recovery) still knows. One ride at a time, so one key.
+const RIDE_WINDOW_LS_KEY = "shuttle-ride-window";
+const rideWindowKey = (r: BoardedRide) =>
+  `${r.startedAt}:${r.busName.replace(/^#/, "")}:${r.boardStopId}:${r.alightStopId}`;
+function rideWindowSeen(r: BoardedRide): boolean {
+  try { return localStorage.getItem(RIDE_WINDOW_LS_KEY) === rideWindowKey(r); } catch { return false; }
+}
+function noteRideWindow(r: BoardedRide): void {
+  try { localStorage.setItem(RIDE_WINDOW_LS_KEY, rideWindowKey(r)); } catch { /* best effort */ }
 }
 
 // Two retired features left keys behind in localStorage: the guided "Go"
@@ -3806,17 +3820,11 @@ const TripPlanner: FC<{
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {potentialRoutes.map((p) => {
-              const nextStr = p.nextActive
-                ? p.nextActive.toLocaleString([], {
-                    weekday: "short", month: "short", day: "numeric",
-                    hour: "numeric", minute: "2-digit",
-                  })
-                : null;
+              // The published hours are Eastern, so the next start is too.
+              const nextStr = p.nextActive ? fmtDateTime(p.nextActive.getTime()) : null;
               // A line off for the whole weekend gets a date, not a time —
               // "next Sat Sep 12", the day the rider will plan around.
-              const nextDayStr = p.nextActive
-                ? p.nextActive.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
-                : null;
+              const nextDayStr = p.nextActive ? fmtWeekday(p.nextActive.getTime()) : null;
               return (
                 <div key={p.label} style={{
                   padding: "10px 12px", background: "#fff", borderRadius: 10,
@@ -5922,11 +5930,33 @@ const RideStopList: FC<{
 
   const busStepsFromBoard = busIdx >= 0 ? (busIdx - boardIdx + n) % n : -1;
 
+  // The same two states the banner carries — the lapped exit that used to
+  // read as an ordinary countdown ("21 stops · 50 min", 2026-09-17 eval), and
+  // the hold that explains a countdown which cannot rise (#119).
+  const alightPassed = bus ? rideLappedExit({
+    busIndex: busIdx, boardIndex: boardIdx, alightIndex: alightIdx, stopCount: n,
+    rode: rideWindowSeen(ride), rawRoute: routeStops[String(bus.route_id)], alightStopId: ride.alightStopId,
+  }) : false;
+  const standAnswer = bus && cfg && busIdx !== alightIdx
+    ? resolveStandingStop(bus, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore)
+    : null;
+  const holdText = standAnswer
+    ? rideHoldText((stopNames[standAnswer.stopId] ?? `Stop ${standAnswer.stopId}`).replace(/\s*\/\s*/g, "/"), standAnswer.approach)
+    : null;
+
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", paddingBottom: 24 }}>
       <div style={{ padding: "12px 16px 6px", fontSize: 12, color: "#78909c" }}>
         {ride.routeLabel} · Bus #{normBus(ride.busName)}
-        {etaSec !== null && (
+        {alightPassed ? (
+          <span style={{ marginLeft: 8, color: ride.color, fontWeight: 600 }}>
+            {`· may have passed${etaSec !== null ? ` · ${etaSec < 60 ? formatRideEta(etaSec) : `~${formatRideEta(etaSec)}`} next lap` : ""}`}
+          </span>
+        ) : holdText ? (
+          <span style={{ marginLeft: 8, color: ride.color, fontWeight: 600 }}>
+            {`· ${holdText}`}
+          </span>
+        ) : etaSec !== null && (
           <span style={{ marginLeft: 8, color: ride.color, fontWeight: 600 }}>
             {`· ${etaSec < 60 ? formatRideEta(etaSec) : `~${formatRideEta(etaSec)}`} to your stop`}
           </span>
@@ -6028,15 +6058,38 @@ const OnBusBanner: FC<{
     : undefined;
 
   let stopsRemaining: number | null = null;
+  let anchorIdx = -1;
+  const boardIdx = allStops.indexOf(ride.boardStopId);
+  const alightIdx = allStops.indexOf(ride.alightStopId);
   if (bus && cfg && allStops.length > 0) {
-    const anchor = anchorIndexOnList(
+    anchorIdx = anchorIndexOnList(
       bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
     );
-    const alightIdx = allStops.indexOf(ride.alightStopId);
-    if (anchor >= 0 && alightIdx >= 0) {
-      stopsRemaining = (alightIdx - anchor + allStops.length) % allStops.length;
+    if (anchorIdx >= 0 && alightIdx >= 0) {
+      stopsRemaining = (alightIdx - anchorIdx + allStops.length) % allStops.length;
     }
   }
+
+  // The bus has gone PAST the rider's exit and is looping back around — but
+  // only once it has been seen carrying this ride, or a bus still coming to
+  // the pickup would read as having passed the exit (rideArrival.ts).
+  const inWindow = rideInWindow(anchorIdx, boardIdx, alightIdx, allStops.length);
+  useEffect(() => { if (inWindow) noteRideWindow(ride); }, [inWindow, ride]);
+  const alightPassed = bus ? rideLappedExit({
+    busIndex: anchorIdx, boardIndex: boardIdx, alightIndex: alightIdx, stopCount: allStops.length,
+    rode: inWindow || rideWindowSeen(ride), rawRoute: routeStops[String(bus.route_id)], alightStopId: ride.alightStopId,
+  }) : false;
+
+  // A hold at a named stop explains a countdown that cannot rise while the
+  // bus stands (#119) — the hold, named, where the stalled number used to sit.
+  // The priced stand, not the payload's flag: `at_stop_id` is withheld for a
+  // hold short of the marker, which is exactly the approach case.
+  const standAnswer = bus && cfg
+    ? resolveStandingStop(bus, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore)
+    : null;
+  const holdText = standAnswer
+    ? rideHoldText((stopNames[standAnswer.stopId] ?? `Stop ${standAnswer.stopId}`).replace(/\s*\/\s*/g, "/"), standAnswer.approach)
+    : null;
 
   let etaSec: number | null = null;
   if (bus) {
@@ -6094,20 +6147,9 @@ const OnBusBanner: FC<{
   }, [stopsRemaining, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
 
   const etaStr = etaSec !== null ? formatRideEta(etaSec) : null;
-  const headline =
-    bus === undefined
-      ? "Looking for your bus…"
-      : stopsRemaining === null
-        ? "Tracking your ride"
-        : stopsRemaining <= 0
-          ? `Arriving at ${alightName}`
-          : stopsRemaining === 1
-            ? `Get off NEXT stop!${etaStr ? ` · ${etaStr}` : ""}`
-            : stopsRemaining === 2
-              ? `Get off in 2 stops!${etaStr ? ` · ${etaStr}` : ""}`
-              : etaStr
-                ? `${stopsRemaining} stops · ${etaStr}`
-                : `${stopsRemaining} stops until your stop`;
+  const headline = rideHeadline({
+    busFound: bus !== undefined, stopsRemaining, alightName, etaStr, holdText, alightPassed,
+  });
 
   return (
     <>

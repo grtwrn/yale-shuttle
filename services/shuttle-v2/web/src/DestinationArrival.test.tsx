@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DestinationArrival, destinationArrivalView } from './DestinationArrival';
 import { journeyArrival } from './journeyArrival';
 import type { UpcomingArrival } from './arrivals';
 import type { TripOption } from './planner';
 
-const now = new Date(2026, 8, 18, 10, 0).getTime();
+// Instants, not device-local wall times: the clocks below are New Haven's
+// whatever zone the test process (or the rider's phone) is set to.
+const now = Date.parse('2026-09-18T10:00:00-04:00');
 const row = (stopId: number, stopsAhead: number, eta: number, overrides: Partial<UpcomingArrival> = {}): UpcomingArrival => ({
   routeLabel: 'Red', color: '#f00', busName: '309', stopId, stopsAhead, eta, low: eta - 60, high: eta + 120,
   estimated: false, departNow: eta - 60, lowFloor: eta - 60, ...overrides,
@@ -17,7 +19,11 @@ const option: TripOption = { mode: 'shuttle', routeLabel: 'Red', color: '#f00', 
   journeyArrival: journeyArrival(board, [board, row(121, 1, 60, { busName: '307' }), destination, row(121, 37, 3000)], 121, 60, 120, now),
 };
 
+const OLD_TZ = process.env.TZ;
+afterEach(() => { process.env.TZ = OLD_TZ; });
+
 describe('route card destination arrival', () => {
+  beforeEach(() => { process.env.TZ = 'America/New_York'; });
   it('uses the joined forward destination and final walk, not the countdown bus or pickup band', () => {
     const view = destinationArrivalView(option, now)!;
     expect(view.kind).toBe('window');
@@ -52,17 +58,45 @@ describe('route card destination arrival', () => {
     expect(view.description).not.toMatch(/earliest|latest|guarantee|80%/);
   });
   it('shows the date when a window crosses midnight', () => {
-    const at = new Date(2026, 8, 18, 23, 50).getTime();
+    const at = Date.parse('2026-09-18T23:50:00-04:00');
     const view = destinationArrivalView({ ...option, journeyArrival: {
       ...option.journeyArrival!, pointMs: at + 660_000, lowMs: at + 540_000, highMs: at + 900_000,
     } }, at)!;
     expect(view.text).toContain('11:59p–');
     expect(view.text).toContain('12:05a');
-    expect(view.text).toContain(new Date(2026, 8, 19).toLocaleDateString([], { month: 'short', day: 'numeric' }));
+    expect(view.text).toContain('Sep 19, 12:05a');
   });
   it('labels the destination separately from pickup in visible and accessible text', () => {
     const html = renderToStaticMarkup(<DestinationArrival option={option} destination="Rosenkranz Hall" now={now} />);
     expect(html).toContain('At destination');
     expect(html).toContain('Estimated arrival at Rosenkranz Hall: 10:09a–10:17a');
+  });
+});
+
+describe('a phone set to another zone', () => {
+  // The 2026-09-17 eval ran on a UTC browser and every trip clock read four
+  // hours ahead of the Yale journey it described. The destination clock is
+  // New Haven's: render it Eastern and say so.
+  beforeEach(() => { process.env.TZ = 'UTC'; });
+
+  it('still reads the destination window on the campus clock, labeled ET', () => {
+    expect(destinationArrivalView(option, now)?.text).toBe('10:09a ET–10:17a ET');
+    expect(destinationArrivalView({ ...option, mode: 'walk' }, now)?.text).toBe('~10:12a ET');
+  });
+
+  it('dates a window by the campus day, not the device day', () => {
+    // 19:50 Eastern is 23:50 UTC: the window ends after UTC midnight but on
+    // the same New Haven evening, so it carries no date.
+    const at = Date.parse('2026-09-18T19:50:00-04:00');
+    const view = destinationArrivalView({ ...option, journeyArrival: {
+      ...option.journeyArrival!, pointMs: at + 660_000, lowMs: at + 540_000, highMs: at + 900_000,
+    } }, at)!;
+    expect(view.text).toBe('7:59p ET–8:05p ET');
+  });
+
+  it('keeps each clock and its zone label together when the window wraps', () => {
+    const html = renderToStaticMarkup(<DestinationArrival option={option} destination="Rosenkranz Hall" now={now} />);
+    expect(html).toContain('<span style="white-space:nowrap">10:09a ET</span>');
+    expect(html).toContain('<span style="white-space:nowrap">10:17a ET</span>');
   });
 });

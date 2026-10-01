@@ -37,6 +37,11 @@ export function bucketOf(token) {
   return [n * 60, n * 60 + 60];
 }
 
+// "~1" is how the app spells a window inside one minute — "<1–1" collapsed,
+// since the two ends differ only by the "<" (web/src/arrivalDetails.ts
+// `predictionWindow`). It is the same [0, 60] interval.
+const windowSec = (a, b) => a === '~1' ? [0, 60] : [a === '<1' ? 0 : Number(a) * 60, Number(b ?? a) * 60];
+
 /**
  * The "🚌 …" countdown line, as `fmtBusPair` renders it (web/src/format.ts):
  *
@@ -95,13 +100,12 @@ export function parseBusEtaText(line) {
   const full = t;
   // Keep the visible pickup window, its point and the following arrival
   // separate. The next value is an arrival from now, not a gap.
-  const compact = t.match(/^(Arrives in ~?(<1|\d+) min|At your stop)(?:,\s*(<1|\d+)(?:[–-](\d+))? min range)?\s*ⓘ?(?:\s*\nNext in ~?(<1|\d+) min)?$/);
+  const compact = t.match(/^(Arrives in ~?(<1|\d+) min|At your stop)(?:,\s*(~1|<1|\d+)(?:[–-](\d+))? min range)?\s*ⓘ?(?:\s*\nNext in ~?(<1|\d+) min)?$/);
   if (compact) {
     const point = compact[1] === 'At your stop' ? [0, 10] : compact[2] === '<1' ? [0, 60] : bucketOf(compact[2]);
     const second = compact[5] === '<1' ? [0, 60] : compact[5] ? bucketOf(compact[5]) : null;
     if (compact[3]) {
-      const lo = compact[3] === '<1' ? 0 : Number(compact[3]) * 60;
-      const hi = Number(compact[4] ?? compact[3]) * 60;
+      const [lo, hi] = windowSec(compact[3], compact[4]);
       return Number.isFinite(hi) && hi >= lo ? {
         first: [lo, hi], median: point, second, raw: full, spread: true, bunched: false,
       } : null;
@@ -110,10 +114,9 @@ export function parseBusEtaText(line) {
   }
   // The tappable ETA keeps the point and prediction window on separate lines.
   // Score the window when both are captured, retaining the point separately.
-  const detail = t.match(/^About (<1|\d+) min\s*ⓘ?\s*\nLikely (<1|\d+)(?:[–-](\d+))? min$/);
+  const detail = t.match(/^About (<1|\d+) min\s*ⓘ?\s*\nLikely (~1|<1|\d+)(?:[–-](\d+))? min$/);
   if (detail) {
-    const lo = detail[2] === '<1' ? 0 : Number(detail[2]) * 60;
-    const hi = Number(detail[3] ?? detail[2]) * 60;
+    const [lo, hi] = windowSec(detail[2], detail[3]);
     return Number.isFinite(hi) && hi >= lo ? {
       first: [lo, hi], second: null, median: detail[1] === '<1' ? [0, 60] : bucketOf(detail[1]),
       raw: t, spread: true, bunched: false,
@@ -519,7 +522,9 @@ const isLabelish = (l) =>
 // DestinationArrival prints live windows and approximate walking/future
 // points. Both card readers must accept them, including a next-day date.
 // Keep the whole line anchored so map labels and pickup countdowns stay out.
-export const ARRIVAL_CLOCK_RE = /^(?:arrive\s+)?~?(?:[a-z]{3}\s+\d{1,2},\s*)?\d{1,2}:\d{2}[ap](?:\s*[–-]\s*(?:[a-z]{3}\s+\d{1,2},\s*)?\d{1,2}:\d{2}[ap])?$/i;
+// A browser in another zone gets each clock suffixed " ET" (web/src/format.ts
+// `fmtClock`) — the same clock, labeled.
+export const ARRIVAL_CLOCK_RE = /^(?:arrive\s+)?~?(?:[a-z]{3}\s+\d{1,2},\s*)?\d{1,2}:\d{2}[ap](?: ET)?(?:\s*[–-]\s*(?:[a-z]{3}\s+\d{1,2},\s*)?\d{1,2}:\d{2}[ap](?: ET)?)?$/i;
 /** Does this block of innerText contain an arrival clock on a line of its own? */
 export function hasArrivalClock(text) {
   return String(text ?? "").split("\n").some((l) => ARRIVAL_CLOCK_RE.test(l.trim()));
@@ -533,7 +538,7 @@ export function parseTimingTable(bodyText) {
     const [, label, cell, destination] = match;
     const lines = cell.trim().split('\n').map(s => s.trim()).filter(Boolean);
     const first = lines[0];
-    const point = first?.match(/^(~?<1|~?\d+)(?: \((<1|\d+)(?:\s*[–-]\s*(\d+))?\))?$/);
+    const point = first?.match(/^(~?<1|~?\d+)(?: \((~1|<1|\d+)(?:\s*[–-]\s*(\d+))?\))?$/);
     const atStop = first === 'At stop';
     if (!point && !atStop && !['—', 'Missed', 'Unavailable', 'Scheduled'].includes(first)) continue;
     const clock = destination.trim();
