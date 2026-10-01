@@ -9,6 +9,19 @@ export function labeledStopId(text, label, names) {
   const matches = Object.entries(names).filter(([, value]) => norm(value) === norm(name));
   return matches.length === 1 ? Number(matches[0][0]) : null;
 }
+/** The bus the trip card follows. "🚌 #NN · N stops away" names it while it
+ * approaches; once it is at the pickup the app drops that line and decorates
+ * BOARD with 🚌/⏸ instead. Then take the line bus the feed reports at the
+ * board stop (the app's own at-stop choice), preferring the one we tracked.
+ * Several unknown buses at the stop fail closed. */
+export function followedBusName(text, boardStopId, buses, routeIds, previous) {
+  const named = String(text).match(/🚌\s*(#[\w-]+)\s*·/)?.[1];
+  if (named) return named;
+  if (boardStopId == null || !/(?:^|\n)BOARD\s*🚌/.test(String(text))) return null;
+  const here = (buses ?? []).filter(b => routeIds.includes(b.route_id) && b.at_stop_id === boardStopId);
+  if (here.some(b => b.bus_name === previous)) return previous;
+  return here.length === 1 ? here[0].bus_name : null;
+}
 export function destinationMatches(draft, destination) {
   const p = draft?.toLL;
   return !!p && [p.lat,p.lon,destination.lat,destination.lon].every(Number.isFinite)

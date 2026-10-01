@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {labeledStopId,selectDestination} from './inputs.mjs';
+import {followedBusName,labeledStopId,selectDestination} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -85,15 +85,27 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    await fs.appendFile(log,JSON.stringify(sample)+'\n');run.samples++;
    if(now-feedAt>30000){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
+    // The line left service (e.g. Orange Night after its last loop): nothing
+    // to board, so stop instead of waiting out the 45 minutes.
+    if(metrics.liveBusesOf(feed,run.line).length){run.noServiceSince=undefined;}
+    else{run.noServiceSince??=now;if(now-run.noServiceSince>5*60000){run.excludeAccuracy=true;await finish('no-service-excluded');await status();return;}}
     const boardLabel=text.match(/(?:^|\n)BOARD([^\n]+)/)?.[1],exitLabel=text.match(/(?:^|\n)GET OFF([^\n]+)/)?.[1];
     const board=labeledStopId(text,'BOARD',feed.stop_names);
     const exit=labeledStopId(text,'GET OFF',feed.stop_names);
-    const name=text.match(/🚌\s*(#[\w-]+)\s*·/)?.[1];
+    const name=followedBusName(text,board,feed.buses,run.line.busRouteIds,run.busName);
     // Do not reuse yesterday's/last poll's stop identity after a parse failure.
-    if(board===null || exit===null || !name){
+    if(board===null || exit===null){
      run.invalidStopSamples=(run.invalidStopSamples??0)+1;run.excludeAccuracy=true;
      if(!run.invalidStopReported){run.invalidStopReported=true;await event('measurement-invalid-stop-label',{boardLabel,exitLabel});}
      if(now-Date.parse(run.startedAt)>45*60000)await finish('invalid-stop-label-excluded');
+     await status();return;
+    }
+    // No followed bus (e.g. "Unavailable" with no prediction) only skips this
+    // poll: nothing stale is reused, so it does not taint the run.
+    if(!name){
+     run.unnamedBusSamples=(run.unnamedBusSamples??0)+1;
+     if(!run.unnamedBusReported){run.unnamedBusReported=true;await event('waiting-bus-unnamed',{boardLabel,exitLabel});}
+     if(now-Date.parse(run.startedAt)>45*60000)await finish('waiting-timeout-needs-review');
      await status();return;
     }
     run.boardStopId=board;run.exitStopId=exit;run.busName=name;
