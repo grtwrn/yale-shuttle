@@ -92,7 +92,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     const boardLabel=text.match(/(?:^|\n)BOARD([^\n]+)/)?.[1],exitLabel=text.match(/(?:^|\n)GET OFF([^\n]+)/)?.[1];
     const board=labeledStopId(text,'BOARD',feed.stop_names);
     const exit=labeledStopId(text,'GET OFF',feed.stop_names);
-    const name=followedBusName(text,board,feed.buses,run.line.busRouteIds,run.busName);
+    const name=followedBusName(text,board,feed.buses,run.line.busRouteIds,run.busName,feed.stop_coords);
     // Do not reuse yesterday's/last poll's stop identity after a parse failure.
     if(board===null || exit===null){
      run.invalidStopSamples=(run.invalidStopSamples??0)+1;run.excludeAccuracy=true;

@@ -9,17 +9,33 @@ export function labeledStopId(text, label, names) {
   const matches = Object.entries(names).filter(([, value]) => norm(value) === norm(name));
   return matches.length === 1 ? Number(matches[0][0]) : null;
 }
+/** The app's direct at-stop observation, mirrored from `observedAtStop`
+ * (web/src/liveAnchor.ts:43-51): stationary, at_stop_id is the stop, and
+ * within 75 m. at_stop_id alone can linger after departure. */
+export function observedAtStop(bus, stopId, stopCoords) {
+  const stop = stopCoords?.[stopId];
+  return bus.stationary === true && bus.at_stop_id === stopId && !!stop
+    && haversineM(bus, stop) <= 75;
+}
+export const FOLLOWED_NEAR_STOP_M = 150;
 /** The bus the trip card follows. "🚌 #NN · N stops away" names it while it
  * approaches; once it is at the pickup the app drops that line and decorates
- * BOARD with 🚌/⏸ instead. Then take the line bus the feed reports at the
- * board stop (the app's own at-stop choice), preferring the one we tracked.
- * Several unknown buses at the stop fail closed. */
-export function followedBusName(text, boardStopId, buses, routeIds, previous) {
+ * BOARD with 🚌/⏸ instead. That 🚌 is the bus the app follows, which it may
+ * place at the stop from route belief, not only from the feed. So keep the
+ * tracked bus when it is observed at the stop; while it is still near the
+ * stop (≤150 m) but not observed there, skip the poll rather than switch.
+ * Otherwise take the single line bus observed at the stop. Several unknown
+ * buses at the stop fail closed. */
+export function followedBusName(text, boardStopId, buses, routeIds, previous, stopCoords) {
   const named = String(text).match(/🚌\s*(#[\w-]+)\s*·/)?.[1];
   if (named) return named;
-  if (boardStopId == null || !/(?:^|\n)BOARD\s*🚌/.test(String(text))) return null;
-  const here = (buses ?? []).filter(b => routeIds.includes(b.route_id) && b.at_stop_id === boardStopId);
+  const stop = stopCoords?.[boardStopId];
+  if (boardStopId == null || !stop || !/(?:^|\n)BOARD\s*🚌/.test(String(text))) return null;
+  const line = (buses ?? []).filter(b => routeIds.includes(b.route_id));
+  const here = line.filter(b => observedAtStop(b, boardStopId, stopCoords));
   if (here.some(b => b.bus_name === previous)) return previous;
+  const tracked = line.find(b => b.bus_name === previous);
+  if (tracked && haversineM(tracked, stop) <= FOLLOWED_NEAR_STOP_M) return null;
   return here.length === 1 ? here[0].bus_name : null;
 }
 export function destinationMatches(draft, destination) {

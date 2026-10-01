@@ -7,15 +7,15 @@ import {attach} from './runner.mjs';
 
 // Replays of recorded 2026-10-01 waiting runs through the real tick loop.
 const line={label:'Purple',busRouteIds:[10]};
-const union={lat:41.297929,lon:-72.926912},b400={lat:41.255793,lon:-72.993569};
+const union={lat:41.297929,lon:-72.926912},westHaven={lat:41.271172,lon:-72.963517},b400={lat:41.255793,lon:-72.993569};
 const trip={kind:'random',origin:{label:'Union Station (S)',...union,stopId:122},destination:{display_name:'Building 400',...b400,stopId:22}};
-const feedWith=buses=>({buses,routes:{10:[122,127,22]},stop_names:{122:'Union Station (S)',127:'West Haven Train Station',22:'Building 400'},stop_coords:{122:union,22:b400}});
+const feedWith=buses=>({buses,routes:{10:[122,127,22]},stop_names:{122:'Union Station (S)',127:'West Haven Train Station',22:'Building 400'},stop_coords:{122:union,127:westHaven,22:b400}});
 const approaching="🚌 20 min\n🚌 #126 · 1 stop away\nBOARDUnion Station (S)\nGET OFFBuilding 400";
 const dwelling="🚌 20 min\nBOARD🚌Union Station (S)⏸ 0:29\nWest Haven Train Station\nGET OFFBuilding 400";
 const at126={bus_name:'#126',route_id:10,lat:41.297912,lon:-72.926694,at_stop_id:122,stationary:true};
 const near126={bus_name:'#126',route_id:10,lat:41.296923,lon:-72.927685,stationary:false};
 
-async function harness(initialFeed){
+async function harness(initialFeed,initialTrip=trip){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});
  vi.setSystemTime(Date.parse('2026-10-01T11:00:00Z'));
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
@@ -25,7 +25,7 @@ async function harness(initialFeed){
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
  const ctx={setGeolocation:async()=>{}};
- h.watcher=await attach({page,ctx,initialTrip:trip,initialLine:line,initialFeed,outputDir:dir});
+ h.watcher=await attach({page,ctx,initialTrip,initialLine:line,initialFeed,outputDir:dir});
  // The runner's own 10 s interval drives each poll; wait for it to settle.
  h.poll=async(text,buses)=>{h.text=text;
   await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedWith(buses)});
@@ -66,4 +66,21 @@ test('Orange Night after its last loop ends as no-service instead of a 45 min in
  const [journey]=await h.journeys();
  assert.equal(journey.result,'no-service-excluded');
  assert.equal(journey.excludeAccuracy,true);
+});
+
+// Purple run 1790803296841, 2026-09-30T21:34:02Z then 21:34:12Z: the app
+// follows #321 to West Haven; #332 sits at the stop. Never board #332.
+test('recorded West Haven poll does not board another bus at the stop',async()=>{
+ const fromWestHaven={...trip,origin:{label:'West Haven Train Station',...westHaven,stopId:127}};
+ const b321={bus_name:'#321',route_id:10,lat:41.271634,lon:-72.96286,last_stop_id:127,stationary:false};
+ const b332={bus_name:'#332',route_id:10,lat:41.27122,lon:-72.963864,last_stop_id:26,stationary:true,at_stop_id:127};
+ const h=current=await harness(feedWith([b321]),fromWestHaven);
+ await h.poll("🚌 9 min\n🚌 #321 · 1 stop away\nBOARDWest Haven Train Station\nGET OFFBuilding 400",[{...b321,lat:41.2735,lon:-72.9607}]);
+ assert.equal(h.watcher.status().run.busName,'#321');
+ await h.poll("Purple\t\n~32 (23 – 43)\n\t6:06p – 6:26p\n\n🚌 9 min\nBOARD🚌West Haven Train Station\nBuilding 900\nGET OFFBuilding 400",[b321,b332]);
+ const run=h.watcher.status().run;
+ assert.equal(run.phase,'waiting');
+ assert.equal(run.busName,'#321');
+ assert.deepEqual(h.clicks,[]);
+ assert.equal(run.unnamedBusSamples,1);
 });
