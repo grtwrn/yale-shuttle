@@ -1,0 +1,96 @@
+YALE SHUTTLE TRACKER
+Not affiliated with or endorsed by Yale University.
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.30596, -72.92546
+☆
+LEAVE
+Now
+Plan for later…
+☀️
+73°F · Clear · no rain expected
+▾
+°F
+|
+°C
+Service update
+There are currently two red lines running departing Union Station on the :00 and :30
+There will be 2 Green line running departing Orange Street on the :10 and :30
+There are only 2 Blue lines in service
+Due to Construction the State Street Station has been relocated to Chapel and Union.
+OVERVIEW — ALL 4 ROUTES
+▴
+🚌
+🚌
+🚌
+🚌
+Red #308
+Stopped 2:14 · usual ~6m total
+Blue Day #38
+Stopped 21:18 · usual ~8m total
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Route	Board in (min)	Arrive at
+Red	
+~5 (2 – 9)
+	3:43p – 3:52p
+
+🚶 1 min
+›
+🚌 10 min
+›
+🚶 5 min
+›
+
+Green	
+~19 (10 – 32)
+	3:57p – 4:19p
+
+🚶 8 min
+›
+🚌 5 min
+›
+🚶 15 min
+›
+
+Orange Day	
+~15 (12 – 19)
+	3:55p – 4:05p
+
+🚶 16 min
+›
+🚌 11 min
+›
+🚶 5 min
+›
+
+Walk	
+—
+	~3:59p
+
+🚶 33 min
+›
+
+Blue Day	
+~20 (14 – 30)
+	4:06p – 4:21p
+
+🚌 20 min
+›
+🚶 5 min
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+About
