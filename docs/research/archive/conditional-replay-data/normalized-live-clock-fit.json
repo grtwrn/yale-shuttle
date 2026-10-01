@@ -1,0 +1,44 @@
+{
+  "cutoff": "2026-09-14T04:00:00Z",
+  "contract": "current pinned time minus previous legacy departure; positive pinned-to-departure hold",
+  "results": [
+    {
+      "stop": 11,
+      "n": 136,
+      "excluded": {
+        "outside lap support": 4,
+        "missing same-service prior loop": 20
+      },
+      "lapMedian": 3214.0294999999996,
+      "normalizedMedian": 424.9549942898965
+    },
+    {
+      "stop": 121,
+      "n": 150,
+      "excluded": {
+        "outside lap support": 5,
+        "missing same-service prior loop": 18
+      },
+      "lapMedian": 3061.325,
+      "normalizedMedian": 548.3190623544233
+    }
+  ],
+  "_publication": {
+    "originalSource": "conditional-replay-data/normalized-live-clock-fit.json",
+    "originalSha256": "3e796adb4b3c99545c0858e2f3f8d7abe89d7e3c684ed99fdfec58461b03d3f6",
+    "omittedArrays": [
+      {
+        "path": "results[0].records",
+        "items": 136,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "results[1].records",
+        "items": 150,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

@@ -58,6 +58,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import type { Berth } from "./berths";
+import { useMapFullscreen } from "./useMapFullscreen";
 import { BERTH_MAP_VIEW, buildBerthGeometry, labelSides } from "./berthMap";
 import type { LatLon } from "./geo";
 
@@ -95,7 +96,7 @@ export function BerthInset({
   const mapRef = useRef<L.Map | null>(null);
   /** Armed for panning and pinching, i.e. the rider has tapped it. */
   const [live, setLive] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  const { fullscreen, wrapperRef, toggleRef, closeFullscreen, toggleFullscreen } = useMapFullscreen();
 
   const m = Math.round(Math.abs(berth.offsetM));
   const past = berth.offsetM > 0;
@@ -264,12 +265,6 @@ export function BerthInset({
     }, 80);
     return () => clearTimeout(t);
   }, [fullscreen, pubLat, pubLon, berth.lat, berth.lon]);
-  useEffect(() => {
-    if (!fullscreen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [fullscreen]);
   // Leaving fullscreen returns the inset to inert: it is back inside a
   // scrolling card, and the safe default there is the one that scrolls.
   useEffect(() => { if (!fullscreen) setLive(false); }, [fullscreen]);
@@ -300,6 +295,7 @@ export function BerthInset({
     }}>
       {published && (
         <div
+          ref={wrapperRef}
           className={`berth-map-wrap${fullscreen ? " map-fs" : ""}`}
           style={wrapperStyle}
           role="group"
@@ -335,7 +331,7 @@ export function BerthInset({
               existing fullscreen close path, not a second one. */}
           {fullscreen && (
             <button
-              onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+              onClick={(e) => { e.stopPropagation(); closeFullscreen(); }}
               title="Back" aria-label="Back"
               style={btn({ top: 8, left: 8, padding: "0 14px 0 10px", fontSize: 14, gap: 4 })}
             >
@@ -344,7 +340,8 @@ export function BerthInset({
             </button>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
+            ref={toggleRef}
+            onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
             title={fullscreen ? "Exit fullscreen" : "Full map"}
             aria-label={fullscreen ? "Exit fullscreen" : "Full map"}
             style={btn({ top: 8, right: 8 })}

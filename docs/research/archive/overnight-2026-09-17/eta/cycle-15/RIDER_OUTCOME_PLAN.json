@@ -1,0 +1,7 @@
+{
+  "at": "2026-09-18T10:07:32.495752+00:00",
+  "inputs": "Existing2036paired decisions/actual captured wires/frozen read-only outcomes. No fresh replay or arm tuning.",
+  "selection": "Every saved shuttle option, both arms; no selection by improvement. Same arm exact board+destination trace rows; raw-current must agree with physical source.",
+  "matching": "Reuse audited exact connected legs, resolve forecast pickup physical-position occurrence with JOIN_CORRECTION rules, then match actual ride hop displacement to chosen destination. Preserve incomplete/ambiguous cases and stopped/passed outcomes. Compare same actual trips separately from any changed trips.",
+  "metrics": "Descriptive actual target arrival plus modeled egress error; modeled access-before-recorded-departure only, not observed boarding. Retain both original source and selected actual boarding/target visit identities."
+}

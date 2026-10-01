@@ -1,0 +1,19 @@
+{
+  "scope": "Built SPA, held browser touch gesture through map removal, normal clock, synthetic intercepted feed",
+  "cases": [
+    {
+      "name": "ride-done",
+      "phases": [
+        "pinch begins"
+      ],
+      "errors": [],
+      "listenersBefore": {
+        "touchmove": 0,
+        "touchend": 0,
+        "touchcancel": 0
+      }
+    }
+  ],
+  "errors": [],
+  "resourcesClosed": true
+}

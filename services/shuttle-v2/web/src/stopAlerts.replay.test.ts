@@ -195,6 +195,15 @@ describe("three Red buses, one closing on Division / Prospect (red-closing-bus.j
     }
   }
 
+  it.each([5_000, 30_000])("a two-stop warning survives %ims recorded polling and disarms at arrival", cadence => {
+    const ticks = thin(closingTicks, cadence);
+    const { pings, left } = run(closingReplay(ticks), [{
+      ...arm(C.boardStopId, "Division / Prospect", 3, ticks[0]!), leadStops: 2,
+    }]);
+    assertOnePassOneAlert(pings, left, C.arrivedAt, `stop-count/${cadence}`, C.closingBus);
+    expect(pings.some(p => p.kind === "lead")).toBe(true);
+  });
+
   it("the lead ping names the minutes the row would print, in words, never 'm'", () => {
     const { pings } = run(closingReplay([...closingTicks]),
       [arm(C.boardStopId, "Division / Prospect", 5, closingTicks[0]!)]);

@@ -1,0 +1,16 @@
+{
+  "base": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "head": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "numericalMemoEqual": true,
+  "unchangedModules": [
+    "planner.ts",
+    "journeyArrival.ts",
+    "tripBusIdentity.ts",
+    "TripBoardingActions.tsx",
+    "tripRanking.ts",
+    "etaSource.ts",
+    "liveArrivals.ts"
+  ],
+  "memoSha256": "85ff3b393629e276d03ca8dfdc768da8c38a891cc1b567828221d9da010e77d9",
+  "gitPatchCheck": 0
+}

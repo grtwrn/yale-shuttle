@@ -1,0 +1,61 @@
+{
+  "screenshot_count": 67,
+  "screenshot_bytes": 2922776,
+  "browser_results": {
+    "mobile/after-browser.json": {
+      "completed": true,
+      "errors": [],
+      "checks": [
+        "Named feedback, selected 44px priorities, keyboard file chooser (Enter/Space), decoding error, replace/cancel/remove, image and priority retained through failed send; success resets and restores focus",
+        "Reply completion preserves navigation focus; named 16px report priority and keyboard archived disclosure",
+        "Named reply, keyboard attachment, 429 and 503 announced with draft/image retained, successful reply threaded with status and focus return; cancel restores focus; 360/390/430/1280/640 CSS-pixel reflow",
+        "Issues loading, failed fetch, keyboard retry and empty state announced; all requests intercepted, no production submissions",
+        "Actual mobile taps open feedback, select priority, activate the native chooser and cancel"
+      ]
+    },
+    "desktop/after-browser.json": {
+      "completed": true,
+      "errors": [],
+      "checks": [
+        "Named feedback, selected 44px priorities, keyboard file chooser (Enter/Space), decoding error, replace/cancel/remove, image and priority retained through failed send; success resets and restores focus",
+        "Reply completion preserves navigation focus; named 16px report priority and keyboard archived disclosure",
+        "Named reply, keyboard attachment, 429 and 503 announced with draft/image retained, successful reply threaded with status and focus return; cancel restores focus; 360/390/430/1280/640 CSS-pixel reflow",
+        "Issues loading, failed fetch, keyboard retry and empty state announced; all requests intercepted, no production submissions"
+      ]
+    },
+    "extra-browser.json": {
+      "completed": true,
+      "errors": [],
+      "checks": [
+        "Feedback image/text/priority survive HTTP failure for >6s and aborted network request; successful retry keeps payload identity and focus, with live-feed failure",
+        "Switching open reply clears completed attachment and text; POST uses report 802; focus waits for delayed refresh and returns to correct Reply on send/cancel",
+        "Reply refresh does not steal focus from another report priority control",
+        "Acknowledged reply remains labeled sent when refresh fails; loading error is distinct, and keyboard retry recovers saved thread",
+        "Named priority action and archive/unarchive retain payload association and recover state"
+      ]
+    }
+  },
+  "head": "135f046e285074fb3e45d2c1640b02b661307487",
+  "base": "cff3b2a6b7ad6cdd2f899bb4d564a4c03dae2d37",
+  "status": "",
+  "artifact_hashes": {
+    "extra-browser.log": "d91c4cb1b8dcce22e0100e612d5b304eac786176f977b9e47303ee8b46f1564c",
+    "server-tests.log": "2a180a960e780d62510669baa94b97e730380f4d6909c0b5dbec1815fa448db0",
+    "extra-browser.json": "2438dacf3e6bd27994879931731511c6635c59fca33ee855589e8de7af2d3b92",
+    "extra-browser.mjs": "c17f4ba53e6096cb299c358fe4e38708f5f8ef3568ce3dd2ab893d96bace4d83",
+    "independent-issues-390.png": "7a357e56eb2688ea41a9afa32a4033c04bfa2f9ea8ec040dfef102ef441aa24d",
+    "verify.log": "c26dc30a57d7c08bd4f9ddf805fceb4acad9096818394528b35d047bf15a98cd",
+    "verify.sh": "a1f0668df84fc466767acccc21dcbf686c3d7893572aeadb42a26cbc15f44b2d",
+    "independent-feedback-offline-390.png": "9ea3a647a79471fad4100c66f9c8530e2f38fdae1de7e83f6f898d6bb8206130",
+    "mobile/after-feedback-360.png": "58ace1a96935ff47cc90bdb4e650e5e807747f118b3e200d7d75a0219d9ad973",
+    "mobile/after-reply-attached-390.png": "8868bb6c03d6ae0dafe531bc858ebb9a2fbe565e5b3a3f2ad6cb09a1e3b6f70f",
+    "mobile/after-feedback-attached-360.png": "04f2cd97e38e8b21d9446a2eb2a17df1b86a1fc3ddb3b6e11d591ff5b8025518",
+    "mobile/after-browser.json": "852706c5095b4a15fdaa165ef555746f6961d2ae3623c872c2b991a2fe3b78e8",
+    "mobile/after-reply-360.png": "ca2f7ab2e18595e232423066c3f7b02d9f808c64e79fb656b8d5d109ea57a479",
+    "desktop/after-reply-attached-390.png": "b4cbffacd21772480062c06349d9d7047afd1081dd8820dd84fde10797fb14c1",
+    "desktop/after-feedback-attached-360.png": "e42adfc980ab094b44586668aa00ea3e8495ac8737cf48c30d431351d67e516b",
+    "desktop/after-browser.json": "c50bbf8819340e5a802f377aa849986fb97ae9a38b39977ba7c192b23be9ecef",
+    "desktop/after-reply-desktop.png": "680fbcd5e4986d7df6e3ce697673d716747f6bb30af4f8e56e959825a90a2d52",
+    "desktop/after-feedback-desktop.png": "eda5fc986211f2b1f36ca8eecbd89aa57023865655b3c3ab45715fa0760151d3"
+  }
+}

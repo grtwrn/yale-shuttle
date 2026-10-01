@@ -1,0 +1,11 @@
+{
+  "outcome": "candidate",
+  "summary": "Keep class-arrival advice with its supporting route\nSupporting advice now includes the correct bus, window and trip action. Opening a hidden route also preserves its map. ETA math and ordering are unchanged. Evidence/checkpoint updated; HEAD preserved.",
+  "next_task": "Independently review ux/ux-01-fix/REPORT.md, including supporting-route actions and hidden-route map/Back behavior. Controller retains CI/publication ownership. Next builder task: UX-02 navigation/search accessibility.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-01-fix/verify.sh — exit 0: 58 tests, backend/frontend typechecks, Vite build and five browser harnesses passed.",
+    "Supplemental locked supporting-route-check.mjs and hidden-route-shell.mjs commands recorded exactly in ux/ux-01-fix/REPORT.md — exit 0: keyboard forecast disclosure, mobile reflow, route map and unchanged collapsed list verified.",
+    "node --check scripts/arrive-by-check.mjs — passed.",
+    "git diff --check — passed. Full suite and staging remain controller/CI gates."
+  ]
+}

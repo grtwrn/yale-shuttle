@@ -1,0 +1,19 @@
+{
+  "head": "a5966b1e87a9f4fbecf3888456fbd272f186fcb8",
+  "indexUnchanged": true,
+  "trackedCompared": 910,
+  "changed": [
+    "services/shuttle-v2/web/src/TransitMap.tsx"
+  ],
+  "new": [
+    "services/shuttle-v2/scripts/saved-places-check.mjs",
+    "services/shuttle-v2/web/src/SavedPlaces.tsx"
+  ],
+  "shellOutsideListsUnchanged": true,
+  "sourceBundleParity": true,
+  "screenshots": {
+    "count": 409,
+    "bytes": 18551952
+  },
+  "browserReportsPassed": 4
+}

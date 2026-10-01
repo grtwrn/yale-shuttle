@@ -1,0 +1,13 @@
+{
+  "outcome": "candidate",
+  "summary": "Make weather forecasts usable by keyboard\nAdded disclosure state, hourly keyboard scrolling and focus recovery. Weather values remain unchanged. Evidence: ux/ux-10-weather/REPORT.md. HEAD/index preserved; watcher untouched.",
+  "next_task": "Independently review the two-file proposal, then controller release gates. Next builder: UX11 Retry and weekday-filter focus audit using ux/ux-10-weather/NEXT.md.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/verify.sh — passed 84 tests, both typechecks and Vite build.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/browser.sh — three final browser reports passed; initial fixture timing failure retained.",
+    "From services/shuttle-v2: OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/supplemental-verified flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/supplemental.mjs — eight groups passed; zero page errors; resources closed.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/verify-integrity.py — passed scope, HEAD/index, source/bundle parity and screenshot-budget checks.",
+    "node --check services/shuttle-v2/scripts/weather-controls-check.mjs — passed.",
+    "git diff --check — passed."
+  ]
+}

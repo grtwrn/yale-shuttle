@@ -1,0 +1,25 @@
+{
+  "originalRawRows": 197354,
+  "exactFreshExportMatches": 197354,
+  "polls": 20199,
+  "carriedStaleBusRows": 856,
+  "freshRowsByRoute": {
+    "10": 30890,
+    "9": 24939,
+    "8": 15566,
+    "19": 8566,
+    "3": 46623,
+    "1": 23138,
+    "2": 15114,
+    "15": 7043,
+    "13": 8377,
+    "16": 4317,
+    "17": 4308,
+    "14": 8473
+  },
+  "missing": 0,
+  "extra": 0,
+  "sha256": "1e1091a2c7944ff23ccb84bb99be6c6fe5a52526c94232781f79ae10a6a80207",
+  "historicalDatabaseHashUnchanged": true,
+  "limits": "Coordinates, observed time, bus identity, heading and last upstream stop verified. Derived pin/stationary/lap metadata is causal reconstruction, not original live publication. No forecast/outcome validation from this export."
+}

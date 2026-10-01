@@ -1,0 +1,112 @@
+{
+  "phase": "after",
+  "states": [
+    {
+      "scenario": "fresh",
+      "heading": "Red may fit your buffer",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nRed may fit your buffer\n\nThe estimated window fits your target if you catch the bus at Winchester / Mansfield. Check the pickup and walking times.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:15 PM\nWindow fits buffer · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "buffer",
+      "heading": "Your buffer may be tight",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nYour buffer may be tight\n\nThe walking estimate ends by class time, but may leave less time to get inside. Check the trip times.\n\nEstimated arrival at destination\n\nRed · #309\nNo live window\nBus updates interrupted. · View trip ›\nWalk\nAbout 2:18 PM\nMay use your buffer · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "stale",
+      "heading": "Live shuttle times unavailable",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nBus updates are interrupted. Check again for a live window. Compare walking below.\n\nEstimated arrival at destination\n\nRed · #309\nNo live window\nBus updates interrupted. · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "loading",
+      "heading": "Live shuttle times unavailable",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nBus updates are interrupted. Check again for a live window. Compare walking below.\n\nEstimated arrival at destination\n\nRed · #309\nNo live window\nBus updates interrupted. · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "partial",
+      "heading": "Some shuttle times are unavailable",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nSome shuttle times are unavailable\n\nThe Blue destination window is missing. Check again for live times. Compare walking below.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:31 PM\nWindow extends past class · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "failed",
+      "heading": "Live shuttle times unavailable",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nBus updates are interrupted. Check again for a live window. Compare walking below.\n\nEstimated arrival at destination\n\nRed · #309\nNo live window\nBus updates interrupted. · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "missing",
+      "heading": "Live shuttle times unavailable",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nThe Red destination window is missing. Check again for live times. Compare walking below.\n\nEstimated arrival at destination\n\nRed · #307\nNo live window\nDestination window unavailable. · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "future",
+      "heading": "Live shuttle times unavailable",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nCheck live shuttle arrivals closer to departure. Compare walking below.\n\nEstimated arrival at destination\n\nRed\nNo live window\nLive window available closer to departure. · View trip ›\nWalk\nAbout 2:35 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "late",
+      "heading": "You may arrive after class starts",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nYou may arrive after class starts\n\nThe available estimates extend past class time. Compare the trip times below and allow for delays.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:31 PM\nWindow extends past class · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "catch",
+      "heading": "Check the shuttle connection",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nCheck the shuttle connection\n\nRed: The bus could reach pickup before you. This window assumes you catch it.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:15 PM\nConnection uncertain · View trip ›\nThe bus could reach pickup before you. This window assumes you catch it.\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "estimated",
+      "heading": "Allow extra time for this shuttle",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nAllow extra time for this shuttle\n\nRed: Limited trip data; allow extra time.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:15 PM\nLimited trip data · View trip ›\nLimited trip data; allow extra time.\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "walk",
+      "heading": "Walk now",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nWalk now\n\nThe walking estimate gets you there before your target. It avoids the shuttle wait.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:15 PM\nConnection uncertain · View trip ›\nThe bus could reach pickup before you. This window assumes you catch it.\nWalk\nAbout 2:10 PM\nEstimate fits buffer · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "empty",
+      "heading": "Arrival time unavailable",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nArrival time unavailable\n\nNo arrival estimate is available. Check your trip options.\n\nEstimated arrival at destination\n\nHow to read these times ▾"
+    }
+  ],
+  "checks": [
+    "1280px desktop at 200% equivalent CSS-pixel reflow",
+    "Tab to named datetime and comparison row",
+    "Enter selects catchable Red #309 trip",
+    "Space toggles help",
+    "invalid/past deadline hides advice",
+    "all panel targets >=44px",
+    "13 scenario states at 360/390/430/1280px without horizontal overflow"
+  ],
+  "errors": [],
+  "controls": [
+    {
+      "name": "Clear",
+      "height": 44,
+      "width": 62.234375
+    },
+    {
+      "name": "datetime-local",
+      "height": 44,
+      "width": 582
+    },
+    {
+      "name": "0 min5 min10 min15 min20 min30 min",
+      "height": 44,
+      "width": 95
+    },
+    {
+      "name": "Red · #309No live windowBus updates interrupted. · View trip ›",
+      "height": 62,
+      "width": 582
+    },
+    {
+      "name": "WalkAbout 2:25 PMEstimate past class time · View trip ›",
+      "height": 62,
+      "width": 582
+    },
+    {
+      "name": "How to read these times ▾",
+      "height": 44,
+      "width": 582
+    }
+  ]
+}

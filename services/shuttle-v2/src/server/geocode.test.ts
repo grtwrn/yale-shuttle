@@ -4,7 +4,7 @@ import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
 
-import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS } from "./geocode.js";
+import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS, normalizeName, relevanceOf } from "./geocode.js";
 import type { Landmark } from "./landmarks.js";
 import liveStops from "./__fixtures__/stops.json";
 
@@ -102,16 +102,19 @@ describe("landmark coordinates", () => {
     }
   });
 
-  // One entry per physical place: the same coordinates under two labels mean
-  // somebody pasted the wrong line, or entered a nickname as a second place
-  // instead of an alias. Distinct places CAN be metres apart (a cafe in a
+  // Duplicate coordinates need an explicit, verified shared-building exception;
+  // otherwise they mean somebody pasted the wrong line or entered a nickname
+  // as a second place instead of an alias. Distinct places CAN be metres apart (a cafe in a
   // museum's ground floor, a bookshop next to the Apple Store), so the bound
   // is 'same point', not 'same block'.
-  it("has no two landmarks stacked on the same spot", () => {
+  it("has no landmarks stacked on the same spot except verified destinations in one building", () => {
     for (let i = 0; i < LANDMARKS.length; i++) {
       for (let j = i + 1; j < LANDMARKS.length; j++) {
         const a = LANDMARKS[i]!;
         const b = LANDMARKS[j]!;
+        // Yale confirms the Divinity Library is within the school building.
+        // Both use its verified OSM coordinate, with separate rider-facing labels.
+        if ([a.label, b.label].sort().join("|") === "Divinity School|Divinity School Library") continue;
         expect(
           distanceMeters(a, b),
           `${a.label} and ${b.label} are on top of each other`,
@@ -195,6 +198,14 @@ describe("landmark search", () => {
     ["law school", "Yale Law School"],
     ["yale health", "Yale Health Center"],
     ["divinity", "Divinity School"],
+    ["divinity school library", "Divinity School Library"],
+    ["divinity library", "Divinity School Library"],
+    ["yds library", "Divinity School Library"],
+    ["354 canner street", "Bellamy Hall"],
+    ["101 college street", "101 College Street"],
+    ["yale hr", "Yale Human Resources"],
+    ["wingstop", "Wingstop (Whalley Ave)"],
+    ["517 prospect", "517 Prospect Street"],
     // The building lost "Biology" in the 2023 renovation; riders have not.
     ["kline tower", "Kline Tower (Kline Biology Tower)"],
     ["kline biology tower", "Kline Tower (Kline Biology Tower)"],
@@ -737,5 +748,127 @@ describe("places the external tier cannot supply", () => {
     const labels = geocode(live, "yemeni coffee").map((h) => h.label);
     expect(labels).toContain("Arwa Yemeni Coffee");
     expect(labels).toContain("M2 Mocha Cafe");
+  });
+});
+
+/**
+ * The 2026-09-30 search-gap audit: rider-style queries that returned nothing
+ * (or the wrong place) on production. Each must put the named place in the
+ * top 3 from the local layer alone, so a Photon outage cannot bring it back.
+ *
+ * Deliberately NOT added:
+ *   megabus    only Wikipedia places it at Union Station; no carrier page
+ *              confirmed the boarding point
+ *   mikro      3000 Whitney Ave, Hamden: far beyond 500 m of any stop
+ *   ay arepa   Broadway Island storefront (2023) is not in OSM and could not
+ *              be confirmed open in 2026
+ */
+describe("search-gap watchlist (2026-09-30)", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  const top3 = (q: string) => geocode(live, q).slice(0, 3).map((h) => h.label);
+
+  it.each([
+    ["bbq chicken", "bb.q Chicken"],
+    ["bbq", "bb.q Chicken"],
+    ["greyhound", "Union Station"],
+    ["peter pan", "Union Station"],
+    ["flixbus", "Union Station"],
+    ["bus station", "Union Station"],
+    ["jacks", "Jack's"],
+    ["at&t", "AT&T (Chapel St)"],
+    ["att", "AT&T (Chapel St)"],
+    ["h&k", "H&K"],
+    ["mt bank", "M&T Bank (Church St)"],
+    ["m&t bank", "M&T Bank (Church St)"],
+    ["dunkin donuts", "Dunkin' (Church St)"],
+    ["synagogue", "Slifka Center"],
+    ["atm", "M&T Bank (Church St)"],
+  ])("%o finds %s", (q, label) => {
+    expect(top3(q)).toContain(label);
+  });
+
+  it("ranks the stylised name first, not places sharing its letters", () => {
+    // "h&k" used to read as "h and k" and return AKW and Kroon Hall first.
+    expect(top3("h&k")[0]).toBe("H&K");
+    expect(top3("jacks")[0]).toBe("Jack's");
+  });
+
+  it("answers the OSM names the food sweep found under another label", () => {
+    const first = (q: string) => geocode(live, q)[0]?.label;
+    expect(first("Yorkside Pizza & Restaurant")).toBe("Yorkside Pizza");
+    expect(first("P&M Orange Street Market")).toBe("P&M Orange Street Market");
+    expect(first("Nica's Market - Fine Gourmet Food")).toBe("Nica's Market");
+    expect(first("Peabody Museum of Natural History")).toBe("Peabody Museum");
+    expect(first("Shubert Performing Arts Center")).toBe("Shubert Theatre");
+    expect(first("Graduate by Hilton New Haven")).toBe("Graduate New Haven");
+    expect(first("New Haven Colonial Historical Society Building")).toBe("New Haven Museum");
+    expect(first("Blessed Michael McGivney Pilgrimage Center")).toBe(
+      "McGivney Pilgrimage Center (Knights of Columbus Museum)");
+    expect(first("Rubamba Latin Gourmet")).toBe("Rubamba");
+    expect(first("East Rock Brewing Company & Beer Hall")).toBe("East Rock Brewing Company");
+    expect(first("Frank Pepe Pizzeria Napoletana")).toBe("Frank Pepe Pizzeria");
+    expect(first("Yale Police Department")).toBe("Yale Police (101 Ashmun)");
+  });
+});
+
+describe("stylised names (dot or ampersand inside a word)", () => {
+  it.each([
+    ["bb.q Chicken", "bbq chicken"],
+    ["AT&T", "att"],
+    ["H&K", "hk"],
+    ["M&T Bank", "mt bank"],
+    ["J.P. Dempsey's", "jp dempseys"],
+    ["180 York (A&A)", "180 york aa"],
+  ])("%o normalises to %o", (raw, want) => {
+    expect(normalizeName(raw)).toBe(want);
+  });
+
+  it.each([
+    ["Stop & Shop", "stop and shop"],
+    ["Artist&Craftsman Supply", "artist and craftsman supply"],
+    ["Bubble & Squeak", "bubble and squeak"],
+  ])("leaves a spaced or long-word %o reading as 'and'", (raw, want) => {
+    expect(normalizeName(raw)).toBe(want);
+  });
+
+  it("lets an external result with a stylised name through the relevance filter", () => {
+    // rankExternal drops a Photon hit scoring 0 here: "bb.q Chicken" was
+    // "bb q chicken" to the matcher, and "bbq chicken" matched none of it.
+    expect(relevanceOf("bbq chicken", "bb.q Chicken")).toBeGreaterThan(0);
+    expect(relevanceOf("at&t", "AT&T")).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Review of PR #341: collapsing "t.d." to "td" and "p&m" to "pm" lost places
+ * the spaced reading found on master. Both readings are scored now.
+ */
+describe("dotted initials and ampersand abbreviations keep their spaced reading", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  const labels = (q: string) => geocode(live, q).map((h) => h.label);
+  const top3 = (q: string) => labels(q).slice(0, 3);
+
+  it.each([
+    ["t.d. college", "Timothy Dwight College"],
+    ["j.e. college", "Jonathan Edwards College"],
+    ["j.e. edwards", "Jonathan Edwards College"],
+  ])("%o still finds %s first", (q, label) => {
+    expect(labels(q)[0]).toBe(label);
+  });
+
+  it("ranks the P&M market first for 'p&m', ahead of Pauli Murray's 'pm'", () => {
+    expect(labels("p&m")[0]).toBe("P&M Orange Street Market");
+    expect(top3("p&m")).toContain("Pauli Murray College");
+  });
+
+  it.each(["b&n", "b and n"])("%o finds the Yale Bookstore (Barnes & Noble)", (q) => {
+    expect(top3(q)).toContain("Yale Bookstore");
+  });
+
+  it("keeps the stylised name first when the spaced reading is noise", () => {
+    // "at and t" strips to a lone "t", which prefixes Temple / Grove.
+    expect(labels("at&t")[0]).toBe("AT&T (Chapel St)");
+    expect(labels("h&k")[0]).toBe("H&K");
+    expect(labels("m&t")[0]).toBe("M&T Bank (Church St)");
   });
 });

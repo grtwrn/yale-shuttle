@@ -1,0 +1,1687 @@
+{
+  "method": "Fixed-policy diagnostics from saved forecasts; no fitting or replay rerun.\n\nEach completed Winchester->Division journey counts once. Score the smallest\nforecast occurrence at each poll from the observed source pin until the target\narrival. A margin m means reaching the stop at forecast low minus m seconds.\nThis is an oracle retrospective policy diagnostic, not a rider simulation.\n",
+  "data": [
+    {
+      "label": "core",
+      "summary": [
+        {
+          "scope": "all",
+          "day": "all",
+          "outcome": "all",
+          "visits": 77,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 77,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 23,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 30.1448125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 77,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 77,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 24,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 77,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "all",
+          "outcome": "stopped",
+          "visits": 70,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 70,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 22,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 30.1448125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 70,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 70,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 23,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 70,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-16",
+          "outcome": "all",
+          "visits": 31,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -4.39938134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -4.39938134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-16",
+          "outcome": "stopped",
+          "visits": 28,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-17",
+          "outcome": "all",
+          "visits": 29,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 29,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 30.1448125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 29,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 29,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 29,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-17",
+          "outcome": "stopped",
+          "visits": 25,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 30.1448125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -19.8641875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -15.97539501953125
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-18",
+          "outcome": "all",
+          "visits": 17,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.58851171875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -13.2416669921875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.859473876953125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -13.2416669921875
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-18",
+          "outcome": "stopped",
+          "visits": 17,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.58851171875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -13.2416669921875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.859473876953125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -13.2416669921875
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "all",
+          "outcome": "all",
+          "visits": 77,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 43,
+              "unknownOrUnscored": 34,
+              "missesByMarginSec": {
+                "0": 5,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 30.1448125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 43,
+              "unknownOrUnscored": 34,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -14.4687109375
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 43,
+              "unknownOrUnscored": 34,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 43,
+              "unknownOrUnscored": 34,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -10.07687158203125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "all",
+          "outcome": "stopped",
+          "visits": 70,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 38,
+              "unknownOrUnscored": 32,
+              "missesByMarginSec": {
+                "0": 5,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 30.1448125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 38,
+              "unknownOrUnscored": 32,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -19.8641875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 38,
+              "unknownOrUnscored": 32,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 38,
+              "unknownOrUnscored": 32,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -15.97539501953125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-16",
+          "outcome": "all",
+          "visits": 31,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 18,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.174896728515625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 18,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -22.930661865234374
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 18,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -9.66483154296875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 18,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -19.061296630859374
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-16",
+          "outcome": "stopped",
+          "visits": 28,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 16,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.174896728515625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 16,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -37.005255615234375
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 16,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -9.66483154296875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 16,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -34.64983154296875
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-17",
+          "outcome": "all",
+          "visits": 29,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 12,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 30.1448125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 12,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -14.4687109375
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 12,
+              "missesByMarginSec": {
+                "0": 4,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 12,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -10.07687158203125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-17",
+          "outcome": "stopped",
+          "visits": 25,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 12,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 30.1448125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 12,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -19.8641875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 12,
+              "missesByMarginSec": {
+                "0": 4,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 12,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -15.97539501953125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-18",
+          "outcome": "all",
+          "visits": 17,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 2,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.58851171875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -27.42510498046875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 2,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.859473876953125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -25.32564697265625
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-18",
+          "outcome": "stopped",
+          "visits": 17,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 2,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.58851171875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -27.42510498046875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 2,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.859473876953125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -25.32564697265625
+            }
+          }
+        }
+      ],
+      "excludedNextLapOnlyRows": [
+        {
+          "journeyId": "3:57965:57987",
+          "at": 1789565787081,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:58061:58080",
+          "at": 1789566432162,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:66278:66293",
+          "at": 1789664545743,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:66527:66550",
+          "at": 1789666635980,
+          "stopsAhead": 29,
+          "changed": false
+        }
+      ],
+      "unknownTargetDepartureVisits": []
+    },
+    {
+      "label": "union",
+      "summary": [
+        {
+          "scope": "all",
+          "day": "all",
+          "outcome": "all",
+          "visits": 77,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 77,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 23,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 31.24166943359375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 77,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 77,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 24,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 77,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "all",
+          "outcome": "stopped",
+          "visits": 70,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 70,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 22,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 31.24166943359375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 70,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 70,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 23,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 70,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-16",
+          "outcome": "all",
+          "visits": 31,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -4.39938134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -4.39938134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-16",
+          "outcome": "stopped",
+          "visits": 28,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-17",
+          "outcome": "all",
+          "visits": 29,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 29,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 31.24166943359375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 29,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 29,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 29,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-17",
+          "outcome": "stopped",
+          "visits": 25,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 31.24166943359375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -18.76733056640625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -15.97539501953125
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-18",
+          "outcome": "all",
+          "visits": 17,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.81093994140625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -13.2416669921875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.859473876953125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -13.2416669921875
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-18",
+          "outcome": "stopped",
+          "visits": 17,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.81093994140625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -13.2416669921875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.859473876953125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 17,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -13.2416669921875
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "all",
+          "outcome": "all",
+          "visits": 77,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 41,
+              "unknownOrUnscored": 36,
+              "missesByMarginSec": {
+                "0": 5,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 31.24166943359375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 41,
+              "unknownOrUnscored": 36,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -14.990966796875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 41,
+              "unknownOrUnscored": 36,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 41,
+              "unknownOrUnscored": 36,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -10.07687158203125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "all",
+          "outcome": "stopped",
+          "visits": 70,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 36,
+              "unknownOrUnscored": 34,
+              "missesByMarginSec": {
+                "0": 5,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 31.24166943359375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 36,
+              "unknownOrUnscored": 34,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -18.76733056640625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 36,
+              "unknownOrUnscored": 34,
+              "missesByMarginSec": {
+                "0": 6,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 36,
+              "unknownOrUnscored": 34,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -15.97539501953125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-16",
+          "outcome": "all",
+          "visits": 31,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 19,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -10.673563720703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 19,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -22.570336181640624
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 19,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -9.66483154296875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 19,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -19.061296630859374
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-16",
+          "outcome": "stopped",
+          "visits": 28,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 11,
+              "unknownOrUnscored": 17,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -10.673563720703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 11,
+              "unknownOrUnscored": 17,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -36.82570385742188
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 11,
+              "unknownOrUnscored": 17,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -9.66483154296875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 11,
+              "unknownOrUnscored": 17,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -34.64983154296875
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-17",
+          "outcome": "all",
+          "visits": 29,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 16,
+              "unknownOrUnscored": 13,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 31.24166943359375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 16,
+              "unknownOrUnscored": 13,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -14.990966796875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 16,
+              "unknownOrUnscored": 13,
+              "missesByMarginSec": {
+                "0": 4,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 16,
+              "unknownOrUnscored": 13,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -10.07687158203125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-17",
+          "outcome": "stopped",
+          "visits": 25,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 13,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 31.24166943359375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 13,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -18.76733056640625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 13,
+              "missesByMarginSec": {
+                "0": 4,
+                "15": 1,
+                "30": 1
+              },
+              "worstSec": 33.98559814453125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 12,
+              "unknownOrUnscored": 13,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -15.97539501953125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-18",
+          "outcome": "all",
+          "visits": 17,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 2,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.81093994140625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -27.703320068359375
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 2,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.859473876953125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -25.32564697265625
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-18",
+          "outcome": "stopped",
+          "visits": 17,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 2,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.81093994140625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -27.703320068359375
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 2,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 7.859473876953125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 13,
+              "unknownOrUnscored": 4,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -25.32564697265625
+            }
+          }
+        }
+      ],
+      "excludedNextLapOnlyRows": [
+        {
+          "journeyId": "3:57965:57987",
+          "at": 1789565787081,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:58061:58080",
+          "at": 1789566432162,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:66278:66293",
+          "at": 1789664545743,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:66527:66550",
+          "at": 1789666635980,
+          "stopsAhead": 29,
+          "changed": false
+        }
+      ],
+      "unknownTargetDepartureVisits": []
+    }
+  ],
+  "_publication": {
+    "originalSource": "red-rest-history-2026-09-18/full-pickup/continuous.json",
+    "originalSha256": "530014d371ad56497b9e108ed8bbd3fa58073b6cae382eb64b4ce3b70f863448",
+    "omittedArrays": [
+      {
+        "path": "data[0].journeys",
+        "items": 79,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "data[1].journeys",
+        "items": 79,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "mode": "after",
+  "desktop": false,
+  "checks": [],
+  "snapshots": {
+    "feedback": "- text: Feedback\n- textbox \"Feedback\":\n  - /placeholder: Anything on your mind — bugs, ideas, confusing bits…\n  - text: \"Fixture feedback: please make the pickup sign easier to find.\"\n- group \"How urgent?\":\n  - text: How urgent?\n  - button \"🔴 Urgent\"\n  - button \"Normal\" [pressed]\n  - button \"💡 Nice to have\"\n- button \"📎 Attach screenshot\"\n- text: or paste one\n- button \"Cancel\"\n- button \"Send\"",
+    "priorityHeights": [
+      {
+        "text": "🔴 Urgent",
+        "height": 44,
+        "pressed": "false"
+      },
+      {
+        "text": "Normal",
+        "height": 44,
+        "pressed": "true"
+      },
+      {
+        "text": "💡 Nice to have",
+        "height": 44,
+        "pressed": "false"
+      }
+    ],
+    "afterPrioritiesFocus": {
+      "tag": "BUTTON",
+      "text": "📎 Attach screenshot"
+    },
+    "feedbackErrorVisible": true
+  },
+  "requests": [
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/report",
+      "method": "POST"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "Service Worker registration blocked by Playwright"
+  ],
+  "failureFocus": {
+    "tag": "BODY",
+    "text": "\n    \n        * { box-sizing: border-box; }\n        body { margin: 0; }\n        @media (max-width: 6"
+  },
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- combobox \"To\"\n- text: 😴 No shuttles running right now\n- button \"Union Station\"\n- button \"Med School (Cedar St)\"\n- button \"Science Hill\"\n- button \"Peabody Museum\"\n- button \"Payne Whitney Gym\"\n- button \"Old Campus\"\n- text: Feedback\n- textbox \"Feedback\":\n  - /placeholder: Anything on your mind — bugs, ideas, confusing bits…\n  - text: \"Fixture feedback: please make the pickup sign easier to find.\"\n- group \"How urgent?\":\n  - text: How urgent?\n  - button \"🔴 Urgent\"\n  - button \"Normal\" [pressed]\n  - button \"💡 Nice to have\"\n- button \"📎 Replace screenshot\"\n- img \"attached screenshot\"\n- button \"Remove screenshot\": ✕ remove\n- button \"Cancel\"\n- button \"Send\"\n- alert: Couldn't send — try again\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about"
+}

@@ -197,6 +197,9 @@ function writeState(s) {
  *  have. #123 taught `parseOptions` both spellings and could not know this
  *  second reader existed. Now there is one pattern and it is passed in. */
 async function openCard(page, label) {
+  // Cards describe route legs; the arrival clocks now live in the map key.
+  const namedCard = page.getByRole('button', { name: `View ${label} trip details`, exact: true });
+  if (await namedCard.count()) { await namedCard.click(); return true; }
   return page.evaluate(({ l, src, flags }) => {
     const re = new RegExp(src, flags);
     const hasClock = (t) => String(t || "").split("\n").some((x) => re.test(x.trim()));

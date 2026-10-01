@@ -1,0 +1,11 @@
+{
+  "outcome": "candidate",
+  "summary": "Restore destination forecasts when GPS reports a bus at pickup. The tested four-file proposal restores 30 historical journeys without changing bus choices or rankings. The 443-second regression remains documented. HEAD is preserved; nothing deployed.",
+  "next_task": "Independently review eta/cycle-7/REVIEW_REQUEST.md and proposal.patch, especially repeated stops, walking connections and class deadlines. Controller retains full-suite, staging and publication gates. Keep the remaining 38 cases separate.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-7/verify.sh — passed: 119 tests, both typechecks, Vite build, 4,688 exact prototype decisions and 210 browser comparisons.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-7/browser-extra.sh — passed: deadline/freshness transitions, 13 numerical comparisons and five walking cases; zero browser errors.",
+    "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-7/verify_evidence.py — passed: 46 preserved artifact hashes, 1,400 connected outcomes and retained regression.",
+    "git diff --check && git diff --cached --exit-code — passed."
+  ]
+}

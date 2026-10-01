@@ -1,0 +1,15 @@
+{
+  "localOriginMaster": "7e29064475315c2d621b77cdca130c05737d1ab8",
+  "numericalBlockEqual": true,
+  "modules": [
+    "planner.ts",
+    "journeyArrival.ts",
+    "tripBusIdentity.ts",
+    "TripBoardingActions.tsx",
+    "tripRanking.ts",
+    "etaSource.ts",
+    "liveArrivals.ts"
+  ],
+  "numericalSha256": "85ff3b393629e276d03ca8dfdc768da8c38a891cc1b567828221d9da010e77d9",
+  "remoteFetched": false
+}

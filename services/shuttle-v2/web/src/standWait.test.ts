@@ -336,19 +336,21 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
 
   it("is wired to the row's own values in TransitMap, and composes nothing in the stop list", () => {
     const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
-    // One value each, declared once at ROW scope: the names below cannot mean
-    // two different arrivals.
+    // The key and expanded details use one shared timing calculation.
     expect(src.match(/const busEtaLive\b/g)?.length).toBe(1);
-    expect(src.match(/const leadBand\b/g)?.length).toBe(1);
-    // The collapsed row prints those two...
-    expect(src).toMatch(/fmtBusLine\(\{\s*leadSec: busEtaLive,\s*leadBand,/);
-    // ...and so does the BOARD row, once, and nowhere else.
-    expect(src.match(/boardArrivalText\(/g)?.length).toBe(1);
-    expect(src).toContain("boardArrivalText(leadBand, busEtaLive)");
+    expect(src.match(/= getTripTiming\(o\)/g)?.length).toBe(3);
+    // The tappable summary reads the same arrival, retaining the full bounds.
+    expect(src).toContain("etaSec: busEtaLive, lowSec: o.busLowSec, highSec: o.busHighSec");
+    const key = readFileSync(new URL("./MiniMapKey.tsx", import.meta.url), "utf8");
+    expect(key).toContain('<ArrivalDetails {...pickup} variant="table" />');
+    // The BOARD row and Map tab countdown retain their shared formatter;
+    // floating arrival bubbles have been removed from the trip mini-map.
+    expect(src.match(/mapArrivalLabel\(/g)?.length).toBe(2);
+    expect(src).toContain("mapArrivalLabel({ eta: busEtaLive, low: o.busLowSec, high: o.busHighSec, computedAtMs: o.computedAtMs })");
     // Inside the expanded card's stop list nothing composes an arrival of its
     // own: no second band, no second formatter, no bare point.
     const from = src.indexOf("// Stop list, two sections.");
-    const to = src.indexOf("{_hidden > 0 && !_detailOpen", from);
+    const to = src.indexOf("// End trip stop list.", from);
     expect(from).toBeGreaterThan(0);
     expect(to).toBeGreaterThan(from);
     const list = src.slice(from, to).replace(/^\s*\/\/.*$/gm, "");
@@ -369,13 +371,12 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
 describe("the render sites read the shared composition", () => {
   const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
 
-  it("imports both helpers and calls each twice", () => {
-    expect(src).toContain('import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";');
-    expect(src).toContain('import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";');
+  it("uses the shared stop-list compositions", () => {
+    expect(src).toContain('import { standChipFor } from "./standWait";');
     // The trip card's expanded stop list and the Map tab's route card.
     expect(src.match(/standChipFor\(/g)?.length).toBe(2);
-    // The trip card's minimap chip and the Map tab's per-stop countdown.
-    expect(src.match(/stopEtaText\(/g)?.length).toBe(2);
+    // The trip's BOARD row and the Map tab's per-stop countdown.
+    expect(src.match(/mapArrivalLabel\(/g)?.length).toBe(2);
   });
 
   it("has retired the arrival-to-arrival median and the bare point", () => {
@@ -402,6 +403,6 @@ describe("the render sites read the shared composition", () => {
     expect(stopRow).not.toContain("at_stop_since");
     expect(stopRow).not.toContain("at_stop_id");
     expect(stopRow).toContain("standChipFor(");
-    expect(stopRow).toContain("stopEtaText(");
+    expect(stopRow).toContain("mapArrivalLabel(e)");
   });
 });

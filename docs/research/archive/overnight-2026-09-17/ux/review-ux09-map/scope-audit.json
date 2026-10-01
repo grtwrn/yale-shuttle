@@ -1,0 +1,8 @@
+{
+  "priorRecoveryByteIdentical": true,
+  "mapOnlyTwoOptionsComments": true,
+  "frozenBaselineSourceVerified": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "e2e535591ac4e643ae385a5a0a5c613b2d0f08a64a103537468c9d9b820ad9b2",
+    "services/shuttle-v2/web/src/main.tsx": "c7ecfcf001ac0da4b9b6854cd55cc8a8262965da643bba33ad2b0381800515ce"
+  }
+}

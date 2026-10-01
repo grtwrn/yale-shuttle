@@ -1,0 +1,23 @@
+{
+  "openedAfterFit": "2026-09-18T17:02:53.398481+00:00",
+  "scoredAt": "2026-09-18T17:05:22.972497+00:00",
+  "fitSha256": "b8553e86bb83e6ae350c603d6fd65cd3f04e8c8dfbc6bb2ce6c5cf6e4f5c8262",
+  "captureSha256": "ba808edd5eb18974a91087511d833c99b2410ec6461da5996d2ede71415d5142",
+  "oldCapturedAt": 1789744525256,
+  "newCapturedAt": 1789750650143,
+  "newVisitIds": [
+    72247,
+    72363,
+    72447,
+    72691,
+    72799
+  ],
+  "newVisits": 5,
+  "supportedVisits": 5,
+  "excluded": {
+    "not_eligible_complete_stopped": 18,
+    "not_newly_available_outcome": 1
+  },
+  "oldOutcomeChanges": [],
+  "limitations": "All predefined coefficients frozen before reading new capture; no fitting or candidate selection on these new outcomes. Same Sep18 and very few later visits, not independent day confirmation."
+}

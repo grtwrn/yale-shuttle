@@ -57,7 +57,7 @@ export function BerthDisclosure({
           controls above a 200 px map is nothing, and stacking beats an
           ellipsis on either one. Folded, the pair is 311 px and shares a line
           at 360, 390 and 430. */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {/* Directions is the card's one prominent action (user request
             2026-07-17: "make it more obvious"); `berthDirectionsText` above is
             why its words depend on the fold. */}

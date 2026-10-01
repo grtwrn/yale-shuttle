@@ -1,0 +1,37 @@
+{
+  "frozenHashChecks": 27,
+  "rawDatabaseObservationMatches": 4116,
+  "connectedEndpoints": 33,
+  "connectedLegRecordChecks": 624,
+  "firstDestinationEndpoints": 20,
+  "secondDestinationEndpoints": 8,
+  "missingChains": 12,
+  "independentlyEnumeratedCheckpoints": 177,
+  "independentlyEnumeratedMissingForecasts": 14,
+  "archivedForecastMatches": 242,
+  "independentlyRecomputedMetricGroups": 8,
+  "sharedTargetVisits": {
+    "58260": [
+      57454,
+      57990,
+      58224
+    ],
+    "58745": [
+      57990,
+      58224,
+      58510,
+      58717
+    ],
+    "58296": [
+      57454,
+      57990,
+      58224
+    ],
+    "58780": [
+      57990,
+      58224,
+      58510,
+      58717
+    ]
+  }
+}

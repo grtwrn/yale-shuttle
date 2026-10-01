@@ -1,0 +1,20 @@
+{
+  "head": "ae4fec5d0115314174795d30f3f91c3f7c85614f",
+  "base": "8de0eed1c6a869606272824fd3dcac753ce32836",
+  "parent": "8de0eed1c6a869606272824fd3dcac753ce32836",
+  "mergeBase": "8de0eed1c6a869606272824fd3dcac753ce32836",
+  "trackedAndIndexClean": true,
+  "candidateHashes": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "99cf584939620d3461507999a98dbfc3d789f3f88414827c9a999cc066b937f0",
+    "services/shuttle-v2/web/src/BerthInset.tsx": "a8925507e7793f6282efb5dc6b8a58ed897f31507d98804f9507c7fbbc311648",
+    "services/shuttle-v2/web/src/useMapFullscreen.ts": "3e7bbc923d5f8a259f3d1dceaaff2ec4aacd0bf03cff727b4b5c8c1d6080526a",
+    "services/shuttle-v2/web/src/berthMap.test.ts": "3720b1173058cba1006bf73ae314f9b9f9fb103afa321c0518f7c412f46c434e",
+    "services/shuttle-v2/scripts/fullscreen-map-check.mjs": "7560455a82a7211cc0ead6b4b164af7f4af2289e4fe06111379f87d66c354567"
+  },
+  "builderHashesUnchanged": true,
+  "baselineBlobsMatchBase": true,
+  "screenshotsBothTeams": {
+    "files": 139,
+    "bytes": 5714220
+  }
+}

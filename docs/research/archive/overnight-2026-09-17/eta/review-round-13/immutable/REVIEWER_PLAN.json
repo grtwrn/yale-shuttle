@@ -1,0 +1,7 @@
+{
+  "purpose": "Independently capture immutable poll-time states; original builder shallow-reference fixture preserved. No model/application correction.",
+  "singleHarnessChange": {
+    "before": "out.push({i,at:f.t,wire,entries:[...server.store],seen:[...server.seenAt]});",
+    "after": "out.push(structuredClone({i,at:f.t,wire,entries:[...server.store],seen:[...server.seenAt]}));"
+  }
+}

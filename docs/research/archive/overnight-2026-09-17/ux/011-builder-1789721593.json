@@ -1,0 +1,13 @@
+{
+  "outcome": "candidate",
+  "summary": "Prioritize reload and explain data loss on crash recovery\nAdded guarded keyboard focus, optional technical details and phone reflow. Evidence: ux/ux-09/REPORT.md. HEAD and index preserved.",
+  "next_task": "Independently review the three-file recovery proposal, then repair the baseline-reproduced map zoom teardown error using ux-09/NEXT_MAP.md.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/verify.sh — exit 0: 46 tests, both typechecks, Vite build, mobile/desktop recovery and built-SPA feed checks.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/browser.sh — exit 0: final keyboard, touch, reset, blocked-storage and reflow checks.",
+    "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/offline-second flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/offline-shell.mjs — exit 0: cached offline shell and reconnection verified; initial selector failure preserved.",
+    "Locked ux-09/stress-compare.sh — both diagnostic browser runs exited 1, reproducing two identical Leaflet errors on baseline and candidate. Separate existing defect; no map fix claimed.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/verify-integrity.py — final exit 0: source/bundle parity, preserved HEAD/index and screenshot budget verified.",
+    "git diff --check — exit 0. All owned browsers, fixture servers and lock processes closed."
+  ]
+}

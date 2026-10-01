@@ -1,0 +1,10 @@
+{
+  "forecasts": 722,
+  "maxDifferenceSec": 0,
+  "methods": {
+    "marginal_lap_fallback": 425,
+    "Winchester_release": 297
+  },
+  "fitMatchesExactly": true,
+  "scope": "Frozen historical conditional components only. No continuously served ETA or rider endpoint comparison."
+}

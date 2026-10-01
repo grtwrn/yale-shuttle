@@ -1,0 +1,1694 @@
+{
+  "method": "Fixed-policy diagnostics from saved forecasts; no fitting or replay rerun.\n\nEach completed Winchester->Division journey counts once. Score the smallest\nforecast occurrence at each poll from the observed source pin until the target\narrival. A margin m means reaching the stop at forecast low minus m seconds.\nThis is an oracle retrospective policy diagnostic, not a rider simulation.\n",
+  "data": [
+    {
+      "label": "Sep16–17 reused",
+      "summary": [
+        {
+          "scope": "all",
+          "day": "all",
+          "outcome": "all",
+          "visits": 61,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 61,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 16,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 61,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 61,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 16,
+                "15": 1,
+                "30": 0
+              },
+              "worstSec": 23.458081298828127
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 61,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "all",
+          "outcome": "stopped",
+          "visits": 53,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 53,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 15,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 53,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 53,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 15,
+                "15": 1,
+                "30": 0
+              },
+              "worstSec": 23.458081298828127
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 53,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-16",
+          "outcome": "all",
+          "visits": 31,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -4.39938134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 9,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 31,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -4.39938134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-16",
+          "outcome": "stopped",
+          "visits": 28,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 8,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.275204345703125
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -11.96818701171875
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-17",
+          "outcome": "all",
+          "visits": 30,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 30,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 7,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 2.828183349609375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 30,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 30,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 7,
+                "15": 1,
+                "30": 0
+              },
+              "worstSec": 23.458081298828127
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 30,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -1.82513134765625
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-17",
+          "outcome": "stopped",
+          "visits": 25,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 7,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 2.828183349609375
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -23.785629638671875
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 7,
+                "15": 1,
+                "30": 0
+              },
+              "worstSec": 23.458081298828127
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -22.850533935546874
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "all",
+          "outcome": "all",
+          "visits": 61,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 55,
+              "unknownOrUnscored": 6,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -23.265885009765626
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 55,
+              "unknownOrUnscored": 6,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -37.91706274414062
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 55,
+              "unknownOrUnscored": 6,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 1,
+                "30": 0
+              },
+              "worstSec": 23.458081298828127
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 55,
+              "unknownOrUnscored": 6,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -16.05627783203125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "all",
+          "outcome": "stopped",
+          "visits": 53,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 47,
+              "unknownOrUnscored": 6,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -23.265885009765626
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 47,
+              "unknownOrUnscored": 6,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -59.25712475585937
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 47,
+              "unknownOrUnscored": 6,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 1,
+                "30": 0
+              },
+              "worstSec": 23.458081298828127
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 47,
+              "unknownOrUnscored": 6,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -22.850533935546874
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-16",
+          "outcome": "all",
+          "visits": 31,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -34.27212475585937
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -56.95672265625
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -9.592108154296875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 28,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -25.7538779296875
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-16",
+          "outcome": "stopped",
+          "visits": 28,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -34.27212475585937
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -59.25712475585937
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -9.592108154296875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 25,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -36.58565087890625
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-17",
+          "outcome": "all",
+          "visits": 30,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 27,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -23.265885009765626
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 27,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -37.91706274414062
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 27,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 1,
+                "30": 0
+              },
+              "worstSec": 23.458081298828127
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 27,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -16.05627783203125
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-17",
+          "outcome": "stopped",
+          "visits": 25,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 22,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -23.265885009765626
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 22,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -68.32588500976563
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 22,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 1,
+                "30": 0
+              },
+              "worstSec": 23.458081298828127
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 22,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -22.850533935546874
+            }
+          }
+        }
+      ],
+      "excludedNextLapOnlyRows": [
+        {
+          "journeyId": "3:57965:57987",
+          "at": 1789565787081,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:58061:58080",
+          "at": 1789566432162,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:66278:66293",
+          "at": 1789664545743,
+          "stopsAhead": 29,
+          "changed": false
+        },
+        {
+          "journeyId": "3:66527:66550",
+          "at": 1789666635980,
+          "stopsAhead": 29,
+          "changed": false
+        }
+      ],
+      "unknownTargetDepartureVisits": []
+    },
+    {
+      "label": "Sep18 morning",
+      "summary": [
+        {
+          "scope": "all",
+          "day": "all",
+          "outcome": "all",
+          "visits": 7,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 1.460713623046875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -33.596286376953124
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.232676025390625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -33.596286376953124
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "all",
+          "outcome": "stopped",
+          "visits": 7,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 1.460713623046875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -33.596286376953124
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.232676025390625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -33.596286376953124
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-18",
+          "outcome": "all",
+          "visits": 7,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 1.460713623046875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -33.596286376953124
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.232676025390625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -33.596286376953124
+            }
+          }
+        },
+        {
+          "scope": "all",
+          "day": "2026-09-18",
+          "outcome": "stopped",
+          "visits": 7,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 1.460713623046875
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -33.596286376953124
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 3,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.232676025390625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 7,
+              "unknownOrUnscored": 0,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -33.596286376953124
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "all",
+          "outcome": "all",
+          "visits": 7,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -29.306900146484374
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -79.25390014648437
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 1,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.232676025390625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -56.64332397460937
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "all",
+          "outcome": "stopped",
+          "visits": 7,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -29.306900146484374
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -79.25390014648437
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 1,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.232676025390625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -56.64332397460937
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-18",
+          "outcome": "all",
+          "visits": 7,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -29.306900146484374
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -79.25390014648437
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 1,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.232676025390625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -56.64332397460937
+            }
+          }
+        },
+        {
+          "scope": "changedOnly",
+          "day": "2026-09-18",
+          "outcome": "stopped",
+          "visits": 7,
+          "baseline": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -29.306900146484374
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -79.25390014648437
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 1,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": 3.232676025390625
+            },
+            "departureExcessSec": {
+              "eligibleVisits": 4,
+              "unknownOrUnscored": 3,
+              "missesByMarginSec": {
+                "0": 0,
+                "15": 0,
+                "30": 0
+              },
+              "worstSec": -56.64332397460937
+            }
+          }
+        }
+      ],
+      "journeys": [
+        {
+          "journeyId": "3:70236:70251",
+          "sourceId": 70236,
+          "sourceStop": 11,
+          "targetVisitId": 70251,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "targetClosestM": 5.93649453617866,
+          "bus": "306",
+          "day": "2026-09-18",
+          "pinnedAt": 1789730305747,
+          "departedAt": 1789731190869,
+          "targetArrivedAt": 1789731270821,
+          "legIds": [
+            65179,
+            65181,
+            65186
+          ],
+          "forecastRows": 290,
+          "targetDepartedAt": 1789731340834,
+          "targetHoldSec": 70.013,
+          "frames": 193,
+          "changedFrames": 0,
+          "maxRaiseSec": 0,
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": 0.0698935546875,
+              "at": 1789731265841,
+              "stopsAhead": 1,
+              "low": 5.0498934876711985,
+              "baselineLow": 5.0498934876711985,
+              "candidateLow": 5.0498934876711985,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -69.9431064453125,
+              "at": 1789731265841,
+              "stopsAhead": 1,
+              "low": 5.0498934876711985,
+              "baselineLow": 5.0498934876711985,
+              "candidateLow": 5.0498934876711985,
+              "changed": false
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": 0.0698935546875,
+              "at": 1789731265841,
+              "stopsAhead": 1,
+              "low": 5.0498934876711985,
+              "baselineLow": 5.0498934876711985,
+              "candidateLow": 5.0498934876711985,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -69.9431064453125,
+              "at": 1789731265841,
+              "stopsAhead": 1,
+              "low": 5.0498934876711985,
+              "baselineLow": 5.0498934876711985,
+              "candidateLow": 5.0498934876711985,
+              "changed": false
+            }
+          },
+          "changedOnly": {
+            "baseline": {},
+            "candidate": {}
+          }
+        },
+        {
+          "journeyId": "3:70343:70364",
+          "sourceId": 70343,
+          "sourceStop": 11,
+          "targetVisitId": 70364,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "targetClosestM": 5.173911873740553,
+          "bus": "316",
+          "day": "2026-09-18",
+          "pinnedAt": 1789731200815,
+          "departedAt": 1789731985905,
+          "targetArrivedAt": 1789732055879,
+          "legIds": [
+            65281,
+            65288,
+            65290
+          ],
+          "forecastRows": 290,
+          "targetDepartedAt": 1789732135926,
+          "targetHoldSec": 80.047,
+          "frames": 171,
+          "changedFrames": 0,
+          "maxRaiseSec": 0,
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": -2.209289794921875,
+              "at": 1789732050985,
+              "stopsAhead": 1,
+              "low": 2.6847103168128585,
+              "baselineLow": 2.6847103168128585,
+              "candidateLow": 2.6847103168128585,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -82.25628979492187,
+              "at": 1789732050985,
+              "stopsAhead": 1,
+              "low": 2.6847103168128585,
+              "baselineLow": 2.6847103168128585,
+              "candidateLow": 2.6847103168128585,
+              "changed": false
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": -2.209289794921875,
+              "at": 1789732050985,
+              "stopsAhead": 1,
+              "low": 2.6847103168128585,
+              "baselineLow": 2.6847103168128585,
+              "candidateLow": 2.6847103168128585,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -82.25628979492187,
+              "at": 1789732050985,
+              "stopsAhead": 1,
+              "low": 2.6847103168128585,
+              "baselineLow": 2.6847103168128585,
+              "candidateLow": 2.6847103168128585,
+              "changed": false
+            }
+          },
+          "changedOnly": {
+            "baseline": {},
+            "candidate": {}
+          }
+        },
+        {
+          "journeyId": "3:70458:70479",
+          "sourceId": 70458,
+          "sourceStop": 11,
+          "targetVisitId": 70479,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "targetClosestM": 12.437021422804097,
+          "bus": "309",
+          "day": "2026-09-18",
+          "pinnedAt": 1789732465971,
+          "departedAt": 1789732881594,
+          "targetArrivedAt": 1789732961588,
+          "legIds": [
+            65397,
+            65402,
+            65407
+          ],
+          "forecastRows": 218,
+          "targetDepartedAt": 1789732996645,
+          "targetHoldSec": 35.057,
+          "frames": 99,
+          "changedFrames": 0,
+          "maxRaiseSec": 0,
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": 1.460713623046875,
+              "at": 1789732956596,
+              "stopsAhead": 1,
+              "low": 6.452713550241682,
+              "baselineLow": 6.452713550241682,
+              "candidateLow": 6.452713550241682,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -33.596286376953124,
+              "at": 1789732956596,
+              "stopsAhead": 1,
+              "low": 6.452713550241682,
+              "baselineLow": 6.452713550241682,
+              "candidateLow": 6.452713550241682,
+              "changed": false
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": 1.460713623046875,
+              "at": 1789732956596,
+              "stopsAhead": 1,
+              "low": 6.452713550241682,
+              "baselineLow": 6.452713550241682,
+              "candidateLow": 6.452713550241682,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -33.596286376953124,
+              "at": 1789732956596,
+              "stopsAhead": 1,
+              "low": 6.452713550241682,
+              "baselineLow": 6.452713550241682,
+              "candidateLow": 6.452713550241682,
+              "changed": false
+            }
+          },
+          "changedOnly": {
+            "baseline": {},
+            "candidate": {}
+          }
+        },
+        {
+          "journeyId": "3:70719:70748",
+          "sourceId": 70719,
+          "sourceStop": 11,
+          "targetVisitId": 70748,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "targetClosestM": 5.750390822723858,
+          "bus": "306",
+          "day": "2026-09-18",
+          "pinnedAt": 1789734206831,
+          "departedAt": 1789734846885,
+          "targetArrivedAt": 1789734951909,
+          "legIds": [
+            65652,
+            65661,
+            65667
+          ],
+          "forecastRows": 268,
+          "targetDepartedAt": 1789735042200,
+          "targetHoldSec": 90.291,
+          "frames": 149,
+          "changedFrames": 132,
+          "maxRaiseSec": 120.55835141043599,
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": -1.4181005859375,
+              "at": 1789734946945,
+              "stopsAhead": 1,
+              "low": 3.5458994932416177,
+              "baselineLow": 3.5458994932416177,
+              "candidateLow": 3.5458994932416177,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -91.7091005859375,
+              "at": 1789734946945,
+              "stopsAhead": 1,
+              "low": 3.5458994932416177,
+              "baselineLow": 3.5458994932416177,
+              "candidateLow": 3.5458994932416177,
+              "changed": false
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": -1.4181005859375,
+              "at": 1789734946945,
+              "stopsAhead": 1,
+              "low": 3.5458994932416177,
+              "baselineLow": 3.5458994932416177,
+              "candidateLow": 3.5458994932416177,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -91.7091005859375,
+              "at": 1789734946945,
+              "stopsAhead": 1,
+              "low": 3.5458994932416177,
+              "baselineLow": 3.5458994932416177,
+              "candidateLow": 3.5458994932416177,
+              "changed": false
+            }
+          },
+          "changedOnly": {
+            "baseline": {
+              "arrivalExcessSec": {
+                "value": -66.04534790039062,
+                "at": 1789734866911,
+                "stopsAhead": 2,
+                "low": 18.952652179253583,
+                "baselineLow": 18.952652179253583,
+                "candidateLow": 26.502234758314387,
+                "changed": true
+              },
+              "departureExcessSec": {
+                "value": -156.33634790039062,
+                "at": 1789734866911,
+                "stopsAhead": 2,
+                "low": 18.952652179253583,
+                "baselineLow": 18.952652179253583,
+                "candidateLow": 26.502234758314387,
+                "changed": true
+              }
+            },
+            "candidate": {
+              "arrivalExcessSec": {
+                "value": -58.49576513671875,
+                "at": 1789734866911,
+                "stopsAhead": 2,
+                "low": 26.502234758314387,
+                "baselineLow": 18.952652179253583,
+                "candidateLow": 26.502234758314387,
+                "changed": true
+              },
+              "departureExcessSec": {
+                "value": -148.78676513671874,
+                "at": 1789734866911,
+                "stopsAhead": 2,
+                "low": 26.502234758314387,
+                "baselineLow": 18.952652179253583,
+                "candidateLow": 26.502234758314387,
+                "changed": true
+              }
+            }
+          }
+        },
+        {
+          "journeyId": "3:70813:70831",
+          "sourceId": 70813,
+          "sourceStop": 11,
+          "targetVisitId": 70831,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "targetClosestM": 10.49794560895091,
+          "bus": "316",
+          "day": "2026-09-18",
+          "pinnedAt": 1789735306933,
+          "departedAt": 1789735606974,
+          "targetArrivedAt": 1789735672034,
+          "legIds": [
+            65740,
+            65743,
+            65748
+          ],
+          "forecastRows": 193,
+          "targetDepartedAt": 1789735721981,
+          "targetHoldSec": 49.947,
+          "frames": 73,
+          "changedFrames": 64,
+          "maxRaiseSec": 81.49059496849061,
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": -2.0897421875,
+              "at": 1789735666965,
+              "stopsAhead": 1,
+              "low": 2.9792578756968213,
+              "baselineLow": 2.9792578756968213,
+              "candidateLow": 2.9792578756968213,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -52.0367421875,
+              "at": 1789735666965,
+              "stopsAhead": 1,
+              "low": 2.9792578756968213,
+              "baselineLow": 2.9792578756968213,
+              "candidateLow": 2.9792578756968213,
+              "changed": false
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": -2.0897421875,
+              "at": 1789735666965,
+              "stopsAhead": 1,
+              "low": 2.9792578756968213,
+              "baselineLow": 2.9792578756968213,
+              "candidateLow": 2.9792578756968213,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -52.0367421875,
+              "at": 1789735666965,
+              "stopsAhead": 1,
+              "low": 2.9792578756968213,
+              "baselineLow": 2.9792578756968213,
+              "candidateLow": 2.9792578756968213,
+              "changed": false
+            }
+          },
+          "changedOnly": {
+            "baseline": {
+              "arrivalExcessSec": {
+                "value": -29.306900146484374,
+                "at": 1789735626964,
+                "stopsAhead": 2,
+                "low": 15.763099827503833,
+                "baselineLow": 15.763099827503833,
+                "candidateLow": 36.27226947824286,
+                "changed": true
+              },
+              "departureExcessSec": {
+                "value": -79.25390014648437,
+                "at": 1789735626964,
+                "stopsAhead": 2,
+                "low": 15.763099827503833,
+                "baselineLow": 15.763099827503833,
+                "candidateLow": 36.27226947824286,
+                "changed": true
+              }
+            },
+            "candidate": {
+              "arrivalExcessSec": {
+                "value": -7.84025537109375,
+                "at": 1789735616982,
+                "stopsAhead": 3,
+                "low": 47.211744600474496,
+                "baselineLow": 18.60606116781714,
+                "candidateLow": 47.211744600474496,
+                "changed": true
+              },
+              "departureExcessSec": {
+                "value": -57.78725537109375,
+                "at": 1789735616982,
+                "stopsAhead": 3,
+                "low": 47.211744600474496,
+                "baselineLow": 18.60606116781714,
+                "candidateLow": 47.211744600474496,
+                "changed": true
+              }
+            }
+          }
+        },
+        {
+          "journeyId": "3:70927:70954",
+          "sourceId": 70927,
+          "sourceStop": 11,
+          "targetVisitId": 70954,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "targetClosestM": 4.330585515353788,
+          "bus": "309",
+          "day": "2026-09-18",
+          "pinnedAt": 1789735682156,
+          "departedAt": 1789736432044,
+          "targetArrivedAt": 1789736492184,
+          "legIds": [
+            65855,
+            65857,
+            65864
+          ],
+          "forecastRows": 281,
+          "targetDepartedAt": 1789736552060,
+          "targetHoldSec": 59.876,
+          "frames": 162,
+          "changedFrames": 154,
+          "maxRaiseSec": 142.15067233648185,
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": 0.515765380859375,
+              "at": 1789736487045,
+              "stopsAhead": 1,
+              "low": 5.6547654376161685,
+              "baselineLow": 5.6547654376161685,
+              "candidateLow": 5.6547654376161685,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -59.36023461914063,
+              "at": 1789736487045,
+              "stopsAhead": 1,
+              "low": 5.6547654376161685,
+              "baselineLow": 5.6547654376161685,
+              "candidateLow": 5.6547654376161685,
+              "changed": false
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": 3.232676025390625,
+              "at": 1789736442051,
+              "stopsAhead": 3,
+              "low": 53.36567591652948,
+              "baselineLow": 1.6149465458724417,
+              "candidateLow": 53.36567591652948,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -56.64332397460937,
+              "at": 1789736442051,
+              "stopsAhead": 3,
+              "low": 53.36567591652948,
+              "baselineLow": 1.6149465458724417,
+              "candidateLow": 53.36567591652948,
+              "changed": true
+            }
+          },
+          "changedOnly": {
+            "baseline": {
+              "arrivalExcessSec": {
+                "value": -41.94213037109375,
+                "at": 1789736447041,
+                "stopsAhead": 3,
+                "low": 3.200869545469079,
+                "baselineLow": 3.200869545469079,
+                "candidateLow": 47.02152065698391,
+                "changed": true
+              },
+              "departureExcessSec": {
+                "value": -101.81813037109374,
+                "at": 1789736447041,
+                "stopsAhead": 3,
+                "low": 3.200869545469079,
+                "baselineLow": 3.200869545469079,
+                "candidateLow": 47.02152065698391,
+                "changed": true
+              }
+            },
+            "candidate": {
+              "arrivalExcessSec": {
+                "value": 3.232676025390625,
+                "at": 1789736442051,
+                "stopsAhead": 3,
+                "low": 53.36567591652948,
+                "baselineLow": 1.6149465458724417,
+                "candidateLow": 53.36567591652948,
+                "changed": true
+              },
+              "departureExcessSec": {
+                "value": -56.64332397460937,
+                "at": 1789736442051,
+                "stopsAhead": 3,
+                "low": 53.36567591652948,
+                "baselineLow": 1.6149465458724417,
+                "candidateLow": 53.36567591652948,
+                "changed": true
+              }
+            }
+          }
+        },
+        {
+          "journeyId": "3:71209:71228",
+          "sourceId": 71209,
+          "sourceStop": 11,
+          "targetVisitId": 71228,
+          "target": 48,
+          "targetOutcome": "stopped",
+          "targetClosestM": 14.118986558507777,
+          "bus": "306",
+          "day": "2026-09-18",
+          "pinnedAt": 1789737842274,
+          "departedAt": 1789738397251,
+          "targetArrivedAt": 1789738482272,
+          "legIds": [
+            66130,
+            66131,
+            66137
+          ],
+          "forecastRows": 247,
+          "targetDepartedAt": 1789738527260,
+          "targetHoldSec": 44.988,
+          "frames": 128,
+          "changedFrames": 115,
+          "maxRaiseSec": 91.34488916941191,
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": -2.1608818359375,
+              "at": 1789738477322,
+              "stopsAhead": 1,
+              "low": 2.7891181373242,
+              "baselineLow": 2.7891181373242,
+              "candidateLow": 2.7891181373242,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -47.1488818359375,
+              "at": 1789738477322,
+              "stopsAhead": 1,
+              "low": 2.7891181373242,
+              "baselineLow": 2.7891181373242,
+              "candidateLow": 2.7891181373242,
+              "changed": false
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": -2.1608818359375,
+              "at": 1789738477322,
+              "stopsAhead": 1,
+              "low": 2.7891181373242,
+              "baselineLow": 2.7891181373242,
+              "candidateLow": 2.7891181373242,
+              "changed": false
+            },
+            "departureExcessSec": {
+              "value": -47.1488818359375,
+              "at": 1789738477322,
+              "stopsAhead": 1,
+              "low": 2.7891181373242,
+              "baselineLow": 2.7891181373242,
+              "candidateLow": 2.7891181373242,
+              "changed": false
+            }
+          },
+          "changedOnly": {
+            "baseline": {
+              "arrivalExcessSec": {
+                "value": -44.41412255859375,
+                "at": 1789738422241,
+                "stopsAhead": 2,
+                "low": 15.616877379482334,
+                "baselineLow": 15.616877379482334,
+                "candidateLow": 27.496107323024205,
+                "changed": true
+              },
+              "departureExcessSec": {
+                "value": -89.40212255859375,
+                "at": 1789738422241,
+                "stopsAhead": 2,
+                "low": 15.616877379482334,
+                "baselineLow": 15.616877379482334,
+                "candidateLow": 27.496107323024205,
+                "changed": true
+              }
+            },
+            "candidate": {
+              "arrivalExcessSec": {
+                "value": -32.534892578125,
+                "at": 1789738422241,
+                "stopsAhead": 2,
+                "low": 27.496107323024205,
+                "baselineLow": 15.616877379482334,
+                "candidateLow": 27.496107323024205,
+                "changed": true
+              },
+              "departureExcessSec": {
+                "value": -77.522892578125,
+                "at": 1789738422241,
+                "stopsAhead": 2,
+                "low": 27.496107323024205,
+                "baselineLow": 15.616877379482334,
+                "candidateLow": 27.496107323024205,
+                "changed": true
+              }
+            }
+          }
+        }
+      ],
+      "excludedNextLapOnlyRows": [],
+      "unknownTargetDepartureVisits": []
+    }
+  ],
+  "_publication": {
+    "originalSource": "red-lower-data-2026-09-18/independent-continuous.json",
+    "originalSha256": "7074e66435cda0781bf02457fbb2a48fcf0e3a6e48a6c48991fb9d4ec91de8ae",
+    "omittedArrays": [
+      {
+        "path": "data[0].journeys",
+        "items": 63,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

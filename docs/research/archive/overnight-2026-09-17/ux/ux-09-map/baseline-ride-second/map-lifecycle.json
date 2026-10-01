@@ -1,0 +1,22 @@
+{
+  "scope": "Built SPA, real browser clock, synthetic current wire; all network intercepted",
+  "desktop": false,
+  "scenarios": [
+    {
+      "name": "ride",
+      "iterations": 1,
+      "checks": [
+        "Settled keyboard zoom and pan remain functional"
+      ]
+    }
+  ],
+  "errors": [
+    "Cannot read properties of undefined (reading '_leaflet_pos')"
+  ],
+  "errorStacks": [
+    "TypeError: Cannot read properties of undefined (reading '_leaflet_pos')\n    at Ke (https://map-lifecycle.test/assets/rider-CxadgW4T.js:4:22074)\n    at n._getMapPanePos (https://map-lifecycle.test/assets/rider-CxadgW4T.js:4:44398)\n    at n._getNewPixelOrigin (https://map-lifecycle.test/assets/rider-CxadgW4T.js:4:44763)\n    at n._move (https://map-lifecycle.test/assets/rider-CxadgW4T.js:4:41084)\n    at n._onZoomTransitionEnd (https://map-lifecycle.test/assets/rider-CxadgW4T.js:4:48420)"
+  ],
+  "requests": 1,
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- region \"Finish your trip\":\n  - text: Ride ended\n  - paragraph: Continue to Fixture final destination\n  - link \"🚶 Walking directions · Google Maps\":\n    - /url: https://www.google.com/maps/dir/?api=1&destination=41.310836,-72.924148&travelmode=walking\n  - button \"Find another shuttle\"\n  - button \"Dismiss\"\n- combobox \"To\"\n- status: 🚌 2 shuttles reporting on 1 route\n- text: Pick a destination — we compare walking against every shuttle.\n- button \"Union Station\"\n- button \"Med School (Cedar St)\"\n- button \"Science Hill\"\n- button \"Peabody Museum\"\n- button \"Payne Whitney Gym\"\n- button \"Old Campus\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+  "resourcesClosed": true
+}

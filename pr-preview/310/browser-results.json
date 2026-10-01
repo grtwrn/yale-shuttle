@@ -1,0 +1,29 @@
+{
+  "errors": [],
+  "runs": [
+    {
+      "width": 320,
+      "explicitQuery": true,
+      "resultNotice": true,
+      "selectedAndRestored": true,
+      "fromAndTo": true,
+      "unrelatedQueriesClear": true,
+      "liveHamdenOverview": true,
+      "detailsRetainAlert": true,
+      "alertRemoval": true,
+      "noBusFallback": true
+    },
+    {
+      "width": 390,
+      "explicitQuery": true,
+      "resultNotice": true,
+      "selectedAndRestored": true,
+      "fromAndTo": true,
+      "unrelatedQueriesClear": true,
+      "liveHamdenOverview": true,
+      "detailsRetainAlert": true,
+      "alertRemoval": true,
+      "noBusFallback": true
+    }
+  ]
+}

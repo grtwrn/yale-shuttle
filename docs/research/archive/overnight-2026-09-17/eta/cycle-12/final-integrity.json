@@ -1,0 +1,57 @@
+{
+  "head": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "checkoutAndIndexClean": true,
+  "appChanges": 0,
+  "patchesApply": true,
+  "virtualTypechecks": 2,
+  "artifactTests": 9,
+  "newScreenshots": 0,
+  "combinedImageFiles": 234,
+  "combinedImageBytes": 11341460,
+  "historicalVerification": {
+    "preservedCases": 38,
+    "exactHistoricalLegUses": 1410,
+    "scored": 32,
+    "unknown": 6,
+    "originalOutcomesPreserved": 1400,
+    "priorRegressionSec": 442.82701916224846,
+    "occurrences": {
+      "pickup-1": {
+        "total": 38,
+        "forecasts": 38,
+        "connectedOutcomes": 32,
+        "paired": 32,
+        "maeSec": 148.31731249999999
+      },
+      "destination-1": {
+        "total": 38,
+        "forecasts": 38,
+        "connectedOutcomes": 32,
+        "paired": 32,
+        "maeSec": 203.21234375
+      },
+      "pickup-2": {
+        "total": 38,
+        "forecasts": 38,
+        "connectedOutcomes": 30,
+        "paired": 30,
+        "maeSec": 332.8430000000001
+      },
+      "destination-2": {
+        "total": 38,
+        "forecasts": 10,
+        "connectedOutcomes": 16,
+        "paired": 5,
+        "maeSec": 194.34119999999984
+      }
+    },
+    "beforeFocalDeparture": {
+      "decisions": 18,
+      "sourceVisits": 3,
+      "meanDelaySec": 1715.3921666666665,
+      "minDelaySec": 935.0530000000001,
+      "maxDelaySec": 2006.8240000000003
+    },
+    "checkoutClean": true
+  }
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "sourceId": 64318,
+    "scoredCheckpoints": 11,
+    "unchanged": true,
+    "scope": "Exact unchanged full replay"
+  },
+  {
+    "sourceId": 58224,
+    "scoredCheckpoints": 22,
+    "unchanged": true,
+    "scope": "Exact unchanged full replay"
+  },
+  {
+    "sourceId": 65347,
+    "scoredCheckpoints": 28,
+    "unchanged": true,
+    "scope": "Exact unchanged full replay"
+  },
+  {
+    "sourceId": 48550,
+    "scoredCheckpoints": 0,
+    "unchanged": true,
+    "scope": "Not covered by this raw archive; previous valid audit retained, no exclusion or new verification claimed"
+  },
+  {
+    "sourceId": 67957,
+    "scoredCheckpoints": 26,
+    "unchanged": true,
+    "scope": "Exact unchanged full replay"
+  },
+  {
+    "sourceId": 68304,
+    "scoredCheckpoints": 24,
+    "unchanged": true,
+    "scope": "Exact unchanged full replay"
+  }
+]

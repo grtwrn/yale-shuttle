@@ -1,0 +1,27 @@
+{
+  "head": "6220b860a69f5567557926f41de59ed1af72d2f8",
+  "frames": 11081,
+  "emitted": 1172,
+  "rows": 160496,
+  "parity": 0,
+  "quantileParity": 0,
+  "names": [
+    "#308",
+    "#316",
+    "#309",
+    "#300"
+  ],
+  "gaps": [
+    {
+      "at": 1789556683166,
+      "gapMs": null
+    },
+    {
+      "at": 1789642866201,
+      "gapMs": 45035866
+    }
+  ],
+  "endAt": 1789657332981,
+  "elapsedSec": 178.93750284,
+  "provenance": "Actual recorded GPS; reconstructed collector clocks. Current code/historical causal calibration. Candidate future-traversal pooling identity guard; paired with preserved current-production wires."
+}

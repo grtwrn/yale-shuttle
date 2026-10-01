@@ -1,0 +1,16 @@
+{
+  "typechecks": [
+    {
+      "config": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/tsconfig.json",
+      "diagnostics": 0,
+      "sourceFiles": 713
+    },
+    {
+      "config": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/tsconfig.json",
+      "diagnostics": 0,
+      "sourceFiles": 456
+    }
+  ],
+  "loaded": [],
+  "built": false
+}

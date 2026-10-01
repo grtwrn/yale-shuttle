@@ -1,0 +1,227 @@
+{
+  "recordedAt": "2026-09-17T14:29:09.318Z",
+  "sourceHashes": {
+    "web/src/TransitMap.tsx": "cb1054716e41c855b2bd6bf87a8d3c4a26eda5e52d1226647f5cc31085f832e7",
+    "web/src/mapLabels.ts": "f431758f5dc7f06ea559294d12604c6230819a4840127f0929a3b2c0f450dfc7",
+    "scripts/__fixtures__/minimap-label-feed.json": "981007637c49fa120a999763362c82c15b6b08f01514b6b5a906da49732e018a",
+    "scripts/minimap-label-render.mjs": "e09412408ec64f557d870f9e61b42cffbc5515a9cf9afd69ce13bbbbeda65cd9"
+  },
+  "images": {
+    "option-00.png": "b9048eeed6c1656e1008148c6cf01bc60844158a322967adb4eaa49b09515a07",
+    "option-01.png": "d6d0eb0ed0984dd4d6a75fd0e5ac4d7f71ac140b64dc45c45e605a8f13614de6",
+    "option-02.png": "c3bb7c59c55bea7b33abd661383347e6eb229788880a683fe5aa11af08eb1b2c",
+    "option-03.png": "96996956edc049d12543789165a44269f5c836dc201ef408fe23063749a5522c",
+    "option-04.png": "00f679782aac04f6e008bb52f25bbc0ac780ad7508eed14b6c25c53f1bdba4fa",
+    "option-05.png": "a8a80759897360f9d0ec19a9f9b073c305906f0451c53cd7b4fc006cf9d77482",
+    "option-06.png": "ef31c3d560171dc9957e3c00f3d0f8cb8eb108df71210129a653951c3eb8665c",
+    "option-07.png": "b1d61c4fa7abaf5440116c0af1c790c0258859b62e81014faaef86423ad98962",
+    "option-08.png": "5085addbb712ea0ea50df6a55c41450a9059bb376d94bd15e616d94cd6a6839f",
+    "option-09.png": "6c900c1194542ad3529147b42a7cd18b78e148fa3550de10b4633a7eb28584f6",
+    "option-10.png": "6c941814d77c4b95d8734654aab6fb93a9b7f0663014bb8cc1fe7362fd0d4293"
+  },
+  "checks": [
+    {
+      "id": 0,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": true
+        },
+        {
+          "text": "Red #300 6:54/~5m",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": false
+        },
+        {
+          "text": "Red #300 6:54/~5m",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": true
+        },
+        {
+          "text": "Red #300 6:54/~5m",
+          "visible": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": true
+        },
+        {
+          "text": "R #300 6:54/~5m",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": true
+        },
+        {
+          "text": " 6:54/~5m",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 10:39a",
+          "visible": true
+        },
+        {
+          "text": "Red #300 6:54/~5m",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": false
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": true
+        },
+        {
+          "text": "Red #300 6:54/~5m",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": false
+        },
+        {
+          "text": "Red #300 6:54/~5m",
+          "visible": false
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": true
+        },
+        {
+          "text": "Red 6:54/~5m",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": true
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": true
+        },
+        {
+          "text": "Red #300 6:54/~5m",
+          "visible": false
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "geometryUnchanged": true,
+      "labels": [
+        {
+          "text": "🚌 (R) <1–11 min",
+          "visible": false
+        },
+        {
+          "text": "🏁 (R) 10:39a",
+          "visible": false
+        },
+        {
+          "text": "Red #300 6:54/~5m",
+          "visible": false
+        }
+      ]
+    }
+  ],
+  "dimensions": [
+    338,
+    318
+  ],
+  "errors": []
+}

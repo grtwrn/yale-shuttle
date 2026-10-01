@@ -1,0 +1,1753 @@
+{
+  "counts": {
+    "walking-caution": 1,
+    "synthetic-point-deadline": 4,
+    "visible-route-order": 1
+  },
+  "cases": [
+    {
+      "session": "60836:4:0",
+      "at": 1789587194113,
+      "changes": [
+        {
+          "routeLabel": "Blue Day",
+          "facts": [
+            {
+              "kind": "walking-caution",
+              "current": true,
+              "canonical": false
+            }
+          ],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Blue Day",
+            "color": "#1565C0",
+            "boardStopId": 47,
+            "alightStopId": 97,
+            "walkToSec": 424.78036817167373,
+            "waitSec": 168.21963182832627,
+            "rideSec": 950.0000001048247,
+            "plannedRideSec": 511.04496491716014,
+            "walkFromSec": 298.38662318619095,
+            "totalSec": 1841.3866232910157,
+            "busName": "44",
+            "directWalkSec": 1006.0079102854546,
+            "busEtaSec": 593,
+            "busDepartNowSec": 582,
+            "busLowSec": 418,
+            "busHighSec": 786,
+            "computedAtMs": 1789587194113,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587194113,
+              "countdown": {
+                "source": "forecast",
+                "busName": "44",
+                "stopId": 47,
+                "stopsAhead": 7,
+                "etaSec": 593,
+                "lowSec": 418,
+                "highSec": 786
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "44",
+                "stopId": 47,
+                "stopsAhead": 7,
+                "etaSec": 593,
+                "lowSec": 418,
+                "highSec": 786
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "44",
+              "pointMs": 1789589035499.6233,
+              "lowMs": 1789588758499.6233,
+              "highMs": 1789589349499.6233,
+              "catchRisk": true,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Blue Day",
+            "color": "#1565C0",
+            "boardStopId": 47,
+            "alightStopId": 97,
+            "walkToSec": 424.78036817167373,
+            "waitSec": 172.21963182832627,
+            "rideSec": 951.0000001048247,
+            "plannedRideSec": 511.04496491716014,
+            "walkFromSec": 298.38662318619095,
+            "totalSec": 1846.3866232910157,
+            "busName": "44",
+            "directWalkSec": 1006.0079102854546,
+            "busEtaSec": 597,
+            "busDepartNowSec": 582,
+            "busLowSec": 426,
+            "busHighSec": 790,
+            "computedAtMs": 1789587194113,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587194113,
+              "countdown": {
+                "source": "forecast",
+                "busName": "44",
+                "stopId": 47,
+                "stopsAhead": 7,
+                "etaSec": 597,
+                "lowSec": 426,
+                "highSec": 790
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "44",
+                "stopId": 47,
+                "stopsAhead": 7,
+                "etaSec": 597,
+                "lowSec": 426,
+                "highSec": 790
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "44",
+              "pointMs": 1789589040499.6233,
+              "lowMs": 1789588766499.6233,
+              "highMs": 1789589356499.6233,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "60836:4:0",
+            "at": 1789587194113,
+            "routeLabel": "Blue Day",
+            "boardStop": 47,
+            "targetStop": 97,
+            "status": "connected",
+            "predictedTotalSec": 1841.3866232910157,
+            "walkToSec": 424.78036817167373,
+            "walkFromSec": 298.38662318619095,
+            "bus": "44",
+            "route": 1,
+            "sourceId": 60742,
+            "chainEnd": "two-laps-complete",
+            "boardVisitId": 60803,
+            "boardOutcome": "stopped",
+            "boardDepartureAt": 1789587699195,
+            "targetVisitId": 60888,
+            "targetOutcome": "stopped",
+            "targetArrivalAt": 1789588264265,
+            "legIds": [
+              56319,
+              56323,
+              56331,
+              56338,
+              56341,
+              56353,
+              56356,
+              56364,
+              56370,
+              56376,
+              56378,
+              56387,
+              56393
+            ],
+            "pickupForecastHops": 7,
+            "destinationForecastHops": 20,
+            "arrivalPlusModeledEgressSec": 1368.538623186191,
+            "modelAccessBeforeRecordedDeparture": true,
+            "forecast": {
+              "busName": "44",
+              "pointMs": 1789589035499.6233,
+              "lowMs": 1789588758499.6233,
+              "highMs": 1789589349499.6233,
+              "catchRisk": true,
+              "estimated": false
+            },
+            "reason": "connected"
+          },
+          "canonicalOutcome": {
+            "session": "60836:4:0",
+            "at": 1789587194113,
+            "routeLabel": "Blue Day",
+            "boardStop": 47,
+            "targetStop": 97,
+            "status": "connected",
+            "predictedTotalSec": 1846.3866232910157,
+            "walkToSec": 424.78036817167373,
+            "walkFromSec": 298.38662318619095,
+            "bus": "44",
+            "route": 1,
+            "sourceId": 60742,
+            "chainEnd": "two-laps-complete",
+            "boardVisitId": 60803,
+            "boardOutcome": "stopped",
+            "boardDepartureAt": 1789587699195,
+            "targetVisitId": 60888,
+            "targetOutcome": "stopped",
+            "targetArrivalAt": 1789588264265,
+            "legIds": [
+              56319,
+              56323,
+              56331,
+              56338,
+              56341,
+              56353,
+              56356,
+              56364,
+              56370,
+              56376,
+              56378,
+              56387,
+              56393
+            ],
+            "pickupForecastHops": 7,
+            "destinationForecastHops": 20,
+            "arrivalPlusModeledEgressSec": 1368.538623186191,
+            "modelAccessBeforeRecordedDeparture": true,
+            "forecast": {
+              "busName": "44",
+              "pointMs": 1789589040499.6233,
+              "lowMs": 1789588766499.6233,
+              "highMs": 1789589356499.6233,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "reason": "connected"
+          }
+        }
+      ]
+    },
+    {
+      "session": "60836:4:0",
+      "at": 1789587209173,
+      "changes": [
+        {
+          "routeLabel": "Brown",
+          "facts": [
+            {
+              "kind": "synthetic-point-deadline",
+              "minutes": 30,
+              "currentPass": false,
+              "canonicalPass": true
+            }
+          ],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 145,
+            "alightStopId": 4,
+            "walkToSec": 135.04546243402916,
+            "waitSec": 757.9545375659709,
+            "rideSec": 908,
+            "plannedRideSec": 167.70789219091697,
+            "walkFromSec": 0,
+            "totalSec": 1801,
+            "busName": "126",
+            "directWalkSec": 1006.0079102854546,
+            "busEtaSec": 893,
+            "busDepartNowSec": 893,
+            "busLowSec": 664,
+            "busHighSec": 1223,
+            "computedAtMs": 1789587209173,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587209173,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 893,
+                "lowSec": 664,
+                "highSec": 1223
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 893,
+                "lowSec": 664,
+                "highSec": 1223
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789589010173,
+              "lowMs": 1789588412173,
+              "highMs": 1789589438173,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 145,
+            "alightStopId": 4,
+            "walkToSec": 135.04546243402916,
+            "waitSec": 756.9545375659709,
+            "rideSec": 908,
+            "plannedRideSec": 167.70789219091697,
+            "walkFromSec": 0,
+            "totalSec": 1800,
+            "busName": "126",
+            "directWalkSec": 1006.0079102854546,
+            "busEtaSec": 892,
+            "busDepartNowSec": 892,
+            "busLowSec": 663,
+            "busHighSec": 1223,
+            "computedAtMs": 1789587209173,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587209173,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 892,
+                "lowSec": 663,
+                "highSec": 1223
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 892,
+                "lowSec": 663,
+                "highSec": 1223
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789589009173,
+              "lowMs": 1789588411173,
+              "highMs": 1789589438173,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "60836:4:0",
+            "at": 1789587209173,
+            "routeLabel": "Brown",
+            "boardStop": 145,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 1801,
+            "walkToSec": 135.04546243402916,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 60733,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "reason": "pickup-chain-incomplete-or-skipped"
+          },
+          "canonicalOutcome": {
+            "session": "60836:4:0",
+            "at": 1789587209173,
+            "routeLabel": "Brown",
+            "boardStop": 145,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 1800,
+            "walkToSec": 135.04546243402916,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 60733,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "reason": "pickup-chain-incomplete-or-skipped"
+          }
+        }
+      ]
+    },
+    {
+      "session": "60836:4:150",
+      "at": 1789587209173,
+      "changes": [
+        {
+          "routeLabel": "Brown",
+          "facts": [
+            {
+              "kind": "synthetic-point-deadline",
+              "minutes": 30,
+              "currentPass": false,
+              "canonicalPass": true
+            }
+          ],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 145,
+            "alightStopId": 4,
+            "walkToSec": 185.3391154303042,
+            "waitSec": 707.6608845696958,
+            "rideSec": 908,
+            "plannedRideSec": 167.70789219091697,
+            "walkFromSec": 0,
+            "totalSec": 1801,
+            "busName": "126",
+            "directWalkSec": 1054.640417224021,
+            "busEtaSec": 893,
+            "busDepartNowSec": 893,
+            "busLowSec": 664,
+            "busHighSec": 1223,
+            "computedAtMs": 1789587209173,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587209173,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 893,
+                "lowSec": 664,
+                "highSec": 1223
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 893,
+                "lowSec": 664,
+                "highSec": 1223
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789589010173,
+              "lowMs": 1789588412173,
+              "highMs": 1789589438173,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 145,
+            "alightStopId": 4,
+            "walkToSec": 185.3391154303042,
+            "waitSec": 706.6608845696958,
+            "rideSec": 908,
+            "plannedRideSec": 167.70789219091697,
+            "walkFromSec": 0,
+            "totalSec": 1800,
+            "busName": "126",
+            "directWalkSec": 1054.640417224021,
+            "busEtaSec": 892,
+            "busDepartNowSec": 892,
+            "busLowSec": 663,
+            "busHighSec": 1223,
+            "computedAtMs": 1789587209173,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587209173,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 892,
+                "lowSec": 663,
+                "highSec": 1223
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 892,
+                "lowSec": 663,
+                "highSec": 1223
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789589009173,
+              "lowMs": 1789588411173,
+              "highMs": 1789589438173,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "60836:4:150",
+            "at": 1789587209173,
+            "routeLabel": "Brown",
+            "boardStop": 145,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 1801,
+            "walkToSec": 185.3391154303042,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 60733,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "reason": "pickup-chain-incomplete-or-skipped"
+          },
+          "canonicalOutcome": {
+            "session": "60836:4:150",
+            "at": 1789587209173,
+            "routeLabel": "Brown",
+            "boardStop": 145,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 1800,
+            "walkToSec": 185.3391154303042,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 60733,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "reason": "pickup-chain-incomplete-or-skipped"
+          }
+        }
+      ]
+    },
+    {
+      "session": "60836:4:0",
+      "at": 1789587214164,
+      "changes": [
+        {
+          "routeLabel": "Brown",
+          "facts": [
+            {
+              "kind": "synthetic-point-deadline",
+              "minutes": 30,
+              "currentPass": false,
+              "canonicalPass": true
+            }
+          ],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 145,
+            "alightStopId": 4,
+            "walkToSec": 135.04546243402916,
+            "waitSec": 757.9545375659709,
+            "rideSec": 908,
+            "plannedRideSec": 167.70789219091697,
+            "walkFromSec": 0,
+            "totalSec": 1801,
+            "busName": "126",
+            "directWalkSec": 1006.0079102854546,
+            "busEtaSec": 893,
+            "busDepartNowSec": 893,
+            "busLowSec": 664,
+            "busHighSec": 1223,
+            "computedAtMs": 1789587214164,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587214164,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 893,
+                "lowSec": 664,
+                "highSec": 1223
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 893,
+                "lowSec": 664,
+                "highSec": 1223
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789589015164,
+              "lowMs": 1789588417164,
+              "highMs": 1789589443164,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 145,
+            "alightStopId": 4,
+            "walkToSec": 135.04546243402916,
+            "waitSec": 756.9545375659709,
+            "rideSec": 908,
+            "plannedRideSec": 167.70789219091697,
+            "walkFromSec": 0,
+            "totalSec": 1800,
+            "busName": "126",
+            "directWalkSec": 1006.0079102854546,
+            "busEtaSec": 892,
+            "busDepartNowSec": 892,
+            "busLowSec": 663,
+            "busHighSec": 1223,
+            "computedAtMs": 1789587214164,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587214164,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 892,
+                "lowSec": 663,
+                "highSec": 1223
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 892,
+                "lowSec": 663,
+                "highSec": 1223
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789589014164,
+              "lowMs": 1789588416164,
+              "highMs": 1789589443164,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "60836:4:0",
+            "at": 1789587214164,
+            "routeLabel": "Brown",
+            "boardStop": 145,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 1801,
+            "walkToSec": 135.04546243402916,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 60733,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "reason": "pickup-chain-incomplete-or-skipped"
+          },
+          "canonicalOutcome": {
+            "session": "60836:4:0",
+            "at": 1789587214164,
+            "routeLabel": "Brown",
+            "boardStop": 145,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 1800,
+            "walkToSec": 135.04546243402916,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 60733,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "reason": "pickup-chain-incomplete-or-skipped"
+          }
+        }
+      ]
+    },
+    {
+      "session": "60836:4:150",
+      "at": 1789587214164,
+      "changes": [
+        {
+          "routeLabel": "Brown",
+          "facts": [
+            {
+              "kind": "synthetic-point-deadline",
+              "minutes": 30,
+              "currentPass": false,
+              "canonicalPass": true
+            }
+          ],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 145,
+            "alightStopId": 4,
+            "walkToSec": 185.3391154303042,
+            "waitSec": 707.6608845696958,
+            "rideSec": 908,
+            "plannedRideSec": 167.70789219091697,
+            "walkFromSec": 0,
+            "totalSec": 1801,
+            "busName": "126",
+            "directWalkSec": 1054.640417224021,
+            "busEtaSec": 893,
+            "busDepartNowSec": 893,
+            "busLowSec": 664,
+            "busHighSec": 1223,
+            "computedAtMs": 1789587214164,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587214164,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 893,
+                "lowSec": 664,
+                "highSec": 1223
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 893,
+                "lowSec": 664,
+                "highSec": 1223
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789589015164,
+              "lowMs": 1789588417164,
+              "highMs": 1789589443164,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 145,
+            "alightStopId": 4,
+            "walkToSec": 185.3391154303042,
+            "waitSec": 706.6608845696958,
+            "rideSec": 908,
+            "plannedRideSec": 167.70789219091697,
+            "walkFromSec": 0,
+            "totalSec": 1800,
+            "busName": "126",
+            "directWalkSec": 1054.640417224021,
+            "busEtaSec": 892,
+            "busDepartNowSec": 892,
+            "busLowSec": 663,
+            "busHighSec": 1223,
+            "computedAtMs": 1789587214164,
+            "livePickupSelection": {
+              "selectedAtMs": 1789587214164,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 892,
+                "lowSec": 663,
+                "highSec": 1223
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 145,
+                "stopsAhead": 4,
+                "etaSec": 892,
+                "lowSec": 663,
+                "highSec": 1223
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789589014164,
+              "lowMs": 1789588416164,
+              "highMs": 1789589443164,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "60836:4:150",
+            "at": 1789587214164,
+            "routeLabel": "Brown",
+            "boardStop": 145,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 1801,
+            "walkToSec": 185.3391154303042,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 60733,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "reason": "pickup-chain-incomplete-or-skipped"
+          },
+          "canonicalOutcome": {
+            "session": "60836:4:150",
+            "at": 1789587214164,
+            "routeLabel": "Brown",
+            "boardStop": 145,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 1800,
+            "walkToSec": 185.3391154303042,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 60733,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "reason": "pickup-chain-incomplete-or-skipped"
+          }
+        }
+      ]
+    },
+    {
+      "session": "61538:4:150",
+      "at": 1789593014852,
+      "changes": [
+        {
+          "kind": "visible-route-order",
+          "current": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown"
+          ],
+          "canonical": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day"
+          ]
+        },
+        {
+          "routeLabel": "Blue Day",
+          "facts": [],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Blue Day",
+            "color": "#1565C0",
+            "boardStopId": 43,
+            "alightStopId": 106,
+            "walkToSec": 551.5973366053981,
+            "waitSec": 890.4026633946019,
+            "rideSec": 1326.9999999744166,
+            "plannedRideSec": 333.7441726086949,
+            "walkFromSec": 64.68196535761463,
+            "totalSec": 2833.6819653320313,
+            "busName": "38",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 1442,
+            "busDepartNowSec": 1442,
+            "busLowSec": 1211,
+            "busHighSec": 1749,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "38",
+                "stopId": 43,
+                "stopsAhead": 18,
+                "etaSec": 1442,
+                "lowSec": 1211,
+                "highSec": 1749
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "38",
+                "stopId": 43,
+                "stopsAhead": 18,
+                "etaSec": 1442,
+                "lowSec": 1211,
+                "highSec": 1749
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "38",
+              "pointMs": 1789595848533.9653,
+              "lowMs": 1789595428533.9653,
+              "highMs": 1789596352533.9653,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false,
+            "missedBus": "46"
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Blue Day",
+            "color": "#1565C0",
+            "boardStopId": 43,
+            "alightStopId": 106,
+            "walkToSec": 551.5973366053981,
+            "waitSec": 890.4026633946019,
+            "rideSec": 1326.9999999744166,
+            "plannedRideSec": 333.7441726086949,
+            "walkFromSec": 64.68196535761463,
+            "totalSec": 2833.6819653320313,
+            "busName": "38",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 1442,
+            "busDepartNowSec": 1442,
+            "busLowSec": 1211,
+            "busHighSec": 1749,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "38",
+                "stopId": 43,
+                "stopsAhead": 18,
+                "etaSec": 1442,
+                "lowSec": 1211,
+                "highSec": 1749
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "38",
+                "stopId": 43,
+                "stopsAhead": 18,
+                "etaSec": 1442,
+                "lowSec": 1211,
+                "highSec": 1749
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "38",
+              "pointMs": 1789595848533.9653,
+              "lowMs": 1789595428533.9653,
+              "highMs": 1789596352533.9653,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false,
+            "missedBus": "46"
+          },
+          "currentOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Blue Day",
+            "boardStop": 43,
+            "targetStop": 106,
+            "status": "connected",
+            "predictedTotalSec": 2833.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "bus": "38",
+            "route": 1,
+            "sourceId": 61507,
+            "chainEnd": "gap-or-no-departure",
+            "boardVisitId": 61656,
+            "boardOutcome": "stopped",
+            "boardDepartureAt": 1789594214892,
+            "targetVisitId": 61743,
+            "targetOutcome": "stopped",
+            "targetArrivalAt": 1789594890058,
+            "legIds": [
+              57149,
+              57164,
+              57176,
+              57182,
+              57198,
+              57212,
+              57219,
+              57221
+            ],
+            "pickupForecastHops": 18,
+            "destinationForecastHops": 26,
+            "arrivalPlusModeledEgressSec": 1939.8879653576146,
+            "modelAccessBeforeRecordedDeparture": true,
+            "forecast": {
+              "busName": "38",
+              "pointMs": 1789595848533.9653,
+              "lowMs": 1789595428533.9653,
+              "highMs": 1789596352533.9653,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "reason": "connected"
+          },
+          "canonicalOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Blue Day",
+            "boardStop": 43,
+            "targetStop": 106,
+            "status": "connected",
+            "predictedTotalSec": 2833.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "bus": "38",
+            "route": 1,
+            "sourceId": 61507,
+            "chainEnd": "gap-or-no-departure",
+            "boardVisitId": 61656,
+            "boardOutcome": "stopped",
+            "boardDepartureAt": 1789594214892,
+            "targetVisitId": 61743,
+            "targetOutcome": "stopped",
+            "targetArrivalAt": 1789594890058,
+            "legIds": [
+              57149,
+              57164,
+              57176,
+              57182,
+              57198,
+              57212,
+              57219,
+              57221
+            ],
+            "pickupForecastHops": 18,
+            "destinationForecastHops": 26,
+            "arrivalPlusModeledEgressSec": 1939.8879653576146,
+            "modelAccessBeforeRecordedDeparture": true,
+            "forecast": {
+              "busName": "38",
+              "pointMs": 1789595848533.9653,
+              "lowMs": 1789595428533.9653,
+              "highMs": 1789596352533.9653,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "reason": "connected"
+          }
+        },
+        {
+          "routeLabel": "Orange Day",
+          "facts": [],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Orange Day",
+            "color": "#E65100",
+            "boardStopId": 43,
+            "alightStopId": 106,
+            "walkToSec": 551.5973366053981,
+            "waitSec": 1470.4026633946019,
+            "rideSec": 1341.9999999744166,
+            "plannedRideSec": 330.60833118120087,
+            "walkFromSec": 64.68196535761463,
+            "totalSec": 3428.6819653320313,
+            "busName": "58",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 409,
+            "busDepartNowSec": 409,
+            "busLowSec": 253,
+            "busHighSec": 588,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "58",
+                "stopId": 43,
+                "stopsAhead": 5,
+                "etaSec": 409,
+                "lowSec": 253,
+                "highSec": 588
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "51",
+                "stopId": 43,
+                "stopsAhead": 26,
+                "etaSec": 2022,
+                "lowSec": 1779,
+                "highSec": 2263
+              },
+              "relation": "different-bus"
+            },
+            "journeyArrival": {
+              "busName": "51",
+              "pointMs": 1789596443533.9653,
+              "lowMs": 1789595936533.9653,
+              "highMs": 1789597160533.9653,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Orange Day",
+            "color": "#E65100",
+            "boardStopId": 43,
+            "alightStopId": 106,
+            "walkToSec": 551.5973366053981,
+            "waitSec": 1499.4026633946019,
+            "rideSec": 1301.9999999744166,
+            "plannedRideSec": 330.60833118120087,
+            "walkFromSec": 64.68196535761463,
+            "totalSec": 3417.6819653320313,
+            "busName": "58",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 409,
+            "busDepartNowSec": 409,
+            "busLowSec": 253,
+            "busHighSec": 588,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "58",
+                "stopId": 43,
+                "stopsAhead": 5,
+                "etaSec": 409,
+                "lowSec": 253,
+                "highSec": 588
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "51",
+                "stopId": 43,
+                "stopsAhead": 27,
+                "etaSec": 2051,
+                "lowSec": 1784,
+                "highSec": 2288
+              },
+              "relation": "different-bus"
+            },
+            "journeyArrival": {
+              "busName": "51",
+              "pointMs": 1789596432533.9653,
+              "lowMs": 1789595963533.9653,
+              "highMs": 1789600623533.9653,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Orange Day",
+            "boardStop": 43,
+            "targetStop": 106,
+            "status": "connected",
+            "predictedTotalSec": 3428.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "bus": "51",
+            "route": 2,
+            "sourceId": 61505,
+            "chainEnd": "gap-or-no-departure",
+            "boardVisitId": 61744,
+            "boardOutcome": "stopped",
+            "boardDepartureAt": 1789594920105,
+            "targetVisitId": 61851,
+            "targetOutcome": "stopped",
+            "targetArrivalAt": 1789595600020,
+            "legIds": [
+              57231,
+              57264,
+              57279,
+              57281,
+              57301,
+              57312,
+              57327
+            ],
+            "pickupForecastHops": 26,
+            "destinationForecastHops": 33,
+            "arrivalPlusModeledEgressSec": 2649.8499653576146,
+            "modelAccessBeforeRecordedDeparture": true,
+            "forecast": {
+              "busName": "51",
+              "pointMs": 1789596443533.9653,
+              "lowMs": 1789595936533.9653,
+              "highMs": 1789597160533.9653,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "reason": "connected"
+          },
+          "canonicalOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Orange Day",
+            "boardStop": 43,
+            "targetStop": 106,
+            "status": "connected",
+            "predictedTotalSec": 3417.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "bus": "51",
+            "route": 2,
+            "sourceId": 61505,
+            "chainEnd": "gap-or-no-departure",
+            "boardVisitId": 61744,
+            "boardOutcome": "stopped",
+            "boardDepartureAt": 1789594920105,
+            "targetVisitId": 61851,
+            "targetOutcome": "stopped",
+            "targetArrivalAt": 1789595600020,
+            "legIds": [
+              57231,
+              57264,
+              57279,
+              57281,
+              57301,
+              57312,
+              57327
+            ],
+            "pickupForecastHops": 27,
+            "destinationForecastHops": 34,
+            "arrivalPlusModeledEgressSec": 2649.8499653576146,
+            "modelAccessBeforeRecordedDeparture": true,
+            "forecast": {
+              "busName": "51",
+              "pointMs": 1789596432533.9653,
+              "lowMs": 1789595963533.9653,
+              "highMs": 1789600623533.9653,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "reason": "connected"
+          }
+        },
+        {
+          "routeLabel": "Red",
+          "facts": [],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Red",
+            "color": "#C62828",
+            "boardStopId": 30,
+            "alightStopId": 3,
+            "walkToSec": 852.4589353260236,
+            "waitSec": 1027.5410646739765,
+            "rideSec": 645.0000001013631,
+            "plannedRideSec": 295.0451671439726,
+            "walkFromSec": 21.048394918168082,
+            "totalSec": 2546.048395019531,
+            "busName": "316",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 771,
+            "busDepartNowSec": 584,
+            "busLowSec": 458,
+            "busHighSec": 1069,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "316",
+                "stopId": 30,
+                "stopsAhead": 4,
+                "etaSec": 771,
+                "lowSec": 458,
+                "highSec": 1069
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "309",
+                "stopId": 30,
+                "stopsAhead": 16,
+                "etaSec": 1880,
+                "lowSec": 1642,
+                "highSec": 2186
+              },
+              "relation": "different-bus"
+            },
+            "journeyArrival": {
+              "busName": "309",
+              "pointMs": 1789595560900.395,
+              "lowMs": 1789595298900.395,
+              "highMs": 1789595898900.395,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Red",
+            "color": "#C62828",
+            "boardStopId": 30,
+            "alightStopId": 3,
+            "walkToSec": 852.4589353260236,
+            "waitSec": 1027.5410646739765,
+            "rideSec": 645.0000001013631,
+            "plannedRideSec": 295.0451671439726,
+            "walkFromSec": 21.048394918168082,
+            "totalSec": 2546.048395019531,
+            "busName": "316",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 773,
+            "busDepartNowSec": 584,
+            "busLowSec": 457,
+            "busHighSec": 1069,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "316",
+                "stopId": 30,
+                "stopsAhead": 4,
+                "etaSec": 773,
+                "lowSec": 457,
+                "highSec": 1069
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "309",
+                "stopId": 30,
+                "stopsAhead": 16,
+                "etaSec": 1880,
+                "lowSec": 1642,
+                "highSec": 2186
+              },
+              "relation": "different-bus"
+            },
+            "journeyArrival": {
+              "busName": "309",
+              "pointMs": 1789595560900.395,
+              "lowMs": 1789595298900.395,
+              "highMs": 1789595898900.395,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Red",
+            "boardStop": 30,
+            "targetStop": 3,
+            "status": "connected",
+            "predictedTotalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "bus": "309",
+            "route": 3,
+            "sourceId": 61512,
+            "chainEnd": "gap-or-no-departure",
+            "boardVisitId": 61781,
+            "boardOutcome": "passed",
+            "boardDepartureAt": 1789595169999,
+            "targetVisitId": 61868,
+            "targetOutcome": "passed",
+            "targetArrivalAt": 1789595760141,
+            "legIds": [
+              57267,
+              57292,
+              57311,
+              57320,
+              57326,
+              57339,
+              57344
+            ],
+            "pickupForecastHops": 16,
+            "destinationForecastHops": 23,
+            "arrivalPlusModeledEgressSec": 2766.3373949181682,
+            "modelAccessBeforeRecordedDeparture": true,
+            "forecast": {
+              "busName": "309",
+              "pointMs": 1789595560900.395,
+              "lowMs": 1789595298900.395,
+              "highMs": 1789595898900.395,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "reason": "connected"
+          },
+          "canonicalOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Red",
+            "boardStop": 30,
+            "targetStop": 3,
+            "status": "connected",
+            "predictedTotalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "bus": "309",
+            "route": 3,
+            "sourceId": 61512,
+            "chainEnd": "gap-or-no-departure",
+            "boardVisitId": 61781,
+            "boardOutcome": "passed",
+            "boardDepartureAt": 1789595169999,
+            "targetVisitId": 61868,
+            "targetOutcome": "passed",
+            "targetArrivalAt": 1789595760141,
+            "legIds": [
+              57267,
+              57292,
+              57311,
+              57320,
+              57326,
+              57339,
+              57344
+            ],
+            "pickupForecastHops": 16,
+            "destinationForecastHops": 23,
+            "arrivalPlusModeledEgressSec": 2766.3373949181682,
+            "modelAccessBeforeRecordedDeparture": true,
+            "forecast": {
+              "busName": "309",
+              "pointMs": 1789595560900.395,
+              "lowMs": 1789595298900.395,
+              "highMs": 1789595898900.395,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "reason": "connected"
+          }
+        },
+        {
+          "routeLabel": "Brown",
+          "facts": [],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 121,
+            "alightStopId": 4,
+            "walkToSec": 136.21042527965895,
+            "waitSec": 324.7895747203411,
+            "rideSec": 2516,
+            "plannedRideSec": 754.0360555088394,
+            "walkFromSec": 0,
+            "totalSec": 2977,
+            "busName": "126",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 461,
+            "busDepartNowSec": 461,
+            "busLowSec": 212,
+            "busHighSec": 871,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 121,
+                "stopsAhead": 2,
+                "etaSec": 461,
+                "lowSec": 212,
+                "highSec": 871
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 121,
+                "stopsAhead": 2,
+                "etaSec": 461,
+                "lowSec": 212,
+                "highSec": 871
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789595991852,
+              "lowMs": 1789595277852,
+              "highMs": 1789596704852,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Brown",
+            "color": "#795548",
+            "boardStopId": 121,
+            "alightStopId": 4,
+            "walkToSec": 136.21042527965895,
+            "waitSec": 324.7895747203411,
+            "rideSec": 2516,
+            "plannedRideSec": 754.0360555088394,
+            "walkFromSec": 0,
+            "totalSec": 2977,
+            "busName": "126",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 461,
+            "busDepartNowSec": 461,
+            "busLowSec": 212,
+            "busHighSec": 871,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 121,
+                "stopsAhead": 2,
+                "etaSec": 461,
+                "lowSec": 212,
+                "highSec": 871
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "126",
+                "stopId": 121,
+                "stopsAhead": 2,
+                "etaSec": 461,
+                "lowSec": 212,
+                "highSec": 871
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "126",
+              "pointMs": 1789595991852,
+              "lowMs": 1789595277852,
+              "highMs": 1789596704852,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Brown",
+            "boardStop": 121,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 2977,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 61511,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "boardVisitId": 61659,
+            "boardOutcome": "stopped",
+            "boardDepartureAt": 1789594240007,
+            "reason": "destination-chain-incomplete"
+          },
+          "canonicalOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Brown",
+            "boardStop": 121,
+            "targetStop": 4,
+            "status": "unresolved",
+            "predictedTotalSec": 2977,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "bus": "126",
+            "route": 19,
+            "sourceId": 61511,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "boardVisitId": 61659,
+            "boardOutcome": "stopped",
+            "boardDepartureAt": 1789594240007,
+            "reason": "destination-chain-incomplete"
+          }
+        },
+        {
+          "routeLabel": "Walk",
+          "facts": [],
+          "current": {
+            "mode": "walk",
+            "routeLabel": "Walk",
+            "color": "#546e7a",
+            "boardStopId": 0,
+            "alightStopId": 0,
+            "walkToSec": 1773.1793666819706,
+            "waitSec": 0,
+            "rideSec": 0,
+            "walkFromSec": 0,
+            "totalSec": 1773.1793666819706,
+            "busName": "",
+            "directWalkSec": 1773.1793666819706
+          },
+          "canonical": {
+            "mode": "walk",
+            "routeLabel": "Walk",
+            "color": "#546e7a",
+            "boardStopId": 0,
+            "alightStopId": 0,
+            "walkToSec": 1773.1793666819706,
+            "waitSec": 0,
+            "rideSec": 0,
+            "walkFromSec": 0,
+            "totalSec": 1773.1793666819706,
+            "busName": "",
+            "directWalkSec": 1773.1793666819706
+          },
+          "currentOutcome": null,
+          "canonicalOutcome": null
+        },
+        {
+          "routeLabel": "Gold",
+          "facts": [],
+          "current": {
+            "mode": "shuttle",
+            "routeLabel": "Gold",
+            "color": "#F9A825",
+            "boardStopId": 121,
+            "alightStopId": 156,
+            "walkToSec": 136.21042527965895,
+            "waitSec": 1818.789574720341,
+            "rideSec": 1637.9999999778724,
+            "plannedRideSec": 361.73889904898067,
+            "walkFromSec": 709.6880332252525,
+            "totalSec": 4302.688033203125,
+            "busName": "304",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 1955,
+            "busDepartNowSec": 1495,
+            "busLowSec": 1522,
+            "busHighSec": 2426,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "304",
+                "stopId": 121,
+                "stopsAhead": 10,
+                "etaSec": 1955,
+                "lowSec": 1522,
+                "highSec": 2426
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "304",
+                "stopId": 121,
+                "stopsAhead": 10,
+                "etaSec": 1955,
+                "lowSec": 1522,
+                "highSec": 2426
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "304",
+              "pointMs": 1789597317540.0332,
+              "lowMs": 1789596433540.0332,
+              "highMs": 1789598262540.0332,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "canonical": {
+            "mode": "shuttle",
+            "routeLabel": "Gold",
+            "color": "#F9A825",
+            "boardStopId": 121,
+            "alightStopId": 156,
+            "walkToSec": 136.21042527965895,
+            "waitSec": 1818.789574720341,
+            "rideSec": 1637.9999999778724,
+            "plannedRideSec": 361.73889904898067,
+            "walkFromSec": 709.6880332252525,
+            "totalSec": 4302.688033203125,
+            "busName": "304",
+            "directWalkSec": 1773.1793666819706,
+            "busEtaSec": 1955,
+            "busDepartNowSec": 1495,
+            "busLowSec": 1522,
+            "busHighSec": 2426,
+            "computedAtMs": 1789593014852,
+            "livePickupSelection": {
+              "selectedAtMs": 1789593014852,
+              "countdown": {
+                "source": "forecast",
+                "busName": "304",
+                "stopId": 121,
+                "stopsAhead": 10,
+                "etaSec": 1955,
+                "lowSec": 1522,
+                "highSec": 2426
+              },
+              "boarding": {
+                "source": "forecast",
+                "busName": "304",
+                "stopId": 121,
+                "stopsAhead": 10,
+                "etaSec": 1955,
+                "lowSec": 1522,
+                "highSec": 2426
+              },
+              "relation": "same-visit"
+            },
+            "journeyArrival": {
+              "busName": "304",
+              "pointMs": 1789597317540.0332,
+              "lowMs": 1789596433540.0332,
+              "highMs": 1789598262540.0332,
+              "catchRisk": false,
+              "estimated": false
+            },
+            "departed": false
+          },
+          "currentOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Gold",
+            "boardStop": 121,
+            "targetStop": 156,
+            "status": "unresolved",
+            "predictedTotalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "bus": "304",
+            "route": 15,
+            "sourceId": 61578,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "boardVisitId": 61767,
+            "boardOutcome": "passed",
+            "boardDepartureAt": 1789595084976,
+            "reason": "destination-chain-incomplete"
+          },
+          "canonicalOutcome": {
+            "session": "61538:4:150",
+            "at": 1789593014852,
+            "routeLabel": "Gold",
+            "boardStop": 121,
+            "targetStop": 156,
+            "status": "unresolved",
+            "predictedTotalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "bus": "304",
+            "route": 15,
+            "sourceId": 61578,
+            "chainEnd": "missing-or-ambiguous-leg",
+            "boardVisitId": 61767,
+            "boardOutcome": "passed",
+            "boardDepartureAt": 1789595084976,
+            "reason": "destination-chain-incomplete"
+          }
+        }
+      ]
+    }
+  ],
+  "limits": "All actual saved selector changes in fixed historical sessions. Synthetic deadlines and modeled walking are not observed preferences or physical boarding. Retain unresolved outcomes; these are not on-time probabilities."
+}

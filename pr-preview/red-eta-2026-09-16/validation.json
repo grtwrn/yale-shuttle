@@ -1,0 +1,27 @@
+{
+  "typecheck": "passed",
+  "frontendBuild": "passed",
+  "unitTests": {
+    "totalPassingAfterCorrections": 2605,
+    "fullRunPassed": 2586,
+    "fullRunFailed": 1,
+    "fullRunSuiteLoadErrors": 1,
+    "targetedRerun": {
+      "testsPassed": 49,
+      "files": [
+        "web/src/standWait.test.ts",
+        "src/server/serverEta.closure.test.ts"
+      ]
+    },
+    "note": "Full run followed by targeted reruns after fixing the outdated summary wiring guard and adding the shared ESM helper to Docker and the closure resolver.",
+    "finalCanaryRegression": {
+      "testsPassed": 167,
+      "files": [
+        "scripts/canary-metrics.test.mjs",
+        "scripts/eta-replay/rider-sim/lib.test.ts"
+      ]
+    }
+  },
+  "browserResults": "browser-results.json",
+  "liveDeployed": false
+}

@@ -1,0 +1,622 @@
+{
+  "method": "Exploratory same-stop Red interactions; old development data only.\nStop-zone arrival visibility = unconditional anchor+15s; departure = endpoint+5s+confirmation.\nThese are causal-availability approximations, not receipt-time reconstructions.\nCompleted and passed peer visits both count; no future peer outcome as a feature.\n",
+  "cutoff": 1789665240913,
+  "features": [
+    "earlier_peer_present",
+    "later_peer_present",
+    "peer_reached_last_120s",
+    "peer_left_last_120s"
+  ],
+  "fitBefore": 1789012800000,
+  "testAfter": 1789358400000,
+  "limitations": [
+    "Exploratory development replay, no reservedafternoon data.",
+    "Modern event times plus assumed visibility delays; not exact reception logs.",
+    "Co-presence is not proof drivers coordinate; elapsedwait/lap/clock controlled but traffic and unobserved dispatch confound.",
+    "Risk bins within visits are dependent; counts are not independent sample sizes.",
+    "Long waits and real short waits retained; single independently verified restart truncation follows original curated source."
+  ],
+  "results": [
+    {
+      "stop": 11,
+      "arms": {
+        "baseline": {
+          "coefficients": [
+            -4.84318155406899,
+            1.113796859448097,
+            0.24887737995692416,
+            0.03119145802134269,
+            0.061437860857291776,
+            1.3941096868028682,
+            0.030911025214648207,
+            1.280917789158273,
+            -0.18598936435460287
+          ],
+          "test": {
+            "bins": 2383,
+            "visits": 99,
+            "departures": 99,
+            "meanPredicted": 0.04284827514243815,
+            "eventRate": 0.04154427192614352,
+            "logLoss": 0.1326211858106021,
+            "brier": 0.035596362902430095
+          },
+          "testByDay": {
+            "2026-09-14": {
+              "bins": 739,
+              "visits": 28,
+              "departures": 28,
+              "meanPredicted": 0.035961093730653926,
+              "eventRate": 0.037889039242219216,
+              "logLoss": 0.131101458914184,
+              "brier": 0.03405675304274186
+            },
+            "2026-09-15": {
+              "bins": 502,
+              "visits": 21,
+              "departures": 21,
+              "meanPredicted": 0.042237915099653606,
+              "eventRate": 0.04183266932270916,
+              "logLoss": 0.12626955853494493,
+              "brier": 0.03447664162614847
+            },
+            "2026-09-16": {
+              "bins": 682,
+              "visits": 33,
+              "departures": 33,
+              "meanPredicted": 0.048313916867219,
+              "eventRate": 0.04838709677419355,
+              "logLoss": 0.14643839976186496,
+              "brier": 0.0406764470109901
+            },
+            "2026-09-17": {
+              "bins": 460,
+              "visits": 17,
+              "departures": 17,
+              "meanPredicted": 0.04647536242175519,
+              "eventRate": 0.03695652173913044,
+              "logLoss": 0.12150869701510562,
+              "brier": 0.031759959434962876
+            }
+          },
+          "exposedTest": {
+            "bins": 15,
+            "visits": 3,
+            "departures": 1,
+            "meanPredicted": 0.0521676399808277,
+            "eventRate": 0.06666666666666667,
+            "logLoss": 0.13202283139693088,
+            "brier": 0.04197157838166958
+          }
+        },
+        "peer_interactions": {
+          "coefficients": [
+            -4.8424220008557,
+            1.1129591170582223,
+            0.24859521756013644,
+            0.03129475285934889,
+            0.061458481431974216,
+            1.392136927240276,
+            0.03154831748071988,
+            1.2811429100644987,
+            -0.18534943571478044,
+            -0.010796601501629841,
+            0.0629573727408437,
+            -0.026536790879849583,
+            -0.04850150644450487
+          ],
+          "test": {
+            "bins": 2383,
+            "visits": 99,
+            "departures": 99,
+            "meanPredicted": 0.042838814659688286,
+            "eventRate": 0.04154427192614352,
+            "logLoss": 0.1326121688729378,
+            "brier": 0.0355941890755126
+          },
+          "testByDay": {
+            "2026-09-14": {
+              "bins": 739,
+              "visits": 28,
+              "departures": 28,
+              "meanPredicted": 0.035956948351736545,
+              "eventRate": 0.037889039242219216,
+              "logLoss": 0.1311051505388947,
+              "brier": 0.03405725386647677
+            },
+            "2026-09-15": {
+              "bins": 502,
+              "visits": 21,
+              "departures": 21,
+              "meanPredicted": 0.0422261926961808,
+              "eventRate": 0.04183266932270916,
+              "logLoss": 0.12627167211053855,
+              "brier": 0.03447779071799378
+            },
+            "2026-09-16": {
+              "bins": 682,
+              "visits": 33,
+              "departures": 33,
+              "meanPredicted": 0.0482978581342221,
+              "eventRate": 0.04838709677419355,
+              "logLoss": 0.14639814188319436,
+              "brier": 0.040666595827329025
+            },
+            "2026-09-17": {
+              "bins": 460,
+              "visits": 17,
+              "departures": 17,
+              "meanPredicted": 0.046469614176264475,
+              "eventRate": 0.03695652173913044,
+              "logLoss": 0.12151343480899705,
+              "brier": 0.031761244923802036
+            }
+          },
+          "exposedTest": {
+            "bins": 15,
+            "visits": 3,
+            "departures": 1,
+            "meanPredicted": 0.0522196328974315,
+            "eventRate": 0.06666666666666667,
+            "logLoss": 0.1299627269520128,
+            "brier": 0.041451203064842
+          }
+        }
+      },
+      "exposure": {
+        "earlier_peer_present": {
+          "train": {
+            "bins": 3,
+            "visits": 1,
+            "departures": 0,
+            "expectedUnderBaseline": 0.10857293418045239
+          },
+          "cal": {
+            "bins": 40,
+            "visits": 2,
+            "departures": 0,
+            "expectedUnderBaseline": 1.1885601992155195
+          },
+          "test": {
+            "bins": 4,
+            "visits": 1,
+            "departures": 0,
+            "expectedUnderBaseline": 0.05753417521451988
+          }
+        },
+        "later_peer_present": {
+          "train": {
+            "bins": 11,
+            "visits": 2,
+            "departures": 2,
+            "expectedUnderBaseline": 1.3272415689174466
+          },
+          "cal": {
+            "bins": 45,
+            "visits": 4,
+            "departures": 4,
+            "expectedUnderBaseline": 5.8240846317787405
+          },
+          "test": {
+            "bins": 2,
+            "visits": 1,
+            "departures": 1,
+            "expectedUnderBaseline": 0.468007072592825
+          }
+        },
+        "peer_reached_last_120s": {
+          "train": {
+            "bins": 10,
+            "visits": 2,
+            "departures": 1,
+            "expectedUnderBaseline": 1.227272130421514
+          },
+          "cal": {
+            "bins": 26,
+            "visits": 5,
+            "departures": 3,
+            "expectedUnderBaseline": 3.050555145439521
+          },
+          "test": {
+            "bins": 2,
+            "visits": 1,
+            "departures": 1,
+            "expectedUnderBaseline": 0.468007072592825
+          }
+        },
+        "peer_left_last_120s": {
+          "train": {
+            "bins": 19,
+            "visits": 3,
+            "departures": 0,
+            "expectedUnderBaseline": 0.5074798508108948
+          },
+          "cal": {
+            "bins": 18,
+            "visits": 4,
+            "departures": 1,
+            "expectedUnderBaseline": 0.3654423431682967
+          },
+          "test": {
+            "bins": 9,
+            "visits": 2,
+            "departures": 0,
+            "expectedUnderBaseline": 0.25697335190507065
+          }
+        }
+      }
+    },
+    {
+      "stop": 121,
+      "arms": {
+        "baseline": {
+          "coefficients": [
+            -4.681672400169744,
+            0.4387943770485712,
+            0.5752747316517823,
+            0.6796461549147959,
+            0.08513595706407696,
+            0.6930487012242215,
+            -0.04675418300732987,
+            1.3254050344062698,
+            1.1253022557234125
+          ],
+          "test": {
+            "bins": 2569,
+            "visits": 103,
+            "departures": 103,
+            "meanPredicted": 0.03684047110542555,
+            "eventRate": 0.04009342156481121,
+            "logLoss": 0.13523054830039277,
+            "brier": 0.0346990673634845
+          },
+          "testByDay": {
+            "2026-09-14": {
+              "bins": 879,
+              "visits": 29,
+              "departures": 29,
+              "meanPredicted": 0.0393186595659958,
+              "eventRate": 0.03299203640500569,
+              "logLoss": 0.11690239727666894,
+              "brier": 0.0295734020064341
+            },
+            "2026-09-15": {
+              "bins": 551,
+              "visits": 23,
+              "departures": 23,
+              "meanPredicted": 0.0341638606971906,
+              "eventRate": 0.041742286751361164,
+              "logLoss": 0.13248783275124706,
+              "brier": 0.03490199752567355
+            },
+            "2026-09-16": {
+              "bins": 751,
+              "visits": 33,
+              "departures": 33,
+              "meanPredicted": 0.03602920994940502,
+              "eventRate": 0.043941411451398134,
+              "logLoss": 0.1510908239140374,
+              "brier": 0.03811681072443679
+            },
+            "2026-09-17": {
+              "bins": 388,
+              "visits": 18,
+              "departures": 18,
+              "meanPredicted": 0.03659753761642457,
+              "eventRate": 0.04639175257731959,
+              "logLoss": 0.14994862570138628,
+              "brier": 0.03940762423308745
+            }
+          },
+          "exposedTest": {
+            "bins": 9,
+            "visits": 2,
+            "departures": 1,
+            "meanPredicted": 0.10760258310461995,
+            "eventRate": 0.1111111111111111,
+            "logLoss": 0.34726756153421195,
+            "brier": 0.09927245141777102
+          }
+        },
+        "peer_interactions": {
+          "coefficients": [
+            -4.673963527965493,
+            0.43281691808432815,
+            0.5722805465572662,
+            0.6789910866097266,
+            0.08635234395554572,
+            0.6814061912555807,
+            -0.04505380889260903,
+            1.3261724978248213,
+            1.1304860565289392,
+            0.03608713036067336,
+            0.06118250266530604,
+            0.1320503800796217,
+            -0.11997893791284496
+          ],
+          "test": {
+            "bins": 2569,
+            "visits": 103,
+            "departures": 103,
+            "meanPredicted": 0.03687035831425051,
+            "eventRate": 0.04009342156481121,
+            "logLoss": 0.13524772583093836,
+            "brier": 0.03470263616871404
+          },
+          "testByDay": {
+            "2026-09-14": {
+              "bins": 879,
+              "visits": 29,
+              "departures": 29,
+              "meanPredicted": 0.03928787689795721,
+              "eventRate": 0.03299203640500569,
+              "logLoss": 0.11689567569449472,
+              "brier": 0.02956694390256515
+            },
+            "2026-09-15": {
+              "bins": 551,
+              "visits": 23,
+              "departures": 23,
+              "meanPredicted": 0.03412355043088647,
+              "eventRate": 0.041742286751361164,
+              "logLoss": 0.1325061156910789,
+              "brier": 0.03490870876562219
+            },
+            "2026-09-16": {
+              "bins": 751,
+              "visits": 33,
+              "departures": 33,
+              "meanPredicted": 0.03620521267832344,
+              "eventRate": 0.043941411451398134,
+              "logLoss": 0.1511472805818957,
+              "brier": 0.03812987255249811
+            },
+            "2026-09-17": {
+              "bins": 388,
+              "visits": 18,
+              "departures": 18,
+              "meanPredicted": 0.03658174151331396,
+              "eventRate": 0.04639175257731959,
+              "logLoss": 0.14994234861193734,
+              "brier": 0.039411071675999214
+            }
+          },
+          "exposedTest": {
+            "bins": 9,
+            "visits": 2,
+            "departures": 1,
+            "meanPredicted": 0.12604581549254915,
+            "eventRate": 0.1111111111111111,
+            "logLoss": 0.348009686134003,
+            "brier": 0.09979286072288679
+          }
+        }
+      },
+      "exposure": {
+        "earlier_peer_present": {
+          "train": {
+            "bins": 22,
+            "visits": 5,
+            "departures": 1,
+            "expectedUnderBaseline": 0.5788789783276942
+          },
+          "cal": {
+            "bins": 19,
+            "visits": 2,
+            "departures": 0,
+            "expectedUnderBaseline": 0.23615278695990252
+          },
+          "test": {
+            "bins": 0,
+            "visits": 0,
+            "departures": 0,
+            "expectedUnderBaseline": 0.0
+          }
+        },
+        "later_peer_present": {
+          "train": {
+            "bins": 11,
+            "visits": 2,
+            "departures": 2,
+            "expectedUnderBaseline": 1.1836243612317563
+          },
+          "cal": {
+            "bins": 16,
+            "visits": 2,
+            "departures": 2,
+            "expectedUnderBaseline": 0.8625199078516419
+          },
+          "test": {
+            "bins": 8,
+            "visits": 1,
+            "departures": 1,
+            "expectedUnderBaseline": 0.9452803572941093
+          }
+        },
+        "peer_reached_last_120s": {
+          "train": {
+            "bins": 24,
+            "visits": 5,
+            "departures": 3,
+            "expectedUnderBaseline": 1.4317234921396804
+          },
+          "cal": {
+            "bins": 15,
+            "visits": 2,
+            "departures": 1,
+            "expectedUnderBaseline": 0.8505337646759207
+          },
+          "test": {
+            "bins": 8,
+            "visits": 1,
+            "departures": 1,
+            "expectedUnderBaseline": 0.9452803572941093
+          }
+        },
+        "peer_left_last_120s": {
+          "train": {
+            "bins": 58,
+            "visits": 9,
+            "departures": 0,
+            "expectedUnderBaseline": 1.33344384180581
+          },
+          "cal": {
+            "bins": 39,
+            "visits": 9,
+            "departures": 0,
+            "expectedUnderBaseline": 1.2305599864728194
+          },
+          "test": {
+            "bins": 1,
+            "visits": 1,
+            "departures": 0,
+            "expectedUnderBaseline": 0.023142890647470174
+          }
+        }
+      }
+    }
+  ],
+  "encounters": [
+    {
+      "stop": 11,
+      "earlierId": 782,
+      "laterId": 871,
+      "earlierBus": "#310",
+      "laterBus": "#316",
+      "metAt": 1788521685894,
+      "overlapSec": 15.061,
+      "earlierLeavesSecAfterMeet": 15.061,
+      "laterLeavesSecAfterMeet": 710.012,
+      "departureGapSec": 694.951,
+      "outcomes": [
+        "stopped",
+        "stopped"
+      ]
+    },
+    {
+      "stop": 11,
+      "earlierId": 38305,
+      "laterId": 38379,
+      "earlierBus": "#304",
+      "laterBus": "#310",
+      "metAt": 1789158102034,
+      "overlapSec": 85.088,
+      "earlierLeavesSecAfterMeet": 85.088,
+      "laterLeavesSecAfterMeet": 660.262,
+      "departureGapSec": 575.174,
+      "outcomes": [
+        "stopped",
+        "stopped"
+      ]
+    },
+    {
+      "stop": 11,
+      "earlierId": 38788,
+      "laterId": 38791,
+      "earlierBus": "#304",
+      "laterBus": "#310",
+      "metAt": 1789161857798,
+      "overlapSec": 450.046,
+      "earlierLeavesSecAfterMeet": 450.046,
+      "laterLeavesSecAfterMeet": 485.081,
+      "departureGapSec": 35.035,
+      "outcomes": [
+        "stopped",
+        "stopped"
+      ]
+    },
+    {
+      "stop": 11,
+      "earlierId": 60735,
+      "laterId": 60836,
+      "earlierBus": "#308",
+      "laterBus": "#316",
+      "metAt": 1789587164077,
+      "overlapSec": 30.036,
+      "earlierLeavesSecAfterMeet": 30.036,
+      "laterLeavesSecAfterMeet": 835.143,
+      "departureGapSec": 805.107,
+      "outcomes": [
+        "stopped",
+        "stopped"
+      ]
+    },
+    {
+      "stop": 121,
+      "earlierId": 622,
+      "laterId": 580,
+      "earlierBus": "#316",
+      "laterBus": "#310",
+      "metAt": 1788520145609,
+      "overlapSec": 15.009,
+      "earlierLeavesSecAfterMeet": 370.055,
+      "laterLeavesSecAfterMeet": 15.009,
+      "departureGapSec": 355.046,
+      "outcomes": [
+        "passed",
+        "stopped"
+      ]
+    },
+    {
+      "stop": 121,
+      "earlierId": 25316,
+      "laterId": 25385,
+      "earlierBus": "#119",
+      "laterBus": "#310",
+      "metAt": 1788980687237,
+      "overlapSec": 54.964,
+      "earlierLeavesSecAfterMeet": 54.964,
+      "laterLeavesSecAfterMeet": 615.089,
+      "departureGapSec": 560.125,
+      "outcomes": [
+        "stopped",
+        "stopped"
+      ]
+    },
+    {
+      "stop": 121,
+      "earlierId": 30054,
+      "laterId": 30141,
+      "earlierBus": "#316",
+      "laterBus": "#310",
+      "metAt": 1789053245554,
+      "overlapSec": 74.914,
+      "earlierLeavesSecAfterMeet": 74.914,
+      "laterLeavesSecAfterMeet": 910.049,
+      "departureGapSec": 835.135,
+      "outcomes": [
+        "stopped",
+        "stopped"
+      ]
+    },
+    {
+      "stop": 121,
+      "earlierId": 38520,
+      "laterId": 38549,
+      "earlierBus": "#304",
+      "laterBus": "#310",
+      "metAt": 1789159947699,
+      "overlapSec": 74.9,
+      "earlierLeavesSecAfterMeet": 74.9,
+      "laterLeavesSecAfterMeet": 419.931,
+      "departureGapSec": 345.031,
+      "outcomes": [
+        "stopped",
+        "stopped"
+      ]
+    }
+  ],
+  "_publication": {
+    "originalSource": "release-integration-data/co-presence-screen.json",
+    "originalSha256": "5393b7d794254a58e96bdb8ac0bf2631a51fe35bf3690969d1564e27f317a57d",
+    "omittedArrays": [
+      {
+        "path": "exposedEvents",
+        "items": 325,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

@@ -149,16 +149,41 @@ export function geocode(
  * the upstream name only have to agree after the noise is gone.
  */
 export function normalizeName(s: string): string {
+  return normalize(s, true);
+}
+
+/**
+ * The spaced reading, with every dot a space and every "&" an "and": how the
+ * matcher read names before stylised names were collapsed. Initials typed
+ * with dots need it — "t.d. college" is "t d college", whose tokens prefix
+ * "Timothy Dwight College"; collapsed to "td college" it matched nothing, as
+ * the "td" alias has no "college" (review of PR #341).
+ */
+function spacedName(s: string): string {
+  return normalize(s, false);
+}
+
+function normalize(s: string, collapse: boolean): string {
+  let t = s
+    .toLowerCase()
+    // Apostrophes are deleted, not collapsed to spaces: "Joe's" must equal
+    // "Joes", not "joe s" — a rider typing without the apostrophe found
+    // nothing (report #45), and the operator hit the same wall with
+    // "elenas" on 2026-09-02.
+    .replace(/['‘’]/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (collapse) {
+    // A dot or ampersand INSIDE a short stylised name is deleted: riders
+    // type "bbq" for "bb.q Chicken", "at&t" for "AT&T", "mt bank" for
+    // "M&T Bank" — and "h&k" must not become "h and k", two one-letter
+    // tokens that prefix-match AKW and Kroon. Only between runs of 1–3
+    // letters, so a spaced "Stop & Shop" and a long "Artist&Craftsman"
+    // still read as "and" (2026-09-30 search-gap audit).
+    t = t.replace(/(?<![a-z])([a-z]{1,3})[.&](?=[a-z]{1,3}(?![a-z]))/g, "$1");
+  }
   return (
-    s
-      .toLowerCase()
-      // Apostrophes are deleted, not collapsed to spaces: "Joe's" must equal
-      // "Joes", not "joe s" — a rider typing without the apostrophe found
-      // nothing (report #45), and the operator hit the same wall with
-      // "elenas" on 2026-09-02.
-      .replace(/['‘’]/g, "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
+    t
       // The upstream stop is "Stop & Shop"; riders type "stop and shop".
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, " ")
@@ -188,11 +213,19 @@ interface Query {
   stripped: string;
   /** Tokens the tiers below must account for, stopwords removed. */
   tokens: string[];
+  /** The spaced reading ({@link spacedName}), when it differs. */
+  spaced?: Query;
 }
 
 function parseQuery(raw: string): Query | null {
   const text = normalizeName(raw);
   if (text.length === 0) return null;
+  const q = queryOf(text);
+  const spaced = spacedName(raw);
+  return spaced === text ? q : { ...q, spaced: queryOf(spaced) };
+}
+
+function queryOf(text: string): Query {
   const all = text.split(" ");
   const meaningful = all.filter((t) => !STOPWORDS.has(t));
   // "new haven" alone is all stopwords; better to match on them than on
@@ -205,11 +238,15 @@ function parseQuery(raw: string): Query | null {
 interface Candidate {
   text: string;
   words: string[];
+  /** The spaced reading ({@link spacedName}), when it differs. */
+  spaced?: Candidate;
 }
 
 function candidate(name: string): Candidate {
   const text = normalizeName(name);
-  return { text, words: text.split(" ") };
+  const spaced = spacedName(name);
+  const c = { text, words: text.split(" ") };
+  return spaced === text ? c : { ...c, spaced: { text: spaced, words: spaced.split(" ") } };
 }
 
 // -- Scoring ------------------------------------------------------------------
@@ -247,7 +284,22 @@ export function relevanceOf(rawQuery: string, name: string): number {
   return q === null ? 0 : scoreMatch(q, candidate(name));
 }
 
+/**
+ * Both readings are scored and the better counts, so "bbq" finds "bb.q" and
+ * "t.d. college" still finds Timothy Dwight. When they disagree, the other
+ * reading breaks the tie (never a tier: it moves the score by under 0.01), so
+ * a place both readings find wins: "p&m" is the P&M market ("p and m", "pm
+ * market") before Pauli Murray ("pm" alone), and "at&t" is AT&T before
+ * Temple / Grove, which only the spaced reading's lone "t" prefixes.
+ */
 function scoreMatch(q: Query, c: Candidate): number {
+  const spaced = scoreForm(q.spaced ?? q, c.spaced ?? c);
+  const collapsed = scoreForm(q, c);
+  if (spaced === collapsed) return spaced;
+  return 0.99 * Math.max(spaced, collapsed) + 0.01 * Math.min(spaced, collapsed);
+}
+
+function scoreForm(q: Query, c: Candidate): number {
   const forms = q.stripped.length > 0 && q.stripped !== q.text ? [q.text, q.stripped] : [q.text];
   if (forms.some((f) => c.text === f)) return 1;
   if (forms.some((f) => c.text.startsWith(f))) return 0.75;

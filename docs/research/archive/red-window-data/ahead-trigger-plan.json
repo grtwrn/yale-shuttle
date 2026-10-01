@@ -1,0 +1,31 @@
+{
+  "createdAtUTC": "2026-09-18T00:25:22.373323+00:00",
+  "fitEnd": 1789012800000.0,
+  "calibrationEnd": 1789358400000.0,
+  "developmentEnd": 1789665240913,
+  "stepSec": 15,
+  "pulseWindowSec": 120,
+  "newCoefficientL2": 10,
+  "minFeatureTrainingEpisodes": 5,
+  "minFeatureTrainingDates": 2,
+  "arms": [
+    "baseline",
+    "predecessor_control",
+    "progress",
+    "arrival_pulses",
+    "clearance_pulses",
+    "joint"
+  ],
+  "regimes": [
+    "arrival15_clear30_proxy",
+    "completed120"
+  ],
+  "predecessor": "Most recently completed OTHER bus departure from same regulator, same local date, within preceding60min; completion+120s known before focal pin; identity latched throughout hold.",
+  "mainOutcome": "One-step departure hazard log loss per episode and Brier score, calibrated separately by intercept on Sep10-11.",
+  "exclusions": "Reuse existing valid completed focal hold cohort; only confirmed corruption65237 was excluded there. No residual-tail trimming. No records after developmentEnd.",
+  "predictionRestriction": "No forward survival/remaining-time calculation from realized future predecessor events.",
+  "negativeControl": "Events becoming observable during next120s, descriptive only; never predictor input.",
+  "arrivalProxy": "All recorded attributed visits including passes/unresolved: pin if available else anchor, plus15s. Proxy is not an exact event receipt log.",
+  "clearanceProxy": "Non-gap completed departure plus30s. Assumes confirmation by then; not exact receipt. Completed120 sensitivity uses max(departure+120s,first_moved+confirm_sec).",
+  "eventStudy": "Report every route stop, raw and baseline-expected event rates; do not select a winning stop from development results."
+}

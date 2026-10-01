@@ -1,0 +1,9 @@
+{
+  "createdAt": "2026-09-18T06:47:00.688846+00:00",
+  "task": "Resolve controller merge import conflict and verify combined ETA walking caution and UX trip identity",
+  "head": "0d0f34fa87f7d051d4c4419f04c83db13c0d4c72",
+  "mergeHead": "373505d5076f21a08de69d9587be9b2a55956642",
+  "resolution": "Keep atStopJourneyBoard and journeyArrival plus tripBusIdentity and TripBoardingActions imports; stage only conflicted TransitMap.tsx. Leave merge commit to controller.",
+  "constraints": "No new estimator or numerical changes, no fitting, no source-control publication, no other-team writes. Preserve historical regressions and all prior evidence.",
+  "verification": "Exact combined-source provenance; existing targeted ETA and UX tests; both typechecks; Vite; 4688 current-source decisions; prior at-stop/deadline/freshness browser cases; six caution boundaries; existing UX mobile/desktop identity and boarding harness."
+}

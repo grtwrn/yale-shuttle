@@ -1,0 +1,1415 @@
+{
+ "generatedAt": "2026-09-16T14:45:18.008Z",
+ "config": {
+  "captureFiles": [
+   "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/positions.jsonl"
+  ],
+  "REPLAY_DB": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/replay.db",
+  "CLIENT_ROOT": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-2026-09-16/services/shuttle-v2",
+  "PAYLOAD_PATCH": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/payload.json",
+  "POP": "uniform",
+  "EVERY_MS": 1200000,
+  "MAX_WAIT_MS": 2700000,
+  "SAMPLE_MS": 5000,
+  "CANARY_MS": 15000,
+  "CALIB_LAG_MS": 0,
+  "FROM": "2026-09-16T11:00:00Z",
+  "TO": "2026-09-16T13:40:00Z",
+  "DETECTOR_FROM": "2026-09-16T09:24:52.635Z"
+ },
+ "tree": {
+  "root": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-2026-09-16/services/shuttle-v2",
+  "head": "?",
+  "dirty": true,
+  "branch": "?",
+  "store": "eta",
+  "nextRule": "identity (#74)"
+ },
+ "data": {
+  "positions": 51812,
+  "polls": 3621,
+  "start": "2026-09-16T09:24:52.635Z",
+  "end": "2026-09-16T14:26:38.224Z"
+ },
+ "population": {
+  "focus": [
+   "Red"
+  ],
+  "holdout": [],
+  "chain": null,
+  "riders": 232,
+  "bySource": {
+   "uniform": 232,
+   "targeted": 0,
+   "chain": 0,
+   "named": 0
+  },
+  "skipped": {
+   "boardElsewhere": 29
+  }
+ },
+ "summary": {
+  "all": {
+   "waits": 203,
+   "arrived": 188,
+   "gaveUp": 3,
+   "dataEnded": 0,
+   "boardedOnArrival": 12,
+   "scored": 188,
+   "medianWaitMin": 10.8,
+   "p90WaitMin": 25.8,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 526.5,
+    "earlyOver60Pct": 12.2,
+    "lateOver60Pct": 14.9
+   },
+   "interval": {
+    "n": 188,
+    "insidePct": 66.5,
+    "earlyPct": 11.7,
+    "latePct": 21.8,
+    "medianWidthSec": 445.1
+   },
+   "pctJump180": 8,
+   "pctJump300": 1.6,
+   "pctReversal60": 12.8,
+   "pctStrand": 0,
+   "pctUnattributedStrand": 2.7,
+   "pctOvershoot": 10.6,
+   "pctPinChanged": 4.8,
+   "pctPinRight": 95.7,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 0.5,
+   "drops": 1,
+   "dropsDeclined": 0,
+   "dropsRepriced": 1,
+   "worstDrift": {
+    "p50": 10,
+    "p90": 171.5,
+    "max": 350
+   }
+  },
+  "byRoute": {
+   "Red": {
+    "waits": 203,
+    "arrived": 188,
+    "gaveUp": 3,
+    "dataEnded": 0,
+    "boardedOnArrival": 12,
+    "scored": 188,
+    "medianWaitMin": 10.8,
+    "p90WaitMin": 25.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 526.5,
+     "earlyOver60Pct": 12.2,
+     "lateOver60Pct": 14.9
+    },
+    "interval": {
+     "n": 188,
+     "insidePct": 66.5,
+     "earlyPct": 11.7,
+     "latePct": 21.8,
+     "medianWidthSec": 445.1
+    },
+    "pctJump180": 8,
+    "pctJump300": 1.6,
+    "pctReversal60": 12.8,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 2.7,
+    "pctOvershoot": 10.6,
+    "pctPinChanged": 4.8,
+    "pctPinRight": 95.7,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0.5,
+    "drops": 1,
+    "dropsDeclined": 0,
+    "dropsRepriced": 1,
+    "worstDrift": {
+     "p50": 10,
+     "p90": 171.5,
+     "max": 350
+    }
+   }
+  },
+  "worstStops": [
+   {
+    "key": "Red|115",
+    "label": "Red",
+    "stopId": 115,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|147",
+    "label": "Red",
+    "stopId": 147,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|27",
+    "label": "Red",
+    "stopId": 27,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|11",
+    "label": "Red",
+    "stopId": 11,
+    "waits": 5,
+    "pctJump180": 20,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|126",
+    "label": "Red",
+    "stopId": 126,
+    "waits": 6,
+    "pctJump180": 16.7,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|36",
+    "label": "Red",
+    "stopId": 36,
+    "waits": 6,
+    "pctJump180": 16.7,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|3",
+    "label": "Red",
+    "stopId": 3,
+    "waits": 7,
+    "pctJump180": 14.3,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|45",
+    "label": "Red",
+    "stopId": 45,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|75",
+    "label": "Red",
+    "stopId": 75,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|30",
+    "label": "Red",
+    "stopId": 30,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|31",
+    "label": "Red",
+    "stopId": 31,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|41",
+    "label": "Red",
+    "stopId": 41,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|128",
+    "label": "Red",
+    "stopId": 128,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|120",
+    "label": "Red",
+    "stopId": 120,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|38",
+    "label": "Red",
+    "stopId": 38,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   }
+  ],
+  "worstWaits": [
+   {
+    "id": "Red|115|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 115,
+    "worstDriftSec": 350,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 4-18, then 74 min | 11:00:08 in 3-18, then 74 min | 11:00:43 in 3-17, then 74 min | 11:00:48 in 2-17, then 73 min | 11:01:28 in 2-16, then 73 min | 11:01:38 in 9, 73 min | 11:01:53 in 9, 72 min | 11:02:08 in 1-5, then 65 min | 11:02:18 in 1-13, then 66 min | 11:02:23 in 2, 67 min | 11:02:33 now-13, then 69 min | 11:02:38 now-12, then 69 min | 11:02:48 now-11, then 69 min | 11:03:13 in 2, 67 min | 11:03:23 in 1, 64 min | 11:03:48 in 1, 63 min | 11:04:13 in <1, 63 min | 11:04:33 now, then 62 min"
+   },
+   {
+    "id": "Red|45|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 45,
+    "worstDriftSec": 350,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 7-21, then 78 min | 11:00:08 in 6-21, then 77 min | 11:00:18 in 6-20, then 77 min | 11:00:48 in 5-20, then 77 min | 11:00:58 in 5-20, then 76 min | 11:01:23 in 5-19, then 76 min | 11:01:38 in 4-19, then 76 min | 11:01:53 in 4-18, then 75 min | 11:02:08 in 3-9, then 68 min | 11:02:18 in 2-15, then 69 min | 11:02:23 in 5, 70 min | 11:02:33 in 7, 71 min | 11:02:38 now-15, then 71 min | 11:02:48 now-14, then 71 min | 11:03:13 in 6, 70 min | 11:03:23 in 2-7, then 67 min | 11:03:33 in 2-7, then 66 min | 11:03:38 in 1-7, then 66 min | 11:03:48 in 1-6, then 66 min | 11:04:23 in 1-6, then 65 min | 11:04:28 in 1-5, then 65 min | 11:04:33 in <1-5, then 65 min | 11:04:48 in <1-5, then 64 min | 11:04:58 in 1, 64 min | 11:05:03 in <1, 64 min | 11:05:18 in 1, 64 min | 11:06:23 in <1, 63 min | 11:07:03 in <1, 62 min | 11:07:38 now, then 62 min"
+   },
+   {
+    "id": "Red|120|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 120,
+    "worstDriftSec": 350,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 28, 91 min | 11:00:08 in 27, 90 min | 11:00:18 in 27, 89 min | 11:00:48 in 26, 89 min | 11:01:38 in 26, 88 min | 11:01:53 in 25, 88 min | 11:01:58 in 17-32, then 88 min | 11:02:08 in 14-24, then 81 min | 11:02:18 in 14-26, then 82 min | 11:02:23 in 19, 83 min | 11:02:33 in 21, 84 min | 11:02:53 in 13-28, then 84 min | 11:03:13 in 20, 83 min | 11:03:23 in 14-22, then 80 min | 11:03:33 in 13-21, then 80 min | 11:03:48 in 13-21, then 79 min | 11:04:23 in 12-20, then 78 min | 11:04:48 in 11-19, then 77 min | 11:04:58 in 11-18, then 77 min | 11:05:03 in 10-18, then 77 min | 11:05:18 in 11-19, then 77 min | 11:05:28 in 11-18, then 77 min | 11:06:23 in 10-18, then 76 min | 11:06:33 in 10-17, then 76 min | 11:06:48 in 10-17, then 75 min | 11:07:33 in 9-16, then 75 min | 11:07:58 in 9-16, then 74 min | 11:08:03 in 9-15, then 74 min | 11:08:43 in 8-14, then 73 min | 11:08:53 in 8-13, then 73 min | 11:09:03 in 7-13, then 73 min | 11:09:08 in 8-14, then 73 min | 11:09:23 in 8-15, then 73 min | 11:09:43 in 7-12, then 72 min | 11:10:03 in 7-13, then 72 min | 11:10:13 in 7-12, then 71 min | 11:10:28 in 6-12, then 71 min | 11:10:33 in 6-11, then 71 min | 11:10:53 in 5-11, then 70 min | 11:11:03 in 5-10, then 27 min | 11:11:23 in 5-10, then 26 min | 11:11:58 in 4-9, then 26 min | 11:12:23 in 4-8, then 26 min | 11:12:33 in 3-7, then 26 min | 11:12:53 in 3-7, then 25 min | 11:13:03 in 2-6, then 25 min | 11:13:48 in 1-6, then 22 min | 11:13:58 in 1-5, then 22 min | 11:14:23 in 1-4, then 22 min | 11:14:33 in <1-4, then 22 min | 11:15:03 in 2, 22 min | 11:15:13 in 1, 22 min | 11:16:08 in 1, 18 min | 11:16:23 in <1, 18 min | 11:16:53 in <1, 17 min | 11:17:28 now, then 17 min | 11:17:38 now, then 16 min"
+   },
+   {
+    "id": "Red|75|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 75,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 7-22, then 78 min | 11:00:08 in 7-21, then 78 min | 11:00:18 in 6-21, then 78 min | 11:00:43 in 6-21, then 77 min | 11:01:13 in 6-20, then 77 min | 11:01:28 in 5-20, then 77 min | 11:01:43 in 5-20, then 76 min | 11:01:53 in 4-19, then 75 min | 11:02:08 in 3-10, then 69 min | 11:02:18 in 3-15, then 70 min | 11:02:23 in 6, 71 min | 11:02:33 in 8, 72 min | 11:02:48 now-15, then 72 min | 11:03:08 in <1-15, then 72 min | 11:03:13 in 3-18, then 71 min | 11:03:23 in 2-8, then 68 min | 11:03:33 in 2-7, then 68 min | 11:03:38 in 2-8, then 67 min | 11:03:48 in 1-7, then 67 min | 11:04:23 in 1-7, then 66 min | 11:04:28 in 1-6, then 66 min | 11:04:48 in <1-5, then 65 min | 11:05:03 in 1, 65 min | 11:05:18 in <1-4, then 65 min | 11:05:28 now-4, then 65 min | 11:05:33 now-5, then 65 min | 11:05:43 in <1-5, then 65 min | 11:06:23 in 1, 64 min | 11:06:48 in 1, 63 min | 11:07:28 in <1, 63 min | 11:07:58 in <1, 62 min | 11:08:03 now, then 62 min"
+   },
+   {
+    "id": "Red|30|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 30,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 19, 82 min | 11:00:08 in 19, 81 min | 11:00:13 in 18, 81 min | 11:01:13 in 18, 80 min | 11:01:38 in 17, 80 min | 11:01:53 in 17, 79 min | 11:01:58 in 8-23, then 79 min | 11:02:08 in 6-15, then 73 min | 11:02:18 in 6-18, then 73 min | 11:02:23 in 6-21, then 75 min | 11:02:33 in 12, 76 min | 11:02:48 in 3-18, then 76 min | 11:03:08 in 4-18, then 76 min | 11:03:13 in 6-21, then 75 min | 11:03:23 in 5-13, then 72 min | 11:03:33 in 5-13, then 71 min | 11:03:48 in 5-12, then 71 min | 11:03:53 in 4-12, then 71 min | 11:04:13 in 4-12, then 70 min | 11:04:33 in 3-11, then 70 min | 11:04:48 in 3-10, then 69 min | 11:04:58 in 2-9, then 69 min | 11:05:03 in 2-8, then 68 min | 11:05:08 in 2-8, then 69 min | 11:05:18 in 2-9, then 68 min | 11:05:58 in 3-9, then 68 min | 11:06:23 in 2-8, then 68 min | 11:06:33 in 2-8, then 67 min | 11:07:28 in 1-8, then 67 min | 11:07:33 in 1-7, then 67 min | 11:07:48 in 1-7, then 66 min | 11:08:03 in 1-6, then 66 min | 11:08:13 in <1-6, then 66 min | 11:08:23 in 1-6, then 66 min | 11:08:33 in 1-6, then 65 min | 11:08:43 in <1-4, then 65 min | 11:08:53 in 1, 64 min | 11:09:08 in <1-4, then 65 min | 11:09:13 in <1-5, then 64 min | 11:09:28 now-5, then 64 min | 11:09:43 in 1, 64 min | 11:10:03 in 1, 63 min | 11:10:28 in <1, 63 min | 11:10:43 now, then 62 min"
+   },
+   {
+    "id": "Red|31|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 31,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 21, 84 min | 11:00:18 in 21, 83 min | 11:00:43 in 20, 83 min | 11:01:28 in 20, 82 min | 11:01:43 in 19, 82 min | 11:01:53 in 10-25, then 81 min | 11:02:08 in 8-17, then 75 min | 11:02:18 in 8-20, then 75 min | 11:02:23 in 8-23, then 76 min | 11:02:33 in 14, 78 min | 11:02:48 in 6-21, then 78 min | 11:03:08 in 7-21, then 78 min | 11:03:13 in 8-23, then 77 min | 11:03:23 in 8-15, then 74 min | 11:03:33 in 7-14, then 74 min | 11:03:48 in 7-14, then 73 min | 11:04:23 in 6-14, then 72 min | 11:04:43 in 5-13, then 72 min | 11:04:48 in 5-12, then 71 min | 11:04:58 in 4-12, then 71 min | 11:05:03 in 4-11, then 70 min | 11:05:18 in 4-12, then 70 min | 11:06:08 in 5-12, then 70 min | 11:06:18 in 4-12, then 70 min | 11:06:23 in 4-11, then 70 min | 11:06:33 in 3-10, then 69 min | 11:07:33 in 3-9, then 69 min | 11:07:48 in 3-9, then 68 min | 11:08:03 in 2-8, then 68 min | 11:08:43 in 2-7, then 67 min | 11:08:53 in 1-6, then 66 min | 11:09:08 in 1-7, then 67 min | 11:09:13 in 1-8, then 66 min | 11:09:43 in 1-5, then 66 min | 11:10:13 in 1-4, then 65 min | 11:10:33 in 2, 65 min | 11:10:53 in 1, 64 min | 11:11:03 in 1, 21 min | 11:11:23 in 1, 20 min | 11:11:58 in <1, 20 min | 11:12:23 now, then 20 min"
+   },
+   {
+    "id": "Red|41|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 41,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 23, 86 min | 11:00:08 in 23, 85 min | 11:00:43 in 22, 85 min | 11:01:13 in 22, 84 min | 11:01:23 in 22, 85 min | 11:01:28 in 22, 84 min | 11:01:43 in 21, 84 min | 11:01:53 in 12-27, then 83 min | 11:02:08 in 10-19, then 77 min | 11:02:18 in 10-22, then 78 min | 11:02:23 in 10-25, then 79 min | 11:02:33 in 16, 80 min | 11:02:48 in 8-23, then 80 min | 11:03:08 in 9-23, then 80 min | 11:03:13 in 10-25, then 79 min | 11:03:23 in 10-17, then 76 min | 11:03:33 in 9-17, then 75 min | 11:03:38 in 9-16, then 75 min | 11:04:23 in 8-15, then 74 min | 11:04:43 in 7-15, then 74 min | 11:04:48 in 7-14, then 73 min | 11:04:58 in 6-13, then 73 min | 11:05:03 in 6-13, then 72 min | 11:05:08 in 6-14, then 73 min | 11:05:33 in 7-14, then 73 min | 11:05:43 in 7-13, then 73 min | 11:05:58 in 7-14, then 73 min | 11:06:03 in 7-13, then 73 min | 11:06:18 in 7-13, then 72 min | 11:06:23 in 6-13, then 72 min | 11:06:33 in 5-13, then 72 min | 11:06:48 in 5-13, then 71 min | 11:07:33 in 5-12, then 71 min | 11:07:58 in 4-11, then 70 min | 11:08:43 in 3-9, then 69 min | 11:08:53 in 3-8, then 69 min | 11:09:08 in 3-9, then 69 min | 11:09:13 in 3-10, then 69 min | 11:09:43 in 3-8, then 68 min | 11:10:03 in 3-7, then 68 min | 11:10:13 in 3-7, then 67 min | 11:10:28 in 2-7, then 67 min | 11:10:43 in 2-6, then 67 min | 11:10:53 in 1-6, then 66 min | 11:11:03 in 1-5, then 23 min | 11:11:13 in 1-5, then 22 min | 11:11:58 in 1-4, then 22 min | 11:12:03 in <1-4, then 22 min | 11:12:23 in 2, 22 min | 11:12:33 in 1, 22 min | 11:12:43 in 1, 21 min | 11:12:53 in <1, 21 min | 11:13:38 now, then 21 min"
+   },
+   {
+    "id": "Red|126|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 126,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 25, 88 min | 11:00:08 in 24, 87 min | 11:00:13 in 24, 86 min | 11:00:58 in 23, 86 min | 11:01:38 in 23, 85 min | 11:01:53 in 22, 84 min | 11:01:58 in 14-29, then 84 min | 11:02:08 in 12-21, then 78 min | 11:02:18 in 11-23, then 79 min | 11:02:23 in 11-26, then 80 min | 11:02:33 in 18, 81 min | 11:02:48 in 9-24, then 81 min | 11:03:08 in 10-24, then 81 min | 11:03:13 in 17, 81 min | 11:03:23 in 11-18, then 77 min | 11:03:48 in 10-18, then 76 min | 11:04:13 in 10-17, then 76 min | 11:04:28 in 9-17, then 76 min | 11:04:33 in 9-16, then 75 min | 11:04:48 in 8-16, then 75 min | 11:04:58 in 8-15, then 75 min | 11:05:03 in 7-14, then 74 min | 11:05:08 in 8-15, then 74 min | 11:06:23 in 7-14, then 73 min | 11:07:28 in 7-13, then 72 min | 11:07:33 in 6-14, then 72 min | 11:07:58 in 6-13, then 72 min | 11:08:03 in 6-12, then 72 min | 11:08:13 in 5-12, then 72 min | 11:08:23 in 5-12, then 71 min | 11:08:43 in 5-11, then 70 min | 11:08:53 in 4-10, then 70 min | 11:09:08 in 4-11, then 70 min | 11:09:13 in 5-11, then 70 min | 11:09:23 in 4-11, then 70 min | 11:09:28 in 4-12, then 70 min | 11:09:33 in 4-11, then 70 min | 11:09:43 in 4-9, then 69 min | 11:10:28 in 4-8, then 69 min | 11:10:33 in 3-8, then 68 min | 11:10:43 in 3-7, then 68 min | 11:11:03 in 2-7, then 24 min | 11:11:33 in 2-7, then 23 min | 11:11:58 in 2-5, then 23 min | 11:12:13 in 1-5, then 23 min | 11:12:33 in 1-4, then 23 min | 11:12:43 in 2, 23 min | 11:12:53 in 2, 22 min | 11:13:03 in 1, 22 min | 11:13:48 in 1, 19 min | 11:13:58 in <1, 19 min | 11:14:23 now, then 19 min"
+   },
+   {
+    "id": "Red|36|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 36,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 25, 88 min | 11:00:08 in 25, 87 min | 11:00:43 in 24, 87 min | 11:01:28 in 24, 86 min | 11:01:43 in 23, 86 min | 11:01:53 in 23, 85 min | 11:02:08 in 12-22, then 79 min | 11:02:18 in 12-24, then 80 min | 11:02:23 in 12-27, then 81 min | 11:02:33 in 18, 82 min | 11:02:53 in 10-25, then 82 min | 11:03:08 in 11-25, then 82 min | 11:03:13 in 18, 81 min | 11:03:23 in 11-19, then 78 min | 11:03:33 in 11-19, then 77 min | 11:03:53 in 11-18, then 77 min | 11:04:23 in 10-18, then 76 min | 11:04:33 in 10-17, then 76 min | 11:04:48 in 9-16, then 75 min | 11:04:58 in 8-16, then 75 min | 11:05:03 in 8-15, then 75 min | 11:05:18 in 8-16, then 74 min | 11:05:28 in 9-16, then 74 min | 11:05:43 in 8-15, then 74 min | 11:06:03 in 8-16, then 74 min | 11:06:08 in 8-15, then 74 min | 11:06:33 in 8-14, then 74 min | 11:06:43 in 8-14, then 73 min | 11:07:28 in 7-14, then 73 min | 11:07:38 in 7-13, then 73 min | 11:07:48 in 7-14, then 73 min | 11:07:58 in 7-13, then 72 min | 11:08:03 in 6-13, then 72 min | 11:08:43 in 5-11, then 71 min | 11:08:53 in 5-10, then 71 min | 11:09:03 in 5-11, then 71 min | 11:09:13 in 5-12, then 71 min | 11:09:43 in 5-10, then 70 min | 11:10:13 in 4-9, then 69 min | 11:10:33 in 4-8, then 69 min | 11:10:43 in 4-8, then 68 min | 11:10:53 in 3-8, then 68 min | 11:11:03 in 3-7, then 25 min | 11:11:13 in 3-7, then 24 min | 11:11:58 in 2-6, then 24 min | 11:12:23 in 2-5, then 24 min | 11:12:33 in 1-5, then 24 min | 11:12:43 in 1-4, then 23 min | 11:13:03 in 2, 23 min | 11:13:38 in 1, 23 min | 11:13:48 in 1, 19 min | 11:14:18 in <1, 19 min | 11:15:03 now, then 19 min"
+   },
+   {
+    "id": "Red|128|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 128,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 26, 89 min | 11:00:08 in 26, 88 min | 11:00:13 in 25, 88 min | 11:00:58 in 25, 87 min | 11:01:28 in 24, 87 min | 11:01:53 in 15-30, then 86 min | 11:02:08 in 13-22, then 80 min | 11:02:18 in 13-25, then 80 min | 11:02:23 in 13-28, then 82 min | 11:02:33 in 19, 83 min | 11:02:48 in 11-26, then 83 min | 11:03:08 in 12-26, then 83 min | 11:03:13 in 13-28, then 82 min | 11:03:23 in 12-20, then 78 min | 11:03:48 in 12-19, then 78 min | 11:04:13 in 11-19, then 77 min | 11:04:23 in 11-18, then 77 min | 11:04:48 in 10-17, then 76 min | 11:04:58 in 9-16, then 76 min | 11:05:03 in 9-16, then 75 min | 11:05:18 in 9-17, then 75 min | 11:05:53 in 9-16, then 75 min | 11:06:33 in 9-15, then 74 min | 11:06:43 in 8-15, then 74 min | 11:07:33 in 8-14, then 73 min | 11:08:03 in 7-14, then 73 min | 11:08:13 in 7-13, then 73 min | 11:08:23 in 7-13, then 72 min | 11:08:43 in 6-12, then 72 min | 11:08:53 in 6-12, then 71 min | 11:09:13 in 6-13, then 71 min | 11:09:43 in 6-11, then 71 min | 11:10:03 in 6-11, then 70 min | 11:10:13 in 5-10, then 70 min | 11:10:33 in 5-9, then 69 min | 11:10:43 in 4-9, then 69 min | 11:11:03 in 4-8, then 25 min | 11:11:13 in 3-8, then 25 min | 11:11:58 in 3-7, then 25 min | 11:12:23 in 2-6, then 25 min | 11:12:33 in 2-6, then 24 min | 11:12:43 in 2-5, then 24 min | 11:13:03 in 1-4, then 24 min | 11:13:23 in 1-4, then 23 min | 11:13:48 in <1-4, then 20 min | 11:13:58 in 1, 20 min | 11:14:53 in <1, 20 min | 11:16:08 now, then 16 min"
+   }
+  ]
+ },
+ "summaryCanaryCadence": {
+  "all": {
+   "waits": 203,
+   "arrived": 188,
+   "gaveUp": 3,
+   "dataEnded": 0,
+   "boardedOnArrival": 12,
+   "scored": 188,
+   "medianWaitMin": 10.8,
+   "p90WaitMin": 25.8,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 526.5,
+    "earlyOver60Pct": 12.2,
+    "lateOver60Pct": 14.9
+   },
+   "interval": {
+    "n": 188,
+    "insidePct": 66.5,
+    "earlyPct": 11.7,
+    "latePct": 21.8,
+    "medianWidthSec": 445.1
+   },
+   "pctJump180": 12.2,
+   "pctJump300": 0.5,
+   "pctReversal60": 12.8,
+   "pctStrand": 0,
+   "pctUnattributedStrand": 2.7,
+   "pctOvershoot": 10.6,
+   "pctPinChanged": 4.8,
+   "pctPinRight": 95.7,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 0.5,
+   "drops": 1,
+   "dropsDeclined": 0,
+   "dropsRepriced": 1,
+   "worstDrift": {
+    "p50": 20,
+    "p90": 220,
+    "max": 340
+   }
+  },
+  "byRoute": {
+   "Red": {
+    "waits": 203,
+    "arrived": 188,
+    "gaveUp": 3,
+    "dataEnded": 0,
+    "boardedOnArrival": 12,
+    "scored": 188,
+    "medianWaitMin": 10.8,
+    "p90WaitMin": 25.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 526.5,
+     "earlyOver60Pct": 12.2,
+     "lateOver60Pct": 14.9
+    },
+    "interval": {
+     "n": 188,
+     "insidePct": 66.5,
+     "earlyPct": 11.7,
+     "latePct": 21.8,
+     "medianWidthSec": 445.1
+    },
+    "pctJump180": 12.2,
+    "pctJump300": 0.5,
+    "pctReversal60": 12.8,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 2.7,
+    "pctOvershoot": 10.6,
+    "pctPinChanged": 4.8,
+    "pctPinRight": 95.7,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0.5,
+    "drops": 1,
+    "dropsDeclined": 0,
+    "dropsRepriced": 1,
+    "worstDrift": {
+     "p50": 20,
+     "p90": 220,
+     "max": 340
+    }
+   }
+  },
+  "worstStops": [
+   {
+    "key": "Red|98",
+    "label": "Red",
+    "stopId": 98,
+    "waits": 7,
+    "pctJump180": 28.6,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|115",
+    "label": "Red",
+    "stopId": 115,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|147",
+    "label": "Red",
+    "stopId": 147,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|14",
+    "label": "Red",
+    "stopId": 14,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|117",
+    "label": "Red",
+    "stopId": 117,
+    "waits": 5,
+    "pctJump180": 20,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|126",
+    "label": "Red",
+    "stopId": 126,
+    "waits": 6,
+    "pctJump180": 16.7,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|36",
+    "label": "Red",
+    "stopId": 36,
+    "waits": 6,
+    "pctJump180": 16.7,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|3",
+    "label": "Red",
+    "stopId": 3,
+    "waits": 7,
+    "pctJump180": 14.3,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|104",
+    "label": "Red",
+    "stopId": 104,
+    "waits": 7,
+    "pctJump180": 14.3,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|4",
+    "label": "Red",
+    "stopId": 4,
+    "waits": 7,
+    "pctJump180": 14.3,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|45",
+    "label": "Red",
+    "stopId": 45,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|75",
+    "label": "Red",
+    "stopId": 75,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|30",
+    "label": "Red",
+    "stopId": 30,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|31",
+    "label": "Red",
+    "stopId": 31,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|41",
+    "label": "Red",
+    "stopId": 41,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   }
+  ],
+  "worstWaits": [
+   {
+    "id": "Red|115|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 115,
+    "worstDriftSec": 340,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 4-18, then 74 min | 11:00:18 in 3-18, then 74 min | 11:00:53 in 2-17, then 73 min | 11:01:43 in 9, 73 min | 11:02:03 in 2, 67 min | 11:02:38 now-12, then 69 min | 11:02:58 now-11, then 69 min | 11:03:13 in 2, 67 min | 11:03:33 in 1, 64 min | 11:03:48 in 1, 63 min | 11:04:23 in <1, 63 min | 11:04:38 now, then 62 min"
+   },
+   {
+    "id": "Red|45|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 45,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 7-21, then 78 min | 11:00:18 in 6-20, then 77 min | 11:00:53 in 5-20, then 77 min | 11:01:08 in 5-20, then 76 min | 11:01:23 in 5-19, then 76 min | 11:01:43 in 4-19, then 76 min | 11:02:03 in 6, 70 min | 11:02:23 in 5, 70 min | 11:02:38 now-15, then 71 min | 11:02:58 now-14, then 71 min | 11:03:13 in 6, 70 min | 11:03:33 in 2-7, then 66 min | 11:03:48 in 1-6, then 66 min | 11:04:23 in 1-6, then 65 min | 11:04:38 in <1-5, then 65 min | 11:04:58 in 1, 64 min | 11:06:23 in <1, 63 min | 11:07:13 in <1, 62 min"
+   },
+   {
+    "id": "Red|30|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 30,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 19, 82 min | 11:00:18 in 18, 81 min | 11:01:23 in 18, 80 min | 11:01:43 in 17, 80 min | 11:02:03 in 11, 75 min | 11:02:23 in 6-21, then 75 min | 11:02:38 in 12, 76 min | 11:02:58 in 3-18, then 76 min | 11:03:13 in 6-21, then 75 min | 11:03:33 in 5-13, then 71 min | 11:03:48 in 5-12, then 71 min | 11:04:03 in 4-12, then 71 min | 11:04:23 in 4-12, then 70 min | 11:04:38 in 3-11, then 70 min | 11:04:58 in 2-9, then 69 min | 11:05:33 in 2-9, then 68 min | 11:06:08 in 3-9, then 68 min | 11:06:23 in 2-8, then 68 min | 11:06:43 in 2-8, then 67 min | 11:07:33 in 1-7, then 67 min | 11:07:48 in 1-7, then 66 min | 11:08:03 in 1-6, then 66 min | 11:08:38 in 1-6, then 65 min | 11:08:53 in 1, 64 min | 11:09:13 in <1-5, then 64 min | 11:09:33 now-5, then 64 min | 11:09:48 in 1, 64 min | 11:10:08 in 1, 63 min | 11:10:23 in <1, 63 min | 11:10:43 now, then 62 min"
+   },
+   {
+    "id": "Red|31|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 31,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 21, 84 min | 11:00:18 in 21, 83 min | 11:00:53 in 20, 83 min | 11:01:43 in 19, 82 min | 11:02:03 in 13, 77 min | 11:02:23 in 8-23, then 76 min | 11:02:38 in 14, 78 min | 11:02:58 in 6-21, then 78 min | 11:03:13 in 8-23, then 77 min | 11:03:33 in 7-14, then 74 min | 11:03:48 in 7-14, then 73 min | 11:04:23 in 6-14, then 72 min | 11:04:38 in 5-13, then 72 min | 11:04:58 in 4-12, then 71 min | 11:05:13 in 4-11, then 71 min | 11:05:33 in 4-12, then 70 min | 11:06:08 in 5-12, then 70 min | 11:06:23 in 4-11, then 70 min | 11:06:43 in 3-10, then 69 min | 11:07:33 in 3-9, then 69 min | 11:07:48 in 3-9, then 68 min | 11:08:03 in 2-8, then 68 min | 11:08:53 in 1-6, then 66 min | 11:09:13 in 1-8, then 66 min | 11:09:48 in 1-5, then 66 min | 11:10:23 in 1-4, then 65 min | 11:10:43 in 2, 65 min | 11:11:03 in 1, 21 min | 11:11:18 in 1, 20 min | 11:11:53 in <1, 20 min"
+   },
+   {
+    "id": "Red|41|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 41,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 23, 86 min | 11:00:18 in 23, 85 min | 11:00:53 in 22, 85 min | 11:01:43 in 21, 84 min | 11:02:03 in 15, 79 min | 11:02:23 in 10-25, then 79 min | 11:02:38 in 16, 80 min | 11:02:58 in 8-23, then 80 min | 11:03:13 in 10-25, then 79 min | 11:03:33 in 9-17, then 75 min | 11:03:48 in 9-16, then 75 min | 11:04:23 in 8-15, then 74 min | 11:04:38 in 7-15, then 74 min | 11:04:58 in 6-13, then 73 min | 11:05:33 in 7-14, then 73 min | 11:05:53 in 7-13, then 73 min | 11:06:23 in 6-13, then 72 min | 11:06:43 in 5-13, then 72 min | 11:06:58 in 5-13, then 71 min | 11:07:33 in 5-12, then 71 min | 11:08:03 in 4-11, then 70 min | 11:08:53 in 3-8, then 69 min | 11:09:13 in 3-10, then 69 min | 11:09:48 in 3-8, then 68 min | 11:10:08 in 3-7, then 68 min | 11:10:23 in 2-7, then 67 min | 11:10:43 in 2-6, then 67 min | 11:11:03 in 1-5, then 23 min | 11:11:18 in 1-5, then 22 min | 11:11:53 in 1-4, then 22 min | 11:12:13 in <1-4, then 22 min | 11:12:33 in 1, 22 min | 11:12:53 in <1, 21 min"
+   },
+   {
+    "id": "Red|36|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 36,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 25, 88 min | 11:00:18 in 25, 87 min | 11:00:53 in 24, 87 min | 11:01:43 in 23, 86 min | 11:02:03 in 17, 81 min | 11:02:23 in 12-27, then 81 min | 11:02:38 in 18, 82 min | 11:02:58 in 10-25, then 82 min | 11:03:13 in 18, 81 min | 11:03:33 in 11-19, then 77 min | 11:04:03 in 11-18, then 77 min | 11:04:23 in 10-18, then 76 min | 11:04:38 in 10-17, then 76 min | 11:04:58 in 8-16, then 75 min | 11:05:13 in 8-15, then 75 min | 11:05:33 in 9-16, then 74 min | 11:05:53 in 8-15, then 74 min | 11:06:43 in 8-14, then 73 min | 11:07:33 in 7-14, then 73 min | 11:08:03 in 6-13, then 72 min | 11:08:53 in 5-10, then 71 min | 11:09:13 in 5-12, then 71 min | 11:09:48 in 5-10, then 70 min | 11:10:08 in 5-9, then 70 min | 11:10:23 in 4-9, then 69 min | 11:10:43 in 4-8, then 68 min | 11:11:03 in 3-7, then 25 min | 11:11:18 in 3-7, then 24 min | 11:11:53 in 2-6, then 24 min | 11:12:33 in 1-5, then 24 min | 11:12:53 in 1-4, then 23 min | 11:13:13 in 2, 23 min | 11:13:48 in 1, 19 min | 11:14:23 in <1, 19 min | 11:15:03 now, then 19 min"
+   },
+   {
+    "id": "Red|128|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 128,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 26, 89 min | 11:00:18 in 25, 88 min | 11:01:08 in 25, 87 min | 11:01:43 in 24, 87 min | 11:02:03 in 18, 82 min | 11:02:23 in 13-28, then 82 min | 11:02:38 in 19, 83 min | 11:02:58 in 11-26, then 83 min | 11:03:13 in 13-28, then 82 min | 11:03:33 in 12-20, then 78 min | 11:03:48 in 12-19, then 78 min | 11:04:23 in 11-18, then 77 min | 11:04:58 in 9-16, then 76 min | 11:05:13 in 9-16, then 75 min | 11:05:33 in 9-17, then 75 min | 11:05:53 in 9-16, then 75 min | 11:06:43 in 8-15, then 74 min | 11:07:33 in 8-14, then 73 min | 11:08:03 in 7-14, then 73 min | 11:08:23 in 7-13, then 72 min | 11:08:53 in 6-12, then 71 min | 11:09:13 in 6-13, then 71 min | 11:09:48 in 6-11, then 71 min | 11:10:08 in 5-10, then 70 min | 11:10:43 in 4-9, then 69 min | 11:11:03 in 4-8, then 25 min | 11:11:18 in 3-8, then 25 min | 11:11:53 in 3-7, then 25 min | 11:12:33 in 2-6, then 24 min | 11:12:53 in 2-5, then 24 min | 11:13:13 in 1-4, then 24 min | 11:13:28 in 1-4, then 23 min | 11:13:48 in <1-4, then 20 min | 11:14:08 in 1, 20 min | 11:15:03 in <1, 20 min"
+   },
+   {
+    "id": "Red|120|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 120,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 28, 91 min | 11:00:18 in 27, 89 min | 11:00:53 in 26, 89 min | 11:01:43 in 26, 88 min | 11:02:03 in 20, 83 min | 11:02:23 in 19, 83 min | 11:02:38 in 21, 84 min | 11:02:58 in 13-28, then 84 min | 11:03:13 in 20, 83 min | 11:03:33 in 13-21, then 80 min | 11:03:48 in 13-21, then 79 min | 11:04:23 in 12-20, then 78 min | 11:04:58 in 11-18, then 77 min | 11:06:23 in 10-18, then 76 min | 11:06:43 in 10-17, then 76 min | 11:06:58 in 10-17, then 75 min | 11:07:33 in 9-16, then 75 min | 11:08:03 in 9-15, then 74 min | 11:08:53 in 8-13, then 73 min | 11:09:13 in 8-14, then 73 min | 11:09:33 in 8-15, then 73 min | 11:09:48 in 7-12, then 72 min | 11:10:23 in 6-12, then 71 min | 11:10:43 in 6-11, then 71 min | 11:11:03 in 5-10, then 27 min | 11:11:38 in 5-10, then 26 min | 11:11:53 in 4-9, then 26 min | 11:12:33 in 3-7, then 26 min | 11:12:53 in 3-7, then 25 min | 11:13:13 in 2-6, then 25 min | 11:13:48 in 1-6, then 22 min | 11:14:08 in 1-5, then 22 min | 11:14:23 in 1-4, then 22 min | 11:14:43 in <1-4, then 22 min | 11:15:03 in 2, 22 min | 11:15:23 in 1, 22 min | 11:16:18 in 1, 18 min | 11:16:38 in <1, 18 min | 11:16:53 in <1, 17 min | 11:17:28 now, then 17 min | 11:17:48 now, then 16 min"
+   },
+   {
+    "id": "Red|3|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 3,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 23-37, then 92 min | 11:00:18 in 29, 91 min | 11:00:53 in 28, 91 min | 11:01:23 in 28, 90 min | 11:02:03 in 22, 85 min | 11:02:38 in 23, 86 min | 11:02:58 in 15-29, then 86 min | 11:03:13 in 22, 85 min | 11:03:33 in 15-23, then 81 min | 11:04:03 in 14-23, then 81 min | 11:04:23 in 14-22, then 81 min | 11:04:38 in 13-22, then 80 min | 11:04:58 in 12-20, then 79 min | 11:05:33 in 13-20, then 78 min | 11:06:23 in 12-20, then 78 min | 11:06:43 in 12-19, then 77 min | 11:07:33 in 11-19, then 77 min | 11:08:03 in 11-18, then 76 min | 11:08:23 in 10-17, then 76 min | 11:08:53 in 9-15, then 75 min | 11:09:13 in 9-16, then 75 min | 11:09:33 in 9-17, then 75 min | 11:09:48 in 9-15, then 74 min | 11:10:08 in 9-14, then 74 min | 11:10:23 in 8-14, then 73 min | 11:10:43 in 7-13, then 73 min | 11:11:03 in 7-13, then 29 min | 11:11:18 in 6-12, then 29 min | 11:11:38 in 6-12, then 28 min | 11:11:53 in 6-11, then 28 min | 11:12:13 in 5-11, then 28 min | 11:12:33 in 5-10, then 28 min | 11:12:53 in 4-9, then 27 min | 11:13:28 in 3-8, then 27 min | 11:13:48 in 3-8, then 24 min | 11:14:08 in 2-7, then 24 min | 11:14:43 in 1-7, then 24 min | 11:15:03 in 1-6, then 24 min | 11:15:58 in 1-5, then 24 min | 11:16:18 in <1-5, then 20 min | 11:16:38 in <1-4, then 20 min | 11:16:53 in <1-4, then 19 min | 11:17:28 in 1, 19 min | 11:17:48 in 1, 18 min | 11:18:03 in <1, 18 min | 11:18:23 in <1, 16 min | 11:18:38 in 1, 16 min | 11:18:53 in 1, 15 min | 11:19:13 in <1, 15 min"
+   },
+   {
+    "id": "Red|147|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 147,
+    "worstDriftSec": 280,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 24-38, then 94 min | 11:00:18 in 23-37, then 93 min | 11:00:53 in 23-37, then 92 min | 11:01:08 in 29, 92 min | 11:01:43 in 29, 91 min | 11:02:03 in 23, 87 min | 11:02:23 in 23, 86 min | 11:02:38 in 24, 88 min | 11:02:58 in 16-31, then 88 min | 11:03:13 in 24, 87 min | 11:03:33 in 16-25, then 83 min | 11:04:03 in 16-24, then 83 min | 11:04:23 in 15-24, then 82 min | 11:04:58 in 14-22, then 80 min | 11:05:13 in 13-22, then 80 min | 11:05:33 in 14-22, then 80 min | 11:06:23 in 13-21, then 79 min | 11:06:43 in 13-20, then 79 min | 11:07:13 in 13-20, then 78 min | 11:07:33 in 12-20, then 78 min | 11:08:03 in 12-19, then 77 min | 11:08:38 in 11-19, then 77 min | 11:08:53 in 11-17, then 76 min | 11:09:13 in 11-18, then 76 min | 11:09:33 in 10-18, then 76 min | 11:09:48 in 10-16, then 75 min | 11:10:23 in 10-15, then 75 min | 11:10:43 in 9-14, then 74 min | 11:11:03 in 8-14, then 30 min | 11:11:18 in 8-13, then 30 min | 11:11:38 in 8-13, then 29 min | 11:11:53 in 7-13, then 29 min | 11:12:13 in 6-13, then 29 min | 11:12:33 in 6-12, then 29 min | 11:12:53 in 5-11, then 28 min | 11:13:13 in 5-10, then 28 min | 11:13:48 in 4-10, then 25 min | 11:14:08 in 3-9, then 25 min | 11:14:23 in 3-8, then 25 min | 11:15:03 in 2-8, then 25 min | 11:15:23 in 2-7, then 25 min | 11:16:18 in 1-6, then 21 min | 11:16:53 in 1-6, then 20 min | 11:17:28 in 1-5, then 20 min | 11:17:48 in 1-5, then 19 min | 11:18:03 in <1-4, then 19 min | 11:18:23 in <1-4, then 17 min | 11:19:13 in 1, 16 min | 11:19:53 in <1, 16 min | 11:20:28 now, then 16 min"
+   }
+  ]
+ },
+ "focus": {
+  "all": {
+   "waits": 203,
+   "arrived": 188,
+   "gaveUp": 3,
+   "dataEnded": 0,
+   "boardedOnArrival": 12,
+   "scored": 188,
+   "medianWaitMin": 10.8,
+   "p90WaitMin": 25.8,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 526.5,
+    "earlyOver60Pct": 12.2,
+    "lateOver60Pct": 14.9
+   },
+   "interval": {
+    "n": 188,
+    "insidePct": 66.5,
+    "earlyPct": 11.7,
+    "latePct": 21.8,
+    "medianWidthSec": 445.1
+   },
+   "pctJump180": 8,
+   "pctJump300": 1.6,
+   "pctReversal60": 12.8,
+   "pctStrand": 0,
+   "pctUnattributedStrand": 2.7,
+   "pctOvershoot": 10.6,
+   "pctPinChanged": 4.8,
+   "pctPinRight": 95.7,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 0.5,
+   "drops": 1,
+   "dropsDeclined": 0,
+   "dropsRepriced": 1,
+   "worstDrift": {
+    "p50": 10,
+    "p90": 171.5,
+    "max": 350
+   }
+  },
+  "byRoute": {
+   "Red": {
+    "waits": 203,
+    "arrived": 188,
+    "gaveUp": 3,
+    "dataEnded": 0,
+    "boardedOnArrival": 12,
+    "scored": 188,
+    "medianWaitMin": 10.8,
+    "p90WaitMin": 25.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 526.5,
+     "earlyOver60Pct": 12.2,
+     "lateOver60Pct": 14.9
+    },
+    "interval": {
+     "n": 188,
+     "insidePct": 66.5,
+     "earlyPct": 11.7,
+     "latePct": 21.8,
+     "medianWidthSec": 445.1
+    },
+    "pctJump180": 8,
+    "pctJump300": 1.6,
+    "pctReversal60": 12.8,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 2.7,
+    "pctOvershoot": 10.6,
+    "pctPinChanged": 4.8,
+    "pctPinRight": 95.7,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0.5,
+    "drops": 1,
+    "dropsDeclined": 0,
+    "dropsRepriced": 1,
+    "worstDrift": {
+     "p50": 10,
+     "p90": 171.5,
+     "max": 350
+    }
+   }
+  },
+  "worstStops": [
+   {
+    "key": "Red|115",
+    "label": "Red",
+    "stopId": 115,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|147",
+    "label": "Red",
+    "stopId": 147,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|27",
+    "label": "Red",
+    "stopId": 27,
+    "waits": 4,
+    "pctJump180": 25,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|11",
+    "label": "Red",
+    "stopId": 11,
+    "waits": 5,
+    "pctJump180": 20,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|126",
+    "label": "Red",
+    "stopId": 126,
+    "waits": 6,
+    "pctJump180": 16.7,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|36",
+    "label": "Red",
+    "stopId": 36,
+    "waits": 6,
+    "pctJump180": 16.7,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|3",
+    "label": "Red",
+    "stopId": 3,
+    "waits": 7,
+    "pctJump180": 14.3,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|45",
+    "label": "Red",
+    "stopId": 45,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|75",
+    "label": "Red",
+    "stopId": 75,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|30",
+    "label": "Red",
+    "stopId": 30,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|31",
+    "label": "Red",
+    "stopId": 31,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|41",
+    "label": "Red",
+    "stopId": 41,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|128",
+    "label": "Red",
+    "stopId": 128,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|120",
+    "label": "Red",
+    "stopId": 120,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   },
+   {
+    "key": "Red|38",
+    "label": "Red",
+    "stopId": 38,
+    "waits": 8,
+    "pctJump180": 12.5,
+    "pctStrand": 0
+   }
+  ],
+  "worstWaits": [
+   {
+    "id": "Red|115|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 115,
+    "worstDriftSec": 350,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 4-18, then 74 min | 11:00:08 in 3-18, then 74 min | 11:00:43 in 3-17, then 74 min | 11:00:48 in 2-17, then 73 min | 11:01:28 in 2-16, then 73 min | 11:01:38 in 9, 73 min | 11:01:53 in 9, 72 min | 11:02:08 in 1-5, then 65 min | 11:02:18 in 1-13, then 66 min | 11:02:23 in 2, 67 min | 11:02:33 now-13, then 69 min | 11:02:38 now-12, then 69 min | 11:02:48 now-11, then 69 min | 11:03:13 in 2, 67 min | 11:03:23 in 1, 64 min | 11:03:48 in 1, 63 min | 11:04:13 in <1, 63 min | 11:04:33 now, then 62 min"
+   },
+   {
+    "id": "Red|45|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 45,
+    "worstDriftSec": 350,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 7-21, then 78 min | 11:00:08 in 6-21, then 77 min | 11:00:18 in 6-20, then 77 min | 11:00:48 in 5-20, then 77 min | 11:00:58 in 5-20, then 76 min | 11:01:23 in 5-19, then 76 min | 11:01:38 in 4-19, then 76 min | 11:01:53 in 4-18, then 75 min | 11:02:08 in 3-9, then 68 min | 11:02:18 in 2-15, then 69 min | 11:02:23 in 5, 70 min | 11:02:33 in 7, 71 min | 11:02:38 now-15, then 71 min | 11:02:48 now-14, then 71 min | 11:03:13 in 6, 70 min | 11:03:23 in 2-7, then 67 min | 11:03:33 in 2-7, then 66 min | 11:03:38 in 1-7, then 66 min | 11:03:48 in 1-6, then 66 min | 11:04:23 in 1-6, then 65 min | 11:04:28 in 1-5, then 65 min | 11:04:33 in <1-5, then 65 min | 11:04:48 in <1-5, then 64 min | 11:04:58 in 1, 64 min | 11:05:03 in <1, 64 min | 11:05:18 in 1, 64 min | 11:06:23 in <1, 63 min | 11:07:03 in <1, 62 min | 11:07:38 now, then 62 min"
+   },
+   {
+    "id": "Red|120|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 120,
+    "worstDriftSec": 350,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 28, 91 min | 11:00:08 in 27, 90 min | 11:00:18 in 27, 89 min | 11:00:48 in 26, 89 min | 11:01:38 in 26, 88 min | 11:01:53 in 25, 88 min | 11:01:58 in 17-32, then 88 min | 11:02:08 in 14-24, then 81 min | 11:02:18 in 14-26, then 82 min | 11:02:23 in 19, 83 min | 11:02:33 in 21, 84 min | 11:02:53 in 13-28, then 84 min | 11:03:13 in 20, 83 min | 11:03:23 in 14-22, then 80 min | 11:03:33 in 13-21, then 80 min | 11:03:48 in 13-21, then 79 min | 11:04:23 in 12-20, then 78 min | 11:04:48 in 11-19, then 77 min | 11:04:58 in 11-18, then 77 min | 11:05:03 in 10-18, then 77 min | 11:05:18 in 11-19, then 77 min | 11:05:28 in 11-18, then 77 min | 11:06:23 in 10-18, then 76 min | 11:06:33 in 10-17, then 76 min | 11:06:48 in 10-17, then 75 min | 11:07:33 in 9-16, then 75 min | 11:07:58 in 9-16, then 74 min | 11:08:03 in 9-15, then 74 min | 11:08:43 in 8-14, then 73 min | 11:08:53 in 8-13, then 73 min | 11:09:03 in 7-13, then 73 min | 11:09:08 in 8-14, then 73 min | 11:09:23 in 8-15, then 73 min | 11:09:43 in 7-12, then 72 min | 11:10:03 in 7-13, then 72 min | 11:10:13 in 7-12, then 71 min | 11:10:28 in 6-12, then 71 min | 11:10:33 in 6-11, then 71 min | 11:10:53 in 5-11, then 70 min | 11:11:03 in 5-10, then 27 min | 11:11:23 in 5-10, then 26 min | 11:11:58 in 4-9, then 26 min | 11:12:23 in 4-8, then 26 min | 11:12:33 in 3-7, then 26 min | 11:12:53 in 3-7, then 25 min | 11:13:03 in 2-6, then 25 min | 11:13:48 in 1-6, then 22 min | 11:13:58 in 1-5, then 22 min | 11:14:23 in 1-4, then 22 min | 11:14:33 in <1-4, then 22 min | 11:15:03 in 2, 22 min | 11:15:13 in 1, 22 min | 11:16:08 in 1, 18 min | 11:16:23 in <1, 18 min | 11:16:53 in <1, 17 min | 11:17:28 now, then 17 min | 11:17:38 now, then 16 min"
+   },
+   {
+    "id": "Red|75|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 75,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 7-22, then 78 min | 11:00:08 in 7-21, then 78 min | 11:00:18 in 6-21, then 78 min | 11:00:43 in 6-21, then 77 min | 11:01:13 in 6-20, then 77 min | 11:01:28 in 5-20, then 77 min | 11:01:43 in 5-20, then 76 min | 11:01:53 in 4-19, then 75 min | 11:02:08 in 3-10, then 69 min | 11:02:18 in 3-15, then 70 min | 11:02:23 in 6, 71 min | 11:02:33 in 8, 72 min | 11:02:48 now-15, then 72 min | 11:03:08 in <1-15, then 72 min | 11:03:13 in 3-18, then 71 min | 11:03:23 in 2-8, then 68 min | 11:03:33 in 2-7, then 68 min | 11:03:38 in 2-8, then 67 min | 11:03:48 in 1-7, then 67 min | 11:04:23 in 1-7, then 66 min | 11:04:28 in 1-6, then 66 min | 11:04:48 in <1-5, then 65 min | 11:05:03 in 1, 65 min | 11:05:18 in <1-4, then 65 min | 11:05:28 now-4, then 65 min | 11:05:33 now-5, then 65 min | 11:05:43 in <1-5, then 65 min | 11:06:23 in 1, 64 min | 11:06:48 in 1, 63 min | 11:07:28 in <1, 63 min | 11:07:58 in <1, 62 min | 11:08:03 now, then 62 min"
+   },
+   {
+    "id": "Red|30|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 30,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 19, 82 min | 11:00:08 in 19, 81 min | 11:00:13 in 18, 81 min | 11:01:13 in 18, 80 min | 11:01:38 in 17, 80 min | 11:01:53 in 17, 79 min | 11:01:58 in 8-23, then 79 min | 11:02:08 in 6-15, then 73 min | 11:02:18 in 6-18, then 73 min | 11:02:23 in 6-21, then 75 min | 11:02:33 in 12, 76 min | 11:02:48 in 3-18, then 76 min | 11:03:08 in 4-18, then 76 min | 11:03:13 in 6-21, then 75 min | 11:03:23 in 5-13, then 72 min | 11:03:33 in 5-13, then 71 min | 11:03:48 in 5-12, then 71 min | 11:03:53 in 4-12, then 71 min | 11:04:13 in 4-12, then 70 min | 11:04:33 in 3-11, then 70 min | 11:04:48 in 3-10, then 69 min | 11:04:58 in 2-9, then 69 min | 11:05:03 in 2-8, then 68 min | 11:05:08 in 2-8, then 69 min | 11:05:18 in 2-9, then 68 min | 11:05:58 in 3-9, then 68 min | 11:06:23 in 2-8, then 68 min | 11:06:33 in 2-8, then 67 min | 11:07:28 in 1-8, then 67 min | 11:07:33 in 1-7, then 67 min | 11:07:48 in 1-7, then 66 min | 11:08:03 in 1-6, then 66 min | 11:08:13 in <1-6, then 66 min | 11:08:23 in 1-6, then 66 min | 11:08:33 in 1-6, then 65 min | 11:08:43 in <1-4, then 65 min | 11:08:53 in 1, 64 min | 11:09:08 in <1-4, then 65 min | 11:09:13 in <1-5, then 64 min | 11:09:28 now-5, then 64 min | 11:09:43 in 1, 64 min | 11:10:03 in 1, 63 min | 11:10:28 in <1, 63 min | 11:10:43 now, then 62 min"
+   },
+   {
+    "id": "Red|31|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 31,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 21, 84 min | 11:00:18 in 21, 83 min | 11:00:43 in 20, 83 min | 11:01:28 in 20, 82 min | 11:01:43 in 19, 82 min | 11:01:53 in 10-25, then 81 min | 11:02:08 in 8-17, then 75 min | 11:02:18 in 8-20, then 75 min | 11:02:23 in 8-23, then 76 min | 11:02:33 in 14, 78 min | 11:02:48 in 6-21, then 78 min | 11:03:08 in 7-21, then 78 min | 11:03:13 in 8-23, then 77 min | 11:03:23 in 8-15, then 74 min | 11:03:33 in 7-14, then 74 min | 11:03:48 in 7-14, then 73 min | 11:04:23 in 6-14, then 72 min | 11:04:43 in 5-13, then 72 min | 11:04:48 in 5-12, then 71 min | 11:04:58 in 4-12, then 71 min | 11:05:03 in 4-11, then 70 min | 11:05:18 in 4-12, then 70 min | 11:06:08 in 5-12, then 70 min | 11:06:18 in 4-12, then 70 min | 11:06:23 in 4-11, then 70 min | 11:06:33 in 3-10, then 69 min | 11:07:33 in 3-9, then 69 min | 11:07:48 in 3-9, then 68 min | 11:08:03 in 2-8, then 68 min | 11:08:43 in 2-7, then 67 min | 11:08:53 in 1-6, then 66 min | 11:09:08 in 1-7, then 67 min | 11:09:13 in 1-8, then 66 min | 11:09:43 in 1-5, then 66 min | 11:10:13 in 1-4, then 65 min | 11:10:33 in 2, 65 min | 11:10:53 in 1, 64 min | 11:11:03 in 1, 21 min | 11:11:23 in 1, 20 min | 11:11:58 in <1, 20 min | 11:12:23 now, then 20 min"
+   },
+   {
+    "id": "Red|41|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 41,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 23, 86 min | 11:00:08 in 23, 85 min | 11:00:43 in 22, 85 min | 11:01:13 in 22, 84 min | 11:01:23 in 22, 85 min | 11:01:28 in 22, 84 min | 11:01:43 in 21, 84 min | 11:01:53 in 12-27, then 83 min | 11:02:08 in 10-19, then 77 min | 11:02:18 in 10-22, then 78 min | 11:02:23 in 10-25, then 79 min | 11:02:33 in 16, 80 min | 11:02:48 in 8-23, then 80 min | 11:03:08 in 9-23, then 80 min | 11:03:13 in 10-25, then 79 min | 11:03:23 in 10-17, then 76 min | 11:03:33 in 9-17, then 75 min | 11:03:38 in 9-16, then 75 min | 11:04:23 in 8-15, then 74 min | 11:04:43 in 7-15, then 74 min | 11:04:48 in 7-14, then 73 min | 11:04:58 in 6-13, then 73 min | 11:05:03 in 6-13, then 72 min | 11:05:08 in 6-14, then 73 min | 11:05:33 in 7-14, then 73 min | 11:05:43 in 7-13, then 73 min | 11:05:58 in 7-14, then 73 min | 11:06:03 in 7-13, then 73 min | 11:06:18 in 7-13, then 72 min | 11:06:23 in 6-13, then 72 min | 11:06:33 in 5-13, then 72 min | 11:06:48 in 5-13, then 71 min | 11:07:33 in 5-12, then 71 min | 11:07:58 in 4-11, then 70 min | 11:08:43 in 3-9, then 69 min | 11:08:53 in 3-8, then 69 min | 11:09:08 in 3-9, then 69 min | 11:09:13 in 3-10, then 69 min | 11:09:43 in 3-8, then 68 min | 11:10:03 in 3-7, then 68 min | 11:10:13 in 3-7, then 67 min | 11:10:28 in 2-7, then 67 min | 11:10:43 in 2-6, then 67 min | 11:10:53 in 1-6, then 66 min | 11:11:03 in 1-5, then 23 min | 11:11:13 in 1-5, then 22 min | 11:11:58 in 1-4, then 22 min | 11:12:03 in <1-4, then 22 min | 11:12:23 in 2, 22 min | 11:12:33 in 1, 22 min | 11:12:43 in 1, 21 min | 11:12:53 in <1, 21 min | 11:13:38 now, then 21 min"
+   },
+   {
+    "id": "Red|126|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 126,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 25, 88 min | 11:00:08 in 24, 87 min | 11:00:13 in 24, 86 min | 11:00:58 in 23, 86 min | 11:01:38 in 23, 85 min | 11:01:53 in 22, 84 min | 11:01:58 in 14-29, then 84 min | 11:02:08 in 12-21, then 78 min | 11:02:18 in 11-23, then 79 min | 11:02:23 in 11-26, then 80 min | 11:02:33 in 18, 81 min | 11:02:48 in 9-24, then 81 min | 11:03:08 in 10-24, then 81 min | 11:03:13 in 17, 81 min | 11:03:23 in 11-18, then 77 min | 11:03:48 in 10-18, then 76 min | 11:04:13 in 10-17, then 76 min | 11:04:28 in 9-17, then 76 min | 11:04:33 in 9-16, then 75 min | 11:04:48 in 8-16, then 75 min | 11:04:58 in 8-15, then 75 min | 11:05:03 in 7-14, then 74 min | 11:05:08 in 8-15, then 74 min | 11:06:23 in 7-14, then 73 min | 11:07:28 in 7-13, then 72 min | 11:07:33 in 6-14, then 72 min | 11:07:58 in 6-13, then 72 min | 11:08:03 in 6-12, then 72 min | 11:08:13 in 5-12, then 72 min | 11:08:23 in 5-12, then 71 min | 11:08:43 in 5-11, then 70 min | 11:08:53 in 4-10, then 70 min | 11:09:08 in 4-11, then 70 min | 11:09:13 in 5-11, then 70 min | 11:09:23 in 4-11, then 70 min | 11:09:28 in 4-12, then 70 min | 11:09:33 in 4-11, then 70 min | 11:09:43 in 4-9, then 69 min | 11:10:28 in 4-8, then 69 min | 11:10:33 in 3-8, then 68 min | 11:10:43 in 3-7, then 68 min | 11:11:03 in 2-7, then 24 min | 11:11:33 in 2-7, then 23 min | 11:11:58 in 2-5, then 23 min | 11:12:13 in 1-5, then 23 min | 11:12:33 in 1-4, then 23 min | 11:12:43 in 2, 23 min | 11:12:53 in 2, 22 min | 11:13:03 in 1, 22 min | 11:13:48 in 1, 19 min | 11:13:58 in <1, 19 min | 11:14:23 now, then 19 min"
+   },
+   {
+    "id": "Red|36|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 36,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 25, 88 min | 11:00:08 in 25, 87 min | 11:00:43 in 24, 87 min | 11:01:28 in 24, 86 min | 11:01:43 in 23, 86 min | 11:01:53 in 23, 85 min | 11:02:08 in 12-22, then 79 min | 11:02:18 in 12-24, then 80 min | 11:02:23 in 12-27, then 81 min | 11:02:33 in 18, 82 min | 11:02:53 in 10-25, then 82 min | 11:03:08 in 11-25, then 82 min | 11:03:13 in 18, 81 min | 11:03:23 in 11-19, then 78 min | 11:03:33 in 11-19, then 77 min | 11:03:53 in 11-18, then 77 min | 11:04:23 in 10-18, then 76 min | 11:04:33 in 10-17, then 76 min | 11:04:48 in 9-16, then 75 min | 11:04:58 in 8-16, then 75 min | 11:05:03 in 8-15, then 75 min | 11:05:18 in 8-16, then 74 min | 11:05:28 in 9-16, then 74 min | 11:05:43 in 8-15, then 74 min | 11:06:03 in 8-16, then 74 min | 11:06:08 in 8-15, then 74 min | 11:06:33 in 8-14, then 74 min | 11:06:43 in 8-14, then 73 min | 11:07:28 in 7-14, then 73 min | 11:07:38 in 7-13, then 73 min | 11:07:48 in 7-14, then 73 min | 11:07:58 in 7-13, then 72 min | 11:08:03 in 6-13, then 72 min | 11:08:43 in 5-11, then 71 min | 11:08:53 in 5-10, then 71 min | 11:09:03 in 5-11, then 71 min | 11:09:13 in 5-12, then 71 min | 11:09:43 in 5-10, then 70 min | 11:10:13 in 4-9, then 69 min | 11:10:33 in 4-8, then 69 min | 11:10:43 in 4-8, then 68 min | 11:10:53 in 3-8, then 68 min | 11:11:03 in 3-7, then 25 min | 11:11:13 in 3-7, then 24 min | 11:11:58 in 2-6, then 24 min | 11:12:23 in 2-5, then 24 min | 11:12:33 in 1-5, then 24 min | 11:12:43 in 1-4, then 23 min | 11:13:03 in 2, 23 min | 11:13:38 in 1, 23 min | 11:13:48 in 1, 19 min | 11:14:18 in <1, 19 min | 11:15:03 now, then 19 min"
+   },
+   {
+    "id": "Red|128|2026-09-16T11:00:03.130Z",
+    "label": "Red",
+    "stopId": 128,
+    "worstDriftSec": 290,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "11:00:03 in 26, 89 min | 11:00:08 in 26, 88 min | 11:00:13 in 25, 88 min | 11:00:58 in 25, 87 min | 11:01:28 in 24, 87 min | 11:01:53 in 15-30, then 86 min | 11:02:08 in 13-22, then 80 min | 11:02:18 in 13-25, then 80 min | 11:02:23 in 13-28, then 82 min | 11:02:33 in 19, 83 min | 11:02:48 in 11-26, then 83 min | 11:03:08 in 12-26, then 83 min | 11:03:13 in 13-28, then 82 min | 11:03:23 in 12-20, then 78 min | 11:03:48 in 12-19, then 78 min | 11:04:13 in 11-19, then 77 min | 11:04:23 in 11-18, then 77 min | 11:04:48 in 10-17, then 76 min | 11:04:58 in 9-16, then 76 min | 11:05:03 in 9-16, then 75 min | 11:05:18 in 9-17, then 75 min | 11:05:53 in 9-16, then 75 min | 11:06:33 in 9-15, then 74 min | 11:06:43 in 8-15, then 74 min | 11:07:33 in 8-14, then 73 min | 11:08:03 in 7-14, then 73 min | 11:08:13 in 7-13, then 73 min | 11:08:23 in 7-13, then 72 min | 11:08:43 in 6-12, then 72 min | 11:08:53 in 6-12, then 71 min | 11:09:13 in 6-13, then 71 min | 11:09:43 in 6-11, then 71 min | 11:10:03 in 6-11, then 70 min | 11:10:13 in 5-10, then 70 min | 11:10:33 in 5-9, then 69 min | 11:10:43 in 4-9, then 69 min | 11:11:03 in 4-8, then 25 min | 11:11:13 in 3-8, then 25 min | 11:11:58 in 3-7, then 25 min | 11:12:23 in 2-6, then 25 min | 11:12:33 in 2-6, then 24 min | 11:12:43 in 2-5, then 24 min | 11:13:03 in 1-4, then 24 min | 11:13:23 in 1-4, then 23 min | 11:13:48 in <1-4, then 20 min | 11:13:58 in 1, 20 min | 11:14:53 in <1, 20 min | 11:16:08 now, then 16 min"
+   }
+  ]
+ },
+ "holdout": {
+  "all": {
+   "waits": 0,
+   "arrived": 0,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 0,
+   "scored": 0,
+   "medianWaitMin": null,
+   "p90WaitMin": null,
+   "firstSight": {
+    "medianAbsSec": null,
+    "p90AbsSec": null,
+    "earlyOver60Pct": null,
+    "lateOver60Pct": null
+   },
+   "interval": {
+    "n": 0,
+    "insidePct": null,
+    "earlyPct": null,
+    "latePct": null,
+    "medianWidthSec": null
+   },
+   "pctJump180": 0,
+   "pctJump300": 0,
+   "pctReversal60": 0,
+   "pctStrand": 0,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 0,
+   "pctPinChanged": 0,
+   "pctPinRight": null,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 0,
+   "drops": 0,
+   "dropsDeclined": 0,
+   "dropsRepriced": 0,
+   "worstDrift": {
+    "p50": null,
+    "p90": null,
+    "max": null
+   }
+  },
+  "byRoute": {},
+  "worstStops": [],
+  "worstWaits": []
+ },
+ "chain": null,
+ "bySource": {
+  "uniform": {
+   "all": {
+    "waits": 203,
+    "arrived": 188,
+    "gaveUp": 3,
+    "dataEnded": 0,
+    "boardedOnArrival": 12,
+    "scored": 188,
+    "medianWaitMin": 10.8,
+    "p90WaitMin": 25.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 526.5,
+     "earlyOver60Pct": 12.2,
+     "lateOver60Pct": 14.9
+    },
+    "interval": {
+     "n": 188,
+     "insidePct": 66.5,
+     "earlyPct": 11.7,
+     "latePct": 21.8,
+     "medianWidthSec": 445.1
+    },
+    "pctJump180": 8,
+    "pctJump300": 1.6,
+    "pctReversal60": 12.8,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 2.7,
+    "pctOvershoot": 10.6,
+    "pctPinChanged": 4.8,
+    "pctPinRight": 95.7,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0.5,
+    "drops": 1,
+    "dropsDeclined": 0,
+    "dropsRepriced": 1,
+    "worstDrift": {
+     "p50": 10,
+     "p90": 171.5,
+     "max": 350
+    }
+   },
+   "byRoute": {
+    "Red": {
+     "waits": 203,
+     "arrived": 188,
+     "gaveUp": 3,
+     "dataEnded": 0,
+     "boardedOnArrival": 12,
+     "scored": 188,
+     "medianWaitMin": 10.8,
+     "p90WaitMin": 25.8,
+     "firstSight": {
+      "medianAbsSec": 0,
+      "p90AbsSec": 526.5,
+      "earlyOver60Pct": 12.2,
+      "lateOver60Pct": 14.9
+     },
+     "interval": {
+      "n": 188,
+      "insidePct": 66.5,
+      "earlyPct": 11.7,
+      "latePct": 21.8,
+      "medianWidthSec": 445.1
+     },
+     "pctJump180": 8,
+     "pctJump300": 1.6,
+     "pctReversal60": 12.8,
+     "pctStrand": 0,
+     "pctUnattributedStrand": 2.7,
+     "pctOvershoot": 10.6,
+     "pctPinChanged": 4.8,
+     "pctPinRight": 95.7,
+     "pctVanished": 0,
+     "pctLapRepriced": 0,
+     "pctNeverShown": 0,
+     "pctDropped": 0.5,
+     "drops": 1,
+     "dropsDeclined": 0,
+     "dropsRepriced": 1,
+     "worstDrift": {
+      "p50": 10,
+      "p90": 171.5,
+      "max": 350
+     }
+    }
+   },
+   "worstStops": [
+    {
+     "key": "Red|115",
+     "label": "Red",
+     "stopId": 115,
+     "waits": 4,
+     "pctJump180": 25,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|147",
+     "label": "Red",
+     "stopId": 147,
+     "waits": 4,
+     "pctJump180": 25,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|27",
+     "label": "Red",
+     "stopId": 27,
+     "waits": 4,
+     "pctJump180": 25,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|11",
+     "label": "Red",
+     "stopId": 11,
+     "waits": 5,
+     "pctJump180": 20,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|126",
+     "label": "Red",
+     "stopId": 126,
+     "waits": 6,
+     "pctJump180": 16.7,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|36",
+     "label": "Red",
+     "stopId": 36,
+     "waits": 6,
+     "pctJump180": 16.7,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|3",
+     "label": "Red",
+     "stopId": 3,
+     "waits": 7,
+     "pctJump180": 14.3,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|45",
+     "label": "Red",
+     "stopId": 45,
+     "waits": 8,
+     "pctJump180": 12.5,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|75",
+     "label": "Red",
+     "stopId": 75,
+     "waits": 8,
+     "pctJump180": 12.5,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|30",
+     "label": "Red",
+     "stopId": 30,
+     "waits": 8,
+     "pctJump180": 12.5,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|31",
+     "label": "Red",
+     "stopId": 31,
+     "waits": 8,
+     "pctJump180": 12.5,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|41",
+     "label": "Red",
+     "stopId": 41,
+     "waits": 8,
+     "pctJump180": 12.5,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|128",
+     "label": "Red",
+     "stopId": 128,
+     "waits": 8,
+     "pctJump180": 12.5,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|120",
+     "label": "Red",
+     "stopId": 120,
+     "waits": 8,
+     "pctJump180": 12.5,
+     "pctStrand": 0
+    },
+    {
+     "key": "Red|38",
+     "label": "Red",
+     "stopId": 38,
+     "waits": 8,
+     "pctJump180": 12.5,
+     "pctStrand": 0
+    }
+   ],
+   "worstWaits": [
+    {
+     "id": "Red|115|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 115,
+     "worstDriftSec": 350,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 4-18, then 74 min | 11:00:08 in 3-18, then 74 min | 11:00:43 in 3-17, then 74 min | 11:00:48 in 2-17, then 73 min | 11:01:28 in 2-16, then 73 min | 11:01:38 in 9, 73 min | 11:01:53 in 9, 72 min | 11:02:08 in 1-5, then 65 min | 11:02:18 in 1-13, then 66 min | 11:02:23 in 2, 67 min | 11:02:33 now-13, then 69 min | 11:02:38 now-12, then 69 min | 11:02:48 now-11, then 69 min | 11:03:13 in 2, 67 min | 11:03:23 in 1, 64 min | 11:03:48 in 1, 63 min | 11:04:13 in <1, 63 min | 11:04:33 now, then 62 min"
+    },
+    {
+     "id": "Red|45|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 45,
+     "worstDriftSec": 350,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 7-21, then 78 min | 11:00:08 in 6-21, then 77 min | 11:00:18 in 6-20, then 77 min | 11:00:48 in 5-20, then 77 min | 11:00:58 in 5-20, then 76 min | 11:01:23 in 5-19, then 76 min | 11:01:38 in 4-19, then 76 min | 11:01:53 in 4-18, then 75 min | 11:02:08 in 3-9, then 68 min | 11:02:18 in 2-15, then 69 min | 11:02:23 in 5, 70 min | 11:02:33 in 7, 71 min | 11:02:38 now-15, then 71 min | 11:02:48 now-14, then 71 min | 11:03:13 in 6, 70 min | 11:03:23 in 2-7, then 67 min | 11:03:33 in 2-7, then 66 min | 11:03:38 in 1-7, then 66 min | 11:03:48 in 1-6, then 66 min | 11:04:23 in 1-6, then 65 min | 11:04:28 in 1-5, then 65 min | 11:04:33 in <1-5, then 65 min | 11:04:48 in <1-5, then 64 min | 11:04:58 in 1, 64 min | 11:05:03 in <1, 64 min | 11:05:18 in 1, 64 min | 11:06:23 in <1, 63 min | 11:07:03 in <1, 62 min | 11:07:38 now, then 62 min"
+    },
+    {
+     "id": "Red|120|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 120,
+     "worstDriftSec": 350,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 28, 91 min | 11:00:08 in 27, 90 min | 11:00:18 in 27, 89 min | 11:00:48 in 26, 89 min | 11:01:38 in 26, 88 min | 11:01:53 in 25, 88 min | 11:01:58 in 17-32, then 88 min | 11:02:08 in 14-24, then 81 min | 11:02:18 in 14-26, then 82 min | 11:02:23 in 19, 83 min | 11:02:33 in 21, 84 min | 11:02:53 in 13-28, then 84 min | 11:03:13 in 20, 83 min | 11:03:23 in 14-22, then 80 min | 11:03:33 in 13-21, then 80 min | 11:03:48 in 13-21, then 79 min | 11:04:23 in 12-20, then 78 min | 11:04:48 in 11-19, then 77 min | 11:04:58 in 11-18, then 77 min | 11:05:03 in 10-18, then 77 min | 11:05:18 in 11-19, then 77 min | 11:05:28 in 11-18, then 77 min | 11:06:23 in 10-18, then 76 min | 11:06:33 in 10-17, then 76 min | 11:06:48 in 10-17, then 75 min | 11:07:33 in 9-16, then 75 min | 11:07:58 in 9-16, then 74 min | 11:08:03 in 9-15, then 74 min | 11:08:43 in 8-14, then 73 min | 11:08:53 in 8-13, then 73 min | 11:09:03 in 7-13, then 73 min | 11:09:08 in 8-14, then 73 min | 11:09:23 in 8-15, then 73 min | 11:09:43 in 7-12, then 72 min | 11:10:03 in 7-13, then 72 min | 11:10:13 in 7-12, then 71 min | 11:10:28 in 6-12, then 71 min | 11:10:33 in 6-11, then 71 min | 11:10:53 in 5-11, then 70 min | 11:11:03 in 5-10, then 27 min | 11:11:23 in 5-10, then 26 min | 11:11:58 in 4-9, then 26 min | 11:12:23 in 4-8, then 26 min | 11:12:33 in 3-7, then 26 min | 11:12:53 in 3-7, then 25 min | 11:13:03 in 2-6, then 25 min | 11:13:48 in 1-6, then 22 min | 11:13:58 in 1-5, then 22 min | 11:14:23 in 1-4, then 22 min | 11:14:33 in <1-4, then 22 min | 11:15:03 in 2, 22 min | 11:15:13 in 1, 22 min | 11:16:08 in 1, 18 min | 11:16:23 in <1, 18 min | 11:16:53 in <1, 17 min | 11:17:28 now, then 17 min | 11:17:38 now, then 16 min"
+    },
+    {
+     "id": "Red|75|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 75,
+     "worstDriftSec": 290,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 7-22, then 78 min | 11:00:08 in 7-21, then 78 min | 11:00:18 in 6-21, then 78 min | 11:00:43 in 6-21, then 77 min | 11:01:13 in 6-20, then 77 min | 11:01:28 in 5-20, then 77 min | 11:01:43 in 5-20, then 76 min | 11:01:53 in 4-19, then 75 min | 11:02:08 in 3-10, then 69 min | 11:02:18 in 3-15, then 70 min | 11:02:23 in 6, 71 min | 11:02:33 in 8, 72 min | 11:02:48 now-15, then 72 min | 11:03:08 in <1-15, then 72 min | 11:03:13 in 3-18, then 71 min | 11:03:23 in 2-8, then 68 min | 11:03:33 in 2-7, then 68 min | 11:03:38 in 2-8, then 67 min | 11:03:48 in 1-7, then 67 min | 11:04:23 in 1-7, then 66 min | 11:04:28 in 1-6, then 66 min | 11:04:48 in <1-5, then 65 min | 11:05:03 in 1, 65 min | 11:05:18 in <1-4, then 65 min | 11:05:28 now-4, then 65 min | 11:05:33 now-5, then 65 min | 11:05:43 in <1-5, then 65 min | 11:06:23 in 1, 64 min | 11:06:48 in 1, 63 min | 11:07:28 in <1, 63 min | 11:07:58 in <1, 62 min | 11:08:03 now, then 62 min"
+    },
+    {
+     "id": "Red|30|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 30,
+     "worstDriftSec": 290,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 19, 82 min | 11:00:08 in 19, 81 min | 11:00:13 in 18, 81 min | 11:01:13 in 18, 80 min | 11:01:38 in 17, 80 min | 11:01:53 in 17, 79 min | 11:01:58 in 8-23, then 79 min | 11:02:08 in 6-15, then 73 min | 11:02:18 in 6-18, then 73 min | 11:02:23 in 6-21, then 75 min | 11:02:33 in 12, 76 min | 11:02:48 in 3-18, then 76 min | 11:03:08 in 4-18, then 76 min | 11:03:13 in 6-21, then 75 min | 11:03:23 in 5-13, then 72 min | 11:03:33 in 5-13, then 71 min | 11:03:48 in 5-12, then 71 min | 11:03:53 in 4-12, then 71 min | 11:04:13 in 4-12, then 70 min | 11:04:33 in 3-11, then 70 min | 11:04:48 in 3-10, then 69 min | 11:04:58 in 2-9, then 69 min | 11:05:03 in 2-8, then 68 min | 11:05:08 in 2-8, then 69 min | 11:05:18 in 2-9, then 68 min | 11:05:58 in 3-9, then 68 min | 11:06:23 in 2-8, then 68 min | 11:06:33 in 2-8, then 67 min | 11:07:28 in 1-8, then 67 min | 11:07:33 in 1-7, then 67 min | 11:07:48 in 1-7, then 66 min | 11:08:03 in 1-6, then 66 min | 11:08:13 in <1-6, then 66 min | 11:08:23 in 1-6, then 66 min | 11:08:33 in 1-6, then 65 min | 11:08:43 in <1-4, then 65 min | 11:08:53 in 1, 64 min | 11:09:08 in <1-4, then 65 min | 11:09:13 in <1-5, then 64 min | 11:09:28 now-5, then 64 min | 11:09:43 in 1, 64 min | 11:10:03 in 1, 63 min | 11:10:28 in <1, 63 min | 11:10:43 now, then 62 min"
+    },
+    {
+     "id": "Red|31|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 31,
+     "worstDriftSec": 290,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 21, 84 min | 11:00:18 in 21, 83 min | 11:00:43 in 20, 83 min | 11:01:28 in 20, 82 min | 11:01:43 in 19, 82 min | 11:01:53 in 10-25, then 81 min | 11:02:08 in 8-17, then 75 min | 11:02:18 in 8-20, then 75 min | 11:02:23 in 8-23, then 76 min | 11:02:33 in 14, 78 min | 11:02:48 in 6-21, then 78 min | 11:03:08 in 7-21, then 78 min | 11:03:13 in 8-23, then 77 min | 11:03:23 in 8-15, then 74 min | 11:03:33 in 7-14, then 74 min | 11:03:48 in 7-14, then 73 min | 11:04:23 in 6-14, then 72 min | 11:04:43 in 5-13, then 72 min | 11:04:48 in 5-12, then 71 min | 11:04:58 in 4-12, then 71 min | 11:05:03 in 4-11, then 70 min | 11:05:18 in 4-12, then 70 min | 11:06:08 in 5-12, then 70 min | 11:06:18 in 4-12, then 70 min | 11:06:23 in 4-11, then 70 min | 11:06:33 in 3-10, then 69 min | 11:07:33 in 3-9, then 69 min | 11:07:48 in 3-9, then 68 min | 11:08:03 in 2-8, then 68 min | 11:08:43 in 2-7, then 67 min | 11:08:53 in 1-6, then 66 min | 11:09:08 in 1-7, then 67 min | 11:09:13 in 1-8, then 66 min | 11:09:43 in 1-5, then 66 min | 11:10:13 in 1-4, then 65 min | 11:10:33 in 2, 65 min | 11:10:53 in 1, 64 min | 11:11:03 in 1, 21 min | 11:11:23 in 1, 20 min | 11:11:58 in <1, 20 min | 11:12:23 now, then 20 min"
+    },
+    {
+     "id": "Red|41|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 41,
+     "worstDriftSec": 290,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 23, 86 min | 11:00:08 in 23, 85 min | 11:00:43 in 22, 85 min | 11:01:13 in 22, 84 min | 11:01:23 in 22, 85 min | 11:01:28 in 22, 84 min | 11:01:43 in 21, 84 min | 11:01:53 in 12-27, then 83 min | 11:02:08 in 10-19, then 77 min | 11:02:18 in 10-22, then 78 min | 11:02:23 in 10-25, then 79 min | 11:02:33 in 16, 80 min | 11:02:48 in 8-23, then 80 min | 11:03:08 in 9-23, then 80 min | 11:03:13 in 10-25, then 79 min | 11:03:23 in 10-17, then 76 min | 11:03:33 in 9-17, then 75 min | 11:03:38 in 9-16, then 75 min | 11:04:23 in 8-15, then 74 min | 11:04:43 in 7-15, then 74 min | 11:04:48 in 7-14, then 73 min | 11:04:58 in 6-13, then 73 min | 11:05:03 in 6-13, then 72 min | 11:05:08 in 6-14, then 73 min | 11:05:33 in 7-14, then 73 min | 11:05:43 in 7-13, then 73 min | 11:05:58 in 7-14, then 73 min | 11:06:03 in 7-13, then 73 min | 11:06:18 in 7-13, then 72 min | 11:06:23 in 6-13, then 72 min | 11:06:33 in 5-13, then 72 min | 11:06:48 in 5-13, then 71 min | 11:07:33 in 5-12, then 71 min | 11:07:58 in 4-11, then 70 min | 11:08:43 in 3-9, then 69 min | 11:08:53 in 3-8, then 69 min | 11:09:08 in 3-9, then 69 min | 11:09:13 in 3-10, then 69 min | 11:09:43 in 3-8, then 68 min | 11:10:03 in 3-7, then 68 min | 11:10:13 in 3-7, then 67 min | 11:10:28 in 2-7, then 67 min | 11:10:43 in 2-6, then 67 min | 11:10:53 in 1-6, then 66 min | 11:11:03 in 1-5, then 23 min | 11:11:13 in 1-5, then 22 min | 11:11:58 in 1-4, then 22 min | 11:12:03 in <1-4, then 22 min | 11:12:23 in 2, 22 min | 11:12:33 in 1, 22 min | 11:12:43 in 1, 21 min | 11:12:53 in <1, 21 min | 11:13:38 now, then 21 min"
+    },
+    {
+     "id": "Red|126|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 126,
+     "worstDriftSec": 290,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 25, 88 min | 11:00:08 in 24, 87 min | 11:00:13 in 24, 86 min | 11:00:58 in 23, 86 min | 11:01:38 in 23, 85 min | 11:01:53 in 22, 84 min | 11:01:58 in 14-29, then 84 min | 11:02:08 in 12-21, then 78 min | 11:02:18 in 11-23, then 79 min | 11:02:23 in 11-26, then 80 min | 11:02:33 in 18, 81 min | 11:02:48 in 9-24, then 81 min | 11:03:08 in 10-24, then 81 min | 11:03:13 in 17, 81 min | 11:03:23 in 11-18, then 77 min | 11:03:48 in 10-18, then 76 min | 11:04:13 in 10-17, then 76 min | 11:04:28 in 9-17, then 76 min | 11:04:33 in 9-16, then 75 min | 11:04:48 in 8-16, then 75 min | 11:04:58 in 8-15, then 75 min | 11:05:03 in 7-14, then 74 min | 11:05:08 in 8-15, then 74 min | 11:06:23 in 7-14, then 73 min | 11:07:28 in 7-13, then 72 min | 11:07:33 in 6-14, then 72 min | 11:07:58 in 6-13, then 72 min | 11:08:03 in 6-12, then 72 min | 11:08:13 in 5-12, then 72 min | 11:08:23 in 5-12, then 71 min | 11:08:43 in 5-11, then 70 min | 11:08:53 in 4-10, then 70 min | 11:09:08 in 4-11, then 70 min | 11:09:13 in 5-11, then 70 min | 11:09:23 in 4-11, then 70 min | 11:09:28 in 4-12, then 70 min | 11:09:33 in 4-11, then 70 min | 11:09:43 in 4-9, then 69 min | 11:10:28 in 4-8, then 69 min | 11:10:33 in 3-8, then 68 min | 11:10:43 in 3-7, then 68 min | 11:11:03 in 2-7, then 24 min | 11:11:33 in 2-7, then 23 min | 11:11:58 in 2-5, then 23 min | 11:12:13 in 1-5, then 23 min | 11:12:33 in 1-4, then 23 min | 11:12:43 in 2, 23 min | 11:12:53 in 2, 22 min | 11:13:03 in 1, 22 min | 11:13:48 in 1, 19 min | 11:13:58 in <1, 19 min | 11:14:23 now, then 19 min"
+    },
+    {
+     "id": "Red|36|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 36,
+     "worstDriftSec": 290,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 25, 88 min | 11:00:08 in 25, 87 min | 11:00:43 in 24, 87 min | 11:01:28 in 24, 86 min | 11:01:43 in 23, 86 min | 11:01:53 in 23, 85 min | 11:02:08 in 12-22, then 79 min | 11:02:18 in 12-24, then 80 min | 11:02:23 in 12-27, then 81 min | 11:02:33 in 18, 82 min | 11:02:53 in 10-25, then 82 min | 11:03:08 in 11-25, then 82 min | 11:03:13 in 18, 81 min | 11:03:23 in 11-19, then 78 min | 11:03:33 in 11-19, then 77 min | 11:03:53 in 11-18, then 77 min | 11:04:23 in 10-18, then 76 min | 11:04:33 in 10-17, then 76 min | 11:04:48 in 9-16, then 75 min | 11:04:58 in 8-16, then 75 min | 11:05:03 in 8-15, then 75 min | 11:05:18 in 8-16, then 74 min | 11:05:28 in 9-16, then 74 min | 11:05:43 in 8-15, then 74 min | 11:06:03 in 8-16, then 74 min | 11:06:08 in 8-15, then 74 min | 11:06:33 in 8-14, then 74 min | 11:06:43 in 8-14, then 73 min | 11:07:28 in 7-14, then 73 min | 11:07:38 in 7-13, then 73 min | 11:07:48 in 7-14, then 73 min | 11:07:58 in 7-13, then 72 min | 11:08:03 in 6-13, then 72 min | 11:08:43 in 5-11, then 71 min | 11:08:53 in 5-10, then 71 min | 11:09:03 in 5-11, then 71 min | 11:09:13 in 5-12, then 71 min | 11:09:43 in 5-10, then 70 min | 11:10:13 in 4-9, then 69 min | 11:10:33 in 4-8, then 69 min | 11:10:43 in 4-8, then 68 min | 11:10:53 in 3-8, then 68 min | 11:11:03 in 3-7, then 25 min | 11:11:13 in 3-7, then 24 min | 11:11:58 in 2-6, then 24 min | 11:12:23 in 2-5, then 24 min | 11:12:33 in 1-5, then 24 min | 11:12:43 in 1-4, then 23 min | 11:13:03 in 2, 23 min | 11:13:38 in 1, 23 min | 11:13:48 in 1, 19 min | 11:14:18 in <1, 19 min | 11:15:03 now, then 19 min"
+    },
+    {
+     "id": "Red|128|2026-09-16T11:00:03.130Z",
+     "label": "Red",
+     "stopId": 128,
+     "worstDriftSec": 290,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "11:00:03 in 26, 89 min | 11:00:08 in 26, 88 min | 11:00:13 in 25, 88 min | 11:00:58 in 25, 87 min | 11:01:28 in 24, 87 min | 11:01:53 in 15-30, then 86 min | 11:02:08 in 13-22, then 80 min | 11:02:18 in 13-25, then 80 min | 11:02:23 in 13-28, then 82 min | 11:02:33 in 19, 83 min | 11:02:48 in 11-26, then 83 min | 11:03:08 in 12-26, then 83 min | 11:03:13 in 13-28, then 82 min | 11:03:23 in 12-20, then 78 min | 11:03:48 in 12-19, then 78 min | 11:04:13 in 11-19, then 77 min | 11:04:23 in 11-18, then 77 min | 11:04:48 in 10-17, then 76 min | 11:04:58 in 9-16, then 76 min | 11:05:03 in 9-16, then 75 min | 11:05:18 in 9-17, then 75 min | 11:05:53 in 9-16, then 75 min | 11:06:33 in 9-15, then 74 min | 11:06:43 in 8-15, then 74 min | 11:07:33 in 8-14, then 73 min | 11:08:03 in 7-14, then 73 min | 11:08:13 in 7-13, then 73 min | 11:08:23 in 7-13, then 72 min | 11:08:43 in 6-12, then 72 min | 11:08:53 in 6-12, then 71 min | 11:09:13 in 6-13, then 71 min | 11:09:43 in 6-11, then 71 min | 11:10:03 in 6-11, then 70 min | 11:10:13 in 5-10, then 70 min | 11:10:33 in 5-9, then 69 min | 11:10:43 in 4-9, then 69 min | 11:11:03 in 4-8, then 25 min | 11:11:13 in 3-8, then 25 min | 11:11:58 in 3-7, then 25 min | 11:12:23 in 2-6, then 25 min | 11:12:33 in 2-6, then 24 min | 11:12:43 in 2-5, then 24 min | 11:13:03 in 1-4, then 24 min | 11:13:23 in 1-4, then 23 min | 11:13:48 in <1-4, then 20 min | 11:13:58 in 1, 20 min | 11:14:53 in <1, 20 min | 11:16:08 now, then 16 min"
+    }
+   ]
+  },
+  "targeted": {
+   "all": {
+    "waits": 0,
+    "arrived": 0,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 0,
+    "medianWaitMin": null,
+    "p90WaitMin": null,
+    "firstSight": {
+     "medianAbsSec": null,
+     "p90AbsSec": null,
+     "earlyOver60Pct": null,
+     "lateOver60Pct": null
+    },
+    "interval": {
+     "n": 0,
+     "insidePct": null,
+     "earlyPct": null,
+     "latePct": null,
+     "medianWidthSec": null
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": null,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": null,
+     "p90": null,
+     "max": null
+    }
+   },
+   "byRoute": {},
+   "worstStops": [],
+   "worstWaits": []
+  },
+  "chain": {
+   "all": {
+    "waits": 0,
+    "arrived": 0,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 0,
+    "medianWaitMin": null,
+    "p90WaitMin": null,
+    "firstSight": {
+     "medianAbsSec": null,
+     "p90AbsSec": null,
+     "earlyOver60Pct": null,
+     "lateOver60Pct": null
+    },
+    "interval": {
+     "n": 0,
+     "insidePct": null,
+     "earlyPct": null,
+     "latePct": null,
+     "medianWidthSec": null
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": null,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": null,
+     "p90": null,
+     "max": null
+    }
+   },
+   "byRoute": {},
+   "worstStops": [],
+   "worstWaits": []
+  }
+ },
+ "named": []
+}

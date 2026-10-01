@@ -20,16 +20,18 @@ export type PlaceRow = {
 export const PlaceList: React.FC<{
   /** The listbox id the input's `aria-controls` names; rows are `${id}-${i}`. */
   id: string;
+  label: string;
   rows: PlaceRow[];
   /** Keyboard-highlighted index, -1 for none. */
   active: number;
   onHover: (i: number) => void;
-}> = ({ id, rows, active, onHover }) => {
+}> = ({ id, label, rows, active, onHover }) => {
   if (rows.length === 0) return null;
   return (
     <div
       id={id}
       role="listbox"
+      aria-label={label}
       // A tap on a row must not blur the input first: the box's blur handler
       // restores the previous pill 180 ms later, and on a slow tap the click
       // used to lose that race. Keeping focus on the input means the only

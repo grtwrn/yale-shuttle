@@ -44,6 +44,24 @@ describe("bucketOf", () => {
 });
 
 describe("parseBusEtaText", () => {
+  it('reads the tappable estimate and outward-rounded prediction interval without adding a minute', () => {
+    expect(parseBusEtaText('About 6 min ⓘ\nLikely 4–9 min')).toMatchObject({
+      first: [240, 540], median: [360, 420], second: null, spread: true, bunched: false,
+    });
+    expect(parseBusEtaText('About <1 min\nLikely <1–2 min')).toMatchObject({ first: [0, 120], median: [0, 60] });
+    expect(parseBusEtaText('About 6 min ⓘ')).toMatchObject({ first: [360, 420], raw: 'About 6 min ⓘ' });
+    expect(parseBusEtaText('About <1 min ⓘ').first).toEqual([0, 60]);
+    expect(parseBusEtaText('At your stop ⓘ')).toMatchObject({ first: [0, 10], raw: 'At your stop ⓘ' });
+    expect(parseBusEtaText('About 6 min\nLikely 9–4 min')).toBeNull();
+  });
+
+  it('does not hide a jumping headline inside overlapping prediction windows', () => {
+    const before = parseBusEtaText('About 3 min\nLikely 1–20 min');
+    const after = parseBusEtaText('About 9 min\nLikely 1–20 min');
+    const paired = pairBuses(before, after, 15, undefined, { from: '308', to: '308' });
+    expect(paired.matched[0].driftSec).toBe(315);
+    expect(before.first).toEqual(after.first); // coverage remains the full window
+  });
   it("reads every shape fmtBusPair produces", () => {
     expect(parseBusEtaText("🚌 arriving now").first).toEqual([0, 10]);
     expect(parseBusEtaText("🚌 now, then 16 min").second).toEqual([960, 1020]);
@@ -321,6 +339,13 @@ Not affiliated with or endorsed by Yale University.`;
     expect(opts[0].eta.raw).toBe("in 3, 21 min");
     expect(opts[2].eta.raw).toBe("in 25, 31 min");
     expect(opts[4].eta.raw).toBe("in 36 min");
+  });
+
+  it('keeps the two-line tappable arrival attached to its route card', () => {
+    const text = LIVE_NO_GLYPH.replace('in 25, 31 min', 'About 25 min ⓘ\nLikely 20–34 min');
+    const opts = parseOptions(text);
+    expect(opts.map(o => o.routeLabel)).toEqual(['Blue Day', 'Orange Day', 'Red', 'Walk', 'Brown']);
+    expect(opts[2].eta).toMatchObject({ first: [1200, 2040], median: [1500, 1560], raw: 'About 25 min ⓘ\nLikely 20–34 min' });
   });
 
   it("does not mistake the ride bar for the countdown", () => {
@@ -1260,6 +1285,33 @@ describe("the arrival clock has TWO readers", () => {
     expect(ARRIVAL_CLOCK_RE.test("23 min")).toBe(false);
     expect(ARRIVAL_CLOCK_RE.test("in 3, 21 min")).toBe(false);
     expect(ARRIVAL_CLOCK_RE.test("12:13 PM")).toBe(false);     // the page header
+  });
+
+  it("recognizes destination windows and approximate points without mistaking nearby map or pickup text for a clock", () => {
+    for (const clock of ['10:21a–10:27a', '~10:45a', '~Sep 19, 12:05a', '11:59p–Sep 19, 12:05a']) {
+      expect(ARRIVAL_CLOCK_RE.test(clock), clock).toBe(true);
+      expect(hasArrivalClock(`At destination (est.)\n${clock}`), clock).toBe(true);
+    }
+    for (const text of ['🏁 (R) 10:23a', '(B) ~10:45a', 'Likely 3–9 min', 'About 5 min ⓘ', 'At destination (est.)']) {
+      expect(ARRIVAL_CLOCK_RE.test(text), text).toBe(false);
+    }
+  });
+
+  it("reads actual built-page cards after removing the separate arrive-by bar", () => {
+    // Captured at 360px from the built SPA with a synthetic shared-server ETA
+    // fixture, 2026-09-18. These are rendered text, not a mocked card layout.
+    const live = readFileSync(new URL('./__fixtures__/trip-without-arrive-by-live.txt', import.meta.url), 'utf8');
+    const future = readFileSync(new URL('./__fixtures__/trip-without-arrive-by-future.txt', import.meta.url), 'utf8');
+    const liveOptions = parseOptions(live);
+    expect(liveOptions.map(o => o.routeLabel)).toEqual(['Red', 'Walk']);
+    expect(liveOptions[0]).toMatchObject({ totalMin: 23, arriveText: '10:21a–10:27a',
+      eta: { first: [180, 540], median: [300, 360] } });
+    expect(liveOptions[1]).toMatchObject({ mode: 'walk', arriveText: '~10:45a' });
+    expect(parseOptions(future).map(o => [o.routeLabel, o.arriveText])).toEqual([
+      ['Red', '~11:16a'], ['Brown', '~11:20a'], ['Walk', '~11:45a'],
+    ]);
+    expect(live).toContain('Plan for later…');
+    expect(live).not.toContain('Arrive by');
   });
 
   it("finds a clock in the card text `openCard` actually greps", () => {
@@ -2798,4 +2850,66 @@ About`;
     const [, blue] = parseOptions(inject(BANNER_LEAD, "Blue Night"));
     expect(blue.eta?.raw).toBe("in 1-4, then 40 min");
   });
+});
+
+// Current destination-first cards keep the following arrival separate from a gap.
+it('parses compact pickup countdowns without needing a total-duration header', () => {
+  const text = `Red
+Arrives in ~5 min ⓘ
+Next in ~20 min
+At destination
+10:21a–10:27a
+🚶 2 min
+›
+🚌 18 min
+›
+🚶 Walk
+At destination
+~10:40a
+Show 2 more routes`;
+  const cards = parseOptions(text);
+  expect(cards.map(c => c.routeLabel)).toEqual(['Red', 'Walk']);
+  expect(cards[0]).toMatchObject({ totalMin: null, arriveText: '10:21a–10:27a',
+    eta: { first: [300, 360], second: [1200, 1260] } });
+  expect(cards[1]).toMatchObject({ mode: 'walk', totalMin: null, arriveText: '~10:40a', eta: null });
+  expect(parseBusEtaText('Arrives in <1 min ⓘ\nNext in ~8 min')).toMatchObject({ first: [0, 60], second: [480, 540] });
+  expect(parseBusEtaText('At your stop ⓘ\nNext in ~8 min')).toMatchObject({ first: [0, 10], second: [480, 540] });
+  expect(parseOptions('Blue Night\nAt destination\n~11:20p')[0]).toMatchObject({ routeLabel: 'Blue Night', eta: null });
+  expect(parseOptions('Red\nETA unavailable')[0]).toMatchObject({ routeLabel: 'Red', eta: null, arriveText: null });
+});
+
+
+it('retains the visible pickup window alongside the point and following shuttle', () => {
+  const summary = 'Arrives in ~5 min, 3–9 min range\nNext in ~20 min';
+  const expected = { first: [180, 540], median: [300, 360], second: [1200, 1260], spread: true };
+  expect(parseBusEtaText(summary)).toMatchObject(expected);
+  expect(parseOptions(`Red\n${summary}\nAt destination\n10:21a–10:27a`)[0].eta).toMatchObject(expected);
+  expect(parseBusEtaText('Arrives in <1 min, <1–2 min range')).toMatchObject({ first: [0, 120], median: [0, 60] });
+  expect(parseBusEtaText('Arrives in ~5 min, 9–3 min range')).toBeNull();
+  expect(parseBusEtaText('Arrives in ~5 min, 3 min range')).toMatchObject({ first: [180, 180] });
+});
+
+
+it('reads arrivals from the mini-map table when cards contain only route legs', () => {
+  const text = `Route\tAt stop (in min)\tAt destination
+Red\t~5 (3–9)\nNext ~20\t10:21a–10:27a
+Blue Night\tAt stop\nNext ~15\t10:20a–10:30a
+Orange Night\tUnavailable\t—
+Green\tMissed\t—
+Purple\tScheduled\t~11:32a
+Walk\t—\t~10:45a
+Red
+🚶 2 min
+›
+🚌 18 min
+›`;
+  expect(parseOptions(text.replaceAll('–', ' – '))).toEqual(parseOptions(text).map(card => ({ ...card, arriveText: card.arriveText?.replaceAll('–', ' – ') ?? null })));
+  const cards = parseOptions(text);
+  expect(cards.map(c => c.routeLabel)).toEqual(['Red', 'Blue Night', 'Orange Night', 'Green', 'Purple', 'Walk']);
+  expect(cards[0].eta).toMatchObject({ first: [180, 540], median: [300, 360], second: [1200, 1260], spread: true });
+  expect(cards[1].eta).toMatchObject({ first: [0, 10], second: [900, 960] });
+  expect(cards[2]).toMatchObject({ etaUnavailable: true, eta: null, arriveText: null });
+  expect(cards[3]).toMatchObject({ departed: true, eta: null, arriveText: null });
+  expect(cards[4]).toMatchObject({ eta: null, arriveText: '~11:32a' });
+  expect(cards[5]).toMatchObject({ mode: 'walk', eta: null, arriveText: '~10:45a' });
 });

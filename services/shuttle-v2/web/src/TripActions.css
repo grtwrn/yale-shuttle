@@ -1,0 +1,51 @@
+.trip-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.trip-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.trip-action-button {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #f8f9fa;
+  color: #374151;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.trip-action-button:hover {
+  background: #eef2f6;
+}
+
+.trip-action-button:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.trip-action-button[aria-pressed="true"] {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+  color: #174ea6;
+}
+
+.trip-action-grid > :last-child:nth-child(odd),
+.trip-tracker-open {
+  grid-column: 1 / -1;
+}

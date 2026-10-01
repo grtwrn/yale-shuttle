@@ -1,0 +1,45 @@
+{
+  "paired": 66,
+  "flags": {
+    "jump180": {
+      "before": 0,
+      "after": 0,
+      "fixed": 0,
+      "introduced": 0
+    },
+    "strand": {
+      "before": 0,
+      "after": 0,
+      "fixed": 0,
+      "introduced": 0
+    },
+    "drop": {
+      "before": 0,
+      "after": 0,
+      "fixed": 0,
+      "introduced": 0
+    },
+    "reversal60": {
+      "before": 4,
+      "after": 12,
+      "fixed": 0,
+      "introduced": 8
+    },
+    "pinWrong": {
+      "before": 3,
+      "after": 3,
+      "fixed": 0,
+      "introduced": 0
+    }
+  },
+  "before": {
+    "p90WorstDriftSec": 170.0,
+    "medianIntervalWidthSec": 611.3421748982878,
+    "coveragePct": 72.72727272727273
+  },
+  "after": {
+    "p90WorstDriftSec": 65.0,
+    "medianIntervalWidthSec": 449.0,
+    "coveragePct": 72.72727272727273
+  }
+}

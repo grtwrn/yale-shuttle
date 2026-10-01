@@ -1,0 +1,225 @@
+{
+  "historyProbe": [
+    {
+      "route": "Red",
+      "stop": 48,
+      "eta": 600,
+      "result": {
+        "asOf": 1789568798000,
+        "days": 30,
+        "forecastLowSec": 450,
+        "forecastHighSec": 750,
+        "trips": [
+          {
+            "arrivedAt": 1789488165981,
+            "busName": "#316",
+            "predictedAt": 1789487475000,
+            "predictedSec": 599,
+            "actualSec": 690.981
+          },
+          {
+            "arrivedAt": 1789475607808,
+            "busName": "#310",
+            "predictedAt": 1789474770000,
+            "predictedSec": 592,
+            "actualSec": 837.808
+          },
+          {
+            "arrivedAt": 1789405323570,
+            "busName": "#308",
+            "predictedAt": 1789404555000,
+            "predictedSec": 727,
+            "actualSec": 768.57
+          },
+          {
+            "arrivedAt": 1789400891436,
+            "busName": "#316",
+            "predictedAt": 1789400010000,
+            "predictedSec": 748,
+            "actualSec": 881.436
+          },
+          {
+            "arrivedAt": 1789400016405,
+            "busName": "#310",
+            "predictedAt": 1789399155000,
+            "predictedSec": 587,
+            "actualSec": 861.405
+          },
+          {
+            "arrivedAt": 1789391035561,
+            "busName": "#308",
+            "predictedAt": 1789390515000,
+            "predictedSec": 606,
+            "actualSec": 520.561
+          },
+          {
+            "arrivedAt": 1789146070892,
+            "busName": "#304",
+            "predictedAt": 1789145220000,
+            "predictedSec": 603,
+            "actualSec": 850.892
+          },
+          {
+            "arrivedAt": 1789145296008,
+            "busName": "#316",
+            "predictedAt": 1789144485000,
+            "predictedSec": 611,
+            "actualSec": 811.008
+          },
+          {
+            "arrivedAt": 1789144465671,
+            "busName": "#310",
+            "predictedAt": 1789143510000,
+            "predictedSec": 599,
+            "actualSec": 955.671
+          },
+          {
+            "arrivedAt": 1789142494162,
+            "busName": "#304",
+            "predictedAt": 1789141740000,
+            "predictedSec": 598,
+            "actualSec": 754.162
+          },
+          {
+            "arrivedAt": 1789141791156,
+            "busName": "#316",
+            "predictedAt": 1789141080000,
+            "predictedSec": 620,
+            "actualSec": 711.156
+          },
+          {
+            "arrivedAt": 1789140906436,
+            "busName": "#310",
+            "predictedAt": 1789140105000,
+            "predictedSec": 618,
+            "actualSec": 801.436
+          },
+          {
+            "arrivedAt": 1789138881347,
+            "busName": "#304",
+            "predictedAt": 1789138095000,
+            "predictedSec": 603,
+            "actualSec": 786.347
+          },
+          {
+            "arrivedAt": 1789135323909,
+            "busName": "#304",
+            "predictedAt": 1789134480000,
+            "predictedSec": 528,
+            "actualSec": 843.909
+          },
+          {
+            "arrivedAt": 1789130841304,
+            "busName": "#316",
+            "predictedAt": 1789130070000,
+            "predictedSec": 602,
+            "actualSec": 771.304
+          },
+          {
+            "arrivedAt": 1789130133062,
+            "busName": "#310",
+            "predictedAt": 1789129290000,
+            "predictedSec": 599,
+            "actualSec": 843.062
+          },
+          {
+            "arrivedAt": 1789058120404,
+            "busName": "#309",
+            "predictedAt": 1789057140000,
+            "predictedSec": 603,
+            "actualSec": 980.404
+          },
+          {
+            "arrivedAt": 1789054495484,
+            "busName": "#309",
+            "predictedAt": 1789053780000,
+            "predictedSec": 594,
+            "actualSec": 715.484
+          },
+          {
+            "arrivedAt": 1789048718730,
+            "busName": "#310",
+            "predictedAt": 1789048305000,
+            "predictedSec": 595,
+            "actualSec": 413.73
+          },
+          {
+            "arrivedAt": 1788969777948,
+            "busName": "#306",
+            "predictedAt": 1788969075000,
+            "predictedSec": 577,
+            "actualSec": 702.948
+          },
+          {
+            "arrivedAt": 1788966097949,
+            "busName": "#306",
+            "predictedAt": 1788965355000,
+            "predictedSec": 578,
+            "actualSec": 742.949
+          },
+          {
+            "arrivedAt": 1788962533495,
+            "busName": "#306",
+            "predictedAt": 1788961920000,
+            "predictedSec": 600,
+            "actualSec": 613.495
+          },
+          {
+            "arrivedAt": 1788961148162,
+            "busName": "#119",
+            "predictedAt": 1788960705000,
+            "predictedSec": 596,
+            "actualSec": 443.162
+          },
+          {
+            "arrivedAt": 1788887006173,
+            "busName": "#304",
+            "predictedAt": 1788886575000,
+            "predictedSec": 599,
+            "actualSec": 431.173
+          }
+        ],
+        "recent": [
+          {
+            "arrivedAt": 1789567487296,
+            "busName": "#309"
+          },
+          {
+            "arrivedAt": 1789566437170,
+            "busName": "#316"
+          },
+          {
+            "arrivedAt": 1789565792097,
+            "busName": "#308"
+          }
+        ]
+      }
+    },
+    {
+      "route": "Blue Night",
+      "stop": 48,
+      "eta": 600,
+      "result": {
+        "asOf": 1789607728678,
+        "days": 30,
+        "forecastLowSec": 450,
+        "forecastHighSec": 750,
+        "trips": [],
+        "recent": []
+      }
+    },
+    {
+      "route": "Red",
+      "stop": 10,
+      "eta": 900,
+      "result": {
+        "asOf": 1789568798000,
+        "days": 30,
+        "forecastLowSec": 675,
+        "forecastHighSec": 1125,
+        "trips": [],
+        "recent": []
+      }
+    }
+  ]
+}

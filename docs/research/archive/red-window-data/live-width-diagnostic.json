@@ -1,0 +1,161 @@
+{
+  "note": "Diagnostic ablations and historical full departures only; not validation or a model proposal. Checkpoint replay may differ from original issued snapshot.",
+  "originalAt": 1789654499293,
+  "originalInterval": [
+    {
+      "etaSec": 922,
+      "lowSec": 452,
+      "highSec": 1442,
+      "beforeWideningLowSec": 541.7411003236246,
+      "beforeWideningHighSec": 1342.7119741100323
+    }
+  ],
+  "warmAt": 1789654779371,
+  "issuedWarmRows": [
+    [
+      10,
+      11,
+      128,
+      53,
+      263,
+      2,
+      0,
+      128,
+      53
+    ],
+    [
+      10,
+      48,
+      620,
+      201,
+      1121,
+      5,
+      0,
+      620,
+      201
+    ]
+  ],
+  "priced": {
+    "current": {
+      "restored": 19,
+      "buses": [
+        [
+          "309",
+          "Red",
+          26,
+          {
+            "stopId": 13,
+            "standingSec": 20.064,
+            "approach": false
+          }
+        ],
+        [
+          "316",
+          "Red",
+          2,
+          {
+            "stopId": 45,
+            "standingSec": 50.069,
+            "approach": true
+          }
+        ],
+        [
+          "300",
+          "Red",
+          12,
+          null
+        ]
+      ],
+      "rows": [
+        [
+          2,
+          11,
+          129,
+          38,
+          263,
+          2,
+          0,
+          129,
+          38
+        ],
+        [
+          2,
+          48,
+          621,
+          196,
+          1119,
+          5,
+          0,
+          621,
+          196
+        ]
+      ]
+    },
+    "noWidening": {
+      "restored": 19,
+      "buses": [
+        [
+          "309",
+          "Red",
+          26,
+          {
+            "stopId": 13,
+            "standingSec": 20.064,
+            "approach": false
+          }
+        ],
+        [
+          "316",
+          "Red",
+          2,
+          {
+            "stopId": 45,
+            "standingSec": 50.069,
+            "approach": true
+          }
+        ],
+        [
+          "300",
+          "Red",
+          12,
+          null
+        ]
+      ],
+      "rows": [
+        [
+          2,
+          11,
+          129,
+          64,
+          225,
+          2,
+          0,
+          129,
+          64
+        ],
+        [
+          2,
+          48,
+          621,
+          285,
+          1014,
+          5,
+          0,
+          621,
+          285
+        ]
+      ]
+    }
+  },
+  "history": {
+    "from": "Trumbull / Hillhouse",
+    "to": "Division / Prospect",
+    "n": 40,
+    "dates": 8,
+    "min": 560.001,
+    "q10": 629.991,
+    "q50": 839.712,
+    "q90": 1065.5,
+    "max": 1215.17
+  }
+}

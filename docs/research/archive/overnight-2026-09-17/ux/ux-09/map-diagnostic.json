@@ -1,0 +1,30 @@
+{
+  "current": {
+    "iterations": 1,
+    "errors": [
+      "Cannot read properties of undefined (reading '_leaflet_pos')",
+      "Cannot read properties of undefined (reading '_leaflet_pos')"
+    ],
+    "errorStacks": [
+      "TypeError: Cannot read properties of undefined (reading '_leaflet_pos')\n    at Ke (http://localhost:8093/assets/rider-CxadgW4T.js:4:22074)\n    at n._getMapPanePos (http://localhost:8093/assets/rider-CxadgW4T.js:4:44398)\n    at n._getNewPixelOrigin (http://localhost:8093/assets/rider-CxadgW4T.js:4:44763)\n    at n._move (http://localhost:8093/assets/rider-CxadgW4T.js:4:41084)\n    at n._onZoomTransitionEnd (http://localhost:8093/assets/rider-CxadgW4T.js:4:48420)",
+      "TypeError: Cannot read properties of undefined (reading '_leaflet_pos')\n    at Ke (http://localhost:8093/assets/rider-CxadgW4T.js:4:22074)\n    at n._getMapPanePos (http://localhost:8093/assets/rider-CxadgW4T.js:4:44398)\n    at n._getNewPixelOrigin (http://localhost:8093/assets/rider-CxadgW4T.js:4:44763)\n    at n._move (http://localhost:8093/assets/rider-CxadgW4T.js:4:41084)\n    at n._onZoomTransitionEnd (http://localhost:8093/assets/rider-CxadgW4T.js:4:48420)"
+    ],
+    "resourcesClosed": true,
+    "mainSHA256": "b4d73637dee16ed6819d6ed8ff3a5a6cdd052c6316bd8c0820cd33577929c6f4",
+    "TransitMapSHA256": "e2e535591ac4e643ae385a5a0a5c613b2d0f08a64a103537468c9d9b820ad9b2"
+  },
+  "baseline": {
+    "iterations": 1,
+    "errors": [
+      "Cannot read properties of undefined (reading '_leaflet_pos')",
+      "Cannot read properties of undefined (reading '_leaflet_pos')"
+    ],
+    "errorStacks": [
+      "TypeError: Cannot read properties of undefined (reading '_leaflet_pos')\n    at Ke (http://localhost:8093/assets/rider-BRUcU96P.js:4:22074)\n    at n._getMapPanePos (http://localhost:8093/assets/rider-BRUcU96P.js:4:44398)\n    at n._getNewPixelOrigin (http://localhost:8093/assets/rider-BRUcU96P.js:4:44763)\n    at n._move (http://localhost:8093/assets/rider-BRUcU96P.js:4:41084)\n    at n._onZoomTransitionEnd (http://localhost:8093/assets/rider-BRUcU96P.js:4:48420)",
+      "TypeError: Cannot read properties of undefined (reading '_leaflet_pos')\n    at Ke (http://localhost:8093/assets/rider-BRUcU96P.js:4:22074)\n    at n._getMapPanePos (http://localhost:8093/assets/rider-BRUcU96P.js:4:44398)\n    at n._getNewPixelOrigin (http://localhost:8093/assets/rider-BRUcU96P.js:4:44763)\n    at n._move (http://localhost:8093/assets/rider-BRUcU96P.js:4:41084)\n    at n._onZoomTransitionEnd (http://localhost:8093/assets/rider-BRUcU96P.js:4:48420)"
+    ],
+    "resourcesClosed": true,
+    "mainSHA256": "c7ecfcf001ac0da4b9b6854cd55cc8a8262965da643bba33ad2b0381800515ce",
+    "TransitMapSHA256": "e2e535591ac4e643ae385a5a0a5c613b2d0f08a64a103537468c9d9b820ad9b2"
+  }
+}

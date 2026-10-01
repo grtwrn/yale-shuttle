@@ -1,0 +1,27 @@
+{
+  "baseline": "51c3071bcd13",
+  "sourceDirectory": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data",
+  "fixedCalibration": true,
+  "inputs": {
+    "positions.jsonl": {
+      "bytes": 7342532,
+      "sha256": "b5782cb80d2d17b0a8bdc7e7caea7671ec19a0ac4e8998f846e260dd1d2de5f7"
+    },
+    "watcher.jsonl": {
+      "bytes": 7343941,
+      "sha256": "2535356f0c53d5b4f44de5cda3ae9ea0409b73a0e3de73aca852a20d0f02bca4"
+    },
+    "payload.json": {
+      "bytes": 133233,
+      "sha256": "a9654f864661923f97b4c240defaf62b2a6cbafec7805f920bb9a925f4fd38d6"
+    },
+    "params.json": {
+      "bytes": 563,
+      "sha256": "2008e0d76b03b9e1954b9f9e166fc3af7c04b7d397719b82d1ab505fda16c8ae"
+    },
+    "replay.db": {
+      "bytes": 39186432,
+      "sha256": "ce35259ea4ba8515015f0f360f73ac89192849ffa837702be76867f582354d3b"
+    }
+  }
+}

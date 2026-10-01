@@ -1,0 +1,13 @@
+{
+  "outcome": "research",
+  "summary": "Confirmed pickup identity and wait-label defects when destination forecasts disappear or the same bus returns later. Saved reproducible evidence and a proposed contract in eta/cycle-10. Application files and HEAD remain unchanged.",
+  "next_task": "Independently review cycle-10/REVIEW_REQUEST.md, then coordinate ETA pickup metadata with UX identity and wait presentation. Preserve countdowns, both occurrences, numerical decisions and the 38 unresolved raw-stop cases.",
+  "tests": [
+    "tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-10/audit.mts — passed 4,688 exact production decisions/rankings and 4,688 missing-destination comparisons.",
+    "tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-10/boundaries.mts — 13 contract cases passed.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-10/browser-contract.mjs — eight browser states passed; zero page errors; resources closed.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-10/verify_build.py — 81 built source modules matched current checkout.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-10/verify_evidence.py — passed after correcting a transcribed assertion; 1,400 connected outcomes and the 443-second regression preserved.",
+    "git diff --check && git diff --exit-code && git diff --cached --exit-code && git status --porcelain — passed; clean checkout and index."
+  ]
+}

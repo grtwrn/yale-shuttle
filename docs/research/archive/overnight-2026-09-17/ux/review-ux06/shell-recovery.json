@@ -1,0 +1,13 @@
+{
+  "scope": "Unmodified built SPA; fabricated two-bus live wire on checked-in route network",
+  "checks": [
+    "Real planner/transport selects #307 on minimap; keyboard exposes route/bus identity; arrival detail retains following #309",
+    "Network failure beyond freshness window removes timing, preserves fullscreen Back focus and restores toggle on Escape",
+    "Fresh recovery restores both pickup #307 and following #309 and fullscreen Back behavior",
+    "Reload preserves endpoint/departure draft, resets fullscreen and leaves keyboard reopening/closing usable"
+  ],
+  "errors": [],
+  "failedRequests": 10,
+  "completed": true,
+  "resourcesClosed": true
+}

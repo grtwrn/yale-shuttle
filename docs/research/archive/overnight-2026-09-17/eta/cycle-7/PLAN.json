@@ -1,0 +1,13 @@
+{
+  "scope": "Integrate independently reviewed ordered existing-pickup join in journeyArrival helper and one TransitMap call; preserve raw countdown, dwell gate, identity, missing next-lap cases, wire and estimator.",
+  "head": "77c32b80256215eb36516e7bb68c9d7664c7697e",
+  "baseline": "Current HEAD including approved pooling repair and UX master; exact cycle6 arithmetic independently reviewed.",
+  "expected": "Match all4688 ordered prototype decisions; restore30 with no loss, bus/ranking changes or change to2344 nonzero-access decisions. Add raw-dwell nonzero-walk and deadline availability regression checks.",
+  "limits": "Used Red history, retained63523 +442.83sec absolute-error regression; no new holdout or calibrated-coverage claim. Remaining38 and742 identity differences separate.",
+  "checks": [
+    "helper/repeated-stop/route/bus/invalid/missing/deadline tests",
+    "actual raw-override dwell-gate regression",
+    "both typechecks and Vite build",
+    "actual built-SPA numerical parity and keyboard/touch/stale/missing/deadline states"
+  ]
+}

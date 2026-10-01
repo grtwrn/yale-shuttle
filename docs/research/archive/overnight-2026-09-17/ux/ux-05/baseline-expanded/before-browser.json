@@ -1,0 +1,1238 @@
+{
+  "phase": "before",
+  "desktop": false,
+  "source": "Actual CombinedTripMap with synthetic props; test-only export/map reference; no estimator or live network",
+  "states": [
+    {
+      "name": "same-route-360",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min",
+          "wait": false,
+          "x": 132,
+          "y": 131,
+          "width": 88.734375,
+          "height": 19,
+          "left": 132,
+          "right": 220.734375,
+          "top": 131,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM",
+          "wait": false,
+          "x": 125,
+          "y": 291,
+          "width": 114.859375,
+          "height": 19,
+          "left": 125,
+          "right": 239.859375,
+          "top": 291,
+          "bottom": 310
+        },
+        {
+          "text": "Red 3:21/~5m",
+          "wait": true,
+          "x": 78.21875,
+          "y": 156,
+          "width": 78.78125,
+          "height": 19,
+          "left": 78.21875,
+          "right": 157,
+          "top": 156,
+          "bottom": 175
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "focused-bus",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min",
+          "wait": false,
+          "x": 132,
+          "y": 131,
+          "width": 88.734375,
+          "height": 19,
+          "left": 132,
+          "right": 220.734375,
+          "top": 131,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM",
+          "wait": false,
+          "x": 125,
+          "y": 291,
+          "width": 114.859375,
+          "height": 19,
+          "left": 125,
+          "right": 239.859375,
+          "top": 291,
+          "bottom": 310
+        },
+        {
+          "text": "Red 3:21/~5m",
+          "wait": true,
+          "x": 78.21875,
+          "y": 156,
+          "width": 78.78125,
+          "height": 19,
+          "left": 78.21875,
+          "right": 157,
+          "top": 156,
+          "bottom": 175
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "fullscreen",
+      "width": 360,
+      "map": {
+        "x": 0,
+        "y": 0,
+        "width": 360,
+        "height": 800,
+        "left": 0,
+        "right": 360,
+        "top": 0,
+        "bottom": 800
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min",
+          "wait": false,
+          "x": 132,
+          "y": 335,
+          "width": 88.734375,
+          "height": 19,
+          "left": 132,
+          "right": 220.734375,
+          "top": 335,
+          "bottom": 354
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM",
+          "wait": false,
+          "x": 125,
+          "y": 495,
+          "width": 114.859375,
+          "height": 19,
+          "left": 125,
+          "right": 239.859375,
+          "top": 495,
+          "bottom": 514
+        },
+        {
+          "text": "Red 3:22/~5m",
+          "wait": true,
+          "x": 78.21875,
+          "y": 360,
+          "width": 78.78125,
+          "height": 19,
+          "left": 78.21875,
+          "right": 157,
+          "top": 360,
+          "bottom": 379
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 356,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 356,
+          "bottom": 384
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 358,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 358,
+          "bottom": 386
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-360",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (B) 2–19 min🚌 (B) 2–19 min",
+          "wait": false,
+          "x": 132,
+          "y": 101,
+          "width": 88.734375,
+          "height": 49,
+          "left": 132,
+          "right": 220.734375,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM",
+          "wait": false,
+          "x": 125,
+          "y": 291,
+          "width": 114.859375,
+          "height": 49,
+          "left": 125,
+          "right": 239.859375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red 3:21/~5m",
+          "wait": true,
+          "x": 78.21875,
+          "y": 156,
+          "width": 78.78125,
+          "height": 19,
+          "left": 78.21875,
+          "right": 157,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day 12:08/~10m",
+          "wait": true,
+          "x": 197,
+          "y": 156,
+          "width": 113.796875,
+          "height": 19,
+          "left": 197,
+          "right": 310.796875,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown 18:05/~12m",
+          "wait": true,
+          "x": 126,
+          "y": 188,
+          "width": 102.109375,
+          "height": 19,
+          "left": 126,
+          "right": 228.109375,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-390",
+      "width": 390,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 372,
+        "height": 320,
+        "left": 9,
+        "right": 381,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (B) 2–19 min🚌 (B) 2–19 min",
+          "wait": false,
+          "x": 147,
+          "y": 101,
+          "width": 88.734375,
+          "height": 49,
+          "left": 147,
+          "right": 235.734375,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM",
+          "wait": false,
+          "x": 140,
+          "y": 291,
+          "width": 114.859375,
+          "height": 49,
+          "left": 140,
+          "right": 254.859375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red 3:21/~5m",
+          "wait": true,
+          "x": 93.21875,
+          "y": 156,
+          "width": 78.78125,
+          "height": 19,
+          "left": 93.21875,
+          "right": 172,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day 12:08/~10m",
+          "wait": true,
+          "x": 212,
+          "y": 156,
+          "width": 113.796875,
+          "height": 19,
+          "left": 212,
+          "right": 325.796875,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown 18:05/~12m",
+          "wait": true,
+          "x": 141,
+          "y": 188,
+          "width": 102.109375,
+          "height": 19,
+          "left": 141,
+          "right": 243.109375,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 178,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 178,
+          "right": 206,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 178,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 178,
+          "right": 206,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 178,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 178,
+          "right": 206,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 178,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 178,
+          "right": 206,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-430",
+      "width": 430,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 412,
+        "height": 320,
+        "left": 9,
+        "right": 421,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (B) 2–19 min🚌 (B) 2–19 min",
+          "wait": false,
+          "x": 167,
+          "y": 101,
+          "width": 88.734375,
+          "height": 49,
+          "left": 167,
+          "right": 255.734375,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM",
+          "wait": false,
+          "x": 160,
+          "y": 291,
+          "width": 114.859375,
+          "height": 49,
+          "left": 160,
+          "right": 274.859375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red 3:21/~5m",
+          "wait": true,
+          "x": 113.21875,
+          "y": 156,
+          "width": 78.78125,
+          "height": 19,
+          "left": 113.21875,
+          "right": 192,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day 12:08/~10m",
+          "wait": true,
+          "x": 232,
+          "y": 156,
+          "width": 113.796875,
+          "height": 19,
+          "left": 232,
+          "right": 345.796875,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown 18:05/~12m",
+          "wait": true,
+          "x": 161,
+          "y": 188,
+          "width": 102.109375,
+          "height": 19,
+          "left": 161,
+          "right": 263.109375,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 198,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 198,
+          "right": 226,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 198,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 198,
+          "right": 226,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 198,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 198,
+          "right": 226,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 198,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 198,
+          "right": 226,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-1280",
+      "width": 1280,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 1262,
+        "height": 320,
+        "left": 9,
+        "right": 1271,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (B) 2–19 min🚌 (B) 2–19 min",
+          "wait": false,
+          "x": 592,
+          "y": 101,
+          "width": 88.734375,
+          "height": 49,
+          "left": 592,
+          "right": 680.734375,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM",
+          "wait": false,
+          "x": 585,
+          "y": 291,
+          "width": 114.859375,
+          "height": 49,
+          "left": 585,
+          "right": 699.859375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red 3:21/~5m",
+          "wait": true,
+          "x": 538.21875,
+          "y": 156,
+          "width": 78.78125,
+          "height": 19,
+          "left": 538.21875,
+          "right": 617,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day 12:08/~10m",
+          "wait": true,
+          "x": 657,
+          "y": 156,
+          "width": 113.796875,
+          "height": 19,
+          "left": 657,
+          "right": 770.796875,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown 18:05/~12m",
+          "wait": true,
+          "x": 586,
+          "y": 188,
+          "width": 102.109375,
+          "height": 19,
+          "left": 586,
+          "right": 688.109375,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 623,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 623,
+          "right": 651,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 623,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 623,
+          "right": 651,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 623,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 623,
+          "right": 651,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 623,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 623,
+          "right": 651,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-640",
+      "width": 640,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 622,
+        "height": 320,
+        "left": 9,
+        "right": 631,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (B) 2–19 min🚌 (B) 2–19 min",
+          "wait": false,
+          "x": 272,
+          "y": 101,
+          "width": 88.734375,
+          "height": 49,
+          "left": 272,
+          "right": 360.734375,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM",
+          "wait": false,
+          "x": 265,
+          "y": 291,
+          "width": 114.859375,
+          "height": 49,
+          "left": 265,
+          "right": 379.859375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red 3:21/~5m",
+          "wait": true,
+          "x": 218.21875,
+          "y": 156,
+          "width": 78.78125,
+          "height": 19,
+          "left": 218.21875,
+          "right": 297,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day 12:08/~10m",
+          "wait": true,
+          "x": 337,
+          "y": 156,
+          "width": 113.796875,
+          "height": 19,
+          "left": 337,
+          "right": 450.796875,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown 18:05/~12m",
+          "wait": true,
+          "x": 266,
+          "y": 188,
+          "width": 102.109375,
+          "height": 19,
+          "left": 266,
+          "right": 368.109375,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 303,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 303,
+          "right": 331,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 303,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 303,
+          "right": 331,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 303,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 303,
+          "right": 331,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 303,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 303,
+          "right": 331,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "edge",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (B) 2–19 min🚌 (B) 2–19 min",
+          "wait": false,
+          "x": 32,
+          "y": 166,
+          "width": 88.734375,
+          "height": 49,
+          "left": 32,
+          "right": 120.734375,
+          "top": 166,
+          "bottom": 215
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM🏁 (B) 12:59–1:32 PM",
+          "wait": false,
+          "x": 25,
+          "y": 356,
+          "width": 114.859375,
+          "height": 49,
+          "left": 25,
+          "right": 139.859375,
+          "top": 356,
+          "bottom": 405
+        },
+        {
+          "text": "Red 3:21/~5m",
+          "wait": true,
+          "x": 97,
+          "y": 221,
+          "width": 78.78125,
+          "height": 19,
+          "left": 97,
+          "right": 175.78125,
+          "top": 221,
+          "bottom": 240
+        },
+        {
+          "text": "Blue Day 12:08/~10m",
+          "wait": true,
+          "x": 97,
+          "y": 246,
+          "width": 113.796875,
+          "height": 19,
+          "left": 97,
+          "right": 210.796875,
+          "top": 246,
+          "bottom": 265
+        },
+        {
+          "text": "Brown 18:05/~12m",
+          "wait": true,
+          "x": 26,
+          "y": 271,
+          "width": 102.109375,
+          "height": 19,
+          "left": 26,
+          "right": 128.109375,
+          "top": 271,
+          "bottom": 290
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 63,
+          "y": 217,
+          "width": 28,
+          "height": 28,
+          "left": 63,
+          "right": 91,
+          "top": 217,
+          "bottom": 245
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 63,
+          "y": 219,
+          "width": 28,
+          "height": 28,
+          "left": 63,
+          "right": 91,
+          "top": 219,
+          "bottom": 247
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 63,
+          "y": 217,
+          "width": 28,
+          "height": 28,
+          "left": 63,
+          "right": 91,
+          "top": 217,
+          "bottom": 245
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 63,
+          "y": 219,
+          "width": 28,
+          "height": 28,
+          "left": 63,
+          "right": 91,
+          "top": 219,
+          "bottom": 247
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "no-forecast",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "empty",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [],
+      "buses": [],
+      "overflow": false
+    },
+    {
+      "name": "orange-long-window",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (O) 2–119 min🚌 (O) 8–125 min",
+          "wait": false,
+          "x": 129,
+          "y": 116,
+          "width": 94.859375,
+          "height": 34,
+          "left": 129,
+          "right": 223.859375,
+          "top": 116,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (O) 12:59 PM🏁 (O) 1:25 PM",
+          "wait": false,
+          "x": 138,
+          "y": 291,
+          "width": 89.84375,
+          "height": 34,
+          "left": 138,
+          "right": 227.84375,
+          "top": 291,
+          "bottom": 325
+        },
+        {
+          "text": "Orange Night 3:21/~5m",
+          "wait": true,
+          "x": 115,
+          "y": 186,
+          "width": 123.21875,
+          "height": 19,
+          "left": 115,
+          "right": 238.21875,
+          "top": 186,
+          "bottom": 205
+        },
+        {
+          "text": "Orange East 3:21/~5m",
+          "wait": true,
+          "x": 38.203125,
+          "y": 156,
+          "width": 118.796875,
+          "height": 19,
+          "left": 38.203125,
+          "right": 157,
+          "top": 156,
+          "bottom": 175
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": null,
+          "title": "",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        }
+      ],
+      "overflow": false
+    }
+  ],
+  "checks": [
+    "Reproduced unnamed bus markers and absent visible bus number",
+    "Wait tick updates identity/details in place and preserves keyboard focus",
+    "44px fullscreen control works by Enter/touch or click; Escape retains toggle focus; Back closes",
+    "Reproduced Blue Day/Brown identical (B) tags at both endpoints",
+    "Keyboard zoom in/out reclusters without errors",
+    "Unavailable times remove wait/arrival labels while preserving bus identity",
+    "Keyboard focus opens the passed-bus tooltip",
+    "Empty options remove old bus markers and labels",
+    "Long route names and broad pickup windows remain present without clipping numerical ranges",
+    "Wait labels stay in bounds and clear of buses/time labels at all tested widths and pan position"
+  ],
+  "errors": [],
+  "backFocus": "BODY"
+}

@@ -1,0 +1,394 @@
+{
+  "byteIdenticalOutputs": [
+    "current.jsonl",
+    "canonical.jsonl",
+    "current-tracking.jsonl",
+    "canonical-tracking.jsonl",
+    "full-pairs.jsonl",
+    "negative-bounds.json",
+    "hop-changes.json",
+    "longitudinal.json",
+    "change-audit.json",
+    "all-large-tail-target-context.json",
+    "all-route-export-verification.json",
+    "all-route-red-input-comparison.json"
+  ],
+  "scoreFilesEqualExceptInputPath": 3,
+  "rawCounts": {
+    "first": 93380,
+    "hEquals29": 3251,
+    "currentNegativeLow": 137,
+    "second": 56640,
+    "canonicalNegativeLow": 136
+  },
+  "hopChanges": {
+    "oneHop": 202
+  },
+  "checkpointRawForecastAndDBTruthChecks": 3309,
+  "checkpointCounts": {
+    "full-development-score": {
+      "checkpoints": 1908,
+      "sources": 78,
+      "targets": 94,
+      "dates": {
+        "2026-09-16": 1380,
+        "2026-09-17": 528
+      },
+      "outcomes": {
+        "stopped": 1443,
+        "passed": 465
+      }
+    },
+    "full-reused-afternoon-score": {
+      "checkpoints": 600,
+      "sources": 24,
+      "targets": 26,
+      "dates": {
+        "2026-09-17": 600
+      },
+      "outcomes": {
+        "stopped": 437,
+        "passed": 163
+      }
+    },
+    "full-next-occurrence-review": {
+      "checkpoints": 801,
+      "sources": 54,
+      "targets": 65,
+      "dates": {
+        "2026-09-16": 527,
+        "2026-09-17": 274
+      },
+      "outcomes": {
+        "stopped": 607,
+        "passed": 194
+      }
+    }
+  },
+  "metrics": {
+    "full-development-score": {
+      "baseline": {
+        "MAE": 129.1169416274776,
+        "early": 56,
+        "late": 61
+      },
+      "candidate": {
+        "MAE": 129.11667412059128,
+        "early": 56,
+        "late": 61
+      }
+    },
+    "full-reused-afternoon-score": {
+      "baseline": {
+        "MAE": 106.3625090140552,
+        "early": 5,
+        "late": 13
+      },
+      "candidate": {
+        "MAE": 106.43022391379293,
+        "early": 5,
+        "late": 13
+      }
+    },
+    "full-next-occurrence-review": {
+      "baseline": {
+        "MAE": 206.1876640367429,
+        "early": 23,
+        "late": 16
+      },
+      "candidate": {
+        "MAE": 206.15410378461914,
+        "early": 23,
+        "late": 16
+      }
+    }
+  },
+  "allLargeBandChanges": [
+    {
+      "key": [
+        1789596500179,
+        "#309",
+        4,
+        0
+      ],
+      "maxDelta": 3753.2093211268498,
+      "current": {
+        "eta": 5.266439148637129,
+        "low": 3.112399257819832,
+        "high": 8.092774158039616
+      },
+      "canonical": {
+        "eta": 5.266702871544337,
+        "low": 3.1123994137017843,
+        "high": 3761.302095284889
+      }
+    },
+    {
+      "key": [
+        1789596500179,
+        "#309",
+        4,
+        1
+      ],
+      "maxDelta": 3301.2447735217474,
+      "current": {
+        "eta": 3753.12956613353,
+        "low": 3233.925334392109,
+        "high": 4181.123293318533
+      },
+      "canonical": {
+        "eta": 3753.1297383293104,
+        "low": 3233.925334777269,
+        "high": 7482.36806684028
+      }
+    },
+    {
+      "key": [
+        1789660280391,
+        "#316",
+        4,
+        1
+      ],
+      "maxDelta": 66.61844435784406,
+      "current": {
+        "eta": 3816.6613822091476,
+        "low": 3274.679878069933,
+        "high": 7793.528596866775
+      },
+      "canonical": {
+        "eta": 3817.6689498110836,
+        "low": 3274.679921419507,
+        "high": 7860.147041224619
+      }
+    },
+    {
+      "key": [
+        1789670426971,
+        "#300",
+        4,
+        0
+      ],
+      "maxDelta": 3742.520629907561,
+      "current": {
+        "eta": 8.532182473477947,
+        "low": 5.012771070635303,
+        "high": 13.03406819632209
+      },
+      "canonical": {
+        "eta": 8.416647664896601,
+        "low": 4.944892828707375,
+        "high": 3755.5546981038833
+      }
+    },
+    {
+      "key": [
+        1789670426971,
+        "#300",
+        4,
+        1
+      ],
+      "maxDelta": 3289.39804537729,
+      "current": {
+        "eta": 3756.561195280803,
+        "low": 3237.8261457484214,
+        "high": 4175.654449790265
+      },
+      "canonical": {
+        "eta": 3756.5465909623053,
+        "low": 3237.65842932572,
+        "high": 7465.052495167555
+      }
+    }
+  ],
+  "postArrivalLabelRows": [
+    {
+      "key": [
+        1789596500179,
+        "#309",
+        4,
+        1
+      ],
+      "nearbyPriorTargets": [
+        [
+          61959,
+          -10.034
+        ]
+      ]
+    },
+    {
+      "key": [
+        1789670426971,
+        "#300",
+        4,
+        1
+      ],
+      "nearbyPriorTargets": [
+        [
+          67028,
+          -15.077
+        ]
+      ]
+    },
+    {
+      "key": [
+        1789596500179,
+        "#309",
+        4,
+        30
+      ],
+      "nearbyPriorTargets": [
+        [
+          61959,
+          -10.034
+        ]
+      ]
+    },
+    {
+      "key": [
+        1789670426971,
+        "#300",
+        4,
+        30
+      ],
+      "nearbyPriorTargets": [
+        [
+          67028,
+          -15.077
+        ]
+      ]
+    }
+  ],
+  "temporalSnapshots": {
+    "builder": {
+      "current": {
+        "futureDatedEntries": 585,
+        "firstAndLastEntriesEqual": true
+      },
+      "canonical": {
+        "futureDatedEntries": 585,
+        "firstAndLastEntriesEqual": true
+      }
+    },
+    "reviewerImmutable": {
+      "current": {
+        "futureDatedEntries": 0,
+        "firstAndLastEntriesEqual": false
+      },
+      "canonical": {
+        "futureDatedEntries": 0,
+        "firstAndLastEntriesEqual": false
+      }
+    }
+  },
+  "fixture": {
+    "builder": {
+      "current": {
+        "reverse": {
+          "polls": 40,
+          "entryMatches": 40,
+          "seenMatches": 40,
+          "wireMatches": 40
+        },
+        "restart10": {
+          "polls": 30,
+          "entryMatches": 0,
+          "seenMatches": 30,
+          "wireMatches": 0
+        },
+        "restart20": {
+          "polls": 20,
+          "entryMatches": 0,
+          "seenMatches": 20,
+          "wireMatches": 0
+        },
+        "restart30": {
+          "polls": 10,
+          "entryMatches": 0,
+          "seenMatches": 10,
+          "wireMatches": 0
+        }
+      },
+      "canonical": {
+        "reverse": {
+          "polls": 40,
+          "entryMatches": 40,
+          "seenMatches": 40,
+          "wireMatches": 40
+        },
+        "restart10": {
+          "polls": 30,
+          "entryMatches": 30,
+          "seenMatches": 30,
+          "wireMatches": 30
+        },
+        "restart20": {
+          "polls": 20,
+          "entryMatches": 20,
+          "seenMatches": 20,
+          "wireMatches": 20
+        },
+        "restart30": {
+          "polls": 10,
+          "entryMatches": 10,
+          "seenMatches": 10,
+          "wireMatches": 10
+        }
+      }
+    },
+    "reviewerImmutable": {
+      "current": {
+        "reverse": {
+          "polls": 40,
+          "entryMatches": 40,
+          "seenMatches": 40,
+          "wireMatches": 40
+        },
+        "restart10": {
+          "polls": 30,
+          "entryMatches": 0,
+          "seenMatches": 30,
+          "wireMatches": 0
+        },
+        "restart20": {
+          "polls": 20,
+          "entryMatches": 0,
+          "seenMatches": 20,
+          "wireMatches": 0
+        },
+        "restart30": {
+          "polls": 10,
+          "entryMatches": 0,
+          "seenMatches": 10,
+          "wireMatches": 0
+        }
+      },
+      "canonical": {
+        "reverse": {
+          "polls": 40,
+          "entryMatches": 40,
+          "seenMatches": 40,
+          "wireMatches": 40
+        },
+        "restart10": {
+          "polls": 30,
+          "entryMatches": 30,
+          "seenMatches": 30,
+          "wireMatches": 30
+        },
+        "restart20": {
+          "polls": 20,
+          "entryMatches": 20,
+          "seenMatches": 20,
+          "wireMatches": 20
+        },
+        "restart30": {
+          "polls": 10,
+          "entryMatches": 10,
+          "seenMatches": 10,
+          "wireMatches": 10
+        }
+      }
+    }
+  },
+  "allImmutableWiresEqualOriginal": true
+}

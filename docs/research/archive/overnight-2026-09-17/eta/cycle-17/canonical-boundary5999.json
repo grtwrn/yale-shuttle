@@ -1,0 +1,353 @@
+{
+  "i": 5999,
+  "at": 1789586749204,
+  "segment": 1,
+  "sample": false,
+  "tracking": {
+    "Brown|126": [
+      19,
+      4,
+      true,
+      -1,
+      1789586369003,
+      30066038,
+      4,
+      1789586749204,
+      null
+    ],
+    "Green|325": [
+      9,
+      10,
+      false,
+      -1,
+      1789586749204,
+      30066038,
+      10,
+      1789586749204,
+      null
+    ],
+    "Green|127": [
+      9,
+      19,
+      false,
+      -1,
+      1789586739035,
+      30066038,
+      19,
+      1789586749204,
+      127
+    ],
+    "Red|308": [
+      3,
+      12,
+      true,
+      -1,
+      1789586689075,
+      30066038,
+      12,
+      1789586749204,
+      null
+    ],
+    "Blue Day|38": [
+      1,
+      4,
+      true,
+      4,
+      1789586719112,
+      30066038,
+      4,
+      1789586749204,
+      100
+    ],
+    "Red|309": [
+      3,
+      0,
+      true,
+      0,
+      1789586409030,
+      28545823,
+      0,
+      1789586749204,
+      121
+    ],
+    "Gold|304": [
+      15,
+      1,
+      true,
+      -1,
+      1789586694206,
+      17020783,
+      1,
+      1789586749204,
+      null
+    ],
+    "Orange Day|51": [
+      2,
+      30,
+      true,
+      30,
+      1789586724054,
+      16010038,
+      30,
+      1789586749204,
+      101
+    ],
+    "Green|122": [
+      9,
+      1,
+      true,
+      1,
+      1789586699183,
+      10623357,
+      1,
+      1789586749204,
+      84
+    ],
+    "Pink|307": [
+      8,
+      10,
+      true,
+      11,
+      1789586639027,
+      30066038,
+      10,
+      1789586749204,
+      124
+    ],
+    "Pink|119": [
+      8,
+      2,
+      true,
+      2,
+      1789586644040,
+      9969077,
+      2,
+      1789586749204,
+      43
+    ],
+    "Purple|302": [
+      10,
+      13,
+      false,
+      -1,
+      1789586739035,
+      30066038,
+      13,
+      1789586749204,
+      null
+    ],
+    "Purple|330": [
+      10,
+      2,
+      true,
+      -1,
+      1789586674043,
+      8598651,
+      2,
+      1789586749204,
+      null
+    ],
+    "Red|316": [
+      3,
+      8,
+      true,
+      7,
+      1789586649025,
+      5947244,
+      8,
+      1789586749204,
+      36
+    ],
+    "Blue Day|44": [
+      1,
+      25,
+      true,
+      25,
+      1789586429081,
+      4617022,
+      25,
+      1789586749204,
+      2
+    ],
+    "Blue Day|46": [
+      1,
+      14,
+      true,
+      14,
+      1789586704044,
+      4081849,
+      14,
+      1789586749204,
+      135
+    ],
+    "Purple|329": [
+      10,
+      3,
+      true,
+      -1,
+      1789586654040,
+      3246781,
+      1,
+      1789586749204,
+      null
+    ]
+  },
+  "wire": {
+    "v": 2,
+    "at": 1789586749204,
+    "servedAt": 1789586749204,
+    "buses": [
+      [
+        "309",
+        "Red",
+        0,
+        {
+          "stopId": 121,
+          "standingSec": 340.174,
+          "approach": false
+        }
+      ],
+      [
+        "316",
+        "Red",
+        8,
+        {
+          "stopId": 126,
+          "standingSec": 100.179,
+          "approach": true
+        }
+      ],
+      [
+        "44",
+        "Blue Day",
+        25,
+        {
+          "stopId": 2,
+          "standingSec": 320.123,
+          "approach": false
+        }
+      ],
+      [
+        "46",
+        "Blue Day",
+        14,
+        {
+          "stopId": 135,
+          "standingSec": 45.16,
+          "approach": false
+        }
+      ],
+      [
+        "51",
+        "Orange Day",
+        30,
+        {
+          "stopId": 101,
+          "standingSec": 25.15,
+          "approach": false
+        }
+      ],
+      [
+        "307",
+        "Pink",
+        6,
+        {
+          "stopId": 124,
+          "standingSec": 110.177,
+          "approach": false
+        }
+      ],
+      [
+        "122",
+        "Green",
+        1,
+        {
+          "stopId": 84,
+          "standingSec": 50.021,
+          "approach": false
+        }
+      ],
+      [
+        "127",
+        "Green",
+        19,
+        null
+      ],
+      [
+        "119",
+        "Pink",
+        2,
+        {
+          "stopId": 43,
+          "standingSec": 105.164,
+          "approach": false
+        }
+      ],
+      [
+        "330",
+        "Purple",
+        2,
+        null
+      ],
+      [
+        "38",
+        "Blue Day",
+        4,
+        {
+          "stopId": 100,
+          "standingSec": 30.092,
+          "approach": false
+        }
+      ],
+      [
+        "329",
+        "Purple",
+        3,
+        null
+      ],
+      [
+        "126",
+        "Brown",
+        4,
+        null
+      ],
+      [
+        "308",
+        "Red",
+        12,
+        null
+      ],
+      [
+        "304",
+        "Gold",
+        1,
+        null
+      ],
+      [
+        "302",
+        "Purple",
+        13,
+        null
+      ],
+      [
+        "325",
+        "Green",
+        10,
+        null
+      ]
+    ]
+  },
+  "_publication": {
+    "originalSource": "overnight-2026-09-17/eta/cycle-17/canonical-boundary5999.json",
+    "originalSha256": "a2deeb9d6bccc77f0441e29b11de4d1d5148900394bcf6dedb8f835599189dc5",
+    "omittedArrays": [
+      {
+        "path": "wire.rows",
+        "items": 633,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

@@ -257,7 +257,7 @@ export const PLACE_ICONS: Record<string, string> = {
   library: "📚", museum: "🏛️", gallery: "🏛️", civic: "🏛️", townhall: "🏛️",
   hospital: "🏥", clinic: "🏥", doctors: "🏥", college: "🎓", university: "🎓",
   school: "🎓", park: "🌳", garden: "🌳", theatre: "🎭", cinema: "🎬",
-  hotel: "🛏️", station: "🚉", gym: "🏋️", ice_rink: "⛸️",
+  hotel: "🛏️", station: "🚉", gym: "🏋️", ice_rink: "⛸️", hackerspace: "🛠️",
   // Somewhere a rider LIVES rather than visits — City Crossing and Whitehall
   // are both on the searched-and-not-found list, and a residential block is a
   // destination like any other.

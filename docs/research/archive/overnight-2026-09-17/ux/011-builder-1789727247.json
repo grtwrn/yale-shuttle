@@ -1,0 +1,12 @@
+{
+  "outcome": "candidate",
+  "summary": "Make saved destinations and recent places usable by keyboard\nFixed selection, rename cancellation, deletion and focus recovery. Mobile and desktop browser checks pass. Evidence: ux/ux-10/REPORT.md. HEAD/index preserved; watcher untouched.",
+  "next_task": "Independently review the three-file proposal, then controller release gates. Next builder: remaining weather/location controls using ux/ux-10/NEXT_UX10.md.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10/verify.sh — passed 96 tests, both typechecks and Vite build.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10/browser.sh — four browser reports passed; zero page errors; resources closed.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10/verify-integrity.py — passed scope, HEAD/index, source/bundle parity and screenshot-budget checks.",
+    "node --check services/shuttle-v2/scripts/saved-places-check.mjs — passed.",
+    "git diff --check — passed."
+  ]
+}

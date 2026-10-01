@@ -1,0 +1,120 @@
+{
+  "baseline": {
+    "config": {
+      "captureFiles": [
+        "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/positions.jsonl"
+      ],
+      "REPLAY_DB": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/replay.db",
+      "CLIENT_ROOT": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-2026-09-16/services/shuttle-v2",
+      "PAYLOAD_PATCH": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/payload.json",
+      "POP": "uniform",
+      "EVERY_MS": 1200000,
+      "MAX_WAIT_MS": 2700000,
+      "SAMPLE_MS": 5000,
+      "CANARY_MS": 15000,
+      "CALIB_LAG_MS": 0,
+      "FROM": "2026-09-16T11:00:00Z",
+      "TO": "2026-09-16T13:40:00Z",
+      "DETECTOR_FROM": "2026-09-16T09:24:52.635Z"
+    },
+    "population": {
+      "focus": [
+        "Red"
+      ],
+      "holdout": [],
+      "chain": null,
+      "riders": 232,
+      "bySource": {
+        "uniform": 232,
+        "targeted": 0,
+        "chain": 0,
+        "named": 0
+      },
+      "skipped": {
+        "boardElsewhere": 29
+      }
+    },
+    "summary": {
+      "waits": 203,
+      "arrived": 188,
+      "gaveUp": 3,
+      "dataEnded": 0,
+      "boardedOnArrival": 12,
+      "scored": 188,
+      "medianWaitMin": 10.8,
+      "p90WaitMin": 25.8,
+      "interval": {
+        "n": 188,
+        "insidePct": 66.5,
+        "earlyPct": 11.7,
+        "latePct": 21.8,
+        "medianWidthSec": 445.1
+      },
+      "pctPinChanged": 4.8,
+      "pctPinRight": 95.7,
+      "pctVanished": 0,
+      "pctNeverShown": 0,
+      "pctDropped": 0.5
+    }
+  },
+  "candidate": {
+    "config": {
+      "captureFiles": [
+        "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/positions.jsonl"
+      ],
+      "REPLAY_DB": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/replay.db",
+      "CLIENT_ROOT": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-2026-09-16/services/shuttle-v2",
+      "PAYLOAD_PATCH": "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/payload.json",
+      "POP": "uniform",
+      "EVERY_MS": 1200000,
+      "MAX_WAIT_MS": 2700000,
+      "SAMPLE_MS": 5000,
+      "CANARY_MS": 15000,
+      "CALIB_LAG_MS": 0,
+      "FROM": "2026-09-16T11:00:00Z",
+      "TO": "2026-09-16T13:40:00Z",
+      "DETECTOR_FROM": "2026-09-16T09:24:52.635Z"
+    },
+    "population": {
+      "focus": [
+        "Red"
+      ],
+      "holdout": [],
+      "chain": null,
+      "riders": 232,
+      "bySource": {
+        "uniform": 232,
+        "targeted": 0,
+        "chain": 0,
+        "named": 0
+      },
+      "skipped": {
+        "boardElsewhere": 29
+      }
+    },
+    "summary": {
+      "waits": 203,
+      "arrived": 188,
+      "gaveUp": 3,
+      "dataEnded": 0,
+      "boardedOnArrival": 12,
+      "scored": 188,
+      "medianWaitMin": 10.8,
+      "p90WaitMin": 25.8,
+      "interval": {
+        "n": 188,
+        "insidePct": 66.5,
+        "earlyPct": 11.7,
+        "latePct": 21.8,
+        "medianWidthSec": 445.1
+      },
+      "pctPinChanged": 4.8,
+      "pctPinRight": 95.7,
+      "pctVanished": 0,
+      "pctNeverShown": 0,
+      "pctDropped": 0.5
+    }
+  },
+  "outcomesAndPinsIdentical": true,
+  "limitations": "Display-drift and first-sight text scores are omitted: one arm sometimes hides the interval, and the first candidate scorer used the broad window to mask point movement. The parser now tests drift on the visible median; regression tests cover this. Identical point predictions are verified separately on frozen watcher frames. These rider runs check outcomes and raw first-sight intervals."
+}

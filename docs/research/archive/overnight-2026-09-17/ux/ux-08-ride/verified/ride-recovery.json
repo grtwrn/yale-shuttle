@@ -1,0 +1,123 @@
+{
+  "scope": "Actual built SPA, persisted physical ride and synthetic wire on the checked-in route network",
+  "probe": false,
+  "states": [
+    {
+      "name": "here",
+      "dialog": "🔔\nGet off here\nRed #307 → Union Station (N)\nGot it",
+      "focus": {
+        "tag": "BUTTON",
+        "text": "Got it"
+      },
+      "body": "🔔\nGet off here\nRed #307 → Union Station (N)\nGot it\nArriving at Union Station (N)\n🚌 Red #307 → Union Station (N)\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n↻\n🚏\n🏁\nDestination east of Uni…\n307\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRed · Bus #307· <1 min to your stop\n·\nDivision/Prospectboarded\n✓\nProspect/Hillside\n✓\nSCL\n✓\n130 Prospect Street (S)\n✓\nCollege/Wall (S)\n✓\nPhelps Gate\n✓\nCollege/Crown\n✓\nCollege/George\n✓\nLEPH/60 College\n✓\nGilbert/Cedar\n✓\nAmistad/Cedar\n✓\nAmistad/Church St South\n🚌\nUnion Station (N)\n💬 Send feedback\nContribute\nAbout",
+      "notifications": [
+        "Get off in 2 stops"
+      ]
+    },
+    {
+      "name": "stale",
+      "dialog": "🔔\nLive stop position unavailable\nRed #307 → Union Station (N)\n\nCheck the stop signs for your exit while live updates recover.\n\nGot it",
+      "focus": {
+        "tag": "BUTTON",
+        "text": "Got it"
+      },
+      "body": "🔔\nLive stop position unavailable\nRed #307 → Union Station (N)\n\nCheck the stop signs for your exit while live updates recover.\n\nGot it\nTracking your ride\n🚌 Red #307 → Union Station (N)\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n↻\nLive bus updates interrupted. Times and positions may be out of date. Reconnecting…\n🚏\n🏁\nDestination east of Uni…\n307\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRed · Bus #307\n·\nDivision/Prospectboarded\n·\nProspect/Hillside\n·\nSCL\n·\n130 Prospect Street (S)\n·\nCollege/Wall (S)\n·\nPhelps Gate\n·\nCollege/Crown\n·\nCollege/George\n·\nLEPH/60 College\n·\nGilbert/Cedar\n·\nAmistad/Cedar\n·\nAmistad/Church St South\n🚏\nUnion Station (N)\n💬 Send feedback\nContribute\nAbout",
+      "notifications": [
+        "Get off in 2 stops"
+      ]
+    },
+    {
+      "name": "missing",
+      "dialog": "🔔\nLive stop position unavailable\nRed #307 → Union Station (N)\n\nCheck the stop signs for your exit while live updates recover.\n\nGot it",
+      "focus": {
+        "tag": "BUTTON",
+        "text": "Got it"
+      },
+      "body": "🔔\nLive stop position unavailable\nRed #307 → Union Station (N)\n\nCheck the stop signs for your exit while live updates recover.\n\nGot it\nTracking your ride\n🚌 Red #307 → Union Station (N)\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n↻\nLive bus updates interrupted. Times and positions may be out of date. Reconnecting…\n🚏\n🏁\nDestination east of Uni…\n307\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRed · Bus #307\n·\nDivision/Prospectboarded\n·\nProspect/Hillside\n·\nSCL\n·\n130 Prospect Street (S)\n·\nCollege/Wall (S)\n·\nPhelps Gate\n·\nCollege/Crown\n·\nCollege/George\n·\nLEPH/60 College\n·\nGilbert/Cedar\n·\nAmistad/Cedar\n·\nAmistad/Church St South\n🚏\nUnion Station (N)\n💬 Send feedback\nContribute\nAbout",
+      "notifications": [
+        "Get off in 2 stops"
+      ]
+    },
+    {
+      "name": "empty",
+      "dialog": "🔔\nLive stop position unavailable\nRed #307 → Union Station (N)\n\nCheck the stop signs for your exit while live updates recover.\n\nGot it",
+      "focus": {
+        "tag": "BUTTON",
+        "text": "Got it"
+      },
+      "body": "🔔\nLive stop position unavailable\nRed #307 → Union Station (N)\n\nCheck the stop signs for your exit while live updates recover.\n\nGot it\nLooking for your bus…\n🚌 Red #307 → Union Station (N)\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n↻\n🚏\n🏁\nDestination east of Uni…\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRed · Bus #307\n·\nDivision/Prospectboarded\n·\nProspect/Hillside\n·\nSCL\n·\n130 Prospect Street (S)\n·\nCollege/Wall (S)\n·\nPhelps Gate\n·\nCollege/Crown\n·\nCollege/George\n·\nLEPH/60 College\n·\nGilbert/Cedar\n·\nAmistad/Cedar\n·\nAmistad/Church St South\n🚏\nUnion Station (N)\n💬 Send feedback\nContribute\nAbout",
+      "notifications": [
+        "Get off in 2 stops"
+      ]
+    },
+    {
+      "name": "farther",
+      "dialog": "🔔\nYour stop is 5 stops away\nRed #307 → Union Station (N)\nGot it",
+      "focus": {
+        "tag": "BUTTON",
+        "text": "Got it"
+      },
+      "body": "🔔\nYour stop is 5 stops away\nRed #307 → Union Station (N)\nGot it\n5 stops · 7 min\n🚌 Red #307 → Union Station (N)\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n↻\n🚏\n🏁\nDestination east of Uni…\n307\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRed · Bus #307· ~7 min to your stop\n·\nDivision/Prospectboarded\n✓\nProspect/Hillside\n✓\nSCL\n✓\n130 Prospect Street (S)\n✓\nCollege/Wall (S)\n✓\nPhelps Gate\n✓\nCollege/Crown\n🚌\nCollege/George\n·\nLEPH/60 College\n·\nGilbert/Cedar\n·\nAmistad/Cedar\n·\nAmistad/Church St South\n🚏\nUnion Station (N)~7 min\n💬 Send feedback\nContribute\nAbout",
+      "notifications": [
+        "Get off in 2 stops"
+      ]
+    },
+    {
+      "name": "restored-dismiss",
+      "dialog": null,
+      "focus": {
+        "tag": "BUTTON",
+        "text": "Done"
+      },
+      "body": "Get off NEXT stop! · 1 min\n🚌 Red #307 → Union Station (N)\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n↻\n🚏\n🏁\nDestination east of Uni…\n307\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRed · Bus #307· ~1 min to your stop\n·\nDivision/Prospectboarded\n✓\nProspect/Hillside\n✓\nSCL\n✓\n130 Prospect Street (S)\n✓\nCollege/Wall (S)\n✓\nPhelps Gate\n✓\nCollege/Crown\n✓\nCollege/George\n✓\nLEPH/60 College\n✓\nGilbert/Cedar\n✓\nAmistad/Cedar\n🚌\nAmistad/Church St South\n🚏\nUnion Station (N)~1 min\n💬 Send feedback\nContribute\nAbout",
+      "notifications": [
+        "Get off at the next stop"
+      ]
+    },
+    {
+      "name": "external-dismiss",
+      "dialog": null,
+      "focus": {
+        "tag": "BUTTON",
+        "text": "↻"
+      },
+      "body": "Get off in 2 stops! · 2 min\n🚌 Red #307 → Union Station (N)\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n↻\n🚏\n🏁\nDestination east of Uni…\n307\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRed · Bus #307· ~2 min to your stop\n·\nDivision/Prospectboarded\n✓\nProspect/Hillside\n✓\nSCL\n✓\n130 Prospect Street (S)\n✓\nCollege/Wall (S)\n✓\nPhelps Gate\n✓\nCollege/Crown\n✓\nCollege/George\n✓\nLEPH/60 College\n✓\nGilbert/Cedar\n🚌\nAmistad/Cedar\n·\nAmistad/Church St South\n🚏\nUnion Station (N)~2 min\n💬 Send feedback\nContribute\nAbout",
+      "notifications": [
+        "Get off in 2 stops"
+      ]
+    },
+    {
+      "name": "failed-expired",
+      "dialog": "🔔\nLive stop position unavailable\nRed #307 → Union Station (N)\n\nCheck the stop signs for your exit while live updates recover.\n\nGot it",
+      "focus": {
+        "tag": "BUTTON",
+        "text": "Got it"
+      },
+      "body": "🔔\nLive stop position unavailable\nRed #307 → Union Station (N)\n\nCheck the stop signs for your exit while live updates recover.\n\nGot it\nTracking your ride\n🚌 Red #307 → Union Station (N)\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n↻\nLive bus updates interrupted. Times and positions may be out of date. Reconnecting…\n🚏\n🏁\nDestination east of Uni…\n307\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRed · Bus #307\n·\nDivision/Prospectboarded\n·\nProspect/Hillside\n·\nSCL\n·\n130 Prospect Street (S)\n·\nCollege/Wall (S)\n·\nPhelps Gate\n·\nCollege/Crown\n·\nCollege/George\n·\nLEPH/60 College\n·\nGilbert/Cedar\n·\nAmistad/Cedar\n·\nAmistad/Church St South\n🚏\nUnion Station (N)\n💬 Send feedback\nContribute\nAbout",
+      "notifications": [
+        "Get off at the next stop"
+      ]
+    },
+    {
+      "name": "finish",
+      "dialog": null,
+      "focus": {
+        "tag": "SECTION",
+        "text": "Ride endedContinue to Destination east of Union Station with a long building name🚶 Walking directio"
+      },
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nRide ended\n\nContinue to Destination east of Union Station with a long building name\n\n🚶 Walking directions · Google Maps\nFind another shuttleDismiss\n🚌 1 shuttle reporting on 1 route\nPick a destination — we compare walking against every shuttle.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "notifications": [
+        "Get off at the next stop"
+      ]
+    }
+  ],
+  "checks": [
+    "Approach updates through two/one/zero stops; focus enters prompt and Tab stays inside",
+    "Open prompt follows missing/stale/empty/recovered and farther-away evidence; one notification only; Escape returns to Done",
+    "Restored prompt dismissal has a persistent focus target; external focus is preserved"
+  ],
+  "errors": [],
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- button \"From 📍 Tap to set start\"\n- button \"To 🏁 Destination east of Union Station with a long building name Save this destination\":\n  - text: To 🏁 Destination east of Union Station with a long building name\n  - button \"Save this destination\": ☆\n- text: 📍 Location permission denied — enable it in your browser settings Leave Now\n- button \"Plan for later…\"\n- status: 🚌 1 shuttle reporting on 1 route\n- text: Recent places\n- button \"Clear all\"\n- text: →Destination east of Union Station with a long building name\n- button \"☆\"\n- button \"✕\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+  "resourcesClosed": true,
+  "requests": 27
+}

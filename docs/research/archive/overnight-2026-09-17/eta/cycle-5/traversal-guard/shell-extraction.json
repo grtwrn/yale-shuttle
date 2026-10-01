@@ -1,0 +1,9 @@
+{
+  "source": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/TransitMap.tsx",
+  "sourceSha256": "765df568de65e18d54ce7dbff9a014c9b0e090bf8f5f7a306e932140bdaf6424",
+  "bodySha256": "cee3d9aaa974f0f2e2875ac73d8cea7eac6d6921277c548cb0edb2bff0c1fdf6",
+  "firstLine": 2189,
+  "lastLine": 2301,
+  "changes": "Exact map body wrapped as function; imports dynamic; telemetry suppressed; pure pick/journey wrappers record returns without changing them.",
+  "limits": "React lifecycle and browser rendering not validated. Stationary explicit origins only; no future mode, aboard state or user refresh."
+}

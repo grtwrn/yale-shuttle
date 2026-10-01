@@ -1,0 +1,932 @@
+{
+  "input": "/home/gwarren/projects/yale-shuttle-watcher/replay-inputs/sep11-feed.jsonl",
+  "inputSha256": "dfeca827eacb40fa9a754aa6a4f31d2b16cca0b30b2e4db2bf95e4708b400f97",
+  "payload": "/home/gwarren/projects/yale-shuttle-watcher/qa-feed.json",
+  "payloadSha256": "02d9604b24bfe92208df998b8a24716a0e38db7d64c4e45ab30ca7164b34c506",
+  "baseline": "6e0fb799ec2860663bb0bc4db255fdc20da39952",
+  "candidate": "5284a77c65cf22d7737329b419f2f5804a1be67b",
+  "candidateDirty": true,
+  "processed": 3579,
+  "resets": 2,
+  "decisionSec": 60,
+  "planEveryMin": 15,
+  "stats": {
+    "3": {
+      "label": "Red",
+      "pairs": 812,
+      "planPairs": [
+        [
+          121,
+          115
+        ],
+        [
+          75,
+          42
+        ],
+        [
+          126,
+          11
+        ],
+        [
+          120,
+          31
+        ],
+        [
+          11,
+          13
+        ],
+        [
+          104,
+          4
+        ],
+        [
+          42,
+          3
+        ],
+        [
+          72,
+          30
+        ],
+        [
+          48,
+          72
+        ]
+      ],
+      "frames": 675,
+      "live": {
+        "total": 548100,
+        "changed": 0,
+        "lost": 0,
+        "gained": 0,
+        "busChanged": 0,
+        "later": 0,
+        "earlier": 0,
+        "unexplained": 0
+      },
+      "plan": {
+        "total": 405,
+        "changed": 0,
+        "lost": 0,
+        "gained": 0,
+        "busChanged": 0,
+        "later": 0,
+        "earlier": 0,
+        "unexplained": 0
+      },
+      "examples": []
+    },
+    "9": {
+      "label": "Green",
+      "pairs": 129,
+      "planPairs": [
+        [
+          78,
+          84
+        ],
+        [
+          84,
+          88
+        ],
+        [
+          77,
+          92
+        ],
+        [
+          144,
+          81
+        ],
+        [
+          26,
+          25
+        ],
+        [
+          22,
+          24
+        ],
+        [
+          80,
+          84
+        ],
+        [
+          91,
+          143
+        ]
+      ],
+      "frames": 810,
+      "live": {
+        "total": 104490,
+        "changed": 9114,
+        "lost": 0,
+        "gained": 0,
+        "busChanged": 3069,
+        "later": 9100,
+        "earlier": 0,
+        "unexplained": 0
+      },
+      "plan": {
+        "total": 432,
+        "changed": 25,
+        "lost": 0,
+        "gained": 0,
+        "busChanged": 25,
+        "later": 25,
+        "earlier": 0,
+        "unexplained": 0
+      },
+      "examples": [
+        {
+          "at": "2026-09-11T09:34:14.690Z",
+          "route": 9,
+          "board": 26,
+          "alight": 127,
+          "before": {
+            "bus": "325",
+            "eta": 1648.3040448156132
+          },
+          "after": {
+            "bus": "325",
+            "eta": 2399.230276769104
+          },
+          "why": "bus 325: pickup hop 12, return hop 19, destination hop 20",
+          "witness": {
+            "nextPickup": {
+              "eta": 2399.230276769104,
+              "low": 1912.806758022107,
+              "high": 3296.690826335234,
+              "departNow": 2399.230276769104,
+              "lowFloor": 1912.806758022107,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 26,
+              "stopsAhead": 19,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2645.9908528620012,
+              "low": 2139.2847587239276,
+              "high": 3535.3099999254514,
+              "departNow": 2645.9908528620012,
+              "lowFloor": 2139.2847587239276,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 127,
+              "stopsAhead": 20,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66209,
+            "bus_name": "#325",
+            "route_id": 9,
+            "lat": 41.317694,
+            "lon": -72.915034,
+            "heading": 28,
+            "last_stop_id": 0,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:34:00.304",
+            "last_moved_at": "2026-09-11T09:34:00.304"
+          }
+        },
+        {
+          "at": "2026-09-11T09:34:14.690Z",
+          "route": 9,
+          "board": 25,
+          "alight": 127,
+          "before": {
+            "bus": "325",
+            "eta": 1732.7455536040525
+          },
+          "after": {
+            "bus": "325",
+            "eta": 2288.8859141693565
+          },
+          "why": "bus 325: pickup hop 13, return hop 18, destination hop 20",
+          "witness": {
+            "nextPickup": {
+              "eta": 2288.8859141693565,
+              "low": 1794.5424107350318,
+              "high": 3174.964538262174,
+              "departNow": 2288.8859141693565,
+              "lowFloor": 1794.5424107350318,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 25,
+              "stopsAhead": 18,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2645.9908528620012,
+              "low": 2139.2847587239276,
+              "high": 3535.3099999254514,
+              "departNow": 2645.9908528620012,
+              "lowFloor": 2139.2847587239276,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 127,
+              "stopsAhead": 20,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66209,
+            "bus_name": "#325",
+            "route_id": 9,
+            "lat": 41.317694,
+            "lon": -72.915034,
+            "heading": 28,
+            "last_stop_id": 0,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:34:00.304",
+            "last_moved_at": "2026-09-11T09:34:00.304"
+          }
+        },
+        {
+          "at": "2026-09-11T09:34:14.690Z",
+          "route": 9,
+          "board": 25,
+          "alight": 26,
+          "before": {
+            "bus": "325",
+            "eta": 1732.7455536040525
+          },
+          "after": {
+            "bus": "325",
+            "eta": 2288.8859141693565
+          },
+          "why": "bus 325: pickup hop 13, return hop 18, destination hop 19",
+          "witness": {
+            "nextPickup": {
+              "eta": 2288.8859141693565,
+              "low": 1794.5424107350318,
+              "high": 3174.964538262174,
+              "departNow": 2288.8859141693565,
+              "lowFloor": 1794.5424107350318,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 25,
+              "stopsAhead": 18,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2399.230276769104,
+              "low": 1912.806758022107,
+              "high": 3296.690826335234,
+              "departNow": 2399.230276769104,
+              "lowFloor": 1912.806758022107,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 26,
+              "stopsAhead": 19,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66209,
+            "bus_name": "#325",
+            "route_id": 9,
+            "lat": 41.317694,
+            "lon": -72.915034,
+            "heading": 28,
+            "last_stop_id": 0,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:34:00.304",
+            "last_moved_at": "2026-09-11T09:34:00.304"
+          }
+        },
+        {
+          "at": "2026-09-11T09:34:14.690Z",
+          "route": 9,
+          "board": 23,
+          "alight": 24,
+          "before": {
+            "bus": "325",
+            "eta": 1832.4284589320919
+          },
+          "after": {
+            "bus": "325",
+            "eta": 2197.084888713132
+          },
+          "why": "bus 325: pickup hop 14, return hop 16, destination hop 17",
+          "witness": {
+            "nextPickup": {
+              "eta": 2197.084888713132,
+              "low": 1708.8142078706212,
+              "high": 3085.5279479034048,
+              "departNow": 2197.084888713132,
+              "lowFloor": 1708.8142078706212,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 23,
+              "stopsAhead": 16,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2251.6939331125122,
+              "low": 1756.7232080151061,
+              "high": 3139.0729833740916,
+              "departNow": 2251.6939331125122,
+              "lowFloor": 1756.7232080151061,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 24,
+              "stopsAhead": 17,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66209,
+            "bus_name": "#325",
+            "route_id": 9,
+            "lat": 41.317694,
+            "lon": -72.915034,
+            "heading": 28,
+            "last_stop_id": 0,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:34:00.304",
+            "last_moved_at": "2026-09-11T09:34:00.304"
+          }
+        },
+        {
+          "at": "2026-09-11T09:34:14.690Z",
+          "route": 9,
+          "board": 23,
+          "alight": 25,
+          "before": {
+            "bus": "325",
+            "eta": 1832.4284589320919
+          },
+          "after": {
+            "bus": "325",
+            "eta": 2197.084888713132
+          },
+          "why": "bus 325: pickup hop 14, return hop 16, destination hop 18",
+          "witness": {
+            "nextPickup": {
+              "eta": 2197.084888713132,
+              "low": 1708.8142078706212,
+              "high": 3085.5279479034048,
+              "departNow": 2197.084888713132,
+              "lowFloor": 1708.8142078706212,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 23,
+              "stopsAhead": 16,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2288.8859141693565,
+              "low": 1794.5424107350318,
+              "high": 3174.964538262174,
+              "departNow": 2288.8859141693565,
+              "lowFloor": 1794.5424107350318,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 25,
+              "stopsAhead": 18,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66209,
+            "bus_name": "#325",
+            "route_id": 9,
+            "lat": 41.317694,
+            "lon": -72.915034,
+            "heading": 28,
+            "last_stop_id": 0,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:34:00.304",
+            "last_moved_at": "2026-09-11T09:34:00.304"
+          }
+        },
+        {
+          "at": "2026-09-11T09:34:14.690Z",
+          "route": 9,
+          "board": 23,
+          "alight": 127,
+          "before": {
+            "bus": "325",
+            "eta": 1832.4284589320919
+          },
+          "after": {
+            "bus": "325",
+            "eta": 2197.084888713132
+          },
+          "why": "bus 325: pickup hop 14, return hop 16, destination hop 20",
+          "witness": {
+            "nextPickup": {
+              "eta": 2197.084888713132,
+              "low": 1708.8142078706212,
+              "high": 3085.5279479034048,
+              "departNow": 2197.084888713132,
+              "lowFloor": 1708.8142078706212,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 23,
+              "stopsAhead": 16,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2645.9908528620012,
+              "low": 2139.2847587239276,
+              "high": 3535.3099999254514,
+              "departNow": 2645.9908528620012,
+              "lowFloor": 2139.2847587239276,
+              "routeLabel": "Green",
+              "color": "#43A047",
+              "busName": "325",
+              "stopId": 127,
+              "stopsAhead": 20,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66209,
+            "bus_name": "#325",
+            "route_id": 9,
+            "lat": 41.317694,
+            "lon": -72.915034,
+            "heading": 28,
+            "last_stop_id": 0,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:34:00.304",
+            "last_moved_at": "2026-09-11T09:34:00.304"
+          }
+        }
+      ]
+    },
+    "10": {
+      "label": "Purple",
+      "pairs": 67,
+      "planPairs": [
+        [
+          10,
+          9
+        ],
+        [
+          9,
+          127
+        ],
+        [
+          1,
+          26
+        ],
+        [
+          122,
+          24
+        ],
+        [
+          26,
+          25
+        ],
+        [
+          24,
+          23
+        ],
+        [
+          22,
+          23
+        ],
+        [
+          24,
+          10
+        ],
+        [
+          127,
+          22
+        ]
+      ],
+      "frames": 899,
+      "live": {
+        "total": 60233,
+        "changed": 14993,
+        "lost": 0,
+        "gained": 0,
+        "busChanged": 4926,
+        "later": 14993,
+        "earlier": 0,
+        "unexplained": 0
+      },
+      "plan": {
+        "total": 540,
+        "changed": 117,
+        "lost": 0,
+        "gained": 0,
+        "busChanged": 77,
+        "later": 117,
+        "earlier": 0,
+        "unexplained": 0
+      },
+      "examples": [
+        {
+          "at": "2026-09-11T09:31:24.667Z",
+          "route": 10,
+          "board": 25,
+          "alight": 26,
+          "before": {
+            "bus": "329",
+            "eta": 1419.921409402083
+          },
+          "after": {
+            "bus": "329",
+            "eta": 1989.7538371259197
+          },
+          "why": "bus 329: pickup hop 6, return hop 12, destination hop 13",
+          "witness": {
+            "nextPickup": {
+              "eta": 1989.7538371259197,
+              "low": 1599.1789583166365,
+              "high": 2731.161385444596,
+              "departNow": 1989.7538371259197,
+              "lowFloor": 1599.1789583166365,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 25,
+              "stopsAhead": 12,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2088.813274317764,
+              "low": 1691.4147089428347,
+              "high": 2831.156883928558,
+              "departNow": 2088.813274317764,
+              "lowFloor": 1691.4147089428347,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 26,
+              "stopsAhead": 13,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66207,
+            "bus_name": "#329",
+            "route_id": 10,
+            "lat": 41.303911,
+            "lon": -72.934732,
+            "heading": 326,
+            "last_stop_id": 10,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:30:50.121",
+            "last_moved_at": "2026-09-11T09:31:10.114"
+          }
+        },
+        {
+          "at": "2026-09-11T09:31:24.667Z",
+          "route": 10,
+          "board": 24,
+          "alight": 25,
+          "before": {
+            "bus": "329",
+            "eta": 1517.7516611383771
+          },
+          "after": {
+            "bus": "329",
+            "eta": 1958.7941760620793
+          },
+          "why": "bus 329: pickup hop 7, return hop 11, destination hop 12",
+          "witness": {
+            "nextPickup": {
+              "eta": 1958.7941760620793,
+              "low": 1564.2241679414458,
+              "high": 2705.851509547907,
+              "departNow": 1958.7941760620793,
+              "lowFloor": 1564.2241679414458,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 24,
+              "stopsAhead": 11,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 1989.7538371259197,
+              "low": 1599.1789583166365,
+              "high": 2731.161385444596,
+              "departNow": 1989.7538371259197,
+              "lowFloor": 1599.1789583166365,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 25,
+              "stopsAhead": 12,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66207,
+            "bus_name": "#329",
+            "route_id": 10,
+            "lat": 41.303911,
+            "lon": -72.934732,
+            "heading": 326,
+            "last_stop_id": 10,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:30:50.121",
+            "last_moved_at": "2026-09-11T09:31:10.114"
+          }
+        },
+        {
+          "at": "2026-09-11T09:31:24.667Z",
+          "route": 10,
+          "board": 24,
+          "alight": 26,
+          "before": {
+            "bus": "329",
+            "eta": 1517.7516611383771
+          },
+          "after": {
+            "bus": "329",
+            "eta": 1958.7941760620793
+          },
+          "why": "bus 329: pickup hop 7, return hop 11, destination hop 13",
+          "witness": {
+            "nextPickup": {
+              "eta": 1958.7941760620793,
+              "low": 1564.2241679414458,
+              "high": 2705.851509547907,
+              "departNow": 1958.7941760620793,
+              "lowFloor": 1564.2241679414458,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 24,
+              "stopsAhead": 11,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2088.813274317764,
+              "low": 1691.4147089428347,
+              "high": 2831.156883928558,
+              "departNow": 2088.813274317764,
+              "lowFloor": 1691.4147089428347,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 26,
+              "stopsAhead": 13,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66207,
+            "bus_name": "#329",
+            "route_id": 10,
+            "lat": 41.303911,
+            "lon": -72.934732,
+            "heading": 326,
+            "last_stop_id": 10,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:30:50.121",
+            "last_moved_at": "2026-09-11T09:31:10.114"
+          }
+        },
+        {
+          "at": "2026-09-11T09:31:24.667Z",
+          "route": 10,
+          "board": 23,
+          "alight": 24,
+          "before": {
+            "bus": "329",
+            "eta": 1537.2808522069795
+          },
+          "after": {
+            "bus": "329",
+            "eta": 1906.8458615980608
+          },
+          "why": "bus 329: pickup hop 8, return hop 10, destination hop 11",
+          "witness": {
+            "nextPickup": {
+              "eta": 1906.8458615980608,
+              "low": 1505.3589192541745,
+              "high": 2652.4872292741748,
+              "departNow": 1906.8458615980608,
+              "lowFloor": 1505.3589192541745,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 23,
+              "stopsAhead": 10,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 1958.7941760620793,
+              "low": 1564.2241679414458,
+              "high": 2705.851509547907,
+              "departNow": 1958.7941760620793,
+              "lowFloor": 1564.2241679414458,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 24,
+              "stopsAhead": 11,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66207,
+            "bus_name": "#329",
+            "route_id": 10,
+            "lat": 41.303911,
+            "lon": -72.934732,
+            "heading": 326,
+            "last_stop_id": 10,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:30:50.121",
+            "last_moved_at": "2026-09-11T09:31:10.114"
+          }
+        },
+        {
+          "at": "2026-09-11T09:31:24.667Z",
+          "route": 10,
+          "board": 23,
+          "alight": 25,
+          "before": {
+            "bus": "329",
+            "eta": 1537.2808522069795
+          },
+          "after": {
+            "bus": "329",
+            "eta": 1906.8458615980608
+          },
+          "why": "bus 329: pickup hop 8, return hop 10, destination hop 12",
+          "witness": {
+            "nextPickup": {
+              "eta": 1906.8458615980608,
+              "low": 1505.3589192541745,
+              "high": 2652.4872292741748,
+              "departNow": 1906.8458615980608,
+              "lowFloor": 1505.3589192541745,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 23,
+              "stopsAhead": 10,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 1989.7538371259197,
+              "low": 1599.1789583166365,
+              "high": 2731.161385444596,
+              "departNow": 1989.7538371259197,
+              "lowFloor": 1599.1789583166365,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 25,
+              "stopsAhead": 12,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66207,
+            "bus_name": "#329",
+            "route_id": 10,
+            "lat": 41.303911,
+            "lon": -72.934732,
+            "heading": 326,
+            "last_stop_id": 10,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:30:50.121",
+            "last_moved_at": "2026-09-11T09:31:10.114"
+          }
+        },
+        {
+          "at": "2026-09-11T09:31:24.667Z",
+          "route": 10,
+          "board": 23,
+          "alight": 26,
+          "before": {
+            "bus": "329",
+            "eta": 1537.2808522069795
+          },
+          "after": {
+            "bus": "329",
+            "eta": 1906.8458615980608
+          },
+          "why": "bus 329: pickup hop 8, return hop 10, destination hop 13",
+          "witness": {
+            "nextPickup": {
+              "eta": 1906.8458615980608,
+              "low": 1505.3589192541745,
+              "high": 2652.4872292741748,
+              "departNow": 1906.8458615980608,
+              "lowFloor": 1505.3589192541745,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 23,
+              "stopsAhead": 10,
+              "estimated": false
+            },
+            "destination": {
+              "eta": 2088.813274317764,
+              "low": 1691.4147089428347,
+              "high": 2831.156883928558,
+              "departNow": 2088.813274317764,
+              "lowFloor": 1691.4147089428347,
+              "routeLabel": "Purple",
+              "color": "#7B1FA2",
+              "busName": "329",
+              "stopId": 26,
+              "stopsAhead": 13,
+              "estimated": false
+            }
+          },
+          "bus": {
+            "bus_id": 66207,
+            "bus_name": "#329",
+            "route_id": 10,
+            "lat": 41.303911,
+            "lon": -72.934732,
+            "heading": 326,
+            "last_stop_id": 10,
+            "stationary": false,
+            "stationary_since": "2026-09-11T09:30:50.121",
+            "last_moved_at": "2026-09-11T09:31:10.114"
+          }
+        }
+      ]
+    },
+    "16": {
+      "label": "Blue West",
+      "pairs": 61,
+      "planPairs": [
+        [
+          10,
+          153
+        ],
+        [
+          153,
+          162
+        ],
+        [
+          154,
+          156
+        ],
+        [
+          154,
+          10
+        ],
+        [
+          155,
+          98
+        ],
+        [
+          156,
+          98
+        ],
+        [
+          161,
+          10
+        ],
+        [
+          27,
+          164
+        ]
+      ],
+      "frames": 132,
+      "live": {
+        "total": 8052,
+        "changed": 0,
+        "lost": 0,
+        "gained": 0,
+        "busChanged": 0,
+        "later": 0,
+        "earlier": 0,
+        "unexplained": 0
+      },
+      "plan": {
+        "total": 64,
+        "changed": 0,
+        "lost": 0,
+        "gained": 0,
+        "busChanged": 0,
+        "later": 0,
+        "earlier": 0,
+        "unexplained": 0
+      },
+      "examples": []
+    }
+  },
+  "limitations": [
+    "One estimator; paired fixed-trip live selection, not independent arrival truth.",
+    "Route-constrained planner grid samples every 15 min; not a cross-route best-trip census.",
+    "Fixed earlier calibration snapshot, not exact historical per-poll parameters.",
+    "Missing destination/horizon evidence retains baseline.",
+    "GPS gaps over 60s reset history; initial frames are cold."
+  ]
+}

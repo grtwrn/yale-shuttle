@@ -1,0 +1,227 @@
+{
+  "batches": 100,
+  "options": 500,
+  "distinctSelectionBatches": 100,
+  "scope": "Synthetic simultaneous access options on 100 saved frames; implementation isolation check, not observed rider alternatives.",
+  "examples": [
+    {
+      "at": 1789561421073,
+      "selections": [
+        {
+          "selectedAtMs": 1789561421073,
+          "countdown": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 65,
+            "lowSec": 49,
+            "highSec": 96
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 65,
+            "lowSec": 49,
+            "highSec": 96
+          },
+          "relation": "same-visit"
+        },
+        null,
+        {
+          "selectedAtMs": 1789561421073,
+          "countdown": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 65,
+            "lowSec": 49,
+            "highSec": 96
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1997,
+            "lowSec": 1665,
+            "highSec": 2321
+          },
+          "relation": "different-bus"
+        },
+        {
+          "selectedAtMs": 1789561421073,
+          "countdown": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1997,
+            "lowSec": 1665,
+            "highSec": 2321
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1997,
+            "lowSec": 1665,
+            "highSec": 2321
+          },
+          "relation": "same-visit"
+        },
+        null
+      ]
+    },
+    {
+      "at": 1789561426070,
+      "selections": [
+        {
+          "selectedAtMs": 1789561426070,
+          "countdown": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 57,
+            "lowSec": 43,
+            "highSec": 85
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 57,
+            "lowSec": 43,
+            "highSec": 85
+          },
+          "relation": "same-visit"
+        },
+        null,
+        {
+          "selectedAtMs": 1789561426070,
+          "countdown": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 57,
+            "lowSec": 43,
+            "highSec": 85
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1990,
+            "lowSec": 1660,
+            "highSec": 2316
+          },
+          "relation": "different-bus"
+        },
+        {
+          "selectedAtMs": 1789561426070,
+          "countdown": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1990,
+            "lowSec": 1660,
+            "highSec": 2316
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1990,
+            "lowSec": 1660,
+            "highSec": 2316
+          },
+          "relation": "same-visit"
+        },
+        null
+      ]
+    },
+    {
+      "at": 1789561431065,
+      "selections": [
+        {
+          "selectedAtMs": 1789561431065,
+          "countdown": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 48,
+            "lowSec": 37,
+            "highSec": 72
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 48,
+            "lowSec": 37,
+            "highSec": 72
+          },
+          "relation": "same-visit"
+        },
+        null,
+        {
+          "selectedAtMs": 1789561431065,
+          "countdown": {
+            "source": "forecast",
+            "busName": "309",
+            "stopId": 121,
+            "stopsAhead": 1,
+            "etaSec": 48,
+            "lowSec": 37,
+            "highSec": 72
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1983,
+            "lowSec": 1652,
+            "highSec": 2311
+          },
+          "relation": "different-bus"
+        },
+        {
+          "selectedAtMs": 1789561431065,
+          "countdown": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1983,
+            "lowSec": 1652,
+            "highSec": 2311
+          },
+          "boarding": {
+            "source": "forecast",
+            "busName": "308",
+            "stopId": 121,
+            "stopsAhead": 19,
+            "etaSec": 1983,
+            "lowSec": 1652,
+            "highSec": 2311
+          },
+          "relation": "same-visit"
+        },
+        null
+      ]
+    }
+  ]
+}

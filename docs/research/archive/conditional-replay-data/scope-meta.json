@@ -1,0 +1,21 @@
+{
+  "parityChecks": 1808,
+  "frames": 12654,
+  "emitted": 48994,
+  "changed": 40163,
+  "beliefChecks": 36516,
+  "gaps": [
+    {
+      "at": 1789556683166,
+      "gapMs": null
+    },
+    {
+      "at": 1789642866201,
+      "gapMs": 45035866
+    }
+  ],
+  "params": "fit-2026-09-15",
+  "priorCutoff": "2026-09-14T04:00:00Z",
+  "candidatePatch": "normalized-live-clock-patch.json",
+  "note": "Unrounded target-scoped estimator output with periodic full ServerEta parity checks; continuous within observed segments; no synthetic observations or watcher-run resets. Distributions/tables priorSep14; parameter version publishedbeforeSep16. Not original five-second production replay when watcher cadence is ten seconds."
+}

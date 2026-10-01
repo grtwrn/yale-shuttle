@@ -149,12 +149,24 @@ describe("the conformal widening", () => {
   it("is a no-op at 1 and scales the band about the number per bucket", () => {
     expect(widenBand(100, 80, 130)).toEqual([80, 130]);
     applyModelParams({ version: "w", publishedAt: 1, params: { ...COMPILED_MODEL_PARAMS, CONFORMAL: { "0-2": 2, "2-5": 1, "5-10": 0.5, "10-30": 1.5 } } });
-    expect(widenBand(100, 80, 130)).toEqual([60, 160]);
+    expect(widenBand(80, 60, 110)).toEqual([40, 140]);
     expect(widenBand(200, 150, 260)).toEqual([150, 260]);
     expect(widenBand(400, 300, 500)).toEqual([350, 450]);
     expect(widenBand(1200, 1000, 1400)).toEqual([900, 1500]);
     // Past the cap nothing is learned about, so nothing is applied.
     expect(widenBand(2400, 2000, 2800)).toEqual([2000, 2800]);
+  });
+
+  it('does not jump the prediction interval as the ETA crosses a calibration boundary', () => {
+    applyModelParams({ version: 'today', publishedAt: 1, params: {
+      ...COMPILED_MODEL_PARAMS, CONFORMAL: { '0-2': 1, '2-5': 1.619, '5-10': 1.433, '10-30': 1.236 },
+    } });
+    for (const boundary of [120, 300, 600, 1800]) {
+      const before = widenBand(boundary + 0.01, boundary - 60, boundary + 480);
+      const after = widenBand(boundary - 0.01, boundary - 60, boundary + 480);
+      expect(Math.abs(after[0] - before[0])).toBeLessThan(0.2);
+      expect(Math.abs(after[1] - before[1])).toBeLessThan(0.2);
+    }
   });
 });
 

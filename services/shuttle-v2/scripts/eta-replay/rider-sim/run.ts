@@ -138,6 +138,7 @@ if (compareArgs) {
 }
 
 const CLIENT_ROOT = path.resolve(process.env.CLIENT_ROOT ?? path.resolve(HERE, "../../.."));
+const SERVER_ETA = process.env.SERVER_ETA === "1";
 const POP = (process.env.POP ?? (namedArgs.length ? "none" : "both")) as "both" | "uniform" | "targeted" | "none";
 const EVERY_MS = (Number(process.env.EVERY_MIN) || 10) * 60_000;
 const MAX_WAIT_MS = (Number(process.env.MAX_WAIT_MIN) || 45) * 60_000;
@@ -217,12 +218,27 @@ const hasNextRule = typeof (arrivalsMod as any).nextArrivalAfterPinned === "func
 // with slot 2 by bunching.ts. Older trees print the bare pair.
 let bandMod: { displayBand: (low: number, high: number, at: number | undefined, now: number) => { lowSec: number; highSec: number } | null } | null = null;
 let bunchingMod: { fmtBusLine: (i: { leadSec: number; leadBand: { lowSec: number; highSec: number } | null; nextSec: number | null }) => string } | null = null;
+let detailsMod: { arrivalSummary: (eta: number, low: number | undefined, high: number | undefined, at: number, now: number, atPickup: boolean) => { token: string } } | null = null;
+try { detailsMod = await fromClient<any>('web/src/arrivalDetails.ts'); } catch { /* older tree */ }
 let standWaitMod: { standWaitFor: (standing: unknown, routeDwells: unknown, dwellsByRoute: unknown) => { soonSec: number } | null } | null = null;
 let liveAnchorMod: { resolveStandingStop: (bus: unknown, cfg: unknown, routeStops: unknown, stopCoords: unknown, now: number, store: unknown) => unknown } | null = null;
 try {
   bandMod = await fromClient<any>("web/src/etaBand.ts"); bunchingMod = await fromClient<any>("web/src/bunching.ts");
   standWaitMod = await fromClient<any>("web/src/standWait.ts"); liveAnchorMod = await fromClient<any>("web/src/liveAnchor.ts");
 } catch { /* older tree */ }
+
+// The kerb-shuffle conditioning (web/src/eta/filter.ts), from the CLIENT tree
+// so the arm under test is the one that carries it. Loud on a tree without the
+// export: an arm that silently ran as master would make the pair meaningless.
+if (process.env.KERB_SHUFFLE === "1") {
+  const f = await fromClient<{ setKerbShuffleEvidence?: (on: boolean) => void }>("web/src/eta/filter.ts");
+  if (typeof f.setKerbShuffleEvidence !== "function") {
+    console.error(`KERB_SHUFFLE=1 but ${CLIENT_ROOT} has no setKerbShuffleEvidence — refusing to score an arm that would silently be master.`);
+    process.exit(2);
+  }
+  f.setKerbShuffleEvidence(true);
+  log("KERB_SHUFFLE=1: the client's in-rest departure evidence is on");
+}
 
 function treeInfo() {
   const git = (cmd: string) => { try { return execSync(`git -C "${CLIENT_ROOT}" ${cmd}`, { encoding: "utf8" }).trim(); } catch { return "?"; } };
@@ -249,6 +265,7 @@ for (const f of captureFiles) {
   log(`${f}: ${raw.length - before} rows`);
 }
 const rows = dedupeAndSort(raw);
+if (!rows.length) throw new Error('No positions parsed from CAPTURE; use positions JSONL, not watcher screenshots.');
 raw = [];
 const polls = groupPolls(rows);
 const dataStart = rows[0]!.t;
@@ -360,7 +377,7 @@ const countDrops: CountDrop[] = [];
 /** detector arrival events: `${busName}|${stopId}` -> times */
 const detArrivals = new Map<string, number[]>();
 
-type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null; stationarySince: number | null };
+type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null; stationarySince: number | null; lastMovedAt: number | null };
 
 /**
  * The stops that carry a lap fit in the payload patch — the only ones
@@ -425,6 +442,7 @@ function makeFeed() {
           // that does not read the field is byte-identical with or without it,
           // which is the same contract PAYLOAD_PATCH keeps.
           stationarySince: st ? st.stationarySince : null,
+          lastMovedAt: st ? st.lastMovedAt : null,
         });
       }
       for (const [k, v] of livePositions) if (v.o.collectedAt < t - LIVE_BUS_TTL_MS) livePositions.delete(k);
@@ -436,11 +454,12 @@ function makeFeed() {
         return out;
       };
       const all: BusData[] = [...livePositions.values()].map((v) => ({
-        bus_id: v.o.busId, bus_name: v.o.busName, route_id: v.o.routeId, lat: v.o.lat, lon: v.o.lon, heading: v.o.heading,
+        observed_at: v.o.collectedAt, bus_id: v.o.busId, bus_name: v.o.busName, route_id: v.o.routeId, lat: v.o.lat, lon: v.o.lon, heading: v.o.heading,
         ...(lapOf(v.o.busName) ? { lap: lapOf(v.o.busName) } : {}),
         last_stop_id: v.o.lastStopId as number, stationary: v.atStopId != null,
         ...(v.atStopId != null ? { at_stop_id: v.atStopId } : {}),
         ...(v.atStopSince != null ? { at_stop_since: new Date(v.atStopSince).toISOString().replace(/Z$/, "") } : {}),
+        ...(v.lastMovedAt != null ? { last_moved_at: new Date(v.lastMovedAt).toISOString().replace(/Z$/, "") } : {}),
         ...(v.stationarySince != null ? { stationary_since: new Date(v.stationarySince).toISOString().replace(/Z$/, "") } : {}),
       }));
       // The client drops out-of-service ghosts before anything reads `buses`.
@@ -713,24 +732,40 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
   // must not either or it would score a client that no longer exists.
   const floorSec: number | undefined = undefined;
   const leadBand = bandMod && lowSec != null && highSec != null ? (bandMod.displayBand as any)(lowSec, highSec, t, t, floorSec) : null;
-  const token = bunchingMod && leadBand
+  const token = detailsMod
+    ? detailsMod.arrivalSummary(busEtaLive, lowSec ?? undefined, highSec ?? undefined, t, t, busMatch?.at_stop_id === o.boardStopId).token
+    : bunchingMod && leadBand
     ? bunchingMod.fmtBusLine({ leadSec: busEtaLive, leadBand, nextSec: nextArr ? nextArr.eta : null })
     : formatMod.fmtBusPair(busEtaLive, nextArr?.eta);
   return { t, state: "countdown", token, etaSec: busEtaLive, nextSec: nextArr ? nextArr.eta : null, bus: u.busName, missedBus: u.missedBus ?? null, prevSoonest, lowSec, highSec };
 }
 
 {
-  log("pass 2: the riders");
+  log(`pass 2: the riders (${SERVER_ETA ? 'shared server forecast' : 'per-session client forecast'})`);
+  const serverModule = SERVER_ETA ? await fromClient<any>('src/server/serverEta.ts') : null;
+  const sourceModule = SERVER_ETA ? await fromClient<any>('web/src/etaSource.ts') : null;
+  const liveModule = SERVER_ETA ? await fromClient<any>('web/src/liveArrivals.ts') : null;
+  const serverEngine = serverModule ? new serverModule.ServerEta({ routes: [...cfgByLabel.keys()] }) : null;
+  const serverParams = process.env.MODEL_PARAMS ? JSON.parse(fs.readFileSync(process.env.MODEL_PARAMS, 'utf8')) : undefined;
   const feed = makeFeed();
   const startIdx = polls.findIndex((p) => p[0]!.t >= DETECTOR_FROM);
   let si = 0;
   for (let pi = Math.max(0, startIdx); pi < polls.length; pi++) {
     const poll = polls[pi]!;
     const t = poll[0]!.t;
-    const buses = feed.step(poll, false);
+    let buses = feed.step(poll, false);
     if (si >= specs.length && active.size === 0) { if (t > (specs[specs.length - 1]?.t0 ?? 0) + MAX_WAIT_MS) break; }
     const segs = segmentsAt(t - CALIB_LAG_MS);
     const dw = dwellsAt(t - CALIB_LAG_MS);
+    if (serverEngine) {
+      const wire = serverEngine.contribute({ buses, routes: net.routeStops, stop_coords: net.stopCoords,
+        route_paths: net.routePaths, segments: segs, dwells: dw, model_params: serverParams }, pi, t);
+      // Separate process boundaries: browser metadata must never decorate the
+      // engine's own observation objects during this in-process replay.
+      buses = buses.map(b => ({ ...b }));
+      const ready = sourceModule.attachServerEta(buses, wire, t);
+      if (wire && !ready) throw new Error(`Invalid server forecast at ${new Date(t).toISOString()}`);
+    }
 
     // riders reaching the stop on this poll
     while (si < specs.length && specs[si]!.t0 <= t) {
@@ -762,7 +797,7 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
     for (const [key, cohort] of cohorts) {
       if (cohort.riders.size === 0) { cohorts.delete(key); continue; }
       const targets = [...new Set([...cohort.riders].flatMap((a) => supportsBoardingVisits ? [a.o.boardStopId, a.o.alightStopId] : [a.spec.boardStopId]))];
-      const arr = (arrivalsMod.computeUpcomingArrivals as any)(targets, buses, net.routeStops, net.stopCoords, segs, t, dw, cohort.store) as UpcomingArrival[];
+      const arr = ((liveModule ?? arrivalsMod).computeUpcomingArrivals as any)(targets, buses, net.routeStops, net.stopCoords, segs, t, dw, cohort.store) as UpcomingArrival[];
       for (const a of [...cohort.riders]) {
         const tick = tickFor(a, arr, buses, dw, t);
         a.ticks.push(tick);
@@ -806,7 +841,7 @@ for (const s of skipped) { const k = s.reason.split(":")[0]!; skippedReasons[k] 
 
 const out = {
   generatedAt: new Date().toISOString(),
-  config: { captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, PAYLOAD_PATCH: process.env.PAYLOAD_PATCH ?? null, POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
+  config: { SERVER_ETA, captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, PAYLOAD_PATCH: process.env.PAYLOAD_PATCH ?? null, POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
   tree,
   data: { positions: rows.length, polls: polls.length, start: new Date(dataStart).toISOString(), end: new Date(dataEnd).toISOString() },
   population: { focus: [...FOCUS], holdout: [...HOLDOUT], chain: CHAIN ? { ...CHAIN, stops: chainStops } : null, riders: specs.length, bySource: { uniform: specs.filter((s) => s.source === "uniform").length, targeted: specs.filter((s) => s.source === "targeted").length, chain: specs.filter((s) => s.source === "chain").length, named: specs.filter((s) => s.source === "named").length }, skipped: skippedReasons },

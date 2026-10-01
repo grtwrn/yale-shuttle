@@ -1,0 +1,85 @@
+{
+  "full-development-score.json": {
+    "counts": {
+      "rawRows": 117149,
+      "pairedRows": 114452,
+      "rejected": {
+        "insufficient or unknown warm duration": 2697,
+        "additional target occurrence": 43216
+      },
+      "riderZeroClipping": {},
+      "sources": 103,
+      "connectedJourneys": 163,
+      "uniqueTargets": 96,
+      "checkpointRows": 1908,
+      "duplicateJumpContextsRemoved": 15210,
+      "rowsWithoutSegmentIdentity": 0,
+      "rowsWithoutWarmDuration": 0,
+      "skippedReasons": {
+        "no paired forecast at checkpoint before phase ends": 130,
+        "missing or ambiguous connected leg": 17,
+        "missing or ambiguous connected visit": 20,
+        "intermediate gap or missing departure": 6
+      }
+    },
+    "identicalNestedScoreOrForecastGroups": 2147
+  },
+  "full-reused-afternoon-score.json": {
+    "counts": {
+      "rawRows": 32871,
+      "pairedRows": 32497,
+      "rejected": {
+        "insufficient or unknown warm duration": 374,
+        "additional target occurrence": 12279
+      },
+      "riderZeroClipping": {},
+      "sources": 29,
+      "connectedJourneys": 50,
+      "uniqueTargets": 28,
+      "checkpointRows": 600,
+      "duplicateJumpContextsRemoved": 5205,
+      "rowsWithoutSegmentIdentity": 0,
+      "rowsWithoutWarmDuration": 0,
+      "skippedReasons": {
+        "missing or ambiguous connected leg": 6,
+        "no paired forecast at checkpoint before phase ends": 30,
+        "intermediate gap or missing departure": 2
+      }
+    },
+    "identicalNestedScoreOrForecastGroups": 776
+  },
+  "full-next-occurrence-review.json": {
+    "counts": {
+      "rows": {
+        "all": 150020,
+        "second": 56640,
+        "hEqualsN_ambiguous": 3251
+      },
+      "sourceVisits": 131,
+      "connectedJourneys": 114,
+      "checkpoints": 1119,
+      "scoredSources": 54,
+      "scoredNextTargets": 65,
+      "availability": {
+        "paired": 801,
+        "both_absent": 318
+      },
+      "excluded": {
+        "checkpoint unavailable/stale/unwarmed bus": 64,
+        "next: missing or ambiguous leg": 39,
+        "next: missing or ambiguous visit": 28,
+        "first: missing or ambiguous leg": 19,
+        "first: missing or ambiguous visit": 20,
+        "next: gap-resolved visit": 4,
+        "next: missing intermediate departure": 4,
+        "first: gap-resolved visit": 4,
+        "next target absent: right-censored or service-ended": 22,
+        "first: missing intermediate departure": 4,
+        "checkpoint missing frame": 2,
+        "next: invalid route/time or skipped target": 2,
+        "first: invalid route/time or skipped target": 2
+      }
+    },
+    "identicalNestedScoreOrForecastGroups": 1325
+  }
+}

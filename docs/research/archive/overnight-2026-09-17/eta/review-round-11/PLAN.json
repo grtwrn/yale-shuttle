@@ -1,0 +1,17 @@
+{
+  "at": "2026-09-18T08:07:14.162864+00:00",
+  "head": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "scope": "Artifact-only repository-ready ETA projection regressions, current-base parity; then match alternate bus outcomes in the 38 previously unresolved raw-at-stop decisions if time permits. UX owns combined consumer integration.",
+  "noRelease": "No metadata-only release and no tracking or UI edit. Preserve all old outcomes.",
+  "remainingCases": "Freeze all 38 outgoing cases from cycle6; compare unchanged current baseline against saved diagnostic fallthrough only; no optimized thresholds, no model fit, no catchability guarantee. Labels are retrospective scoring only.",
+  "inputHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-11/eta-projection.patch": "8f6abd4713e8bc884cd2c3fc5f4bf31bb52e173c01ab234564d490db2d25134c",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-11/livePickupSelection.ts": "53f31c52212aabd4a65bcf3066483e24b687fe08994543fc961cf349f64f6ff2",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-11/boundaries.mts": "5a99defec604d41b37503225147f7167b463a04fd86353f035414c93d2c97528",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/missing-cases.json": "edd3dd518a0479e98d80373a485572519cd645b63394913c014dc03af64676ac",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/fallthrough-changes.json": "f1832244b807bdf7949895465487db1b48a7c9eea8791127197954bc51758d77",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/ordered-decisions.jsonl": "9db99d19530efecc6c7a972b7b7c1428050c3d41dfd335083ee52704b7dc3b97",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/fallthrough-decisions.jsonl": "733b335d062c9153f77d14ceb116656f621121f1871c2117fa40ea582aff635c",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/paired-outcomes.json": "4838c1be68431b90c48775b2cf3a8208ca914660262f798eeb4592aed5ff6e32"
+  }
+}

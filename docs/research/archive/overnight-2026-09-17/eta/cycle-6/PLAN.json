@@ -1,0 +1,17 @@
+{
+  "createdAt": "2026-09-18T05:27:03.089714+00:00",
+  "head": "b574a1c800654544685a8d9f1097ad3484ac13fc",
+  "comparison": "No new ETA candidate. Diagnose all 68 unavailable full journeys in reviewed traversal-guard output, preserving all 4688 decision denominator and 40 frozen sessions. Approved guard baseline; not a claim of deployment.",
+  "scope": "Classify missing board by raw/served position, target availability, timing around anchor/pin/departure, and both occurrence rows. Read existing labels and query DB mode=ro only. No fitting, exclusion, threshold selection or app mutation planned.",
+  "followup": "Only after diagnosis consider one artifact-only counterfactual using existing causally served rows; no synthetic zero pickup or tracking change. Coordinate any shell/planner contract proposal through REQUESTS before source work.",
+  "limits": "Selected reused Red-only history; modeled walking; reconstructed collector clocks. Repeated polls are not independent rider trials.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/decisions.jsonl": "07c66b3ed3603b9949c743b1ea422aa55cd323021a80fe670e19ea96402c391b",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/fleet-wire.jsonl.gz": "e849fec488e5d4326b2e091ba2b65db9cbc438ad41ec704d78634606d3289dc2",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/shell-live.generated.mts": "393ae22c2d00720a5416ed5581ebb8ceff309b49f75da6247e70430dd4ebdba3",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/outcome-audit.json": "f3be885f1ad4df5ad88c8c929b5f339a8a4f2234f7ce456f3d7378dda62ee7e0",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/planner.ts": "c6e48d8592052d44f66b4b39d1e222e31315af698f4ff58fb6febe7ff5f0cda9",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/journeyArrival.ts": "fcaf4c8da87b654dc40ede762c3a238a6c3e75830901acd32fa3e82f8d573e45",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/TransitMap.tsx": "765df568de65e18d54ce7dbff9a014c9b0e090bf8f5f7a306e932140bdaf6424"
+  }
+}

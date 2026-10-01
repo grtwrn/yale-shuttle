@@ -1,0 +1,40 @@
+{
+  "verdict": "approve",
+  "summary": "Prior pinch-teardown blocker is resolved. Independently passed 167 tests, both typechecks, build and 13 browser reports. Checkout unchanged. Review saved in ux/independent-review-round-16.md.",
+  "head_sha": "a5966b1e87a9f4fbecf3888456fbd272f186fcb8",
+  "base_sha": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "next_task": "Controller release gates, then UX10 saved-place keyboard selection, rename/delete and focus using ux-09-pinch/NEXT_UX10.md.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09-pinch/verified flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-pinch/verify.sh",
+      "exit_code": 0,
+      "result": "77 tests, both typechecks, Vite build and eight browser reports passed, including both previous blocking reproductions."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09-pinch/additional.sh",
+      "exit_code": 0,
+      "result": "90 tests and four recovery/offline browser reports passed; includes transport, restart, Docker imports and actual-trip recovery."
+    },
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09-pinch/isolation flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09-pinch/isolation.mjs",
+      "exit_code": 1,
+      "result": "Reviewer fixture incorrectly expected host CSS classes to disappear. Gesture-isolation checks passed; original failure preserved. No candidate change."
+    },
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09-pinch/isolation-corrected flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09-pinch/isolation.mjs",
+      "exit_code": 0,
+      "result": "Corrected pane-removal assertion passed. Cleanup preserves another map's active pinch and subsequent touch controls."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux09-pinch/verify-integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base, unchanged checkout/index, 910 tracked files, 197 builder files, bundle provenance and screenshot budget verified."
+    },
+    {
+      "command": "git diff --check 98e535b99649e74ca599d2e33bcfdc46df83d30d..HEAD",
+      "exit_code": 0,
+      "result": "Passed."
+    }
+  ]
+}

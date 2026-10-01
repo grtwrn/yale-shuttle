@@ -1,0 +1,4130 @@
+{
+  "plan": {
+    "purpose": "Check whether causal current route order reveals a departure signal obscured by120-second departure-order identity lag.",
+    "frozenBeforeScoring": true,
+    "cohort": "Same285 Winchester holds and160 pre-Sep14 training outcomes as earlier early-release screen. Preserve all original valid short/long holds and missing snapshots.",
+    "outcome": "Departure in next120 seconds at elapsed0,60,180,300,480, conditional on still waiting. This is a clue/measurement screen, not a remaining-wait or endpoint ETA model.",
+    "identity": "At each landmark choose nearest positive forward and backward modulo stop-index gaps from every bus's latest unconditional all-route anchor. Physical+15sec primary and+120sec sensitivity. Reject non-Red, invalid, other-day and >600sec-old anchors. No pin/outcome/actual future departure condition. Co-location and equal-gap ties explicitly unknown. One peer may be both ahead and behind; record it.",
+    "features": "Existing lap/elapsed/15minute-clock baseline; own Union age control; known peer flags, normalized topological gap and anchor age, overlap/same-peer flags. Gaps are route-stop order, not exact GPS distance or true minutes-away.",
+    "arms": [
+      "lap_clock",
+      "lap_clock_union",
+      "plus_physical_ahead",
+      "plus_physical_both"
+    ],
+    "fit": "Fixed L2=4 logistic model, training-only standardization, equal landmark weights in fitting. Do not use outcome-dependent inverse eligible-landmark weights in fit. No tuning or selected stop/horizon search.",
+    "evaluation": "Later dates separated; primary fixed-age equal-visit Brier/log-loss plus checkpoint and visit-balanced descriptive aggregates. Grouping by visit/date; no calibrated probability claim or further minimum ETA based on classification.",
+    "audit": "Compare identity for known70927; verify equal-time unknown rules and that deleting unknown future anchors cannot change earlier selected peers. Retain missingness and count identity disagreements with old confirmed-departure order.",
+    "deployment": "None from this screen alone. A gain would need full conditional distributions and warm endpoint replay. No app/prod changes."
+  },
+  "fits": [
+    {
+      "delay": 15,
+      "arm": "lap_clock",
+      "names": [
+        "elapsed_log",
+        "elapsed",
+        "clock_sin",
+        "clock_cos",
+        "lap",
+        "lap_missing"
+      ],
+      "mean": [
+        0.9396931612423739,
+        0.2347978910369059,
+        -0.23907247193618492,
+        0.1367507838895782,
+        -0.08218537053309867,
+        0.14762741652021089
+      ],
+      "sd": [
+        0.7442208516569644,
+        0.2433328983060303,
+        0.6528138388184629,
+        0.7056753276932746,
+        0.42070757564268974,
+        0.3547302671210611
+      ],
+      "coefficients": [
+        -1.7525415282837828,
+        0.47251063933440823,
+        0.22556514048022933,
+        1.0678341500907906,
+        0.3735414146623492,
+        0.7172005715843428,
+        -0.00910391354799751
+      ],
+      "converged": true
+    },
+    {
+      "delay": 15,
+      "arm": "lap_clock_union",
+      "names": [
+        "elapsed_log",
+        "elapsed",
+        "clock_sin",
+        "clock_cos",
+        "lap",
+        "lap_missing",
+        "own_union_age",
+        "own_union_missing"
+      ],
+      "mean": [
+        0.9396931612423739,
+        0.2347978910369059,
+        -0.23907247193618492,
+        0.1367507838895782,
+        -0.08218537053309867,
+        0.14762741652021089,
+        2.6522630931458693,
+        0.01757469244288225
+      ],
+      "sd": [
+        0.7442208516569644,
+        0.2433328983060303,
+        0.6528138388184629,
+        0.7056753276932746,
+        0.42070757564268974,
+        0.3547302671210611,
+        1.0886743484548664,
+        0.13139947727605486
+      ],
+      "coefficients": [
+        -1.7732117011365378,
+        0.47275350318627846,
+        0.23817095932084828,
+        1.0467944225767747,
+        0.31514198079932815,
+        0.6634134415952522,
+        -0.08067199464778477,
+        0.3244264041902945,
+        -0.04142480414871776
+      ],
+      "converged": true
+    },
+    {
+      "delay": 15,
+      "arm": "plus_physical_ahead",
+      "names": [
+        "elapsed_log",
+        "elapsed",
+        "clock_sin",
+        "clock_cos",
+        "lap",
+        "lap_missing",
+        "own_union_age",
+        "own_union_missing",
+        "ahead_known",
+        "ahead_gap",
+        "ahead_anchor_age",
+        "overlap"
+      ],
+      "mean": [
+        0.9396931612423739,
+        0.2347978910369059,
+        -0.23907247193618492,
+        0.1367507838895782,
+        -0.08218537053309867,
+        0.14762741652021089,
+        2.6522630931458693,
+        0.01757469244288225,
+        0.9666080843585237,
+        0.37282588934004024,
+        0.22757972466315157,
+        0.02460456942003515
+      ],
+      "sd": [
+        0.7442208516569644,
+        0.2433328983060303,
+        0.6528138388184629,
+        0.7056753276932746,
+        0.42070757564268974,
+        0.3547302671210611,
+        1.0886743484548664,
+        0.13139947727605486,
+        0.17965771792847837,
+        0.18997790158093739,
+        0.22001341649485615,
+        0.15491670208111757
+      ],
+      "coefficients": [
+        -1.7766876132936704,
+        0.47348848202519805,
+        0.2499014712583987,
+        1.0536045092068271,
+        0.32095926530788405,
+        0.6713870284590023,
+        -0.08517287365987805,
+        0.3300527462319855,
+        -0.04831180831562438,
+        0.12288226265920711,
+        -0.06582761749277208,
+        -0.004376090101569144,
+        0.07123234750303047
+      ],
+      "converged": true
+    },
+    {
+      "delay": 15,
+      "arm": "plus_physical_both",
+      "names": [
+        "elapsed_log",
+        "elapsed",
+        "clock_sin",
+        "clock_cos",
+        "lap",
+        "lap_missing",
+        "own_union_age",
+        "own_union_missing",
+        "ahead_known",
+        "ahead_gap",
+        "ahead_anchor_age",
+        "overlap",
+        "behind_known",
+        "behind_gap",
+        "behind_anchor_age",
+        "same_peer"
+      ],
+      "mean": [
+        0.9396931612423739,
+        0.2347978910369059,
+        -0.23907247193618492,
+        0.1367507838895782,
+        -0.08218537053309867,
+        0.14762741652021089,
+        2.6522630931458693,
+        0.01757469244288225,
+        0.9666080843585237,
+        0.37282588934004024,
+        0.22757972466315157,
+        0.02460456942003515,
+        0.9666080843585237,
+        0.37731046603236157,
+        0.23160150556531894,
+        0.2618629173989455
+      ],
+      "sd": [
+        0.7442208516569644,
+        0.2433328983060303,
+        0.6528138388184629,
+        0.7056753276932746,
+        0.42070757564268974,
+        0.3547302671210611,
+        1.0886743484548664,
+        0.13139947727605486,
+        0.17965771792847837,
+        0.18997790158093739,
+        0.22001341649485615,
+        0.15491670208111757,
+        0.17965771792847837,
+        0.15906172377427452,
+        0.23106932409218053,
+        0.43964841622626166
+      ],
+      "coefficients": [
+        -1.787124485648981,
+        0.49466563211011483,
+        0.23301762759249803,
+        1.0700316390908908,
+        0.31410113804960665,
+        0.6462203915682738,
+        -0.07210606968541,
+        0.32282132227656984,
+        -0.043519609893196726,
+        0.052427772068833756,
+        -0.011605551005823805,
+        -0.04707421396280715,
+        0.0923209219753561,
+        0.052427772068833756,
+        0.0107475526828284,
+        0.15177383291161053,
+        -0.0752681044942381
+      ],
+      "converged": true
+    },
+    {
+      "delay": 120,
+      "arm": "lap_clock",
+      "names": [
+        "elapsed_log",
+        "elapsed",
+        "clock_sin",
+        "clock_cos",
+        "lap",
+        "lap_missing"
+      ],
+      "mean": [
+        0.9396931612423739,
+        0.2347978910369059,
+        -0.23907247193618492,
+        0.1367507838895782,
+        -0.08218537053309867,
+        0.14762741652021089
+      ],
+      "sd": [
+        0.7442208516569644,
+        0.2433328983060303,
+        0.6528138388184629,
+        0.7056753276932746,
+        0.42070757564268974,
+        0.3547302671210611
+      ],
+      "coefficients": [
+        -1.7525415282837828,
+        0.47251063933440823,
+        0.22556514048022933,
+        1.0678341500907906,
+        0.3735414146623492,
+        0.7172005715843428,
+        -0.00910391354799751
+      ],
+      "converged": true
+    },
+    {
+      "delay": 120,
+      "arm": "lap_clock_union",
+      "names": [
+        "elapsed_log",
+        "elapsed",
+        "clock_sin",
+        "clock_cos",
+        "lap",
+        "lap_missing",
+        "own_union_age",
+        "own_union_missing"
+      ],
+      "mean": [
+        0.9396931612423739,
+        0.2347978910369059,
+        -0.23907247193618492,
+        0.1367507838895782,
+        -0.08218537053309867,
+        0.14762741652021089,
+        2.6522630931458693,
+        0.01757469244288225
+      ],
+      "sd": [
+        0.7442208516569644,
+        0.2433328983060303,
+        0.6528138388184629,
+        0.7056753276932746,
+        0.42070757564268974,
+        0.3547302671210611,
+        1.0886743484548664,
+        0.13139947727605486
+      ],
+      "coefficients": [
+        -1.7732117011365378,
+        0.47275350318627846,
+        0.23817095932084828,
+        1.0467944225767747,
+        0.31514198079932815,
+        0.6634134415952522,
+        -0.08067199464778477,
+        0.3244264041902945,
+        -0.04142480414871776
+      ],
+      "converged": true
+    },
+    {
+      "delay": 120,
+      "arm": "plus_physical_ahead",
+      "names": [
+        "elapsed_log",
+        "elapsed",
+        "clock_sin",
+        "clock_cos",
+        "lap",
+        "lap_missing",
+        "own_union_age",
+        "own_union_missing",
+        "ahead_known",
+        "ahead_gap",
+        "ahead_anchor_age",
+        "overlap"
+      ],
+      "mean": [
+        0.9396931612423739,
+        0.2347978910369059,
+        -0.23907247193618492,
+        0.1367507838895782,
+        -0.08218537053309867,
+        0.14762741652021089,
+        2.6522630931458693,
+        0.01757469244288225,
+        0.961335676625659,
+        0.3564026422641055,
+        0.36427508787346224,
+        0.028119507908611598
+      ],
+      "sd": [
+        0.7442208516569644,
+        0.2433328983060303,
+        0.6528138388184629,
+        0.7056753276932746,
+        0.42070757564268974,
+        0.3547302671210611,
+        1.0886743484548664,
+        0.13139947727605486,
+        0.19279365516620459,
+        0.20056200679754754,
+        0.1834251329116795,
+        0.16531424978987508
+      ],
+      "coefficients": [
+        -1.793744137079262,
+        0.4673714844500289,
+        0.2763703153121183,
+        1.0649767730369653,
+        0.29539985728682644,
+        0.6827412827043489,
+        -0.06623739784466623,
+        0.35093109008450446,
+        -0.057915843668578625,
+        0.221169639137776,
+        -0.07073561875815942,
+        0.032634684059907354,
+        -0.06789038948773482
+      ],
+      "converged": true
+    },
+    {
+      "delay": 120,
+      "arm": "plus_physical_both",
+      "names": [
+        "elapsed_log",
+        "elapsed",
+        "clock_sin",
+        "clock_cos",
+        "lap",
+        "lap_missing",
+        "own_union_age",
+        "own_union_missing",
+        "ahead_known",
+        "ahead_gap",
+        "ahead_anchor_age",
+        "overlap",
+        "behind_known",
+        "behind_gap",
+        "behind_anchor_age",
+        "same_peer"
+      ],
+      "mean": [
+        0.9396931612423739,
+        0.2347978910369059,
+        -0.23907247193618492,
+        0.1367507838895782,
+        -0.08218537053309867,
+        0.14762741652021089,
+        2.6522630931458693,
+        0.01757469244288225,
+        0.961335676625659,
+        0.3564026422641055,
+        0.36427508787346224,
+        0.028119507908611598,
+        0.961335676625659,
+        0.39943033755529916,
+        0.3763620855301697,
+        0.28822495606326887
+      ],
+      "sd": [
+        0.7442208516569644,
+        0.2433328983060303,
+        0.6528138388184629,
+        0.7056753276932746,
+        0.42070757564268974,
+        0.3547302671210611,
+        1.0886743484548664,
+        0.13139947727605486,
+        0.19279365516620459,
+        0.20056200679754754,
+        0.1834251329116795,
+        0.16531424978987508,
+        0.19279365516620459,
+        0.16016932483559326,
+        0.1957595724237603,
+        0.4529363429507456
+      ],
+      "coefficients": [
+        -1.801820017965362,
+        0.4833470646648931,
+        0.2773022561360612,
+        1.074253277722001,
+        0.2793972994892878,
+        0.6703019897201608,
+        -0.05077968904160729,
+        0.34206886205008075,
+        -0.060298983156072815,
+        0.08546132448984059,
+        -0.009832326285767495,
+        -0.012197511231812277,
+        -0.06488390823235618,
+        0.08546132448984059,
+        0.02683638341985877,
+        0.1389397063230178,
+        -0.072927111864231
+      ],
+      "converged": true
+    }
+  ],
+  "scores": [
+    {
+      "delay": 15,
+      "period": "Sep14_17",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.1067084667047517,
+          "logLoss": 0.3293506381562772
+        },
+        "lap_clock_union": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.10596076838463085,
+          "logLoss": 0.3261775411291461
+        },
+        "plus_physical_ahead": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.10554212055619526,
+          "logLoss": 0.32506145183989843
+        },
+        "plus_physical_both": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.10460225130168065,
+          "logLoss": 0.3226426460584996
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep14_17",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.1335416875559545,
+          "logLoss": 0.39994761123226785
+        },
+        "lap_clock_union": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.13339818757738564,
+          "logLoss": 0.3985995874213222
+        },
+        "plus_physical_ahead": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.13307689049237062,
+          "logLoss": 0.3980868255049579
+        },
+        "plus_physical_both": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.1325229200799323,
+          "logLoss": 0.39677401913974736
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep14_17",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 113,
+          "landmarks": 113,
+          "events": 8,
+          "brier": 0.07229200237466779,
+          "logLoss": 0.226506227097092
+        },
+        "lap_clock_union": {
+          "visits": 113,
+          "landmarks": 113,
+          "events": 8,
+          "brier": 0.0710167852771641,
+          "logLoss": 0.2215144767050378
+        },
+        "plus_physical_ahead": {
+          "visits": 113,
+          "landmarks": 113,
+          "events": 8,
+          "brier": 0.06931618211256055,
+          "logLoss": 0.21726133767138087
+        },
+        "plus_physical_both": {
+          "visits": 113,
+          "landmarks": 113,
+          "events": 8,
+          "brier": 0.06964226871595015,
+          "logLoss": 0.21764505102728368
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep14_17",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 110,
+          "landmarks": 110,
+          "events": 30,
+          "brier": 0.09373264442197404,
+          "logLoss": 0.3039477159319212
+        },
+        "lap_clock_union": {
+          "visits": 110,
+          "landmarks": 110,
+          "events": 30,
+          "brier": 0.09419986164064764,
+          "logLoss": 0.30403207814369376
+        },
+        "plus_physical_ahead": {
+          "visits": 110,
+          "landmarks": 110,
+          "events": 30,
+          "brier": 0.09646477371252433,
+          "logLoss": 0.31016932821196
+        },
+        "plus_physical_both": {
+          "visits": 110,
+          "landmarks": 110,
+          "events": 30,
+          "brier": 0.09729750247693782,
+          "logLoss": 0.312181058023295
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep14_17",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 80,
+          "landmarks": 80,
+          "events": 18,
+          "brier": 0.07954240400545735,
+          "logLoss": 0.26586723489100467
+        },
+        "lap_clock_union": {
+          "visits": 80,
+          "landmarks": 80,
+          "events": 18,
+          "brier": 0.07871192975605194,
+          "logLoss": 0.26107386515821435
+        },
+        "plus_physical_ahead": {
+          "visits": 80,
+          "landmarks": 80,
+          "events": 18,
+          "brier": 0.07838930090091657,
+          "logLoss": 0.25953476248655427
+        },
+        "plus_physical_both": {
+          "visits": 80,
+          "landmarks": 80,
+          "events": 18,
+          "brier": 0.07953609527667088,
+          "logLoss": 0.2618303950731512
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep14_17",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 62,
+          "landmarks": 62,
+          "events": 19,
+          "brier": 0.15823490364181964,
+          "logLoss": 0.46290714701278834
+        },
+        "lap_clock_union": {
+          "visits": 62,
+          "landmarks": 62,
+          "events": 19,
+          "brier": 0.1578981728447598,
+          "logLoss": 0.4623603880335865
+        },
+        "plus_physical_ahead": {
+          "visits": 62,
+          "landmarks": 62,
+          "events": 19,
+          "brier": 0.15563566963597794,
+          "logLoss": 0.4566854869719569
+        },
+        "plus_physical_both": {
+          "visits": 62,
+          "landmarks": 62,
+          "events": 19,
+          "brier": 0.14903336004269147,
+          "logLoss": 0.4403969124045166
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep14_17",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 20,
+          "brier": 0.2368614014396103,
+          "logLoss": 0.6691660504740097
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 20,
+          "brier": 0.2332988849525155,
+          "logLoss": 0.660355867732878
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 20,
+          "brier": 0.23155620317468922,
+          "logLoss": 0.6553945266943088
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 20,
+          "brier": 0.22595267987644926,
+          "logLoss": 0.6432401759910682
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep18",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05839511330069631,
+          "logLoss": 0.22035849397130453
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05069965594304529,
+          "logLoss": 0.20068284836788527
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.050610213228228534,
+          "logLoss": 0.20144912187020295
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05185178122087723,
+          "logLoss": 0.20419037238475235
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep18",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05981068997374587,
+          "logLoss": 0.22329234735728334
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.053090048480736236,
+          "logLoss": 0.20567820723615118
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.052809683972321386,
+          "logLoss": 0.2060758156269075
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05443017559082375,
+          "logLoss": 0.2095973370129776
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep18",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.03290879102900948,
+          "logLoss": 0.14526304402225174
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.01685645868218417,
+          "logLoss": 0.10446938117135038
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.016514661017776315,
+          "logLoss": 0.10475940680298888
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.01463288373946044,
+          "logLoss": 0.09870823066108912
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep18",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.04707741147543629,
+          "logLoss": 0.18761494231379738
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.02848877415184404,
+          "logLoss": 0.14506581196937166
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.030410746511084906,
+          "logLoss": 0.15090055835913077
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.030367258035782323,
+          "logLoss": 0.15008855354932094
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep18",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.052499968796824885,
+          "logLoss": 0.21334444316768042
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.045473032123986214,
+          "logLoss": 0.19506596227958656
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.046524393721098845,
+          "logLoss": 0.19827194429745362
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.047217174157376356,
+          "logLoss": 0.20075021082018835
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep18",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.08133981258347205,
+          "logLoss": 0.27671434966995134
+        },
+        "lap_clock_union": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.0852771914175356,
+          "logLoss": 0.283087043672818
+        },
+        "plus_physical_ahead": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.08187972337316668,
+          "logLoss": 0.2753492715348357
+        },
+        "plus_physical_both": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.0879601113392606,
+          "logLoss": 0.2878146817338245
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "Sep18",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09089490468810722,
+          "logLoss": 0.3151487710009414
+        },
+        "lap_clock_union": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09507659897230321,
+          "logLoss": 0.32354816434862377
+        },
+        "plus_physical_ahead": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09518589443102701,
+          "logLoss": 0.3254596003078868
+        },
+        "plus_physical_both": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09720986890311901,
+          "logLoss": 0.333743130215266
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-14",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.11217971436844922,
+          "logLoss": 0.3386190380515498
+        },
+        "lap_clock_union": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.11052572146786618,
+          "logLoss": 0.3325188223295789
+        },
+        "plus_physical_ahead": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.10861316772041464,
+          "logLoss": 0.3273853128296191
+        },
+        "plus_physical_both": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.10562969207819904,
+          "logLoss": 0.3194521167829206
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-14",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.14081574349754208,
+          "logLoss": 0.4114360033839733
+        },
+        "lap_clock_union": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.14114309504973288,
+          "logLoss": 0.4097858333197372
+        },
+        "plus_physical_ahead": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.13868605725605546,
+          "logLoss": 0.40381331481530053
+        },
+        "plus_physical_both": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.13551640588063113,
+          "logLoss": 0.39642714948006075
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-14",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 28,
+          "landmarks": 28,
+          "events": 3,
+          "brier": 0.05987941744081978,
+          "logLoss": 0.1977822033222678
+        },
+        "lap_clock_union": {
+          "visits": 28,
+          "landmarks": 28,
+          "events": 3,
+          "brier": 0.0602926157270492,
+          "logLoss": 0.1950574690518989
+        },
+        "plus_physical_ahead": {
+          "visits": 28,
+          "landmarks": 28,
+          "events": 3,
+          "brier": 0.05840469599602629,
+          "logLoss": 0.19074406803121535
+        },
+        "plus_physical_both": {
+          "visits": 28,
+          "landmarks": 28,
+          "events": 3,
+          "brier": 0.05659435772207769,
+          "logLoss": 0.18645454230023517
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-14",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 25,
+          "landmarks": 25,
+          "events": 2,
+          "brier": 0.07480761645850073,
+          "logLoss": 0.24848183437878288
+        },
+        "lap_clock_union": {
+          "visits": 25,
+          "landmarks": 25,
+          "events": 2,
+          "brier": 0.07370366920114241,
+          "logLoss": 0.24200340558272726
+        },
+        "plus_physical_ahead": {
+          "visits": 25,
+          "landmarks": 25,
+          "events": 2,
+          "brier": 0.07436260369926603,
+          "logLoss": 0.244031576388139
+        },
+        "plus_physical_both": {
+          "visits": 25,
+          "landmarks": 25,
+          "events": 2,
+          "brier": 0.07789278411929722,
+          "logLoss": 0.25383655783918413
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-14",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 3,
+          "brier": 0.05267448800418936,
+          "logLoss": 0.19246816173780723
+        },
+        "lap_clock_union": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 3,
+          "brier": 0.05108965159473428,
+          "logLoss": 0.1869951358415522
+        },
+        "plus_physical_ahead": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 3,
+          "brier": 0.05015917760520516,
+          "logLoss": 0.18307514683254605
+        },
+        "plus_physical_both": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 3,
+          "brier": 0.0503906420837802,
+          "logLoss": 0.18468340669256472
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-14",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 8,
+          "brier": 0.20748428808146818,
+          "logLoss": 0.5711850858220175
+        },
+        "lap_clock_union": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 8,
+          "brier": 0.20493329457176301,
+          "logLoss": 0.5670079689033737
+        },
+        "plus_physical_ahead": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 8,
+          "brier": 0.2030490784978919,
+          "logLoss": 0.5613142126266731
+        },
+        "plus_physical_both": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 8,
+          "brier": 0.19502877731842294,
+          "logLoss": 0.5373324290683984
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-14",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 9,
+          "landmarks": 9,
+          "events": 4,
+          "brier": 0.3189841025728868,
+          "logLoss": 0.8838424451677492
+        },
+        "lap_clock_union": {
+          "visits": 9,
+          "landmarks": 9,
+          "events": 4,
+          "brier": 0.3111875450695404,
+          "logLoss": 0.8624149521290292
+        },
+        "plus_physical_ahead": {
+          "visits": 9,
+          "landmarks": 9,
+          "events": 4,
+          "brier": 0.299482597266177,
+          "logLoss": 0.8329802114278307
+        },
+        "plus_physical_both": {
+          "visits": 9,
+          "landmarks": 9,
+          "events": 4,
+          "brier": 0.27773285941276527,
+          "logLoss": 0.7757182440581669
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-15",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.08966896764687945,
+          "logLoss": 0.2920199614628357
+        },
+        "lap_clock_union": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.08884565825466205,
+          "logLoss": 0.2882130200736069
+        },
+        "plus_physical_ahead": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.09078416418194368,
+          "logLoss": 0.2897819125522178
+        },
+        "plus_physical_both": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.0882938555339691,
+          "logLoss": 0.283755516563698
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-15",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.11691778912762756,
+          "logLoss": 0.3634839939285075
+        },
+        "lap_clock_union": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.11657166576615817,
+          "logLoss": 0.36142508196736817
+        },
+        "plus_physical_ahead": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.11900134984427906,
+          "logLoss": 0.36445453289342045
+        },
+        "plus_physical_both": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.11600243656256866,
+          "logLoss": 0.35708381291883134
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-15",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 1,
+          "brier": 0.07374788611836569,
+          "logLoss": 0.23842733168466898
+        },
+        "lap_clock_union": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 1,
+          "brier": 0.06975512666339848,
+          "logLoss": 0.22635339235642252
+        },
+        "plus_physical_ahead": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 1,
+          "brier": 0.06510096014904938,
+          "logLoss": 0.2125472190234521
+        },
+        "plus_physical_both": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 1,
+          "brier": 0.05731515078329736,
+          "logLoss": 0.19344021590502067
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-15",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 7,
+          "brier": 0.10363340229958957,
+          "logLoss": 0.3229391289141743
+        },
+        "lap_clock_union": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 7,
+          "brier": 0.10653163868348033,
+          "logLoss": 0.3285116838902474
+        },
+        "plus_physical_ahead": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 7,
+          "brier": 0.11292820667600656,
+          "logLoss": 0.33993864624664405
+        },
+        "plus_physical_both": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 7,
+          "brier": 0.1155208199978362,
+          "logLoss": 0.34432323678316545
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-15",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 14,
+          "landmarks": 14,
+          "events": 2,
+          "brier": 0.05764682131591503,
+          "logLoss": 0.20851785780883755
+        },
+        "lap_clock_union": {
+          "visits": 14,
+          "landmarks": 14,
+          "events": 2,
+          "brier": 0.05790555336378737,
+          "logLoss": 0.20672353784468553
+        },
+        "plus_physical_ahead": {
+          "visits": 14,
+          "landmarks": 14,
+          "events": 2,
+          "brier": 0.05787912629067665,
+          "logLoss": 0.20393457630233128
+        },
+        "plus_physical_both": {
+          "visits": 14,
+          "landmarks": 14,
+          "events": 2,
+          "brier": 0.05621637387753318,
+          "logLoss": 0.19907806926544777
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-15",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 3,
+          "brier": 0.080840513922752,
+          "logLoss": 0.28390571293178674
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 3,
+          "brier": 0.07980010888444712,
+          "logLoss": 0.27972971160397586
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 3,
+          "brier": 0.07981854323706887,
+          "logLoss": 0.2782899769338247
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 3,
+          "brier": 0.07209579367970734,
+          "logLoss": 0.26355036278440575
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-15",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 5,
+          "brier": 0.16408660236124273,
+          "logLoss": 0.5098378542618294
+        },
+        "lap_clock_union": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 5,
+          "brier": 0.16024611267043382,
+          "logLoss": 0.5001421069175941
+        },
+        "plus_physical_ahead": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 5,
+          "brier": 0.17410671094840607,
+          "logLoss": 0.5283322989822508
+        },
+        "plus_physical_both": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 5,
+          "brier": 0.17857485946698679,
+          "logLoss": 0.5403361786575009
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-16",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.1099957757579658,
+          "logLoss": 0.34232069129486203
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.1089320197932379,
+          "logLoss": 0.33985782706636847
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.10924932700503119,
+          "logLoss": 0.3428636219886054
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.11130514246052263,
+          "logLoss": 0.34663813537627075
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-16",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.14181870012006031,
+          "logLoss": 0.4239188886939754
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.14062643279814818,
+          "logLoss": 0.42196561465531696
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.14148655122545478,
+          "logLoss": 0.4269842899082685
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.14424852078288872,
+          "logLoss": 0.43216338254043546
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-16",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 2,
+          "brier": 0.10410008950318968,
+          "logLoss": 0.30384678135766585
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 2,
+          "brier": 0.10324223809273017,
+          "logLoss": 0.3012808570132
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 2,
+          "brier": 0.10333877967369504,
+          "logLoss": 0.30180256783724757
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 2,
+          "brier": 0.1088565377926995,
+          "logLoss": 0.31529514994115043
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-16",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 13,
+          "brier": 0.12221249648908626,
+          "logLoss": 0.3794904853730733
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 13,
+          "brier": 0.12119383327555708,
+          "logLoss": 0.37860839957957826
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 13,
+          "brier": 0.12397917700924763,
+          "logLoss": 0.39072141522245374
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 13,
+          "brier": 0.12377419632039942,
+          "logLoss": 0.38859055270859627
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-16",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 7,
+          "brier": 0.07817938537314156,
+          "logLoss": 0.2758636345484626
+        },
+        "lap_clock_union": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 7,
+          "brier": 0.0796306700152826,
+          "logLoss": 0.27555848156580126
+        },
+        "plus_physical_ahead": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 7,
+          "brier": 0.08042086229878993,
+          "logLoss": 0.27825979859729244
+        },
+        "plus_physical_both": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 7,
+          "brier": 0.08251445997370947,
+          "logLoss": 0.28055012290686593
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-16",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 13,
+          "landmarks": 13,
+          "events": 3,
+          "brier": 0.1033133168379018,
+          "logLoss": 0.3504383725731593
+        },
+        "lap_clock_union": {
+          "visits": 13,
+          "landmarks": 13,
+          "events": 3,
+          "brier": 0.09833255813515958,
+          "logLoss": 0.3401026895948163
+        },
+        "plus_physical_ahead": {
+          "visits": 13,
+          "landmarks": 13,
+          "events": 3,
+          "brier": 0.09568671577704392,
+          "logLoss": 0.33473695444953083
+        },
+        "plus_physical_both": {
+          "visits": 13,
+          "landmarks": 13,
+          "events": 3,
+          "brier": 0.09463253747403413,
+          "logLoss": 0.330183246781217
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-16",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 6,
+          "landmarks": 6,
+          "events": 4,
+          "brier": 0.19576338174762445,
+          "logLoss": 0.5534285415709647
+        },
+        "lap_clock_union": {
+          "visits": 6,
+          "landmarks": 6,
+          "events": 4,
+          "brier": 0.19342251117896261,
+          "logLoss": 0.552703629726397
+        },
+        "plus_physical_ahead": {
+          "visits": 6,
+          "landmarks": 6,
+          "events": 4,
+          "brier": 0.18622370231896604,
+          "logLoss": 0.538435414673945
+        },
+        "plus_physical_both": {
+          "visits": 6,
+          "landmarks": 6,
+          "events": 4,
+          "brier": 0.18828559099766334,
+          "logLoss": 0.5442318934622725
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-17",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.11005983700048863,
+          "logLoss": 0.33383361905044245
+        },
+        "lap_clock_union": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.11050940140457867,
+          "logLoss": 0.33316896122528084
+        },
+        "plus_physical_ahead": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.10920183533362669,
+          "logLoss": 0.33013298502140503
+        },
+        "plus_physical_both": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.1084214765260846,
+          "logLoss": 0.3295256910332745
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-17",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.1294219096854687,
+          "logLoss": 0.38875434758371485
+        },
+        "lap_clock_union": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.13010681520722128,
+          "logLoss": 0.38880509808763347
+        },
+        "plus_physical_ahead": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.1285933704934993,
+          "logLoss": 0.38493586159668175
+        },
+        "plus_physical_both": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.1285283306685615,
+          "logLoss": 0.38630168652322283
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-17",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 2,
+          "brier": 0.0486569038033408,
+          "logLoss": 0.16204465221828607
+        },
+        "lap_clock_union": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 2,
+          "brier": 0.047253289644216226,
+          "logLoss": 0.15722055526760087
+        },
+        "plus_physical_ahead": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 2,
+          "brier": 0.045809587047375255,
+          "logLoss": 0.15441035206033382
+        },
+        "plus_physical_both": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 2,
+          "brier": 0.04803388500244727,
+          "logLoss": 0.1582638419230021
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-17",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 8,
+          "brier": 0.07197053685559353,
+          "logLoss": 0.2553966183397643
+        },
+        "lap_clock_union": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 8,
+          "brier": 0.07363974645149059,
+          "logLoss": 0.25808454543280246
+        },
+        "plus_physical_ahead": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 8,
+          "brier": 0.07384693014176513,
+          "logLoss": 0.2575909167771495
+        },
+        "plus_physical_both": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 8,
+          "brier": 0.07241677325654798,
+          "logLoss": 0.2561202007984742
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-17",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 6,
+          "brier": 0.12092329958498221,
+          "logLoss": 0.36548210308773166
+        },
+        "lap_clock_union": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 6,
+          "brier": 0.11820005419159095,
+          "logLoss": 0.3556400837895573
+        },
+        "plus_physical_ahead": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 6,
+          "brier": 0.11733730317862327,
+          "logLoss": 0.35355532963466463
+        },
+        "plus_physical_both": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 6,
+          "brier": 0.12028627914987268,
+          "logLoss": 0.3608964271334575
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-17",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 17,
+          "landmarks": 17,
+          "events": 5,
+          "brier": 0.19692464577633573,
+          "logLoss": 0.547880823512942
+        },
+        "lap_clock_union": {
+          "visits": 17,
+          "landmarks": 17,
+          "events": 5,
+          "brier": 0.20324095662173003,
+          "logLoss": 0.5616525397667391
+        },
+        "plus_physical_ahead": {
+          "visits": 17,
+          "landmarks": 17,
+          "events": 5,
+          "brier": 0.19921647785449412,
+          "logLoss": 0.55277387109871
+        },
+        "plus_physical_both": {
+          "visits": 17,
+          "landmarks": 17,
+          "events": 5,
+          "brier": 0.19083060382114594,
+          "logLoss": 0.5354690250672568
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-17",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 10,
+          "landmarks": 10,
+          "events": 7,
+          "brier": 0.2458296214975469,
+          "logLoss": 0.6728623575612155
+        },
+        "lap_clock_union": {
+          "visits": 10,
+          "landmarks": 10,
+          "events": 7,
+          "brier": 0.24556713293699003,
+          "logLoss": 0.6712650432324576
+        },
+        "plus_physical_ahead": {
+          "visits": 10,
+          "landmarks": 10,
+          "events": 7,
+          "brier": 0.24358154278681046,
+          "logLoss": 0.6673926598160032
+        },
+        "plus_physical_both": {
+          "visits": 10,
+          "landmarks": 10,
+          "events": 7,
+          "brier": 0.23985302794860636,
+          "logLoss": 0.665738082114811
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-18",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05839511330069631,
+          "logLoss": 0.22035849397130453
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05069965594304529,
+          "logLoss": 0.20068284836788527
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.050610213228228534,
+          "logLoss": 0.20144912187020295
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05185178122087723,
+          "logLoss": 0.20419037238475235
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-18",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05981068997374587,
+          "logLoss": 0.22329234735728334
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.053090048480736236,
+          "logLoss": 0.20567820723615118
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.052809683972321386,
+          "logLoss": 0.2060758156269075
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05443017559082375,
+          "logLoss": 0.2095973370129776
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-18",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.03290879102900948,
+          "logLoss": 0.14526304402225174
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.01685645868218417,
+          "logLoss": 0.10446938117135038
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.016514661017776315,
+          "logLoss": 0.10475940680298888
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.01463288373946044,
+          "logLoss": 0.09870823066108912
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-18",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.04707741147543629,
+          "logLoss": 0.18761494231379738
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.02848877415184404,
+          "logLoss": 0.14506581196937166
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.030410746511084906,
+          "logLoss": 0.15090055835913077
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.030367258035782323,
+          "logLoss": 0.15008855354932094
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-18",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.052499968796824885,
+          "logLoss": 0.21334444316768042
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.045473032123986214,
+          "logLoss": 0.19506596227958656
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.046524393721098845,
+          "logLoss": 0.19827194429745362
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.047217174157376356,
+          "logLoss": 0.20075021082018835
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-18",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.08133981258347205,
+          "logLoss": 0.27671434966995134
+        },
+        "lap_clock_union": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.0852771914175356,
+          "logLoss": 0.283087043672818
+        },
+        "plus_physical_ahead": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.08187972337316668,
+          "logLoss": 0.2753492715348357
+        },
+        "plus_physical_both": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.0879601113392606,
+          "logLoss": 0.2878146817338245
+        }
+      }
+    },
+    {
+      "delay": 15,
+      "period": "2026-09-18",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09089490468810722,
+          "logLoss": 0.3151487710009414
+        },
+        "lap_clock_union": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09507659897230321,
+          "logLoss": 0.32354816434862377
+        },
+        "plus_physical_ahead": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09518589443102701,
+          "logLoss": 0.3254596003078868
+        },
+        "plus_physical_both": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09720986890311901,
+          "logLoss": 0.333743130215266
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep14_17",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.1067084667047517,
+          "logLoss": 0.3293506381562772
+        },
+        "lap_clock_union": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.10596076838463085,
+          "logLoss": 0.3261775411291461
+        },
+        "plus_physical_ahead": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.10665476030816122,
+          "logLoss": 0.32787408086781317
+        },
+        "plus_physical_both": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.10560032046449531,
+          "logLoss": 0.324721654107561
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep14_17",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.1335416875559545,
+          "logLoss": 0.39994761123226785
+        },
+        "lap_clock_union": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.13339818757738564,
+          "logLoss": 0.3985995874213222
+        },
+        "plus_physical_ahead": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.13403161894447632,
+          "logLoss": 0.40120414964433726
+        },
+        "plus_physical_both": {
+          "visits": 113,
+          "landmarks": 398,
+          "events": 95,
+          "brier": 0.1330004473744517,
+          "logLoss": 0.39818975670968193
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep14_17",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 113,
+          "landmarks": 113,
+          "events": 8,
+          "brier": 0.07229200237466779,
+          "logLoss": 0.226506227097092
+        },
+        "lap_clock_union": {
+          "visits": 113,
+          "landmarks": 113,
+          "events": 8,
+          "brier": 0.0710167852771641,
+          "logLoss": 0.2215144767050378
+        },
+        "plus_physical_ahead": {
+          "visits": 113,
+          "landmarks": 113,
+          "events": 8,
+          "brier": 0.067521414112052,
+          "logLoss": 0.21304028640232447
+        },
+        "plus_physical_both": {
+          "visits": 113,
+          "landmarks": 113,
+          "events": 8,
+          "brier": 0.06720298619149634,
+          "logLoss": 0.2116203445907115
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep14_17",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 110,
+          "landmarks": 110,
+          "events": 30,
+          "brier": 0.09373264442197404,
+          "logLoss": 0.3039477159319212
+        },
+        "lap_clock_union": {
+          "visits": 110,
+          "landmarks": 110,
+          "events": 30,
+          "brier": 0.09419986164064764,
+          "logLoss": 0.30403207814369376
+        },
+        "plus_physical_ahead": {
+          "visits": 110,
+          "landmarks": 110,
+          "events": 30,
+          "brier": 0.09910877165903918,
+          "logLoss": 0.3184569118045263
+        },
+        "plus_physical_both": {
+          "visits": 110,
+          "landmarks": 110,
+          "events": 30,
+          "brier": 0.09878298893008679,
+          "logLoss": 0.3172061253182266
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep14_17",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 80,
+          "landmarks": 80,
+          "events": 18,
+          "brier": 0.07954240400545735,
+          "logLoss": 0.26586723489100467
+        },
+        "lap_clock_union": {
+          "visits": 80,
+          "landmarks": 80,
+          "events": 18,
+          "brier": 0.07871192975605194,
+          "logLoss": 0.26107386515821435
+        },
+        "plus_physical_ahead": {
+          "visits": 80,
+          "landmarks": 80,
+          "events": 18,
+          "brier": 0.07704096549781964,
+          "logLoss": 0.2563721110449946
+        },
+        "plus_physical_both": {
+          "visits": 80,
+          "landmarks": 80,
+          "events": 18,
+          "brier": 0.07643200136251213,
+          "logLoss": 0.2541986098427886
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep14_17",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 62,
+          "landmarks": 62,
+          "events": 19,
+          "brier": 0.15823490364181964,
+          "logLoss": 0.46290714701278834
+        },
+        "lap_clock_union": {
+          "visits": 62,
+          "landmarks": 62,
+          "events": 19,
+          "brier": 0.1578981728447598,
+          "logLoss": 0.4623603880335865
+        },
+        "plus_physical_ahead": {
+          "visits": 62,
+          "landmarks": 62,
+          "events": 19,
+          "brier": 0.15879530306155276,
+          "logLoss": 0.46343974772471036
+        },
+        "plus_physical_both": {
+          "visits": 62,
+          "landmarks": 62,
+          "events": 19,
+          "brier": 0.15571029231679523,
+          "logLoss": 0.455621504975907
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep14_17",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 20,
+          "brier": 0.2368614014396103,
+          "logLoss": 0.6691660504740097
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 20,
+          "brier": 0.2332988849525155,
+          "logLoss": 0.660355867732878
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 20,
+          "brier": 0.23964011805606544,
+          "logLoss": 0.6711223721484071
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 20,
+          "brier": 0.23637160879630992,
+          "logLoss": 0.662091621670438
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep18",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05839511330069631,
+          "logLoss": 0.22035849397130453
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05069965594304529,
+          "logLoss": 0.20068284836788527
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05201570823363253,
+          "logLoss": 0.20481604031314937
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.054224669739262356,
+          "logLoss": 0.21035151814172776
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep18",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05981068997374587,
+          "logLoss": 0.22329234735728334
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.053090048480736236,
+          "logLoss": 0.20567820723615118
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.054102712292598776,
+          "logLoss": 0.20913207942040565
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05672341584801046,
+          "logLoss": 0.2154281866290474
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep18",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.03290879102900948,
+          "logLoss": 0.14526304402225174
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.01685645868218417,
+          "logLoss": 0.10446938117135038
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.016586589437404133,
+          "logLoss": 0.09916051710371843
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.017757660235487492,
+          "logLoss": 0.10127663083145078
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep18",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.04707741147543629,
+          "logLoss": 0.18761494231379738
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.02848877415184404,
+          "logLoss": 0.14506581196937166
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.03014906795943189,
+          "logLoss": 0.15091799975144568
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.029795710008293425,
+          "logLoss": 0.15011595011054407
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep18",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.052499968796824885,
+          "logLoss": 0.21334444316768042
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.045473032123986214,
+          "logLoss": 0.19506596227958656
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.05036515886422507,
+          "logLoss": 0.20847330143635112
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.05330572393902257,
+          "logLoss": 0.21714905965574258
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep18",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.08133981258347205,
+          "logLoss": 0.27671434966995134
+        },
+        "lap_clock_union": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.0852771914175356,
+          "logLoss": 0.283087043672818
+        },
+        "plus_physical_ahead": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.0819598893655686,
+          "logLoss": 0.2782964846668817
+        },
+        "plus_physical_both": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.09152006138624703,
+          "logLoss": 0.3006249315456431
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "Sep18",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09089490468810722,
+          "logLoss": 0.3151487710009414
+        },
+        "lap_clock_union": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09507659897230321,
+          "logLoss": 0.32354816434862377
+        },
+        "plus_physical_ahead": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09926192183697523,
+          "logLoss": 0.3376248832986667
+        },
+        "plus_physical_both": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09566587877713378,
+          "logLoss": 0.3299949454525132
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-14",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.11217971436844922,
+          "logLoss": 0.3386190380515498
+        },
+        "lap_clock_union": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.11052572146786618,
+          "logLoss": 0.3325188223295789
+        },
+        "plus_physical_ahead": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.1104651806888015,
+          "logLoss": 0.3309744902396855
+        },
+        "plus_physical_both": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.10745283580063505,
+          "logLoss": 0.322889448644915
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-14",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.14081574349754208,
+          "logLoss": 0.4114360033839733
+        },
+        "lap_clock_union": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.14114309504973288,
+          "logLoss": 0.4097858333197372
+        },
+        "plus_physical_ahead": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.13989421666874377,
+          "logLoss": 0.4057406835984129
+        },
+        "plus_physical_both": {
+          "visits": 28,
+          "landmarks": 105,
+          "events": 20,
+          "brier": 0.13706181067438356,
+          "logLoss": 0.398869201377054
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-14",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 28,
+          "landmarks": 28,
+          "events": 3,
+          "brier": 0.05987941744081978,
+          "logLoss": 0.1977822033222678
+        },
+        "lap_clock_union": {
+          "visits": 28,
+          "landmarks": 28,
+          "events": 3,
+          "brier": 0.0602926157270492,
+          "logLoss": 0.1950574690518989
+        },
+        "plus_physical_ahead": {
+          "visits": 28,
+          "landmarks": 28,
+          "events": 3,
+          "brier": 0.058828394270438684,
+          "logLoss": 0.19215994950353976
+        },
+        "plus_physical_both": {
+          "visits": 28,
+          "landmarks": 28,
+          "events": 3,
+          "brier": 0.05661622227820521,
+          "logLoss": 0.18657242911487748
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-14",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 25,
+          "landmarks": 25,
+          "events": 2,
+          "brier": 0.07480761645850073,
+          "logLoss": 0.24848183437878288
+        },
+        "lap_clock_union": {
+          "visits": 25,
+          "landmarks": 25,
+          "events": 2,
+          "brier": 0.07370366920114241,
+          "logLoss": 0.24200340558272726
+        },
+        "plus_physical_ahead": {
+          "visits": 25,
+          "landmarks": 25,
+          "events": 2,
+          "brier": 0.0740039394701295,
+          "logLoss": 0.24348678788293598
+        },
+        "plus_physical_both": {
+          "visits": 25,
+          "landmarks": 25,
+          "events": 2,
+          "brier": 0.075261924750246,
+          "logLoss": 0.24806469604421424
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-14",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 3,
+          "brier": 0.05267448800418936,
+          "logLoss": 0.19246816173780723
+        },
+        "lap_clock_union": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 3,
+          "brier": 0.05108965159473428,
+          "logLoss": 0.1869951358415522
+        },
+        "plus_physical_ahead": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 3,
+          "brier": 0.048742677939501954,
+          "logLoss": 0.17950157002905606
+        },
+        "plus_physical_both": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 3,
+          "brier": 0.0489218915693331,
+          "logLoss": 0.1809901654921356
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-14",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 8,
+          "brier": 0.20748428808146818,
+          "logLoss": 0.5711850858220175
+        },
+        "lap_clock_union": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 8,
+          "brier": 0.20493329457176301,
+          "logLoss": 0.5670079689033737
+        },
+        "plus_physical_ahead": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 8,
+          "brier": 0.21368266327185328,
+          "logLoss": 0.5833929368837933
+        },
+        "plus_physical_both": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 8,
+          "brier": 0.20940332200819647,
+          "logLoss": 0.5694061788327031
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-14",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 9,
+          "landmarks": 9,
+          "events": 4,
+          "brier": 0.3189841025728868,
+          "logLoss": 0.8838424451677492
+        },
+        "lap_clock_union": {
+          "visits": 9,
+          "landmarks": 9,
+          "events": 4,
+          "brier": 0.3111875450695404,
+          "logLoss": 0.8624149521290292
+        },
+        "plus_physical_ahead": {
+          "visits": 9,
+          "landmarks": 9,
+          "events": 4,
+          "brier": 0.3007572875503366,
+          "logLoss": 0.8320309270722557
+        },
+        "plus_physical_both": {
+          "visits": 9,
+          "landmarks": 9,
+          "events": 4,
+          "brier": 0.27805283002913295,
+          "logLoss": 0.7696499231578835
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-15",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.08966896764687945,
+          "logLoss": 0.2920199614628357
+        },
+        "lap_clock_union": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.08884565825466205,
+          "logLoss": 0.2882130200736069
+        },
+        "plus_physical_ahead": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.09427471871518155,
+          "logLoss": 0.2961112048163799
+        },
+        "plus_physical_both": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.09295922585050893,
+          "logLoss": 0.29202468550624927
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-15",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.11691778912762756,
+          "logLoss": 0.3634839939285075
+        },
+        "lap_clock_union": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.11657166576615817,
+          "logLoss": 0.36142508196736817
+        },
+        "plus_physical_ahead": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.12231020090115755,
+          "logLoss": 0.369966471289563
+        },
+        "plus_physical_both": {
+          "visits": 21,
+          "landmarks": 76,
+          "events": 18,
+          "brier": 0.12140067647108252,
+          "logLoss": 0.3665867305405772
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-15",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 1,
+          "brier": 0.07374788611836569,
+          "logLoss": 0.23842733168466898
+        },
+        "lap_clock_union": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 1,
+          "brier": 0.06975512666339848,
+          "logLoss": 0.22635339235642252
+        },
+        "plus_physical_ahead": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 1,
+          "brier": 0.05389139546011205,
+          "logLoss": 0.18748884954314526
+        },
+        "plus_physical_both": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 1,
+          "brier": 0.049289453690792066,
+          "logLoss": 0.1747992597370477
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-15",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 7,
+          "brier": 0.10363340229958957,
+          "logLoss": 0.3229391289141743
+        },
+        "lap_clock_union": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 7,
+          "brier": 0.10653163868348033,
+          "logLoss": 0.3285116838902474
+        },
+        "plus_physical_ahead": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 7,
+          "brier": 0.12797426322880237,
+          "logLoss": 0.37037326959712796
+        },
+        "plus_physical_both": {
+          "visits": 21,
+          "landmarks": 21,
+          "events": 7,
+          "brier": 0.13185348478821912,
+          "logLoss": 0.3776309102867545
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-15",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 14,
+          "landmarks": 14,
+          "events": 2,
+          "brier": 0.05764682131591503,
+          "logLoss": 0.20851785780883755
+        },
+        "lap_clock_union": {
+          "visits": 14,
+          "landmarks": 14,
+          "events": 2,
+          "brier": 0.05790555336378737,
+          "logLoss": 0.20672353784468553
+        },
+        "plus_physical_ahead": {
+          "visits": 14,
+          "landmarks": 14,
+          "events": 2,
+          "brier": 0.056919510551639636,
+          "logLoss": 0.2005517545792855
+        },
+        "plus_physical_both": {
+          "visits": 14,
+          "landmarks": 14,
+          "events": 2,
+          "brier": 0.055169090831833856,
+          "logLoss": 0.19506203486338075
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-15",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 3,
+          "brier": 0.080840513922752,
+          "logLoss": 0.28390571293178674
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 3,
+          "brier": 0.07980010888444712,
+          "logLoss": 0.27972971160397586
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 3,
+          "brier": 0.07550355946917962,
+          "logLoss": 0.26783382121420546
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 3,
+          "brier": 0.0690293326867657,
+          "logLoss": 0.255308746132287
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-15",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 5,
+          "brier": 0.16408660236124273,
+          "logLoss": 0.5098378542618294
+        },
+        "lap_clock_union": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 5,
+          "brier": 0.16024611267043382,
+          "logLoss": 0.5001421069175941
+        },
+        "plus_physical_ahead": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 5,
+          "brier": 0.20534799106668516,
+          "logLoss": 0.5959520806773355
+        },
+        "plus_physical_both": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 5,
+          "brier": 0.20752252408657265,
+          "logLoss": 0.5997836357875406
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-16",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.1099957757579658,
+          "logLoss": 0.34232069129486203
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.1089320197932379,
+          "logLoss": 0.33985782706636847
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.10901347732667334,
+          "logLoss": 0.34507837613789516
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.1108629642201348,
+          "logLoss": 0.348772092870106
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-16",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.14181870012006031,
+          "logLoss": 0.4239188886939754
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.14062643279814818,
+          "logLoss": 0.42196561465531696
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.1416446759556468,
+          "logLoss": 0.43226744667743666
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 105,
+          "events": 29,
+          "brier": 0.1432465314932184,
+          "logLoss": 0.4354766945611846
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-16",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 2,
+          "brier": 0.10410008950318968,
+          "logLoss": 0.30384678135766585
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 2,
+          "brier": 0.10324223809273017,
+          "logLoss": 0.3012808570132
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 2,
+          "brier": 0.10416706019587242,
+          "logLoss": 0.3030327639884747
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 2,
+          "brier": 0.10743962431774565,
+          "logLoss": 0.3110501082486549
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-16",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 13,
+          "brier": 0.12221249648908626,
+          "logLoss": 0.3794904853730733
+        },
+        "lap_clock_union": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 13,
+          "brier": 0.12119383327555708,
+          "logLoss": 0.37860839957957826
+        },
+        "plus_physical_ahead": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 13,
+          "brier": 0.12288499344592545,
+          "logLoss": 0.3969667900169886
+        },
+        "plus_physical_both": {
+          "visits": 33,
+          "landmarks": 33,
+          "events": 13,
+          "brier": 0.12074663237933993,
+          "logLoss": 0.3915365531758277
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-16",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 7,
+          "brier": 0.07817938537314156,
+          "logLoss": 0.2758636345484626
+        },
+        "lap_clock_union": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 7,
+          "brier": 0.0796306700152826,
+          "logLoss": 0.27555848156580126
+        },
+        "plus_physical_ahead": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 7,
+          "brier": 0.07842129236118106,
+          "logLoss": 0.274212107551711
+        },
+        "plus_physical_both": {
+          "visits": 20,
+          "landmarks": 20,
+          "events": 7,
+          "brier": 0.08225544496099842,
+          "logLoss": 0.2809080789405314
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-16",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 13,
+          "landmarks": 13,
+          "events": 3,
+          "brier": 0.1033133168379018,
+          "logLoss": 0.3504383725731593
+        },
+        "lap_clock_union": {
+          "visits": 13,
+          "landmarks": 13,
+          "events": 3,
+          "brier": 0.09833255813515958,
+          "logLoss": 0.3401026895948163
+        },
+        "plus_physical_ahead": {
+          "visits": 13,
+          "landmarks": 13,
+          "events": 3,
+          "brier": 0.09861267616211669,
+          "logLoss": 0.3421006324977221
+        },
+        "plus_physical_both": {
+          "visits": 13,
+          "landmarks": 13,
+          "events": 3,
+          "brier": 0.10194452588567345,
+          "logLoss": 0.348236561067372
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-16",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 6,
+          "landmarks": 6,
+          "events": 4,
+          "brier": 0.19576338174762445,
+          "logLoss": 0.5534285415709647
+        },
+        "lap_clock_union": {
+          "visits": 6,
+          "landmarks": 6,
+          "events": 4,
+          "brier": 0.19342251117896261,
+          "logLoss": 0.552703629726397
+        },
+        "plus_physical_ahead": {
+          "visits": 6,
+          "landmarks": 6,
+          "events": 4,
+          "brier": 0.18388445196503778,
+          "logLoss": 0.5336156397990146
+        },
+        "plus_physical_both": {
+          "visits": 6,
+          "landmarks": 6,
+          "events": 4,
+          "brier": 0.19001283939610078,
+          "logLoss": 0.548412175277793
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-17",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.11005983700048863,
+          "logLoss": 0.33383361905044245
+        },
+        "lap_clock_union": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.11050940140457867,
+          "logLoss": 0.33316896122528084
+        },
+        "plus_physical_ahead": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.10927193650597808,
+          "logLoss": 0.33039180044373884
+        },
+        "plus_physical_both": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.10750774444687171,
+          "logLoss": 0.3260792890826512
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-17",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.1294219096854687,
+          "logLoss": 0.38875434758371485
+        },
+        "lap_clock_union": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.13010681520722128,
+          "logLoss": 0.38880509808763347
+        },
+        "plus_physical_ahead": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.1285724628561404,
+          "logLoss": 0.38520026231026705
+        },
+        "plus_physical_both": {
+          "visits": 31,
+          "landmarks": 112,
+          "events": 28,
+          "brier": 0.1262829067503664,
+          "logLoss": 0.3792920196053331
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-17",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 2,
+          "brier": 0.0486569038033408,
+          "logLoss": 0.16204465221828607
+        },
+        "lap_clock_union": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 2,
+          "brier": 0.047253289644216226,
+          "logLoss": 0.15722055526760087
+        },
+        "plus_physical_ahead": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 2,
+          "brier": 0.04559653109559513,
+          "logLoss": 0.15341053952702702
+        },
+        "plus_physical_both": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 2,
+          "brier": 0.046067647930874235,
+          "logLoss": 0.15334299667258763
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-17",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 8,
+          "brier": 0.07197053685559353,
+          "logLoss": 0.2553966183397643
+        },
+        "lap_clock_union": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 8,
+          "brier": 0.07363974645149059,
+          "logLoss": 0.25808454543280246
+        },
+        "plus_physical_ahead": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 8,
+          "brier": 0.07449038981357053,
+          "logLoss": 0.2601725119136834
+        },
+        "plus_physical_both": {
+          "visits": 31,
+          "landmarks": 31,
+          "events": 8,
+          "brier": 0.0719683424026641,
+          "logLoss": 0.25290648429275564
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-17",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 6,
+          "brier": 0.12092329958498221,
+          "logLoss": 0.36548210308773166
+        },
+        "lap_clock_union": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 6,
+          "brier": 0.11820005419159095,
+          "logLoss": 0.3556400837895573
+        },
+        "plus_physical_ahead": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 6,
+          "brier": 0.11638681096828048,
+          "logLoss": 0.3517072199037849
+        },
+        "plus_physical_both": {
+          "visits": 23,
+          "landmarks": 23,
+          "events": 6,
+          "brier": 0.1118208883495942,
+          "logLoss": 0.34017760496547883
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-17",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 17,
+          "landmarks": 17,
+          "events": 5,
+          "brier": 0.19692464577633573,
+          "logLoss": 0.547880823512942
+        },
+        "lap_clock_union": {
+          "visits": 17,
+          "landmarks": 17,
+          "events": 5,
+          "brier": 0.20324095662173003,
+          "logLoss": 0.5616525397667391
+        },
+        "plus_physical_ahead": {
+          "visits": 17,
+          "landmarks": 17,
+          "events": 5,
+          "brier": 0.19903811886126688,
+          "logLoss": 0.5531818555420772
+        },
+        "plus_physical_both": {
+          "visits": 17,
+          "landmarks": 17,
+          "events": 5,
+          "brier": 0.19484357968955499,
+          "logLoss": 0.5452723226111106
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-17",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 10,
+          "landmarks": 10,
+          "events": 7,
+          "brier": 0.2458296214975469,
+          "logLoss": 0.6728623575612155
+        },
+        "lap_clock_union": {
+          "visits": 10,
+          "landmarks": 10,
+          "events": 7,
+          "brier": 0.24556713293699003,
+          "logLoss": 0.6712650432324576
+        },
+        "plus_physical_ahead": {
+          "visits": 10,
+          "landmarks": 10,
+          "events": 7,
+          "brier": 0.24552176675734239,
+          "logLoss": 0.6689449453034358
+        },
+        "plus_physical_both": {
+          "visits": 10,
+          "landmarks": 10,
+          "events": 7,
+          "brier": 0.24975303909468446,
+          "logLoss": 0.6833432068736425
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-18",
+      "elapsed": "all",
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05839511330069631,
+          "logLoss": 0.22035849397130453
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05069965594304529,
+          "logLoss": 0.20068284836788527
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05201570823363253,
+          "logLoss": 0.20481604031314937
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.054224669739262356,
+          "logLoss": 0.21035151814172776
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-18",
+      "elapsed": "all",
+      "weighting": "visit",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05981068997374587,
+          "logLoss": 0.22329234735728334
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.053090048480736236,
+          "logLoss": 0.20567820723615118
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.054102712292598776,
+          "logLoss": 0.20913207942040565
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 55,
+          "events": 5,
+          "brier": 0.05672341584801046,
+          "logLoss": 0.2154281866290474
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-18",
+      "elapsed": 0,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.03290879102900948,
+          "logLoss": 0.14526304402225174
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.01685645868218417,
+          "logLoss": 0.10446938117135038
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.016586589437404133,
+          "logLoss": 0.09916051710371843
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.017757660235487492,
+          "logLoss": 0.10127663083145078
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-18",
+      "elapsed": 60,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.04707741147543629,
+          "logLoss": 0.18761494231379738
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.02848877415184404,
+          "logLoss": 0.14506581196937166
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.03014906795943189,
+          "logLoss": 0.15091799975144568
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 0,
+          "brier": 0.029795710008293425,
+          "logLoss": 0.15011595011054407
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-18",
+      "elapsed": 180,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.052499968796824885,
+          "logLoss": 0.21334444316768042
+        },
+        "lap_clock_union": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.045473032123986214,
+          "logLoss": 0.19506596227958656
+        },
+        "plus_physical_ahead": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.05036515886422507,
+          "logLoss": 0.20847330143635112
+        },
+        "plus_physical_both": {
+          "visits": 12,
+          "landmarks": 12,
+          "events": 1,
+          "brier": 0.05330572393902257,
+          "logLoss": 0.21714905965574258
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-18",
+      "elapsed": 300,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.08133981258347205,
+          "logLoss": 0.27671434966995134
+        },
+        "lap_clock_union": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.0852771914175356,
+          "logLoss": 0.283087043672818
+        },
+        "plus_physical_ahead": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.0819598893655686,
+          "logLoss": 0.2782964846668817
+        },
+        "plus_physical_both": {
+          "visits": 11,
+          "landmarks": 11,
+          "events": 3,
+          "brier": 0.09152006138624703,
+          "logLoss": 0.3006249315456431
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "period": "2026-09-18",
+      "elapsed": 480,
+      "weighting": "checkpoint",
+      "arms": {
+        "lap_clock": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09089490468810722,
+          "logLoss": 0.3151487710009414
+        },
+        "lap_clock_union": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09507659897230321,
+          "logLoss": 0.32354816434862377
+        },
+        "plus_physical_ahead": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09926192183697523,
+          "logLoss": 0.3376248832986667
+        },
+        "plus_physical_both": {
+          "visits": 8,
+          "landmarks": 8,
+          "events": 1,
+          "brier": 0.09566587877713378,
+          "logLoss": 0.3299949454525132
+        }
+      }
+    }
+  ],
+  "identityAudit": {
+    "15_changed_identity": 237,
+    "15_snapshots": 1022,
+    "15_overlap": 15,
+    "15_same_peer": 278,
+    "120_changed_identity": 245,
+    "120_snapshots": 1022,
+    "120_overlap": 20,
+    "120_same_peer": 301
+  },
+  "case70927": [
+    {
+      "delay": 15,
+      "old": {
+        "ahead": {
+          "id": 70719,
+          "bus": "#306",
+          "physical": 1789734846885,
+          "known": 1789734966885,
+          "origin": 1789734846885,
+          "originId": 70719,
+          "originKnown": 1789734966885
+        },
+        "follower": {
+          "id": 70719,
+          "bus": "#306",
+          "physical": 1789734846885,
+          "known": 1789734966885,
+          "origin": 1789734846885,
+          "originId": 70719,
+          "originKnown": 1789734966885,
+          "ownPrevious": 70458
+        },
+        "aheadReason": "known",
+        "followerReason": "known",
+        "freshOtherBuses": 2,
+        "sameAsAhead": true
+      },
+      "new": {
+        "ahead": {
+          "id": 70831,
+          "bus_name": "#316",
+          "route_id": 3,
+          "stop_id": 48,
+          "stop_index": 17,
+          "anchored_at": 1789735657020,
+          "forwardGap": 3,
+          "anchorAge": 25.136,
+          "knownAt": 1789735672020
+        },
+        "behind": {
+          "id": 70829,
+          "bus_name": "#306",
+          "route_id": 3,
+          "stop_id": 4,
+          "stop_index": 20,
+          "anchored_at": 1789735642026,
+          "forwardGap": 6,
+          "anchorAge": 40.13,
+          "knownAt": 1789735657026
+        },
+        "aheadReason": "known",
+        "behindReason": "known",
+        "overlap": [],
+        "samePeer": false,
+        "rejected": {
+          "other_route": 41,
+          "stale": 2
+        }
+      }
+    },
+    {
+      "delay": 120,
+      "old": {
+        "ahead": {
+          "id": 70719,
+          "bus": "#306",
+          "physical": 1789734846885,
+          "known": 1789734966885,
+          "origin": 1789734846885,
+          "originId": 70719,
+          "originKnown": 1789734966885
+        },
+        "follower": {
+          "id": 70719,
+          "bus": "#306",
+          "physical": 1789734846885,
+          "known": 1789734966885,
+          "origin": 1789734846885,
+          "originId": 70719,
+          "originKnown": 1789734966885,
+          "ownPrevious": 70458
+        },
+        "aheadReason": "known",
+        "followerReason": "known",
+        "freshOtherBuses": 2,
+        "sameAsAhead": true
+      },
+      "new": {
+        "ahead": null,
+        "behind": null,
+        "aheadReason": "no_distinct_anchor",
+        "behindReason": "no_distinct_anchor",
+        "overlap": [
+          {
+            "id": 70813,
+            "bus_name": "#316",
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789735286960,
+            "forwardGap": 0,
+            "anchorAge": 395.196,
+            "knownAt": 1789735406960
+          }
+        ],
+        "samePeer": false,
+        "rejected": {
+          "other_route": 41,
+          "stale": 3
+        }
+      }
+    }
+  ],
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/red-rest-history-2026-09-18/neighbors/PLAN.json": "f845cf66350ece016d2e38071e30454b14fbfc6d9a3fcbca2e45701dd2113e21",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-rest-history-2026-09-18/neighbors/screen.py": "90ce9320e5dcf1c249c4f7702d587ed794156ec81bd80526083dd999cbfd73e4",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/features-predictions.jsonl": "38053e51f484bcc7632a6817fcb33f4e6e81d5ab8c0c87c646f4e76db46c059c",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/recordings-followup.json": "5e19538a3fd4c7c3cae3d0cd201bdec959ac3e4887142dcd5f7c8930f0ce8fad"
+  }
+}

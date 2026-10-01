@@ -1,0 +1,30 @@
+{
+  "verdict": "research_only",
+  "summary": "Verified all 19 label corrections and 183,123 scored records. Remaining 57/58 zero-hop identities keep accuracy provisional; no useful ETA improvement supports release. Review saved in eta/independent-review-round-15.md. Checkout unchanged.",
+  "head_sha": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "base_sha": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "next_task": "Resume frozen current/canonical checkpoints from poll 6000 to 9000 under the shared lock. Preserve corrected labels, unresolved identities, both occurrences, tails and regressions; retain the poll-508 sensitivity alongside inclusive scores.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-15/run.sh",
+      "exit_code": 0,
+      "result": "Rescoring, all 19 correction cases, structural/wire checks and 4,925 connected rider trips per arm passed."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-15/audit_remaining.py",
+      "exit_code": 0,
+      "result": "All remaining zero-hop cases audited. The negligible MAE gain depends on one unresolved identity. Initial reviewer assumption failure preserved and corrected."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-15/compare_reproduction.py",
+      "exit_code": 0,
+      "result": "Eight output streams and summary fields reproduce; all tails and regressions retained. Initial inventory-order comparison failure preserved and corrected."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-15/final_integrity.py",
+      "exit_code": 0,
+      "result": "905 tracked files, 266 prior artifacts and eight frozen inputs unchanged; checkout and index clean."
+    }
+  ]
+}

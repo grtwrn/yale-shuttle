@@ -1,0 +1,17 @@
+html[data-android-compact] {
+  zoom: 0.85;
+}
+
+/* Viewport lengths also scale: keep the app background filling the screen. */
+html[data-android-compact] #root > div {
+  min-height: calc(100vh / 0.85) !important;
+}
+
+/* 52 layout pixels retain a 44-pixel tap target at the smaller density. */
+html[data-android-compact] :is(
+  .trip-action-button, .trip-actions button, .trip-map-wrap button,
+  #trip-from, #trip-to, input[type="datetime-local"]
+) {
+  min-height: 52px !important;
+  min-width: 52px !important;
+}

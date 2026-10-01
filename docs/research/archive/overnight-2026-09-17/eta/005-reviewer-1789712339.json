@@ -1,0 +1,37 @@
+{
+  "verdict": "changes_requested",
+  "summary": "Verified 30 restored journeys, but found a walking-connection caution defect. Prior smoothing repair is unchanged. Review saved in eta/independent-review-round-7.md; checkout remains clean.",
+  "head_sha": "1b66a1914a92a79c0936cf65473617cf7b7695f9",
+  "base_sha": "2dbc060bf517225c219fba8cbc5cb343fb19312b",
+  "next_task": "Preserve catchRisk for nonzero walks in the raw-at-stop branch without changing destination forecasts or pickup rows. Add the positive-pickup-lower-bound regression and request independent rereview.",
+  "blocking_findings": [
+    "P2 — TransitMap.tsx:2251 derives connection risk from forecastBoard.low despite displaying the bus already at pickup. A valid synthetic browser fixture with a 100-second walk and 150-second pickup lower bound produces catchRisk=false and “Window fits buffer” without connection caution. Preserve raw-at-stop walking caution independently of the forecast used for the destination join."
+  ],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-7/verify.sh",
+      "exit_code": 0,
+      "result": "147 tests, both typechecks, Vite build, 4,688 exact decisions, 223 browser comparisons and five walking cases passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-7/extra.sh",
+      "exit_code": 1,
+      "result": "20 Docker closure tests passed; browser connection-caution assertion failed. Zero page errors; browser closed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-7/risk-logic.mts",
+      "exit_code": 0,
+      "result": "Diagnostic confirmed exact-base unknown becomes exact-head fits with a shuttle recommendation and no connection caution."
+    },
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-7/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Verified source provenance, 1,400 connected outcomes, retained 443-second regression and 101 unchanged builder artifacts."
+    },
+    {
+      "command": "git diff --check 2dbc060bf517225c219fba8cbc5cb343fb19312b HEAD && git diff --exit-code && git diff --cached --exit-code && git status --porcelain && git rev-parse HEAD && git merge-base 2dbc060bf517225c219fba8cbc5cb343fb19312b HEAD",
+      "exit_code": 0,
+      "result": "Exact head/base verified; worktree and index clean."
+    }
+  ]
+}

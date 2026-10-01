@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "frames": 78,
+    "fixtureMaxDifference": 3768,
+    "fixtureDifferentRows": 1828,
+    "parityRows": 0,
+    "rawZeroRows": 0,
+    "positivePooledZeroRows": 0,
+    "proof": "Raw zero current-stop rows become positive only in current production pooling. Observer matches same-process wire; cross-process fixture deviations separately reported. Future occurrence rows retained for follow-up."
+  },
+  "records": []
+}

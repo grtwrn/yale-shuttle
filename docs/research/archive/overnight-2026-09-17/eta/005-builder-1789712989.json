@@ -1,0 +1,12 @@
+{
+  "outcome": "candidate",
+  "summary": "Preserve walking caution for shuttles already at pickup\nFixed the review blocker without changing destination forecasts, pickup rows or bus selection. Regression and browser checks pass. HEAD preserved; nothing deployed.",
+  "next_task": "Independently rereview eta/cycle-8/REVIEW_REQUEST.md and proposal.patch. Controller retains full-suite, staging, integration and publication gates. Keep the remaining 38 cases separate.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-8/verify.sh — passed: 173 tests, both typechecks, Vite build, 4,688 unchanged decisions, 223 browser comparisons and corrected reviewer regression.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-8/browser-risk-matrix.mjs — passed six mobile boundary cases; zero page errors; browsers closed.",
+    "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-8/risk-logic.mts — passed eight paired HEAD/candidate cases; destination, pickup and ranking values unchanged.",
+    "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-8/verify_evidence.py — passed: 1,400 connected outcomes, retained 443-second regression and 130 preserved artifacts.",
+    "git diff --check && git diff --cached --exit-code && git rev-parse HEAD && git status --short — passed; preserved HEAD, empty index and four intended modified files."
+  ]
+}

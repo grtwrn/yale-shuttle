@@ -1,0 +1,1073 @@
+{
+  "asOf": "2026-09-16T14:27:23.663000+00:00",
+  "source": "344 Winchester",
+  "target": "Division / Prospect",
+  "sourceStopId": 11,
+  "targetStopId": 48,
+  "method": "Offline feasibility only. Same Red route indices, weekday category, local time within two hours, completed by snapshot. Every trip connected by observed departure/arrival leg endpoints; no inferred segment proration or predicted-ETA filtering.",
+  "candidateSourceVisits": 89,
+  "connectedTrips": {
+    "n": 75,
+    "min": 55.08,
+    "median": 84.923,
+    "max": 209.965
+  },
+  "standingResidual": {
+    "n": 74,
+    "min": 89.717,
+    "median": 437.442,
+    "max": 784.748
+  },
+  "trips": [
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788444282319,
+      "sourceDepartedAt": 1788444427468,
+      "arrivedAt": 1788444527370,
+      "departureToArrivalSec": 99.902,
+      "elapsedStopSec": 55.406,
+      "residualSec": 189.645,
+      "legIds": [
+        902,
+        910,
+        911
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1788445420211,
+      "sourceDepartedAt": 1788446018875,
+      "arrivedAt": 1788446093892,
+      "departureToArrivalSec": 75.017,
+      "elapsedStopSec": 55.406,
+      "residualSec": 618.275,
+      "legIds": [
+        1109,
+        1112,
+        1114
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1788446264166,
+      "sourceDepartedAt": 1788446740090,
+      "arrivedAt": 1788446820185,
+      "departureToArrivalSec": 80.095,
+      "elapsedStopSec": 55.406,
+      "residualSec": 500.613,
+      "legIds": [
+        1216,
+        1221,
+        1223
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788447545190,
+      "sourceDepartedAt": 1788447860198,
+      "arrivedAt": 1788447930388,
+      "departureToArrivalSec": 70.19,
+      "elapsedStopSec": 55.406,
+      "residualSec": 329.792,
+      "legIds": [
+        1358,
+        1362,
+        1367
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1788449305756,
+      "sourceDepartedAt": 1788449596391,
+      "arrivedAt": 1788449681595,
+      "departureToArrivalSec": 85.204,
+      "elapsedStopSec": 55.406,
+      "residualSec": 320.433,
+      "legIds": [
+        1542,
+        1544,
+        1549
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1788449921712,
+      "sourceDepartedAt": 1788450348626,
+      "arrivedAt": 1788450434806,
+      "departureToArrivalSec": 86.18,
+      "elapsedStopSec": 55.406,
+      "residualSec": 457.688,
+      "legIds": [
+        1632,
+        1636,
+        1640
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788451225634,
+      "sourceDepartedAt": 1788451495593,
+      "arrivedAt": 1788451575541,
+      "departureToArrivalSec": 79.948,
+      "elapsedStopSec": 55.406,
+      "residualSec": 294.501,
+      "legIds": [
+        1753,
+        1759,
+        1764
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1788452498818,
+      "sourceDepartedAt": 1788453196304,
+      "arrivedAt": 1788453306230,
+      "departureToArrivalSec": 109.926,
+      "elapsedStopSec": 55.406,
+      "residualSec": 752.006,
+      "legIds": [
+        1933,
+        1939,
+        1945
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1788524849413,
+      "sourceDepartedAt": 1788525154941,
+      "arrivedAt": 1788525249955,
+      "departureToArrivalSec": 95.014,
+      "elapsedStopSec": 55.406,
+      "residualSec": 345.136,
+      "legIds": [
+        5131,
+        5133,
+        5144
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1788526158762,
+      "sourceDepartedAt": 1788526288789,
+      "arrivedAt": 1788526368814,
+      "departureToArrivalSec": 80.025,
+      "elapsedStopSec": 55.406,
+      "residualSec": 154.646,
+      "legIds": [
+        5265,
+        5270,
+        5277
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1788529100388,
+      "sourceDepartedAt": 1788529556106,
+      "arrivedAt": 1788529621086,
+      "departureToArrivalSec": 64.98,
+      "elapsedStopSec": 55.406,
+      "residualSec": 465.292,
+      "legIds": [
+        5640,
+        5643,
+        5646
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788530420598,
+      "sourceDepartedAt": 1788530505740,
+      "arrivedAt": 1788530565721,
+      "departureToArrivalSec": 59.981,
+      "elapsedStopSec": 55.406,
+      "residualSec": 89.717,
+      "legIds": [
+        5749,
+        5750,
+        5755
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1788532380216,
+      "sourceDepartedAt": 1788532415152,
+      "arrivedAt": 1788532490515,
+      "departureToArrivalSec": 75.363,
+      "elapsedStopSec": 55.406,
+      "residualSec": null,
+      "legIds": [
+        5985,
+        5989,
+        5993
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1788535615942,
+      "sourceDepartedAt": 1788536016424,
+      "arrivedAt": 1788536096608,
+      "departureToArrivalSec": 80.184,
+      "elapsedStopSec": 55.406,
+      "residualSec": 425.26,
+      "legIds": [
+        6380,
+        6383,
+        6390
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1788536512839,
+      "sourceDepartedAt": 1788536788325,
+      "arrivedAt": 1788536843405,
+      "departureToArrivalSec": 55.08,
+      "elapsedStopSec": 55.406,
+      "residualSec": 275.16,
+      "legIds": [
+        6479,
+        6482,
+        6484
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788537554435,
+      "sourceDepartedAt": 1788537679763,
+      "arrivedAt": 1788537769780,
+      "departureToArrivalSec": 90.017,
+      "elapsedStopSec": 55.406,
+      "residualSec": 159.939,
+      "legIds": [
+        6543,
+        6549,
+        6552
+      ]
+    },
+    {
+      "bus": "#306",
+      "sourcePinnedAt": 1788871232785,
+      "sourceDepartedAt": 1788871567777,
+      "arrivedAt": 1788871647770,
+      "departureToArrivalSec": 79.993,
+      "elapsedStopSec": 55.406,
+      "residualSec": 359.579,
+      "legIds": [
+        14818,
+        14826,
+        14830
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788872062858,
+      "sourceDepartedAt": 1788872397954,
+      "arrivedAt": 1788872497871,
+      "departureToArrivalSec": 99.917,
+      "elapsedStopSec": 55.406,
+      "residualSec": 379.607,
+      "legIds": [
+        14927,
+        14933,
+        14941
+      ]
+    },
+    {
+      "bus": "#307",
+      "sourcePinnedAt": 1788873682886,
+      "sourceDepartedAt": 1788874343963,
+      "arrivedAt": 1788874413965,
+      "departureToArrivalSec": 70.002,
+      "elapsedStopSec": 55.406,
+      "residualSec": 675.673,
+      "legIds": [
+        15178,
+        15187,
+        15190
+      ]
+    },
+    {
+      "bus": "#306",
+      "sourcePinnedAt": 1788874704759,
+      "sourceDepartedAt": 1788875144751,
+      "arrivedAt": 1788875224781,
+      "departureToArrivalSec": 80.03,
+      "elapsedStopSec": 55.406,
+      "residualSec": 464.616,
+      "legIds": [
+        15292,
+        15301,
+        15305
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788875454843,
+      "sourceDepartedAt": 1788876009837,
+      "arrivedAt": 1788876094856,
+      "departureToArrivalSec": 85.019,
+      "elapsedStopSec": 55.406,
+      "residualSec": 584.607,
+      "legIds": [
+        15406,
+        15411,
+        15419
+      ]
+    },
+    {
+      "bus": "#306",
+      "sourcePinnedAt": 1788878515061,
+      "sourceDepartedAt": 1788878750145,
+      "arrivedAt": 1788878820189,
+      "departureToArrivalSec": 70.044,
+      "elapsedStopSec": 55.406,
+      "residualSec": 249.722,
+      "legIds": [
+        15779,
+        15783,
+        15789
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788879445189,
+      "sourceDepartedAt": 1788879865363,
+      "arrivedAt": 1788879965212,
+      "departureToArrivalSec": 99.849,
+      "elapsedStopSec": 55.406,
+      "residualSec": 464.617,
+      "legIds": [
+        15945,
+        15948,
+        15952
+      ]
+    },
+    {
+      "bus": "#307",
+      "sourcePinnedAt": 1788881050318,
+      "sourceDepartedAt": 1788881625385,
+      "arrivedAt": 1788881715488,
+      "departureToArrivalSec": 90.103,
+      "elapsedStopSec": 55.406,
+      "residualSec": 609.764,
+      "legIds": [
+        16132,
+        16137,
+        16143
+      ]
+    },
+    {
+      "bus": "#306",
+      "sourcePinnedAt": 1788882005539,
+      "sourceDepartedAt": 1788882370501,
+      "arrivedAt": 1788882445509,
+      "departureToArrivalSec": 75.008,
+      "elapsedStopSec": 55.406,
+      "residualSec": 384.564,
+      "legIds": [
+        16231,
+        16235,
+        16237
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1788883215606,
+      "sourceDepartedAt": 1788883355577,
+      "arrivedAt": 1788883420601,
+      "departureToArrivalSec": 65.024,
+      "elapsedStopSec": 55.406,
+      "residualSec": 149.589,
+      "legIds": [
+        16337,
+        16344,
+        16347
+      ]
+    },
+    {
+      "bus": "#307",
+      "sourcePinnedAt": 1788884600691,
+      "sourceDepartedAt": 1788885180961,
+      "arrivedAt": 1788885270855,
+      "departureToArrivalSec": 89.894,
+      "elapsedStopSec": 55.406,
+      "residualSec": 614.758,
+      "legIds": [
+        16542,
+        16544,
+        16546
+      ]
+    },
+    {
+      "bus": "#306",
+      "sourcePinnedAt": 1788958817968,
+      "sourceDepartedAt": 1788958958071,
+      "arrivedAt": 1788959042994,
+      "departureToArrivalSec": 84.923,
+      "elapsedStopSec": 55.406,
+      "residualSec": 169.62,
+      "legIds": [
+        20472,
+        20476,
+        20484
+      ]
+    },
+    {
+      "bus": "#119",
+      "sourcePinnedAt": 1788960933149,
+      "sourceDepartedAt": 1788961073158,
+      "arrivedAt": 1788961148162,
+      "departureToArrivalSec": 75.004,
+      "elapsedStopSec": 55.406,
+      "residualSec": 159.607,
+      "legIds": [
+        20756,
+        20762,
+        20767
+      ]
+    },
+    {
+      "bus": "#306",
+      "sourcePinnedAt": 1788962163282,
+      "sourceDepartedAt": 1788962463601,
+      "arrivedAt": 1788962533495,
+      "departureToArrivalSec": 69.894,
+      "elapsedStopSec": 55.406,
+      "residualSec": 314.807,
+      "legIds": [
+        20931,
+        20933,
+        20935
+      ]
+    },
+    {
+      "bus": "#119",
+      "sourcePinnedAt": 1788963677746,
+      "sourceDepartedAt": 1788964402637,
+      "arrivedAt": 1788964502664,
+      "departureToArrivalSec": 100.027,
+      "elapsedStopSec": 55.406,
+      "residualSec": 769.512,
+      "legIds": [
+        21175,
+        21181,
+        21190
+      ]
+    },
+    {
+      "bus": "#306",
+      "sourcePinnedAt": 1788965512772,
+      "sourceDepartedAt": 1788966032866,
+      "arrivedAt": 1788966097949,
+      "departureToArrivalSec": 65.083,
+      "elapsedStopSec": 55.406,
+      "residualSec": 529.771,
+      "legIds": [
+        21375,
+        21381,
+        21383
+      ]
+    },
+    {
+      "bus": "#306",
+      "sourcePinnedAt": 1788969228337,
+      "sourceDepartedAt": 1788969667909,
+      "arrivedAt": 1788969777948,
+      "departureToArrivalSec": 110.039,
+      "elapsedStopSec": 55.406,
+      "residualSec": 494.205,
+      "legIds": [
+        21783,
+        21786,
+        21794
+      ]
+    },
+    {
+      "bus": "#119",
+      "sourcePinnedAt": 1788970898269,
+      "sourceDepartedAt": 1788971608342,
+      "arrivedAt": 1788971698359,
+      "departureToArrivalSec": 90.017,
+      "elapsedStopSec": 55.406,
+      "residualSec": 744.684,
+      "legIds": [
+        21972,
+        21980,
+        21982
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789043998001,
+      "sourceDepartedAt": 1789044353066,
+      "arrivedAt": 1789044503031,
+      "departureToArrivalSec": 149.965,
+      "elapsedStopSec": 55.406,
+      "residualSec": 449.624,
+      "legIds": [
+        26225,
+        26241,
+        26247
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789045193270,
+      "sourceDepartedAt": 1789045378173,
+      "arrivedAt": 1789045458244,
+      "departureToArrivalSec": 80.071,
+      "elapsedStopSec": 55.406,
+      "residualSec": 209.568,
+      "legIds": [
+        26372,
+        26381,
+        26384
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1789046853298,
+      "sourceDepartedAt": 1789047238464,
+      "arrivedAt": 1789047368347,
+      "departureToArrivalSec": 129.883,
+      "elapsedStopSec": 55.406,
+      "residualSec": 459.643,
+      "legIds": [
+        26604,
+        26607,
+        26621
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789047740569,
+      "sourceDepartedAt": 1789047961289,
+      "arrivedAt": 1789048051478,
+      "departureToArrivalSec": 90.189,
+      "elapsedStopSec": 55.406,
+      "residualSec": 255.503,
+      "legIds": [
+        26702,
+        26706,
+        26710
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1789050560169,
+      "sourceDepartedAt": 1789050675137,
+      "arrivedAt": 1789050765088,
+      "departureToArrivalSec": 89.951,
+      "elapsedStopSec": 55.406,
+      "residualSec": 149.513,
+      "legIds": [
+        27051,
+        27057,
+        27065
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789051140111,
+      "sourceDepartedAt": 1789051565163,
+      "arrivedAt": 1789051655150,
+      "departureToArrivalSec": 89.987,
+      "elapsedStopSec": 55.406,
+      "residualSec": 459.633,
+      "legIds": [
+        27186,
+        27192,
+        27197
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1789053960414,
+      "sourceDepartedAt": 1789054420475,
+      "arrivedAt": 1789054495484,
+      "departureToArrivalSec": 75.009,
+      "elapsedStopSec": 55.406,
+      "residualSec": 479.664,
+      "legIds": [
+        27531,
+        27533,
+        27537
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789054970517,
+      "sourceDepartedAt": 1789055160512,
+      "arrivedAt": 1789055240627,
+      "departureToArrivalSec": 80.115,
+      "elapsedStopSec": 55.406,
+      "residualSec": 214.704,
+      "legIds": [
+        27633,
+        27637,
+        27640
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789055694164,
+      "sourceDepartedAt": 1789055844744,
+      "arrivedAt": 1789055929770,
+      "departureToArrivalSec": 85.026,
+      "elapsedStopSec": 55.406,
+      "residualSec": 180.2,
+      "legIds": [
+        27704,
+        27705,
+        27712
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1789057335054,
+      "sourceDepartedAt": 1789058050087,
+      "arrivedAt": 1789058120404,
+      "departureToArrivalSec": 70.317,
+      "elapsedStopSec": 55.406,
+      "residualSec": 729.944,
+      "legIds": [
+        27951,
+        27953,
+        27957
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789130275435,
+      "sourceDepartedAt": 1789130766342,
+      "arrivedAt": 1789130841304,
+      "departureToArrivalSec": 74.962,
+      "elapsedStopSec": 55.406,
+      "residualSec": 510.463,
+      "legIds": [
+        31868,
+        31873,
+        31878
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1789131021279,
+      "sourceDepartedAt": 1789131651499,
+      "arrivedAt": 1789131741498,
+      "departureToArrivalSec": 89.999,
+      "elapsedStopSec": 55.406,
+      "residualSec": 664.813,
+      "legIds": [
+        31984,
+        31990,
+        31996
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789132927351,
+      "sourceDepartedAt": 1789133547874,
+      "arrivedAt": 1789133642953,
+      "departureToArrivalSec": 95.079,
+      "elapsedStopSec": 55.406,
+      "residualSec": 660.196,
+      "legIds": [
+        32251,
+        32255,
+        32262
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1789134532728,
+      "sourceDepartedAt": 1789135248862,
+      "arrivedAt": 1789135323909,
+      "departureToArrivalSec": 75.047,
+      "elapsedStopSec": 55.406,
+      "residualSec": 735.775,
+      "legIds": [
+        32466,
+        32472,
+        32476
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789136875218,
+      "sourceDepartedAt": 1789137190164,
+      "arrivedAt": 1789137275202,
+      "departureToArrivalSec": 85.038,
+      "elapsedStopSec": 55.406,
+      "residualSec": 344.578,
+      "legIds": [
+        32699,
+        32705,
+        32715
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1789138240145,
+      "sourceDepartedAt": 1789138821353,
+      "arrivedAt": 1789138881347,
+      "departureToArrivalSec": 59.994,
+      "elapsedStopSec": 55.406,
+      "residualSec": 585.796,
+      "legIds": [
+        32908,
+        32913,
+        32914
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789141377886,
+      "sourceDepartedAt": 1789141696245,
+      "arrivedAt": 1789141791156,
+      "departureToArrivalSec": 94.911,
+      "elapsedStopSec": 55.406,
+      "residualSec": 357.864,
+      "legIds": [
+        33235,
+        33237,
+        33240
+      ]
+    },
+    {
+      "bus": "#304",
+      "sourcePinnedAt": 1789141861162,
+      "sourceDepartedAt": 1789142434139,
+      "arrivedAt": 1789142494162,
+      "departureToArrivalSec": 60.023,
+      "elapsedStopSec": 55.406,
+      "residualSec": 577.594,
+      "legIds": [
+        33305,
+        33314,
+        33318
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789143625517,
+      "sourceDepartedAt": 1789144395653,
+      "arrivedAt": 1789144465671,
+      "departureToArrivalSec": 70.018,
+      "elapsedStopSec": 55.406,
+      "residualSec": 784.748,
+      "legIds": [
+        33543,
+        33547,
+        33549
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789389920507,
+      "sourceDepartedAt": 1789389980487,
+      "arrivedAt": 1789390185504,
+      "departureToArrivalSec": 205.017,
+      "elapsedStopSec": 55.406,
+      "residualSec": 209.591,
+      "legIds": [
+        41822,
+        41835,
+        41839
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789392450711,
+      "sourceDepartedAt": 1789392715743,
+      "arrivedAt": 1789392795782,
+      "departureToArrivalSec": 80.039,
+      "elapsedStopSec": 55.406,
+      "residualSec": 289.665,
+      "legIds": [
+        42161,
+        42172,
+        42179
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789392915744,
+      "sourceDepartedAt": 1789393460792,
+      "arrivedAt": 1789393665920,
+      "departureToArrivalSec": 205.128,
+      "elapsedStopSec": 55.406,
+      "residualSec": 694.77,
+      "legIds": [
+        42282,
+        42293,
+        42301
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789395691154,
+      "sourceDepartedAt": 1789396381098,
+      "arrivedAt": 1789396446029,
+      "departureToArrivalSec": 64.931,
+      "elapsedStopSec": 55.406,
+      "residualSec": 699.469,
+      "legIds": [
+        42646,
+        42650,
+        42652
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789396826087,
+      "sourceDepartedAt": 1789397091150,
+      "arrivedAt": 1789397296296,
+      "departureToArrivalSec": 205.146,
+      "elapsedStopSec": 55.406,
+      "residualSec": 414.803,
+      "legIds": [
+        42714,
+        42731,
+        42739
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789399201358,
+      "sourceDepartedAt": 1789399936361,
+      "arrivedAt": 1789400016405,
+      "departureToArrivalSec": 80.044,
+      "elapsedStopSec": 55.406,
+      "residualSec": 759.641,
+      "legIds": [
+        43000,
+        43003,
+        43008
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789400336480,
+      "sourceDepartedAt": 1789400681471,
+      "arrivedAt": 1789400891436,
+      "departureToArrivalSec": 209.965,
+      "elapsedStopSec": 55.406,
+      "residualSec": 499.55,
+      "legIds": [
+        43083,
+        43094,
+        43100
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789402938281,
+      "sourceDepartedAt": 1789403558595,
+      "arrivedAt": 1789403618502,
+      "departureToArrivalSec": 59.907,
+      "elapsedStopSec": 55.406,
+      "residualSec": 624.815,
+      "legIds": [
+        43393,
+        43396,
+        43398
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789477339840,
+      "sourceDepartedAt": 1789477429798,
+      "arrivedAt": 1789477524797,
+      "departureToArrivalSec": 94.999,
+      "elapsedStopSec": 55.406,
+      "residualSec": 129.551,
+      "legIds": [
+        47604,
+        47614,
+        47618
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789478929969,
+      "sourceDepartedAt": 1789479074974,
+      "arrivedAt": 1789479219992,
+      "departureToArrivalSec": 145.018,
+      "elapsedStopSec": 55.406,
+      "residualSec": 234.617,
+      "legIds": [
+        47832,
+        47833,
+        47843
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789480530147,
+      "sourceDepartedAt": 1789480870133,
+      "arrivedAt": 1789480945128,
+      "departureToArrivalSec": 74.995,
+      "elapsedStopSec": 55.406,
+      "residualSec": 359.575,
+      "legIds": [
+        48055,
+        48058,
+        48062
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789482235250,
+      "sourceDepartedAt": 1789482755338,
+      "arrivedAt": 1789482830343,
+      "departureToArrivalSec": 75.005,
+      "elapsedStopSec": 55.406,
+      "residualSec": 539.687,
+      "legIds": [
+        48299,
+        48302,
+        48308
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789483860535,
+      "sourceDepartedAt": 1789484485667,
+      "arrivedAt": 1789484575709,
+      "departureToArrivalSec": 90.042,
+      "elapsedStopSec": 55.406,
+      "residualSec": 659.768,
+      "legIds": [
+        48498,
+        48503,
+        48508
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789486320782,
+      "sourceDepartedAt": 1789486440897,
+      "arrivedAt": 1789486515830,
+      "departureToArrivalSec": 74.933,
+      "elapsedStopSec": 55.406,
+      "residualSec": 139.642,
+      "legIds": [
+        48720,
+        48726,
+        48728
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789487625943,
+      "sourceDepartedAt": 1789488105956,
+      "arrivedAt": 1789488165981,
+      "departureToArrivalSec": 60.025,
+      "elapsedStopSec": 55.406,
+      "residualSec": 484.632,
+      "legIds": [
+        48887,
+        48889,
+        48891
+      ]
+    },
+    {
+      "bus": "#310",
+      "sourcePinnedAt": 1789489386099,
+      "sourceDepartedAt": 1789489936525,
+      "arrivedAt": 1789490031217,
+      "departureToArrivalSec": 94.692,
+      "elapsedStopSec": 55.406,
+      "residualSec": 589.712,
+      "legIds": [
+        49086,
+        49089,
+        49090
+      ]
+    },
+    {
+      "bus": "#308",
+      "sourcePinnedAt": 1789561756333,
+      "sourceDepartedAt": 1789561916261,
+      "arrivedAt": 1789562026649,
+      "departureToArrivalSec": 110.388,
+      "elapsedStopSec": 55.406,
+      "residualSec": 214.91,
+      "legIds": [
+        53115,
+        53124,
+        53128
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789562561646,
+      "sourceDepartedAt": 1789562781707,
+      "arrivedAt": 1789562946755,
+      "departureToArrivalSec": 165.048,
+      "elapsedStopSec": 55.406,
+      "residualSec": 329.703,
+      "legIds": [
+        53232,
+        53237,
+        53244
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1789564246916,
+      "sourceDepartedAt": 1789564426957,
+      "arrivedAt": 1789564511964,
+      "departureToArrivalSec": 85.007,
+      "elapsedStopSec": 55.406,
+      "residualSec": 209.642,
+      "legIds": [
+        53438,
+        53440,
+        53446
+      ]
+    },
+    {
+      "bus": "#308",
+      "sourcePinnedAt": 1789565577048,
+      "sourceDepartedAt": 1789565707078,
+      "arrivedAt": 1789565792097,
+      "departureToArrivalSec": 85.019,
+      "elapsedStopSec": 55.406,
+      "residualSec": 159.643,
+      "legIds": [
+        53608,
+        53616,
+        53618
+      ]
+    },
+    {
+      "bus": "#316",
+      "sourcePinnedAt": 1789565842083,
+      "sourceDepartedAt": 1789566367155,
+      "arrivedAt": 1789566437170,
+      "departureToArrivalSec": 70.015,
+      "elapsedStopSec": 55.406,
+      "residualSec": 539.681,
+      "legIds": [
+        53702,
+        53704,
+        53707
+      ]
+    },
+    {
+      "bus": "#309",
+      "sourcePinnedAt": 1789567242326,
+      "sourceDepartedAt": 1789567392398,
+      "arrivedAt": 1789567487296,
+      "departureToArrivalSec": 94.898,
+      "elapsedStopSec": 55.406,
+      "residualSec": 189.564,
+      "legIds": [
+        53858,
+        53866,
+        53876
+      ]
+    }
+  ]
+}

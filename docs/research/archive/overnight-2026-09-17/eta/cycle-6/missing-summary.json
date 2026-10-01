@@ -1,0 +1,38 @@
+{
+  "decisions": 4688,
+  "missing": 68,
+  "distinctBusPolls": 34,
+  "distinctSources": 10,
+  "sessions": 20,
+  "reasons": {
+    "modeled pickup still ahead before first destination": 30,
+    "only next-lap pickup; first destination precedes it": 38
+  },
+  "afterRecordedDeparture": {
+    "False": 54,
+    "True": 14
+  },
+  "sourceCounts": {
+    "57454": 6,
+    "57990": 10,
+    "58224": 6,
+    "58510": 14,
+    "58717": 4,
+    "60836": 2,
+    "61538": 8,
+    "61907": 6,
+    "63523": 6,
+    "65347": 6
+  },
+  "exactRawGpsChecks": 68,
+  "crossTab": {
+    "modeled pickup still ahead before first destination": {
+      "before recorded departure": 30
+    },
+    "only next-lap pickup; first destination precedes it": {
+      "after recorded departure": 14,
+      "before recorded departure": 24
+    }
+  },
+  "limits": "Selected reused Red history; reconstructed collector flags; recorded departure is retrospective. Both destination occurrences retained where served; no new outcome exclusions. All access walks are zero in these missing cases."
+}

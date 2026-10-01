@@ -1,0 +1,17 @@
+{
+  "source": "Actual built SPA, fixed clock and intercepted local fixtures",
+  "baseline": false,
+  "checks": [
+    "Collapsed controlled region remains hidden and outside Tab sequence",
+    "Complete forecast removal while strip is focused restores To",
+    "Repeated unavailable/recovered weather leaves no stale focus ownership",
+    "Forecast removal preserves deliberately focused place input and typed query",
+    "Expired failed-refresh forecast restores focus from removed strip",
+    "Single-hour pointer no-op remains inert while unit action works"
+  ],
+  "errors": [],
+  "snapshots": {},
+  "geometry": [],
+  "passed": true,
+  "closed": true
+}

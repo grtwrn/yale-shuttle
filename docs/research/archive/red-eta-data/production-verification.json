@@ -1,0 +1,22 @@
+{
+  "health": {
+    "ok": true,
+    "pollStalenessMs": 2177,
+    "collectorLagMs": 2115,
+    "knownBuses": 16,
+    "pollSkipped": 0,
+    "droppedObservations": 0,
+    "build": "5f1fcb2bfa73"
+  },
+  "errors": [],
+  "card": "About 8 min ⓘ\nLikely 1–16 min",
+  "dialog": "Red arrival\n×\n\nAbout 8 min\n\nLikely arrival window: 1–16 min\n\nNow\n16 min\n\nThis window aims to cover 8 in 10 arrivals. The shuttle can arrive earlier or later; use the early end when deciding when to reach your stop.\n\nWaiting at Canal / Munson. The window may stay wide until the shuttle leaves.\n\nShuttle\n#316\nStops to pickup\n4\nNext arrival · #309\nAbout 20 min\nEstimated gap\nAbout 12 min\n\nThe gap compares the two arrival estimates. It can change as either shuttle moves or waits.",
+  "checks": [
+    "new production build",
+    "real live feed",
+    "tap shows window and gap",
+    "Escape returns focus",
+    "trip card keyboard activation",
+    "no page errors"
+  ]
+}

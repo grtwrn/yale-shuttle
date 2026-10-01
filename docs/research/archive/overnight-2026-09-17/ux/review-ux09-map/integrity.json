@@ -1,0 +1,68 @@
+{
+  "head": "e7e9063df1fb15a364529075a702789e2bf348c7",
+  "base": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "checkoutIndexTreeUnchanged": true,
+  "trackedFilesUnchanged": 908,
+  "builderFilesUnchanged": 131,
+  "sourceScope": [
+    "services/shuttle-v2/scripts/crash-recovery-check.mjs",
+    "services/shuttle-v2/scripts/map-lifecycle-check.mjs",
+    "services/shuttle-v2/web/src/CrashRecovery.tsx",
+    "services/shuttle-v2/web/src/TransitMap.tsx",
+    "services/shuttle-v2/web/src/main.tsx"
+  ],
+  "sourceBundleParity": {
+    "TransitMap.tsx": "services/shuttle-v2/web/dist/assets/rider-DuHxjI64.js.map",
+    "CrashRecovery.tsx": "services/shuttle-v2/web/dist/assets/rider-DuHxjI64.js.map",
+    "main.tsx": "services/shuttle-v2/web/dist/assets/rider-DuHxjI64.js.map"
+  },
+  "passingBrowserReports": {
+    "verified/mobile/map-lifecycle.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    },
+    "verified/desktop/map-lifecycle.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    },
+    "verified/original-repro/map-stress.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    },
+    "verified/feed/empty-service.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    },
+    "verified/fullscreen/after-browser.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    },
+    "recovery-mobile/crash-recovery.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    },
+    "recovery-desktop/crash-recovery.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    },
+    "recovery-real-trip/lifecycle.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    },
+    "offline/offline-shell.json": {
+      "completed": true,
+      "resourcesClosed": true,
+      "errors": []
+    }
+  },
+  "imageCount": 345,
+  "imageBytes": 16153983
+}

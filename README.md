@@ -3,6 +3,10 @@
 Live map, stop-level ETAs and trip planning for the Yale Downtowner shuttles,
 at **https://yale-shuttle.fly.dev**.
 
+The [research archive](docs/research/README.md) collects ETA investigations,
+rider-experience studies, independent reviews, rejected experiments, analysis
+source and validation results, with explicit production status and data limits.
+
 It polls the public Yale Downtowner API every 5 seconds, derives its own
 arrival and travel-time history from raw GPS, and calibrates per-segment
 predictions from that history — so ETAs come from what the buses actually did

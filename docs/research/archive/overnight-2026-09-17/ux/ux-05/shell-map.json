@@ -1,0 +1,21 @@
+{
+  "scope": "Unmodified built SPA; fabricated two-bus live wire on checked-in route network",
+  "checks": [
+    "Real planner/transport selects #307 on minimap; keyboard exposes route/bus identity; arrival detail retains following #309",
+    "Mobile fullscreen tap and Escape retain map toggle focus",
+    "Fresh pickup timing present; subsequent stale wire removes pickup/wait labels"
+  ],
+  "errors": [],
+  "staleBeforeFade": [
+    {
+      "text": "🚌 (R) 2–9 min",
+      "opacity": "0"
+    },
+    {
+      "text": "🏁 (R) 2:23p",
+      "opacity": "0"
+    }
+  ],
+  "completed": true,
+  "resourcesClosed": true
+}

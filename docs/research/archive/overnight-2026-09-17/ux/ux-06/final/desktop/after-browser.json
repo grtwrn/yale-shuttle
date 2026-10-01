@@ -1,0 +1,138 @@
+{
+  "baseline": false,
+  "desktop": true,
+  "scope": "Actual three map components and berth disclosure; synthetic props; intercepted network",
+  "checks": [
+    "combined: Back, close, Escape, touch/keyboard, external focus and stable Leaflet instance",
+    "walk: Back, close, Escape, touch/keyboard, external focus and stable Leaflet instance",
+    "berth: Back, close, Escape, touch/keyboard, external focus and stable Leaflet instance",
+    "Missing times and empty options retain usable fullscreen return",
+    "Berth disclosure unmounts and reopens collapsed/inert; disclosure focus retained",
+    "Unmount removes maps/listener without stealing external focus"
+  ],
+  "states": [
+    {
+      "kind": "combined",
+      "method": "Back Enter",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "combined",
+      "method": "Escape from Back",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "combined",
+      "method": "Escape from zoom",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "combined",
+      "method": "Close Space",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "combined",
+      "method": "Back Space",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "walk",
+      "method": "Back Enter",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "walk",
+      "method": "Escape from Back",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "walk",
+      "method": "Escape from zoom",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "walk",
+      "method": "Close Space",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "walk",
+      "method": "Back Space",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Fullscreen"
+      }
+    },
+    {
+      "kind": "berth",
+      "method": "Back Enter",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Full map"
+      }
+    },
+    {
+      "kind": "berth",
+      "method": "Escape from Back",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Full map"
+      }
+    },
+    {
+      "kind": "berth",
+      "method": "Escape from zoom",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Full map"
+      }
+    },
+    {
+      "kind": "berth",
+      "method": "Close Space",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Full map"
+      }
+    },
+    {
+      "kind": "berth",
+      "method": "Back Space",
+      "focused": {
+        "tag": "BUTTON",
+        "name": "Full map"
+      }
+    }
+  ],
+  "errors": [],
+  "completed": true,
+  "resourcesClosed": true
+}

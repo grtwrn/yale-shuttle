@@ -1,0 +1,102 @@
+{
+  "createdAtUTC": "2026-09-18T03:51:51.851818+00:00",
+  "scope": "Frozen cycle3 scripts, plan, data, report and logs; builder artifact hashes, no publication control.",
+  "files": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/PLAN.json": {
+      "bytes": 6414,
+      "sha256": "0a1743ef906ccbc6b31f476aaca94355533140efa9c040e847843f49cb43c753"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/RESULTS.md": {
+      "bytes": 13261,
+      "sha256": "3eee0fc094a55ea373b709024f9380544ce58b5c8d90769d6c0d1e197c8b1998"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/REVIEW_REQUEST.md": {
+      "bytes": 1795,
+      "sha256": "ad8a219e2c17d4407a0afa1cadd2e9f57de547505d374cc6ec1209ad1b5a4539"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/SCORES.md": {
+      "bytes": 2508,
+      "sha256": "5687872aaea63628d09d6bf758418e827efaf5126fd3821456bd4e22a213e0c6"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/audit_results.py": {
+      "bytes": 6802,
+      "sha256": "13f60f8549120d5314802c54463891ead4ff02a93b6540967bfeb5e1ba052caf"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/component-continuation.json": {
+      "bytes": 116328,
+      "sha256": "3f3d0e86ce5cd05095e33fed66e670acdea1734c27ed92585fa1ea3c3cb96f37"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/contract-tests.log": {
+      "bytes": 104,
+      "sha256": "c6b9b1f09add0403cc07e90bfdf272129b1ddfa2f8f7675ea8218862f2516371"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/extraction.json": {
+      "bytes": 34372,
+      "sha256": "a9c3816f68733331fadf165707b03076d9309ebd3431c0c5e09683b6cf37a9a0"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/extraction.log": {
+      "bytes": 6513,
+      "sha256": "d616e70b7e6d3e09dae53b7c224cba6025effab580ec60868e0c70220cee99bd"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/fit.log": {
+      "bytes": 101,
+      "sha256": "1c92dccb27d086335bd586e5d06752923b758e31a263de4e8231f2fd0b18f282"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/fits.json": {
+      "bytes": 6422,
+      "sha256": "1af954c8ad24e80b11e31f01715c475117a6bd3cbde6b95a505950d378850e48"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/paired-visits.json": {
+      "bytes": 2566741,
+      "sha256": "6664f86a77d59a8c0b7c8a29ea0b5f8b1165a18563c173253f8305a30673e83c"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/predictions.jsonl": {
+      "bytes": 1733100,
+      "sha256": "00787a47b8985cdb5b1605195270bbe452c986f7aca5d2ee599636b469f12253"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/role-landmarks.jsonl": {
+      "bytes": 17616552,
+      "sha256": "9a9253d5bebf9776a7bb1c7b2de7cd35c9b37ebf65d2d5f1947be99cb491e299"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/role_state.py": {
+      "bytes": 6043,
+      "sha256": "a60e042b8ebe3f265cc55bb577da253c4ddd03c58f48be41bd82d907aaaa6dba"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/run_role.py": {
+      "bytes": 6349,
+      "sha256": "366272768b8991af1b712b1a760d0bf64404001e535ad8dde74aec3553aa57eb"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/score.log": {
+      "bytes": 2942,
+      "sha256": "cd357f506aa88b67ada970ec46d6b59bc9667a1aab86bb2c0dab2d02849bdad2"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/score_role.py": {
+      "bytes": 5956,
+      "sha256": "a2d19450b592517deec3aee5fd55b2585d783605c141e6801431bca594847b05"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/scores.json": {
+      "bytes": 237319,
+      "sha256": "6d575ab1302053a9590714c9a30657d2a95a1d261d86ec3933007907fe47a119"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/support-summary.json": {
+      "bytes": 623,
+      "sha256": "5d0a2e95c5007b24d627c16141169032ef55ae002ca22bf55ec899b94a7663a0"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/test_role_state.py": {
+      "bytes": 3104,
+      "sha256": "cb488f8b2777b0f7e7bd25e71d37a7e7a696b856055a798af34c2de70aac884d"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/top-regressions.json": {
+      "bytes": 116483,
+      "sha256": "a4a3ddcd5930e0d74031bca90093146a8fce1e8dae1f69d69ccf419667e0f8e1"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/verification.json": {
+      "bytes": 10070,
+      "sha256": "4d2fa23f41bf866b45a900b0f16f9285ea61f439304a159832c8543f2bf67a7f"
+    },
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/verification.log": {
+      "bytes": 1977,
+      "sha256": "6b72890e043c89b7ff7cc65547e2565001b8f8a45a56d7076a19cdf640a50fda"
+    }
+  }
+}

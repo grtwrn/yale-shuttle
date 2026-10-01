@@ -1,0 +1,13 @@
+{
+  "source": "Actual built SPA, fixed clock and intercepted local fixtures",
+  "baseline": false,
+  "checks": [],
+  "errors": [],
+  "snapshots": {
+    "dry": "- button \"68°F · Clear · no rain expected\""
+  },
+  "geometry": [],
+  "failure": "AssertionError [ERR_ASSERTION]: keyboard must scroll the hourly strip",
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- combobox \"To\"\n- button \"20°C · Clear · no rain expected\" [expanded]\n- button \"Show temperature in Fahrenheit\": °F °C\n- region \"Hourly weather forecast\":\n  - text: 12pm 20°\n  - img \"0% chance of rain\"\n  - text: 1pm 21°\n  - img \"0% chance of rain\"\n  - text: 2pm 21°\n  - img \"0% chance of rain\"\n  - text: 3pm 22°\n  - img \"0% chance of rain\"\n  - text: 4pm 22°\n  - img \"0% chance of rain\"\n  - text: 5pm 23°\n  - img \"0% chance of rain\"\n  - text: 6pm 23°\n  - img \"0% chance of rain\"\n  - text: 7pm 24°\n  - img \"0% chance of rain\"\n  - text: 8pm 24°\n  - img \"0% chance of rain\"\n  - text: 9pm 25°\n  - img \"0% chance of rain\"\n- status: No shuttles reporting right now\n- text: Choose a destination to check walking directions and route schedules.\n- button \"Union Station\"\n- button \"Med School (Cedar St)\"\n- button \"Science Hill\"\n- button \"Peabody Museum\"\n- button \"Payne Whitney Gym\"\n- button \"Old Campus\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+  "closed": true
+}

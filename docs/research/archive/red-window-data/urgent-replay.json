@@ -1,0 +1,4802 @@
+{
+  "note": "Diagnostic: restored 14:19 checkpoint + 10-second watcher observations + fixed 14:51 tables. Not exact five-second production replay or coverage validation.",
+  "checkpointAt": 1789654754296,
+  "output": [
+    {
+      "at": "2026-09-17T14:48:03.068Z",
+      "observedAt": 1789656481434,
+      "lap": {
+        "11": 2793,
+        "121": 977
+      },
+      "lat": 41.316195,
+      "lon": -72.925671,
+      "a": {
+        "eta": 712.9868085792127,
+        "low": 317.8824936946124,
+        "high": 1209.2282915307596,
+        "departNow": 712.9868085792127,
+        "lowFloor": 317.8824936946124,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 6,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 6,
+        "eta": 712.9868085792127,
+        "low": 317.8824936946124,
+        "high": 1209.2282915307596,
+        "departNow": 712.9868085792127,
+        "lowFloor": 317.8824936946124,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 11,
+        "rested": true,
+        "restStop": 12,
+        "since": 1789656431192,
+        "restApproach": true
+      },
+      "situations": [
+        {
+          "leg": 11,
+          "standing": false,
+          "mass": 0.8606487863280351,
+          "frac": 0.7484453464633636,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 135.7360079832283,
+          "inRest": 1
+        },
+        {
+          "leg": 11,
+          "standing": true,
+          "mass": 0.13935121367196493,
+          "frac": 0.7482252923474417,
+          "zoneStop": 12,
+          "approach": true,
+          "cell": 135.73402746585188,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:48:13.069Z",
+      "observedAt": 1789656491228,
+      "lap": {
+        "11": 2804,
+        "121": 988
+      },
+      "lat": 41.316185,
+      "lon": -72.926434,
+      "a": {
+        "eta": 719.4038961139039,
+        "low": 315.5117248192153,
+        "high": 1172.2663686929002,
+        "departNow": 719.4038961139039,
+        "lowFloor": 315.5117248192153,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 719.4038961139039,
+        "low": 315.5117248192153,
+        "high": 1172.2663686929002,
+        "departNow": 719.4038961139039,
+        "lowFloor": 315.5117248192153,
+        "leadMass": 0.8521172054488271,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": false,
+        "restStop": -1,
+        "since": 1789656481434,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.45727527500816684,
+          "frac": 0.01088112281955889,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 138.23938469489613,
+          "inRest": 0
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.39484193044066024,
+          "frac": 0.0562635784830534,
+          "zoneStop": 12,
+          "approach": false,
+          "cell": 137.98276121910982,
+          "inRest": 0
+        },
+        {
+          "leg": 11,
+          "standing": false,
+          "mass": 0.14788279455117295,
+          "frac": 0.8872205350885043,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 136.98498475529692,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:48:23.071Z",
+      "observedAt": 1789656501219,
+      "lap": {
+        "11": 2814,
+        "121": 998
+      },
+      "lat": 41.31677,
+      "lon": -72.926724,
+      "a": {
+        "eta": 691.7582685618443,
+        "low": 306.16533329986424,
+        "high": 1158.9672596040477,
+        "departNow": 691.7582685618443,
+        "lowFloor": 306.16533329986424,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 691.7582685618443,
+        "low": 306.16533329986424,
+        "high": 1158.9672596040477,
+        "departNow": 691.7582685618443,
+        "lowFloor": 306.16533329986424,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": true,
+        "restStop": 12,
+        "since": 1789656481434,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.8544794761144271,
+          "frac": 0.09871518707552557,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 140.17173405093888,
+          "inRest": 0.9999794846209795
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.1455205238855729,
+          "frac": 0.0983840767148006,
+          "zoneStop": 12,
+          "approach": false,
+          "cell": 140.16424167155918,
+          "inRest": 0.9999805419503841
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:48:33.072Z",
+      "observedAt": 1789656511317,
+      "lap": {
+        "11": 2823,
+        "121": 1007
+      },
+      "lat": 41.317707,
+      "lon": -72.927128,
+      "a": {
+        "eta": 675.8170071878378,
+        "low": 277.8045570501418,
+        "high": 1124.3830034370872,
+        "departNow": 675.8170071878378,
+        "lowFloor": 277.8045570501418,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 675.8170071878378,
+        "low": 277.8045570501418,
+        "high": 1124.3830034370872,
+        "departNow": 675.8170071878378,
+        "lowFloor": 277.8045570501418,
+        "leadMass": 0.9999999999999999,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": false,
+        "restStop": -1,
+        "since": 1789656511317,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.8607842596517814,
+          "frac": 0.25065667693218546,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 143.51444674084317,
+          "inRest": 0
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.13921574034821851,
+          "frac": 0.25067466752193074,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 143.51483869288668,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:48:43.072Z",
+      "observedAt": 1789656521210,
+      "lap": {
+        "11": 2834,
+        "121": 1018
+      },
+      "lat": 41.31792,
+      "lon": -72.927406,
+      "a": {
+        "eta": 666.7340592379167,
+        "low": 269.51414972983935,
+        "high": 1114.0135342936173,
+        "departNow": 666.7340592379167,
+        "lowFloor": 269.51414972983935,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 666.7340592379167,
+        "low": 269.51414972983935,
+        "high": 1114.0135342936173,
+        "departNow": 666.7340592379167,
+        "lowFloor": 269.51414972983935,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": false,
+        "restStop": -1,
+        "since": 1789656511317,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.8618994700365331,
+          "frac": 0.31120997312506987,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 144.84661945754956,
+          "inRest": 0
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.1381005299634669,
+          "frac": 0.3112099479225968,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 144.84661889999353,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:48:53.075Z",
+      "observedAt": 1789656531319,
+      "lap": {
+        "11": 2843,
+        "121": 1027
+      },
+      "lat": 41.317826,
+      "lon": -72.927792,
+      "a": {
+        "eta": 658.9443837340614,
+        "low": 262.1779084270846,
+        "high": 1105.3004292132598,
+        "departNow": 658.9443837340614,
+        "lowFloor": 262.1779084270846,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 658.9443837340614,
+        "low": 262.1779084270846,
+        "high": 1105.3004292132598,
+        "departNow": 658.9443837340614,
+        "lowFloor": 262.1779084270846,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": true,
+        "restStop": -1,
+        "since": 1789656511317,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.8618577671739889,
+          "frac": 0.36506365601306884,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 146.03140030558325,
+          "inRest": 0
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.1381422328260111,
+          "frac": 0.36506348413688183,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 146.03139652218442,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:49:03.075Z",
+      "observedAt": 1789656541270,
+      "lap": {
+        "11": 2854,
+        "121": 1038
+      },
+      "lat": 41.318295,
+      "lon": -72.928369,
+      "a": {
+        "eta": 646.0182409095069,
+        "low": 247.9474879025285,
+        "high": 1092.47170001627,
+        "departNow": 646.0182409095069,
+        "lowFloor": 247.9474879025285,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 646.0182409095069,
+        "low": 247.9474879025285,
+        "high": 1092.47170001627,
+        "departNow": 646.0182409095069,
+        "lowFloor": 247.9474879025285,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": true,
+        "restStop": -1,
+        "since": 1789656511317,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.8592958204196316,
+          "frac": 0.471893708571419,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 148.3816614198176,
+          "inRest": 0
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.1407041795803684,
+          "frac": 0.47187209789420836,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 148.38118598182538,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:49:13.076Z",
+      "observedAt": 1789656551346,
+      "lap": {
+        "11": 2863,
+        "121": 1047
+      },
+      "lat": 41.319173,
+      "lon": -72.928746,
+      "a": {
+        "eta": 630.4525136568618,
+        "low": 235.03704443256714,
+        "high": 1079.981924718992,
+        "departNow": 630.4525136568618,
+        "lowFloor": 235.03704443256714,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 630.4525136568618,
+        "low": 235.03704443256714,
+        "high": 1079.981924718992,
+        "departNow": 630.4525136568618,
+        "lowFloor": 235.03704443256714,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": false,
+        "restStop": -1,
+        "since": 1789656546229,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.8610383468695157,
+          "frac": 0.6193077100542242,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 151.62476996944508,
+          "inRest": 0
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.13896165313048425,
+          "frac": 0.6192919864810059,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 151.62442404694607,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:49:33.088Z",
+      "observedAt": 1789656566475,
+      "lap": {
+        "11": 2880,
+        "121": 1064
+      },
+      "lat": 41.32038,
+      "lon": -72.929281,
+      "a": {
+        "eta": 604.3850296082071,
+        "low": 191.8746853615142,
+        "high": 1087.339896062068,
+        "departNow": 604.3850296082071,
+        "lowFloor": 191.8746853615142,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 604.3850296082071,
+        "low": 191.8746853615142,
+        "high": 1087.339896062068,
+        "departNow": 604.3850296082071,
+        "lowFloor": 191.8746853615142,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": true,
+        "restStop": 13,
+        "since": 1789656556228,
+        "restApproach": true
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.7236310920492846,
+          "frac": 0.8370317311917013,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 156.41469805675004,
+          "inRest": 0.999997333600328
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.2763689079507154,
+          "frac": 0.8370316973075062,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 156.4146973095367,
+          "inRest": 0.9999973329049374
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:49:43.090Z",
+      "observedAt": 1789656576203,
+      "lap": {
+        "11": 2890,
+        "121": 1074
+      },
+      "lat": 41.320925,
+      "lon": -72.929535,
+      "a": {
+        "eta": 588.5167818597047,
+        "low": 166.79869211081626,
+        "high": 1096.5858841626766,
+        "departNow": 588.5167818597047,
+        "lowFloor": 166.79869211081626,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 5,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 5,
+        "eta": 588.5167818597047,
+        "low": 166.79869211081626,
+        "high": 1096.5858841626766,
+        "departNow": 588.5167818597047,
+        "lowFloor": 166.79869211081626,
+        "leadMass": 0.9547224060659066,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 12,
+        "rested": true,
+        "restStop": 13,
+        "since": 1789656556228,
+        "restApproach": true
+      },
+      "situations": [
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.8096490606722943,
+          "frac": 0.9303683224482852,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 158.46810297217905,
+          "inRest": 1
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.14507334539361236,
+          "frac": 0.9300409615025533,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 158.4609010260273,
+          "inRest": 1
+        },
+        {
+          "leg": 13,
+          "standing": true,
+          "mass": 0.04527759393409339,
+          "frac": 0.000015078385478042363,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 160.00024125416766,
+          "inRest": 0.9998031426833089
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:49:53.092Z",
+      "observedAt": 1789656586367,
+      "lap": {
+        "11": 2899,
+        "121": 1083
+      },
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "a": {
+        "eta": 521.0518629495119,
+        "low": 78.58698036099639,
+        "high": 1074.9020464598104,
+        "departNow": 521.0518629495119,
+        "lowFloor": 78.58698036099639,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 4,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 4,
+        "eta": 521.0518629495119,
+        "low": 78.58698036099639,
+        "high": 1074.9020464598104,
+        "departNow": 521.0518629495119,
+        "lowFloor": 78.58698036099639,
+        "leadMass": 0.8677068103621509,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 13,
+        "rested": true,
+        "restStop": 13,
+        "since": 1789656556228,
+        "restApproach": true
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": true,
+          "mass": 0.8248735514015239,
+          "frac": 0.00020513815680147109,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 160.0032822105088,
+          "inRest": 0.9974479986284298
+        },
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.11186774496262995,
+          "frac": 0.9544313231708279,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 158.99748946499184,
+          "inRest": 1
+        },
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.04283325896062705,
+          "frac": 0.014001669168995081,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 160.22402670670397,
+          "inRest": 0.824181706539171
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.02042544467521912,
+          "frac": 0.9541851175052183,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 158.99207293524907,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:50:03.092Z",
+      "observedAt": 1789656596281,
+      "lap": {
+        "11": 2910,
+        "121": 1094
+      },
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "a": {
+        "eta": 516.6846399761542,
+        "low": 79.44711346791354,
+        "high": 1066.544901555133,
+        "departNow": 516.6846399761542,
+        "lowFloor": 79.44711346791354,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 4,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 4,
+        "eta": 516.6846399761542,
+        "low": 79.44711346791354,
+        "high": 1066.544901555133,
+        "departNow": 516.6846399761542,
+        "lowFloor": 79.44711346791354,
+        "leadMass": 0.9129669835118143,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 13,
+        "rested": true,
+        "restStop": 13,
+        "since": 1789656556228,
+        "restApproach": true
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": true,
+          "mass": 0.8544992756883646,
+          "frac": 0.0002606680660165239,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 160.00417068905622,
+          "inRest": 0.9967506147888174
+        },
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.058467707823449684,
+          "frac": 0.005270215130597747,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 160.0843234420896,
+          "inRest": 0.933837210458651
+        },
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.056976722666648945,
+          "frac": 0.954427363883213,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 158.99740236058236,
+          "inRest": 1
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.030056293821536843,
+          "frac": 0.9542586968857772,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 158.99369168314533,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:50:13.092Z",
+      "observedAt": 1789656606329,
+      "lap": {
+        "11": 2920,
+        "121": 1104
+      },
+      "lat": 41.321213,
+      "lon": -72.929624,
+      "a": {
+        "eta": 512.71440128231,
+        "low": 80.23067792860519,
+        "high": 1058.948638185277,
+        "departNow": 512.71440128231,
+        "lowFloor": 80.23067792860519,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 4,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 4,
+        "eta": 512.71440128231,
+        "low": 80.23067792860519,
+        "high": 1058.948638185277,
+        "departNow": 512.71440128231,
+        "lowFloor": 80.23067792860519,
+        "leadMass": 0.9357621902125648,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 13,
+        "rested": true,
+        "restStop": 13,
+        "since": 1789656556228,
+        "restApproach": true
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": true,
+          "mass": 0.8694202183862237,
+          "frac": 0.00028720259961355604,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 160.0045952415938,
+          "inRest": 0.9964173750967779
+        },
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.0663419718263411,
+          "frac": 0.002430952057280052,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 160.03889523291647,
+          "inRest": 0.9694946584136959
+        },
+        {
+          "leg": 12,
+          "standing": true,
+          "mass": 0.03490685401121089,
+          "frac": 0.9542803811284616,
+          "zoneStop": 13,
+          "approach": true,
+          "cell": 158.9941687369335,
+          "inRest": 1
+        },
+        {
+          "leg": 12,
+          "standing": false,
+          "mass": 0.029330955776224278,
+          "frac": 0.954419758466036,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 158.9972350412469,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:50:23.095Z",
+      "observedAt": 1789656616220,
+      "lap": {
+        "11": 2929,
+        "121": 1113
+      },
+      "lat": 41.321506,
+      "lon": -72.929398,
+      "a": {
+        "eta": 524.9455334271765,
+        "low": 85.84081136621433,
+        "high": 1072.9620835682254,
+        "departNow": 524.9455334271765,
+        "lowFloor": 85.84081136621433,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 4,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 4,
+        "eta": 524.9455334271765,
+        "low": 85.84081136621433,
+        "high": 1072.9620835682254,
+        "departNow": 524.9455334271765,
+        "lowFloor": 85.84081136621433,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 13,
+        "rested": true,
+        "restStop": 13,
+        "since": 1789656571369,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.7164277268112257,
+          "frac": 0.10773624957013707,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 161.7237799931222,
+          "inRest": 0.9999995026135009
+        },
+        {
+          "leg": 13,
+          "standing": true,
+          "mass": 0.28357227318877426,
+          "frac": 0.08450095153353304,
+          "zoneStop": 13,
+          "approach": false,
+          "cell": 161.2972276613179,
+          "inRest": 0.9999998515743309
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:50:33.095Z",
+      "observedAt": 1789656628060,
+      "lap": {
+        "11": 2939,
+        "121": 1123
+      },
+      "lat": 41.322151,
+      "lon": -72.92882,
+      "a": {
+        "eta": 497.26572089077234,
+        "low": 70.02239044761268,
+        "high": 1042.8172425489881,
+        "departNow": 497.26572089077234,
+        "lowFloor": 70.02239044761268,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 4,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 4,
+        "eta": 497.26572089077234,
+        "low": 70.02239044761268,
+        "high": 1042.8172425489881,
+        "departNow": 497.26572089077234,
+        "lowFloor": 70.02239044761268,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 13,
+        "rested": true,
+        "restStop": 13,
+        "since": 1789656571369,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.8588575857399701,
+          "frac": 0.3533536977545148,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 165.6536591640722,
+          "inRest": 0.9991215729848966
+        },
+        {
+          "leg": 13,
+          "standing": true,
+          "mass": 0.1411424142600299,
+          "frac": 0.35298053810784064,
+          "zoneStop": 13,
+          "approach": false,
+          "cell": 165.6476655034995,
+          "inRest": 0.9991419593717795
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:50:43.095Z",
+      "observedAt": 1789656637744,
+      "lap": {
+        "11": 2949,
+        "121": 1133
+      },
+      "lat": 41.323015,
+      "lon": -72.928562,
+      "a": {
+        "eta": 476.8967097437911,
+        "low": 57.72602368979926,
+        "high": 1021.1294771974984,
+        "departNow": 476.8967097437911,
+        "lowFloor": 57.72602368979926,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 4,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 4,
+        "eta": 476.8967097437911,
+        "low": 57.72602368979926,
+        "high": 1021.1294771974984,
+        "departNow": 476.8967097437911,
+        "lowFloor": 57.72602368979926,
+        "leadMass": 0.976488435942686,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 13,
+        "rested": false,
+        "restStop": -1,
+        "since": 1789656632754,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.8600145831656417,
+          "frac": 0.5602353467002599,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 168.96376554720422,
+          "inRest": 0
+        },
+        {
+          "leg": 13,
+          "standing": true,
+          "mass": 0.1164738527770442,
+          "frac": 0.5466711481669645,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 168.7467383646182,
+          "inRest": 0
+        },
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.023511564057313996,
+          "frac": 0.6264470858439534,
+          "zoneStop": 14,
+          "approach": true,
+          "cell": 170.02341504300975,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:50:53.097Z",
+      "observedAt": 1789656647747,
+      "lap": {
+        "11": 2959,
+        "121": 1143
+      },
+      "lat": 41.323913,
+      "lon": -72.928235,
+      "a": {
+        "eta": 464.2215050780389,
+        "low": 46.232759682757205,
+        "high": 991.7560159177663,
+        "departNow": 464.2215050780389,
+        "lowFloor": 46.232759682757205,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 4,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 4,
+        "eta": 464.2215050780389,
+        "low": 46.232759682757205,
+        "high": 991.7560159177663,
+        "departNow": 464.2215050780389,
+        "lowFloor": 46.232759682757205,
+        "leadMass": 0.8608199027660576,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 13,
+        "rested": false,
+        "restStop": -1,
+        "since": 1789656632754,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.8608199027660576,
+          "frac": 0.7731207774671753,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 172.3699324394748,
+          "inRest": 0
+        },
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.1391800972339424,
+          "frac": 0.772953510567488,
+          "zoneStop": 14,
+          "approach": true,
+          "cell": 172.36947867582506,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:51:03.097Z",
+      "observedAt": 1789656657917,
+      "lap": {
+        "11": 2969,
+        "121": 1153
+      },
+      "lat": 41.324228,
+      "lon": -72.92814,
+      "a": {
+        "eta": 454.9319546138285,
+        "low": 35.437600289675515,
+        "high": 984.9354872925323,
+        "departNow": 454.9319546138285,
+        "lowFloor": 35.437600289675515,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 4,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 4,
+        "eta": 454.9319546138285,
+        "low": 35.437600289675515,
+        "high": 984.9354872925323,
+        "departNow": 454.9319546138285,
+        "lowFloor": 35.437600289675515,
+        "leadMass": 0.8229094065675489,
+        "estimated": false,
+        "standingAt": -1
+      },
+      "b": {
+        "lead": 13,
+        "rested": false,
+        "restStop": -1,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.8229094065675489,
+          "frac": 0.8762801419727946,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 174.02048227156473,
+          "inRest": 0
+        },
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.17709059343245115,
+          "frac": 0.7375321932270243,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 174.31232213285608,
+          "inRest": 0
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:51:13.097Z",
+      "observedAt": 1789656667748,
+      "lap": {
+        "11": 2979,
+        "121": 1163
+      },
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "a": {
+        "eta": 439.70409208861844,
+        "low": 3.7822092752981575,
+        "high": 947.847752992682,
+        "departNow": 73.82510215197811,
+        "lowFloor": 3.7822092752981575,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 439.70409208861844,
+        "low": 3.7822092752981575,
+        "high": 947.847752992682,
+        "departNow": 73.82510215197811,
+        "lowFloor": 3.7822092752981575,
+        "leadMass": 0.24963641110756724,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.24963641110756724,
+        "mixture": 416.0946291714713,
+        "standing": 416.0946291714713,
+        "prevCeiling": null,
+        "action": "arm"
+      },
+      "b": {
+        "lead": 13,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.7165626909912548,
+          "frac": 0.07231016064150536,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 175.93836077388482,
+          "inRest": 1
+        },
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.24963641110756724,
+          "frac": 0.9304276622200602,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 174.88684259552096,
+          "inRest": 0.9999999996140598
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.03380089790117796,
+          "frac": 0.3090482010648707,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 178.16333734951886,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:51:23.099Z",
+      "observedAt": 1789656677846,
+      "lap": {
+        "11": 2989,
+        "121": 1173
+      },
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "a": {
+        "eta": 398.85204417192926,
+        "low": -12.97760954000654,
+        "high": 942.7207042868611,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 398.85204417192926,
+        "low": -12.97760954000654,
+        "high": 942.7207042868611,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 0.8638339304926343,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.8139456492964527,
+        "mixture": 378.95640379266297,
+        "standing": 410.86688927653813,
+        "prevCeiling": 416.0946291714713,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.8139456492964527,
+          "frac": 0.09570193027695757,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 175.91840127837722,
+          "inRest": 1
+        },
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.13616606950736568,
+          "frac": 0.9303695581706948,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 174.88591293073114,
+          "inRest": 0.9999999927353763
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.0498882811961816,
+          "frac": 0.1145446180659896,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 176.80181230498667,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:51:33.099Z",
+      "observedAt": 1789656687958,
+      "lap": {
+        "11": 2999,
+        "121": 1183
+      },
+      "lat": 41.324498,
+      "lon": -72.928245,
+      "a": {
+        "eta": 385.04152227771897,
+        "low": -6.966042051462239,
+        "high": 934.7966417349278,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 385.04152227771897,
+        "low": -6.966042051462239,
+        "high": 934.7966417349278,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 0.9270407396721166,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.8681969077162505,
+        "mixture": 366.4013838888354,
+        "standing": 404.4331631080863,
+        "prevCeiling": 378.95640379266297,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.8681969077162505,
+          "frac": 0.1064542937710341,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 175.90922660907256,
+          "inRest": 1
+        },
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.07295926032788339,
+          "frac": 0.9302588370831892,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 174.88414139333102,
+          "inRest": 0.9999999855412305
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.0588438319558662,
+          "frac": 0.05232034975208249,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 176.36624243845327,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:51:43.099Z",
+      "observedAt": 1789656697822,
+      "lap": {
+        "11": 3009,
+        "121": 1193
+      },
+      "lat": 41.324769,
+      "lon": -72.928284,
+      "a": {
+        "eta": 292.3354244087069,
+        "low": -67.08336778493583,
+        "high": 997.1333659550687,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 292.3354244087069,
+        "low": -67.08336778493583,
+        "high": 997.1333659550687,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.7650476592147725,
+        "mixture": 282.12311309882443,
+        "standing": 401.14942079912817,
+        "prevCeiling": 366.4013838888354,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.7650476592147725,
+          "frac": 0.17761034264449996,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 176.49927473495947,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.2349523407852275,
+          "frac": 0.34905878510673827,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 178.44341141134637,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:51:53.101Z",
+      "observedAt": 1789656707954,
+      "lap": {
+        "11": 3019,
+        "121": 1203
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -43.74649768173197,
+        "high": 985.8827421940745,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 215.87857939836113,
+        "low": -43.74649768173197,
+        "high": 985.8827421940745,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.6544020982982363,
+        "mixture": 212.61689036214648,
+        "standing": 394.58246354295306,
+        "prevCeiling": 282.12311309882443,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.6544020982982363,
+          "frac": 0.26665374824481214,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.09284632575725,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.3455979017017637,
+          "frac": 0.35574780172183623,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 178.49023453533175,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:52:03.101Z",
+      "observedAt": 1789656717992,
+      "lap": {
+        "11": 3029,
+        "121": 1213
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 913.309803132974,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 298.97678840243714,
+        "low": -62.499039531003916,
+        "high": 962.0193726277753,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.7784890386822658,
+        "mixture": 288.1607167294883,
+        "standing": 388.0149674926356,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.7784890386822658,
+          "frac": 0.26948852050537025,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.14185261330516,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.2215109613177342,
+          "frac": 0.3342669105445047,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 178.33986830084984,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:52:13.101Z",
+      "observedAt": 1789656727808,
+      "lap": {
+        "11": 3039,
+        "121": 1223
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 837.2299838255574,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 335.5285066184429,
+        "low": -41.10061345386856,
+        "high": 891.3074989570389,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.851844139998505,
+        "mixture": 321.38955147131173,
+        "standing": 381.44747144231815,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.851844139998505,
+          "frac": 0.27077590111156147,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.16410827914765,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.14815586000149514,
+          "frac": 0.30464529075870594,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 178.13251696753343,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:52:23.101Z",
+      "observedAt": 1789656737827,
+      "lap": {
+        "11": 3049,
+        "121": 1233
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 815.3066438335227,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 344.0638080948258,
+        "low": -29.159110630246744,
+        "high": 880.8527419275399,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.8909426968171298,
+        "mixture": 329.14891644984164,
+        "standing": 374.8790239479922,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.8909426968171298,
+          "frac": 0.2713754713928526,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.17447338466914,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.10905730318287027,
+          "frac": 0.27257671465510513,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.90803694042066,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:52:33.106Z",
+      "observedAt": 1789656747991,
+      "lap": {
+        "11": 3059,
+        "121": 1243
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 798.5598689295683,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 343.9863205913549,
+        "low": -19.684072634145423,
+        "high": 865.9486810546766,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9106233348720791,
+        "mixture": 329.0784732648681,
+        "standing": 368.3032174923874,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9106233348720791,
+          "frac": 0.27165812879250517,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.17935984062805,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.08937666512792095,
+          "frac": 0.24578668090585293,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.72050670886452,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:52:43.106Z",
+      "observedAt": 1789656757841,
+      "lap": {
+        "11": 3069,
+        "121": 1253
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 805.0039300345609,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 336.95207006610593,
+        "low": -21.038113390894353,
+        "high": 864.2764720278944,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 0.9999999999999999,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9202683296936233,
+        "mixture": 322.68370006009627,
+        "standing": 361.7111752461042,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9202683296936233,
+          "frac": 0.27179196586126525,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18167355660714,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07973167030637665,
+          "frac": 0.22786503411660863,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.5950551844763,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:52:53.109Z",
+      "observedAt": 1789656767811,
+      "lap": {
+        "11": 3079,
+        "121": 1263
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 801.4492660901426,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 334.03482404145706,
+        "low": -24.953594685774362,
+        "high": 858.071236914875,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9249125469512649,
+        "mixture": 320.0316582195064,
+        "standing": 358.4062564545711,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9249125469512649,
+          "frac": 0.27185555891854973,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18277292522117,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07508745304873507,
+          "frac": 0.21756995068594567,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.52298960226346,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:53:03.112Z",
+      "observedAt": 1789656777940,
+      "lap": {
+        "11": 3089,
+        "121": 1273
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 796.6798047144524,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 326.800726841807,
+        "low": -27.584416831828776,
+        "high": 849.8594150316958,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 0.9999999999999999,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9271376782260667,
+        "mixture": 313.4552062198245,
+        "standing": 351.7884820807594,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9271376782260667,
+          "frac": 0.27188580179254423,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1832957506347,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07286232177393318,
+          "frac": 0.21217234895199552,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4852063910705,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:53:13.112Z",
+      "observedAt": 1789656787819,
+      "lap": {
+        "11": 3099,
+        "121": 1283
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 780.5961422372422,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 330.3185158884853,
+        "low": -26.67178963730288,
+        "high": 835.7170115261495,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.928209613832137,
+        "mixture": 316.65319626225937,
+        "standing": 354.71280050551786,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.928209613832137,
+          "frac": 0.2719001882882335,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18354445800156,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07179038616786299,
+          "frac": 0.209477221722449,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.46634050093533,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:53:23.115Z",
+      "observedAt": 1789656797817,
+      "lap": {
+        "11": 3109,
+        "121": 1293
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 765.0178811777948,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 333.535995223951,
+        "low": -28.064948631841048,
+        "high": 825.3022388812753,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9287113433080288,
+        "mixture": 319.57817747631907,
+        "standing": 357.6378134970537,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9287113433080288,
+          "frac": 0.27190703839193986,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18366287956104,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07128865669197115,
+          "frac": 0.20816338773505652,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.45714366325353,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:53:33.116Z",
+      "observedAt": 1789656807885,
+      "lap": {
+        "11": 3119,
+        "121": 1303
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 749.4385667847117,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 336.7529997129698,
+        "low": -25.49945392965975,
+        "high": 814.8860360036441,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9289566440972958,
+        "mixture": 322.50272701179074,
+        "standing": 360.56237362501724,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9289566440972958,
+          "frac": 0.27191029865623156,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1837192415664,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07104335590270418,
+          "frac": 0.2075309928370878,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4527168990784,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:53:43.116Z",
+      "observedAt": 1789656817873,
+      "lap": {
+        "11": 3129,
+        "121": 1313
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 736.7128660865676,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 337.21805700713884,
+        "low": -25.7008237380349,
+        "high": 804.1099842107266,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9290766092697899,
+        "mixture": 322.9255063701262,
+        "standing": 359.2730228463997,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9290766092697899,
+          "frac": 0.2719118506623659,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18374607196117,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.0709233907302102,
+          "frac": 0.20722828009592822,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4505979099433,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:53:53.119Z",
+      "observedAt": 1789656827820,
+      "lap": {
+        "11": 3139,
+        "121": 1323
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 723.9885568914915,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 337.68385419744027,
+        "low": -24.68380141683832,
+        "high": 793.3359398936377,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.929124326979197,
+        "mixture": 323.3489583613093,
+        "standing": 356.18747818906013,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.929124326979197,
+          "frac": 0.27191258981453986,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18375885009667,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07087567302080308,
+          "frac": 0.20708374417827477,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.449586158545,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:54:03.119Z",
+      "observedAt": 1789656838008,
+      "lap": {
+        "11": 3149,
+        "121": 1333
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 717.625689928391,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 337.9163834516801,
+        "low": -24.781121520793306,
+        "high": 787.9478999285132,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291564577947827,
+        "mixture": 323.5603485924364,
+        "standing": 354.60441389703374,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291564577947827,
+          "frac": 0.2719129416108655,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18376493179574,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07084354220521731,
+          "frac": 0.20701486947028763,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44910403560112,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:54:13.119Z",
+      "observedAt": 1789656847823,
+      "lap": {
+        "11": 3159,
+        "121": 1343
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 704.9135776977769,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 338.3715949537655,
+        "low": -17.88432593021787,
+        "high": 777.1735514303588,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 0.9999999999999999,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291717566278691,
+        "mixture": 323.9741772306959,
+        "standing": 353.7793341866345,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291717566278691,
+          "frac": 0.2719131091073464,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18376782740074,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082824337213083,
+          "frac": 0.206982053363789,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44887432286137,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:54:23.123Z",
+      "observedAt": 1789656857917,
+      "lap": {
+        "11": 3169,
+        "121": 1353
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 695.3048614055826,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 336.25640237152874,
+        "low": -8.150255518045867,
+        "high": 766.4508014170889,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291664909725506,
+        "mixture": 322.05127488320795,
+        "standing": 349.28564612169976,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291664909725506,
+          "frac": 0.27191318888879656,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18376920662715,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07083350902744942,
+          "frac": 0.20696642010589647,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4487648900589,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:54:33.124Z",
+      "observedAt": 1789656867934,
+      "lap": {
+        "11": 3179,
+        "121": 1363
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -133.62884064758555,
+        "high": 690.8782352501725,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 329.36747474653197,
+        "low": -4.852760245520869,
+        "high": 755.8920061494441,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 0.9999999999999999,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291733963285036,
+        "mixture": 315.7886134059381,
+        "standing": 343.8405332643297,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291733963285036,
+          "frac": 0.2719132268603236,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18376986306205,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082660367149632,
+          "frac": 0.20695897936040783,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4487128048418,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:54:43.124Z",
+      "observedAt": 1789656877928,
+      "lap": {
+        "11": 3189,
+        "121": 1373
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -131.50275822740718,
+        "high": 688.0728389501667,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 321.50949347411466,
+        "low": -6.917023173000928,
+        "high": 752.3572427915446,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291798215859572,
+        "mixture": 308.64499406737696,
+        "standing": 337.1672516686376,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291798215859572,
+          "frac": 0.27191324493719293,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377017556702,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082017841404273,
+          "frac": 0.20695543637326488,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44868800393238,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:54:53.125Z",
+      "observedAt": 1789656887833,
+      "lap": {
+        "11": 3199,
+        "121": 1383
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -120.17201178410454,
+        "high": 685.2678537430172,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 313.6517492895564,
+        "low": -8.598450115755327,
+        "high": 748.7254915542597,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291797432593862,
+        "mixture": 301.5015902632331,
+        "standing": 330.0238311096102,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291797432593862,
+          "frac": 0.27191325354485657,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1837703243725,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082025674061374,
+          "frac": 0.20695374914619818,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44867619334326,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:55:03.125Z",
+      "observedAt": 1789656897900,
+      "lap": {
+        "11": 3209,
+        "121": 1393
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -108.84093826778457,
+        "high": 682.4624550013075,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 305.79376117786614,
+        "low": -9.897119921968056,
+        "high": 744.9959365567734,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291828435219546,
+        "mixture": 294.35796470715104,
+        "standing": 322.88020555352796,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291828435219546,
+          "frac": 0.27191325764266117,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1837703952135,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081715647804544,
+          "frac": 0.20695294588010585,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4486705704807,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:55:13.125Z",
+      "observedAt": 1789656907881,
+      "lap": {
+        "11": 3219,
+        "121": 1403
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -97.50987649247867,
+        "high": 679.6570562595986,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 297.9357730661754,
+        "low": -10.812963010700344,
+        "high": 741.1689832889349,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.929184319629653,
+        "mixture": 287.21433915106854,
+        "standing": 315.7365799974457,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.929184319629653,
+          "frac": 0.27191325959371243,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377042894244,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081568037034706,
+          "frac": 0.2069525634015702,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866789313102,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:55:23.127Z",
+      "observedAt": 1789656917835,
+      "lap": {
+        "11": 3229,
+        "121": 1413
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -91.84498029976106,
+        "high": 678.255166865928,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 294.007218989685,
+        "low": -11.127290788810114,
+        "high": 739.2198249197986,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.929178747233006,
+        "mixture": 283.6429263542591,
+        "standing": 312.1651336908685,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.929178747233006,
+          "frac": 0.27191326052284215,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1837704450048,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082125276699405,
+          "frac": 0.2069523812689663,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4486666182028,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:55:33.128Z",
+      "observedAt": 1789656927887,
+      "lap": {
+        "11": 3239,
+        "121": 1423
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -84.84386961349196,
+        "high": 675.4501657876957,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 286.14943034985373,
+        "low": -15.78623034652992,
+        "high": 735.2472079685895,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291792317447425,
+        "mixture": 276.49948213623065,
+        "standing": 305.0216727179559,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291792317447425,
+          "frac": 0.27191326096516166,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1837704526514,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082076825525753,
+          "frac": 0.20695229457000588,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4486660113101,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:55:43.129Z",
+      "observedAt": 1789656937870,
+      "lap": {
+        "11": 3249,
+        "121": 1433
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -77.82137813066845,
+        "high": 672.6451598260553,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 278.29162803147653,
+        "low": -20.174781404541022,
+        "high": 731.17720034496,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291794624277141,
+        "mixture": 269.35602548316047,
+        "standing": 297.87819931000195,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291794624277141,
+          "frac": 0.27191326117575615,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1837704562921,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082053757228586,
+          "frac": 0.20695225329097325,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4486657223569,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:55:53.131Z",
+      "observedAt": 1789656947885,
+      "lap": {
+        "11": 3259,
+        "121": 1443
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -68.65776345107776,
+        "high": 669.8405466444827,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 270.43401150641233,
+        "low": -22.112324485461897,
+        "high": 727.0102347529503,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291764347052077,
+        "mixture": 262.21273773310213,
+        "standing": 290.7348780501759,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291764347052077,
+          "frac": 0.27191326127603355,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045802563,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082356529479233,
+          "frac": 0.20695223363624682,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866558477383,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:56:03.136Z",
+      "observedAt": 1789656958072,
+      "lap": {
+        "11": 3269,
+        "121": 1453
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -64.84302930870643,
+        "high": 667.0347170062971,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 262.5803106600542,
+        "low": -25.221910080817395,
+        "high": 716.2994371113955,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291655806117415,
+        "mixture": 255.07300969095832,
+        "standing": 283.59506623361267,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291655806117415,
+          "frac": 0.2719132613237911,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045885126,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07083441938825855,
+          "frac": 0.20695222427756008,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866551926302,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:56:13.137Z",
+      "observedAt": 1789656967837,
+      "lap": {
+        "11": 3279,
+        "121": 1463
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -58.00975783602058,
+        "high": 662.3558652851902,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 257.3640916525586,
+        "low": -22.70141916935546,
+        "high": 706.1181005258371,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291729628880825,
+        "mixture": 250.3309924114169,
+        "standing": 278.856949315528,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291729628880825,
+          "frac": 0.2719132613465184,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045924416,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082703711191754,
+          "frac": 0.2069522198241072,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866548808884,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:56:23.139Z",
+      "observedAt": 1789656977869,
+      "lap": {
+        "11": 3289,
+        "121": 1473
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -53.807662509023885,
+        "high": 654.9093238175138,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 254.4499904403806,
+        "low": -20.89756624576762,
+        "high": 695.5975321067522,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 0.9999999999999999,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291733402393542,
+        "mixture": 247.68180949125508,
+        "standing": 275.1433169606885,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291733402393542,
+          "frac": 0.2719132613573403,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045943126,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082665976064577,
+          "frac": 0.2069522177032904,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866547324312,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:56:33.139Z",
+      "observedAt": 1789656988050,
+      "lap": {
+        "11": 3299,
+        "121": 1483
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -53.35079261859687,
+        "high": 649.2767637198959,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 254.13315503518606,
+        "low": -20.70144512995222,
+        "high": 689.6307486916124,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.929179794880539,
+        "mixture": 247.3937773047146,
+        "standing": 273.2863465389162,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.929179794880539,
+          "frac": 0.27191326136249155,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045952028,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.070820205119461,
+          "frac": 0.20695221669366037,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866546617573,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:56:43.139Z",
+      "observedAt": 1789656997832,
+      "lap": {
+        "11": 3309,
+        "121": 1493
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -50.1962284994263,
+        "high": 640.6128407994499,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 251.94549149715917,
+        "low": -19.347281399913612,
+        "high": 678.6591033597398,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291828681000346,
+        "mixture": 245.4049922701447,
+        "standing": 269.5724056953709,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291828681000346,
+          "frac": 0.2719132613649442,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045956268,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081713189996544,
+          "frac": 0.20695221621288498,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866546281025,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:56:53.139Z",
+      "observedAt": 1789657007861,
+      "lap": {
+        "11": 3319,
+        "121": 1503
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -44.295039441945164,
+        "high": 635.1372594112871,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 247.85306679302948,
+        "low": -16.814070508057284,
+        "high": 668.8665051896852,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291843313318224,
+        "mixture": 241.68460617548135,
+        "standing": 265.3146284499121,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291843313318224,
+          "frac": 0.27191326136611194,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1837704595829,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081566866817757,
+          "frac": 0.2069522159839619,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866546120784,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:57:03.140Z",
+      "observedAt": 1789657017931,
+      "lap": {
+        "11": 3329,
+        "121": 1513
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -38.364209967624475,
+        "high": 629.6936557784452,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 243.74193104938223,
+        "low": -14.269265346114821,
+        "high": 659.0861468744536,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291818904077849,
+        "mixture": 237.94721004489293,
+        "standing": 260.081527531715,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291818904077849,
+          "frac": 0.271913261366668,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045959252,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081810959221513,
+          "frac": 0.20695221587495705,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4486654604448,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:57:13.141Z",
+      "observedAt": 1789657027835,
+      "lap": {
+        "11": 3339,
+        "121": 1523
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -31.239257297455197,
+        "high": 625.6138961611307,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 238.816002424012,
+        "low": -11.40402912802054,
+        "high": 649.8101238975061,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291807282533808,
+        "mixture": 233.46909311273816,
+        "standing": 254.84841750397072,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291807282533808,
+          "frac": 0.2719132613669327,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045959707,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081927174661916,
+          "frac": 0.20695221582306114,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866546008154,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:57:23.142Z",
+      "observedAt": 1789657037869,
+      "lap": {
+        "11": 3349,
+        "121": 1533
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -23.69806937533494,
+        "high": 621.8968962814575,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 233.71636952772016,
+        "low": -8.27276911999877,
+        "high": 640.713623504955,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291801749362336,
+        "mixture": 228.8330632070183,
+        "standing": 249.6643178820409,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291801749362336,
+          "frac": 0.2719132613670588,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045959923,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081982506376641,
+          "frac": 0.20695221579835343,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866545990863,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:57:33.143Z",
+      "observedAt": 1789657047957,
+      "lap": {
+        "11": 3359,
+        "121": 1543
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -16.778891824421834,
+        "high": 617.4690196132153,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 229.04758212276647,
+        "low": -5.390944123828973,
+        "high": 631.3607365957346,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291799114943803,
+        "mixture": 224.5887110206968,
+        "standing": 244.4865492229983,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291799114943803,
+          "frac": 0.2719132613671188,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045960028,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07082008850561972,
+          "frac": 0.20695221578658987,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4486654598262,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:57:43.143Z",
+      "observedAt": 1789657057879,
+      "lap": {
+        "11": 3369,
+        "121": 1553
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -12.989449559289028,
+        "high": 616.1091399659135,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 226.20277138036542,
+        "low": -4.061563309857547,
+        "high": 626.9999231245656,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291829236226924,
+        "mixture": 222.00251943669582,
+        "standing": 241.89758271993014,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291829236226924,
+          "frac": 0.2719132613671474,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.1837704596008,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081707637730762,
+          "frac": 0.2069522157809894,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866545978704,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:57:53.143Z",
+      "observedAt": 1789657067844,
+      "lap": {
+        "11": 3379,
+        "121": 1563
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 215.87857939836113,
+        "low": -7.226664886619602,
+        "high": 613.3893806713129,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 220.51314989556278,
+        "low": -3.2189015395111653,
+        "high": 618.2782961822303,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291843577674219,
+        "mixture": 216.83013626869342,
+        "standing": 236.7196497137934,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291843577674219,
+          "frac": 0.271913261367161,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045960105,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07081564223257818,
+          "frac": 0.20695221577832273,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866545976836,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:58:03.162Z",
+      "observedAt": 1789657078090,
+      "lap": {
+        "11": 3389,
+        "121": 1573
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 214.8258864418439,
+        "low": -0.5649919503717342,
+        "high": 609.5665912316963,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 214.8258864418439,
+        "low": -0.5649919503717342,
+        "high": 609.5665912316963,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291254258431353,
+        "mixture": 211.65989676531262,
+        "standing": 231.54453961410536,
+        "prevCeiling": 212.61689036214648,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291254258431353,
+          "frac": 0.2719132613671674,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045960113,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.0708745741568647,
+          "frac": 0.20695221577705172,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.4486654597595,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:58:13.171Z",
+      "observedAt": 1789657087861,
+      "lap": {
+        "11": 3399,
+        "121": 1583
+      },
+      "lat": 41.324702,
+      "lon": -72.928613,
+      "a": {
+        "eta": 209.1302466790869,
+        "low": 0.5970544605923749,
+        "high": 600.8537825235866,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 209.1302466790869,
+        "low": 0.5970544605923749,
+        "high": 600.8537825235866,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9291287479367392,
+        "mixture": 206.48840296808203,
+        "standing": 226.3678175896216,
+        "prevCeiling": 211.65989676531262,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9291287479367392,
+          "frac": 0.27191326136717053,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 177.18377045960122,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.07087125206326093,
+          "frac": 0.20695221577644785,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 177.44866545975526,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:58:23.177Z",
+      "observedAt": 1789657092879,
+      "lap": {
+        "11": 3404,
+        "121": 1588
+      },
+      "lat": 41.324443,
+      "lon": -72.928722,
+      "a": {
+        "eta": 128.97402900882912,
+        "low": 22.11387566032795,
+        "high": 474.15557314739243,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 128.97402900882912,
+        "low": 22.11387566032795,
+        "high": 474.15557314739243,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.5940144037997089,
+        "mixture": 129.6258289441746,
+        "standing": 221.88944941447562,
+        "prevCeiling": 206.48840296808203,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.5940144037997089,
+          "frac": 0.3246471571709623,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 176.999960606465,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.40598559620029107,
+          "frac": 0.38392510189004253,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 178.6874756582217,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:58:33.173Z",
+      "observedAt": 1789657108062,
+      "lap": {
+        "11": 3419,
+        "121": 1603
+      },
+      "lat": 41.323871,
+      "lon": -72.928898,
+      "a": {
+        "eta": 128.97402900882912,
+        "low": -41.48057468619086,
+        "high": 449.3505430137314,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 203.48451919539883,
+        "low": 0.7563489942980937,
+        "high": 580.6120693741411,
+        "departNow": 73.82510215197811,
+        "lowFloor": 46.34569173070605,
+        "leadMass": 1,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.9471865170431109,
+        "mixture": 201.39721081464313,
+        "standing": 216.01562645280046,
+        "prevCeiling": 129.6258289441746,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.9471865170431109,
+          "frac": 0.755618838023782,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 172.30667151901397,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.05281348295688924,
+          "frac": 0.5878886817033804,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 180.11522069074786,
+          "inRest": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-09-17T14:58:43.174Z",
+      "observedAt": 1789657117872,
+      "lap": {
+        "11": 3429,
+        "121": 1613
+      },
+      "lat": 41.324297,
+      "lon": -72.928462,
+      "a": {
+        "eta": 128.97402900882912,
+        "low": -40.00916750033866,
+        "high": 439.1839658561398,
+        "departNow": 73.82510215197811,
+        "lowFloor": -40.00916750033866,
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "busName": "309",
+        "stopId": 48,
+        "stopsAhead": 3,
+        "estimated": false
+      },
+      "unclamped": {
+        "stopId": 48,
+        "occurrence": 0,
+        "stopsAhead": 3,
+        "eta": 208.6332787704635,
+        "low": 6.895578203822595,
+        "high": 573.9543111684552,
+        "departNow": 73.82510215197811,
+        "lowFloor": 6.895578203822595,
+        "leadMass": 0.47666913354886253,
+        "estimated": false,
+        "standingAt": 14
+      },
+      "trace": {
+        "stopIdx": 17,
+        "occurrence": 0,
+        "clampAt": 14,
+        "since": 1789656652856,
+        "standMass": 0.46582960300299286,
+        "mixture": 206.04024830170738,
+        "standing": 212.8602915913275,
+        "prevCeiling": 129.6258289441746,
+        "action": "hold"
+      },
+      "b": {
+        "lead": 14,
+        "rested": true,
+        "restStop": 14,
+        "since": 1789656652856,
+        "restApproach": false
+      },
+      "situations": [
+        {
+          "leg": 13,
+          "standing": false,
+          "mass": 0.5233308664511375,
+          "frac": 0.8545781318405467,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 173.67325010944873,
+          "inRest": 0.9999999999999998
+        },
+        {
+          "leg": 14,
+          "standing": true,
+          "mass": 0.46582960300299286,
+          "frac": 0.8324938856311899,
+          "zoneStop": 14,
+          "approach": false,
+          "cell": 173.94688342367826,
+          "inRest": 1
+        },
+        {
+          "leg": 14,
+          "standing": false,
+          "mass": 0.010839530545869648,
+          "frac": 0.492060721268138,
+          "zoneStop": -1,
+          "approach": false,
+          "cell": 179.44442494444405,
+          "inRest": 1
+        }
+      ]
+    }
+  ]
+}
