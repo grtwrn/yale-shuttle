@@ -327,6 +327,32 @@ export function boardingVisitAllowed(busName: string, boardStopId: number, aligh
   return !first || !boardingVisitConflict(first, arrivals, alightStopId);
 }
 
+/** Raw at_stop_id names the curb, not the visit. On a folded route a bus can
+ * sit at the pickup on a pass the forecast has already closed (Purple's return
+ * leg lays over at West Haven): its next modeled pickup here is then at least
+ * one other stop away (0 = arrived, 1 = closing on it), and it reaches the
+ * destination only after coming round to that pickup. Boarding now rides the
+ * whole lap — #119 at West Haven priced 54 min while #321, 25 s out, rode 8
+ * (boardswitch20261001). Same ordering evidence as above: no pickup, no
+ * destination, or the destination before the next pickup keeps the flag.
+ * PIN_SWITCH_MARGIN_SEC separates a lap from forecast lag: the estimator can
+ * trail a bus that really is at the curb by a stop (Gold #317 at 155, pickup
+ * 2 stops / ~3 min out), and that bus must stay boardable. */
+export function atStopLaterPass(busName: string, boardStopId: number, alightStopId: number, arrivals: readonly UpcomingArrival[]): boolean {
+  const norm = (s: string) => s.replace(/^#/, "");
+  const own = arrivals.filter(a => norm(a.busName) === norm(busName)).sort((a,b) => a.stopsAhead-b.stopsAhead);
+  const pickup = own.find(a => a.stopId === boardStopId);
+  const destination = pickup && own.find(a => a.stopId === alightStopId && a.routeLabel === pickup.routeLabel);
+  return !!pickup && !!destination && pickup.stopsAhead > 1 && pickup.eta >= PIN_SWITCH_MARGIN_SEC
+    && pickup.stopsAhead < destination.stopsAhead && destination.eta >= pickup.eta;
+}
+
+/** Whether a bus flagged at the board stop may be offered as boardable now. */
+export function rawAtStopBoardable(busName: string, boardStopId: number, alightStopId: number, arrivals: readonly UpcomingArrival[]): boolean {
+  return boardingVisitAllowed(busName, boardStopId, alightStopId, arrivals)
+    && !atStopLaterPass(busName, boardStopId, alightStopId, arrivals);
+}
+
 export function planTrip(
   from: LatLon, to: LatLon,
   buses: BusData[],
@@ -439,7 +465,7 @@ export function planTrip(
           // fastest route entirely (report #28: bus parked 13 m from the
           // board stop, every pair boarding there discarded).
           const arrivals = rideBoardArrivals(boardArrivals, b, cur);
-          if (hereBus && boardingVisitAllowed(hereBus.bus_name, b, cur, boardArrivals) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
+          if (hereBus && rawAtStopBoardable(hereBus.bus_name, b, cur, boardArrivals) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
             waitSec = 0;
             busEtaSec = 0; // it is AT the stop
             busDepartNowSec = 0;
