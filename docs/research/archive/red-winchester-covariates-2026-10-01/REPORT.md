@@ -3,10 +3,10 @@
 **Question** (Garrett, 2026-10-01 11:39 ET): the wait at 344 Winchester (Red stop 11) varies a lot. Which covariates explain that spread? Do they also improve the pickup forecast at Division / Prospect (stop 48), two stops downstream? Do any of them beat what production already predicts?
 
 **Short answer.**
-- Most of the spread is already explained by the two covariates production uses: the bus's own lap and the 15-minute clock phase. No untested family (weather, class-change times, active fleet, shift or service entry, the operator's own ETA, co-presence) improves the forecast out of sample.
-- One demand/delay proxy passes the frozen rule: how long the bus has spent stopped at ordinary stops since leaving Union Station. Its gain is small: weighted interval score 38.2 → 37.3 s, better on 7 of 8 test days, with no tail cost.
+- Most of the spread is already explained by the two covariates production uses: the bus's own lap and the 15-minute clock phase. None of the untested families (weather, class-change times, active fleet, shift or service entry, the operator's own ETA, co-presence) passes the frozen rule out of sample. The interaction (INT) and penalised all-family (ALL_R) arms do improve the score but fail the rule: INT's Bonferroni CI crosses zero, and ALL_R raises late-tail misses from 7.2% to 9.2%, past the frozen 2-pp limit.
+- One demand/delay proxy passes the frozen rule: how long the bus has spent stopped at ordinary stops since leaving Union Station. Its gain is small: weighted interval score 38.2 → 37.3 s, better on 7 of 8 test days, with tail misses within the 2-pp tolerance (below q10 4.6 → 5.3%, above q90 7.2 → 7.6%).
 - A model combining every family gains more (−2.2 s, 7 of 8 days). It misses the frozen late-tail limit by 0.02 percentage points, so it is not a candidate.
-- The largest gap is not a covariate. Production's logged Division pickup scores about 24 s worse (weighted interval score) than its own departure-hazard component plus an empirical drive time. Its window is 418 s wide against 275 s, at a similar 80% interval coverage. That comparison is selective: 64 holds on mostly three days. Production also keeps early misses lower (1.2% vs 6.5%).
+- The largest gap is not a covariate. Production's logged Division pickup scores about 24 s worse (weighted interval score) than its own departure-hazard component plus an empirical drive time. Its window is 418 s wide against 275 s, with 89% vs 86% coverage of the nominal 80% interval. That comparison is selective: 64 holds on mostly three days. Production also keeps early misses lower (1.2% vs 6.5%).
 
 Nothing here is ready to ship. The demand proxy, and the production pickup gap, are leads for a full production-estimator replay.
 
@@ -55,7 +55,7 @@ The DM coefficients are stable across all eight folds. More time spent stopped a
 
 ## Results: Division / Prospect pickup
 
-*All checkpoints* (619 checkpoints at 60/180/300/420 s into the hold). Each arm's hold distribution is convolved with the training drive-time distribution. Only DM (−0.87 s, CI −1.58..−0.09) and ALL_R (−2.31, CI −3.82..−0.83) improve on the B0 hazard, which mirrors the hold results.
+*All checkpoints* (619 checkpoints at 60/180/300/420 s into the hold). Each arm's hold distribution is convolved with the training drive-time distribution. Only DM (−0.87 s, unadjusted CI −1.58..−0.09; Bonferroni −1.88..+0.19) and ALL_R (−2.31, unadjusted CI −3.82..−0.83) improve on the B0 hazard, which mirrors the hold results. DM's pickup gain is not significant after the multiplicity adjustment.
 
 *Against production* (checkpoints where production logged a rider-surface prediction to Division in the preceding 30 s). There are 169 checkpoints over 64 holds: 09-21 11, 09-22 12, 09-23 41, 09-24 52, 09-25 49, 09-28 0, 09-29 2, 09-30 2. They come from 9 client builds. Predictions are only logged while someone has the trip open.
 
@@ -94,7 +94,8 @@ The rider is itself a client watching Division. It should therefore also give pr
 
 - The pre-registration covers one 8-day test period, and the effects are a few seconds. A single bad week could flip DM.
 - The extension folds are the confirmation path.
-- Weather is reanalysis, which is not available live. Only 09-28 had rain in the test period, so a rain effect is essentially untestable.
+- Weather in the frozen run is reanalysis, which is not available live. Only 09-28 had rain in the test period, so a rain effect is essentially untestable. Extension days use Open-Meteo forecast-API past hours, fetched daily by `runner.py`; the frozen weather files are hashed in [WEATHER-INPUTS.json](WEATHER-INPUTS.json), and the runner fails if a scored day lacks weather.
+- CP's recent-Winchester-departure count (`win_dep_10`) uses a 60 s availability delay where PLAN.json says 120 s for departures. It affects 3 test holds and does not change CP's verdict; the frozen code is left as run.
 - The weekend regime is not testable, because Red runs weekdays only.
 - The demand proxy uses stand time at stops, not boardings. There is no passenger count in the data.
 - Component forecasts are not the served ETA: there is no position uncertainty, pooling or display rounding. A candidate needs the production replay of `docs/red-current-release.md` before it can ship.
@@ -102,7 +103,7 @@ The rider is itself a client watching Division. It should therefore also give pr
 
 ## Next steps (for ys-lead / Garrett)
 
-1. **Keep the runner going.** `runner.py` runs daily after the 03:40 archive, and `runner.py --rider` runs hourly. Re-read DM and ALL_R on the extension folds once there are ≥5 new service days. The P0 comparison there will have the dedicated rider's coverage.
+1. **Keep the runner going.** `runner.py` runs daily after the 03:40 archive, and `runner.py --rider` runs hourly. Re-read DM and ALL_R on the extension folds once there are ≥5 new service days. Runs from 2026-10-02 on carry the weather hashes and gap check; read W, ALL and ALL_R only from those. The P0 comparison there will have the dedicated rider's coverage.
 2. **Investigate the production pickup gap at Division.** This is the larger lever. Run a replay that scores the served Division window against the hazard + drive component, with early-miss cost made explicit. It would show where the 140 s of width and the 40 s of point error come from.
 3. **If DM holds on the extension,** build it into the production replay as one added column. The support gate and fold-local centring are already defined.
 

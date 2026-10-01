@@ -28,10 +28,11 @@
     "wait-route-data",
     "red-ride-2026-09-10",
     "replay-inputs",
-    "red-bunching-2026-09-18"
+    "red-bunching-2026-09-18",
+    "red-winchester-covariates-2026-10-01"
   ],
   "counts": {
-    "published": 2121,
+    "published": 2133,
     "not-published": 2332
   },
   "files": [
@@ -34904,8 +34905,116 @@
       "bytes": 559,
       "status": "not-published",
       "reason": "bulk prediction rows or execution log; aggregate findings retained"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/FREEZE.json",
+      "bytes": 880,
+      "sha256": "d23f0eff41f4a29daade95695278687a256fa28414a20053118697f56b468554",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/FREEZE.json",
+      "publishedBytes": 880,
+      "publishedSha256": "d23f0eff41f4a29daade95695278687a256fa28414a20053118697f56b468554"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/PLAN.json",
+      "bytes": 8455,
+      "sha256": "e3e1a8f749673d713abfbd619889442865e5e25c196fde106f8a5a41f9868347",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/PLAN.json",
+      "publishedBytes": 8455,
+      "publishedSha256": "e3e1a8f749673d713abfbd619889442865e5e25c196fde106f8a5a41f9868347"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/README.md",
+      "bytes": 2041,
+      "sha256": "0dc5d9bfe9c60dfae164b8ca40730442dfd8549111a83e5d82fb4a81ad7bfbf6",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/README.md",
+      "publishedBytes": 2041,
+      "publishedSha256": "0dc5d9bfe9c60dfae164b8ca40730442dfd8549111a83e5d82fb4a81ad7bfbf6"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/REPORT.md",
+      "bytes": 15251,
+      "sha256": "ec7ef53afd1903379c038306afad63bf695c6fd89c94a5833e67bafc6382d464",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/REPORT.md",
+      "publishedBytes": 15251,
+      "publishedSha256": "ec7ef53afd1903379c038306afad63bf695c6fd89c94a5833e67bafc6382d464"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/WEATHER-INPUTS.json",
+      "bytes": 971,
+      "sha256": "54a89a5967f79eee38abf743982f68116ea6857827444e42755ac6301196ffa2",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/WEATHER-INPUTS.json",
+      "publishedBytes": 971,
+      "publishedSha256": "54a89a5967f79eee38abf743982f68116ea6857827444e42755ac6301196ffa2"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/dev-smoke-summary.json",
+      "bytes": 123172,
+      "sha256": "c98423706241f1f7d5d7928697d2866033b8f69b763678814335dd293a7e7eaa",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/dev-smoke-summary.json",
+      "publishedBytes": 123172,
+      "publishedSha256": "c98423706241f1f7d5d7928697d2866033b8f69b763678814335dd293a7e7eaa"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/lib.py",
+      "bytes": 16079,
+      "sha256": "a2a0227c17200d0bd28adb49f3ebac8588b376a5d13e916e3c68702eb18ce780",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/lib.py",
+      "publishedBytes": 16079,
+      "publishedSha256": "a2a0227c17200d0bd28adb49f3ebac8588b376a5d13e916e3c68702eb18ce780"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/model.py",
+      "bytes": 10562,
+      "sha256": "296ade65b93e7b4c5ccde2fae136a98f9972c5bca6e04f52e60e5e9e3ca7d1d6",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/model.py",
+      "publishedBytes": 10562,
+      "publishedSha256": "296ade65b93e7b4c5ccde2fae136a98f9972c5bca6e04f52e60e5e9e3ca7d1d6"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/rider_extract.py",
+      "bytes": 10646,
+      "sha256": "d04a5fc3ad7b57dc8c0841dccdeb69d3863a904cc1a0a4b0374e56e761c88896",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/rider_extract.py",
+      "publishedBytes": 10646,
+      "publishedSha256": "d04a5fc3ad7b57dc8c0841dccdeb69d3863a904cc1a0a4b0374e56e761c88896"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/runner.py",
+      "bytes": 8355,
+      "sha256": "7a4266afd57c5b85ddd6bd9dfdb7938f88048251e85d7200ad9540bf7f9e9e69",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/runner.py",
+      "publishedBytes": 8355,
+      "publishedSha256": "7a4266afd57c5b85ddd6bd9dfdb7938f88048251e85d7200ad9540bf7f9e9e69"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/screen-summary.json",
+      "bytes": 157360,
+      "sha256": "e01b45c9c2c325707ba22b48dd12c578891dd791e261b3c10c3266d914648083",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/screen-summary.json",
+      "publishedBytes": 157360,
+      "publishedSha256": "e01b45c9c2c325707ba22b48dd12c578891dd791e261b3c10c3266d914648083"
+    },
+    {
+      "source": "red-winchester-covariates-2026-10-01/screen.py",
+      "bytes": 21529,
+      "sha256": "1a18e246ef7e05cb9e0aa2f6ab1f65766ae941eead9ff48b93b1c8d46aa54c91",
+      "status": "published",
+      "published": "archive/red-winchester-covariates-2026-10-01/screen.py",
+      "publishedBytes": 21529,
+      "publishedSha256": "1a18e246ef7e05cb9e0aa2f6ab1f65766ae941eead9ff48b93b1c8d46aa54c91"
     }
   ],
-  "publishedBytes": 76922853,
-  "updatedAt": "2026-09-18T20:14:29.674983+00:00"
+  "publishedBytes": 77298154,
+  "updatedAt": "2026-10-01T16:57:55.499767+00:00"
 }
