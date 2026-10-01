@@ -20,6 +20,7 @@
 // Env: RUN_MIN (default 35), BOT_BASE_URL
 import { chromium } from "playwright-core";
 
+import { planOptions } from "./plan-options.mjs";
 import { seedTestId } from "./testId.mjs";
 import fs from "node:fs";
 
@@ -60,6 +61,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clock = (ms) => new Date(ms).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour12: false });
 
 const predictions = [];   // { at, waitMin, totalMin, arriveText, busName }
+let optionsRead = 0;      // table rows recognised, summed over every scrape
 const arrivals = [];      // { stopId, busName, at }
 const near = new Map();   // `${busId}@${stopId}` -> currently inside the radius
 const log = [];
@@ -90,55 +92,14 @@ async function pollOnce() {
 
 // ---- what the rider is shown ----------------------------------------------
 function parsePlan(text) {
-  // The plan renders one block per option, e.g.
-  //     20 min
-  //     arrive 1:01p
-  //     › 🚶 1 min › Blue Day › 🚶 5 min
-  //     🚌 in 0:52 · next in 5 min
-  // Parsing the page as one soup mixes numbers ACROSS options (the first
-  // "in N min" can belong to a different route than the "arrive" you read),
-  // and the wait switches to M:SS under two minutes — "in 0:52" — which a
-  // /(\d+) min/ pattern silently misses. So split into blocks and read each.
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  const opts = [];
-  for (let i = 0; i < lines.length - 1; i++) {
-    const m = lines[i].match(/^(\d+)\s*min$/);
-    // BOTH spellings of the card's arrival clock, matching the canary's own
-    // ARRIVAL_CLOCK_RE (canary-metrics.mjs): "arrive 1:01p" until 2026-09-04,
-    // and the bare "1:01p" after #123 dropped the word. Requiring the word is
-    // why this harness matched NOTHING from 2026-09-04 to 2026-09-12 — see the
-    // header note. A future third spelling must be added here deliberately;
-    // #111 and #123 are both cases of a reader that silently stopped reading.
-    const a = lines[i + 1].match(/^(?:arrive\s+)?(\d{1,2}:\d{2}[ap])$/i);
-    if (!m || !a) continue;
-    const block = lines.slice(i + 2, i + 12);
-    // Stop the block at the next option header.
-    const CLOCK_LINE = /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i;
-    const end = block.findIndex((l, j) => /^\d+\s*min$/.test(l) && CLOCK_LINE.test(block[j + 1] ?? ""));
-    const body = (end === -1 ? block : block.slice(0, end)).join(" | ");
-    // "🚌 in 0:52 · next in 5 min"  or  "🚌 in 7 min · next in 22 min"
-    //
-    // Not matched, deliberately: the standing-bus RANGE ("in 6-10 min",
-    // fmtBusRange) — a bus mid-layover has no single number to score against
-    // an observed arrival. It reads as waitSec null, i.e. this option is not a
-    // sample. Worth knowing when reading a run: the pairs this harness scores
-    // skew AWAY from buses that were standing when the page was read, which
-    // are the hard ones. The offline replay (scripts/eta-replay/) is the
-    // measurement; this is the sanity check.
-    const w = body.match(/🚌\s*in\s*(?:(\d+):(\d{2})|(\d+)\s*min)/);
-    const waitSec = w ? (w[1] !== undefined ? Number(w[1]) * 60 + Number(w[2]) : Number(w[3]) * 60) : null;
-    const label = body.match(/\|\s*([A-Z][A-Za-z ]+?)\s*\|/);
-    opts.push({
-      totalMin: Number(m[1]),
-      arriveText: a[1],
-      waitSec,
-      isWalk: /🚶/.test(body) && waitSec === null,
-      route: label ? label[1].trim() : null,
-    });
-    i += 1;
-  }
+  // One option per row of the "Route | Board in (min) | Arrive at" table, via
+  // plan-options.mjs: shared with route-tester.mjs, built on the canary's parser.
+  // The wait scored is the point the row shows ("~7" -> 7 min), not its band:
+  // the offline replay (scripts/eta-replay/) is the measurement; this is the
+  // sanity check.
+  const opts = planOptions(text);
   // Score the fastest option that actually rides a shuttle.
-  const shuttle = opts.filter((o) => o.waitSec !== null && (!ROUTE_LABEL || o.route === ROUTE_LABEL)).sort((a, b) => a.totalMin - b.totalMin)[0];
+  const shuttle = opts.filter((o) => o.waitSec !== null && (!ROUTE_LABEL || o.route === ROUTE_LABEL)).sort((a, b) => (a.totalMin ?? Infinity) - (b.totalMin ?? Infinity))[0];
   return shuttle
     ? { waitMin: shuttle.waitSec / 60, totalMin: shuttle.totalMin, arriveText: shuttle.arriveText, busName: shuttle.route, options: opts.length, seen: opts.map((o) => o.route) }
     : { waitMin: null, totalMin: null, arriveText: null, busName: null, options: opts.length, seen: opts.map((o) => o.route) };
@@ -189,6 +150,7 @@ while (Date.now() - started < RUN_MS) {
       await expandOptions();
       const text = await page.evaluate(() => document.body.innerText);
       const p = parsePlan(text);
+      optionsRead += p.options;
       if (p.waitMin != null) {
         predictions.push({ at: Date.now(), ...p });
         say(`predict  next bus in ${p.waitMin.toFixed(1)} min` +
@@ -283,10 +245,11 @@ await browser.close();
 
 // A RUN THAT PARSED NOTHING IS THE INSTRUMENT, NOT THE APP.
 //
-// This harness required the literal "arrive " on the line after a duration.
-// #123 dropped that word on 2026-09-04 and nothing noticed until 2026-09-12,
-// because a run that recognises no options still prints a tidy summary and
-// exits 0 — indistinguishable from a quiet window with nothing to score.
+// This harness's own card parser went blind twice: when #123 dropped the
+// word "arrive" on 2026-09-04, and again when #309 replaced the cards with
+// the route table on 2026-09-18. Nothing noticed either time, because a run
+// that recognises no options still prints a tidy summary and exits 0 —
+// indistinguishable from a quiet window with nothing to score.
 //
 // `rider-canary.mjs` settled this convention already: it FAILS a run on
 // `readings === 0`, on the reasoning that a scraper which has silently stopped
@@ -295,14 +258,16 @@ await browser.close();
 // The test is ZERO PREDICTIONS PARSED, not zero pairs scored. Zero pairs is a
 // legitimate outcome — the window may simply have held no arrival to pair
 // against — and failing on it would cry wolf on quiet runs. Zero predictions
-// means the page was read and no option was recognised on it, which is only
-// ever a broken reader or a changed layout. Both need a human.
+// means the page was read and nothing scoreable was recognised on it: with no
+// option read at all, a broken reader or a changed layout; with options read,
+// no shuttle (or no ROUTE_LABEL) option to score. Both need a human.
 if (predictions.length === 0) {
-  console.error(
-    "FAILED: parsed 0 predictions from the page. The app renders options; this "
-    + "harness recognised none, so the parser is broken or the card layout "
-    + "changed. Do NOT read this run as 'the ETA scored fine'.",
-  );
+  console.error(optionsRead === 0
+    ? "FAILED: recognised no trip option on the page in any scrape, so the "
+      + "parser is broken or the plan layout changed. Do NOT read this run as "
+      + "'the ETA scored fine'."
+    : `FAILED: read ${optionsRead} trip options but never a ${ROUTE_LABEL ?? "shuttle"} `
+      + "option with a wait, so nothing was scored. Do NOT read this run as "
+      + "'the ETA scored fine'.");
   process.exit(1);
 }
-

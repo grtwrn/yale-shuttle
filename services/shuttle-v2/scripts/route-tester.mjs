@@ -21,6 +21,7 @@ import { chromium } from "playwright-core";
 import fs from "node:fs";
 import path from "node:path";
 
+import { planOptions } from "./plan-options.mjs";
 import { seedTestId } from "./testId.mjs";
 
 const BASE = process.env.BOT_BASE_URL ?? "https://yale-shuttle.fly.dev";
@@ -72,22 +73,6 @@ function distToPolyline(p, line) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clock = (ms) => new Date(ms).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour12: false });
-const etMinutes = (ms) => {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(new Date(ms));
-  const g = (t) => Number(parts.find((p) => p.type === t)?.value ?? 0);
-  return (g("hour") % 24) * 60 + g("minute") + g("second") / 60;
-};
-// "9:41p" shown at time `atMs` -> epoch ms of that wall-clock time (same ET day, or the next if it wrapped).
-function arriveTextToMs(text, atMs) {
-  const m = text.match(/^(\d{1,2}):(\d{2})([ap])$/i);
-  if (!m) return null;
-  let h = Number(m[1]) % 12;
-  if (m[3].toLowerCase() === "p") h += 12;
-  const target = h * 60 + Number(m[2]);
-  let delta = target - etMinutes(atMs);
-  if (delta < -30) delta += 1440;            // wrapped past midnight
-  return atMs + delta * 60_000;
-}
 
 const log = [];
 const say = (s) => { const line = `[${clock(Date.now())}] ${s}`; console.log(line); log.push(line); };
@@ -146,6 +131,7 @@ say(`${LABEL} (route ${ROUTE}): ${BOARD.name} [#${boardIdx}] -> ${DEST.name} [#$
 
 // ---- ground truth -------------------------------------------------------------
 const predictions = [];   // { at, waitSec, totalMin, arriveText, arriveMs, route, options }
+let optionsRead = 0;      // table rows recognised, summed over every scrape
 const arrivals = [];      // { stopId, stopName, busName, busId, at, dist }
 const trace = [];         // per poll per bus on the route
 const offRoute = [];      // { at, busName, lat, lon, offM }
@@ -210,33 +196,11 @@ async function pollOnce() {
 }
 
 // ---- what the rider is shown ------------------------------------------------
-function parsePlan(text) {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  const opts = [];
-  for (let i = 0; i < lines.length - 1; i++) {
-    const m = lines[i].match(/^(\d+)\s*min$/);
-    // BOTH spellings of the card's arrival clock, matching the canary's own
-    // ARRIVAL_CLOCK_RE (canary-metrics.mjs): "arrive 1:01p" until 2026-09-04,
-    // and the bare "1:01p" after #123 dropped the word. Requiring the word is
-    // why this harness matched NOTHING from 2026-09-04 to 2026-09-12 — see the
-    // header note. A future third spelling must be added here deliberately;
-    // #111 and #123 are both cases of a reader that silently stopped reading.
-    const a = lines[i + 1].match(/^(?:arrive\s+)?(\d{1,2}:\d{2}[ap])$/i);
-    if (!m || !a) continue;
-    const block = lines.slice(i + 2, i + 14);
-    const CLOCK_LINE = /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i;
-    const end = block.findIndex((l, j) => /^\d+\s*min$/.test(l) && CLOCK_LINE.test(block[j + 1] ?? ""));
-    const body = (end === -1 ? block : block.slice(0, end)).join(" | ");
-    // "🚌 in 7 min · next in 22 min" | "🚌 in <1 min" | "🚌 arriving now"
-    const w = body.match(/🚌\s*(?:in\s*(?:(\d+):(\d{2})|<\s*1\s*min|(\d+)\s*min)|arriving now)/);
-    let waitSec = null;
-    if (w) waitSec = w[1] !== undefined ? Number(w[1]) * 60 + Number(w[2]) : w[3] !== undefined ? Number(w[3]) * 60 : /arriving now/.test(w[0]) ? 0 : 30;
-    const nx = body.match(/next in\s*(?:(\d+)\s*min|<\s*1\s*min)/);
-    const route = Object.values(ROUTE_LABELS).filter((l) => body.includes(l)).sort((x, y) => y.length - x.length)[0] ?? null;
-    opts.push({ totalMin: Number(m[1]), arriveText: a[1], waitSec, nextSec: nx ? (nx[1] ? Number(nx[1]) * 60 : 30) : null,
-      isWalk: waitSec === null && /🚶/.test(body), route, body: body.slice(0, 160) });
-    i += 1;
-  }
+// One option per row of the route table, via plan-options.mjs (shared with
+// eta-accuracy.mjs, built on the canary's parser). `arriveMs` is the middle of
+// an "a – b" arrival window, so ARRIVE-TIME errors are against that midpoint.
+function parsePlan(text, atMs) {
+  const opts = planOptions(text, atMs);
   const mine = opts.find((o) => o.route === LABEL && o.waitSec !== null) ?? null;
   return { options: opts, mine };
 }
@@ -288,11 +252,11 @@ while (Date.now() - started < RUN_MS) {
         fs.writeFileSync(OUT, JSON.stringify({ partial: true, route: LABEL, origin: BOARD.name, destination: DEST.name, startedAt: clock(started), predictions, arrivals, offRoute: offRoute.slice(0, 200), atStopMismatch: atStopMismatch.slice(0, 50), stuck, pageErrors, consoleErrors, tracePolls: trace.length, log }, null, 1));
       } catch { /* best effort */ }
       const text = await page.evaluate(() => document.body.innerText);
-      const p = parsePlan(text);
+      const p = parsePlan(text, lastScrape);
+      optionsRead += p.options.length;
       if (p.mine) {
         sawMineEver = true; noMineStreak = 0;
-        const arriveMs = arriveTextToMs(p.mine.arriveText, lastScrape);
-        predictions.push({ at: lastScrape, waitSec: p.mine.waitSec, nextSec: p.mine.nextSec, totalMin: p.mine.totalMin, arriveText: p.mine.arriveText, arriveMs, route: p.mine.route, options: p.options.map((o) => ({ route: o.route, totalMin: o.totalMin, waitSec: o.waitSec, isWalk: o.isWalk })) });
+        predictions.push({ at: lastScrape, waitSec: p.mine.waitSec, nextSec: p.mine.nextSec, totalMin: p.mine.totalMin, arriveText: p.mine.arriveText, arriveMs: p.mine.arriveMs, route: p.mine.route, options: p.options.map((o) => ({ route: o.route, totalMin: o.totalMin, waitSec: o.waitSec, isWalk: o.isWalk })) });
         // A wait that does not move for 3+ scrapes (60 s) while a bus is live is the #48 symptom.
         if (p.mine.waitSec === lastWait && p.mine.waitSec > 60) sameWaitRun++; else sameWaitRun = 0;
         lastWait = p.mine.waitSec;
@@ -369,14 +333,15 @@ console.log(`stuck readings: ${stuck.length} · page errors: ${pageErrors.length
 console.log(`screenshots: ${SHOTS}\nfull record: ${OUT}`);
 
 await ctx.close();
-if (!cdp) await browser.close();
+if (!cdp) await browser.close(); else await browser.close().catch(() => {});
 
 // A RUN THAT PARSED NOTHING IS THE INSTRUMENT, NOT THE APP.
 //
-// This harness required the literal "arrive " on the line after a duration.
-// #123 dropped that word on 2026-09-04 and nothing noticed until 2026-09-12,
-// because a run that recognises no options still prints a tidy summary and
-// exits 0 — indistinguishable from a quiet window with nothing to score.
+// This harness's own card parser went blind twice: when #123 dropped the
+// word "arrive" on 2026-09-04, and again when #309 replaced the cards with
+// the route table on 2026-09-18. Nothing noticed either time, because a run
+// that recognises no options still prints a tidy summary and exits 0 —
+// indistinguishable from a quiet window with nothing to score.
 //
 // `rider-canary.mjs` settled this convention already: it FAILS a run on
 // `readings === 0`, on the reasoning that a scraper which has silently stopped
@@ -385,14 +350,16 @@ if (!cdp) await browser.close();
 // The test is ZERO PREDICTIONS PARSED, not zero pairs scored. Zero pairs is a
 // legitimate outcome — the window may simply have held no arrival to pair
 // against — and failing on it would cry wolf on quiet runs. Zero predictions
-// means the page was read and no option was recognised on it, which is only
-// ever a broken reader or a changed layout. Both need a human.
+// means the page was read and nothing scoreable was recognised on it: with no
+// option read at all, a broken reader or a changed layout; with options read,
+// no option for the line under test. Both need a human.
 if (predictions.length === 0) {
-  console.error(
-    "FAILED: parsed 0 predictions from the page. The app renders options; this "
-    + "harness recognised none, so the parser is broken or the card layout "
-    + "changed. Do NOT read this run as 'the ETA scored fine'.",
-  );
+  console.error(optionsRead === 0
+    ? "FAILED: recognised no trip option on the page in any scrape, so the "
+      + "parser is broken or the plan layout changed. Do NOT read this run as "
+      + "'the ETA scored fine'."
+    : `FAILED: read ${optionsRead} trip options but never a ${LABEL} option with `
+      + "a wait, so nothing was scored. Do NOT read this run as 'the ETA scored "
+      + "fine'.");
   process.exit(1);
 }
- else await browser.close().catch(() => {});
