@@ -1,0 +1,165 @@
+{
+  "source": "Real ArriveBy, ranking and visibility helpers; synthetic options; intercepted requests",
+  "cases": [
+    {
+      "scenario": "buffer",
+      "heading": "Your buffer may be tight",
+      "fixture": {
+        "ordered": [
+          "Red",
+          "Green",
+          "Brown",
+          "Blue Day",
+          "Walk"
+        ],
+        "visible": [
+          "Red",
+          "Green",
+          "Brown",
+          "Walk"
+        ],
+        "blueWindow": "2:05 PM–2:19 PM"
+      },
+      "distribution": "Named Red disclosure opens its 50 modeled outcomes with Space",
+      "action": "Blue Day · #410\n2:05 PM–2:19 PM\nMay use your buffer · View trip ›",
+      "sizes": [
+        {
+          "viewport": 360,
+          "height": 62,
+          "width": 302
+        },
+        {
+          "viewport": 390,
+          "height": 62,
+          "width": 332
+        },
+        {
+          "viewport": 430,
+          "height": 62,
+          "width": 372
+        },
+        {
+          "viewport": 1280,
+          "height": 62,
+          "width": 586
+        },
+        {
+          "viewport": 640,
+          "height": 62,
+          "width": 582
+        }
+      ],
+      "keyboard": "Tab reaches Blue between Red and Walk; Enter/Space select Blue Day"
+    },
+    {
+      "scenario": "connection",
+      "heading": "Check the shuttle connection",
+      "fixture": {
+        "ordered": [
+          "Red",
+          "Green",
+          "Brown",
+          "Blue Day",
+          "Walk"
+        ],
+        "visible": [
+          "Red",
+          "Green",
+          "Brown",
+          "Walk"
+        ],
+        "blueWindow": "2:05 PM–2:19 PM"
+      },
+      "distribution": "Named Red disclosure opens its 50 modeled outcomes with Space",
+      "action": "Blue Day · #410\n2:05 PM–2:19 PM\nConnection uncertain · View trip ›\nThe bus could reach pickup before you. This window assumes you catch it.",
+      "sizes": [
+        {
+          "viewport": 360,
+          "height": 104,
+          "width": 302
+        },
+        {
+          "viewport": 390,
+          "height": 104,
+          "width": 332
+        },
+        {
+          "viewport": 430,
+          "height": 104,
+          "width": 372
+        },
+        {
+          "viewport": 1280,
+          "height": 86,
+          "width": 586
+        },
+        {
+          "viewport": 640,
+          "height": 86,
+          "width": 582
+        }
+      ],
+      "keyboard": "Tab reaches Blue between Red and Walk; Enter/Space select Blue Day"
+    },
+    {
+      "scenario": "limited",
+      "heading": "Allow extra time for this shuttle",
+      "fixture": {
+        "ordered": [
+          "Red",
+          "Green",
+          "Brown",
+          "Blue Day",
+          "Walk"
+        ],
+        "visible": [
+          "Red",
+          "Green",
+          "Brown",
+          "Walk"
+        ],
+        "blueWindow": "2:05 PM–2:19 PM"
+      },
+      "distribution": "Named Red disclosure opens its 50 modeled outcomes with Space",
+      "action": "Blue Day · #410\n2:05 PM–2:19 PM\nLimited trip data · View trip ›\nLimited trip data; allow extra time.",
+      "sizes": [
+        {
+          "viewport": 360,
+          "height": 86,
+          "width": 302
+        },
+        {
+          "viewport": 390,
+          "height": 86,
+          "width": 332
+        },
+        {
+          "viewport": 430,
+          "height": 86,
+          "width": 372
+        },
+        {
+          "viewport": 1280,
+          "height": 86,
+          "width": 586
+        },
+        {
+          "viewport": 640,
+          "height": 86,
+          "width": 582
+        }
+      ],
+      "keyboard": "Tab reaches Blue between Red and Walk; Enter/Space select Blue Day"
+    },
+    {
+      "scenario": "loading",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nBus updates are interrupted. Check again for a live window. Compare walking below.\n\nEstimated arrival at destination\n\nRed · #309\nNo live window\nBus updates interrupted. · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    },
+    {
+      "scenario": "failed",
+      "text": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nLive shuttle times unavailable\n\nBus updates are interrupted. Check again for a live window. Compare walking below.\n\nEstimated arrival at destination\n\nRed · #309\nNo live window\nBus updates interrupted. · View trip ›\nWalk\nAbout 2:25 PM\nEstimate past class time · View trip ›\nHow to read these times ▾"
+    }
+  ],
+  "errors": [],
+  "recovery": "Buffer route/action restored after unavailable feed states"
+}

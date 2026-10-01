@@ -1,0 +1,12 @@
+{
+  "outcome": "research",
+  "summary": "Corrected 11 current-stop and eight following-arrival replay labels; resolved 216 additional rows while preserving forecasts and regressions. No ETA improvement supports release. Evidence saved in eta/cycle-16; application files and HEAD remain unchanged.",
+  "next_task": "Independently review cycle-16/REVIEW_REQUEST.md, including the remaining 57/58 uncertain zero-hop identities. After acceptance, resume frozen current/canonical checkpoints from poll 6000 to 9000.",
+  "tests": [
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/score.py — passed under shared lock; rescored 6,000 saved polls.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/verify.sh — final run passed: all 19 reviewer cases, 183,123 structural arrival records and 4,925 rider trips per arm.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/compare_labels.py — passed; complete before/after accounting and regressions retained.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/zero_hop_inventory.py — passed; remaining uncertain identities preserved.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/finish.py — passed; clean checkout, 216 prior artifact files and eight frozen inputs unchanged."
+  ]
+}

@@ -3,17 +3,22 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {labeledStopId,selectDestination} from './inputs.mjs';
+import {followedBusName,labeledStopId,quotedRideMin,rideCapMin,selectDestination} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialRun,outputDir,allowedLabels,fixedTrip}) {
+export const SELECTION_BACKOFF_MS=2*60000;
+export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
  const ROOT=outputDir;
  await fs.mkdir(ROOT,{recursive:true});
  let feed=initialFeed,feedAt=Date.now(),busy=false,stopped=false,timer,run=null,lastImage=0,lastPhase='',cursor=metrics.CANARY_LINES.findIndex(l=>l.label===initialLine?.label),imageBytes=0;
  const images=[];
+ // A line whose trip row is missing (e.g. a bus still in the feed after its
+ // last loop) is skipped for a while, so a fixed-trip rider does not reload,
+ // log and screenshot the same empty planner every 10 s.
+ const unavailableUntil={};
  try { for(const line of (await fs.readFile(path.join(ROOT,'images.jsonl'),'utf8')).trim().split('\n')) if(line)images.push(JSON.parse(line)); } catch {}
  await fs.appendFile(path.join(ROOT,'journeys.jsonl'),'');
  await fs.mkdir(path.join(ROOT,'images'),{recursive:true});
@@ -44,10 +49,13 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
  const removeListeners=()=>{page.off('response',onResponse);page.off('pageerror',onPageError);page.off('request',onRequest);};
  const select=async()=>{
   // One page, one journey at a time. Normal UI interactions test lookup too.
-  for(let k=1;k<=metrics.CANARY_LINES.length;k++){
-   const idx=(cursor+k)%metrics.CANARY_LINES.length,line=metrics.CANARY_LINES[idx];
+  const order=metrics.CANARY_LINES.map((_,i)=>(cursor+i+1)%metrics.CANARY_LINES.length);
+  if(randomLines)for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  for(const idx of order){
+   const line=metrics.CANARY_LINES[idx];
    if(allowedLabels && !allowedLabels.includes(line.label))continue;
    if(!metrics.liveBusesOf(feed,line).length)continue;
+   if((unavailableUntil[line.label]??0)>Date.now())continue;
    let picked=fixedTrip ?? null;
    for(let attempt=0;!picked && attempt<12;attempt++){
     const candidate=rotation.randomTripForLine(feed,line).trip;if(!candidate)break;
@@ -66,8 +74,10 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    await sleep(1500);
    const more=page.getByRole('button',{name:/Show \d+ more route/});if(await more.isVisible())await more.click();
    const row=page.getByRole('button',{name:'View '+line.label+' trip details',exact:true});
-   if(!await row.isVisible()){await event('selection-unavailable',{line:line.label,trip:picked,text:await page.locator('body').innerText()});await capture('selection-unavailable');return;}
-   await row.click();await begin(picked,line);return;
+   if(!await row.isVisible()){unavailableUntil[line.label]=Date.now()+SELECTION_BACKOFF_MS;await event('selection-unavailable',{line:line.label,trip:picked,text:await page.locator('body').innerText()});await capture('selection-unavailable');return;}
+   // A centre click can hit the nested arrival disclosure. Activate the
+   // focused trip card itself; its keyboard handler opens the trip view.
+   await row.focus();await page.keyboard.press('Enter');await begin(picked,line);return;
   }
   await status({note:'No suitable live trip currently available'});
  };
@@ -83,15 +93,27 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    await fs.appendFile(log,JSON.stringify(sample)+'\n');run.samples++;
    if(now-feedAt>30000){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
+    // The line left service (e.g. Orange Night after its last loop): nothing
+    // to board, so stop instead of waiting out the 45 minutes.
+    if(metrics.liveBusesOf(feed,run.line).length){run.noServiceSince=undefined;}
+    else{run.noServiceSince??=now;if(now-run.noServiceSince>5*60000){run.excludeAccuracy=true;await finish('no-service-excluded');await status();return;}}
     const boardLabel=text.match(/(?:^|\n)BOARD([^\n]+)/)?.[1],exitLabel=text.match(/(?:^|\n)GET OFF([^\n]+)/)?.[1];
     const board=labeledStopId(text,'BOARD',feed.stop_names);
     const exit=labeledStopId(text,'GET OFF',feed.stop_names);
-    const name=text.match(/🚌\s*(#[\w-]+)\s*·/)?.[1];
+    const name=followedBusName(text,board,feed.buses,run.line.busRouteIds,run.busName,feed.stop_coords);
     // Do not reuse yesterday's/last poll's stop identity after a parse failure.
-    if(board===null || exit===null || !name){
+    if(board===null || exit===null){
      run.invalidStopSamples=(run.invalidStopSamples??0)+1;run.excludeAccuracy=true;
      if(!run.invalidStopReported){run.invalidStopReported=true;await event('measurement-invalid-stop-label',{boardLabel,exitLabel});}
      if(now-Date.parse(run.startedAt)>45*60000)await finish('invalid-stop-label-excluded');
+     await status();return;
+    }
+    // No followed bus (e.g. "Unavailable" with no prediction) only skips this
+    // poll: nothing stale is reused, so it does not taint the run.
+    if(!name){
+     run.unnamedBusSamples=(run.unnamedBusSamples??0)+1;
+     if(!run.unnamedBusReported){run.unnamedBusReported=true;await event('waiting-bus-unnamed',{boardLabel,exitLabel});}
+     if(now-Date.parse(run.startedAt)>45*60000)await finish('waiting-timeout-needs-review');
      await status();return;
     }
     run.boardStopId=board;run.exitStopId=exit;run.busName=name;
@@ -120,7 +142,10 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      if(coord&&(run.lastExitDistanceM<=45 || (run.lastExitDistanceM<=60 && bus.at_stop_id===run.exitStopId && bus.stationary===true))&&now-Date.parse(run.boardedAt)>30000){run.arrivalCriterion=run.lastExitDistanceM<=45?'GPS-within-45m':'stationary-at-target-within-60m';run.arrivedAt=new Date().toISOString();run.arrivalText=text;run.phase='arrived';await event('arrived',{bus:run.busName,stop:feed.stop_names[run.exitStopId],rideSeconds:(now-Date.parse(run.boardedAt))/1000});}
     }
     if(/Get off in 2 stops/.test(text)&&/Get off NEXT stop|Arriving at/.test(text)&&!run.popupMismatch){run.popupMismatch=true;await event('candidate-stale-alert',text);await capture('candidate-stale-alert');}
-    if(now-Date.parse(run.boardedAt)>50*60000)await finish('ride-timeout-needs-review');
+    // Ride at least as long as the card quoted at pickup (bounded); a fixed
+    // 50 min gave up on a quoted 54 min ride before it could be scored.
+    run.rideCapMin??=rideCapMin(quotedRideMin(run.pickupText));
+    if(now-Date.parse(run.boardedAt)>run.rideCapMin*60000)await finish('ride-timeout-needs-review');
    }else if(run.phase==='arrived'&&now-Date.parse(run.arrivedAt)>15000){
     const got=page.getByRole('button',{name:'Got it',exact:true});if(await got.isVisible())await got.click();
     await capture('arrival-dismissed');const done=page.getByRole('button',{name:'Done',exact:true});if(await done.isVisible())await done.click();await finish('completed');

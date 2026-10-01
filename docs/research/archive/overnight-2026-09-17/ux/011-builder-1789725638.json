@@ -1,0 +1,13 @@
+{
+  "outcome": "candidate",
+  "summary": "Cancel active pinch gestures before removing shuttle maps\nFixed the review blocker in ride and system maps. Eight gesture cases and both reviewer reproductions pass. Evidence: ux/ux-09-pinch/REPORT.md. HEAD/index preserved; watcher untouched.",
+  "next_task": "Independently review the three-file correction, then controller release gates. Next builder: UX10 saved-place keyboard selection and deletion, using ux-09-pinch/NEXT_UX10.md.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-pinch/verify.sh — 77 tests, both typechecks and Vite passed; wrapper exited 1 on a subsequently corrected browser-fixture assertion. Earlier typecheck failure also preserved.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-pinch/browser.sh — exit 0; eight browser reports passed, including gesture cleanup, reviewer reproductions, keyboard/mobile lifecycle, feed states and fullscreen focus.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-pinch/entry-system.sh — wrapper exit 0; verified expected baseline failures in filtering and navigation.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09-pinch/verify-integrity.py — exit 0; scope, source/bundle parity, HEAD/index and screenshot budget verified.",
+    "node --check services/shuttle-v2/scripts/map-touch-teardown-check.mjs — passed.",
+    "git diff --check — passed. All owned browser resources closed."
+  ]
+}

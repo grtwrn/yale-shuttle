@@ -1,0 +1,48 @@
+{
+  "snapshots": 5,
+  "wireRowChecks": 25,
+  "directWaitSamples": 2560,
+  "cases": [
+    {
+      "sourceId": 57454,
+      "at": 1789561896251,
+      "directWaitMeanSec": 294.2507065268516,
+      "leadClusterMass": 1,
+      "wireRows": 5,
+      "secondRosenkranzAbsent": true
+    },
+    {
+      "sourceId": 57990,
+      "at": 1789565907428,
+      "directWaitMeanSec": 406.6731400579802,
+      "leadClusterMass": 1,
+      "wireRows": 5,
+      "secondRosenkranzAbsent": true
+    },
+    {
+      "sourceId": 58510,
+      "at": 1789569358329,
+      "directWaitMeanSec": 250.40939545175596,
+      "leadClusterMass": 1,
+      "wireRows": 5,
+      "secondRosenkranzAbsent": true
+    },
+    {
+      "sourceId": 61538,
+      "at": 1789593364850,
+      "directWaitMeanSec": 298.07182613793503,
+      "leadClusterMass": 1,
+      "wireRows": 5,
+      "secondRosenkranzAbsent": true
+    },
+    {
+      "sourceId": 63523,
+      "at": 1789644161347,
+      "directWaitMeanSec": 338.61641568590585,
+      "leadClusterMass": 1,
+      "wireRows": 5,
+      "secondRosenkranzAbsent": true
+    }
+  ],
+  "scope": "Saved historical warm states with frozen calibration, not new continuous replay or exact production HTTP receipts."
+}

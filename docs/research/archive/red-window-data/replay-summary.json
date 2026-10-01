@@ -1,0 +1,33 @@
+{
+  "source": "September 16 watcher capture + fixed fit-2026-09-15 payload; current build 0bcc0ad4ba07. This is a width decomposition, not causal historical accuracy validation.",
+  "watcherPolls": 1236,
+  "busFrames": 3453,
+  "matchingAtWinchesterToDivisionProspect": 264,
+  "exact1to15": 0,
+  "lessThan1to15": 23,
+  "pointDifferences": 0,
+  "medianWidthSec": 672.8522370436096,
+  "medianWidthNoConformalSec": 421.9011594179006,
+  "selected": {
+    "at": "2026-09-16T11:23:47.667Z",
+    "bus": "#308",
+    "pin": "2026-09-16T11:23:28.282",
+    "elapsedSec": 19.385,
+    "approach": false,
+    "feedAgeMs": -25,
+    "eta": 426.0182356738356,
+    "low": 26.71947959276497,
+    "high": 894.7467694864215,
+    "widthSec": 868.0272898936565,
+    "rawLow": 147.37290693617294,
+    "rawHigh": 753.1142118166032,
+    "rawWidthSec": 605.7413048804302,
+    "display": "<1–15 min",
+    "noWideningDisplay": "2–13 min",
+    "token": "About 7 min\nLikely <1–15 min"
+  },
+  "broadFeedAgeMs": {
+    "min": -25,
+    "max": 4977
+  }
+}

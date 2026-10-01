@@ -1,0 +1,21 @@
+{
+  "busFrames": 3453,
+  "pointPredictionsIdentical": true,
+  "targetStop": 48,
+  "baseline": {
+    "matched": 1549,
+    "coveragePct": 96.9,
+    "medianWidthSec": 774.3,
+    "endpointJumps60": 130,
+    "endpointJumps120": 51,
+    "comparisons": 1735
+  },
+  "candidate": {
+    "matched": 1549,
+    "coveragePct": 96.9,
+    "medianWidthSec": 773.0,
+    "endpointJumps60": 125,
+    "endpointJumps120": 50,
+    "comparisons": 1735
+  }
+}

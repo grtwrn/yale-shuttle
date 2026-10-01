@@ -1,0 +1,7 @@
+{
+  "at": "2026-09-18T13:55:37.323681+00:00",
+  "status": "candidate; independent continuous boarding-risk review pending",
+  "reason": "Global removal adds destination lower misses/WIS regressions. Target only requested Division first pickup after supported Winchester hold; other targets and following laps keep existing margin.",
+  "expected": "exact old candidate on eligible Division first rows; exact old baseline elsewhere; point/upper and tracking unchanged",
+  "data": "Sep16\u201318 already inspected ablation outcomes; no new untouched holdout claim; no exclusion/cap"
+}

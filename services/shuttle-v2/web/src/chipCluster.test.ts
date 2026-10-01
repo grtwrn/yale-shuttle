@@ -17,6 +17,11 @@ const EYESORE: ChipBox[] = [
 ];
 
 describe("chip clustering", () => {
+  it("accounts for the arrival window's second line when testing overlap", () => {
+    const pair = [{ x: 100, y: 100, w: 100 }, { x: 100, y: 129, w: 100 }];
+    expect(clusterChips(pair)).toHaveLength(2);
+    expect(clusterChips(pair.map(p => ({ ...p, lines: 2 })))).toHaveLength(1);
+  });
   it("merges stacks that a one-line band judged apart", () => {
     // The two pairs are 25 px apart — more than the old fixed 18 px band, less
     // than the ~34 px each pair actually renders once it holds two lines.

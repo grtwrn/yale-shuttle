@@ -1,0 +1,62 @@
+{
+  "scope": "Unmodified built SPA, fabricated live wire/history; device timezone Pacific/Honolulu",
+  "checks": [
+    "Actual trip-card opens pickup history lazily with Red/#307 identity, #309 following shuttle and limit 100. New Haven date range differs correctly from Honolulu table/capture time. All 8 observations including <1 and 60 min retained.",
+    "Space refresh keeps focus, ignores repeated activation, does not steal focus after it moves to Close; network-disconnected retry recovers, keeps both arrivals and Escape returns to real card trigger.",
+    "Destination disclosure uses actual selected alight stop/#307, labels final-walk exclusion, preserves refresh focus outside modal, aborts on close and reloads on reopen; full SPA 360/390/430/1280/640px reflow."
+  ],
+  "requests": [
+    {
+      "route": "Red",
+      "stop": "48",
+      "bus": "307",
+      "eta": "300",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "48",
+      "bus": "307",
+      "eta": "300",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "48",
+      "bus": "307",
+      "eta": "300",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "48",
+      "bus": "307",
+      "eta": "299",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "1379",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "1379",
+      "limit": "100"
+    },
+    {
+      "route": "Red",
+      "stop": "121",
+      "bus": "307",
+      "eta": "1379",
+      "limit": "100"
+    }
+  ],
+  "errors": [],
+  "completed": true,
+  "resourcesClosed": true
+}

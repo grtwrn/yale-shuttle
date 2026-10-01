@@ -1,0 +1,6 @@
+{
+  "developmentEnd": "2026-09-17T17:14:00.913Z",
+  "holdout": "Sep17 observations after developmentEnd; do not use for model selection before freezing the candidate",
+  "fits": "preSep10 release hazard; preSep14 marginal route tables; published Sep15 movement parameters",
+  "candidateFamily": "first-harmonic release hazard integrated into existing mixture, with explicit current/future/display ablations"
+}

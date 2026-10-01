@@ -1,0 +1,238 @@
+{
+  "backwardNumericalLeadEvents": {
+    "current": [
+      [
+        1789556718247,
+        "Purple|329",
+        10,
+        7
+      ],
+      [
+        1789558658356,
+        "Green|325",
+        18,
+        17
+      ],
+      [
+        1789558993465,
+        "Green|325",
+        17,
+        15
+      ],
+      [
+        1789562181663,
+        "Purple|302",
+        10,
+        8
+      ],
+      [
+        1789562967057,
+        "Purple|330",
+        11,
+        9
+      ],
+      [
+        1789564176942,
+        "Purple|330",
+        3,
+        1
+      ],
+      [
+        1789567407290,
+        "Purple|329",
+        10,
+        7
+      ],
+      [
+        1789568422408,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789570524131,
+        "Purple|329",
+        11,
+        9
+      ],
+      [
+        1789570754135,
+        "Green|122",
+        18,
+        15
+      ],
+      [
+        1789572059371,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789574439236,
+        "Green|122",
+        18,
+        15
+      ],
+      [
+        1789574763743,
+        "Purple|329",
+        10,
+        7
+      ],
+      [
+        1789575750784,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789584017464,
+        "Green|325",
+        18,
+        15
+      ],
+      [
+        1789586304008,
+        "Green|127",
+        18,
+        14
+      ]
+    ],
+    "canonical": [
+      [
+        1789556718247,
+        "Purple|329",
+        10,
+        7
+      ],
+      [
+        1789558658356,
+        "Green|325",
+        18,
+        17
+      ],
+      [
+        1789558993465,
+        "Green|325",
+        17,
+        15
+      ],
+      [
+        1789562181663,
+        "Purple|302",
+        10,
+        8
+      ],
+      [
+        1789562967057,
+        "Purple|330",
+        11,
+        9
+      ],
+      [
+        1789564176942,
+        "Purple|330",
+        3,
+        1
+      ],
+      [
+        1789567407290,
+        "Purple|329",
+        10,
+        7
+      ],
+      [
+        1789568422408,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789570524131,
+        "Purple|329",
+        11,
+        9
+      ],
+      [
+        1789570754135,
+        "Green|122",
+        18,
+        15
+      ],
+      [
+        1789572059371,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789574439236,
+        "Green|122",
+        18,
+        15
+      ],
+      [
+        1789574763743,
+        "Purple|329",
+        10,
+        7
+      ],
+      [
+        1789575750784,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789584017464,
+        "Green|325",
+        18,
+        15
+      ],
+      [
+        1789586304008,
+        "Green|127",
+        18,
+        14
+      ]
+    ]
+  },
+  "sameBackwardEventIdentities": true,
+  "rawWireAndPhysicalOccurrenceChecks": {
+    "current:wireAndCumulativeOccurrence": 183123,
+    "current:exactLaggedOrigin": 5559,
+    "current:sameSourceZero": 1363,
+    "current:sameSourceFuture": 1048,
+    "canonical:wireAndCumulativeOccurrence": 183123,
+    "canonical:exactLaggedOrigin": 5559,
+    "canonical:sameSourceZero": 1363,
+    "canonical:sameSourceFuture": 1048
+  },
+  "correctedExample": [
+    {
+      "arm": "current",
+      "targetId": 59697,
+      "occurrence": 1,
+      "physicalHops": 31,
+      "firstWireHops": 0,
+      "truthSec": 2860.836
+    },
+    {
+      "arm": "canonical",
+      "targetId": 59697,
+      "occurrence": 1,
+      "physicalHops": 31,
+      "firstWireHops": 0,
+      "truthSec": 2860.836
+    }
+  ],
+  "riderDatabaseChecks": {
+    "current:options": 8202,
+    "current:legUses": 48072,
+    "current:connected": 4925,
+    "canonical:options": 8202,
+    "canonical:legUses": 48072,
+    "canonical:connected": 4925
+  },
+  "limits": "Independent cumulative-hop/actual wire verification, not an observed boarding proof. Unresolved source identities and incomplete chains are preserved."
+}

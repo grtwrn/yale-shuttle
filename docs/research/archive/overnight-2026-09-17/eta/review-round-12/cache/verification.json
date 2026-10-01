@@ -1,0 +1,35 @@
+{
+  "currentBase": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "identicalInputWindows": 4,
+  "framesPerWindow": 78,
+  "rowsPerWindow": 10592,
+  "checks": {
+    "current": {
+      "changedRows": 1817,
+      "maxDeltaSec": {
+        "eta": 21,
+        "low": 61,
+        "high": 3768,
+        "departNow": 19,
+        "lowFloor": 20
+      },
+      "maxQuantileDeltaSec": 4153
+    },
+    "canonical": {
+      "changedRows": 0,
+      "maxDeltaSec": {
+        "eta": 0,
+        "low": 0,
+        "high": 0,
+        "departNow": 0,
+        "lowFloor": 0
+      },
+      "maxQuantileDeltaSec": 0
+    }
+  },
+  "canonicalExactFullStateAndWire": true,
+  "allBandsAndQuantilesOrdered": true,
+  "unchangedNegativeLowerBoundsPerArm": 8,
+  "allBeliefsNormalized": true,
+  "cleanCheckout": true
+}

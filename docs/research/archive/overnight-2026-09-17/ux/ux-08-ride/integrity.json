@@ -1,0 +1,34 @@
+{
+  "base": "7f681d92a7d30331728d637216dabecf9d9e356c",
+  "headPreserved": true,
+  "indexUnchanged": true,
+  "unchangedBlocks": [
+    "options",
+    "rideMapAndStops",
+    "rideStopArithmetic",
+    "notificationTrigger",
+    "autoEndEngine"
+  ],
+  "builtSourcesMatch": true,
+  "browserReports": [
+    {
+      "path": "release/ride-recovery.json",
+      "states": 14,
+      "requests": 44
+    },
+    {
+      "path": "release/desktop/ride-recovery.json",
+      "states": 14,
+      "requests": 44
+    }
+  ],
+  "images": 248,
+  "imageBytes": 12080473,
+  "sourceSha256": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "e2e535591ac4e643ae385a5a0a5c613b2d0f08a64a103537468c9d9b820ad9b2",
+    "services/shuttle-v2/web/src/RideFinish.tsx": "a3b3d19793a1b06415e267159ce92a15ac0c2f10ad8c58e2182c6788db9b69c7",
+    "services/shuttle-v2/web/src/rideAlert.ts": "d1dc4356ce901676733a52ddd05b6fc482b2693e37f0d14cefeee59d5ca4e56a",
+    "services/shuttle-v2/web/src/rideAlert.test.ts": "9e4483b1c6f8960acad5664ba78b63bd919dc16b4d4053c5a26848cb386e53b6",
+    "services/shuttle-v2/scripts/ride-recovery-check.mjs": "c74ca834733051c14c78100b3021eff2d4533579ed7fafc8f64008ce5f144742"
+  }
+}

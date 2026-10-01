@@ -1,0 +1,10 @@
+{
+  "firstPolls": 500,
+  "counts": {
+    "busPolls": 8080,
+    "rows": 316307,
+    "priceOriginDiffersFromSituationLead": 64
+  },
+  "ambiguous": [],
+  "correction": "Infer unique price-chain origin from complete served stopsAhead/stopId row sequence; startChain may reanchor a standing/repositioning situation. No forecast changed. Original failed assumption preserved."
+}

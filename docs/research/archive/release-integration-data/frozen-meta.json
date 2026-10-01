@@ -1,0 +1,93 @@
+{
+  "arms": [
+    "baseline",
+    "smoothedUpper"
+  ],
+  "configs": {
+    "baseline": {
+      "current": false,
+      "future": false,
+      "unclamp": false
+    },
+    "clamped": {
+      "current": true,
+      "future": false,
+      "unclamp": false
+    },
+    "current": {
+      "current": true,
+      "future": false,
+      "unclamp": true
+    },
+    "full": {
+      "current": true,
+      "future": true,
+      "unclamp": true
+    },
+    "hazard": {
+      "current": true,
+      "future": false,
+      "unclamp": true,
+      "transition": true
+    },
+    "shuffle": {
+      "current": true,
+      "future": false,
+      "unclamp": true,
+      "transition": true,
+      "shuffle": true
+    },
+    "smoothed": {
+      "current": true,
+      "future": false,
+      "unclamp": true,
+      "smoothSec": 30,
+      "freezeLap": true
+    },
+    "smoothedUpper": {
+      "current": true,
+      "future": false,
+      "unclamp": true,
+      "smoothSec": 30,
+      "freezeLap": true,
+      "rawBand": "upper"
+    },
+    "smoothedRaw": {
+      "current": true,
+      "future": false,
+      "unclamp": true,
+      "smoothSec": 30,
+      "freezeLap": true,
+      "rawBand": true
+    },
+    "winchester": {
+      "current": true,
+      "future": false,
+      "unclamp": false,
+      "winchesterOnly": true
+    }
+  },
+  "unavailable": {
+    "baseline": 64,
+    "smoothedUpper": 452
+  },
+  "parityChecks": 302,
+  "frames": 16253,
+  "emitted": 150084,
+  "changed": 29462,
+  "beliefChecks": 46790,
+  "gaps": [
+    {
+      "at": 1789556683166,
+      "gapMs": null
+    },
+    {
+      "at": 1789642866201,
+      "gapMs": 45035866
+    }
+  ],
+  "params": "fit-2026-09-15",
+  "priorCutoff": "2026-09-14T04:00:00Z",
+  "candidatePatch": "normalized-patch.json",
+  "note": "Unrounded target-scoped estimator output with periodic full ServerEta parity checks; continuous within observed segments; no synthetic observations or watcher-run resets. Distributions/tables priorSep14; parameter version publishedbeforeSep16. Actual approximately five-second raw cadence. Includes both target occurrences; collector lacks prior-day seeds. Marginal tables unchanged; per-chain own-departure bridge fixed."
+}

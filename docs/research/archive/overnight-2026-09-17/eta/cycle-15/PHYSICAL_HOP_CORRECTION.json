@@ -1,0 +1,6 @@
+{
+  "at": "2026-09-18T10:09:03.430504+00:00",
+  "reason": "Independent semantics audit checks cumulative connected physical hops, not count of observed visits. An earlier target omitted by a multi-hop leg must remain unknown rather than letting a later lap fill its occurrence.",
+  "rule": "Expected target distance from source equals modulo physical index displacement + occurrence*N; when same source, zero-hop first row starts at distance0, full-lap first row startsN, positive sublap remains unresolved. Require a recorded reached visit at that exact cumulative connected-leg distance. Same rule for chosen pickup; ride target already used exact cumulative hops.",
+  "preservation": "Initial and intermediate scored cohorts/forecasts kept in own subdirectories; no historical inputs, forecasts or source modified. Re-score only saved wires; no replay or coefficient search."
+}

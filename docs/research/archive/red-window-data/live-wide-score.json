@@ -1,0 +1,11 @@
+{
+  "forecastAt": 1789654499293,
+  "arrivalAt": 1789655696568,
+  "actualSec": 1197.275,
+  "medianSec": 922,
+  "lowSec": 452,
+  "highSec": 1442,
+  "pointErrorSec": 275.2750000000001,
+  "insideWindow": true,
+  "note": "One prospectively captured forecast and later completed detector outcome. Not a coverage estimate."
+}

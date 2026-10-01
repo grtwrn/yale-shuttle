@@ -1,0 +1,19 @@
+{
+  "head": "8f20f201a6cb7935ac3af4b983c173830510a277",
+  "base": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "checkoutUnchanged": true,
+  "indexUnchanged": true,
+  "trackedHashes": 912,
+  "builderHashes": 253,
+  "newSliceScope": 3,
+  "cumulativeScope": 9,
+  "shellOutsideSavedListsUnchangedFromPreviousApproval": true,
+  "sourceBundleParity": true,
+  "baselineBundleProvenance": true,
+  "priorMapScopeMatchesExactBase": true,
+  "reportsPassed": 11,
+  "screenshots": {
+    "count": 433,
+    "bytes": 19424373
+  }
+}

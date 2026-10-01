@@ -1,0 +1,20 @@
+{
+  "typechecks": [
+    {
+      "config": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/tsconfig.json",
+      "diagnostics": 0,
+      "sourceFiles": 713
+    },
+    {
+      "config": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/tsconfig.json",
+      "diagnostics": 0,
+      "sourceFiles": 455
+    }
+  ],
+  "loaded": [
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/TransitMap.tsx",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/livePickupSelection.ts",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/planner.ts"
+  ],
+  "built": true
+}

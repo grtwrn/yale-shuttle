@@ -1,0 +1,36 @@
+import fs from 'node:fs';
+import {deserialize} from 'node:v8';
+import {pathToFileURL} from 'node:url';
+const root=process.cwd(),dir='/home/gwarren/projects/yale-shuttle-watcher/red-window-data';
+const mod=async (p:string)=>import(pathToFileURL(root+'/'+p).href);
+const {computeUpcomingArrivals}=await mod('web/src/arrivals.ts');
+const {registerRoutePaths}=await mod('web/src/anchor.ts');
+const {applyModelParams}=await mod('web/src/eta/params.ts');
+const {ringForBus,arrivalsForBus}=await mod('web/src/eta/index.ts');
+const {situations}=await mod('web/src/eta/filter.ts');
+const {setClampTrace}=await mod('web/src/eta/arrival.ts');
+const {anchorKeyFor}=await mod('web/src/liveAnchor.ts');
+const warm=JSON.parse(fs.readFileSync(dir+'/live-warm-capture.json','utf8'));
+const base=JSON.parse(fs.readFileSync(dir+'/urgent-live-1-19.json','utf8')).feed;
+const checkpoint=deserialize(Buffer.from(warm.checkpoint,'base64'));
+const store=checkpoint.store;
+registerRoutePaths(base.route_paths);applyModelParams(base.model_params);
+const input=fs.readFileSync('/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples.jsonl','utf8').trim().split('\n').map(JSON.parse);
+const output:any[]=[];let traces:any[]=[];
+setClampTrace((e:any)=>{if(e.stopIdx===17&&e.occurrence===0)traces.push(e)});
+for(const f of input){
+ const now=Date.parse(f.at);if(now<=checkpoint.at || now>Date.parse('2026-09-17T15:00:00Z'))continue;
+ const bus=f.buses.find((b:any)=>b.bus_name==='#309'&&b.route_id===3);if(!bus)continue;
+ traces=[];
+ const as=computeUpcomingArrivals(base.routes['3'],[bus],base.routes,base.stop_coords,base.segments,now,base.dwells,store);
+ const a=as.find((a:any)=>a.stopId===48&&a.stopsAhead<15);
+ const key=anchorKeyFor('Red',bus.bus_name),entry=store.get(key),b=entry?.belief;
+ if(now<Date.parse('2026-09-17T14:48:00Z'))continue;
+ const ring=ringForBus(bus,base.routes['3'],base.stop_coords);
+ const ns=new Map([[key,{belief:structuredClone(b)}]]);
+ const raw=arrivalsForBus(ns,key,bus,ring,ring.stops,base.stop_coords,base.segments['3'],base.dwells['3'],new Set([48]),now,.5,base.dwells).find((x:any)=>x.occurrence===0);
+ output.push({at:f.at,observedAt:bus.observed_at,lap:bus.lap,lat:bus.lat,lon:bus.lon,a,unclamped:raw,trace:traces[0],b:{lead:b.lead,rested:b.rested,restStop:b.restStop,since:b.restSince,restApproach:b.restApproach},situations:situations(b,ring)});
+}
+setClampTrace(null);
+fs.writeFileSync(dir+'/urgent-replay.json',JSON.stringify({note:'Diagnostic: restored 14:19 checkpoint + 10-second watcher observations + fixed 14:51 tables. Not exact five-second production replay or coverage validation.',checkpointAt:checkpoint.at,output},null,2));
+for(const x of output)console.log(JSON.stringify({at:x.at.slice(11,19),eta:x.a?.eta,lo:x.a?.low,hi:x.a?.high,rawEta:x.unclamped?.eta,rawHigh:x.unclamped?.high,trace:x.trace,b:x.b}));

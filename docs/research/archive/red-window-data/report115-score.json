@@ -1,0 +1,45 @@
+{
+  "note": "One observed journey; detector arrival proxy, not a calibration result.",
+  "arrivalAt": 1789657232897,
+  "rows": [
+    {
+      "bus_name": "#309",
+      "from_stop_id": 27,
+      "to_stop_id": 48,
+      "stops_ahead": 3,
+      "predicted_sec": 433,
+      "predicted_low_sec": 23,
+      "predicted_high_sec": 941,
+      "predicted_at": 1789656660000,
+      "surface": "trip",
+      "actualRemainingSec": 572.897,
+      "pointEarlySec": 139.89700000000005
+    },
+    {
+      "bus_name": "#309",
+      "from_stop_id": 27,
+      "to_stop_id": 48,
+      "stops_ahead": 3,
+      "predicted_sec": 149,
+      "predicted_low_sec": 0,
+      "predicted_high_sec": 901,
+      "predicted_at": 1789656705000,
+      "surface": "trip",
+      "actualRemainingSec": 527.897,
+      "pointEarlySec": 378.89700000000005
+    },
+    {
+      "bus_name": "#309",
+      "from_stop_id": 27,
+      "to_stop_id": 48,
+      "stops_ahead": 3,
+      "predicted_sec": 149,
+      "predicted_low_sec": 0,
+      "predicted_high_sec": 738,
+      "predicted_at": 1789656720000,
+      "surface": "trip",
+      "actualRemainingSec": 512.897,
+      "pointEarlySec": 363.89700000000005
+    }
+  ]
+}

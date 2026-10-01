@@ -1,0 +1,18 @@
+{
+  "createdAt": "2026-09-18T09:11:36.779477+00:00",
+  "purpose": "Prepare reusable all-route causal raw observation frames for next bounded outcome round. This round does not certify all-route connected ETA accuracy.",
+  "database": "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/outcomes-complete.db",
+  "query": "SELECT * FROM raw_positions WHERE collected_at>=Sep16T04Z ORDER BY collected_at,id",
+  "sourceExporter": "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/raw-feed.mts",
+  "sourceHash": "dba250b22cfa0eb6b9c0c0ff3a792b5e04c729968e45888f5b14640eefe6d613",
+  "changes": [
+    "all-route query",
+    "own output directory/name",
+    "retain all causally known lap ages instead of only Red regulator keys"
+  ],
+  "caveats": [
+    "Only historical raw coordinates/identity/times are original. Collector stop/pin/lap fields are reconstructed using current reducers and topology.",
+    "No pre-capture history seed. No future outcomes used. Reset collector only after >30min fleet gap; do not call sparse route service full-fleet prospective data.",
+    "Current cache order dependence requires future paired replay preserve full recorded fleet ordering; Red-only results do not substitute."
+  ]
+}

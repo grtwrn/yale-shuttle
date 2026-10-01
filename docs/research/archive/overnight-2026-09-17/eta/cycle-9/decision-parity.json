@@ -1,0 +1,10 @@
+{
+  "exactPrototypeDecisions": 4688,
+  "gained": 30,
+  "lost": 0,
+  "changed": 30,
+  "nonzeroUnchanged": 2344,
+  "busChanges": 0,
+  "rankChanges": 0,
+  "scope": "Current-source numerical shell, same wire inputs as independently reviewed cycle6. Both wire occurrences untouched; scores and regressions transfer only by exact equality."
+}

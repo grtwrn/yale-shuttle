@@ -1,0 +1,15 @@
+{
+  "inputHashes": 15,
+  "frames": 1172,
+  "wireRows": 160496,
+  "orderedDistributions": 160496,
+  "sessions": 40,
+  "decisions": 4688,
+  "rankChanges": 48,
+  "allRankChangesRespectPersistence": true,
+  "positiveZeroHopRows": 101,
+  "fullLapZeroHopAliasChecks": 6,
+  "connectedRows": 1420,
+  "unmatchedRows": 3268,
+  "browserChecks": 156
+}

@@ -1,0 +1,1138 @@
+{
+  "phase": "after",
+  "desktop": false,
+  "source": "Actual CombinedTripMap with synthetic props; test-only export/map reference; no estimator or live network",
+  "states": [
+    {
+      "name": "same-route-360",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min",
+          "wait": false,
+          "x": 132,
+          "y": 131,
+          "width": 88.734375,
+          "height": 19,
+          "left": 132,
+          "right": 220.734375,
+          "top": 131,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM",
+          "wait": false,
+          "x": 125,
+          "y": 291,
+          "width": 114.859375,
+          "height": 19,
+          "left": 125,
+          "right": 239.859375,
+          "top": 291,
+          "bottom": 310
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 53.203125,
+          "y": 156,
+          "width": 103.796875,
+          "height": 19,
+          "left": 53.203125,
+          "right": 157,
+          "top": 156,
+          "bottom": 175
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "focused-bus",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min",
+          "wait": false,
+          "x": 132,
+          "y": 131,
+          "width": 88.734375,
+          "height": 19,
+          "left": 132,
+          "right": 220.734375,
+          "top": 131,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM",
+          "wait": false,
+          "x": 125,
+          "y": 291,
+          "width": 114.859375,
+          "height": 19,
+          "left": 125,
+          "right": 239.859375,
+          "top": 291,
+          "bottom": 310
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 53.203125,
+          "y": 156,
+          "width": 103.796875,
+          "height": 19,
+          "left": 53.203125,
+          "right": 157,
+          "top": 156,
+          "bottom": 175
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "fullscreen",
+      "width": 360,
+      "map": {
+        "x": 0,
+        "y": 0,
+        "width": 360,
+        "height": 800,
+        "left": 0,
+        "right": 360,
+        "top": 0,
+        "bottom": 800
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min",
+          "wait": false,
+          "x": 132,
+          "y": 335,
+          "width": 88.734375,
+          "height": 19,
+          "left": 132,
+          "right": 220.734375,
+          "top": 335,
+          "bottom": 354
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM",
+          "wait": false,
+          "x": 125,
+          "y": 495,
+          "width": 114.859375,
+          "height": 19,
+          "left": 125,
+          "right": 239.859375,
+          "top": 495,
+          "bottom": 514
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 53.203125,
+          "y": 360,
+          "width": 103.796875,
+          "height": 19,
+          "left": 53.203125,
+          "right": 157,
+          "top": 360,
+          "bottom": 379
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 163,
+          "y": 356,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 356,
+          "bottom": 384
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 163,
+          "y": 358,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 358,
+          "bottom": 386
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-360",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (Blue Day) 2–19 min🚌 (Brown) 2–19 min",
+          "wait": false,
+          "x": 115,
+          "y": 101,
+          "width": 124.3125,
+          "height": 49,
+          "left": 115,
+          "right": 239.3125,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (Blue Day) 12:59–1:32 PM🏁 (Brown) 12:59–1:32 PM",
+          "wait": false,
+          "x": 108,
+          "y": 291,
+          "width": 150.4375,
+          "height": 49,
+          "left": 108,
+          "right": 258.4375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 53.203125,
+          "y": 156,
+          "width": 103.796875,
+          "height": 19,
+          "left": 53.203125,
+          "right": 157,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day #410 12:08/~10m",
+          "wait": true,
+          "x": 197,
+          "y": 156,
+          "width": 138.828125,
+          "height": 19,
+          "left": 197,
+          "right": 335.828125,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown #507 18:05/~12m",
+          "wait": true,
+          "x": 113,
+          "y": 188,
+          "width": 127.140625,
+          "height": 19,
+          "left": 113,
+          "right": 240.140625,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-390",
+      "width": 390,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 372,
+        "height": 320,
+        "left": 9,
+        "right": 381,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (Blue Day) 2–19 min🚌 (Brown) 2–19 min",
+          "wait": false,
+          "x": 130,
+          "y": 101,
+          "width": 124.3125,
+          "height": 49,
+          "left": 130,
+          "right": 254.3125,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (Blue Day) 12:59–1:32 PM🏁 (Brown) 12:59–1:32 PM",
+          "wait": false,
+          "x": 123,
+          "y": 291,
+          "width": 150.4375,
+          "height": 49,
+          "left": 123,
+          "right": 273.4375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 68.203125,
+          "y": 156,
+          "width": 103.796875,
+          "height": 19,
+          "left": 68.203125,
+          "right": 172,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day #410 12:08/~10m",
+          "wait": true,
+          "x": 212,
+          "y": 156,
+          "width": 138.828125,
+          "height": 19,
+          "left": 212,
+          "right": 350.828125,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown #507 18:05/~12m",
+          "wait": true,
+          "x": 128,
+          "y": 188,
+          "width": 127.140625,
+          "height": 19,
+          "left": 128,
+          "right": 255.140625,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 178,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 178,
+          "right": 206,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 178,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 178,
+          "right": 206,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 178,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 178,
+          "right": 206,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 178,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 178,
+          "right": 206,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-430",
+      "width": 430,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 412,
+        "height": 320,
+        "left": 9,
+        "right": 421,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (Blue Day) 2–19 min🚌 (Brown) 2–19 min",
+          "wait": false,
+          "x": 150,
+          "y": 101,
+          "width": 124.3125,
+          "height": 49,
+          "left": 150,
+          "right": 274.3125,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (Blue Day) 12:59–1:32 PM🏁 (Brown) 12:59–1:32 PM",
+          "wait": false,
+          "x": 143,
+          "y": 291,
+          "width": 150.4375,
+          "height": 49,
+          "left": 143,
+          "right": 293.4375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 88.203125,
+          "y": 156,
+          "width": 103.796875,
+          "height": 19,
+          "left": 88.203125,
+          "right": 192,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day #410 12:08/~10m",
+          "wait": true,
+          "x": 232,
+          "y": 156,
+          "width": 138.828125,
+          "height": 19,
+          "left": 232,
+          "right": 370.828125,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown #507 18:05/~12m",
+          "wait": true,
+          "x": 148,
+          "y": 188,
+          "width": 127.140625,
+          "height": 19,
+          "left": 148,
+          "right": 275.140625,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 198,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 198,
+          "right": 226,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 198,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 198,
+          "right": 226,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 198,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 198,
+          "right": 226,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 198,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 198,
+          "right": 226,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-1280",
+      "width": 1280,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 1262,
+        "height": 320,
+        "left": 9,
+        "right": 1271,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (Blue Day) 2–19 min🚌 (Brown) 2–19 min",
+          "wait": false,
+          "x": 575,
+          "y": 101,
+          "width": 124.3125,
+          "height": 49,
+          "left": 575,
+          "right": 699.3125,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (Blue Day) 12:59–1:32 PM🏁 (Brown) 12:59–1:32 PM",
+          "wait": false,
+          "x": 568,
+          "y": 291,
+          "width": 150.4375,
+          "height": 49,
+          "left": 568,
+          "right": 718.4375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 513.203125,
+          "y": 156,
+          "width": 103.796875,
+          "height": 19,
+          "left": 513.203125,
+          "right": 617,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day #410 12:08/~10m",
+          "wait": true,
+          "x": 657,
+          "y": 156,
+          "width": 138.828125,
+          "height": 19,
+          "left": 657,
+          "right": 795.828125,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown #507 18:05/~12m",
+          "wait": true,
+          "x": 573,
+          "y": 188,
+          "width": 127.140625,
+          "height": 19,
+          "left": 573,
+          "right": 700.140625,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 623,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 623,
+          "right": 651,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 623,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 623,
+          "right": 651,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 623,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 623,
+          "right": 651,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 623,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 623,
+          "right": 651,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "three-routes-640",
+      "width": 640,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 622,
+        "height": 320,
+        "left": 9,
+        "right": 631,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (Blue Day) 2–19 min🚌 (Brown) 2–19 min",
+          "wait": false,
+          "x": 255,
+          "y": 101,
+          "width": 124.3125,
+          "height": 49,
+          "left": 255,
+          "right": 379.3125,
+          "top": 101,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (Blue Day) 12:59–1:32 PM🏁 (Brown) 12:59–1:32 PM",
+          "wait": false,
+          "x": 248,
+          "y": 291,
+          "width": 150.4375,
+          "height": 49,
+          "left": 248,
+          "right": 398.4375,
+          "top": 291,
+          "bottom": 340
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 193.203125,
+          "y": 156,
+          "width": 103.796875,
+          "height": 19,
+          "left": 193.203125,
+          "right": 297,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Blue Day #410 12:08/~10m",
+          "wait": true,
+          "x": 337,
+          "y": 156,
+          "width": 138.828125,
+          "height": 19,
+          "left": 337,
+          "right": 475.828125,
+          "top": 156,
+          "bottom": 175
+        },
+        {
+          "text": "Brown #507 18:05/~12m",
+          "wait": true,
+          "x": 253,
+          "y": 188,
+          "width": 127.140625,
+          "height": 19,
+          "left": 253,
+          "right": 380.140625,
+          "top": 188,
+          "bottom": 207
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 303,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 303,
+          "right": 331,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 303,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 303,
+          "right": 331,
+          "top": 154,
+          "bottom": 182
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 303,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 303,
+          "right": 331,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 303,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 303,
+          "right": 331,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "edge",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (R) 2–19 min🚌 (Blue Day) 2–19 min🚌 (Brown) 2–19 min",
+          "wait": false,
+          "x": 15,
+          "y": 166,
+          "width": 124.3125,
+          "height": 49,
+          "left": 15,
+          "right": 139.3125,
+          "top": 166,
+          "bottom": 215
+        },
+        {
+          "text": "🏁 (R) 12:59–1:32 PM🏁 (Blue Day) 12:59–1:32 PM🏁 (Brown) 12:59–1:32 PM",
+          "wait": false,
+          "x": 8,
+          "y": 356,
+          "width": 150.4375,
+          "height": 49,
+          "left": 8,
+          "right": 158.4375,
+          "top": 356,
+          "bottom": 405
+        },
+        {
+          "text": "Red #307 3:21/~5m",
+          "wait": true,
+          "x": 97,
+          "y": 221,
+          "width": 103.796875,
+          "height": 19,
+          "left": 97,
+          "right": 200.796875,
+          "top": 221,
+          "bottom": 240
+        },
+        {
+          "text": "Blue Day #410 12:08/~10m",
+          "wait": true,
+          "x": 97,
+          "y": 246,
+          "width": 138.828125,
+          "height": 19,
+          "left": 97,
+          "right": 235.828125,
+          "top": 246,
+          "bottom": 265
+        },
+        {
+          "text": "Brown #507 18:05/~12m",
+          "wait": true,
+          "x": 15,
+          "y": 271,
+          "width": 127.140625,
+          "height": 19,
+          "left": 15,
+          "right": 142.140625,
+          "top": 271,
+          "bottom": 290
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Red #307. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 63,
+          "y": 217,
+          "width": 28,
+          "height": 28,
+          "left": 63,
+          "right": 91,
+          "top": 217,
+          "bottom": 245
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 63,
+          "y": 219,
+          "width": 28,
+          "height": 28,
+          "left": 63,
+          "right": 91,
+          "top": 219,
+          "bottom": 247
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Blue Day #410. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 63,
+          "y": 217,
+          "width": 28,
+          "height": 28,
+          "left": 63,
+          "right": 91,
+          "top": 217,
+          "bottom": 245
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "title": "Brown #507. Waiting 3:21. Usually ~5 min total. Typical total wait is historical context, not time remaining.",
+          "role": "button",
+          "x": 63,
+          "y": 219,
+          "width": 28,
+          "height": 28,
+          "left": 63,
+          "right": 91,
+          "top": 219,
+          "bottom": 247
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "no-forecast",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #307",
+          "title": "Red #307",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Red #309 — just passed",
+          "title": "Red #309 — just passed",
+          "role": "button",
+          "x": 163,
+          "y": 154,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 154,
+          "bottom": 182
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "name": "empty",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [],
+      "buses": [],
+      "overflow": false
+    }
+  ],
+  "checks": [
+    "Catchable and passed Red buses have distinct accessible identities; compact wait names #307",
+    "Both pickup and arrival time stacks distinguish Blue Day/Brown without color",
+    "Unavailable times remove wait/arrival labels while preserving bus identity",
+    "Keyboard focus opens the passed-bus tooltip",
+    "Empty options remove old bus markers and labels",
+    "Wait labels stay in bounds and clear of buses/time labels at all tested widths and pan position"
+  ],
+  "errors": []
+}

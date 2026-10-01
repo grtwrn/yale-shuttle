@@ -1,0 +1,1146 @@
+{
+  "method": "Small exploratory linear location + separately calibrated empirical residual q10/q50/q90. No test tuning; not live-model evaluation.",
+  "limitations": [
+    "Trips share eight service dates and bus runs; no iid significance claim.",
+    "Realized lap is available at the Winchester hold, NOT at Trumbull departure.",
+    "Known age at Trumbull is a previous physical departure timestamp, assumed known; legacy exact ingestion availability is absent.",
+    "Chronological screen uses only observed historical endpoint states; not current position, uncertain future lap, or live mixture replay.",
+    "Completed/stopped-endpoint sample omits missing trips and pass-throughs; source clock is pinned time.",
+    "The common cohort requires a subsequently realized lap within a training-derived band; this is outcome-dependent selection at the origin, although no nonmissing lap was excluded here.",
+    "An unconstrained linear hold fit extrapolates below zero on one test trip; clipping collapses its interval to zero. This is an intentionally simple exploratory screen, not a deployable fit.",
+    "All dates were inspected in the descriptive association before this screen; parameters and quantiles are chronological, but this is not a pristine confirmatory holdout.",
+    "Only three final test dates; no production change is authorized by this screen."
+  ],
+  "descriptive": {
+    "n": 40,
+    "dates": 8,
+    "corrApproachStand": -0.4393933369414739,
+    "varianceApproachPlusStand": 28694.4290789,
+    "varianceIndependentMarginals": 45548.90346080769,
+    "lapBand": [
+      1974.05,
+      5011.05
+    ],
+    "lapN": 39,
+    "lapFit": {
+      "intercept": 1955.957371179396,
+      "slope": -0.4931164773684186
+    },
+    "corrLapStand": -0.7488542424813633,
+    "rawStandSd": 185.760389875518,
+    "inSampleResidualSd": 123.1098619927466
+  },
+  "split": {
+    "trainDates": [
+      "2026-09-03",
+      "2026-09-08",
+      "2026-09-09"
+    ],
+    "calibrationDates": [
+      "2026-09-10",
+      "2026-09-11"
+    ],
+    "testDates": [
+      "2026-09-14",
+      "2026-09-15",
+      "2026-09-16"
+    ],
+    "trainN": 17,
+    "calibrationN": 12,
+    "testN": 10,
+    "trainingLapReference": 3205.211,
+    "excludedN": 1
+  },
+  "experiments": {
+    "hold_after_arrival_realized_lap": {
+      "pooled": {
+        "fit": {
+          "intercept": 378.76094117647057,
+          "slope": 0
+        },
+        "calibrationResidualQuantiles": [
+          -188.76594117647056,
+          6.40505882352943,
+          251.45905882352946
+        ],
+        "summary": {
+          "n": 10,
+          "covered": 4,
+          "early": 6,
+          "late": 0,
+          "meanWidthSec": 440.225,
+          "maeSec": 190.0795,
+          "meanWIS": 109.69343333333335
+        },
+        "byDate": {
+          "2026-09-14": {
+            "n": 2,
+            "covered": 2,
+            "early": 0,
+            "late": 0,
+            "meanWidthSec": 440.225,
+            "maeSec": 120.11850000000001,
+            "meanWIS": 69.38783333333335
+          },
+          "2026-09-15": {
+            "n": 3,
+            "covered": 1,
+            "early": 2,
+            "late": 0,
+            "meanWidthSec": 440.225,
+            "maeSec": 200.01966666666667,
+            "meanWIS": 121.54822222222224
+          },
+          "2026-09-16": {
+            "n": 5,
+            "covered": 1,
+            "early": 4,
+            "late": 0,
+            "meanWidthSec": 440.225,
+            "maeSec": 212.0998,
+            "meanWIS": 118.70280000000001
+          }
+        },
+        "outcomes": [
+          {
+            "date": "2026-09-16",
+            "bus": "#309",
+            "truth": 150.072,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#316",
+            "truth": 525.072,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#308",
+            "truth": 130.03,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#309",
+            "truth": 180.041,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#308",
+            "truth": 159.928,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#316",
+            "truth": 480.013,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#310",
+            "truth": 120.115,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#310",
+            "truth": 145.005,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-14",
+            "bus": "#316",
+            "truth": 265.063,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          },
+          {
+            "date": "2026-09-14",
+            "bus": "#310",
+            "truth": 265.032,
+            "low": 189.995,
+            "point": 385.166,
+            "high": 630.22
+          }
+        ]
+      },
+      "conditional_residual": {
+        "fit": {
+          "intercept": 2415.144138491943,
+          "slope": -0.6343275874633282
+        },
+        "calibrationResidualQuantiles": [
+          -65.03915121334865,
+          24.35070403311886,
+          128.85869506681757
+        ],
+        "summary": {
+          "n": 10,
+          "covered": 5,
+          "early": 4,
+          "late": 1,
+          "meanWidthSec": 174.5080616521496,
+          "maeSec": 122.94117633399198,
+          "meanWIS": 99.44001784149636
+        },
+        "byDate": {
+          "2026-09-14": {
+            "n": 2,
+            "covered": 1,
+            "early": 1,
+            "late": 0,
+            "meanWidthSec": 193.89784628016622,
+            "maeSec": 85.73663416375226,
+            "meanWIS": 55.62241080938716
+          },
+          "2026-09-15": {
+            "n": 3,
+            "covered": 2,
+            "early": 1,
+            "late": 0,
+            "meanWidthSec": 193.8978462801662,
+            "maeSec": 68.11567116659295,
+            "meanWIS": 41.132846798635335
+          },
+          "2026-09-16": {
+            "n": 5,
+            "covered": 2,
+            "early": 2,
+            "late": 1,
+            "meanWidthSec": 155.11827702413296,
+            "maeSec": 170.71829630252728,
+            "meanWIS": 151.95136328005665
+          }
+        },
+        "outcomes": [
+          {
+            "date": "2026-09-16",
+            "bus": "#309",
+            "truth": 150.072,
+            "low": 564.2387616895516,
+            "point": 653.6286169360191,
+            "high": 758.1366079697177
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#316",
+            "truth": 525.072,
+            "low": 408.8240624679239,
+            "point": 498.2139177143914,
+            "high": 602.7219087480901
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#308",
+            "truth": 130.03,
+            "low": 27.96680135147983,
+            "point": 117.35665659794734,
+            "high": 221.86464763164605
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#309",
+            "truth": 180.041,
+            "low": 0,
+            "point": 0,
+            "high": 0
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#308",
+            "truth": 159.928,
+            "low": 201.00058364248855,
+            "point": 290.39043888895606,
+            "high": 394.89842992265477
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#316",
+            "truth": 480.013,
+            "low": 358.14128822960413,
+            "point": 447.53114347607163,
+            "high": 552.0391345097703
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#310",
+            "truth": 120.115,
+            "low": 88.44549652299577,
+            "point": 177.83535176946327,
+            "high": 282.343342803162
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#310",
+            "truth": 145.005,
+            "low": 169.7599499599197,
+            "point": 259.1498052063872,
+            "high": 363.65779624008593
+          },
+          {
+            "date": "2026-09-14",
+            "bus": "#316",
+            "truth": 265.063,
+            "low": 215.40552882619352,
+            "point": 304.795384072661,
+            "high": 409.30337510635974
+          },
+          {
+            "date": "2026-09-14",
+            "bus": "#310",
+            "truth": 265.032,
+            "low": 307.38302900837596,
+            "point": 396.77288425484346,
+            "high": 501.2808752885422
+          }
+        ]
+      }
+    },
+    "whole_journey_from_origin_known_age": {
+      "pooled": {
+        "fit": {
+          "intercept": 853.4171764705882,
+          "slope": 0
+        },
+        "calibrationResidualQuantiles": [
+          -98.23617647058813,
+          -8.382176470588206,
+          212.08282352941183
+        ],
+        "summary": {
+          "n": 10,
+          "covered": 4,
+          "early": 6,
+          "late": 0,
+          "meanWidthSec": 310.31899999999996,
+          "maeSec": 138.9358,
+          "meanWIS": 101.35713333333335
+        },
+        "byDate": {
+          "2026-09-14": {
+            "n": 2,
+            "covered": 1,
+            "early": 1,
+            "late": 0,
+            "meanWidthSec": 310.31899999999996,
+            "maeSec": 62.36949999999996,
+            "meanWIS": 48.18076666666666
+          },
+          "2026-09-15": {
+            "n": 3,
+            "covered": 2,
+            "early": 1,
+            "late": 0,
+            "meanWidthSec": 310.31899999999996,
+            "maeSec": 151.69966666666667,
+            "meanWIS": 92.41293333333336
+          },
+          "2026-09-16": {
+            "n": 5,
+            "covered": 1,
+            "early": 4,
+            "late": 0,
+            "meanWidthSec": 310.31899999999996,
+            "maeSec": 161.904,
+            "meanWIS": 127.99420000000003
+          }
+        },
+        "outcomes": [
+          {
+            "date": "2026-09-16",
+            "bus": "#309",
+            "truth": 629.991,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#316",
+            "truth": 895.102,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#308",
+            "truth": 580.102,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#309",
+            "truth": 724.977,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#308",
+            "truth": 685.617,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#316",
+            "truth": 935.11,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#310",
+            "truth": 1024.992,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#310",
+            "truth": 659.968,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-14",
+            "bus": "#316",
+            "truth": 830.259,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          },
+          {
+            "date": "2026-09-14",
+            "bus": "#310",
+            "truth": 735.072,
+            "low": 755.181,
+            "point": 845.035,
+            "high": 1065.5
+          }
+        ]
+      },
+      "conditional_residual": {
+        "fit": {
+          "intercept": 2646.6792398020575,
+          "slope": -0.6360119480552788
+        },
+        "calibrationResidualQuantiles": [
+          -34.16336009934366,
+          31.198182154957976,
+          85.23210453933109
+        ],
+        "summary": {
+          "n": 10,
+          "covered": 3,
+          "early": 4,
+          "late": 3,
+          "meanWidthSec": 119.39546463867477,
+          "maeSec": 140.46269786381495,
+          "meanWIS": 118.05138727848318
+        },
+        "byDate": {
+          "2026-09-14": {
+            "n": 2,
+            "covered": 0,
+            "early": 1,
+            "late": 1,
+            "meanWidthSec": 119.39546463867475,
+            "maeSec": 103.22896316210955,
+            "meanWIS": 71.39017259179629
+          },
+          "2026-09-15": {
+            "n": 3,
+            "covered": 1,
+            "early": 1,
+            "late": 1,
+            "meanWidthSec": 119.39546463867475,
+            "maeSec": 52.40154447328465,
+            "meanWIS": 33.11444510901787
+          },
+          "2026-09-16": {
+            "n": 5,
+            "covered": 2,
+            "early": 2,
+            "late": 1,
+            "meanWidthSec": 119.39546463867478,
+            "maeSec": 208.1928837788153,
+            "meanWIS": 187.67803845483712
+          }
+        },
+        "outcomes": [
+          {
+            "date": "2026-09-16",
+            "bus": "#309",
+            "truth": 629.991,
+            "low": 1066.785513770463,
+            "point": 1132.1470560247647,
+            "high": 1186.1809784091379
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#316",
+            "truth": 895.102,
+            "low": 856.8933027568964,
+            "point": 922.2548450111981,
+            "high": 976.2887673955712
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#308",
+            "truth": 580.102,
+            "low": 516.3896780906975,
+            "point": 581.7512203449992,
+            "high": 635.7851427293723
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#309",
+            "truth": 724.977,
+            "low": 251.19495616982795,
+            "point": 316.5564984241296,
+            "high": 370.5904208085027
+          },
+          {
+            "date": "2026-09-16",
+            "bus": "#308",
+            "truth": 685.617,
+            "low": 721.8412536829424,
+            "point": 787.202795937244,
+            "high": 841.2367183216171
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#316",
+            "truth": 935.11,
+            "low": 866.5333358535702,
+            "point": 931.8948781078718,
+            "high": 985.9288004922449
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#310",
+            "truth": 1024.992,
+            "low": 872.7051957974986,
+            "point": 938.0667380518003,
+            "high": 992.1006604361734
+          },
+          {
+            "date": "2026-09-15",
+            "bus": "#310",
+            "truth": 659.968,
+            "low": 661.6707073252244,
+            "point": 727.032249579526,
+            "high": 781.0661719638991
+          },
+          {
+            "date": "2026-09-14",
+            "bus": "#316",
+            "truth": 830.259,
+            "low": 701.1441528693274,
+            "point": 766.505695123629,
+            "high": 820.5396175080022
+          },
+          {
+            "date": "2026-09-14",
+            "bus": "#310",
+            "truth": 735.072,
+            "low": 812.4150791935465,
+            "point": 877.7766214478481,
+            "high": 931.8105438322212
+          }
+        ]
+      }
+    }
+  },
+  "joinedTrips": [
+    {
+      "bus": "#309",
+      "date": "2026-09-16",
+      "startedAt": 1789566857305,
+      "arrivedAt": 1789567487296,
+      "winchesterPinnedAt": 1789567242326,
+      "winchesterDepartedAt": 1789567392398,
+      "approachSec": 385.021,
+      "standSec": 150.072,
+      "afterSec": 94.898,
+      "totalSec": 629.991,
+      "lapSec": 2815.369,
+      "knownAgeAtOriginSec": 2430.348
+    },
+    {
+      "bus": "#316",
+      "date": "2026-09-16",
+      "startedAt": 1789565542068,
+      "arrivedAt": 1789566437170,
+      "winchesterPinnedAt": 1789565842083,
+      "winchesterDepartedAt": 1789566367155,
+      "approachSec": 300.015,
+      "standSec": 525.072,
+      "afterSec": 70.015,
+      "totalSec": 895.102,
+      "lapSec": 3060.376,
+      "knownAgeAtOriginSec": 2760.361
+    },
+    {
+      "bus": "#308",
+      "date": "2026-09-16",
+      "startedAt": 1789565211995,
+      "arrivedAt": 1789565792097,
+      "winchesterPinnedAt": 1789565577048,
+      "winchesterDepartedAt": 1789565707078,
+      "approachSec": 365.053,
+      "standSec": 130.03,
+      "afterSec": 85.019,
+      "totalSec": 580.102,
+      "lapSec": 3660.787,
+      "knownAgeAtOriginSec": 3295.734
+    },
+    {
+      "bus": "#309",
+      "date": "2026-09-16",
+      "startedAt": 1789563786987,
+      "arrivedAt": 1789564511964,
+      "winchesterPinnedAt": 1789564246916,
+      "winchesterDepartedAt": 1789564426957,
+      "approachSec": 459.929,
+      "standSec": 180.041,
+      "afterSec": 85.007,
+      "totalSec": 724.977,
+      "lapSec": 4172.628,
+      "knownAgeAtOriginSec": 3712.699
+    },
+    {
+      "bus": "#308",
+      "date": "2026-09-16",
+      "startedAt": 1789561341032,
+      "arrivedAt": 1789562026649,
+      "winchesterPinnedAt": 1789561756333,
+      "winchesterDepartedAt": 1789561916261,
+      "approachSec": 415.301,
+      "standSec": 159.928,
+      "afterSec": 110.388,
+      "totalSec": 685.617,
+      "lapSec": 3388.004,
+      "knownAgeAtOriginSec": 2972.703
+    },
+    {
+      "bus": "#316",
+      "date": "2026-09-15",
+      "startedAt": 1789487230871,
+      "arrivedAt": 1789488165981,
+      "winchesterPinnedAt": 1789487625943,
+      "winchesterDepartedAt": 1789488105956,
+      "approachSec": 395.072,
+      "standSec": 480.013,
+      "afterSec": 60.025,
+      "totalSec": 935.11,
+      "lapSec": 3140.276,
+      "knownAgeAtOriginSec": 2745.204
+    },
+    {
+      "bus": "#310",
+      "date": "2026-09-15",
+      "startedAt": 1789485490838,
+      "arrivedAt": 1789486515830,
+      "winchesterPinnedAt": 1789486320782,
+      "winchesterDepartedAt": 1789486440897,
+      "approachSec": 829.944,
+      "standSec": 120.115,
+      "afterSec": 74.933,
+      "totalSec": 1024.992,
+      "lapSec": 3565.444,
+      "knownAgeAtOriginSec": 2735.5
+    },
+    {
+      "bus": "#310",
+      "date": "2026-09-15",
+      "startedAt": 1789478560024,
+      "arrivedAt": 1789479219992,
+      "winchesterPinnedAt": 1789478929969,
+      "winchesterDepartedAt": 1789479074974,
+      "approachSec": 369.945,
+      "standSec": 145.005,
+      "afterSec": 145.018,
+      "totalSec": 659.968,
+      "lapSec": 3437.254,
+      "knownAgeAtOriginSec": 3067.309
+    },
+    {
+      "bus": "#316",
+      "date": "2026-09-14",
+      "startedAt": 1789396466037,
+      "arrivedAt": 1789397296296,
+      "winchesterPinnedAt": 1789396826087,
+      "winchesterDepartedAt": 1789397091150,
+      "approachSec": 360.05,
+      "standSec": 265.063,
+      "afterSec": 205.146,
+      "totalSec": 830.259,
+      "lapSec": 3365.295,
+      "knownAgeAtOriginSec": 3005.245
+    },
+    {
+      "bus": "#310",
+      "date": "2026-09-14",
+      "startedAt": 1789392060710,
+      "arrivedAt": 1789392795782,
+      "winchesterPinnedAt": 1789392450711,
+      "winchesterDepartedAt": 1789392715743,
+      "approachSec": 390.001,
+      "standSec": 265.032,
+      "afterSec": 80.039,
+      "totalSec": 735.072,
+      "lapSec": 3220.295,
+      "knownAgeAtOriginSec": 2830.294
+    },
+    {
+      "bus": "#310",
+      "date": "2026-09-11",
+      "startedAt": 1789143250501,
+      "arrivedAt": 1789144465671,
+      "winchesterPinnedAt": 1789143625517,
+      "winchesterDepartedAt": 1789144395653,
+      "approachSec": 375.016,
+      "standSec": 770.136,
+      "afterSec": 70.018,
+      "totalSec": 1215.17,
+      "lapSec": 2809.683,
+      "knownAgeAtOriginSec": 2434.667
+    },
+    {
+      "bus": "#316",
+      "date": "2026-09-11",
+      "startedAt": 1789140986893,
+      "arrivedAt": 1789141791156,
+      "winchesterPinnedAt": 1789141377886,
+      "winchesterDepartedAt": 1789141696245,
+      "approachSec": 390.993,
+      "standSec": 318.359,
+      "afterSec": 94.911,
+      "totalSec": 804.263,
+      "lapSec": 3387.148,
+      "knownAgeAtOriginSec": 2996.155
+    },
+    {
+      "bus": "#310",
+      "date": "2026-09-11",
+      "startedAt": 1789136364895,
+      "arrivedAt": 1789137275202,
+      "winchesterPinnedAt": 1789136875218,
+      "winchesterDepartedAt": 1789137190164,
+      "approachSec": 510.323,
+      "standSec": 314.946,
+      "afterSec": 85.038,
+      "totalSec": 910.307,
+      "lapSec": 3327.344,
+      "knownAgeAtOriginSec": 2817.021
+    },
+    {
+      "bus": "#304",
+      "date": "2026-09-11",
+      "startedAt": 1789130756456,
+      "arrivedAt": 1789131741498,
+      "winchesterPinnedAt": 1789131021279,
+      "winchesterDepartedAt": 1789131651499,
+      "approachSec": 264.823,
+      "standSec": 630.22,
+      "afterSec": 89.999,
+      "totalSec": 985.042,
+      "lapSec": 2958.777,
+      "knownAgeAtOriginSec": 2693.954
+    },
+    {
+      "bus": "#310",
+      "date": "2026-09-11",
+      "startedAt": 1789129067562,
+      "arrivedAt": 1789130133062,
+      "winchesterPinnedAt": 1789129447819,
+      "winchesterDepartedAt": 1789130037999,
+      "approachSec": 380.257,
+      "standSec": 590.18,
+      "afterSec": 95.063,
+      "totalSec": 1065.5,
+      "lapSec": 2915.394,
+      "knownAgeAtOriginSec": 2535.137
+    },
+    {
+      "bus": "#316",
+      "date": "2026-09-10",
+      "startedAt": 1789054485446,
+      "arrivedAt": 1789055240627,
+      "winchesterPinnedAt": 1789054970517,
+      "winchesterDepartedAt": 1789055160512,
+      "approachSec": 485.071,
+      "standSec": 189.995,
+      "afterSec": 80.115,
+      "totalSec": 755.181,
+      "lapSec": 3405.354,
+      "knownAgeAtOriginSec": 2920.283
+    },
+    {
+      "bus": "#309",
+      "date": "2026-09-10",
+      "startedAt": 1789053665443,
+      "arrivedAt": 1789054495484,
+      "winchesterPinnedAt": 1789053960414,
+      "winchesterDepartedAt": 1789054420475,
+      "approachSec": 294.971,
+      "standSec": 460.061,
+      "afterSec": 75.009,
+      "totalSec": 830.041,
+      "lapSec": 3285.277,
+      "knownAgeAtOriginSec": 2990.306
+    },
+    {
+      "bus": "#316",
+      "date": "2026-09-10",
+      "startedAt": 1789050810115,
+      "arrivedAt": 1789051655150,
+      "winchesterPinnedAt": 1789051140111,
+      "winchesterDepartedAt": 1789051565163,
+      "approachSec": 329.996,
+      "standSec": 425.052,
+      "afterSec": 89.987,
+      "totalSec": 845.035,
+      "lapSec": 3178.822,
+      "knownAgeAtOriginSec": 2848.826
+    },
+    {
+      "bus": "#309",
+      "date": "2026-09-10",
+      "startedAt": 1789050044970,
+      "arrivedAt": 1789050765088,
+      "winchesterPinnedAt": 1789050560169,
+      "winchesterDepartedAt": 1789050675137,
+      "approachSec": 515.199,
+      "standSec": 114.968,
+      "afterSec": 89.951,
+      "totalSec": 720.118,
+      "lapSec": 3321.705,
+      "knownAgeAtOriginSec": 2806.506
+    },
+    {
+      "bus": "#309",
+      "date": "2026-09-10",
+      "startedAt": 1789046523265,
+      "arrivedAt": 1789047368347,
+      "winchesterPinnedAt": 1789046853298,
+      "winchesterDepartedAt": 1789047238464,
+      "approachSec": 330.033,
+      "standSec": 385.166,
+      "afterSec": 129.883,
+      "totalSec": 845.082,
+      "lapSec": 3170.358,
+      "knownAgeAtOriginSec": 2840.325
+    },
+    {
+      "bus": "#316",
+      "date": "2026-09-10",
+      "startedAt": 1789043667923,
+      "arrivedAt": 1789044503031,
+      "winchesterPinnedAt": 1789043998001,
+      "winchesterDepartedAt": 1789044353066,
+      "approachSec": 330.078,
+      "standSec": 355.065,
+      "afterSec": 149.965,
+      "totalSec": 835.108,
+      "lapSec": 3180.305,
+      "knownAgeAtOriginSec": 2850.227
+    },
+    {
+      "bus": "#309",
+      "date": "2026-09-10",
+      "startedAt": 1789042732837,
+      "arrivedAt": 1789043782991,
+      "winchesterPinnedAt": 1789043087943,
+      "winchesterDepartedAt": 1789043682940,
+      "approachSec": 355.106,
+      "standSec": 594.997,
+      "afterSec": 100.051,
+      "totalSec": 1050.154,
+      "lapSec": 2945.33,
+      "knownAgeAtOriginSec": 2590.224
+    },
+    {
+      "bus": "#306",
+      "date": "2026-09-09",
+      "startedAt": 1788968938236,
+      "arrivedAt": 1788969777948,
+      "winchesterPinnedAt": 1788969228337,
+      "winchesterDepartedAt": 1788969667909,
+      "approachSec": 290.101,
+      "standSec": 439.572,
+      "afterSec": 110.039,
+      "totalSec": 839.712,
+      "lapSec": 3195.471,
+      "knownAgeAtOriginSec": 2905.37
+    },
+    {
+      "bus": "#119",
+      "date": "2026-09-09",
+      "startedAt": 1788963336301,
+      "arrivedAt": 1788964502664,
+      "winchesterPinnedAt": 1788963677746,
+      "winchesterDepartedAt": 1788964402637,
+      "approachSec": 341.445,
+      "standSec": 724.891,
+      "afterSec": 100.027,
+      "totalSec": 1166.363,
+      "lapSec": 2604.588,
+      "knownAgeAtOriginSec": 2263.143
+    },
+    {
+      "bus": "#306",
+      "date": "2026-09-09",
+      "startedAt": 1788961808241,
+      "arrivedAt": 1788962533495,
+      "winchesterPinnedAt": 1788962163282,
+      "winchesterDepartedAt": 1788962463601,
+      "approachSec": 355.041,
+      "standSec": 300.319,
+      "afterSec": 69.894,
+      "totalSec": 725.254,
+      "lapSec": 3205.211,
+      "knownAgeAtOriginSec": 2850.17
+    },
+    {
+      "bus": "#119",
+      "date": "2026-09-09",
+      "startedAt": 1788960543099,
+      "arrivedAt": 1788961148162,
+      "winchesterPinnedAt": 1788960933149,
+      "winchesterDepartedAt": 1788961073158,
+      "approachSec": 390.05,
+      "standSec": 140.009,
+      "afterSec": 75.004,
+      "totalSec": 605.063,
+      "lapSec": 3590.972,
+      "knownAgeAtOriginSec": 3200.922
+    },
+    {
+      "bus": "#306",
+      "date": "2026-09-09",
+      "startedAt": 1788958442967,
+      "arrivedAt": 1788959042994,
+      "winchesterPinnedAt": 1788958817968,
+      "winchesterDepartedAt": 1788958958071,
+      "approachSec": 375.001,
+      "standSec": 140.103,
+      "afterSec": 84.923,
+      "totalSec": 600.027,
+      "lapSec": 3563.393,
+      "knownAgeAtOriginSec": 3188.392
+    },
+    {
+      "bus": "#304",
+      "date": "2026-09-08",
+      "startedAt": 1788882860600,
+      "arrivedAt": 1788883420601,
+      "winchesterPinnedAt": 1788883215606,
+      "winchesterDepartedAt": 1788883355577,
+      "approachSec": 355.006,
+      "standSec": 139.971,
+      "afterSec": 65.024,
+      "totalSec": 560.001,
+      "lapSec": 3350.243,
+      "knownAgeAtOriginSec": 2995.237
+    },
+    {
+      "bus": "#307",
+      "date": "2026-09-08",
+      "startedAt": 1788880765351,
+      "arrivedAt": 1788881715488,
+      "winchesterPinnedAt": 1788881050318,
+      "winchesterDepartedAt": 1788881625385,
+      "approachSec": 284.967,
+      "standSec": 575.067,
+      "afterSec": 90.103,
+      "totalSec": 950.137,
+      "lapSec": 3020.286,
+      "knownAgeAtOriginSec": 2735.319
+    },
+    {
+      "bus": "#304",
+      "date": "2026-09-08",
+      "startedAt": 1788878990183,
+      "arrivedAt": 1788879965212,
+      "winchesterPinnedAt": 1788879445189,
+      "winchesterDepartedAt": 1788879865363,
+      "approachSec": 455.006,
+      "standSec": 420.174,
+      "afterSec": 99.849,
+      "totalSec": 975.029,
+      "lapSec": 3435.352,
+      "knownAgeAtOriginSec": 2980.346
+    },
+    {
+      "bus": "#306",
+      "date": "2026-09-08",
+      "startedAt": 1788878090036,
+      "arrivedAt": 1788878820189,
+      "winchesterPinnedAt": 1788878515061,
+      "winchesterDepartedAt": 1788878750145,
+      "approachSec": 425.025,
+      "standSec": 235.084,
+      "afterSec": 70.044,
+      "totalSec": 730.153,
+      "lapSec": 3370.31,
+      "knownAgeAtOriginSec": 2945.285
+    },
+    {
+      "bus": "#306",
+      "date": "2026-09-08",
+      "startedAt": 1788874293971,
+      "arrivedAt": 1788875224781,
+      "winchesterPinnedAt": 1788874704759,
+      "winchesterDepartedAt": 1788875144751,
+      "approachSec": 410.788,
+      "standSec": 439.992,
+      "afterSec": 80.03,
+      "totalSec": 930.81,
+      "lapSec": 3136.982,
+      "knownAgeAtOriginSec": 2726.194
+    },
+    {
+      "bus": "#307",
+      "date": "2026-09-08",
+      "startedAt": 1788873317935,
+      "arrivedAt": 1788874413965,
+      "winchesterPinnedAt": 1788873682886,
+      "winchesterDepartedAt": 1788874343963,
+      "approachSec": 364.951,
+      "standSec": 661.077,
+      "afterSec": 70.002,
+      "totalSec": 1096.03,
+      "lapSec": 2795.014,
+      "knownAgeAtOriginSec": 2430.063
+    },
+    {
+      "bus": "#304",
+      "date": "2026-09-08",
+      "startedAt": 1788871747818,
+      "arrivedAt": 1788872497871,
+      "winchesterPinnedAt": 1788872062858,
+      "winchesterDepartedAt": 1788872397954,
+      "approachSec": 315.04,
+      "standSec": 335.096,
+      "afterSec": 99.917,
+      "totalSec": 750.053,
+      "lapSec": 3310.269,
+      "knownAgeAtOriginSec": 2995.229
+    },
+    {
+      "bus": "#307",
+      "date": "2026-09-08",
+      "startedAt": 1788869952677,
+      "arrivedAt": 1788870977719,
+      "winchesterPinnedAt": 1788870302807,
+      "winchesterDepartedAt": 1788870887872,
+      "approachSec": 350.13,
+      "standSec": 585.065,
+      "afterSec": 89.847,
+      "totalSec": 1025.042,
+      "lapSec": 3045.384,
+      "knownAgeAtOriginSec": 2695.254
+    },
+    {
+      "bus": "#304",
+      "date": "2026-09-03",
+      "startedAt": 1788450825459,
+      "arrivedAt": 1788451575541,
+      "winchesterPinnedAt": 1788451225634,
+      "winchesterDepartedAt": 1788451495593,
+      "approachSec": 400.175,
+      "standSec": 269.959,
+      "afterSec": 79.948,
+      "totalSec": 750.082,
+      "lapSec": 3365.436,
+      "knownAgeAtOriginSec": 2965.261
+    },
+    {
+      "bus": "#316",
+      "date": "2026-09-03",
+      "startedAt": 1788449501057,
+      "arrivedAt": 1788450434806,
+      "winchesterPinnedAt": 1788449921712,
+      "winchesterDepartedAt": 1788450348626,
+      "approachSec": 420.655,
+      "standSec": 426.914,
+      "afterSec": 86.18,
+      "totalSec": 933.749,
+      "lapSec": 3181.622,
+      "knownAgeAtOriginSec": 2760.967
+    },
+    {
+      "bus": "#309",
+      "date": "2026-09-03",
+      "startedAt": 1788448641248,
+      "arrivedAt": 1788449681595,
+      "winchesterPinnedAt": 1788449305756,
+      "winchesterDepartedAt": 1788449596391,
+      "approachSec": 664.508,
+      "standSec": 290.635,
+      "afterSec": 85.204,
+      "totalSec": 1040.347,
+      "lapSec": 3286.881,
+      "knownAgeAtOriginSec": 2622.373
+    },
+    {
+      "bus": "#304",
+      "date": "2026-09-03",
+      "startedAt": 1788447100148,
+      "arrivedAt": 1788447930388,
+      "winchesterPinnedAt": 1788447545190,
+      "winchesterDepartedAt": 1788447860198,
+      "approachSec": 445.042,
+      "standSec": 315.008,
+      "afterSec": 70.19,
+      "totalSec": 830.24,
+      "lapSec": 3117.722,
+      "knownAgeAtOriginSec": 2672.68
+    },
+    {
+      "bus": "#309",
+      "date": "2026-09-03",
+      "startedAt": 1788445104921,
+      "arrivedAt": 1788446093892,
+      "winchesterPinnedAt": 1788445420211,
+      "winchesterDepartedAt": 1788446018875,
+      "approachSec": 315.29,
+      "standSec": 598.664,
+      "afterSec": 75.017,
+      "totalSec": 988.971,
+      "lapSec": null,
+      "knownAgeAtOriginSec": null
+    }
+  ]
+}

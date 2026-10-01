@@ -1,0 +1,66 @@
+{
+  "scope": "Actual built SPA, persisted physical ride and synthetic wire on the checked-in route network",
+  "probe": false,
+  "states": [
+    {
+      "name": "automatic end with dialog and previous body",
+      "dialog": null,
+      "focus": {
+        "tag": "SECTION",
+        "text": "Ride tracking stoppedTracking stopped after 2 hours to save battery.Continue to Destination east of "
+      },
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nRide tracking stopped\n\nTracking stopped after 2 hours to save battery.\n\nContinue to Destination east of Union Station with a long building name\n\n🚶 Walking directions · Google Maps\nFind another shuttleDismiss\n🚌 1 shuttle reporting on 1 route\nPick a destination — we compare walking against every shuttle.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "notifications": []
+    },
+    {
+      "name": "automatic end with dialog and previous done",
+      "dialog": null,
+      "focus": {
+        "tag": "SECTION",
+        "text": "Ride tracking stoppedTracking stopped after 2 hours to save battery.Continue to Destination east of "
+      },
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nRide tracking stopped\n\nTracking stopped after 2 hours to save battery.\n\nContinue to Destination east of Union Station with a long building name\n\n🚶 Walking directions · Google Maps\nFind another shuttleDismiss\n🚌 1 shuttle reporting on 1 route\nPick a destination — we compare walking against every shuttle.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "notifications": []
+    },
+    {
+      "name": "automatic end with dialog and previous refresh",
+      "dialog": null,
+      "focus": {
+        "tag": "BUTTON",
+        "text": "↻"
+      },
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nRide tracking stopped\n\nTracking stopped after 2 hours to save battery.\n\nContinue to Destination east of Union Station with a long building name\n\n🚶 Walking directions · Google Maps\nFind another shuttleDismiss\n🚌 1 shuttle reporting on 1 route\nPick a destination — we compare walking against every shuttle.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "notifications": []
+    },
+    {
+      "name": "bus-gone ends open unavailable prompt with honest recovery",
+      "dialog": null,
+      "focus": {
+        "tag": "SECTION",
+        "text": "Ride tracking stoppedYour shuttle has been missing from live updates for 10 min, so tracking stopped"
+      },
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nRide tracking stopped\n\nYour shuttle has been missing from live updates for 10 min, so tracking stopped. You may still be on board.\n\nContinue to Destination east of Union Station with a long building name\n\n🚶 Walking directions · Google Maps\nFind another shuttleDismiss\nNo shuttles reporting right now\nChoose a destination to check walking directions and route schedules.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "notifications": []
+    },
+    {
+      "name": "no destination finish remains keyboard reachable",
+      "dialog": null,
+      "focus": {
+        "tag": "BUTTON",
+        "text": "trip"
+      },
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n📍 Location permission denied — enable it in your browser settings\n🚌 1 shuttle reporting on 1 route\nPick a destination — we compare walking against every shuttle.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "notifications": []
+    }
+  ],
+  "checks": [
+    "Denied notification permission retains live prompt with route/bus/exit and linked dynamic description",
+    "Age ending with an open prompt restores the appropriate target for body/Done/Refresh ownership",
+    "Bus-gone ending removes unavailable prompt, preserves destination and focuses recovery",
+    "External finish dismissal does not steal focus; absent destination retains keyboard replan"
+  ],
+  "errors": [],
+  "completed": true,
+  "resourcesClosed": true,
+  "requests": 151
+}

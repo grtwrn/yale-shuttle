@@ -62,6 +62,7 @@
 import { haversineMeters, type LatLon } from "../geo";
 import { BUS_SPEED_M_S } from "../routes";
 import { cdf, fromQuantiles, lognormalMeanSd, mixture, quantile, shrinkToward, type Dist } from "./dist";
+import { releaseFitOf, type ReleaseFit } from './release';
 import { lapFitOf, type LapFit } from "./lap";
 import { DEFAULT_DRIVE_M_S, DEFAULT_P_STOP, type Ring } from "./ring";
 
@@ -96,6 +97,7 @@ export interface StopModel {
   measured: boolean;
   /** The cell's lap fit, when it has one (eta/lap.ts). Null everywhere else. */
   lap: LapFit | null;
+  release?: ReleaseFit;
 }
 
 export interface HopModel {
@@ -138,6 +140,7 @@ export interface RouteTables {
 
 export interface SegmentLike { avg: number; sd?: number | undefined; n: number; drive?: number | undefined; driveN?: number | undefined; dq?: number[] | undefined; dqn?: number | undefined; spm?: number[] | undefined; spmN?: number | undefined; spmPooled?: boolean | undefined; legM?: number | undefined }
 export interface DwellLike {
+  release?: ReleaseFit;
   med: number;
   n: number;
   q?: number[] | undefined;
@@ -214,7 +217,8 @@ export function stopModel(dwell: DwellLike | undefined, pools: ClassPools): Stop
   const pStop = dwell.pstop !== undefined && Number.isFinite(dwell.pstop)
     ? Math.min(1, Math.max(0, dwell.pstop))
     : 1 - cdf(stand, 0);
-  return { stand, layover: quantile(stand, 0.5) >= LAYOVER_MIN_SEC, pStop, measured: true, lap: lapFitOf(dwell) };
+  const release = releaseFitOf(dwell.release);
+  return { stand, layover: quantile(stand, 0.5) >= LAYOVER_MIN_SEC, pStop, measured: true, lap: lapFitOf(dwell), ...(release ? { release } : {}) };
 }
 
 export function hopModel(seg: SegmentLike | undefined, roadM: number, pace: readonly number[] | undefined): HopModel {

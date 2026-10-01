@@ -1,0 +1,5099 @@
+{
+  "method": "Selected-case audit; no fitting or new model selection. Event identity and snapshot functions imported from audited overnight extractor. Same-day own legacy departures require at least120s availability; peer modern departures use confirmed120 rule; unconditional anchor+15s progress is an availability approximation. All wire values are causal raw-feed reconstruction, not actual historical first-publication receipts.",
+  "limitations": [
+    "These cases were selected by observed early-bound errors, so they cannot estimate covariate effects or tail probabilities.",
+    "Past confirmed departure order is not guaranteed current physical order. Stop-index gaps are coarse and do not equal minutes-to-stop.",
+    "Raw wire lap clocks are rounded to5s; labels use full-precision timestamps. Legacy arrivals in today DB do not include Sep18; reconstructed wire and separately identified subsequent read-only export supply that evidence.",
+    "Valid stopped targets and exact leg chains remain included; GPS arrival/departure is not proof of doors-open boarding."
+  ],
+  "cases": [
+    {
+      "sourceId": 64318,
+      "bus": "#309",
+      "pinET": "2026-09-17T08:56:08.217000-04:00",
+      "source": {
+        "id": 64318,
+        "bus_name": "#309",
+        "route_id": 3,
+        "stop_id": 11,
+        "anchored_at": 1789649753079,
+        "pinned_at": 1789649768217,
+        "arrived_at": 1789649768217,
+        "departed_at": 1789649928303,
+        "first_moved_at": 1789649778210,
+        "how": "next",
+        "closest_m": 63.60766521184506
+      },
+      "outcomeDB": "release-integration-data/outcomes-complete.db",
+      "pinHoldSec": 160.086,
+      "sourceApproachAnchorToPinSec": 15.138,
+      "previousOwnClocks": {
+        "11": {
+          "legacy": {
+            "id": 715110,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 11,
+            "arrived_at": 1789646071702,
+            "departed_at": 1789646486553
+          },
+          "legacyAgeAtPinSec": 3281.664,
+          "modern": {
+            "id": 63838,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 11,
+            "anchored_at": 1789646071702,
+            "pinned_at": 1789646086533,
+            "arrived_at": 1789646086533,
+            "departed_at": 1789646471640,
+            "first_moved_at": 1789646096532,
+            "how": "next",
+            "closest_m": 65.4546108456678
+          },
+          "modernAgeAtPinSec": 3296.577
+        },
+        "121": {
+          "legacy": {
+            "id": 715350,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 121,
+            "arrived_at": 1789647809849,
+            "departed_at": 1789648279921
+          },
+          "legacyAgeAtPinSec": 1488.296,
+          "modern": {
+            "id": 64082,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 121,
+            "anchored_at": 1789647809849,
+            "pinned_at": 1789647875031,
+            "arrived_at": 1789647875031,
+            "departed_at": 1789648179926,
+            "first_moved_at": 1789648184897,
+            "how": "clock",
+            "closest_m": 42.19063855618899
+          },
+          "modernAgeAtPinSec": 1588.291
+        }
+      },
+      "latchedIdentities": {
+        "ahead": {
+          "id": 64206,
+          "bus": "#316",
+          "physical": 1789649156188,
+          "known": 1789649276188,
+          "origin": 1789649156188,
+          "originId": 64206,
+          "originKnown": 1789649276188
+        },
+        "follower": {
+          "id": 64109,
+          "bus": "#300",
+          "physical": 1789648405718,
+          "known": 1789648525718,
+          "origin": 1789648405718,
+          "originId": 64109,
+          "originKnown": 1789648525718,
+          "ownPrevious": 63838
+        },
+        "aheadReason": "known",
+        "followerReason": "known",
+        "freshOtherBuses": 2,
+        "sameAsAhead": false
+      },
+      "snapshots": [
+        {
+          "elapsedSec": 0,
+          "at": 1789649768217,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 64305,
+                "bus": "#316",
+                "route": 3,
+                "stop": 42,
+                "index": 21,
+                "physical": 1789649668170,
+                "known": 1789649683170,
+                "stopName": "College / Wall (S)",
+                "ageSec": 100.047,
+                "forwardStopsFromWinchester": 7,
+                "stopsUntilWinchester": 22
+              },
+              "progress": {
+                "id": 64305,
+                "bus": "#316",
+                "route": 3,
+                "stop": 42,
+                "index": 21,
+                "physical": 1789649668170,
+                "known": 1789649683170,
+                "stopName": "College / Wall (S)",
+                "ageSec": 100.047,
+                "forwardStopsFromWinchester": 7,
+                "stopsUntilWinchester": 22
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 64310,
+                "bus": "#300",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789649753079,
+                "known": 1789649768079,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 15.138,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "progress": {
+                "id": 64310,
+                "bus": "#300",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789649753079,
+                "known": 1789649768079,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 15.138,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789649768217,
+            "bus": {
+              "observed_at": 1789649768217,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324229,
+              "lon": -72.928179,
+              "heading": 13,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T12:56:08.217",
+              "stationary_since": "2026-09-17T12:56:08.217",
+              "last_moved_at": "2026-09-17T12:56:08.217",
+              "lap": {
+                "11": 3282,
+                "121": 1488
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789649768217,
+                "bus_id": 66486,
+                "bus_name": "#300",
+                "route_id": 3,
+                "lat": 41.300543,
+                "lon": -72.929978,
+                "heading": 79,
+                "last_stop_id": 13,
+                "stationary": true,
+                "at_stop_id": 14,
+                "at_stop_since": "2026-09-17T12:55:53.079",
+                "stationary_since": "2026-09-17T12:55:53.079",
+                "last_moved_at": "2026-09-17T12:56:03.094",
+                "lap": {
+                  "11": 1348,
+                  "121": 3207
+                }
+              },
+              {
+                "observed_at": 1789649768217,
+                "bus_id": 66487,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.310756,
+                "lon": -72.926167,
+                "heading": 208,
+                "last_stop_id": 4,
+                "stationary": true,
+                "at_stop_id": 42,
+                "at_stop_since": "2026-09-17T12:55:23.094",
+                "stationary_since": "2026-09-17T12:55:23.094",
+                "last_moved_at": "2026-09-17T12:56:08.217",
+                "lap": {
+                  "11": 602,
+                  "121": 2330
+                }
+              }
+            ]
+          }
+        },
+        {
+          "elapsedSec": 60,
+          "at": 1789649828217,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 64305,
+                "bus": "#316",
+                "route": 3,
+                "stop": 42,
+                "index": 21,
+                "physical": 1789649668170,
+                "known": 1789649683170,
+                "stopName": "College / Wall (S)",
+                "ageSec": 160.047,
+                "forwardStopsFromWinchester": 7,
+                "stopsUntilWinchester": 22
+              },
+              "progress": {
+                "id": 64305,
+                "bus": "#316",
+                "route": 3,
+                "stop": 42,
+                "index": 21,
+                "physical": 1789649668170,
+                "known": 1789649683170,
+                "stopName": "College / Wall (S)",
+                "ageSec": 160.047,
+                "forwardStopsFromWinchester": 7,
+                "stopsUntilWinchester": 22
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 64310,
+                "bus": "#300",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789649753079,
+                "known": 1789649768079,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 75.138,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "progress": {
+                "id": 64310,
+                "bus": "#300",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789649753079,
+                "known": 1789649768079,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 75.138,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789649828158,
+            "bus": {
+              "observed_at": 1789649828158,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324696,
+              "lon": -72.928634,
+              "heading": 194,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T12:56:08.217",
+              "stationary_since": "2026-09-17T12:56:08.217",
+              "last_moved_at": "2026-09-17T12:56:58.101",
+              "lap": {
+                "11": 3342,
+                "121": 1548
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789649828158,
+                "bus_id": 66486,
+                "bus_name": "#300",
+                "route_id": 3,
+                "lat": 41.300543,
+                "lon": -72.929978,
+                "heading": 79,
+                "last_stop_id": 14,
+                "stationary": true,
+                "at_stop_id": 14,
+                "at_stop_since": "2026-09-17T12:55:53.079",
+                "stationary_since": "2026-09-17T12:55:53.079",
+                "last_moved_at": "2026-09-17T12:56:03.094",
+                "lap": {
+                  "11": 1408,
+                  "121": 3267
+                }
+              },
+              {
+                "observed_at": 1789649828158,
+                "bus_id": 66487,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.309934,
+                "lon": -72.926797,
+                "heading": 211,
+                "last_stop_id": 4,
+                "stationary": false,
+                "stationary_since": "2026-09-17T12:55:23.094",
+                "last_moved_at": "2026-09-17T12:56:23.082",
+                "lap": {
+                  "11": 662,
+                  "121": 2390
+                }
+              }
+            ]
+          }
+        },
+        {
+          "elapsedSec": 120,
+          "at": 1789649888217,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 64314,
+                "bus": "#316",
+                "route": 3,
+                "stop": 98,
+                "index": 22,
+                "physical": 1789649838272,
+                "known": 1789649853272,
+                "stopName": "Phelps Gate",
+                "ageSec": 49.945,
+                "forwardStopsFromWinchester": 8,
+                "stopsUntilWinchester": 21
+              },
+              "progress": {
+                "id": 64314,
+                "bus": "#316",
+                "route": 3,
+                "stop": 98,
+                "index": 22,
+                "physical": 1789649838272,
+                "known": 1789649853272,
+                "stopName": "Phelps Gate",
+                "ageSec": 49.945,
+                "forwardStopsFromWinchester": 8,
+                "stopsUntilWinchester": 21
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                98
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 64310,
+                "bus": "#300",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789649753079,
+                "known": 1789649768079,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 135.138,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "progress": {
+                "id": 64310,
+                "bus": "#300",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789649753079,
+                "known": 1789649768079,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 135.138,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789649888108,
+            "bus": {
+              "observed_at": 1789649888108,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324293,
+              "lon": -72.928463,
+              "heading": 14,
+              "last_stop_id": 11,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T12:56:08.217",
+              "stationary_since": "2026-09-17T12:56:08.217",
+              "last_moved_at": "2026-09-17T12:58:03.108",
+              "lap": {
+                "11": 3402,
+                "121": 1608
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789649888108,
+                "bus_id": 66486,
+                "bus_name": "#300",
+                "route_id": 3,
+                "lat": 41.299023,
+                "lon": -72.929209,
+                "heading": 171,
+                "last_stop_id": 14,
+                "stationary": false,
+                "stationary_since": "2026-09-17T12:57:43.136",
+                "last_moved_at": "2026-09-17T12:57:43.136",
+                "lap": {
+                  "11": 1468,
+                  "121": 3327
+                }
+              },
+              {
+                "observed_at": 1789649888108,
+                "bus_id": 66487,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.307796,
+                "lon": -72.92837,
+                "heading": 209,
+                "last_stop_id": 42,
+                "stationary": true,
+                "at_stop_id": 98,
+                "at_stop_since": "2026-09-17T12:57:23.099",
+                "stationary_since": "2026-09-17T12:57:23.099",
+                "last_moved_at": "2026-09-17T12:57:38.144",
+                "lap": {
+                  "11": 722,
+                  "121": 2450
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "firstReconstructedWirePin": {
+        "at": 1789649768217,
+        "bus": {
+          "observed_at": 1789649768217,
+          "bus_id": 66491,
+          "bus_name": "#309",
+          "route_id": 3,
+          "lat": 41.324229,
+          "lon": -72.928179,
+          "heading": 13,
+          "last_stop_id": 27,
+          "stationary": true,
+          "at_stop_id": 11,
+          "at_stop_since": "2026-09-17T12:56:08.217",
+          "stationary_since": "2026-09-17T12:56:08.217",
+          "last_moved_at": "2026-09-17T12:56:08.217",
+          "lap": {
+            "11": 3282,
+            "121": 1488
+          }
+        },
+        "otherRedBuses": [
+          {
+            "observed_at": 1789649768217,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "route_id": 3,
+            "lat": 41.300543,
+            "lon": -72.929978,
+            "heading": 79,
+            "last_stop_id": 13,
+            "stationary": true,
+            "at_stop_id": 14,
+            "at_stop_since": "2026-09-17T12:55:53.079",
+            "stationary_since": "2026-09-17T12:55:53.079",
+            "last_moved_at": "2026-09-17T12:56:03.094",
+            "lap": {
+              "11": 1348,
+              "121": 3207
+            }
+          },
+          {
+            "observed_at": 1789649768217,
+            "bus_id": 66487,
+            "bus_name": "#316",
+            "route_id": 3,
+            "lat": 41.310756,
+            "lon": -72.926167,
+            "heading": 208,
+            "last_stop_id": 4,
+            "stationary": true,
+            "at_stop_id": 42,
+            "at_stop_since": "2026-09-17T12:55:23.094",
+            "stationary_since": "2026-09-17T12:55:23.094",
+            "last_moved_at": "2026-09-17T12:56:08.217",
+            "lap": {
+              "11": 602,
+              "121": 2330
+            }
+          }
+        ],
+        "pinVisibilityDelaySec": 0.0,
+        "legacyClockLapAtPinSec": {
+          "11": 3282.0,
+          "121": 1488.0
+        }
+      },
+      "hindsight": {
+        "targetVisitId": 64338,
+        "targetArrivedAt": 1789650008106,
+        "targetDepartedAt": 1789650058115,
+        "sourceDepartureToTargetArrivalSec": 79.803,
+        "targetHoldSec": 50.009,
+        "exactLegIds": [
+          59630,
+          59638,
+          59642
+        ],
+        "worstChanged": {
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": -46.00159204101563,
+              "at": 1789649953115,
+              "stopsAhead": 3,
+              "low": 8.989407955929147,
+              "baselineLow": 8.989407955929147,
+              "candidateLow": 57.91157862815025,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -96.01059204101563,
+              "at": 1789649953115,
+              "stopsAhead": 3,
+              "low": 8.989407955929147,
+              "baselineLow": 8.989407955929147,
+              "candidateLow": 57.91157862815025,
+              "changed": true
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": 23.458081298828127,
+              "at": 1789649928303,
+              "stopsAhead": 3,
+              "low": 103.2610813146453,
+              "baselineLow": 28.498897231592668,
+              "candidateLow": 103.2610813146453,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -26.550918701171874,
+              "at": 1789649928303,
+              "stopsAhead": 3,
+              "low": 103.2610813146453,
+              "baselineLow": 28.498897231592668,
+              "candidateLow": 103.2610813146453,
+              "changed": true
+            }
+          }
+        },
+        "worstCandidate": {
+          "arrivalExcessSec": {
+            "value": 23.458081298828127,
+            "at": 1789649928303,
+            "stopsAhead": 3,
+            "low": 103.2610813146453,
+            "baselineLow": 28.498897231592668,
+            "candidateLow": 103.2610813146453,
+            "changed": true
+          },
+          "departureExcessSec": {
+            "value": -26.550918701171874,
+            "at": 1789649928303,
+            "stopsAhead": 3,
+            "low": 103.2610813146453,
+            "baselineLow": 28.498897231592668,
+            "candidateLow": 103.2610813146453,
+            "changed": true
+          }
+        },
+        "priorReconstructedLegacyDepartureToCurrentDepartureSec": 3442.0860000000002
+      },
+      "savedValidityAudit": {
+        "sourceId": 64318,
+        "targetId": 64338,
+        "bus": "#309",
+        "sourcePinET": "2026-09-17T08:56:08.217000-04:00",
+        "source": {
+          "id": 64318,
+          "bus_id": 66491,
+          "bus_name": "#309",
+          "anchor_bus_id": 66491,
+          "route_id": 3,
+          "stop_id": 11,
+          "stop_index": 14,
+          "anchored_at": 1789649753079,
+          "pinned_at": 1789649768217,
+          "arrived_at": 1789649768217,
+          "departed_at": 1789649928303,
+          "stand_sec": 160.086,
+          "inside_sec": 170.288,
+          "outcome": "stopped",
+          "how": "next",
+          "confidence": 1.0,
+          "first_step_m": 30.182977866156076,
+          "steps": 3,
+          "far_m": 77.52781842696558,
+          "confirm_sec": 10.046,
+          "rest_polls": 9,
+          "shuffles": 3,
+          "first_moved_at": 1789649778210,
+          "last_at_rest_at": 1789649928303,
+          "closest_m": 63.60766521184506,
+          "dow": 4,
+          "hour": 8
+        },
+        "target": {
+          "id": 64338,
+          "bus_id": 66491,
+          "bus_name": "#309",
+          "anchor_bus_id": 66491,
+          "route_id": 3,
+          "stop_id": 48,
+          "stop_index": 17,
+          "anchored_at": 1789649998117,
+          "pinned_at": 1789650003136,
+          "arrived_at": 1789650008106,
+          "departed_at": 1789650058115,
+          "stand_sec": 50.009,
+          "inside_sec": 60.15,
+          "outcome": "stopped",
+          "how": "clock",
+          "confidence": 0.96,
+          "first_step_m": 35.17415517994905,
+          "steps": 2,
+          "far_m": 127.01019030615245,
+          "confirm_sec": 5.049,
+          "rest_polls": 8,
+          "shuffles": 1,
+          "first_moved_at": 1789650018243,
+          "last_at_rest_at": 1789650058115,
+          "closest_m": 4.053598304352658,
+          "dow": 4,
+          "hour": 9
+        },
+        "legs": [
+          {
+            "id": 59630,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 11,
+            "from_index": 14,
+            "to_stop_id": 146,
+            "to_index": 15,
+            "hops": 1,
+            "departed_at": 1789649928303,
+            "arrived_at": 1789649943138,
+            "to_pinned_at": 1789649943138,
+            "leg_sec": 14.835,
+            "hold_sec": 0.0,
+            "drive_sec": 14.835,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 8
+          },
+          {
+            "id": 59638,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 146,
+            "from_index": 15,
+            "to_stop_id": 49,
+            "to_index": 16,
+            "hops": 1,
+            "departed_at": 1789649953115,
+            "arrived_at": 1789649978114,
+            "to_pinned_at": 1789649978114,
+            "leg_sec": 24.999,
+            "hold_sec": 0.0,
+            "drive_sec": 24.999,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 8
+          },
+          {
+            "id": 59642,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 49,
+            "from_index": 16,
+            "to_stop_id": 48,
+            "to_index": 17,
+            "hops": 1,
+            "departed_at": 1789649978114,
+            "arrived_at": 1789650008106,
+            "to_pinned_at": 1789650003136,
+            "leg_sec": 29.992,
+            "hold_sec": 0.0,
+            "drive_sec": 29.992,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 8
+          }
+        ],
+        "earlyRows": [
+          {
+            "at": 1789649928303,
+            "phase": "departure",
+            "checkpointSec": 0,
+            "truthSec": 79.803,
+            "baselineLow": 28.498897231592668,
+            "candidateLow": 103.2610813146453,
+            "lowerExcessSec": 23.458081314645298,
+            "candidateLowerBeforeDetectorDepartureSec": 26.550918685354716
+          },
+          {
+            "at": 1789649938505,
+            "phase": "departure",
+            "checkpointSec": 5,
+            "truthSec": 69.601,
+            "baselineLow": 7.199445634523501,
+            "candidateLow": 86.81668797505677,
+            "lowerExcessSec": 17.215687975056767,
+            "candidateLowerBeforeDetectorDepartureSec": 32.79331202494323
+          },
+          {
+            "at": 1789649948273,
+            "phase": "departure",
+            "checkpointSec": 15,
+            "truthSec": 59.833,
+            "baselineLow": 8.432644912782692,
+            "candidateLow": 65.92377529666393,
+            "lowerExcessSec": 6.090775296663935,
+            "candidateLowerBeforeDetectorDepartureSec": 43.918224703336065
+          }
+        ],
+        "raw": {
+          "n": 69,
+          "maxGapSec": 5.413,
+          "maxConsecutiveSpeedKmh": 55.55816159832801,
+          "sourceDeparture": [
+            {
+              "seconds": -29.909,
+              "distanceToStopM": 44.65,
+              "stepM": null,
+              "lastStop": 11
+            },
+            {
+              "seconds": -25.143,
+              "distanceToStopM": 44.65,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -20.16,
+              "distanceToStopM": 44.65,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -15.211,
+              "distanceToStopM": 44.65,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -10.19,
+              "distanceToStopM": 44.65,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -5.194,
+              "distanceToStopM": 44.65,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 0.0,
+              "distanceToStopM": 44.65,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 4.789,
+              "distanceToStopM": 46.46,
+              "stepM": 30.15,
+              "lastStop": 11
+            },
+            {
+              "seconds": 10.202,
+              "distanceToStopM": 56.48,
+              "stepM": 30.42,
+              "lastStop": 11
+            },
+            {
+              "seconds": 14.835,
+              "distanceToStopM": 77.44,
+              "stepM": 37.83,
+              "lastStop": 11
+            },
+            {
+              "seconds": 19.97,
+              "distanceToStopM": 77.44,
+              "stepM": 0.0,
+              "lastStop": 11
+            }
+          ],
+          "targetArrival": [
+            {
+              "seconds": -19.873,
+              "distanceToStopM": 203.78,
+              "stepM": null,
+              "lastStop": 146
+            },
+            {
+              "seconds": -15.008,
+              "distanceToStopM": 137.13,
+              "stepM": 66.71,
+              "lastStop": 146
+            },
+            {
+              "seconds": -9.989,
+              "distanceToStopM": 105.83,
+              "stepM": 31.3,
+              "lastStop": 49
+            },
+            {
+              "seconds": -4.97,
+              "distanceToStopM": 67.02,
+              "stepM": 38.83,
+              "lastStop": 49
+            },
+            {
+              "seconds": 0.0,
+              "distanceToStopM": 4.05,
+              "stepM": 68.77,
+              "lastStop": 49
+            },
+            {
+              "seconds": 5.101,
+              "distanceToStopM": 4.05,
+              "stepM": 0.0,
+              "lastStop": 49
+            },
+            {
+              "seconds": 10.137,
+              "distanceToStopM": 30.39,
+              "stepM": 30.53,
+              "lastStop": 49
+            },
+            {
+              "seconds": 14.997,
+              "distanceToStopM": 30.39,
+              "stepM": 0.0,
+              "lastStop": 49
+            }
+          ]
+        }
+      },
+      "savedComponentForecasts": [
+        {
+          "id": 64318,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "elapsed": 0,
+          "forecastAt": 1789649768217,
+          "truthRemaining": 160.086,
+          "landmarkWeight": 0.5,
+          "q": [
+            175.21430112470307,
+            317.6206315969616,
+            428.1908674115561
+          ],
+          "arm": "current_code_component",
+          "method": "Winchester_release",
+          "factor": 1
+        },
+        {
+          "id": 64318,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "elapsed": 60,
+          "forecastAt": 1789649828217,
+          "truthRemaining": 100.08600000000001,
+          "landmarkWeight": 0.5,
+          "q": [
+            124.94799802648564,
+            259.3097939240355,
+            368.9287436763792
+          ],
+          "arm": "current_code_component",
+          "method": "Winchester_release",
+          "factor": 1
+        },
+        {
+          "id": 64318,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "landmark_lap_elapsed_clock",
+          "elapsed": 0,
+          "forecastAt": 1789649768217,
+          "truthRemaining": 160.086,
+          "lapSupported": true,
+          "landmarkWeight": 0.5,
+          "q": [
+            109.33020206352457,
+            291.23282932091405,
+            430.67577092223763
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 64318,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_snapshot",
+          "elapsed": 0,
+          "forecastAt": 1789649768217,
+          "truthRemaining": 160.086,
+          "lapSupported": true,
+          "landmarkWeight": 0.5,
+          "q": [
+            158.60953479954324,
+            282.5985104170118,
+            371.11593990515297
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 64318,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_follower_snapshot",
+          "elapsed": 0,
+          "forecastAt": 1789649768217,
+          "truthRemaining": 160.086,
+          "lapSupported": true,
+          "landmarkWeight": 0.5,
+          "q": [
+            155.7661870048031,
+            262.94236264814225,
+            339.60214032727924
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 64318,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "landmark_lap_elapsed_clock",
+          "elapsed": 60,
+          "forecastAt": 1789649828217,
+          "truthRemaining": 100.08600000000001,
+          "lapSupported": true,
+          "landmarkWeight": 0.5,
+          "q": [
+            81.3032442315319,
+            238.5366904918506,
+            373.59551854528155
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 64318,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_snapshot",
+          "elapsed": 60,
+          "forecastAt": 1789649828217,
+          "truthRemaining": 100.08600000000001,
+          "lapSupported": true,
+          "landmarkWeight": 0.5,
+          "q": [
+            110.30413636807003,
+            223.04870335354346,
+            308.6405990414864
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 64318,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_follower_snapshot",
+          "elapsed": 60,
+          "forecastAt": 1789649828217,
+          "truthRemaining": 100.08600000000001,
+          "lapSupported": true,
+          "landmarkWeight": 0.5,
+          "q": [
+            103.34910711842407,
+            204.43736103631147,
+            280.9927274446841
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        }
+      ],
+      "followupLegacyAtPin": {
+        "11": {
+          "record": {
+            "id": 715110,
+            "bus_name": "#309",
+            "stop_id": 11,
+            "arrived_at": 1789646071702,
+            "departed_at": 1789646486553
+          },
+          "ageSec": 3281.664
+        },
+        "121": {
+          "record": {
+            "id": 715350,
+            "bus_name": "#309",
+            "stop_id": 121,
+            "arrived_at": 1789647809849,
+            "departed_at": 1789648279921
+          },
+          "ageSec": 1488.296
+        }
+      },
+      "savedEarlyReleaseDiagnostic": [
+        {
+          "elapsed": 0,
+          "truthRemaining": 160.086,
+          "event": 0,
+          "predictions": {
+            "clock": 0.08052059750407789,
+            "lap_clock": 0.08143117520456514,
+            "lap_clock_anchor": 0.07799069888805009,
+            "lap_clock_ahead": 0.09163915714142078,
+            "lap_clock_follower": 0.11030489633640357,
+            "lap_clock_both": 0.13121667707709178,
+            "lap_clock_anchor_both": 0.12604997890341724
+          }
+        },
+        {
+          "elapsed": 60,
+          "truthRemaining": 100.08600000000001,
+          "event": 1,
+          "predictions": {
+            "clock": 0.12711170500152127,
+            "lap_clock": 0.13586757183930032,
+            "lap_clock_anchor": 0.13225947988172246,
+            "lap_clock_ahead": 0.15560871431726775,
+            "lap_clock_follower": 0.18752983728153214,
+            "lap_clock_both": 0.22481196215593266,
+            "lap_clock_anchor_both": 0.22195172300562876
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": 65347,
+      "bus": "#309",
+      "pinET": "2026-09-17T10:50:52.856000-04:00",
+      "source": {
+        "id": 65347,
+        "bus_name": "#309",
+        "route_id": 3,
+        "stop_id": 11,
+        "anchored_at": 1789656637744,
+        "pinned_at": 1789656652856,
+        "arrived_at": 1789656652856,
+        "departed_at": 1789657152981,
+        "first_moved_at": 1789656667748,
+        "how": "next",
+        "closest_m": 65.86926007526351
+      },
+      "outcomeDB": "release-integration-data/outcomes-complete.db",
+      "pinHoldSec": 500.125,
+      "sourceApproachAnchorToPinSec": 15.112,
+      "previousOwnClocks": {
+        "11": {
+          "legacy": {
+            "id": 716134,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 11,
+            "arrived_at": 1789653068567,
+            "departed_at": 1789653688645
+          },
+          "legacyAgeAtPinSec": 2964.211,
+          "modern": {
+            "id": 64854,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 11,
+            "anchored_at": 1789653068567,
+            "pinned_at": 1789653083593,
+            "arrived_at": 1789653083593,
+            "departed_at": 1789653673640,
+            "first_moved_at": 1789653113591,
+            "how": "next",
+            "closest_m": 58.64473120015384
+          },
+          "modernAgeAtPinSec": 2979.216
+        },
+        "121": {
+          "legacy": {
+            "id": 716425,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 121,
+            "arrived_at": 1789654914342,
+            "departed_at": 1789655504681
+          },
+          "legacyAgeAtPinSec": 1148.175,
+          "modern": {
+            "id": 65096,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 121,
+            "anchored_at": 1789654914342,
+            "pinned_at": 1789654984382,
+            "arrived_at": 1789654994341,
+            "departed_at": 1789655409571,
+            "first_moved_at": 1789655414574,
+            "how": "clock",
+            "closest_m": 23.291572674515553
+          },
+          "modernAgeAtPinSec": 1243.285
+        }
+      },
+      "latchedIdentities": {
+        "ahead": {
+          "id": 65237,
+          "bus": "#316",
+          "physical": 1789656360839,
+          "known": 1789656480839,
+          "origin": 1789656360839,
+          "originId": 65237,
+          "originKnown": 1789656480839
+        },
+        "follower": {
+          "id": 65119,
+          "bus": "#300",
+          "physical": 1789655599583,
+          "known": 1789655719583,
+          "origin": 1789655599583,
+          "originId": 65119,
+          "originKnown": 1789655719583,
+          "ownPrevious": 64854
+        },
+        "aheadReason": "known",
+        "followerReason": "known",
+        "freshOtherBuses": 2,
+        "sameAsAhead": false
+      },
+      "snapshots": [
+        {
+          "elapsedSec": 0,
+          "at": 1789656652856,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 65285,
+                "bus": "#316",
+                "route": 3,
+                "stop": 113,
+                "index": 19,
+                "physical": 1789656632754,
+                "known": 1789656647754,
+                "stopName": "SCL",
+                "ageSec": 20.102,
+                "forwardStopsFromWinchester": 5,
+                "stopsUntilWinchester": 24
+              },
+              "progress": {
+                "id": 65285,
+                "bus": "#316",
+                "route": 3,
+                "stop": 113,
+                "index": 19,
+                "physical": 1789656632754,
+                "known": 1789656647754,
+                "stopName": "SCL",
+                "ageSec": 20.102,
+                "forwardStopsFromWinchester": 5,
+                "stopsUntilWinchester": 24
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 65279,
+                "bus": "#300",
+                "route": 3,
+                "stop": 117,
+                "index": 26,
+                "physical": 1789656581220,
+                "known": 1789656596220,
+                "stopName": "Gilbert / Cedar",
+                "ageSec": 71.636,
+                "forwardStopsFromWinchester": 12,
+                "stopsUntilWinchester": 17
+              },
+              "progress": {
+                "id": 65279,
+                "bus": "#300",
+                "route": 3,
+                "stop": 117,
+                "index": 26,
+                "physical": 1789656581220,
+                "known": 1789656596220,
+                "stopName": "Gilbert / Cedar",
+                "ageSec": 71.636,
+                "forwardStopsFromWinchester": 12,
+                "stopsUntilWinchester": 17
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                38,
+                39,
+                72,
+                117
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789656652856,
+            "bus": {
+              "observed_at": 1789656652856,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324228,
+              "lon": -72.92814,
+              "heading": 12,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T14:50:52.856",
+              "stationary_since": "2026-09-17T14:50:52.856",
+              "last_moved_at": "2026-09-17T14:50:52.856",
+              "lap": {
+                "11": 2964,
+                "121": 1148
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789656652856,
+                "bus_id": 66486,
+                "bus_name": "#300",
+                "route_id": 3,
+                "lat": 41.300236,
+                "lon": -72.932443,
+                "heading": 124,
+                "last_stop_id": 117,
+                "stationary": false,
+                "stationary_since": "2026-09-17T14:50:47.747",
+                "last_moved_at": "2026-09-17T14:50:52.856",
+                "lap": {
+                  "11": 1037,
+                  "121": 2984
+                }
+              },
+              {
+                "observed_at": 1789656652856,
+                "bus_id": 66487,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.318264,
+                "lon": -72.923798,
+                "heading": 191,
+                "last_stop_id": 104,
+                "stationary": true,
+                "at_stop_id": 113,
+                "at_stop_since": "2026-09-17T14:50:47.747",
+                "stationary_since": "2026-09-17T14:50:47.747",
+                "last_moved_at": "2026-09-17T14:50:52.856",
+                "lap": {
+                  "11": 277,
+                  "121": 2054
+                }
+              }
+            ]
+          }
+        },
+        {
+          "elapsedSec": 60,
+          "at": 1789656712856,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 65293,
+                "bus": "#316",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789656677846,
+                "known": 1789656692846,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 35.01,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "progress": {
+                "id": 65293,
+                "bus": "#316",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789656677846,
+                "known": 1789656692846,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 35.01,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 65290,
+                "bus": "#300",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789656672761,
+                "known": 1789656687761,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 40.095,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "progress": {
+                "id": 65290,
+                "bus": "#300",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789656672761,
+                "known": 1789656687761,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 40.095,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789656712830,
+            "bus": {
+              "observed_at": 1789656712830,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324702,
+              "lon": -72.928613,
+              "heading": 195,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T14:50:52.856",
+              "stationary_since": "2026-09-17T14:50:52.856",
+              "last_moved_at": "2026-09-17T14:51:42.828",
+              "lap": {
+                "11": 3024,
+                "121": 1208
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789656712830,
+                "bus_id": 66486,
+                "bus_name": "#300",
+                "route_id": 3,
+                "lat": 41.299232,
+                "lon": -72.92927,
+                "heading": 170,
+                "last_stop_id": 14,
+                "stationary": false,
+                "stationary_since": "2026-09-17T14:51:42.828",
+                "last_moved_at": "2026-09-17T14:51:42.828",
+                "lap": {
+                  "11": 1097,
+                  "121": 3044
+                }
+              },
+              {
+                "observed_at": 1789656712830,
+                "bus_id": 66487,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.315603,
+                "lon": -72.924542,
+                "heading": 191,
+                "last_stop_id": 113,
+                "stationary": true,
+                "at_stop_id": 4,
+                "at_stop_since": "2026-09-17T14:51:32.886",
+                "stationary_since": "2026-09-17T14:51:32.886",
+                "last_moved_at": "2026-09-17T14:51:32.886",
+                "lap": {
+                  "11": 337,
+                  "121": 2114
+                }
+              }
+            ]
+          }
+        },
+        {
+          "elapsedSec": 120,
+          "at": 1789656772856,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 65293,
+                "bus": "#316",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789656677846,
+                "known": 1789656692846,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 95.01,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "progress": {
+                "id": 65293,
+                "bus": "#316",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789656677846,
+                "known": 1789656692846,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 95.01,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 65379,
+                "bus": "#300",
+                "route": 3,
+                "stop": 121,
+                "index": 0,
+                "physical": 1789656737827,
+                "known": 1789656752827,
+                "stopName": "Union Station (N)",
+                "ageSec": 35.029,
+                "forwardStopsFromWinchester": 15,
+                "stopsUntilWinchester": 14
+              },
+              "progress": {
+                "id": 65379,
+                "bus": "#300",
+                "route": 3,
+                "stop": 121,
+                "index": 0,
+                "physical": 1789656737827,
+                "known": 1789656752827,
+                "stopName": "Union Station (N)",
+                "ageSec": 35.029,
+                "forwardStopsFromWinchester": 15,
+                "stopsUntilWinchester": 14
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789656767811,
+            "bus": {
+              "observed_at": 1789656767811,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324702,
+              "lon": -72.928613,
+              "heading": 195,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T14:50:52.856",
+              "stationary_since": "2026-09-17T14:50:52.856",
+              "last_moved_at": "2026-09-17T14:51:42.828",
+              "lap": {
+                "11": 3079,
+                "121": 1263
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789656767811,
+                "bus_id": 66486,
+                "bus_name": "#300",
+                "route_id": 3,
+                "lat": 41.296522,
+                "lon": -72.928581,
+                "heading": 162,
+                "last_stop_id": 14,
+                "stationary": false,
+                "stationary_since": "2026-09-17T14:52:32.857",
+                "last_moved_at": "2026-09-17T14:52:32.857",
+                "lap": {
+                  "11": 1152,
+                  "121": 3099
+                }
+              },
+              {
+                "observed_at": 1789656767811,
+                "bus_id": 66487,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.312332,
+                "lon": -72.925459,
+                "heading": 190,
+                "last_stop_id": 4,
+                "stationary": false,
+                "stationary_since": "2026-09-17T14:52:47.811",
+                "last_moved_at": "2026-09-17T14:52:47.811",
+                "lap": {
+                  "11": 392,
+                  "121": 2169
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "firstReconstructedWirePin": {
+        "at": 1789656652856,
+        "bus": {
+          "observed_at": 1789656652856,
+          "bus_id": 66491,
+          "bus_name": "#309",
+          "route_id": 3,
+          "lat": 41.324228,
+          "lon": -72.92814,
+          "heading": 12,
+          "last_stop_id": 27,
+          "stationary": true,
+          "at_stop_id": 11,
+          "at_stop_since": "2026-09-17T14:50:52.856",
+          "stationary_since": "2026-09-17T14:50:52.856",
+          "last_moved_at": "2026-09-17T14:50:52.856",
+          "lap": {
+            "11": 2964,
+            "121": 1148
+          }
+        },
+        "otherRedBuses": [
+          {
+            "observed_at": 1789656652856,
+            "bus_id": 66486,
+            "bus_name": "#300",
+            "route_id": 3,
+            "lat": 41.300236,
+            "lon": -72.932443,
+            "heading": 124,
+            "last_stop_id": 117,
+            "stationary": false,
+            "stationary_since": "2026-09-17T14:50:47.747",
+            "last_moved_at": "2026-09-17T14:50:52.856",
+            "lap": {
+              "11": 1037,
+              "121": 2984
+            }
+          },
+          {
+            "observed_at": 1789656652856,
+            "bus_id": 66487,
+            "bus_name": "#316",
+            "route_id": 3,
+            "lat": 41.318264,
+            "lon": -72.923798,
+            "heading": 191,
+            "last_stop_id": 104,
+            "stationary": true,
+            "at_stop_id": 113,
+            "at_stop_since": "2026-09-17T14:50:47.747",
+            "stationary_since": "2026-09-17T14:50:47.747",
+            "last_moved_at": "2026-09-17T14:50:52.856",
+            "lap": {
+              "11": 277,
+              "121": 2054
+            }
+          }
+        ],
+        "pinVisibilityDelaySec": 0.0,
+        "legacyClockLapAtPinSec": {
+          "11": 2964.0,
+          "121": 1148.0
+        }
+      },
+      "hindsight": {
+        "targetVisitId": 65364,
+        "targetArrivedAt": 1789657232897,
+        "targetDepartedAt": 1789657262862,
+        "sourceDepartureToTargetArrivalSec": 79.916,
+        "targetHoldSec": 29.965,
+        "exactLegIds": [
+          60572,
+          60578,
+          60581
+        ],
+        "worstChanged": {
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": -42.005560791015625,
+              "at": 1789657187851,
+              "stopsAhead": 2,
+              "low": 3.040439204461828,
+              "baselineLow": 3.040439204461828,
+              "candidateLow": 37.10082640026904,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -71.97056079101563,
+              "at": 1789657187851,
+              "stopsAhead": 2,
+              "low": 3.040439204461828,
+              "baselineLow": 3.040439204461828,
+              "candidateLow": 37.10082640026904,
+              "changed": true
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": 3.167962158203125,
+              "at": 1789657162971,
+              "stopsAhead": 3,
+              "low": 73.09396223062325,
+              "baselineLow": 0.5568479784548788,
+              "candidateLow": 73.09396223062325,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -26.797037841796875,
+              "at": 1789657162971,
+              "stopsAhead": 3,
+              "low": 73.09396223062325,
+              "baselineLow": 0.5568479784548788,
+              "candidateLow": 73.09396223062325,
+              "changed": true
+            }
+          }
+        },
+        "worstCandidate": {
+          "arrivalExcessSec": {
+            "value": 3.167962158203125,
+            "at": 1789657162971,
+            "stopsAhead": 3,
+            "low": 73.09396223062325,
+            "baselineLow": 0.5568479784548788,
+            "candidateLow": 73.09396223062325,
+            "changed": true
+          },
+          "departureExcessSec": {
+            "value": -26.797037841796875,
+            "at": 1789657162971,
+            "stopsAhead": 3,
+            "low": 73.09396223062325,
+            "baselineLow": 0.5568479784548788,
+            "candidateLow": 73.09396223062325,
+            "changed": true
+          }
+        },
+        "priorReconstructedLegacyDepartureToCurrentDepartureSec": 3464.125
+      },
+      "savedValidityAudit": {
+        "sourceId": 65347,
+        "targetId": 65364,
+        "bus": "#309",
+        "sourcePinET": "2026-09-17T10:50:52.856000-04:00",
+        "source": {
+          "id": 65347,
+          "bus_id": 66491,
+          "bus_name": "#309",
+          "anchor_bus_id": 66491,
+          "route_id": 3,
+          "stop_id": 11,
+          "stop_index": 14,
+          "anchored_at": 1789656637744,
+          "pinned_at": 1789656652856,
+          "arrived_at": 1789656652856,
+          "departed_at": 1789657152981,
+          "stand_sec": 500.125,
+          "inside_sec": 515.262,
+          "outcome": "stopped",
+          "how": "next",
+          "confidence": 1.0,
+          "first_step_m": 31.691025689341433,
+          "steps": 3,
+          "far_m": 80.71910263683685,
+          "confirm_sec": 15.192,
+          "rest_polls": 7,
+          "shuffles": 3,
+          "first_moved_at": 1789656667748,
+          "last_at_rest_at": 1789657152981,
+          "closest_m": 65.86926007526351,
+          "dow": 4,
+          "hour": 10
+        },
+        "target": {
+          "id": 65364,
+          "bus_id": 66491,
+          "bus_name": "#309",
+          "anchor_bus_id": 66491,
+          "route_id": 3,
+          "stop_id": 48,
+          "stop_index": 17,
+          "anchored_at": 1789657228094,
+          "pinned_at": 1789657232897,
+          "arrived_at": 1789657232897,
+          "departed_at": 1789657262862,
+          "stand_sec": 29.965,
+          "inside_sec": 44.987,
+          "outcome": "stopped",
+          "how": "clock",
+          "confidence": 0.96,
+          "first_step_m": 33.54790660602794,
+          "steps": 4,
+          "far_m": 137.71077604208162,
+          "confirm_sec": 15.001,
+          "rest_polls": 6,
+          "shuffles": 0,
+          "first_moved_at": 1789657267880,
+          "last_at_rest_at": 1789657262862,
+          "closest_m": 15.873351666002648,
+          "dow": 4,
+          "hour": 11
+        },
+        "legs": [
+          {
+            "id": 60572,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 11,
+            "from_index": 14,
+            "to_stop_id": 146,
+            "to_index": 15,
+            "hops": 1,
+            "departed_at": 1789657152981,
+            "arrived_at": 1789657178012,
+            "to_pinned_at": 1789657173148,
+            "leg_sec": 25.031,
+            "hold_sec": 0.0,
+            "drive_sec": 25.031,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 10
+          },
+          {
+            "id": 60578,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 146,
+            "from_index": 15,
+            "to_stop_id": 49,
+            "to_index": 16,
+            "hops": 1,
+            "departed_at": 1789657192951,
+            "arrived_at": 1789657207886,
+            "to_pinned_at": 1789657202972,
+            "leg_sec": 14.935,
+            "hold_sec": 0.0,
+            "drive_sec": 14.935,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 10
+          },
+          {
+            "id": 60581,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 49,
+            "from_index": 16,
+            "to_stop_id": 48,
+            "to_index": 17,
+            "hops": 1,
+            "departed_at": 1789657207886,
+            "arrived_at": 1789657232897,
+            "to_pinned_at": 1789657232897,
+            "leg_sec": 25.011,
+            "hold_sec": 0.0,
+            "drive_sec": 25.011,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 11
+          }
+        ],
+        "earlyRows": [
+          {
+            "at": 1789657162971,
+            "phase": "departure",
+            "checkpointSec": 5,
+            "truthSec": 69.926,
+            "baselineLow": 0.5568479784548788,
+            "candidateLow": 73.09396223062325,
+            "lowerExcessSec": 3.167962230623246,
+            "candidateLowerBeforeDetectorDepartureSec": 26.797037769376757
+          },
+          {
+            "at": 1789657168118,
+            "phase": "departure",
+            "checkpointSec": 15,
+            "truthSec": 64.779,
+            "baselineLow": 0,
+            "candidateLow": 65.75276411113461,
+            "lowerExcessSec": 0.9737641111346136,
+            "candidateLowerBeforeDetectorDepartureSec": 28.99123588886539
+          }
+        ],
+        "raw": {
+          "n": 133,
+          "maxGapSec": 5.301,
+          "maxConsecutiveSpeedKmh": 58.673518933114025,
+          "sourceDeparture": [
+            {
+              "seconds": -30.107,
+              "distanceToStopM": 44.28,
+              "stepM": null,
+              "lastStop": 11
+            },
+            {
+              "seconds": -25.135,
+              "distanceToStopM": 44.28,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -20.128,
+              "distanceToStopM": 44.28,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -15.071,
+              "distanceToStopM": 44.28,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -10.098,
+              "distanceToStopM": 44.28,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -5.032,
+              "distanceToStopM": 44.28,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 0.0,
+              "distanceToStopM": 44.28,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 4.975,
+              "distanceToStopM": 47.79,
+              "stepM": 31.66,
+              "lastStop": 11
+            },
+            {
+              "seconds": 9.99,
+              "distanceToStopM": 47.79,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 15.137,
+              "distanceToStopM": 59.34,
+              "stepM": 32.63,
+              "lastStop": 11
+            }
+          ],
+          "targetArrival": [
+            {
+              "seconds": -19.962,
+              "distanceToStopM": 207.41,
+              "stepM": null,
+              "lastStop": 146
+            },
+            {
+              "seconds": -14.973,
+              "distanceToStopM": 170.18,
+              "stepM": 37.24,
+              "lastStop": 146
+            },
+            {
+              "seconds": -10.045,
+              "distanceToStopM": 131.72,
+              "stepM": 38.48,
+              "lastStop": 49
+            },
+            {
+              "seconds": -4.803,
+              "distanceToStopM": 93.77,
+              "stepM": 37.97,
+              "lastStop": 49
+            },
+            {
+              "seconds": 0.0,
+              "distanceToStopM": 15.86,
+              "stepM": 78.28,
+              "lastStop": 49
+            },
+            {
+              "seconds": 4.983,
+              "distanceToStopM": 15.86,
+              "stepM": 0.0,
+              "lastStop": 49
+            },
+            {
+              "seconds": 10.017,
+              "distanceToStopM": 15.86,
+              "stepM": 0.0,
+              "lastStop": 49
+            },
+            {
+              "seconds": 14.96,
+              "distanceToStopM": 15.86,
+              "stepM": 0.0,
+              "lastStop": 49
+            },
+            {
+              "seconds": 19.958,
+              "distanceToStopM": 15.86,
+              "stepM": 0.0,
+              "lastStop": 49
+            }
+          ]
+        }
+      },
+      "savedComponentForecasts": [
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "elapsed": 0,
+          "forecastAt": 1789656652856,
+          "truthRemaining": 500.125,
+          "landmarkWeight": 0.2,
+          "q": [
+            112.38505843692953,
+            565.5229307332996,
+            717.469955025391
+          ],
+          "arm": "current_code_component",
+          "method": "Winchester_release",
+          "factor": 1
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "elapsed": 60,
+          "forecastAt": 1789656712856,
+          "truthRemaining": 440.125,
+          "landmarkWeight": 0.2,
+          "q": [
+            112.4183920142952,
+            516.2408148020688,
+            660.4736095545816
+          ],
+          "arm": "current_code_component",
+          "method": "Winchester_release",
+          "factor": 1
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "elapsed": 180,
+          "forecastAt": 1789656832856,
+          "truthRemaining": 320.125,
+          "landmarkWeight": 0.2,
+          "q": [
+            152.0184537381225,
+            415.43162218724603,
+            546.3357954104041
+          ],
+          "arm": "current_code_component",
+          "method": "Winchester_release",
+          "factor": 1
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "elapsed": 300,
+          "forecastAt": 1789656952856,
+          "truthRemaining": 200.125,
+          "landmarkWeight": 0.2,
+          "q": [
+            126.71579872295308,
+            307.56013697964613,
+            430.72898521977856
+          ],
+          "arm": "current_code_component",
+          "method": "Winchester_release",
+          "factor": 1
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "elapsed": 480,
+          "forecastAt": 1789657132856,
+          "truthRemaining": 20.125,
+          "landmarkWeight": 0.2,
+          "q": [
+            44.34384433542186,
+            150.2520366744941,
+            260.0328366889354
+          ],
+          "arm": "current_code_component",
+          "method": "Winchester_release",
+          "factor": 1
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "landmark_lap_elapsed_clock",
+          "elapsed": 0,
+          "forecastAt": 1789656652856,
+          "truthRemaining": 500.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            35.88567363258769,
+            336.1403727953017,
+            690.5810258093185
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_snapshot",
+          "elapsed": 0,
+          "forecastAt": 1789656652856,
+          "truthRemaining": 500.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            29.65735192130417,
+            486.7511332414862,
+            664.416487383048
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_follower_snapshot",
+          "elapsed": 0,
+          "forecastAt": 1789656652856,
+          "truthRemaining": 500.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            26.738475262802442,
+            437.9638732122304,
+            625.2345556965065
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "landmark_lap_elapsed_clock",
+          "elapsed": 60,
+          "forecastAt": 1789656712856,
+          "truthRemaining": 440.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            37.943590661350015,
+            389.4154053563286,
+            643.8271500524071
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_snapshot",
+          "elapsed": 60,
+          "forecastAt": 1789656712856,
+          "truthRemaining": 440.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            45.169476266981604,
+            483.49622316235036,
+            601.9385028271497
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_follower_snapshot",
+          "elapsed": 60,
+          "forecastAt": 1789656712856,
+          "truthRemaining": 440.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            52.56760799456203,
+            467.67450235541605,
+            570.7756230907759
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "landmark_lap_elapsed_clock",
+          "elapsed": 180,
+          "forecastAt": 1789656832856,
+          "truthRemaining": 320.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            64.65378152538804,
+            367.295336795483,
+            543.5779750556226
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_snapshot",
+          "elapsed": 180,
+          "forecastAt": 1789656832856,
+          "truthRemaining": 320.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            172.00479689620775,
+            394.0726035733222,
+            491.5703322619657
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_follower_snapshot",
+          "elapsed": 180,
+          "forecastAt": 1789656832856,
+          "truthRemaining": 320.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            172.2009105268353,
+            376.3125663052522,
+            468.74313773752976
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "landmark_lap_elapsed_clock",
+          "elapsed": 300,
+          "forecastAt": 1789656952856,
+          "truthRemaining": 200.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            78.63259573462116,
+            283.7991982100644,
+            435.19180081583414
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_snapshot",
+          "elapsed": 300,
+          "forecastAt": 1789656952856,
+          "truthRemaining": 200.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            145.4526463201899,
+            299.54800702768364,
+            402.209485768656
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_follower_snapshot",
+          "elapsed": 300,
+          "forecastAt": 1789656952856,
+          "truthRemaining": 200.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            129.87835074150084,
+            281.1768021014638,
+            382.19029262862244
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "landmark_lap_elapsed_clock",
+          "elapsed": 480,
+          "forecastAt": 1789657132856,
+          "truthRemaining": 20.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            36.638737956271555,
+            145.86447761847666,
+            272.7437312943489
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_snapshot",
+          "elapsed": 480,
+          "forecastAt": 1789657132856,
+          "truthRemaining": 20.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            51.00140506246123,
+            157.8462222412356,
+            264.6254112981218
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        },
+        {
+          "id": 65347,
+          "stop": 11,
+          "day": "2026-09-17",
+          "bus": "#309",
+          "regime": "arrival15",
+          "arm": "plus_ahead_follower_snapshot",
+          "elapsed": 480,
+          "forecastAt": 1789657132856,
+          "truthRemaining": 20.125,
+          "lapSupported": true,
+          "landmarkWeight": 0.2,
+          "q": [
+            44.24706616773302,
+            147.28377887469313,
+            254.02026442265205
+          ],
+          "followerKnown": true,
+          "sameAsAhead": false,
+          "aheadUsable": true,
+          "followerUsable": true
+        }
+      ],
+      "followupLegacyAtPin": {
+        "11": {
+          "record": {
+            "id": 716134,
+            "bus_name": "#309",
+            "stop_id": 11,
+            "arrived_at": 1789653068567,
+            "departed_at": 1789653688645
+          },
+          "ageSec": 2964.211
+        },
+        "121": {
+          "record": {
+            "id": 716425,
+            "bus_name": "#309",
+            "stop_id": 121,
+            "arrived_at": 1789654914342,
+            "departed_at": 1789655504681
+          },
+          "ageSec": 1148.175
+        }
+      },
+      "savedEarlyReleaseDiagnostic": [
+        {
+          "elapsed": 0,
+          "truthRemaining": 500.125,
+          "event": 0,
+          "predictions": {
+            "clock": 0.3893786025046962,
+            "lap_clock": 0.21047568975294167,
+            "lap_clock_anchor": 0.1887448501448638,
+            "lap_clock_ahead": 0.19650344065374628,
+            "lap_clock_follower": 0.29294675925630864,
+            "lap_clock_both": 0.2950964170593565,
+            "lap_clock_anchor_both": 0.26795471912269153
+          }
+        },
+        {
+          "elapsed": 60,
+          "truthRemaining": 440.125,
+          "event": 0,
+          "predictions": {
+            "clock": 0.3001688095968979,
+            "lap_clock": 0.18121557695475032,
+            "lap_clock_anchor": 0.17078649307188967,
+            "lap_clock_ahead": 0.18925844870957764,
+            "lap_clock_follower": 0.23559090081278317,
+            "lap_clock_both": 0.2503239708133811,
+            "lap_clock_anchor_both": 0.23756749507486202
+          }
+        },
+        {
+          "elapsed": 180,
+          "truthRemaining": 320.125,
+          "event": 0,
+          "predictions": {
+            "clock": 0.14735226264240983,
+            "lap_clock": 0.11088414919248125,
+            "lap_clock_anchor": 0.11218741769604884,
+            "lap_clock_ahead": 0.1297978426428951,
+            "lap_clock_follower": 0.12358564898720431,
+            "lap_clock_both": 0.15425138432972343,
+            "lap_clock_anchor_both": 0.1537733446378392
+          }
+        },
+        {
+          "elapsed": 300,
+          "truthRemaining": 200.125,
+          "event": 0,
+          "predictions": {
+            "clock": 0.11936540269385387,
+            "lap_clock": 0.10563266947336827,
+            "lap_clock_anchor": 0.11036735275707997,
+            "lap_clock_ahead": 0.1276750140103434,
+            "lap_clock_follower": 0.12332253915313195,
+            "lap_clock_both": 0.16280340575888747,
+            "lap_clock_anchor_both": 0.16234699471895836
+          }
+        },
+        {
+          "elapsed": 480,
+          "truthRemaining": 20.125,
+          "event": 1,
+          "predictions": {
+            "clock": 0.32822980571468885,
+            "lap_clock": 0.3036685840222219,
+            "lap_clock_anchor": 0.3184991269519962,
+            "lap_clock_ahead": 0.3678142194170737,
+            "lap_clock_follower": 0.35591761794915633,
+            "lap_clock_both": 0.4543425278688708,
+            "lap_clock_anchor_both": 0.4553962625706394
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": 68304,
+      "bus": "#300",
+      "pinET": "2026-09-17T17:25:21.828000-04:00",
+      "source": {
+        "id": 68304,
+        "bus_name": "#300",
+        "route_id": 3,
+        "stop_id": 11,
+        "anchored_at": 1789680306814,
+        "pinned_at": 1789680321828,
+        "arrived_at": 1789680326833,
+        "departed_at": 1789680606912,
+        "first_moved_at": 1789680356842,
+        "how": "next",
+        "closest_m": 57.36287991901085
+      },
+      "outcomeDB": "release-integration-data/outcomes-complete.db",
+      "pinHoldSec": 285.084,
+      "sourceApproachAnchorToPinSec": 15.014,
+      "previousOwnClocks": {
+        "11": {
+          "legacy": {
+            "id": 719295,
+            "bus_name": "#300",
+            "route_id": 3,
+            "stop_id": 11,
+            "arrived_at": 1789676886370,
+            "departed_at": 1789677111358
+          },
+          "legacyAgeAtPinSec": 3210.47,
+          "modern": {
+            "id": 67871,
+            "bus_name": "#300",
+            "route_id": 3,
+            "stop_id": 11,
+            "anchored_at": 1789676886370,
+            "pinned_at": 1789676906315,
+            "arrived_at": 1789676911375,
+            "departed_at": 1789677091309,
+            "first_moved_at": 1789676941270,
+            "how": "next",
+            "closest_m": 55.16804937287154
+          },
+          "modernAgeAtPinSec": 3230.519
+        },
+        "121": {
+          "legacy": {
+            "id": 719490,
+            "bus_name": "#300",
+            "route_id": 3,
+            "stop_id": 121,
+            "arrived_at": 1789678466608,
+            "departed_at": 1789678656623
+          },
+          "legacyAgeAtPinSec": 1665.205,
+          "modern": {
+            "id": 68052,
+            "bus_name": "#300",
+            "route_id": 3,
+            "stop_id": 121,
+            "anchored_at": 1789678466608,
+            "pinned_at": 1789678526594,
+            "arrived_at": 1789678526594,
+            "departed_at": 1789678561691,
+            "first_moved_at": 1789678566717,
+            "how": "clock",
+            "closest_m": 59.07915000123201
+          },
+          "modernAgeAtPinSec": 1760.137
+        }
+      },
+      "latchedIdentities": {
+        "ahead": {
+          "id": 68115,
+          "bus": "#309",
+          "physical": 1789679041658,
+          "known": 1789679161658,
+          "origin": 1789679041658,
+          "originId": 68115,
+          "originKnown": 1789679161658
+        },
+        "follower": {
+          "id": 67957,
+          "bus": "#316",
+          "physical": 1789677901607,
+          "known": 1789678021607,
+          "origin": 1789677901607,
+          "originId": 67957,
+          "originKnown": 1789678021607,
+          "ownPrevious": 67871
+        },
+        "aheadReason": "known",
+        "followerReason": "known",
+        "freshOtherBuses": 2,
+        "sameAsAhead": false
+      },
+      "snapshots": [
+        {
+          "elapsedSec": 0,
+          "at": 1789680321828,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 68261,
+                "bus": "#309",
+                "route": 3,
+                "stop": 117,
+                "index": 26,
+                "physical": 1789680251864,
+                "known": 1789680266864,
+                "stopName": "Gilbert / Cedar",
+                "ageSec": 69.964,
+                "forwardStopsFromWinchester": 12,
+                "stopsUntilWinchester": 17
+              },
+              "progress": {
+                "id": 68261,
+                "bus": "#309",
+                "route": 3,
+                "stop": 117,
+                "index": 26,
+                "physical": 1789680251864,
+                "known": 1789680266864,
+                "stopName": "Gilbert / Cedar",
+                "ageSec": 69.964,
+                "forwardStopsFromWinchester": 12,
+                "stopsUntilWinchester": 17
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 68259,
+                "bus": "#316",
+                "route": 3,
+                "stop": 30,
+                "index": 4,
+                "physical": 1789680216809,
+                "known": 1789680231809,
+                "stopName": "Chapel / Church",
+                "ageSec": 105.019,
+                "forwardStopsFromWinchester": 19,
+                "stopsUntilWinchester": 10
+              },
+              "progress": {
+                "id": 68259,
+                "bus": "#316",
+                "route": 3,
+                "stop": 30,
+                "index": 4,
+                "physical": 1789680216809,
+                "known": 1789680231809,
+                "stopName": "Chapel / Church",
+                "ageSec": 105.019,
+                "forwardStopsFromWinchester": 19,
+                "stopsUntilWinchester": 10
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14,
+                121,
+                115,
+                45,
+                75,
+                30
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789680321828,
+            "bus": {
+              "observed_at": 1789680321828,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "lat": 41.324083,
+              "lon": -72.928226,
+              "heading": 11,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T21:25:21.828",
+              "stationary_since": "2026-09-17T21:25:21.828",
+              "last_moved_at": "2026-09-17T21:25:21.828",
+              "lap": {
+                "11": 3210,
+                "121": 1665
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789680321828,
+                "bus_id": 66491,
+                "bus_name": "#309",
+                "route_id": 3,
+                "lat": 41.301598,
+                "lon": -72.933377,
+                "heading": 161,
+                "last_stop_id": 72,
+                "stationary": true,
+                "at_stop_id": 117,
+                "at_stop_since": "2026-09-17T21:24:21.992",
+                "stationary_since": "2026-09-17T21:24:21.992",
+                "last_moved_at": "2026-09-17T21:25:16.907",
+                "lap": {
+                  "11": 1255,
+                  "121": 3120
+                }
+              },
+              {
+                "observed_at": 1789680321828,
+                "bus_id": 66508,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.305942,
+                "lon": -72.925449,
+                "heading": 299,
+                "last_stop_id": 75,
+                "stationary": true,
+                "at_stop_id": 30,
+                "at_stop_since": "2026-09-17T21:24:41.811",
+                "stationary_since": "2026-09-17T21:24:41.811",
+                "last_moved_at": "2026-09-17T21:25:21.828",
+                "lap": {
+                  "11": 2405,
+                  "121": 650
+                }
+              }
+            ]
+          }
+        },
+        {
+          "elapsedSec": 60,
+          "at": 1789680381828,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 68266,
+                "bus": "#309",
+                "route": 3,
+                "stop": 13,
+                "index": 27,
+                "physical": 1789680351823,
+                "known": 1789680366823,
+                "stopName": "Amistad / Cedar",
+                "ageSec": 30.005,
+                "forwardStopsFromWinchester": 13,
+                "stopsUntilWinchester": 16
+              },
+              "progress": {
+                "id": 68266,
+                "bus": "#309",
+                "route": 3,
+                "stop": 13,
+                "index": 27,
+                "physical": 1789680351823,
+                "known": 1789680366823,
+                "stopName": "Amistad / Cedar",
+                "ageSec": 30.005,
+                "forwardStopsFromWinchester": 13,
+                "stopsUntilWinchester": 16
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117,
+                13
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 68259,
+                "bus": "#316",
+                "route": 3,
+                "stop": 30,
+                "index": 4,
+                "physical": 1789680216809,
+                "known": 1789680231809,
+                "stopName": "Chapel / Church",
+                "ageSec": 165.019,
+                "forwardStopsFromWinchester": 19,
+                "stopsUntilWinchester": 10
+              },
+              "progress": {
+                "id": 68259,
+                "bus": "#316",
+                "route": 3,
+                "stop": 30,
+                "index": 4,
+                "physical": 1789680216809,
+                "known": 1789680231809,
+                "stopName": "Chapel / Church",
+                "ageSec": 165.019,
+                "forwardStopsFromWinchester": 19,
+                "stopsUntilWinchester": 10
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14,
+                121,
+                115,
+                45,
+                75,
+                30
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789680376847,
+            "bus": {
+              "observed_at": 1789680376847,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "lat": 41.324724,
+              "lon": -72.928629,
+              "heading": 248,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T21:25:21.828",
+              "stationary_since": "2026-09-17T21:25:21.828",
+              "last_moved_at": "2026-09-17T21:26:16.847",
+              "lap": {
+                "11": 3265,
+                "121": 1720
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789680376847,
+                "bus_id": 66491,
+                "bus_name": "#309",
+                "route_id": 3,
+                "lat": 41.300465,
+                "lon": -72.930506,
+                "heading": 80,
+                "last_stop_id": 72,
+                "stationary": false,
+                "stationary_since": "2026-09-17T21:26:16.847",
+                "last_moved_at": "2026-09-17T21:26:16.847",
+                "lap": {
+                  "11": 1310,
+                  "121": 3175
+                }
+              },
+              {
+                "observed_at": 1789680376847,
+                "bus_id": 66508,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.306531,
+                "lon": -72.926808,
+                "heading": 299,
+                "last_stop_id": 75,
+                "stationary": false,
+                "stationary_since": "2026-09-17T21:25:41.834",
+                "last_moved_at": "2026-09-17T21:25:41.834",
+                "lap": {
+                  "11": 2460,
+                  "121": 705
+                }
+              }
+            ]
+          }
+        },
+        {
+          "elapsedSec": 120,
+          "at": 1789680441828,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 68292,
+                "bus": "#309",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789680376847,
+                "known": 1789680391847,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 64.981,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "progress": {
+                "id": 68292,
+                "bus": "#309",
+                "route": 3,
+                "stop": 14,
+                "index": 28,
+                "physical": 1789680376847,
+                "known": 1789680391847,
+                "stopName": "Amistad / Church St South",
+                "ageSec": 64.981,
+                "forwardStopsFromWinchester": 14,
+                "stopsUntilWinchester": 15
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 68281,
+                "bus": "#316",
+                "route": 3,
+                "stop": 31,
+                "index": 5,
+                "physical": 1789680396842,
+                "known": 1789680411842,
+                "stopName": "Chapel / College",
+                "ageSec": 44.986,
+                "forwardStopsFromWinchester": 20,
+                "stopsUntilWinchester": 9
+              },
+              "progress": {
+                "id": 68281,
+                "bus": "#316",
+                "route": 3,
+                "stop": 31,
+                "index": 5,
+                "physical": 1789680396842,
+                "known": 1789680411842,
+                "stopName": "Chapel / College",
+                "ageSec": 44.986,
+                "forwardStopsFromWinchester": 20,
+                "stopsUntilWinchester": 9
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4,
+                42,
+                98,
+                38,
+                39,
+                72,
+                117,
+                13,
+                14,
+                121,
+                115,
+                45,
+                75,
+                30,
+                31
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789680436852,
+            "bus": {
+              "observed_at": 1789680436852,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "lat": 41.324724,
+              "lon": -72.928629,
+              "heading": 248,
+              "last_stop_id": 11,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-17T21:25:21.828",
+              "stationary_since": "2026-09-17T21:25:21.828",
+              "last_moved_at": "2026-09-17T21:26:16.847",
+              "lap": {
+                "11": 3325,
+                "121": 1780
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789680436852,
+                "bus_id": 66491,
+                "bus_name": "#309",
+                "route_id": 3,
+                "lat": 41.300557,
+                "lon": -72.929775,
+                "heading": 81,
+                "last_stop_id": 72,
+                "stationary": true,
+                "at_stop_id": 14,
+                "at_stop_since": "2026-09-17T21:26:16.847",
+                "stationary_since": "2026-09-17T21:26:16.847",
+                "last_moved_at": "2026-09-17T21:26:26.843",
+                "lap": {
+                  "11": 1370,
+                  "121": 3236
+                }
+              },
+              {
+                "observed_at": 1789680436852,
+                "bus_id": 66508,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.308024,
+                "lon": -72.928074,
+                "heading": 30,
+                "last_stop_id": 31,
+                "stationary": false,
+                "stationary_since": "2026-09-17T21:26:51.846",
+                "last_moved_at": "2026-09-17T21:27:16.852",
+                "lap": {
+                  "11": 2520,
+                  "121": 765
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "firstReconstructedWirePin": {
+        "at": 1789680321828,
+        "bus": {
+          "observed_at": 1789680321828,
+          "bus_id": 66507,
+          "bus_name": "#300",
+          "route_id": 3,
+          "lat": 41.324083,
+          "lon": -72.928226,
+          "heading": 11,
+          "last_stop_id": 27,
+          "stationary": true,
+          "at_stop_id": 11,
+          "at_stop_since": "2026-09-17T21:25:21.828",
+          "stationary_since": "2026-09-17T21:25:21.828",
+          "last_moved_at": "2026-09-17T21:25:21.828",
+          "lap": {
+            "11": 3210,
+            "121": 1665
+          }
+        },
+        "otherRedBuses": [
+          {
+            "observed_at": 1789680321828,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "route_id": 3,
+            "lat": 41.301598,
+            "lon": -72.933377,
+            "heading": 161,
+            "last_stop_id": 72,
+            "stationary": true,
+            "at_stop_id": 117,
+            "at_stop_since": "2026-09-17T21:24:21.992",
+            "stationary_since": "2026-09-17T21:24:21.992",
+            "last_moved_at": "2026-09-17T21:25:16.907",
+            "lap": {
+              "11": 1255,
+              "121": 3120
+            }
+          },
+          {
+            "observed_at": 1789680321828,
+            "bus_id": 66508,
+            "bus_name": "#316",
+            "route_id": 3,
+            "lat": 41.305942,
+            "lon": -72.925449,
+            "heading": 299,
+            "last_stop_id": 75,
+            "stationary": true,
+            "at_stop_id": 30,
+            "at_stop_since": "2026-09-17T21:24:41.811",
+            "stationary_since": "2026-09-17T21:24:41.811",
+            "last_moved_at": "2026-09-17T21:25:21.828",
+            "lap": {
+              "11": 2405,
+              "121": 650
+            }
+          }
+        ],
+        "pinVisibilityDelaySec": 0.0,
+        "legacyClockLapAtPinSec": {
+          "11": 3210.0,
+          "121": 1665.0
+        }
+      },
+      "hindsight": {
+        "targetVisitId": 68322,
+        "targetArrivedAt": 1789680682111,
+        "targetDepartedAt": 1789680706945,
+        "sourceDepartureToTargetArrivalSec": 75.199,
+        "targetHoldSec": 24.834,
+        "exactLegIds": [
+          63394,
+          63399,
+          63402
+        ],
+        "worstChanged": {
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": -53.58540185546875,
+              "at": 1789680621947,
+              "stopsAhead": 3,
+              "low": 6.578598255837769,
+              "baselineLow": 6.578598255837769,
+              "candidateLow": 57.84833211508247,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -78.41940185546875,
+              "at": 1789680621947,
+              "stopsAhead": 3,
+              "low": 6.578598255837769,
+              "baselineLow": 6.578598255837769,
+              "candidateLow": 57.84833211508247,
+              "changed": true
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": 1.983466064453125,
+              "at": 1789680611859,
+              "stopsAhead": 3,
+              "low": 72.23546595240735,
+              "baselineLow": 11.319159146675212,
+              "candidateLow": 72.23546595240735,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -22.850533935546874,
+              "at": 1789680611859,
+              "stopsAhead": 3,
+              "low": 72.23546595240735,
+              "baselineLow": 11.319159146675212,
+              "candidateLow": 72.23546595240735,
+              "changed": true
+            }
+          }
+        },
+        "worstCandidate": {
+          "arrivalExcessSec": {
+            "value": 1.983466064453125,
+            "at": 1789680611859,
+            "stopsAhead": 3,
+            "low": 72.23546595240735,
+            "baselineLow": 11.319159146675212,
+            "candidateLow": 72.23546595240735,
+            "changed": true
+          },
+          "departureExcessSec": {
+            "value": -22.850533935546874,
+            "at": 1789680611859,
+            "stopsAhead": 3,
+            "low": 72.23546595240735,
+            "baselineLow": 11.319159146675212,
+            "candidateLow": 72.23546595240735,
+            "changed": true
+          }
+        },
+        "priorReconstructedLegacyDepartureToCurrentDepartureSec": 3495.084
+      },
+      "savedValidityAudit": {
+        "sourceId": 68304,
+        "targetId": 68322,
+        "bus": "#300",
+        "sourcePinET": "2026-09-17T17:25:21.828000-04:00",
+        "source": {
+          "id": 68304,
+          "bus_id": 66507,
+          "bus_name": "#300",
+          "anchor_bus_id": 66507,
+          "route_id": 3,
+          "stop_id": 11,
+          "stop_index": 14,
+          "anchored_at": 1789680306814,
+          "pinned_at": 1789680321828,
+          "arrived_at": 1789680326833,
+          "departed_at": 1789680606912,
+          "stand_sec": 280.079,
+          "inside_sec": 300.119,
+          "outcome": "stopped",
+          "how": "next",
+          "confidence": 1.0,
+          "first_step_m": 33.29224960097354,
+          "steps": 3,
+          "far_m": 74.37528377675305,
+          "confirm_sec": 10.088,
+          "rest_polls": 8,
+          "shuffles": 2,
+          "first_moved_at": 1789680356842,
+          "last_at_rest_at": 1789680606912,
+          "closest_m": 57.36287991901085,
+          "dow": 4,
+          "hour": 17
+        },
+        "target": {
+          "id": 68322,
+          "bus_id": 66507,
+          "bus_name": "#300",
+          "anchor_bus_id": 66507,
+          "route_id": 3,
+          "stop_id": 48,
+          "stop_index": 17,
+          "anchored_at": 1789680672012,
+          "pinned_at": 1789680682111,
+          "arrived_at": 1789680682111,
+          "departed_at": 1789680706945,
+          "stand_sec": 24.834,
+          "inside_sec": 29.756,
+          "outcome": "stopped",
+          "how": "clock",
+          "confidence": 0.96,
+          "first_step_m": 31.094712332544724,
+          "steps": 3,
+          "far_m": 136.95804761023751,
+          "confirm_sec": 15.077,
+          "rest_polls": 3,
+          "shuffles": 1,
+          "first_moved_at": 1789680691921,
+          "last_at_rest_at": 1789680706945,
+          "closest_m": 9.902489568987745,
+          "dow": 4,
+          "hour": 17
+        },
+        "legs": [
+          {
+            "id": 63394,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "route_id": 3,
+            "from_stop_id": 11,
+            "from_index": 14,
+            "to_stop_id": 146,
+            "to_index": 15,
+            "hops": 1,
+            "departed_at": 1789680606912,
+            "arrived_at": 1789680626927,
+            "to_pinned_at": 1789680621947,
+            "leg_sec": 20.015,
+            "hold_sec": 0.0,
+            "drive_sec": 20.015,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 17
+          },
+          {
+            "id": 63399,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "route_id": 3,
+            "from_stop_id": 146,
+            "from_index": 15,
+            "to_stop_id": 49,
+            "to_index": 16,
+            "hops": 1,
+            "departed_at": 1789680632070,
+            "arrived_at": 1789680656880,
+            "to_pinned_at": 1789680651877,
+            "leg_sec": 24.81,
+            "hold_sec": 0.0,
+            "drive_sec": 24.81,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 17
+          },
+          {
+            "id": 63402,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "route_id": 3,
+            "from_stop_id": 49,
+            "from_index": 16,
+            "to_stop_id": 48,
+            "to_index": 17,
+            "hops": 1,
+            "departed_at": 1789680656880,
+            "arrived_at": 1789680682111,
+            "to_pinned_at": 1789680682111,
+            "leg_sec": 25.231,
+            "hold_sec": 0.0,
+            "drive_sec": 25.231,
+            "holds": 0,
+            "reached": 1,
+            "dow": 4,
+            "hour": 17
+          }
+        ],
+        "earlyRows": [
+          {
+            "at": 1789680616856,
+            "phase": "departure",
+            "checkpointSec": 5,
+            "truthSec": 65.255,
+            "baselineLow": 5.50167600687157,
+            "candidateLow": 66.25371193124599,
+            "lowerExcessSec": 0.9987119312459924,
+            "candidateLowerBeforeDetectorDepartureSec": 23.83528806875401
+          }
+        ],
+        "raw": {
+          "n": 90,
+          "maxGapSec": 5.192,
+          "maxConsecutiveSpeedKmh": 56.236298395909834,
+          "sourceDeparture": [
+            {
+              "seconds": -30.02,
+              "distanceToStopM": 46.68,
+              "stepM": null,
+              "lastStop": 11
+            },
+            {
+              "seconds": -25.055,
+              "distanceToStopM": 46.68,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -20.054,
+              "distanceToStopM": 46.68,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -15.031,
+              "distanceToStopM": 46.68,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -10.014,
+              "distanceToStopM": 46.68,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -5.012,
+              "distanceToStopM": 46.68,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 0.0,
+              "distanceToStopM": 46.68,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 4.947,
+              "distanceToStopM": 50.05,
+              "stepM": 33.25,
+              "lastStop": 11
+            },
+            {
+              "seconds": 9.944,
+              "distanceToStopM": 58.67,
+              "stepM": 32.08,
+              "lastStop": 11
+            },
+            {
+              "seconds": 15.035,
+              "distanceToStopM": 74.29,
+              "stepM": 30.65,
+              "lastStop": 11
+            }
+          ],
+          "targetArrival": [
+            {
+              "seconds": -15.229,
+              "distanceToStopM": 148.83,
+              "stepM": null,
+              "lastStop": 49
+            },
+            {
+              "seconds": -10.099,
+              "distanceToStopM": 110.74,
+              "stepM": 38.1,
+              "lastStop": 49
+            },
+            {
+              "seconds": -5.192,
+              "distanceToStopM": 76.34,
+              "stepM": 34.4,
+              "lastStop": 49
+            },
+            {
+              "seconds": 0.0,
+              "distanceToStopM": 9.89,
+              "stepM": 66.54,
+              "lastStop": 49
+            },
+            {
+              "seconds": 5.064,
+              "distanceToStopM": 9.89,
+              "stepM": 0.0,
+              "lastStop": 49
+            },
+            {
+              "seconds": 9.81,
+              "distanceToStopM": 20.74,
+              "stepM": 30.51,
+              "lastStop": 49
+            },
+            {
+              "seconds": 14.777,
+              "distanceToStopM": 20.74,
+              "stepM": 0.0,
+              "lastStop": 49
+            },
+            {
+              "seconds": 19.773,
+              "distanceToStopM": 20.74,
+              "stepM": 0.0,
+              "lastStop": 49
+            }
+          ]
+        }
+      },
+      "savedComponentForecasts": [],
+      "followupLegacyAtPin": {
+        "11": {
+          "record": {
+            "id": 719295,
+            "bus_name": "#300",
+            "stop_id": 11,
+            "arrived_at": 1789676886370,
+            "departed_at": 1789677111358
+          },
+          "ageSec": 3210.47
+        },
+        "121": {
+          "record": {
+            "id": 719490,
+            "bus_name": "#300",
+            "stop_id": 121,
+            "arrived_at": 1789678466608,
+            "departed_at": 1789678656623
+          },
+          "ageSec": 1665.205
+        }
+      },
+      "savedEarlyReleaseDiagnostic": [
+        {
+          "elapsed": 0,
+          "truthRemaining": 285.084,
+          "event": 0,
+          "predictions": {
+            "clock": 0.07682018421181656,
+            "lap_clock": 0.06928550221000888,
+            "lap_clock_anchor": 0.07372197630052933,
+            "lap_clock_ahead": 0.07419314491719951,
+            "lap_clock_follower": 0.05614005371883686,
+            "lap_clock_both": 0.0595336103080037,
+            "lap_clock_anchor_both": 0.05927590091756673
+          }
+        },
+        {
+          "elapsed": 60,
+          "truthRemaining": 225.084,
+          "event": 0,
+          "predictions": {
+            "clock": 0.10251765921254911,
+            "lap_clock": 0.10071084390415536,
+            "lap_clock_anchor": 0.10876143593779723,
+            "lap_clock_ahead": 0.09819780287572841,
+            "lap_clock_follower": 0.08590209474652571,
+            "lap_clock_both": 0.08657124206251239,
+            "lap_clock_anchor_both": 0.08673064048070747
+          }
+        },
+        {
+          "elapsed": 180,
+          "truthRemaining": 105.084,
+          "event": 1,
+          "predictions": {
+            "clock": 0.2444482780674331,
+            "lap_clock": 0.24851290232189924,
+            "lap_clock_anchor": 0.2686481309979783,
+            "lap_clock_ahead": 0.2360516567635304,
+            "lap_clock_follower": 0.21980053669347363,
+            "lap_clock_both": 0.21511718330072913,
+            "lap_clock_anchor_both": 0.22666981142940643
+          }
+        }
+      ]
+    },
+    {
+      "sourceId": 70927,
+      "bus": "#309",
+      "pinET": "2026-09-18T08:48:02.156000-04:00",
+      "source": {
+        "id": 70927,
+        "bus_name": "#309",
+        "route_id": 3,
+        "stop_id": 11,
+        "anchored_at": 1789735666965,
+        "pinned_at": 1789735682156,
+        "arrived_at": 1789735686969,
+        "departed_at": 1789736432044,
+        "first_moved_at": 1789735712210,
+        "how": "next",
+        "closest_m": 54.13624048414833
+      },
+      "outcomeDB": "red-lower-data-2026-09-18/outcomes-today.db",
+      "pinHoldSec": 749.888,
+      "sourceApproachAnchorToPinSec": 15.191,
+      "previousOwnClocks": {
+        "11": {
+          "legacy": null,
+          "legacyAgeAtPinSec": null,
+          "modern": {
+            "id": 70458,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 11,
+            "anchored_at": 1789732446006,
+            "pinned_at": 1789732465971,
+            "arrived_at": 1789732471028,
+            "departed_at": 1789732881594,
+            "first_moved_at": 1789732490990,
+            "how": "next",
+            "closest_m": 51.31091472750871
+          },
+          "modernAgeAtPinSec": 2800.562
+        },
+        "121": {
+          "legacy": null,
+          "legacyAgeAtPinSec": null,
+          "modern": {
+            "id": 70686,
+            "bus_name": "#309",
+            "route_id": 3,
+            "stop_id": 121,
+            "anchored_at": 1789733931826,
+            "pinned_at": 1789733981831,
+            "arrived_at": 1789733981831,
+            "departed_at": 1789734581866,
+            "first_moved_at": 1789733996830,
+            "how": "clock",
+            "closest_m": 50.49190481965928
+          },
+          "modernAgeAtPinSec": 1100.29
+        }
+      },
+      "latchedIdentities": {
+        "ahead": {
+          "id": 70719,
+          "bus": "#306",
+          "physical": 1789734846885,
+          "known": 1789734966885,
+          "origin": 1789734846885,
+          "originId": 70719,
+          "originKnown": 1789734966885
+        },
+        "follower": {
+          "id": 70719,
+          "bus": "#306",
+          "physical": 1789734846885,
+          "known": 1789734966885,
+          "origin": 1789734846885,
+          "originId": 70719,
+          "originKnown": 1789734966885,
+          "ownPrevious": 70458
+        },
+        "aheadReason": "known",
+        "followerReason": "known",
+        "freshOtherBuses": 2,
+        "sameAsAhead": true
+      },
+      "snapshots": [
+        {
+          "elapsedSec": 0,
+          "at": 1789735682156,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 70829,
+                "bus": "#306",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789735642026,
+                "known": 1789735657026,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 40.13,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "progress": {
+                "id": 70829,
+                "bus": "#306",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789735642026,
+                "known": 1789735657026,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 40.13,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 70829,
+                "bus": "#306",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789735642026,
+                "known": 1789735657026,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 40.13,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "progress": {
+                "id": 70829,
+                "bus": "#306",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789735642026,
+                "known": 1789735657026,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 40.13,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789735682156,
+            "bus": {
+              "observed_at": 1789735682156,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324107,
+              "lon": -72.928203,
+              "heading": 15,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-18T12:48:02.156",
+              "stationary_since": "2026-09-18T12:48:02.156",
+              "last_moved_at": "2026-09-18T12:48:02.156",
+              "lap": {
+                "11": 2790,
+                "121": 1040
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789735682156,
+                "bus_id": 66539,
+                "bus_name": "#306",
+                "route_id": 3,
+                "lat": 41.315488,
+                "lon": -72.92459,
+                "heading": 191,
+                "last_stop_id": 4,
+                "stationary": true,
+                "at_stop_id": 4,
+                "at_stop_since": "2026-09-18T12:47:37.020",
+                "stationary_since": "2026-09-18T12:47:37.020",
+                "last_moved_at": "2026-09-18T12:47:46.965",
+                "lap": {
+                  "11": 825,
+                  "121": 2916
+                }
+              },
+              {
+                "observed_at": 1789735682156,
+                "bus_id": 66541,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.324515,
+                "lon": -72.92326,
+                "heading": 159,
+                "last_stop_id": 49,
+                "stationary": true,
+                "at_stop_id": 48,
+                "at_stop_since": "2026-09-18T12:47:46.965",
+                "stationary_since": "2026-09-18T12:47:46.965",
+                "last_moved_at": "2026-09-18T12:48:02.156",
+                "lap": {
+                  "11": 60,
+                  "121": 1880
+                }
+              }
+            ]
+          }
+        },
+        {
+          "elapsedSec": 60,
+          "at": 1789735742156,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 70829,
+                "bus": "#306",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789735642026,
+                "known": 1789735657026,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 100.13,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "progress": {
+                "id": 70829,
+                "bus": "#306",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789735642026,
+                "known": 1789735657026,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 100.13,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 70829,
+                "bus": "#306",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789735642026,
+                "known": 1789735657026,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 100.13,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "progress": {
+                "id": 70829,
+                "bus": "#306",
+                "route": 3,
+                "stop": 4,
+                "index": 20,
+                "physical": 1789735642026,
+                "known": 1789735657026,
+                "stopName": "130 Prospect Street (S)",
+                "ageSec": 100.13,
+                "forwardStopsFromWinchester": 6,
+                "stopsUntilWinchester": 23
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789735742049,
+            "bus": {
+              "observed_at": 1789735742049,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324807,
+              "lon": -72.928592,
+              "heading": 244,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-18T12:48:02.156",
+              "stationary_since": "2026-09-18T12:48:02.156",
+              "last_moved_at": "2026-09-18T12:48:41.981",
+              "lap": {
+                "11": 2850,
+                "121": 1100
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789735742049,
+                "bus_id": 66539,
+                "bus_name": "#306",
+                "route_id": 3,
+                "lat": 41.314012,
+                "lon": -72.925014,
+                "heading": 193,
+                "last_stop_id": 4,
+                "stationary": false,
+                "stationary_since": "2026-09-18T12:48:52.074",
+                "last_moved_at": "2026-09-18T12:48:52.074",
+                "lap": {
+                  "11": 885,
+                  "121": 2975
+                }
+              },
+              {
+                "observed_at": 1789735742049,
+                "bus_id": 66541,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.323003,
+                "lon": -72.923388,
+                "heading": 183,
+                "last_stop_id": 48,
+                "stationary": false,
+                "stationary_since": "2026-09-18T12:48:57.011",
+                "last_moved_at": "2026-09-18T12:49:02.049",
+                "lap": {
+                  "11": 120,
+                  "121": 1940
+                }
+              }
+            ]
+          }
+        },
+        {
+          "elapsedSec": 120,
+          "at": 1789735802156,
+          "peers": {
+            "ahead": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 70842,
+                "bus": "#306",
+                "route": 3,
+                "stop": 42,
+                "index": 21,
+                "physical": 1789735787107,
+                "known": 1789735802107,
+                "stopName": "College / Wall (S)",
+                "ageSec": 15.049,
+                "forwardStopsFromWinchester": 7,
+                "stopsUntilWinchester": 22
+              },
+              "progress": {
+                "id": 70842,
+                "bus": "#306",
+                "route": 3,
+                "stop": 42,
+                "index": 21,
+                "physical": 1789735787107,
+                "known": 1789735802107,
+                "stopName": "College / Wall (S)",
+                "ageSec": 15.049,
+                "forwardStopsFromWinchester": 7,
+                "stopsUntilWinchester": 22
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4
+              ]
+            },
+            "follower": {
+              "usable": true,
+              "reason": "known",
+              "latestAllRoute": {
+                "id": 70842,
+                "bus": "#306",
+                "route": 3,
+                "stop": 42,
+                "index": 21,
+                "physical": 1789735787107,
+                "known": 1789735802107,
+                "stopName": "College / Wall (S)",
+                "ageSec": 15.049,
+                "forwardStopsFromWinchester": 7,
+                "stopsUntilWinchester": 22
+              },
+              "progress": {
+                "id": 70842,
+                "bus": "#306",
+                "route": 3,
+                "stop": 42,
+                "index": 21,
+                "physical": 1789735787107,
+                "known": 1789735802107,
+                "stopName": "College / Wall (S)",
+                "ageSec": 15.049,
+                "forwardStopsFromWinchester": 7,
+                "stopsUntilWinchester": 22
+              },
+              "reachedStopIds": [
+                146,
+                49,
+                48,
+                104,
+                113,
+                4
+              ]
+            }
+          },
+          "wireAsOf": {
+            "at": 1789735802052,
+            "bus": {
+              "observed_at": 1789735802052,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "lat": 41.324807,
+              "lon": -72.928592,
+              "heading": 244,
+              "last_stop_id": 27,
+              "stationary": true,
+              "at_stop_id": 11,
+              "at_stop_since": "2026-09-18T12:48:02.156",
+              "stationary_since": "2026-09-18T12:48:02.156",
+              "last_moved_at": "2026-09-18T12:48:41.981",
+              "lap": {
+                "11": 2910,
+                "121": 1160
+              }
+            },
+            "otherRedBuses": [
+              {
+                "observed_at": 1789735802052,
+                "bus_id": 66539,
+                "bus_name": "#306",
+                "route_id": 3,
+                "lat": 41.311582,
+                "lon": -72.925617,
+                "heading": 182,
+                "last_stop_id": 4,
+                "stationary": false,
+                "stationary_since": "2026-09-18T12:50:02.052",
+                "last_moved_at": "2026-09-18T12:50:02.052",
+                "lap": {
+                  "11": 945,
+                  "121": 3035
+                }
+              },
+              {
+                "observed_at": 1789735802052,
+                "bus_id": 66541,
+                "bus_name": "#316",
+                "route_id": 3,
+                "lat": 41.322431,
+                "lon": -72.923403,
+                "heading": 182,
+                "last_stop_id": 48,
+                "stationary": false,
+                "stationary_since": "2026-09-18T12:48:57.011",
+                "last_moved_at": "2026-09-18T12:49:57.106",
+                "lap": {
+                  "11": 180,
+                  "121": 2000
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "firstReconstructedWirePin": {
+        "at": 1789735682156,
+        "bus": {
+          "observed_at": 1789735682156,
+          "bus_id": 66544,
+          "bus_name": "#309",
+          "route_id": 3,
+          "lat": 41.324107,
+          "lon": -72.928203,
+          "heading": 15,
+          "last_stop_id": 27,
+          "stationary": true,
+          "at_stop_id": 11,
+          "at_stop_since": "2026-09-18T12:48:02.156",
+          "stationary_since": "2026-09-18T12:48:02.156",
+          "last_moved_at": "2026-09-18T12:48:02.156",
+          "lap": {
+            "11": 2790,
+            "121": 1040
+          }
+        },
+        "otherRedBuses": [
+          {
+            "observed_at": 1789735682156,
+            "bus_id": 66539,
+            "bus_name": "#306",
+            "route_id": 3,
+            "lat": 41.315488,
+            "lon": -72.92459,
+            "heading": 191,
+            "last_stop_id": 4,
+            "stationary": true,
+            "at_stop_id": 4,
+            "at_stop_since": "2026-09-18T12:47:37.020",
+            "stationary_since": "2026-09-18T12:47:37.020",
+            "last_moved_at": "2026-09-18T12:47:46.965",
+            "lap": {
+              "11": 825,
+              "121": 2916
+            }
+          },
+          {
+            "observed_at": 1789735682156,
+            "bus_id": 66541,
+            "bus_name": "#316",
+            "route_id": 3,
+            "lat": 41.324515,
+            "lon": -72.92326,
+            "heading": 159,
+            "last_stop_id": 49,
+            "stationary": true,
+            "at_stop_id": 48,
+            "at_stop_since": "2026-09-18T12:47:46.965",
+            "stationary_since": "2026-09-18T12:47:46.965",
+            "last_moved_at": "2026-09-18T12:48:02.156",
+            "lap": {
+              "11": 60,
+              "121": 1880
+            }
+          }
+        ],
+        "pinVisibilityDelaySec": 0.0,
+        "legacyClockLapAtPinSec": {
+          "11": 2790.0,
+          "121": 1040.0
+        }
+      },
+      "hindsight": {
+        "targetVisitId": 70954,
+        "targetArrivedAt": 1789736492184,
+        "targetDepartedAt": 1789736552060,
+        "sourceDepartureToTargetArrivalSec": 60.14,
+        "targetHoldSec": 59.876,
+        "exactLegIds": [
+          65855,
+          65857,
+          65864
+        ],
+        "worstChanged": {
+          "baseline": {
+            "arrivalExcessSec": {
+              "value": -41.94213037109375,
+              "at": 1789736447041,
+              "stopsAhead": 3,
+              "low": 3.200869545469079,
+              "baselineLow": 3.200869545469079,
+              "candidateLow": 47.02152065698391,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -101.81813037109374,
+              "at": 1789736447041,
+              "stopsAhead": 3,
+              "low": 3.200869545469079,
+              "baselineLow": 3.200869545469079,
+              "candidateLow": 47.02152065698391,
+              "changed": true
+            }
+          },
+          "candidate": {
+            "arrivalExcessSec": {
+              "value": 3.232676025390625,
+              "at": 1789736442051,
+              "stopsAhead": 3,
+              "low": 53.36567591652948,
+              "baselineLow": 1.6149465458724417,
+              "candidateLow": 53.36567591652948,
+              "changed": true
+            },
+            "departureExcessSec": {
+              "value": -56.64332397460937,
+              "at": 1789736442051,
+              "stopsAhead": 3,
+              "low": 53.36567591652948,
+              "baselineLow": 1.6149465458724417,
+              "candidateLow": 53.36567591652948,
+              "changed": true
+            }
+          }
+        },
+        "worstCandidate": {
+          "arrivalExcessSec": {
+            "value": 3.232676025390625,
+            "at": 1789736442051,
+            "stopsAhead": 3,
+            "low": 53.36567591652948,
+            "baselineLow": 1.6149465458724417,
+            "candidateLow": 53.36567591652948,
+            "changed": true
+          },
+          "departureExcessSec": {
+            "value": -56.64332397460937,
+            "at": 1789736442051,
+            "stopsAhead": 3,
+            "low": 53.36567591652948,
+            "baselineLow": 1.6149465458724417,
+            "candidateLow": 53.36567591652948,
+            "changed": true
+          }
+        },
+        "priorReconstructedLegacyDepartureToCurrentDepartureSec": 3539.888
+      },
+      "savedValidityAudit": {
+        "sourceId": 70927,
+        "targetId": 70954,
+        "bus": "#309",
+        "sourcePinET": "2026-09-18T08:48:02.156000-04:00",
+        "source": {
+          "id": 70927,
+          "bus_id": 66544,
+          "bus_name": "#309",
+          "anchor_bus_id": 66544,
+          "route_id": 3,
+          "stop_id": 11,
+          "stop_index": 14,
+          "anchored_at": 1789735666965,
+          "pinned_at": 1789735682156,
+          "arrived_at": 1789735686969,
+          "departed_at": 1789736432044,
+          "stand_sec": 745.075,
+          "inside_sec": 759.895,
+          "outcome": "stopped",
+          "how": "next",
+          "confidence": 1.0,
+          "first_step_m": 33.738072977297115,
+          "steps": 3,
+          "far_m": 76.90738387693402,
+          "confirm_sec": 9.897,
+          "rest_polls": 4,
+          "shuffles": 2,
+          "first_moved_at": 1789735712210,
+          "last_at_rest_at": 1789736432044,
+          "closest_m": 54.13624048414833,
+          "dow": 5,
+          "hour": 8
+        },
+        "target": {
+          "id": 70954,
+          "bus_id": 66544,
+          "bus_name": "#309",
+          "anchor_bus_id": 66544,
+          "route_id": 3,
+          "stop_id": 48,
+          "stop_index": 17,
+          "anchored_at": 1789736482058,
+          "pinned_at": 1789736487045,
+          "arrived_at": 1789736492184,
+          "departed_at": 1789736552060,
+          "stand_sec": 59.876,
+          "inside_sec": 65.015,
+          "outcome": "stopped",
+          "how": "clock",
+          "confidence": 0.96,
+          "first_step_m": 72.08167312118796,
+          "steps": 2,
+          "far_m": 125.90358885031623,
+          "confirm_sec": 5.013,
+          "rest_polls": 9,
+          "shuffles": 1,
+          "first_moved_at": 1789736507044,
+          "last_at_rest_at": 1789736552060,
+          "closest_m": 4.330585515353788,
+          "dow": 5,
+          "hour": 9
+        },
+        "legs": [
+          {
+            "id": 65855,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 11,
+            "from_index": 14,
+            "to_stop_id": 146,
+            "to_index": 15,
+            "hops": 1,
+            "departed_at": 1789736432044,
+            "arrived_at": 1789736452091,
+            "to_pinned_at": 1789736447041,
+            "leg_sec": 20.047,
+            "hold_sec": 0.0,
+            "drive_sec": 20.047,
+            "holds": 0,
+            "reached": 1,
+            "dow": 5,
+            "hour": 9
+          },
+          {
+            "id": 65857,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 146,
+            "from_index": 15,
+            "to_stop_id": 49,
+            "to_index": 16,
+            "hops": 1,
+            "departed_at": 1789736452091,
+            "arrived_at": 1789736467138,
+            "to_pinned_at": 1789736467138,
+            "leg_sec": 15.047,
+            "hold_sec": 0.0,
+            "drive_sec": 15.047,
+            "holds": 0,
+            "reached": 1,
+            "dow": 5,
+            "hour": 9
+          },
+          {
+            "id": 65864,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "route_id": 3,
+            "from_stop_id": 49,
+            "from_index": 16,
+            "to_stop_id": 48,
+            "to_index": 17,
+            "hops": 1,
+            "departed_at": 1789736467138,
+            "arrived_at": 1789736492184,
+            "to_pinned_at": 1789736487045,
+            "leg_sec": 25.046,
+            "hold_sec": 0.0,
+            "drive_sec": 25.046,
+            "holds": 0,
+            "reached": 1,
+            "dow": 5,
+            "hour": 9
+          }
+        ],
+        "earlyRows": [
+          {
+            "at": 1789735387053,
+            "phase": "approach",
+            "checkpointSec": -300,
+            "truthSec": 1105.131,
+            "baselineLow": 2535.972185450987,
+            "candidateLow": 2535.972185450987,
+            "lowerExcessSec": 1430.841185450987,
+            "candidateLowerBeforeDetectorDepartureSec": -1370.965185450987
+          },
+          {
+            "at": 1789736437144,
+            "phase": "departure",
+            "checkpointSec": 5,
+            "truthSec": 55.04,
+            "baselineLow": 4.8645992175489905,
+            "candidateLow": 57.075733837582476,
+            "lowerExcessSec": 2.0357338375824767,
+            "candidateLowerBeforeDetectorDepartureSec": 57.84026616241752
+          }
+        ],
+        "raw": {
+          "n": 185,
+          "maxGapSec": 5.424,
+          "maxConsecutiveSpeedKmh": 75.98296375864119,
+          "sourceDeparture": [
+            {
+              "seconds": -34.997,
+              "distanceToStopM": 80.78,
+              "stepM": null,
+              "lastStop": 11
+            },
+            {
+              "seconds": -29.909,
+              "distanceToStopM": 104.19,
+              "stepM": 30.04,
+              "lastStop": 11
+            },
+            {
+              "seconds": -24.97,
+              "distanceToStopM": 69.86,
+              "stepM": 36.95,
+              "lastStop": 11
+            },
+            {
+              "seconds": -19.988,
+              "distanceToStopM": 43.77,
+              "stepM": 30.22,
+              "lastStop": 11
+            },
+            {
+              "seconds": -14.996,
+              "distanceToStopM": 43.77,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -9.896,
+              "distanceToStopM": 43.77,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": -4.994,
+              "distanceToStopM": 43.77,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 0.0,
+              "distanceToStopM": 43.77,
+              "stepM": 0.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 5.1,
+              "distanceToStopM": 50.74,
+              "stepM": 33.7,
+              "lastStop": 11
+            },
+            {
+              "seconds": 10.007,
+              "distanceToStopM": 58.86,
+              "stepM": 33.0,
+              "lastStop": 11
+            },
+            {
+              "seconds": 14.997,
+              "distanceToStopM": 76.82,
+              "stepM": 31.08,
+              "lastStop": 11
+            }
+          ],
+          "targetArrival": [
+            {
+              "seconds": -15.131,
+              "distanceToStopM": 166.1,
+              "stepM": null,
+              "lastStop": 146
+            },
+            {
+              "seconds": -10.126,
+              "distanceToStopM": 100.27,
+              "stepM": 65.86,
+              "lastStop": 49
+            },
+            {
+              "seconds": -5.139,
+              "distanceToStopM": 68.32,
+              "stepM": 32.04,
+              "lastStop": 49
+            },
+            {
+              "seconds": 0.0,
+              "distanceToStopM": 4.33,
+              "stepM": 65.91,
+              "lastStop": 49
+            },
+            {
+              "seconds": 4.872,
+              "distanceToStopM": 4.33,
+              "stepM": 0.0,
+              "lastStop": 49
+            },
+            {
+              "seconds": 9.895,
+              "distanceToStopM": 4.33,
+              "stepM": 0.0,
+              "lastStop": 49
+            },
+            {
+              "seconds": 14.86,
+              "distanceToStopM": 27.58,
+              "stepM": 31.05,
+              "lastStop": 49
+            },
+            {
+              "seconds": 19.954,
+              "distanceToStopM": 27.58,
+              "stepM": 0.0,
+              "lastStop": 49
+            }
+          ]
+        }
+      },
+      "savedComponentForecasts": [],
+      "followupLegacyAtPin": {
+        "11": {
+          "record": {
+            "id": 721889,
+            "bus_name": "#309",
+            "stop_id": 11,
+            "arrived_at": 1789732446006,
+            "departed_at": 1789732891731
+          },
+          "ageSec": 2790.425
+        },
+        "121": {
+          "record": {
+            "id": 722088,
+            "bus_name": "#309",
+            "stop_id": 121,
+            "arrived_at": 1789733931826,
+            "departed_at": 1789734641869
+          },
+          "ageSec": 1040.287
+        }
+      },
+      "savedEarlyReleaseDiagnostic": [
+        {
+          "elapsed": 0,
+          "truthRemaining": 749.888,
+          "event": 0,
+          "predictions": {
+            "clock": 0.6269905851337506,
+            "lap_clock": 0.29632482836869145,
+            "lap_clock_anchor": 0.25100111398328534,
+            "lap_clock_ahead": 0.2628752922904285,
+            "lap_clock_follower": 0.486754323990521,
+            "lap_clock_both": 0.3743815469666038,
+            "lap_clock_anchor_both": 0.3206779145487597
+          }
+        },
+        {
+          "elapsed": 60,
+          "truthRemaining": 689.888,
+          "event": 0,
+          "predictions": {
+            "clock": 0.6459334262652683,
+            "lap_clock": 0.34676722797440235,
+            "lap_clock_anchor": 0.31151961956478025,
+            "lap_clock_ahead": 0.3218087397019183,
+            "lap_clock_follower": 0.5630804019268997,
+            "lap_clock_both": 0.45711249410887944,
+            "lap_clock_anchor_both": 0.4174284644917102
+          }
+        },
+        {
+          "elapsed": 180,
+          "truthRemaining": 569.888,
+          "event": 0,
+          "predictions": {
+            "clock": 0.46472878176873966,
+            "lap_clock": 0.2613585601673244,
+            "lap_clock_anchor": 0.2552981559702967,
+            "lap_clock_ahead": 0.2576399236127086,
+            "lap_clock_follower": 0.4715663760600324,
+            "lap_clock_both": 0.385913861716418,
+            "lap_clock_anchor_both": 0.3702486307291162
+          }
+        },
+        {
+          "elapsed": 300,
+          "truthRemaining": 449.88800000000003,
+          "event": 0,
+          "predictions": {
+            "clock": 0.21654137050024697,
+            "lap_clock": 0.1367984517641574,
+            "lap_clock_anchor": 0.144792802766514,
+            "lap_clock_ahead": 0.14758662861108054,
+            "lap_clock_follower": 0.27000288305222697,
+            "lap_clock_both": 0.224669333033376,
+            "lap_clock_anchor_both": 0.22292824807730657
+          }
+        },
+        {
+          "elapsed": 480,
+          "truthRemaining": 269.88800000000003,
+          "event": 0,
+          "predictions": {
+            "clock": 0.12437031976794044,
+            "lap_clock": 0.09942499213099554,
+            "lap_clock_anchor": 0.11147355934817176,
+            "lap_clock_ahead": 0.11727853260976741,
+            "lap_clock_follower": 0.20401572026347098,
+            "lap_clock_both": 0.18200132265555793,
+            "lap_clock_anchor_both": 0.19031107436366387
+          }
+        }
+      ]
+    }
+  ],
+  "fixedElapsedScreenCheck": {
+    "method": "Unweighted per-checkpoint Brier scores of the manager's already-fitted saved models; no refit or model selection. The original fit uses visit-balanced, outcome-dependent landmark weights.",
+    "scores": [
+      {
+        "period": "Sep14_17",
+        "elapsed": 0,
+        "n": 113,
+        "brier": {
+          "clock": 0.10789127744994419,
+          "lap_clock": 0.08877044409092041,
+          "lap_clock_anchor": 0.08442928069718902
+        }
+      },
+      {
+        "period": "Sep14_17",
+        "elapsed": 60,
+        "n": 110,
+        "brier": {
+          "clock": 0.10467352562720826,
+          "lap_clock": 0.09364900111023418,
+          "lap_clock_anchor": 0.09215392206695718
+        }
+      },
+      {
+        "period": "Sep14_17",
+        "elapsed": 180,
+        "n": 80,
+        "brier": {
+          "clock": 0.09736822822156728,
+          "lap_clock": 0.08633066285354127,
+          "lap_clock_anchor": 0.08261094766216673
+        }
+      },
+      {
+        "period": "Sep14_17",
+        "elapsed": 300,
+        "n": 62,
+        "brier": {
+          "clock": 0.16526350322767985,
+          "lap_clock": 0.15961593472509744,
+          "lap_clock_anchor": 0.1575238213023725
+        }
+      },
+      {
+        "period": "Sep14_17",
+        "elapsed": 480,
+        "n": 33,
+        "brier": {
+          "clock": 0.22991605669423645,
+          "lap_clock": 0.2337926473071834,
+          "lap_clock_anchor": 0.22952986600216982
+        }
+      },
+      {
+        "period": "Sep18",
+        "elapsed": 0,
+        "n": 12,
+        "brier": {
+          "clock": 0.1609251845129542,
+          "lap_clock": 0.0753875804468381,
+          "lap_clock_anchor": 0.04525875067014015
+        }
+      },
+      {
+        "period": "Sep18",
+        "elapsed": 60,
+        "n": 12,
+        "brier": {
+          "clock": 0.15441761480355268,
+          "lap_clock": 0.0907540675248137,
+          "lap_clock_anchor": 0.06182240909677244
+        }
+      },
+      {
+        "period": "Sep18",
+        "elapsed": 180,
+        "n": 12,
+        "brier": {
+          "clock": 0.10037405141953509,
+          "lap_clock": 0.08579579260898614,
+          "lap_clock_anchor": 0.0712152647228794
+        }
+      },
+      {
+        "period": "Sep18",
+        "elapsed": 300,
+        "n": 11,
+        "brier": {
+          "clock": 0.1022736202195114,
+          "lap_clock": 0.09164203707696218,
+          "lap_clock_anchor": 0.09266045740881683
+        }
+      },
+      {
+        "period": "Sep18",
+        "elapsed": 480,
+        "n": 8,
+        "brier": {
+          "clock": 0.10366299598793795,
+          "lap_clock": 0.10117339621321444,
+          "lap_clock_anchor": 0.1033317337902318
+        }
+      }
+    ]
+  },
+  "predecessor65237Audit": {
+    "visit": {
+      "id": 65237,
+      "bus_id": 66487,
+      "bus_name": "#316",
+      "anchor_bus_id": 66487,
+      "route_id": 3,
+      "stop_id": 11,
+      "stop_index": 14,
+      "anchored_at": 1789656325854,
+      "pinned_at": 1789656325854,
+      "arrived_at": 1789656330828,
+      "departed_at": 1789656360839,
+      "stand_sec": 30.011,
+      "inside_sec": 44.911,
+      "outcome": "stopped",
+      "how": "next",
+      "confidence": 1.0,
+      "first_step_m": 31.017620103814302,
+      "steps": 3,
+      "far_m": 75.7345739779661,
+      "confirm_sec": 10.053,
+      "rest_polls": 6,
+      "shuffles": 0,
+      "first_moved_at": 1789656365763,
+      "last_at_rest_at": 1789656360839,
+      "closest_m": 45.52398641542443,
+      "dow": 4,
+      "hour": 10
+    },
+    "verdict": "Pin/hold start is restart-truncated; independently observed final departure remains valid peer evidence.",
+    "raw": [
+      {
+        "id": 17179778,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324005,
+        "lon": -72.928567,
+        "heading": 57.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656325854
+      },
+      {
+        "id": 17179797,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324284,
+        "lon": -72.928466,
+        "heading": 15.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656330828
+      },
+      {
+        "id": 17179816,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324284,
+        "lon": -72.928466,
+        "heading": 15.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656335759
+      },
+      {
+        "id": 17179835,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324284,
+        "lon": -72.928466,
+        "heading": 15.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656340796
+      },
+      {
+        "id": 17179854,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324284,
+        "lon": -72.928466,
+        "heading": 15.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656345856
+      },
+      {
+        "id": 17179873,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324284,
+        "lon": -72.928466,
+        "heading": 15.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656350767
+      },
+      {
+        "id": 17179892,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324284,
+        "lon": -72.928466,
+        "heading": 15.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656355772
+      },
+      {
+        "id": 17179911,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324284,
+        "lon": -72.928466,
+        "heading": 15.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656360839
+      },
+      {
+        "id": 17179930,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324452,
+        "lon": -72.92817,
+        "heading": 52.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656365763
+      },
+      {
+        "id": 17179949,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.324715,
+        "lon": -72.928002,
+        "heading": 25.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656370765
+      },
+      {
+        "id": 17179968,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.325017,
+        "lon": -72.927905,
+        "heading": 13.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656375816
+      },
+      {
+        "id": 17179987,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.32528,
+        "lon": -72.927814,
+        "heading": 14.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656380927
+      },
+      {
+        "id": 17180006,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.32528,
+        "lon": -72.927814,
+        "heading": 14.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656386333
+      },
+      {
+        "id": 17180025,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.32528,
+        "lon": -72.927814,
+        "heading": 14.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656391265
+      },
+      {
+        "id": 17180044,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "lat": 41.32528,
+        "lon": -72.927814,
+        "heading": 14.0,
+        "last_stop_id": 11,
+        "collected_at": 1789656396157
+      }
+    ],
+    "outgoingLegs": [
+      {
+        "id": 60470,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "from_stop_id": 11,
+        "from_index": 14,
+        "to_stop_id": 146,
+        "to_index": 15,
+        "hops": 1,
+        "departed_at": 1789656360839,
+        "arrived_at": 1789656380927,
+        "to_pinned_at": 1789656375816,
+        "leg_sec": 20.088,
+        "hold_sec": 0.0,
+        "drive_sec": 20.088,
+        "holds": 0,
+        "reached": 1,
+        "dow": 4,
+        "hour": 10
+      }
+    ],
+    "confirmingLegacy": [
+      {
+        "id": 716638,
+        "bus_id": 66487,
+        "bus_name": "#316",
+        "route_id": 3,
+        "stop_id": 11,
+        "arrived_at": 1789656325854,
+        "departed_at": 1789656375816,
+        "dwell_sec": 49.962,
+        "dow": 4,
+        "hour": 10
+      }
+    ]
+  }
+}

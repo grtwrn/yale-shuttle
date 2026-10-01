@@ -1,0 +1,141 @@
+{
+  "checkedAt": "2026-09-18T14:12:15.413008+00:00",
+  "expectedCommit": "3b4a4a41b569916970b89c1bb121ae51dbc78d67",
+  "health": {
+    "ok": true,
+    "pollStalenessMs": 2586,
+    "collectorLagMs": 2541,
+    "knownBuses": 19,
+    "serverEta": {
+      "restored": 19,
+      "forecastAt": 1789740732725,
+      "checkpointAt": 1789740722896,
+      "beliefs": 19,
+      "steps": 4,
+      "failures": 0,
+      "lastStepMs": 188,
+      "rows": 773
+    },
+    "pollSkipped": 0,
+    "droppedObservations": 0,
+    "build": "3b4a4a41b569"
+  },
+  "forecastRows": 773,
+  "red": [
+    {
+      "bus": [
+        "316",
+        "Red",
+        0,
+        {
+          "stopId": 121,
+          "standingSec": 150.326,
+          "approach": false
+        }
+      ],
+      "targets": [
+        [
+          48,
+          2219,
+          1840,
+          2556,
+          17,
+          0
+        ],
+        [
+          4,
+          2571,
+          2194,
+          2938,
+          20,
+          0
+        ]
+      ]
+    },
+    {
+      "bus": [
+        "306",
+        "Red",
+        6,
+        {
+          "stopId": 126,
+          "standingSec": 9.666,
+          "approach": true
+        }
+      ],
+      "targets": [
+        [
+          48,
+          1185,
+          733,
+          1615,
+          11,
+          0
+        ],
+        [
+          4,
+          1542,
+          1061,
+          2041,
+          14,
+          0
+        ],
+        [
+          48,
+          5000,
+          4152,
+          5649,
+          40,
+          0
+        ],
+        [
+          4,
+          5334,
+          4561,
+          6022,
+          43,
+          0
+        ]
+      ]
+    },
+    {
+      "bus": [
+        "309",
+        "Red",
+        22,
+        {
+          "stopId": 38,
+          "standingSec": 75.215,
+          "approach": true
+        }
+      ],
+      "targets": [
+        [
+          48,
+          3078,
+          2542,
+          3505,
+          24,
+          0
+        ],
+        [
+          4,
+          3427,
+          2938,
+          3873,
+          27,
+          0
+        ]
+      ]
+    }
+  ],
+  "passed": true,
+  "pr": "https://github.com/grtwrn/yale-shuttle/pull/294",
+  "ci": "https://github.com/grtwrn/yale-shuttle/actions/runs/35354205538",
+  "deploy": "https://github.com/grtwrn/yale-shuttle/actions/runs/35354487986",
+  "deployConclusion": "success",
+  "finalTests": 2800,
+  "watcherActive": true,
+  "independentReview": "independent-targeted-review.md",
+  "followupEvidence": "live-rosenkranz-anomaly.md"
+}

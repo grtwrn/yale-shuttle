@@ -1,0 +1,35 @@
+{
+  "verdict": "research_only",
+  "summary": "Independently confirmed the pooling occurrence defect and localized the checkpoint mismatch to movement-kernel cache history. Review saved in independent-review-round-4.md; application checkout and builder evidence remain unchanged.",
+  "head_sha": "cff3b2a6b7ad6cdd2f899bb4d564a4c03dae2d37",
+  "base_sha": "cff3b2a6b7ad6cdd2f899bb4d564a4c03dae2d37",
+  "next_task": "Repair pooling occurrence identity while preserving already-arrived rows and both upcoming arrivals. Validate against continuous-prefix current-production replay. Treat deterministic kernel-cache/restart work separately, with controller-scoped all-route tracking validation.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-4/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Verified 160,496 wire rows, 101 positive zero-hop rows, six occurrence aliases, 6,025 prior-trace matches and 1,420 connected outcome labels."
+    },
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-4/verify_accounting.py",
+      "exit_code": 0,
+      "result": "Verified all 3,268 unmatched decisions, 217 unavailable journeys and 676 countdown/journey identity differences."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash -c 'set -e; ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-4/observe_pooling.mts; ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-4/verify_fresh_fixture.mts; ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-4/decision_replay.mts; node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-4/browser_parity.mjs'",
+      "exit_code": 0,
+      "result": "Reproduced 19 overwritten raw-zero rows, 4,688 decisions and 156 browser comparisons. Diagnostic also reproduced checkpoint nonparity: 1,828 differing rows, maximum 3,768 seconds; this is not a parity pass."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-4/verify_native_primed.mts",
+      "exit_code": 0,
+      "result": "Priming 21 prefix-only kernel values made unmodified application modules reproduce all 78 complete wires, including 10,592 rows and distributions."
+    },
+    {
+      "command": "git diff --check && git diff --exit-code cff3b2a6b7ad6cdd2f899bb4d564a4c03dae2d37 HEAD && git diff --exit-code && git diff --cached --exit-code && git status --porcelain && git rev-parse HEAD && git rev-parse cff3b2a6b7ad6cdd2f899bb4d564a4c03dae2d37",
+      "exit_code": 0,
+      "result": "Exact head/base verified; worktree and index unchanged."
+    }
+  ]
+}

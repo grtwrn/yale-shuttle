@@ -1,0 +1,193 @@
+{
+  "sourceVisit": {
+    "id": 65237,
+    "bus_id": 66487,
+    "bus_name": "#316",
+    "anchor_bus_id": 66487,
+    "route_id": 3,
+    "stop_id": 11,
+    "stop_index": 14,
+    "anchored_at": 1789656325854,
+    "pinned_at": 1789656325854,
+    "arrived_at": 1789656330828,
+    "departed_at": 1789656360839,
+    "stand_sec": 30.011,
+    "inside_sec": 44.911,
+    "outcome": "stopped",
+    "how": "next",
+    "confidence": 1,
+    "first_step_m": 31.017620103814302,
+    "steps": 3,
+    "far_m": 75.7345739779661,
+    "confirm_sec": 10.053,
+    "rest_polls": 6,
+    "shuffles": 0,
+    "first_moved_at": 1789656365763,
+    "last_at_rest_at": 1789656360839,
+    "closest_m": 45.52398641542443,
+    "dow": 4,
+    "hour": 10
+  },
+  "inspectedSeed": {
+    "stationarySince": 1789655921359,
+    "stationaryLat": 41.324661,
+    "stationaryLon": -72.928677,
+    "stationaryStopId": 11,
+    "unbrokenSince": 1789654529378,
+    "restedSince": 1789655921359,
+    "restSince": null,
+    "restPolls": 0
+  },
+  "runs": {
+    "continuous": {
+      "events": [
+        {
+          "kind": "arrival",
+          "busId": 66487,
+          "busName": "#316",
+          "routeId": 3,
+          "stopId": 11,
+          "arrivedAt": 1789655906550
+        },
+        {
+          "kind": "dwell",
+          "busId": 66487,
+          "busName": "#316",
+          "anchorBusId": 66487,
+          "routeId": 3,
+          "stopId": 11,
+          "enteredAt": 1789655906550,
+          "leftAt": 1789656375816,
+          "dwellSec": 469.266
+        }
+      ],
+      "visitEvents": [
+        {
+          "kind": "leg",
+          "busId": 66487,
+          "busName": "#316",
+          "routeId": 3,
+          "fromStopId": 27,
+          "fromIndex": 13,
+          "toStopId": 11,
+          "toIndex": 14,
+          "hops": 1,
+          "departedAt": 1789655881389,
+          "arrivedAt": 1789655921359,
+          "toPinnedAt": 1789655921359,
+          "legSec": 39.97,
+          "holdSec": 0,
+          "driveSec": 39.97,
+          "holds": 0,
+          "reached": true
+        },
+        {
+          "kind": "visit",
+          "busId": 66487,
+          "busName": "#316",
+          "anchorBusId": 66487,
+          "routeId": 3,
+          "stopId": 11,
+          "stopIndex": 14,
+          "anchoredAt": 1789655906550,
+          "pinnedAt": 1789655921359,
+          "arrivedAt": 1789655921359,
+          "departedAt": 1789656360839,
+          "standSec": 439.48,
+          "insideSec": 449.406,
+          "outcome": "stopped",
+          "how": "next",
+          "confidence": 1,
+          "firstStepM": 31.017620103814302,
+          "steps": 3,
+          "farM": 75.7345739779661,
+          "confirmSec": 10.053,
+          "restPolls": 6,
+          "shuffles": 3,
+          "firstMovedAt": 1789655931362,
+          "lastAtRestAt": 1789656360839,
+          "closestM": 63.354490602602894
+        }
+      ]
+    },
+    "restart_on_fresh_fix": {
+      "events": [
+        {
+          "kind": "arrival",
+          "busId": 66487,
+          "busName": "#316",
+          "routeId": 3,
+          "stopId": 11,
+          "arrivedAt": 1789655906550
+        },
+        {
+          "kind": "arrival",
+          "busId": 66487,
+          "busName": "#316",
+          "routeId": 3,
+          "stopId": 11,
+          "arrivedAt": 1789656325854
+        },
+        {
+          "kind": "dwell",
+          "busId": 66487,
+          "busName": "#316",
+          "anchorBusId": 66487,
+          "routeId": 3,
+          "stopId": 11,
+          "enteredAt": 1789656325854,
+          "leftAt": 1789656375816,
+          "dwellSec": 49.962
+        }
+      ],
+      "visitEvents": [
+        {
+          "kind": "leg",
+          "busId": 66487,
+          "busName": "#316",
+          "routeId": 3,
+          "fromStopId": 27,
+          "fromIndex": 13,
+          "toStopId": 11,
+          "toIndex": 14,
+          "hops": 1,
+          "departedAt": 1789655881389,
+          "arrivedAt": 1789655921359,
+          "toPinnedAt": 1789655921359,
+          "legSec": 39.97,
+          "holdSec": 0,
+          "driveSec": 39.97,
+          "holds": 0,
+          "reached": true
+        },
+        {
+          "kind": "visit",
+          "busId": 66487,
+          "busName": "#316",
+          "anchorBusId": 66487,
+          "routeId": 3,
+          "stopId": 11,
+          "stopIndex": 14,
+          "anchoredAt": 1789656325854,
+          "pinnedAt": 1789656325854,
+          "arrivedAt": 1789656330828,
+          "departedAt": 1789656360839,
+          "standSec": 30.011,
+          "insideSec": 44.911,
+          "outcome": "stopped",
+          "how": "next",
+          "confidence": 1,
+          "firstStepM": 31.017620103814302,
+          "steps": 3,
+          "farM": 75.7345739779661,
+          "confirmSec": 10.053,
+          "restPolls": 6,
+          "shuffles": 0,
+          "firstMovedAt": 1789656365763,
+          "lastAtRestAt": 1789656360839,
+          "closestM": 45.52398641542443
+        }
+      ]
+    }
+  }
+}

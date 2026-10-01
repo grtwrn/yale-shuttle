@@ -4,7 +4,7 @@ import green from "../__fixtures__/green-published-order.json";
 import pink from "../__fixtures__/pink-published-order.json";
 import purple from "../__fixtures__/purple-published-order.json";
 import incidents from "../__fixtures__/anchor-incidents.json";
-import { polylineMeters, traceStopLegs, type LatLon } from "../geo";
+import { haversineMeters, polylineMeters, traceStopLegs, type LatLon } from "../geo";
 import { buildRing } from "./ring";
 
 const greenStops = green.stops as number[];
@@ -54,6 +54,18 @@ describe("the ring repairs a stop order its own line cannot supply", () => {
     // them 14,385 m of chord with the station stranded inside it.
     expect(long[0]).toBeLessThan(10_000);
   });
+});
+
+it("places Green's outbound Building 800 call at its kerb", () => {
+  const ring = buildRing("9|published-green", greenPath, greenStops, greenCoords)!;
+  const outbound = ring.stops.findIndex((id, i) => id === 25
+    && ring.stops[(i - 1 + ring.N) % ring.N] === 26
+    && ring.stops[(i + 1) % ring.N] === 23);
+  expect(outbound).toBeGreaterThan(0);
+  const cell = ring.stopCell[outbound]!;
+  const kerb = greenCoords[25]!;
+  expect(haversineMeters({ lat: ring.lat[cell]!, lon: ring.lon[cell]! }, kerb)).toBeLessThan(5);
+  expect(ring.nearStop[cell]).toBe(outbound);
 });
 
 describe("the ring adds the passes an out-and-back's list flattens", () => {

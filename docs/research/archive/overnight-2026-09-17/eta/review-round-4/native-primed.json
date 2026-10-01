@@ -1,0 +1,8 @@
+{
+  "unmodifiedApplicationModules": true,
+  "prefixKernelSeeds": 21,
+  "frames": 78,
+  "exactRowsAndDistributions": 10592,
+  "restoredBeliefs": 3,
+  "scope": "Seeds recorded before checkpoint window only; all full wires exactly match original continuous replay. No production fix or portable-cache guarantee."
+}

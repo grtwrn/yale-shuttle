@@ -1,0 +1,10 @@
+{
+  "unmodifiedApplicationModules": true,
+  "prefixKernelSeeds": 21,
+  "frames": 78,
+  "transportRows": 10592,
+  "exactZeroRows": 79,
+  "framesDifferentFromLegacy": 19,
+  "restoredBeliefs": 3,
+  "scope": "Load unchanged legacy checkpoint and prime only pre-window cache history; verify all emitted zero-hop rows remain exact zero. Legacy full wires intentionally differ where the defect is repaired. No cold-cache parity claim."
+}

@@ -1,0 +1,26 @@
+{
+  "kind": "synthetic valid TripOptions using actual production ranking and visibility helpers",
+  "ordered": [
+    "Red",
+    "Green",
+    "Brown",
+    "Blue Day",
+    "Walk"
+  ],
+  "visible": [
+    "Red",
+    "Green",
+    "Brown",
+    "Walk"
+  ],
+  "deadlineRows": [
+    "Red",
+    "Walk"
+  ],
+  "message": {
+    "kind": "buffer",
+    "heading": "Your buffer may be tight",
+    "explanation": "The Blue Day window ends by class time, but may leave less time to get inside. Check the trip times."
+  },
+  "conclusion": "The route used by the buffer headline can also be behind Show more in the main trip list."
+}

@@ -1,0 +1,10 @@
+{
+  "outcome": "candidate",
+  "summary": "Keep get-off prompts current and preserve ride recovery focus\nUnavailable position now clears obsolete instructions. Prompt dismissal, ride completion and replanning preserve keyboard focus. Evidence: ux/ux-08-ride/REPORT.md. HEAD and index preserved.",
+  "next_task": "Independently review the five-file proposal using ux-08-ride/REPORT.md, then resume UX09 crash/offline recovery.",
+  "tests": [
+    "Locked ux-08-ride/verify.sh: 62 tests, backend/frontend typechecks and Vite build passed; initial browser selector timeout was corrected and retained in the log.",
+    "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08-ride/release flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08-ride/browser.sh — exit 0; mobile and desktop lifecycle checks passed.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08-ride/verify-integrity.py — exit 0; source/bundle parity, unchanged calculations, preserved HEAD/index and screenshot budget verified."
+  ]
+}

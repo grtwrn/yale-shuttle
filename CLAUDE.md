@@ -12,6 +12,33 @@ Live web app at **https://yale-shuttle.fly.dev** showing Yale Downtowner shuttle
 
 ⚠️ **To change the live site, edit `services/shuttle-v2/web/src/TransitMap.tsx` — NOT `services/shuttle-map/app/src/TransitMap.tsx`.** The latter is archived v1; edits there compile and lint fine but change nothing in production. (This has bitten before — a feature was prototyped in the v1 file while the real one already shipped in v2.)
 
+Arrival distribution UI (2026-09-16): `ArrivalPlot.tsx` renders the optional
+50-quantile `server_eta.distributions` rows; `ArrivalDetails.tsx` shows pickup
+and following-shuttle timing. `MiniMapKey.tsx` places pickup and destination
+arrival windows in a clickable table below the mini-map, including when the map
+is collapsed or fullscreen. Each route entry includes its walking/riding legs
+and opens trip details; there are no separate collapsed trip cards. In route
+details, the approach and ride stop list sits in that same panel below the map,
+under the selected route summary, including in fullscreen. The table headings
+are "Board in (min)" and "Arrive at". Below the map panel, trip actions use a
+compact two-column button grid with Directions above it; the duplicate journey
+leg strip and the arrival-ranking explanation are removed. The pickup
+estimate opens arrival history separately. Following-shuttle timing stays in
+those arrival details. Route names use colored pills; visible pickup and
+destination ranges have spaces around the dash. Destination windows come from `DestinationArrival.tsx`. Stop-time bubbles are
+removed; bus waiting labels remain beside their icons. Route lines follow their
+original path geometry; display offsets were removed at the operator's request
+(2026-09-18). The separate "Arrive by" bar was
+removed at the operator's request (2026-09-18); "Plan for later" remains the
+single trip scheduling control. `ArrivalHistory.tsx` fetches the bounded public
+`/api/journey-history` endpoint only when expanded or explicitly refreshed.
+Historical dots use connected source-to-target journeys; stopped-bus matches
+include residual waiting on the collector pinned clock, while moving-bus
+context explicitly starts at source departure. Filled forecast dots and
+hollow dated observations are distinct; no validated on-time percentage is
+claimed. Pickup details show recorded waits first; the current shuttle forecast
+expands separately. See `docs/server-side-eta.md` for matching and transport semantics.
+
 ## Architecture (v2 — `services/shuttle-v2/`)
 
 One Node process (`src/index.ts`, run via tsx) does everything:
@@ -35,7 +62,7 @@ One Node process (`src/index.ts`, run via tsx) does everything:
 
   It began as a copy of v1's frontend but has **drifted substantially — don't assume it matches `services/shuttle-map/app/`**.
 
-The frontend computes ETAs client-side from the `/api/buses` payload (positions + calibrated segments/dwells); it does not use the native v2 endpoints. `/api/plan` is used only by `scripts/map-bot.mjs` as ground truth — so a bug there is invisible to riders but corrupts the automated checks.
+The frontend consumes shared, continuously warm server ETAs in `/api/buses.server_eta`; the pure ETA modules are shared with server tracking and offline replay. Stale live snapshots fail closed. It does not use the native v2 planning endpoint for its rider estimates. `/api/plan` is used only by `scripts/map-bot.mjs` as ground truth — so a bug there is invisible to riders but corrupts the automated checks.
 
 ## Common commands
 
@@ -910,7 +937,23 @@ paired numbers. The short form of the model:
   hours** — it crashed the machine on 2026-09-06; slice it by route and by
   `FROM`/`TO`, and `nice` it. In `common.ts`'s metrics, `pessimistic120`
   (predicted > actual: the bus beat the promise) is the dangerous tail;
-  `optimistic120` is the rider waiting.
+  `optimistic120` is the rider waiting. **TWO OPPOSITE CONVENTIONS EXIST for the
+  same event and they are NOT inter-convertible.** `common.ts` scores
+  `predicted - actual`, so a bus that BEATS its promise is POSITIVE.
+  `rider-sim/lib.ts`'s `firstSightMissSec` scores `actual - predicted` against the
+  promise INTERVAL (zero inside the window, the miss taken from the nearer edge), so
+  the SAME event is NEGATIVE there, and its own comment calls negative "the direction
+  that strands a rider who trusted the number". Both files are right; neither converts
+  into the other, so the magnitudes never reconcile — which is what defeats a CAREFUL
+  reader, who checks a suspected sign flip by comparing magnitudes, finds they
+  disagree, and concludes the fault lies elsewhere. Four readers inverted this in one
+  day (2026-09-12), including the author of `common.ts`'s own comment until
+  2026-09-07. **Never quote a signed ETA error without naming its harness, and state
+  the physical event beside it** — "the bus came before we said" or "after we said".
+  Those cannot invert. Related: a `strand` is a SEQUENCE property (a downward jump
+  larger than the countdown left after it, with the bus arriving within two minutes),
+  independent of BOTH tails — a line can carry 50 strands while its signed error sits
+  in the safe one.
 - Constants in `filter.ts` are measured or derived, not tuned, and each
   carries the measurement it came from (the off-route emission weight is
   derived from the loop length, not a floor). A case the model gets wrong is
@@ -2432,3 +2475,14 @@ printf '<js>' | ~/.fly/bin/flyctl ssh console -a yale-shuttle -C "node -"
 ```
 
 Visual checks of the live site DO work on this Pi via Playwright driving system chromium over CDP (only the legacy `chromium --screenshot` one-shot CLI hangs). Recipe: `npm i playwright-core`, launch with `executablePath: "/usr/bin/chromium"` + `--no-sandbox --disable-gpu --disable-dev-shm-usage`, `goto(url, {waitUntil: "domcontentloaded"})`. Working end-to-end example: `services/shuttle-v2/scripts/map-bot-visual.mjs` (run with `BOT_CHROMIUM_PATH=/usr/bin/chromium`) — picks a random trip, sets geolocation as the origin, screenshots the plan + the Leaflet map with bus markers, and watches a bus approach. The companion `scripts/map-bot.mjs` is a headless data-level check (random trip → `/api/plan` ground truth). For a pure JS-crash repro without any browser, the jsdom harness still works — see the memory note on environment quirks.
+
+### Shared live ETA ownership (2026-09-16)
+
+Live arrivals now come from `src/server/serverEta.ts` via `/api/buses.server_eta`
+v2. UI callers use `web/src/liveArrivals.ts`; `web/src/arrivals.ts` remains the
+pure estimator for the server, replays and hypothetical inputs. Register actual
+payloads with `attachServerEta` before publishing buses to React. Missing or
+stale server forecasts must not silently fall back to a browser belief.
+`liveAnchor.ts` reads server route position and hold metadata for those same bus
+objects. Preserve repeated visits, `departNow` and `lowFloor` across transport.
+See `docs/server-side-eta.md` for clocks, checkpoint recovery and paired replay.

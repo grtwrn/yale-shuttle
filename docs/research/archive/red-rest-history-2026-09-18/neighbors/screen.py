@@ -1,0 +1,123 @@
+import bisect, collections, datetime, hashlib, json, math, pathlib, sqlite3
+import numpy as np
+from scipy.optimize import minimize
+from scipy.special import expit
+from zoneinfo import ZoneInfo
+
+OUT=pathlib.Path(__file__).resolve().parent;ROOT=OUT.parent.parent
+SOURCE=ROOT/'red-early-covariates-2026-09-18'
+plan=json.loads((OUT/'PLAN.json').read_text());TZ=ZoneInfo('America/New_York')
+data=[json.loads(l) for l in (SOURCE/'features-predictions.jsonl').read_text().splitlines()]
+rows=[r for r in data if r['regime']=='arrival15']
+assert len({r['id'] for r in rows})==285
+db=sqlite3.connect('file:'+str(ROOT/'release-integration-data/outcomes-complete.db')+'?mode=ro',uri=True);db.row_factory=sqlite3.Row
+seq=json.loads(db.execute('SELECT stops_json FROM routes WHERE id=3').fetchone()[0]);N=len(seq);origin=seq.index(11)
+visits={v['id']:dict(v) for v in db.execute('SELECT * FROM stop_visits')};db.close()
+for v in json.loads((SOURCE/'recordings-followup.json').read_text())['stop_visits']:
+    if v['id'] in visits: assert v['anchored_at']==visits[v['id']]['anchored_at']
+    visits[v['id']]=v
+anchors=collections.defaultdict(list)
+for v in visits.values():
+    anchors[v['bus_name']].append({k:v[k] for k in ['id','bus_name','route_id','stop_id','stop_index','anchored_at']})
+for values in anchors.values():values.sort(key=lambda v:(v['anchored_at'],v['id']))
+times={bus:[v['anchored_at'] for v in values] for bus,values in anchors.items()}
+def day(at):return datetime.datetime.fromtimestamp(at/1000,TZ).date()
+
+def peers(r,delay):
+    at=r['forecastAt'];known=[];rejected=collections.Counter()
+    for bus,vs in anchors.items():
+        if bus==r['bus']:continue
+        i=bisect.bisect_right(times[bus],at-delay*1000)
+        if not i:continue
+        v=vs[i-1]
+        if v['route_id']!=3:rejected['other_route']+=1;continue
+        if day(v['anchored_at'])!=day(at) or at-v['anchored_at']>600_000:rejected['stale']+=1;continue
+        if not (0<=v['stop_index']<N and seq[v['stop_index']]==v['stop_id']):rejected['invalid_index']+=1;continue
+        gap=(v['stop_index']-origin)%N
+        known.append(dict(v,forwardGap=gap,anchorAge=(at-v['anchored_at'])/1000,knownAt=v['anchored_at']+delay*1000))
+    overlap=[v for v in known if v['forwardGap']==0];moving=[v for v in known if v['forwardGap']>0]
+    # Co-located buses have unknown order; don't turn one into a full lap.
+    def choose(forward):
+        if overlap:return None,'co_located_order_unknown'
+        if not moving:return None,'no_distinct_anchor'
+        target=min(v['forwardGap'] if forward else N-v['forwardGap'] for v in moving)
+        chosen=[v for v in moving if (v['forwardGap'] if forward else N-v['forwardGap'])==target]
+        return (chosen[0],'known') if len(chosen)==1 else (None,'equal_gap_tie')
+    ahead,ar=choose(True);behind,br=choose(False)
+    return dict(ahead=ahead,behind=behind,aheadReason=ar,behindReason=br,overlap=overlap,
+        samePeer=bool(ahead and behind and ahead['bus_name']==behind['bus_name']),rejected=dict(rejected))
+
+records=[];audit=collections.Counter();examples=[]
+for delay in (15,120):
+    for r in rows:
+        selected=peers(r,delay)
+        feats={k:r['features'][k] for k in ['elapsed_log','elapsed','clock_sin','clock_cos','lap','lap_missing','own_union_age','own_union_missing']}
+        for name,peer in [('ahead',selected['ahead']),('behind',selected['behind'])]:
+            if peer:
+                assert peer['knownAt']<=r['forecastAt']
+                assert peer['anchored_at']+delay*1000<=r['forecastAt']
+                # Future-delete invariance: no later known anchor is omitted.
+                allknown=[v for v in anchors[peer['bus_name']] if v['anchored_at']+delay*1000<=r['forecastAt']]
+                assert peer['id']==allknown[-1]['id']
+            feats[name+'_known']=float(peer is not None)
+            feats[name+'_gap']=(peer['forwardGap'] if name=='ahead' else N-peer['forwardGap'])/N if peer else 0
+            feats[name+'_anchor_age']=peer['anchorAge']/600 if peer else 0
+        feats['overlap']=float(bool(selected['overlap']));feats['same_peer']=float(selected['samePeer'])
+        oldahead=r['identities']['ahead'];oldbehind=r['identities']['follower']
+        changed=any((old['bus'] if old else None)!=(new['bus_name'] if new else None) for old,new in [(oldahead,selected['ahead']),(oldbehind,selected['behind'])])
+        audit[str(delay)+'_changed_identity']+=changed
+        audit[str(delay)+'_snapshots']+=1
+        audit[str(delay)+'_overlap']+=bool(selected['overlap'])
+        audit[str(delay)+'_same_peer']+=selected['samePeer']
+        if r['id']==70927 and r['elapsed']==0:examples.append(dict(delay=delay,old=r['identities'],new=selected))
+        records.append({k:r[k] for k in ['id','bus','day','pinAt','forecastAt','elapsed','truthRemaining','event','split','weight']}|dict(delay=delay,features=feats,peers=selected))
+
+base=['elapsed_log','elapsed','clock_sin','clock_cos','lap','lap_missing']
+own=['own_union_age','own_union_missing']
+af=['ahead_known','ahead_gap','ahead_anchor_age','overlap']
+bf=['behind_known','behind_gap','behind_anchor_age','same_peer']
+fields={'lap_clock':base,'lap_clock_union':base+own,'plus_physical_ahead':base+own+af,'plus_physical_both':base+own+af+bf}
+fits=[]
+for delay in (15,120):
+    tr=[r for r in records if r['delay']==delay and r['split']=='train'];te=[r for r in records if r['delay']==delay and r['split']=='development']
+    assert len({r['id'] for r in tr})==160
+    y=np.array([r['event'] for r in tr],dtype=float)
+    for arm in plan['arms']:
+        names=fields[arm];raw=np.array([[r['features'][k] for k in names] for r in tr]);mean=raw.mean(axis=0);sd=raw.std(axis=0);keep=sd>1e-9
+        X=np.column_stack([np.ones(len(tr)),(raw[:,keep]-mean[keep])/sd[keep]])
+        pen=np.r_[0,np.full(X.shape[1]-1,4.)]
+        def obj(b):
+            z=X@b
+            return float(np.logaddexp(0,z).sum()-y@z+.5*np.dot(pen,b*b)),X.T@(expit(z)-y)+pen*b
+        init=np.zeros(X.shape[1]);init[0]=math.log(y.mean()/(1-y.mean()))
+        fit=minimize(obj,init,jac=True,method='L-BFGS-B',options={'maxiter':1500,'gtol':1e-8,'ftol':1e-12});assert fit.success
+        for r in tr+te:
+            values=np.array([r['features'][k] for k in names]);x=np.r_[1,(values[keep]-mean[keep])/sd[keep]]
+            r.setdefault('predictions',{})[arm]=float(np.clip(expit(x@fit.x),1e-9,1-1e-9))
+        fits.append(dict(delay=delay,arm=arm,names=np.array(names)[keep].tolist(),mean=mean[keep].tolist(),sd=sd[keep].tolist(),coefficients=fit.x.tolist(),converged=True))
+
+def score(rs,arm,weighting):
+    w=np.array([r['weight'] if weighting=='visit' else 1 for r in rs],dtype=float);w/=w.sum()
+    y=np.array([r['event'] for r in rs]);p=np.array([r['predictions'][arm] for r in rs])
+    return dict(visits=len({r['id'] for r in rs}),landmarks=len(rs),events=int(y.sum()),
+        brier=float(w@((p-y)**2)),logLoss=float(-w@(y*np.log(p)+(1-y)*np.log1p(-p))))
+scores=[]
+for delay in (15,120):
+    te=[r for r in records if r['delay']==delay and r['split']=='development']
+    periods={'Sep14_17':[r for r in te if r['day']<'2026-09-18'],'Sep18':[r for r in te if r['day']=='2026-09-18']}
+    periods.update({d:[r for r in te if r['day']==d] for d in sorted({r['day'] for r in te})})
+    for period,rr in periods.items():
+        for age in ['all',0,60,180,300,480]:
+            rs=[r for r in rr if age=='all' or r['elapsed']==age]
+            if not rs:continue
+            for weighting in (['checkpoint','visit'] if age=='all' else ['checkpoint']):
+                scores.append(dict(delay=delay,period=period,elapsed=age,weighting=weighting,arms={a:score(rs,a,weighting) for a in plan['arms']}))
+result=dict(plan=plan,fits=fits,scores=scores,identityAudit=dict(audit),case70927=examples,
+    inputs={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in [OUT/'PLAN.json',pathlib.Path(__file__),SOURCE/'features-predictions.jsonl',SOURCE/'recordings-followup.json']})
+(OUT/'results.json').write_text(json.dumps(result,indent=2)+'\n')
+(OUT/'predictions.jsonl').write_text(''.join(json.dumps(r,separators=(',',':'))+'\n' for r in records))
+print(json.dumps(audit))
+for x in examples:print('case70927',x['delay'],{k:x['new'][k]['bus_name'] if x['new'][k] else None for k in ['ahead','behind']})
+for s in scores:
+    if s['elapsed']=='all' and s['weighting']=='checkpoint' and s['period'] in ('Sep14_17','Sep18'):
+        print(s['delay'],s['period'],{a:round(v['brier'],6) for a,v in s['arms'].items()})

@@ -84,6 +84,7 @@ import {
 import { TransitNetwork, type DwellStats, type PaceStats, type SegmentStats } from "../../src/network/TransitNetwork.js";
 import {
   dwellSplitFields,
+  dwellLapFields,
   legMetersField,
   paceEntry,
   segmentSplitFields,
@@ -92,6 +93,7 @@ import {
   type SegmentEntry,
 } from "../../src/server/v1compat.js";
 import * as schema from "../../src/db/schema.js";
+import { loadLapFits } from '../../src/calibrator/lapFit.js';
 
 const require = createRequire(import.meta.url);
 const Database = require("better-sqlite3");
@@ -106,7 +108,7 @@ if (MODEL_ROUTES !== "served" && MODEL_ROUTES !== "all") {
 interface Patch {
   segments: Record<string, Record<string, Pick<SegmentEntry, "drive" | "driveN" | "dq" | "dqn" | "legM">>>;
   /** Pooled keys carry the split only; `"<stop>#<index>"` keys are whole entries. */
-  dwells: Record<string, Record<string, Pick<DwellEntry, "q" | "qn" | "pstop"> & Partial<Pick<DwellEntry, "med" | "sd" | "n">>>>;
+  dwells: Record<string, Record<string, Pick<DwellEntry, "q" | "qn" | "pstop" | "lapB" | "lapM" | "lapN"> & Partial<Pick<DwellEntry, "med" | "sd" | "n">>>>;
   pace: Record<string, PaceEntry>;
 }
 
@@ -147,7 +149,9 @@ if (dataEnd > 0 && splitMax > dataEnd + 300_000) {
   console.error(`WARNING: stop_visits/legs run to ${new Date(splitMax).toISOString()}, ${((splitMax - dataEnd) / 3_600_000).toFixed(1)} h past the snapshot's last observation (${new Date(dataEnd).toISOString()}). Re-run the backfill with --before the snapshot's data end.`);
 }
 
-const stats = calibrate(db, net.network, new Date(NOW));
+const lapFits = loadLapFits(sqlite, NOW);
+const stats = calibrate(db, net.network, new Date(NOW), lapFits);
+console.error(`lap fits at replay cutoff: ${stats.lapFitCount}`);
 console.error(
   `calibrated at ${new Date(NOW).toISOString()}: ${stats.segmentCount} segments, ${stats.dwellCount} dwells, ` +
     `${stats.standCount} stand tables (+${stats.occurrenceStandCount} per-pass), ${stats.driveCount} drives, ${stats.legQuantileCount} hop quantile tables, ` +
@@ -227,7 +231,7 @@ for (const r of net.network.routes.values()) {
   for (const sid of new Set(r.stops)) {
     const d = dwTable.get(TransitNetwork.dwellKey(r.id, sid));
     if (!d) continue;
-    const fields = dwellSplitFields(d);
+    const fields = { ...dwellSplitFields(d), ...dwellLapFields(d) };
     if (Object.keys(fields).length > 0) dwMap[String(sid)] = fields;
   }
   for (let i = 0; i < n; i++) {

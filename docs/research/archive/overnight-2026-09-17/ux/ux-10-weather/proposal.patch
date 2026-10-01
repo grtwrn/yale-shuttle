@@ -1,0 +1,67 @@
+diff --git a/services/shuttle-v2/web/src/TransitMap.tsx b/services/shuttle-v2/web/src/TransitMap.tsx
+index 1b1e4f4..86223aa 100644
+--- a/services/shuttle-v2/web/src/TransitMap.tsx
++++ b/services/shuttle-v2/web/src/TransitMap.tsx
+@@ -1827,6 +1827,18 @@ const TripPlanner: FC<{
+   const rain = rainLikelyFrom(weather, Date.now());
+   /** Hour-by-hour panel open? Collapsed by default; the line usually suffices. */
+   const [weatherOpen, setWeatherOpen] = useState(false);
++  const weatherToggleRef = useRef<HTMLButtonElement | null>(null);
++  const weatherFocusRef = useRef<HTMLElement | null>(null);
++  // A refresh can remove the focused hourly strip or the entire forecast.
++  // Restore only focus we owned, after removal, without taking it from a
++  // rider who has already moved to another control.
++  useEffect(() => {
++    const previous = weatherFocusRef.current;
++    if (!previous || previous.isConnected) return;
++    weatherFocusRef.current = null;
++    if (document.activeElement !== document.body) return;
++    (weatherToggleRef.current ?? toSummaryRef.current ?? toInputRef.current)?.focus();
++  });
+   /** °F or °C, the rider's call, remembered across visits (operator, 2026-09-02). */
+   const [tempUnit, setTempUnit] = useState<TempUnit>(() => loadTempUnit());
+   const flipTempUnit = () => {
+@@ -3235,7 +3247,12 @@ const TripPlanner: FC<{
+         const later = nextWetHour(hourly, nowMs);
+         const hours = outlookHours(hourly, nowMs);
+         return (
+-          <div style={{
++          <div
++            onFocusCapture={(e) => { weatherFocusRef.current = e.target as HTMLElement; }}
++            onBlurCapture={(e) => {
++              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) weatherFocusRef.current = null;
++            }}
++            style={{
+             marginBottom: 8,
+             background: warn ? "#fff4e0" : "#f5f6f7",
+             border: `1px solid ${warn ? "#f0c68a" : "#e4e6e8"}`,
+@@ -3248,7 +3265,12 @@ const TripPlanner: FC<{
+                 question usually needs (operator, 2026-09-02). */}
+             <div style={{ display: "flex", alignItems: "center" }}>
+               <button
+-                role="status"
++                ref={weatherToggleRef}
++                type="button"
++                aria-expanded={hours.length > 1 ? weatherOpen : undefined}
++                aria-controls={hours.length > 1 ? "trip-weather-hours" : undefined}
++                aria-disabled={hours.length > 1 ? undefined : true}
++                tabIndex={hours.length > 1 ? 0 : -1}
+                 onClick={() => hours.length > 1 && setWeatherOpen((v) => !v)}
+                 style={{
+                   display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,
+@@ -3298,11 +3320,12 @@ const TripPlanner: FC<{
+                 }}>°C</span>
+               </button>
+             </div>
+-            {weatherOpen && hours.length > 1 && (
++            {hours.length > 1 && (
+               // Scrolls sideways rather than wrapping, so a narrow phone shows
+               // four hours and a swipe reaches the rest.
+-              <div style={{
+-                display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch",
++              <div id="trip-weather-hours" role="region" aria-label="Hourly weather forecast"
++                hidden={!weatherOpen} tabIndex={0} style={{
++                display: weatherOpen ? "flex" : "none", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch",
+                 padding: "0 10px 10px",
+               }}>
+                 {hours.map((h) => {

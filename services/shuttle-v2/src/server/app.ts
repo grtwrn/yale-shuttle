@@ -1,3 +1,4 @@
+import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGE_MAX_BYTES, REPORT_IMAGES_MAX_BYTES } from "../../web/src/reportAttachments.js";
 import { serveStatic } from "@hono/node-server/serve-static";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -45,6 +46,9 @@ import {
   parseReplayRows, readScorecard, resolveEstimatorVersion, replaySurface, writeReplayDay,
 } from "./scorecard.js";
 import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
+import { createArrivalHistory } from './arrivalHistory.js';
+import { createJourneyHistory } from './journeyHistory.js';
+import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
@@ -72,7 +76,8 @@ const REPORT_BODY_LIMIT = 64 * 1024;
 // A report with a screenshot attached. 2 MB of image as base64 is ~2.7 MB of
 // JSON; the client downscales before sending so a normal one is ~100-300 KB.
 const REPORT_WITH_IMAGE_BODY_LIMIT = 3 * 1024 * 1024;
-const REPORT_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const REPORT_WITH_IMAGES_BODY_LIMIT = 4 * Math.ceil(REPORT_IMAGES_MAX_BYTES / 3) + REPORT_BODY_LIMIT;
+
 const PLAN_BODY_LIMIT = 16 * 1024;
 // The triage-update body only ever carries a status and a short note, so it
 // gets a far tighter cap than a rider's free-form report.
@@ -286,13 +291,13 @@ export function buildApp(opts: AppOptions): Hono {
   // docs/closed-loop.md). Null until a fit is accepted, and then the payload
   // carries `model_params`.
   const modelParams = createModelParamsSource(opts.bundle.sqlite);
-  // The server-side belief (src/server/serverEta.ts). Null unless
-  // SHUTTLE_SERVER_ETA=1 — and null is the default, which leaves `/api/buses`
-  // byte-for-byte what it is today.
+  // Shared live forecasts, enabled by default. An explicit 0 withholds ETAs.
   const serverEta = opts.serverEta !== undefined
     ? opts.serverEta
     : serverEtaFromEnv(process.env, (msg, fields) =>
       console.error(JSON.stringify({ level: "error", msg, ...fields })));
+  if (serverEta) serverEta.useCheckpoint(etaCheckpointStore(opts.bundle.sqlite), now());
+  if (serverEta && process.env.SHUTTLE_K10_TRIAL !== '0') serverEta.useK10Trial(at => opts.collector.k10Evidence(at));
   const busesJson = createBusesPayloadCache(opts.collector, modelParams, serverEta);
   if (serverEta) {
     // Priming the cache on the collector's own poll is what steps the belief:
@@ -304,13 +309,47 @@ export function buildApp(opts: AppOptions): Hono {
     opts.collector.setPollObserver(() => { busesJson(); });
   }
 
+  const arrivalHistory = createArrivalHistory(opts.bundle.sqlite);
+  const journeyHistory = createJourneyHistory(opts.bundle.sqlite);
+  app.get('/api/journey-history', c => {
+    c.header('Cache-Control', 'no-store');
+    const at = now();
+    if (!rateLimitAllow(`journey-history:${clientIp(c) ?? 'anon'}`, at, { perMinute: 120, perDay: 20_000 })) {
+      return c.json({ error: 'rate_limited' }, 429);
+    }
+    const label = c.req.query('route') ?? '', bus = c.req.query('bus') ?? '';
+    const stop = c.req.query('stop') ?? '', eta = c.req.query('eta') ?? '';
+    if (!label || label.length > 40 || !bus || bus.length > 24 || !stop || !eta
+      || !Number.isFinite(Number(eta)) || Number(eta) < 0 || Number(eta) > 14_400) return c.json({ error: 'invalid_query' }, 400);
+    const position = serverEta?.historyPosition(label, bus, Number(stop), Number(eta), at, c.req.query('eta_model') !== 'usual') ?? null;
+    // Older cached clients only accept 24 observations. New readers request
+    // the larger sample explicitly; both remain bounded and cached separately.
+    const limit = c.req.query('limit');
+    const result = journeyHistory(label, Number(stop), position, opts.collector.ref.get(), at, limit === undefined ? 24 : Number(limit));
+    return result ? c.json(result) : c.json({ error: 'invalid_query' }, 400);
+  });
+  app.get('/api/arrival-history', c => {
+    c.header('Cache-Control', 'no-store');
+    if (!rateLimitAllow(`arrival-history:${clientIp(c) ?? 'anon'}`, now(), { perMinute: 120, perDay: 20_000 })) {
+      return c.json({ error: 'rate_limited' }, 429);
+    }
+    const label = c.req.query('route') ?? '';
+    const stop = c.req.query('stop') ?? '', eta = c.req.query('eta') ?? '';
+    if (!label || label.length > 40 || !stop || !eta) return c.json({ error: 'invalid_query' }, 400);
+    const result = arrivalHistory(label, Number(stop), Number(eta), now());
+    return result ? c.json(result) : c.json({ error: 'invalid_query' }, 400);
+  });
+
   app.get("/api/buses", (c) => {
     // Every rider polls this every 5 s, so it is the natural place to notice a
     // rider exists. `seen` is a Set hit after the first sighting of the day.
     actives.seen(c.req.header("x-anon-id"), "poll", now());
     c.header("Content-Type", "application/json");
-    c.header("Cache-Control", "public, max-age=3, stale-while-revalidate=6");
-    return c.body(busesJson());
+    // Snapshot age is anchored to receipt in the browser. Re-serving an old
+    // HTTP response rewinds waiting clocks and extends stale forecast life.
+    // busesJson already memoizes the expensive payload on the server.
+    c.header("Cache-Control", "no-store");
+    return c.body(busesJson(c.req.query('eta_model') !== 'usual'));
   });
 
   // -- What the client actually displayed ------------------------------------
@@ -566,7 +605,7 @@ export function buildApp(opts: AppOptions): Hono {
   // v1's frontend posts a free-form payload: { note?, source?, option?, ... }.
   // We stash the whole thing as context and return v1's { ok, id } shape.
   app.post("/api/report", bodyLimit({
-    maxSize: REPORT_WITH_IMAGE_BODY_LIMIT,
+    maxSize: REPORT_WITH_IMAGES_BODY_LIMIT,
     onError: (c) => c.json({ error: "payload_too_large" }, 413),
   }), async (c) => {
     const ip = clientIp(c) ?? "anon";
@@ -602,21 +641,39 @@ export function buildApp(opts: AppOptions): Hono {
         ? b.priority
         : "normal";
 
-    // Optional screenshot. The data URL is pulled OUT of the context stash
-    // (2 MB of base64 in a DB row would make every triage query pay for it)
-    // and written beside the DB; the context keeps only the filename. A bad
-    // image never fails the report — the words still matter without it.
-    let imageFile: string | undefined;
-    const img = decodeReportImage(b.image);
+    // Modern clients submit a bounded batch. Validate the whole batch before
+    // writing or logging anything, so an upload failure retains the draft.
+    const batch = b.images !== undefined;
+    if (batch && (!Array.isArray(b.images) || b.images.length > REPORT_IMAGE_MAX_COUNT || b.image !== undefined)) {
+      return c.json({ error: "invalid_images" }, 400);
+    }
+    const rawImages: unknown[] = batch ? b.images as unknown[] : b.image === undefined ? [] : [b.image];
+    const decoded = rawImages.map(decodeReportImage);
+    if (batch && decoded.some(img => !img)) return c.json({ error: "invalid_images" }, 400);
+    if (decoded.reduce((total, img) => total + (img?.bytes.length ?? 0), 0) > REPORT_IMAGES_MAX_BYTES) {
+      return c.json({ error: "images_too_large" }, 413);
+    }
     delete b.image;
-    if (img) {
-      try {
+    delete b.images;
+    // Filenames are generated here; riders cannot attach existing reports' files.
+    delete b.imageFile;
+    delete b.imageFiles;
+    const imageFiles: string[] = [];
+    const removeImages = () => {
+      for (const name of imageFiles) { try { fs.unlinkSync(path.join(imageDir, name)); } catch { /* absent */ } }
+      imageFiles.length = 0;
+    };
+    try {
+      for (const img of decoded) {
+        if (!img) continue; // legacy single-image clients still log the words
         fs.mkdirSync(imageDir, { recursive: true });
-        imageFile = `${crypto.randomBytes(12).toString("hex")}.${img.ext}`;
-        fs.writeFileSync(path.join(imageDir, imageFile), img.bytes);
-      } catch {
-        imageFile = undefined;
+        const name = `${crypto.randomBytes(12).toString("hex")}.${img.ext}`;
+        imageFiles.push(name);
+        fs.writeFileSync(path.join(imageDir, name), img.bytes);
       }
+    } catch {
+      removeImages();
+      if (batch) return c.json({ error: "image_upload_failed" }, 500);
     }
     // The body limit above is sized for the screenshot, which has just been
     // pulled out; what remains is stored verbatim in the row, so cap it at
@@ -625,14 +682,20 @@ export function buildApp(opts: AppOptions): Hono {
     if (JSON.stringify(b).length > REPORT_BODY_LIMIT) {
       b = { note, source: b.source, contextTruncated: true };
     }
-    const { id } = submitReport(
-      opts.bundle.db,
-      { kind, routeId, body: note || "(report)", priority, context: imageFile ? { ...b, imageFile } : b },
-      ip,
-      anonId,
-    );
+    let id: number;
+    try {
+      ({ id } = submitReport(
+        opts.bundle.db,
+        { kind, routeId, body: note || "(report)", priority, context: imageFiles.length ? { ...b, imageFile: imageFiles[0], imageFiles } : b },
+        ip,
+        anonId,
+      ));
+    } catch {
+      removeImages();
+      return c.json({ error: "report_save_failed" }, 500);
+    }
     notifyReportListeners(id);
-    return c.json({ ok: true, id, attached: Boolean(imageFile) });
+    return c.json({ ok: true, id, attached: imageFiles.length > 0, attachedCount: imageFiles.length });
   });
 
   // -- Rider self-service: their own reports --------------------------------
@@ -1261,10 +1324,12 @@ export function buildApp(opts: AppOptions): Hono {
     }
   });
 
-  app.get("/api/reports/:id/image", requireAdmin, (c) => {
+  const serveReportImage = (c: Context) => {
     const id = Number(c.req.param("id"));
     if (!Number.isInteger(id)) return c.json({ error: "invalid_request" }, 400);
-    const name = reportImageFile(opts.bundle.db, id);
+    const index = c.req.param("index") === undefined ? 0 : Number(c.req.param("index"));
+    if (!Number.isInteger(index) || index < 0) return c.json({ error: "invalid_request" }, 400);
+    const name = reportImageFile(opts.bundle.db, id, index);
     if (!name || !/^[a-f0-9]{24}\.(png|jpg|webp)$/.test(name)) {
       return c.json({ error: "no_image" }, 404);
     }
@@ -1278,7 +1343,10 @@ export function buildApp(opts: AppOptions): Hono {
     } catch {
       return c.json({ error: "no_image" }, 404);
     }
-  });
+  };
+
+  app.get("/api/reports/:id/image", requireAdmin, serveReportImage);
+  app.get("/api/reports/:id/images/:index", requireAdmin, serveReportImage);
 
   app.post("/api/reports/:id/update", requireAdmin, bodyLimit({
     maxSize: REPORT_UPDATE_BODY_LIMIT,
@@ -1416,7 +1484,9 @@ export function buildApp(opts: AppOptions): Hono {
         pollStalenessMs,
         collectorLagMs: lagMs,
         knownBuses: buses.length,
+        ...(serverEta ? { serverEta: serverEta.stats() } : {}),
         pollSkipped: poll.skipped,
+        k10History: poll.k10History,
         droppedObservations: poll.droppedObservations,
         // The commit this server was built from (SHUTTLE_BUILD_SHA, stamped by
         // the Dockerfile; "dev" otherwise). The scorecard versions its rows by

@@ -1,0 +1,36 @@
+{
+  "createdAtUTC": "2026-09-18T01:45:21.476176+00:00",
+  "fitEnd": 1789012800000.0,
+  "calibrationEnd": 1789358400000.0,
+  "developmentEnd": 1789665240913,
+  "stepSec": 15,
+  "arms": [
+    "baseline",
+    "identity_controls",
+    "progress",
+    "progress_clock",
+    "arrival_pulses",
+    "reached",
+    "reached_clock"
+  ],
+  "identities": [
+    "departure_order",
+    "stop_order"
+  ],
+  "offsets": [
+    "lap_clock",
+    "lap_clock_ahead"
+  ],
+  "regimes": [
+    "arrival15_clear30_proxy",
+    "completed120"
+  ],
+  "penalty": 10,
+  "minFeatureTrainingEpisodes": 5,
+  "minFeatureTrainingDates": 2,
+  "departureOrder": "At focal pin: latest own confirmed source departure within90min and same day, intervening unconditional opposite-stop anchor already known; first confirmed other departure after own. Reject intervening known focal source returns. Latch identity, not future next departure.",
+  "stopOrder": "At focal pin: latest unconditional anchor+15s per other bus, physical anchor age<=10min, valid route index. Choose smallest positive backward stop-index gap; same-stop or nearest-gap ties yield unknown. Topological order, not metric GPS spacing. Identity remains latched.",
+  "features": "Identity/origin availability, age of last source departure, initial backward stop gap; dynamic latest known relative stop progress and staleness, progress times15minclock;120s arrival pulses and persistent reached flags timesclock. All supported stops jointly, no chosen winner.",
+  "offsetComparison": "Existing fixed age/lap/clock hazard, and separately the fixed training-only ahead reached-clock extension. Additional follower coefficients fit only on preSep10; same coefficient penalty.",
+  "uncertainty": "No future peer paths in forward ETA. One-step next15s departure, chronology and existing curated valid cohort preserved. All families reported; exploratory on previously inspected development dates."
+}

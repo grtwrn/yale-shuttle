@@ -1,0 +1,12 @@
+{
+  "inputHashChecks": 13,
+  "identityAndDistributionChecks": 30,
+  "pairedConnectedOutcomes": 1400,
+  "restoredPairs": 30,
+  "completeWireRows": 160496,
+  "nativeMissingStatePolls": 34,
+  "browserChecks": 407,
+  "head": "b574a1c800654544685a8d9f1097ad3484ac13fc",
+  "worktreeClean": true,
+  "limits": "No application change or deployment. Artifact overlay is exploratory; normal code-review/typecheck/full-tests and folded-route integration remain required for any future release."
+}

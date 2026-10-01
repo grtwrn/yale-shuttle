@@ -1,0 +1,26 @@
+{
+  "createdAt": "2026-09-18T10:38:54.498698+00:00",
+  "base": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "task": "Correct historical-source versus priced-origin attribution on saved 6000-poll wires. No extension before independent review.",
+  "arms": [
+    "current",
+    "canonical same one-line diagnostic"
+  ],
+  "calibration": "Pre-Sep14 marginals and pre-Sep10 release fit; prior causal refresh at 1789665240913; current release ON. No fitting.",
+  "capture": "All 20199 saved full-fleet polls in original order, separate process per arm, actual ServerEta; fresh server on fleet gap>60s, module caches persist as live process. Record every wire row and scalar poll-time tracking immediately; distributions and immutable full-state digests at first poll of each UTC minute. No future outcome inputs.",
+  "scoring": "10minute per-bus observed warmup. Minute samples primary descriptive outcomes; all polls availability/tail/stability. Connected legs exact departed/arrived/index identity on repaired sequence; preserve repeated positions and both traversals separately. Reject unknown chains as unresolved, retain every forecast. Explicit transition tails retained outside prearrival scoring.",
+  "riderSlice": "Reuse prior declared Red geometries/contexts when present; current actual planner selector with server wire. If time insufficient, durable capture enables next bounded scoring round. No fabricated complete rider validation.",
+  "limits": "Sep16-17 reused history; reconstructed collector clocks not original receipts; allfleet cache order differs from Red-only. No coverage/accuracy/release claim from determinism.",
+  "inputHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/all-route-raw-frames.jsonl": "1e1091a2c7944ff23ccb84bb99be6c6fe5a52526c94232781f79ae10a6a80207",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/all-route-topology.json": "2bc257cc89577c959c56f70c196ca7a2dd78bad9c13bdcdf491990274d3b41a1",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/outcomes-complete.db": "fe8f6efd8ba7a1d0eb472307eca02f3a76f7c1a3ecdcc9972f37cda520605283",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/baseline-patch.json": "f7adb4932de11f6fdcd92fd950baefe1a7561b8b8617143526fd96b61ae8478d",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/params.json": "ab2e69d08bf7d09a969f3a3645663bf47a66ed1b5a318b633cd015d5af81e328",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/payload.json": "a9654f864661923f97b4c240defaf62b2a6cbafec7805f920bb9a925f4fd38d6",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-pre-sep10.json": "be2350420f438d609e12d18b458de5da06578a2533df757efcbbade17b9c4fc8",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-development.json": "d78e229e6f98cc98385cec11fd4fac4ebd625a92028cae240169d0f81a2af7a3"
+  },
+  "alignment": "Require unique priced origin inferred from all wire rows. If it equals tracked active rest, unique exact prior pin plus exact connected chain containing latest historical source establishes old current visit. Use actual forecast hop count from that prior origin for ALL targets/occurrences, including nonzero rows. If arms disagree or evidence is incomplete retain explicit unresolved accounting. Other rows retain previously reviewed rules and their uncertainty limitations.",
+  "preservation": "Original cycle15 and reviewer artifacts stay unchanged; corrected scores only in cycle16; no forecast/app/history change or trimming."
+}

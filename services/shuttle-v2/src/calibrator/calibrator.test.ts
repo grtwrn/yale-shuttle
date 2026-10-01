@@ -24,6 +24,12 @@ import {
   computeSegmentStats,
   foldRoutes,
   hourWindow,
+  loadStandGroups,
+  loadStandOccurrenceGroups,
+  loadDriveGroups,
+  loadLegGroups,
+  loadStopShares,
+  loadStopOccurrenceShares,
   PACE_MIN_CHORD_M,
   SPLIT_SERVED_ROUTE_IDS,
   splitWithheldRoutes,
@@ -243,7 +249,11 @@ describe("calibrate over a real database", () => {
   ) {
     const anchoredAt = opts.anchoredAt ?? now.getTime() - 3_600_000;
     const pinnedAt = opts.pinned === false ? null : anchoredAt + 10_000;
-    const departedAt = standSec === null || pinnedAt === null ? null : pinnedAt + standSec * 1000;
+    // An unpinned pass legitimately lacks a departure timestamp. A stopped
+    // completed visit has one even in synthetic unpinned fixtures.
+    const departedAt = opts.outcome === "passed" && pinnedAt === null ? null
+      : standSec === null ? (opts.outcome === "passed" ? anchoredAt + 10_000 : null)
+      : anchoredAt + 10_000 + standSec * 1000;
     bundle.sqlite
       .prepare(
         `INSERT INTO stop_visits (bus_id, bus_name, anchor_bus_id, route_id, stop_id, stop_index,
@@ -284,6 +294,54 @@ describe("calibrate over a real database", () => {
   afterEach(() => {
     bundle.sqlite.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("excludes outcomes that finish or are confirmed after a replay cutoff", () => {
+    const cutoff = now.getTime();
+    addVisit(1, 1, 20, { anchoredAt: cutoff - 60_000 }); // departure -30s, confirmation -15s
+    addVisit(1, 1, 80, { anchoredAt: cutoff - 60_000 }); // departure +30s
+    addVisit(1, 1, 40, { anchoredAt: cutoff - 60_000 }); // departure -10s, confirmation +5s
+    expect(loadStandGroups(bundle.db, 30, cutoff).find(g => g.key === "1:1")?.all).toEqual([20]);
+    expect(loadStandOccurrenceGroups(bundle.db, 30, cutoff).find(g => g.key === "1:1#0")?.all).toEqual([20]);
+    expect(loadStopShares(bundle.db, 30, cutoff).get("1:1")).toBe(1);
+    expect(loadStopOccurrenceShares(bundle.db, 30, cutoff).get("1:1#0")).toBe(1);
+    // A known first movement can place confirmation later than departure+delay.
+    bundle.sqlite.prepare('UPDATE stop_visits SET first_moved_at = ? WHERE stand_sec = 20').run(cutoff - 5_000);
+    expect(loadStandGroups(bundle.db, 30, cutoff)).toEqual([]);
+    expect(loadStopShares(bundle.db, 30, cutoff).size).toBe(0);
+    expect(loadStopOccurrenceShares(bundle.db, 30, cutoff).size).toBe(0);
+
+    addLeg(1, 1, 2, 40, { departedAt: cutoff - 60_000 });
+    addLeg(1, 1, 2, 90, { departedAt: cutoff - 60_000 });
+    expect(loadDriveGroups(bundle.db, 30, cutoff).find(g => g.key === "1:1:2")?.all).toEqual([40]);
+    expect(loadLegGroups(bundle.db, 30, cutoff).find(g => g.key === "1:1:2")?.all).toEqual([40]);
+    bundle.sqlite.prepare('UPDATE legs SET to_pinned_at = ? WHERE leg_sec = 40').run(cutoff + 5_000);
+    expect(loadDriveGroups(bundle.db, 30, cutoff)).toEqual([]);
+    expect(loadLegGroups(bundle.db, 30, cutoff)).toEqual([]);
+  });
+
+  it("also excludes future completions from legacy segment and dwell priors", () => {
+    const slot = { ts: now.getTime() - 60_000, dow, hour };
+    addSegment(1, 1, 2, 10, slot);
+    addSegment(1, 1, 2, 90, slot);
+    addArrival(1, 1, 20, slot);
+    addArrival(1, 1, 90, slot);
+    calibrate(bundle.db, sink, now);
+    expect(captured.segments.get("1:1:2")?.mean).toBe(10);
+    expect(captured.segments.get("1:1:2")?.n).toBe(1);
+    expect(captured.dwells.get("1:1")?.mean).toBe(20);
+    expect(captured.dwells.get("1:1")?.n).toBe(1);
+  });
+
+  it("keeps unpinned passes with unknown departure in the stop-share denominator", () => {
+    const cutoff = now.getTime();
+    addVisit(1, 1, 20);
+    addVisit(1, 1, null, { outcome: "passed", pinned: false });
+    addVisit(1, 1, null, { outcome: "passed", pinned: false, anchoredAt: cutoff + 1000 });
+    expect(bundle.sqlite.prepare("SELECT departed_at FROM stop_visits WHERE outcome = 'passed' LIMIT 1").get()).toEqual({ departed_at: null });
+    expect(loadStopShares(bundle.db, 30, cutoff).get("1:1")).toBe(0.5);
+    expect(loadStopOccurrenceShares(bundle.db, 30, cutoff).get("1:1#0")).toBe(0.5);
+    expect(loadStandGroups(bundle.db, 30, cutoff).find(g => g.key === "1:1")?.all).toEqual([20]);
   });
 
   it("reproduces the per-group statistics that a row-by-row pass would produce", () => {

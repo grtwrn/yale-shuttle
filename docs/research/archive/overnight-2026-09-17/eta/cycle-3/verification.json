@@ -1,0 +1,390 @@
+{
+  "hashReferences": 15,
+  "historyEventUses": 14864,
+  "weightSums": 1070,
+  "forecastGroups": 1444,
+  "forecasts": 4332,
+  "numericalScoreRows": 24,
+  "retainedPriorAuditedCases": 10,
+  "latencyFeatureEqualityChecks": 1949,
+  "uniqueHistoricalResets": 29,
+  "resetReasons": {
+    "121/phase_innovation": 9,
+    "11/missing_opposite_at_update": 2,
+    "121/gap_outside_30_90min": 2,
+    "11/gap_outside_30_90min": 3,
+    "11/phase_innovation": 10,
+    "121/missing_opposite_at_update": 3
+  },
+  "regressionRecords": 10,
+  "regressionsWithRaw": 6,
+  "regressions": [
+    {
+      "id": 48370,
+      "bus": "#310",
+      "stop": 11,
+      "day": "2026-09-14",
+      "holdSec": 120.077,
+      "anchorToPinSec": 25.009,
+      "outcome": "stopped",
+      "how": "next",
+      "restPolls": 8,
+      "shuffles": 1,
+      "outgoingLegs": [
+        {
+          "id": 44449,
+          "from_stop_id": 11,
+          "to_stop_id": 146,
+          "departed_at": 1789413750957,
+          "arrived_at": 1789413775918,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        45102,
+        45545,
+        45996,
+        46496,
+        46865,
+        47277,
+        47701,
+        48062
+      ],
+      "resets": [],
+      "rawPolls": 0,
+      "maxRawGapSec": null,
+      "changedCoordinateAfterDepartureSec": null,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 65621,
+      "bus": "#300",
+      "stop": 11,
+      "day": "2026-09-17",
+      "holdSec": 508.689,
+      "anchorToPinSec": 15.028,
+      "outcome": "stopped",
+      "how": "next",
+      "restPolls": 7,
+      "shuffles": 1,
+      "outgoingLegs": [
+        {
+          "id": 60818,
+          "from_stop_id": 11,
+          "to_stop_id": 146,
+          "departed_at": 1789659249548,
+          "arrived_at": 1789659269234,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        63611,
+        64109,
+        64603,
+        65119
+      ],
+      "resets": [],
+      "rawPolls": 126,
+      "maxRawGapSec": 21.259,
+      "changedCoordinateAfterDepartureSec": 4.705,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 66057,
+      "bus": "#300",
+      "stop": 11,
+      "day": "2026-09-17",
+      "holdSec": 440.019,
+      "anchorToPinSec": 20.074,
+      "outcome": "stopped",
+      "how": "next",
+      "restPolls": 7,
+      "shuffles": 3,
+      "outgoingLegs": [
+        {
+          "id": 61236,
+          "from_stop_id": 11,
+          "to_stop_id": 146,
+          "departed_at": 1789662845595,
+          "arrived_at": 1789662860564,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        63611,
+        64109,
+        64603,
+        65119,
+        65621
+      ],
+      "resets": [],
+      "rawPolls": 117,
+      "maxRawGapSec": 5.264,
+      "changedCoordinateAfterDepartureSec": 5.029,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 58505,
+      "bus": "#308",
+      "stop": 11,
+      "day": "2026-09-16",
+      "holdSec": 465.063,
+      "anchorToPinSec": 20.068,
+      "outcome": "stopped",
+      "how": "next",
+      "restPolls": 9,
+      "shuffles": 3,
+      "outgoingLegs": [
+        {
+          "id": 54132,
+          "from_stop_id": 11,
+          "to_stop_id": 146,
+          "departed_at": 1789569253320,
+          "arrived_at": 1789569273351,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        56968,
+        57463,
+        57965
+      ],
+      "resets": [],
+      "rawPolls": 121,
+      "maxRawGapSec": 5.903,
+      "changedCoordinateAfterDepartureSec": 5.004,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 61688,
+      "bus": "#308",
+      "stop": 11,
+      "day": "2026-09-16",
+      "holdSec": 155.078,
+      "anchorToPinSec": 14.931,
+      "outcome": "stopped",
+      "how": "next",
+      "restPolls": 5,
+      "shuffles": 3,
+      "outgoingLegs": [
+        {
+          "id": 57178,
+          "from_stop_id": 11,
+          "to_stop_id": 146,
+          "departed_at": 1789594564975,
+          "arrived_at": 1789594584964,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        56968,
+        57463,
+        57965,
+        58505,
+        58956,
+        59364,
+        59805,
+        60263,
+        60735,
+        61186
+      ],
+      "resets": [],
+      "rawPolls": 58,
+      "maxRawGapSec": 5.113,
+      "changedCoordinateAfterDepartureSec": 4.953,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 58917,
+      "bus": "#309",
+      "stop": 121,
+      "day": "2026-09-16",
+      "holdSec": 150.053,
+      "anchorToPinSec": 74.917,
+      "outcome": "stopped",
+      "how": "clock",
+      "restPolls": 29,
+      "shuffles": 0,
+      "outgoingLegs": [
+        {
+          "id": 54533,
+          "from_stop_id": 121,
+          "to_stop_id": 115,
+          "departed_at": 1789572354429,
+          "arrived_at": 1789572499549,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        56958,
+        57454,
+        57990,
+        58510
+      ],
+      "resets": [],
+      "rawPolls": 68,
+      "maxRawGapSec": 5.251,
+      "changedCoordinateAfterDepartureSec": 5.017,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 62056,
+      "bus": "#309",
+      "stop": 121,
+      "day": "2026-09-16",
+      "holdSec": 15.002,
+      "anchorToPinSec": 60.006,
+      "outcome": "stopped",
+      "how": "far",
+      "restPolls": 3,
+      "shuffles": 0,
+      "outgoingLegs": [
+        {
+          "id": 57536,
+          "from_stop_id": 121,
+          "to_stop_id": 115,
+          "departed_at": 1789597290252,
+          "arrived_at": 1789597435288,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        58917,
+        59355,
+        59806,
+        60271,
+        60699,
+        61157,
+        61658
+      ],
+      "resets": [
+        {
+          "atId": 58917,
+          "reason": "phase_innovation"
+        }
+      ],
+      "rawPolls": 39,
+      "maxRawGapSec": 5.26,
+      "changedCoordinateAfterDepartureSec": 5.06,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 55332,
+      "bus": "#310",
+      "stop": 121,
+      "day": "2026-09-15",
+      "holdSec": 100.063,
+      "anchorToPinSec": 79.884,
+      "outcome": "stopped",
+      "how": "far",
+      "restPolls": 5,
+      "shuffles": 2,
+      "outgoingLegs": [
+        {
+          "id": 51127,
+          "from_stop_id": 121,
+          "to_stop_id": 115,
+          "departed_at": 1789509211581,
+          "arrived_at": 1789509301608,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        50789,
+        51242,
+        51699,
+        52168,
+        52633,
+        53023,
+        53429,
+        53802,
+        54189,
+        54541,
+        54991
+      ],
+      "resets": [],
+      "rawPolls": 0,
+      "maxRawGapSec": null,
+      "changedCoordinateAfterDepartureSec": null,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 49315,
+      "bus": "#310",
+      "stop": 121,
+      "day": "2026-09-14",
+      "holdSec": 94.817,
+      "anchorToPinSec": 45.202,
+      "outcome": "stopped",
+      "how": "far",
+      "restPolls": 5,
+      "shuffles": 1,
+      "outgoingLegs": [
+        {
+          "id": 45365,
+          "from_stop_id": 121,
+          "to_stop_id": 115,
+          "departed_at": 1789422783605,
+          "arrived_at": 1789422958642,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        44874,
+        45286,
+        45762,
+        46242,
+        46687,
+        47086,
+        47462,
+        47850,
+        48205,
+        48550,
+        48922
+      ],
+      "resets": [],
+      "rawPolls": 0,
+      "maxRawGapSec": null,
+      "changedCoordinateAfterDepartureSec": null,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    },
+    {
+      "id": 54541,
+      "bus": "#310",
+      "stop": 121,
+      "day": "2026-09-15",
+      "holdSec": 244.99,
+      "anchorToPinSec": 50.001,
+      "outcome": "stopped",
+      "how": "far",
+      "restPolls": 38,
+      "shuffles": 1,
+      "outgoingLegs": [
+        {
+          "id": 50355,
+          "from_stop_id": 121,
+          "to_stop_id": 115,
+          "departed_at": 1789502045676,
+          "arrived_at": 1789502220798,
+          "hops": 1
+        }
+      ],
+      "historyIds": [
+        50789,
+        51242,
+        51699,
+        52168,
+        52633,
+        53023,
+        53429,
+        53802,
+        54189
+      ],
+      "resets": [],
+      "rawPolls": 0,
+      "maxRawGapSec": null,
+      "changedCoordinateAfterDepartureSec": null,
+      "decision": "Retain; no positively established measurement error. Missing raw coverage is not an exclusion. Repeated GPS is deadband-censored, not a driver-policy or receipt-time measurement."
+    }
+  ]
+}

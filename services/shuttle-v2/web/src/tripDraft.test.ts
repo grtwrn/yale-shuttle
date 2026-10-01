@@ -6,6 +6,14 @@ const makeStore = () => { let value: string | null = null; return {
 const trip: TripDraft = { fromText: "", fromLL: null, toText: "Yale Public Health",
   toLL: { lat: 41.303735, lon: -72.932155 }, tripTime: "", expandedKey: "Red" };
 describe("waiting trip restoration", () => {
+  it('restores the trip and departure time while ignoring retired class deadline fields', () => {
+    const store = makeStore();
+    const draft = { ...trip, tripTime: '2026-09-18T12:30', tripTimeSetAt: 1000 };
+    store.setItem('shuttle-trip-draft', JSON.stringify({ ...draft, arriveBy: '2026-09-18T13:00', classBufferMin: 10, savedAt: 1000 }));
+    expect(loadTripDraft(store, 2000)).toEqual(draft);
+    saveTripDraft(loadTripDraft(store, 2000), store, 2000);
+    expect(JSON.parse(store.getItem()!)).toEqual({ ...draft, savedAt: 2000 });
+  });
   it("preserves the selection time across later saves and reloads", () => {
     const draft = { ...trip, tripTime: "2026-09-10T17:00", tripTimeSetAt: 1000 };
     const store = makeStore(); saveTripDraft(draft, store, 50_000);

@@ -1,0 +1,147 @@
+{
+  "verified_at": "2026-09-18T02:21:07.561970+00:00",
+  "tests_passed": 24,
+  "initial_restart": "Intentional restart to load memory guard; prior SIGTERM log errors are expected.",
+  "teams": {
+    "eta": {
+      "active": "active",
+      "phase": "builder",
+      "heartbeat": "2026-09-18T02:21:04.208561+00:00",
+      "model_pid": 1012461,
+      "deadline": "2026-09-18T07:30:00-04:00",
+      "log": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/001-builder-1789698029.jsonl",
+      "command_events": [
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        },
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        },
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        },
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        },
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        }
+      ]
+    },
+    "ux": {
+      "active": "active",
+      "phase": "builder",
+      "heartbeat": "2026-09-18T02:21:04.202286+00:00",
+      "model_pid": 1012477,
+      "deadline": "2026-09-18T07:30:00-04:00",
+      "log": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/001-builder-1789698029.jsonl",
+      "command_events": [
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        },
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        },
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        },
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        },
+        {
+          "type": "item.started",
+          "status": "in_progress",
+          "exit_code": null
+        },
+        {
+          "type": "item.completed",
+          "status": "completed",
+          "exit_code": 0
+        }
+      ]
+    }
+  },
+  "watcher": "active",
+  "production_health": {
+    "ok": true,
+    "pollStalenessMs": 3830,
+    "collectorLagMs": 3775,
+    "knownBuses": 7,
+    "serverEta": {
+      "restored": 7,
+      "forecastAt": 1789698063912,
+      "checkpointAt": 1789698048892,
+      "beliefs": 7,
+      "steps": 1018,
+      "failures": 0,
+      "lastStepMs": 52,
+      "rows": 236
+    },
+    "pollSkipped": 0,
+    "droppedObservations": 0,
+    "build": "40af3c0bb8e2"
+  }
+}

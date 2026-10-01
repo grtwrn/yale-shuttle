@@ -1,0 +1,23 @@
+{
+  "source": "https://yale-shuttle.fly.dev",
+  "errors": [],
+  "checks": [
+    "390px and 320px layouts",
+    "buffer changes destination target",
+    "destination distribution has 50 server outcomes, deadline and walking markers",
+    "mini-map shows one compact arrival window per route without width cutoffs",
+    "recorded waits are the primary pickup graph; current forecast expands separately",
+    "pickup distribution and following-shuttle wording",
+    "history failure leaves live distribution and forecast usable",
+    "deadline survives reload",
+    "trip details, pickup gap and Escape focus still work",
+    "passed deadline rejected",
+    "empty time remains editable",
+    "failed feed suppresses shuttle recommendation",
+    "clear returns to normal planner"
+  ],
+  "comparison": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach LEPH / 60 College by 10:39 AM · 10 min before class.\n\nYour arrival is at risk\n\nNo available option fits your buffer with enough information. Check the times below.\n\nEstimated arrival at destination\n\nBlue Day · #46\n10:29 AM–10:40 AM\nMay use your buffer · View trip ›\nWalk\nAbout 10:41 AM\nMay use your buffer · View trip ›\nSee possible arrival times ▾\nHow to read these times ▾",
+  "route": "Blue Day",
+  "pickupDetails": "Blue Day arrival\n×\n\nAbout 3 min\n\nLikely arrival window: 1–7 min\n\nUse the early end of the estimated window when deciding when to reach your stop.\n\nWaiting at Chemistry / 225 Prospect. The window may stay wide until the shuttle leaves.\n\nShuttle\n#46\nStops to pickup\n4\nFollowing shuttle · #38\nAbout 19 min later\n\nThe following arrival is estimated in about 22 min from now. Both arrival estimates can change.\n\nPast trips to this stop\n\nPast trips cannot be matched to this shuttle’s current position yet.\n\nRecent recorded arrivals at this stop\nSep 17, 9:53 AM · #44\nSep 17, 9:36 AM · #38\nSep 17, 9:16 AM · #46\nAbout these records ▾\n\nComparison captured Sep 17, 10:04 AM\n\nRefresh comparison\nForecast for this shuttle ▾",
+  "historyQueries": []
+}

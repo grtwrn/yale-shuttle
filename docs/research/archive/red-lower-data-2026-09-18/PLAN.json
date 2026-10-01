@@ -1,0 +1,14 @@
+{
+  "createdAt": "2026-09-18T13:44:58.010351+00:00",
+  "base": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+  "question": "Does removing legacy lower-side widening for an active supported Winchester release model reduce rider windows without added early-arrival misses?",
+  "arms": [
+    "current production",
+    "same code with raw lower and distribution below center while currentRelease active; upper/point/position unchanged"
+  ],
+  "scope": "same activation as existing raw-upper policy; both target occurrences retained; Division48/Rosenkranz4",
+  "primary": "paired independent processes, original chronology/global-cache behavior; verify existing baseline exactly; equal-visit/checkpoint and per-date early bounds, implied leave-by buffer misses, width, upper misses, jumps, all regressions retained",
+  "data": "Sep16\u201317 reused development histories; preSep14 tables and causally earlier fits with existing Sep17 refresh; NOT fresh holdout; no duration exclusions",
+  "decision": "do not deploy if narrower window conceals a material early-arrival risk; no blanket minimum or arbitrary cap",
+  "next": "if candidate passes, independent audit, tests, exact integration replay and fresh prospective capture"
+}

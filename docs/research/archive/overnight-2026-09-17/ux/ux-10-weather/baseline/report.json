@@ -1,0 +1,23 @@
+{
+  "source": "Actual built SPA, fixed clock and intercepted local fixtures",
+  "baseline": true,
+  "checks": [
+    "Baseline reproduced: expandable weather is exposed as status without expanded state; one-hour no-op remains a keyboard stop",
+    "Baseline hourly strip overflow and semantics captured; browser automatic scroll focus is not inferred from tabIndex",
+    "Baseline forecast removal drops focused weather action to BODY"
+  ],
+  "errors": [],
+  "snapshots": {
+    "dry": "- status: 68°F · Clear · no rain expected",
+    "expanded": "- status: 68°F · Clear · no rain expected\n- button \"Show temperature in Celsius\": °F °C\n- text: 12pm 68°\n- img \"0% chance of rain\"\n- text: 1pm 69°\n- img \"0% chance of rain\"\n- text: 2pm 70°\n- img \"0% chance of rain\"\n- text: 3pm 71°\n- img \"0% chance of rain\"\n- text: 4pm 72°\n- img \"0% chance of rain\"\n- text: 5pm 73°\n- img \"0% chance of rain\"\n- text: 6pm 74°\n- img \"0% chance of rain\"\n- text: 7pm 75°\n- img \"0% chance of rain\"\n- text: 8pm 76°\n- img \"0% chance of rain\"\n- text: 9pm 77°\n- img \"0% chance of rain\""
+  },
+  "geometry": [],
+  "strip": {
+    "tabIndex": -1,
+    "scrollWidth": 694,
+    "clientWidth": 356,
+    "role": null
+  },
+  "passed": true,
+  "closed": true
+}

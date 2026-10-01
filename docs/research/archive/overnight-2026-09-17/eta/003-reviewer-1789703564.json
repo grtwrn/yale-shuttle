@@ -1,0 +1,40 @@
+{
+  "verdict": "research_only",
+  "summary": "Independent checks support no service-role integration change. Gains remain small and date-dependent. Review and checkpoint saved; checkout and builder evidence unchanged.",
+  "head_sha": "948712e153cea1017e9471ce84851a41fae4508a",
+  "base_sha": "948712e153cea1017e9471ce84851a41fae4508a",
+  "next_task": "Advance cycle-4 Red-versus-walking audit. Preserve warm fleet state, persistent board/alight choices, separate countdown and catchable bus identities, both occurrences and missing outcomes. The archive cannot support all-route claims.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-3/test_role_state.py",
+      "exit_code": 0,
+      "result": "Six contract tests passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock env OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-3/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Independently reconstructed 1,070 states, eight fit objectives, 4,332 forecasts and 480 score rows; all matched."
+    },
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-3/verify_regressions.py",
+      "exit_code": 0,
+      "result": "Verified 1,212 paired comparisons, 12 regression selections, six raw-covered cases and 24 unchanged builder artifacts."
+    },
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-3/verify_cohorts.py",
+      "exit_code": 0,
+      "result": "All 3,898 inherited rows and 722 development checkpoints per arm/contract preserved."
+    },
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-3/verify_temporal.py",
+      "exit_code": 0,
+      "result": "All 1,070 states resisted unavailable-event injection; 191 training threshold pairs unchanged after future-event removal."
+    },
+    {
+      "command": "git diff --check && git diff --exit-code 948712e153cea1017e9471ce84851a41fae4508a HEAD && git diff --exit-code && git diff --cached --exit-code && git status --porcelain && git rev-parse HEAD && git rev-parse 948712e153cea1017e9471ce84851a41fae4508a",
+      "exit_code": 0,
+      "result": "Exact head/base verified; all diffs and status empty."
+    }
+  ]
+}

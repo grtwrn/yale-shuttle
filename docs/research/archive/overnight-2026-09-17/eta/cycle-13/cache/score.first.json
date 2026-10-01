@@ -1,0 +1,1308 @@
+{
+  "kernel": {
+    "current": {
+      "lowFirstLength": 10,
+      "highFirstLength": 11,
+      "sameOutputRegardlessOfFirstCaller": false,
+      "maxBinDifference": 0.029434803170443447
+    },
+    "canonical": {
+      "lowFirstLength": 10,
+      "highFirstLength": 10,
+      "sameOutputRegardlessOfFirstCaller": true,
+      "maxBinDifference": 0
+    }
+  },
+  "comparisons": [
+    {
+      "a": "current-warm",
+      "b": "current-cold",
+      "frames": 78,
+      "changedCompleteWires": 78,
+      "changedServedPositionFrames": 0,
+      "changedBeliefFrames": 78,
+      "maxPosteriorCellDifference": 0.0308408986335843,
+      "pairedRows": 10592,
+      "changedRows": 1817,
+      "availabilityDifferences": [],
+      "occurrences": {
+        "1": {
+          "paired": 3806,
+          "changed": 485,
+          "maxEtaDeltaSec": 21,
+          "maxBoundOrAuxDeltaSec": 3453
+        },
+        "0": {
+          "paired": 6786,
+          "changed": 1332,
+          "maxEtaDeltaSec": 17,
+          "maxBoundOrAuxDeltaSec": 3768
+        }
+      },
+      "worst": [
+        {
+          "at": 1789567542315,
+          "bus": "308",
+          "stop": 115,
+          "occurrence": 0,
+          "maxDeltaSec": 3768,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            115,
+            5,
+            4,
+            8,
+            1,
+            0,
+            5,
+            4
+          ],
+          "after": [
+            1,
+            115,
+            5,
+            4,
+            3776,
+            1,
+            0,
+            5,
+            4
+          ]
+        },
+        {
+          "at": 1789567542315,
+          "bus": "308",
+          "stop": 115,
+          "occurrence": 1,
+          "maxDeltaSec": 3453,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            115,
+            3759,
+            3231,
+            4059,
+            30,
+            0,
+            3759,
+            3231
+          ],
+          "after": [
+            1,
+            115,
+            3759,
+            3231,
+            7512,
+            30,
+            0,
+            3759,
+            3231
+          ]
+        },
+        {
+          "at": 1789567272273,
+          "bus": "308",
+          "stop": 121,
+          "occurrence": 0,
+          "maxDeltaSec": 3449,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            121,
+            5,
+            4,
+            3456,
+            1,
+            0,
+            5,
+            4
+          ],
+          "after": [
+            1,
+            121,
+            5,
+            4,
+            7,
+            1,
+            0,
+            5,
+            4
+          ]
+        },
+        {
+          "at": 1789567272273,
+          "bus": "308",
+          "stop": 121,
+          "occurrence": 1,
+          "maxDeltaSec": 3338,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            121,
+            3452,
+            3035,
+            7184,
+            30,
+            0,
+            3452,
+            3035
+          ],
+          "after": [
+            1,
+            121,
+            3452,
+            3035,
+            3846,
+            30,
+            0,
+            3452,
+            3035
+          ]
+        },
+        {
+          "at": 1789567522308,
+          "bus": "309",
+          "stop": 48,
+          "occurrence": 1,
+          "maxDeltaSec": 80,
+          "etaDeltaSec": 0,
+          "before": [
+            0,
+            48,
+            3797,
+            3002,
+            7562,
+            29,
+            0,
+            3763,
+            3183
+          ],
+          "after": [
+            0,
+            48,
+            3797,
+            2941,
+            7482,
+            29,
+            0,
+            3763,
+            3183
+          ]
+        },
+        {
+          "at": 1789567192291,
+          "bus": "316",
+          "stop": 14,
+          "occurrence": 1,
+          "maxDeltaSec": 23,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            14,
+            3869,
+            3300,
+            8009,
+            30,
+            0,
+            3869,
+            3300
+          ],
+          "after": [
+            1,
+            14,
+            3869,
+            3300,
+            8032,
+            30,
+            0,
+            3869,
+            3300
+          ]
+        },
+        {
+          "at": 1789567197290,
+          "bus": "316",
+          "stop": 14,
+          "occurrence": 1,
+          "maxDeltaSec": 21,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            14,
+            3865,
+            3298,
+            8119,
+            30,
+            0,
+            3865,
+            3298
+          ],
+          "after": [
+            1,
+            14,
+            3865,
+            3298,
+            8140,
+            30,
+            0,
+            3865,
+            3298
+          ]
+        },
+        {
+          "at": 1789567417329,
+          "bus": "309",
+          "stop": 146,
+          "occurrence": 1,
+          "maxDeltaSec": 21,
+          "etaDeltaSec": 21,
+          "before": [
+            1,
+            146,
+            4163,
+            3442,
+            7992,
+            29,
+            0,
+            3806,
+            3240
+          ],
+          "after": [
+            1,
+            146,
+            4184,
+            3442,
+            8000,
+            29,
+            0,
+            3806,
+            3240
+          ]
+        },
+        {
+          "at": 1789567542315,
+          "bus": "308",
+          "stop": 121,
+          "occurrence": 0,
+          "maxDeltaSec": 20,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            121,
+            3121,
+            2727,
+            3546,
+            29,
+            0,
+            3121,
+            2727
+          ],
+          "after": [
+            1,
+            121,
+            3121,
+            2707,
+            3546,
+            29,
+            0,
+            3121,
+            2707
+          ]
+        },
+        {
+          "at": 1789567477312,
+          "bus": "309",
+          "stop": 45,
+          "occurrence": 1,
+          "maxDeltaSec": 19,
+          "etaDeltaSec": 19,
+          "before": [
+            0,
+            45,
+            5834,
+            5002,
+            6352,
+            44,
+            0,
+            5834,
+            5002
+          ],
+          "after": [
+            0,
+            45,
+            5853,
+            5002,
+            6352,
+            44,
+            0,
+            5853,
+            5002
+          ]
+        },
+        {
+          "at": 1789567482299,
+          "bus": "309",
+          "stop": 45,
+          "occurrence": 1,
+          "maxDeltaSec": 18,
+          "etaDeltaSec": 18,
+          "before": [
+            0,
+            45,
+            5830,
+            4997,
+            6347,
+            44,
+            0,
+            5830,
+            4997
+          ],
+          "after": [
+            0,
+            45,
+            5848,
+            4997,
+            6347,
+            44,
+            0,
+            5848,
+            4997
+          ]
+        },
+        {
+          "at": 1789567547321,
+          "bus": "308",
+          "stop": 115,
+          "occurrence": 1,
+          "maxDeltaSec": 18,
+          "etaDeltaSec": 1,
+          "before": [
+            0,
+            115,
+            3833,
+            3287,
+            7334,
+            29,
+            0,
+            3741,
+            3166
+          ],
+          "after": [
+            0,
+            115,
+            3834,
+            3287,
+            7352,
+            29,
+            0,
+            3741,
+            3166
+          ]
+        },
+        {
+          "at": 1789567477312,
+          "bus": "309",
+          "stop": 27,
+          "occurrence": 0,
+          "maxDeltaSec": 17,
+          "etaDeltaSec": 17,
+          "before": [
+            0,
+            27,
+            3182,
+            2732,
+            3641,
+            26,
+            0,
+            3182,
+            2732
+          ],
+          "after": [
+            0,
+            27,
+            3199,
+            2732,
+            3641,
+            26,
+            0,
+            3199,
+            2732
+          ]
+        },
+        {
+          "at": 1789567207270,
+          "bus": "316",
+          "stop": 14,
+          "occurrence": 0,
+          "maxDeltaSec": 16,
+          "etaDeltaSec": 0,
+          "before": [
+            0,
+            14,
+            4,
+            2,
+            4282,
+            1,
+            0,
+            4,
+            2
+          ],
+          "after": [
+            0,
+            14,
+            4,
+            2,
+            4298,
+            1,
+            0,
+            4,
+            2
+          ]
+        },
+        {
+          "at": 1789567212265,
+          "bus": "316",
+          "stop": 14,
+          "occurrence": 1,
+          "maxDeltaSec": 16,
+          "etaDeltaSec": -4,
+          "before": [
+            0,
+            14,
+            3859,
+            3291,
+            8297,
+            30,
+            0,
+            3859,
+            3291
+          ],
+          "after": [
+            0,
+            14,
+            3855,
+            3291,
+            8313,
+            30,
+            0,
+            3855,
+            3291
+          ]
+        },
+        {
+          "at": 1789567302279,
+          "bus": "309",
+          "stop": 31,
+          "occurrence": 0,
+          "maxDeltaSec": 16,
+          "etaDeltaSec": 0,
+          "before": [
+            2,
+            31,
+            2835,
+            2302,
+            3207,
+            20,
+            0,
+            2680,
+            2161
+          ],
+          "after": [
+            2,
+            31,
+            2835,
+            2300,
+            3207,
+            20,
+            0,
+            2680,
+            2145
+          ]
+        },
+        {
+          "at": 1789567482299,
+          "bus": "309",
+          "stop": 27,
+          "occurrence": 0,
+          "maxDeltaSec": 16,
+          "etaDeltaSec": 16,
+          "before": [
+            0,
+            27,
+            3179,
+            2729,
+            3636,
+            26,
+            0,
+            3179,
+            2729
+          ],
+          "after": [
+            0,
+            27,
+            3195,
+            2729,
+            3636,
+            26,
+            0,
+            3195,
+            2729
+          ]
+        },
+        {
+          "at": 1789567457325,
+          "bus": "309",
+          "stop": 45,
+          "occurrence": 1,
+          "maxDeltaSec": 15,
+          "etaDeltaSec": 15,
+          "before": [
+            0,
+            45,
+            5855,
+            5019,
+            6373,
+            44,
+            0,
+            5855,
+            5019
+          ],
+          "after": [
+            0,
+            45,
+            5870,
+            5019,
+            6373,
+            44,
+            0,
+            5870,
+            5019
+          ]
+        },
+        {
+          "at": 1789567542315,
+          "bus": "308",
+          "stop": 31,
+          "occurrence": 0,
+          "maxDeltaSec": 15,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            31,
+            541,
+            345,
+            790,
+            5,
+            0,
+            541,
+            345
+          ],
+          "after": [
+            1,
+            31,
+            541,
+            330,
+            790,
+            5,
+            0,
+            541,
+            330
+          ]
+        },
+        {
+          "at": 1789567537341,
+          "bus": "308",
+          "stop": 104,
+          "occurrence": 1,
+          "maxDeltaSec": 13,
+          "etaDeltaSec": 13,
+          "before": [
+            0,
+            104,
+            5776,
+            5011,
+            6412,
+            47,
+            0,
+            5776,
+            5011
+          ],
+          "after": [
+            0,
+            104,
+            5789,
+            5011,
+            6412,
+            47,
+            0,
+            5789,
+            5011
+          ]
+        }
+      ],
+      "changedDistributionRows": 5195,
+      "maxQuantileDeltaSec": 0
+    },
+    {
+      "a": "canonical-warm",
+      "b": "canonical-cold",
+      "frames": 78,
+      "changedCompleteWires": 0,
+      "changedServedPositionFrames": 0,
+      "changedBeliefFrames": 0,
+      "maxPosteriorCellDifference": 0,
+      "pairedRows": 10592,
+      "changedRows": 0,
+      "availabilityDifferences": [],
+      "occurrences": {
+        "1": {
+          "paired": 3806,
+          "changed": 0,
+          "maxEtaDeltaSec": 0,
+          "maxBoundOrAuxDeltaSec": 0
+        },
+        "0": {
+          "paired": 6786,
+          "changed": 0,
+          "maxEtaDeltaSec": 0,
+          "maxBoundOrAuxDeltaSec": 0
+        }
+      },
+      "worst": [],
+      "changedDistributionRows": 0,
+      "maxQuantileDeltaSec": 0
+    },
+    {
+      "a": "current-warm",
+      "b": "canonical-warm",
+      "frames": 78,
+      "changedCompleteWires": 78,
+      "changedServedPositionFrames": 0,
+      "changedBeliefFrames": 78,
+      "maxPosteriorCellDifference": 0.02968307871645376,
+      "pairedRows": 10592,
+      "changedRows": 1373,
+      "availabilityDifferences": [],
+      "occurrences": {
+        "1": {
+          "paired": 3806,
+          "changed": 456,
+          "maxEtaDeltaSec": 21,
+          "maxBoundOrAuxDeltaSec": 3430
+        },
+        "0": {
+          "paired": 6786,
+          "changed": 917,
+          "maxEtaDeltaSec": 18,
+          "maxBoundOrAuxDeltaSec": 3751
+        }
+      },
+      "worst": [
+        {
+          "at": 1789567542315,
+          "bus": "308",
+          "stop": 115,
+          "occurrence": 0,
+          "maxDeltaSec": 3751,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            115,
+            5,
+            4,
+            8,
+            1,
+            0,
+            5,
+            4
+          ],
+          "after": [
+            1,
+            115,
+            5,
+            4,
+            3759,
+            1,
+            0,
+            5,
+            4
+          ]
+        },
+        {
+          "at": 1789567542315,
+          "bus": "308",
+          "stop": 115,
+          "occurrence": 1,
+          "maxDeltaSec": 3430,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            115,
+            3759,
+            3231,
+            4059,
+            30,
+            0,
+            3759,
+            3231
+          ],
+          "after": [
+            1,
+            115,
+            3759,
+            3231,
+            7489,
+            30,
+            0,
+            3759,
+            3231
+          ]
+        },
+        {
+          "at": 1789567302279,
+          "bus": "309",
+          "stop": 13,
+          "occurrence": 1,
+          "maxDeltaSec": 43,
+          "etaDeltaSec": 0,
+          "before": [
+            2,
+            13,
+            5213,
+            4597,
+            5759,
+            42,
+            0,
+            5025,
+            4441
+          ],
+          "after": [
+            2,
+            13,
+            5213,
+            4590,
+            5759,
+            42,
+            0,
+            5023,
+            4398
+          ]
+        },
+        {
+          "at": 1789567302279,
+          "bus": "309",
+          "stop": 14,
+          "occurrence": 1,
+          "maxDeltaSec": 43,
+          "etaDeltaSec": 0,
+          "before": [
+            2,
+            14,
+            5247,
+            4631,
+            5777,
+            43,
+            0,
+            5058,
+            4478
+          ],
+          "after": [
+            2,
+            14,
+            5247,
+            4625,
+            5777,
+            43,
+            0,
+            5058,
+            4435
+          ]
+        },
+        {
+          "at": 1789567302279,
+          "bus": "309",
+          "stop": 121,
+          "occurrence": 1,
+          "maxDeltaSec": 24,
+          "etaDeltaSec": 0,
+          "before": [
+            2,
+            121,
+            5419,
+            4804,
+            5964,
+            44,
+            0,
+            5228,
+            4652
+          ],
+          "after": [
+            2,
+            121,
+            5419,
+            4800,
+            5963,
+            44,
+            0,
+            5227,
+            4628
+          ]
+        },
+        {
+          "at": 1789567417329,
+          "bus": "309",
+          "stop": 146,
+          "occurrence": 1,
+          "maxDeltaSec": 21,
+          "etaDeltaSec": 21,
+          "before": [
+            1,
+            146,
+            4163,
+            3442,
+            7992,
+            29,
+            0,
+            3806,
+            3240
+          ],
+          "after": [
+            1,
+            146,
+            4184,
+            3442,
+            8000,
+            29,
+            0,
+            3806,
+            3240
+          ]
+        },
+        {
+          "at": 1789567542315,
+          "bus": "308",
+          "stop": 121,
+          "occurrence": 0,
+          "maxDeltaSec": 20,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            121,
+            3121,
+            2727,
+            3546,
+            29,
+            0,
+            3121,
+            2727
+          ],
+          "after": [
+            1,
+            121,
+            3121,
+            2707,
+            3546,
+            29,
+            0,
+            3121,
+            2707
+          ]
+        },
+        {
+          "at": 1789567477312,
+          "bus": "309",
+          "stop": 45,
+          "occurrence": 1,
+          "maxDeltaSec": 19,
+          "etaDeltaSec": 19,
+          "before": [
+            0,
+            45,
+            5834,
+            5002,
+            6352,
+            44,
+            0,
+            5834,
+            5002
+          ],
+          "after": [
+            0,
+            45,
+            5853,
+            5002,
+            6352,
+            44,
+            0,
+            5853,
+            5002
+          ]
+        },
+        {
+          "at": 1789567232396,
+          "bus": "316",
+          "stop": 14,
+          "occurrence": 0,
+          "maxDeltaSec": 18,
+          "etaDeltaSec": 18,
+          "before": [
+            2,
+            14,
+            3811,
+            3221,
+            4310,
+            29,
+            0,
+            3811,
+            3221
+          ],
+          "after": [
+            2,
+            14,
+            3829,
+            3221,
+            4310,
+            29,
+            0,
+            3829,
+            3221
+          ]
+        },
+        {
+          "at": 1789567282457,
+          "bus": "316",
+          "stop": 31,
+          "occurrence": 1,
+          "maxDeltaSec": 18,
+          "etaDeltaSec": 18,
+          "before": [
+            2,
+            31,
+            5064,
+            4255,
+            5601,
+            35,
+            0,
+            5064,
+            4255
+          ],
+          "after": [
+            2,
+            31,
+            5082,
+            4255,
+            5601,
+            35,
+            0,
+            5082,
+            4255
+          ]
+        },
+        {
+          "at": 1789567477312,
+          "bus": "309",
+          "stop": 27,
+          "occurrence": 0,
+          "maxDeltaSec": 17,
+          "etaDeltaSec": 17,
+          "before": [
+            0,
+            27,
+            3182,
+            2732,
+            3641,
+            26,
+            0,
+            3182,
+            2732
+          ],
+          "after": [
+            0,
+            27,
+            3199,
+            2732,
+            3641,
+            26,
+            0,
+            3199,
+            2732
+          ]
+        },
+        {
+          "at": 1789567487296,
+          "bus": "309",
+          "stop": 45,
+          "occurrence": 1,
+          "maxDeltaSec": 17,
+          "etaDeltaSec": 17,
+          "before": [
+            0,
+            45,
+            5827,
+            4971,
+            6350,
+            44,
+            0,
+            5827,
+            4971
+          ],
+          "after": [
+            0,
+            45,
+            5844,
+            4971,
+            6350,
+            44,
+            0,
+            5844,
+            4971
+          ]
+        },
+        {
+          "at": 1789567302279,
+          "bus": "309",
+          "stop": 31,
+          "occurrence": 0,
+          "maxDeltaSec": 16,
+          "etaDeltaSec": 0,
+          "before": [
+            2,
+            31,
+            2835,
+            2302,
+            3207,
+            20,
+            0,
+            2680,
+            2161
+          ],
+          "after": [
+            2,
+            31,
+            2835,
+            2300,
+            3207,
+            20,
+            0,
+            2680,
+            2145
+          ]
+        },
+        {
+          "at": 1789567322346,
+          "bus": "309",
+          "stop": 146,
+          "occurrence": 1,
+          "maxDeltaSec": 15,
+          "etaDeltaSec": -1,
+          "before": [
+            2,
+            146,
+            4029,
+            3437,
+            4494,
+            30,
+            0,
+            3944,
+            3359
+          ],
+          "after": [
+            2,
+            146,
+            4028,
+            3435,
+            4493,
+            30,
+            0,
+            3944,
+            3344
+          ]
+        },
+        {
+          "at": 1789567487296,
+          "bus": "309",
+          "stop": 27,
+          "occurrence": 0,
+          "maxDeltaSec": 15,
+          "etaDeltaSec": 15,
+          "before": [
+            0,
+            27,
+            3177,
+            2720,
+            3632,
+            26,
+            0,
+            3177,
+            2720
+          ],
+          "after": [
+            0,
+            27,
+            3192,
+            2720,
+            3632,
+            26,
+            0,
+            3192,
+            2720
+          ]
+        },
+        {
+          "at": 1789567542315,
+          "bus": "308",
+          "stop": 31,
+          "occurrence": 0,
+          "maxDeltaSec": 15,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            31,
+            541,
+            345,
+            790,
+            5,
+            0,
+            541,
+            345
+          ],
+          "after": [
+            1,
+            31,
+            541,
+            330,
+            790,
+            5,
+            0,
+            541,
+            330
+          ]
+        },
+        {
+          "at": 1789567302279,
+          "bus": "309",
+          "stop": 72,
+          "occurrence": 1,
+          "maxDeltaSec": 14,
+          "etaDeltaSec": -1,
+          "before": [
+            2,
+            72,
+            5055,
+            4447,
+            5572,
+            40,
+            0,
+            4873,
+            4259
+          ],
+          "after": [
+            2,
+            72,
+            5054,
+            4445,
+            5572,
+            40,
+            0,
+            4872,
+            4245
+          ]
+        },
+        {
+          "at": 1789567462470,
+          "bus": "309",
+          "stop": 45,
+          "occurrence": 1,
+          "maxDeltaSec": 14,
+          "etaDeltaSec": -14,
+          "before": [
+            0,
+            45,
+            5866,
+            5015,
+            6368,
+            44,
+            0,
+            5866,
+            5015
+          ],
+          "after": [
+            0,
+            45,
+            5852,
+            5015,
+            6368,
+            44,
+            0,
+            5852,
+            5015
+          ]
+        },
+        {
+          "at": 1789567517311,
+          "bus": "309",
+          "stop": 45,
+          "occurrence": 0,
+          "maxDeltaSec": 14,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            45,
+            2065,
+            1593,
+            2422,
+            14,
+            0,
+            2065,
+            1593
+          ],
+          "after": [
+            1,
+            45,
+            2065,
+            1607,
+            2422,
+            14,
+            0,
+            2065,
+            1607
+          ]
+        },
+        {
+          "at": 1789567517311,
+          "bus": "309",
+          "stop": 126,
+          "occurrence": 0,
+          "maxDeltaSec": 14,
+          "etaDeltaSec": 0,
+          "before": [
+            1,
+            126,
+            2646,
+            2160,
+            3039,
+            19,
+            0,
+            2646,
+            2160
+          ],
+          "after": [
+            1,
+            126,
+            2646,
+            2174,
+            3039,
+            19,
+            0,
+            2646,
+            2174
+          ]
+        }
+      ],
+      "changedDistributionRows": 3793,
+      "maxQuantileDeltaSec": 0
+    }
+  ],
+  "scope": "Current-code restart determinism diagnostic; no outcome error or ETA quality improvement established. Both occurrences retained; no production tracking change."
+}

@@ -1,0 +1,38 @@
+import fs from 'node:fs/promises';
+import {createRequire} from 'node:module';
+import assert from 'node:assert/strict';
+const service=process.cwd(), out=process.env.OUT;
+const {chromium}=createRequire(service+'/package.json')('playwright-core');
+const {seedTestId}=await import(service+'/scripts/testId.mjs');
+const entry=(id,toText,toLat,toLon)=>({id,toText,name:toText,toLat,toLon,fromText:'',fromLat:0,fromLon:0});
+const saved=[entry('s1','Sterling Memorial Library',41.3113,-72.9288),entry('s2','School of Management — Evans Hall classroom and library',41.315,-72.920)];
+const recent=[entry('r1','Union Station',41.2988,-72.925),entry('r2','Science Hill',41.320,-72.922)];
+const feed=JSON.parse(await fs.readFile(service+'/web/src/__fixtures__/buses-payload.json','utf8'));feed.buses=[];
+const report={errors:[],checks:[]};await fs.mkdir(out,{recursive:true});
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
+try{
+ const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});await seedTestId(ctx);
+ await ctx.addInitScript(({saved,recent})=>{localStorage.setItem('shuttle-saved-trips',JSON.stringify(saved));localStorage.setItem('shuttle-recent-trips',JSON.stringify(recent));localStorage.setItem('listView','trip');},{saved,recent});
+ const page=await ctx.newPage();page.on('pageerror',e=>report.errors.push(e.message));
+ await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.hostname!=='shuttle.test')return route.abort();if(u.pathname==='/api/buses')return route.fulfill({json:feed});if(u.pathname==='/api/weather')return route.fulfill({status:204});if(u.pathname.startsWith('/api/'))return route.fulfill({json:{results:[],reports:[],routes:[]}});const file=u.pathname==='/'?'/index.html':u.pathname;try{return route.fulfill({body:await fs.readFile(process.env.DIST_ROOT+file),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});}catch{return route.fulfill({status:404});}});
+ await page.goto('https://shuttle.test',{waitUntil:'domcontentloaded'});await page.getByText('Saved destinations',{exact:true}).waitFor();
+ report.saved=await page.getByText(saved[0].toText,{exact:true}).evaluate(e=>({tag:e.parentElement.tagName,tabIndex:e.parentElement.tabIndex,role:e.parentElement.getAttribute('role')}));
+ assert.equal(report.saved.tag,'DIV');assert.equal(report.saved.tabIndex,-1);
+ report.recent=await page.getByText('Union Station',{exact:true}).evaluate(e=>({tag:e.parentElement.parentElement.tagName,tabIndex:e.parentElement.parentElement.tabIndex}));
+ assert.equal(report.recent.tabIndex,-1);
+ await page.getByTitle('Rename or delete').focus();await page.keyboard.press('Enter');
+ const input=page.locator('input').filter({has:undefined});
+ const rename=page.locator('input').filter({visible:true});
+ const fields=page.locator('input').filter({hasNot:page.locator('[type=hidden]')});
+ const edit=page.locator('input').locator('xpath=..').filter({has:page.getByTitle('Delete this saved destination')}).first().locator('input');
+ await edit.fill('Uncommitted name');await edit.press('Escape');await page.getByTitle('Done editing').focus();
+ report.escapeSaved=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-saved-trips'))[0].toText);assert.equal(report.escapeSaved,'Uncommitted name');
+ const del=page.getByTitle('Delete this saved destination').first();await del.focus();await page.keyboard.press('Enter');
+ report.afterKeyboardDelete=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-saved-trips')).length);assert.equal(report.afterKeyboardDelete,2);
+ report.deleteBox=await del.boundingBox();report.inputFont=await edit.evaluate(e=>getComputedStyle(e).fontSize);
+ await page.screenshot({path:out+'/baseline-390.png'});
+ report.checks.push('Saved and recent destination selection absent from keyboard tab order','Enter on saved delete leaves both entries','Escape then blur incorrectly persists edited text');
+ assert.deepEqual(report.errors,[]);report.passed=true;
+ await page.close();await ctx.close();
+}finally{await browser.close();report.closed=true;await fs.writeFile(out+'/report.json',JSON.stringify(report,null,2));}
+console.log(JSON.stringify(report));

@@ -1,0 +1,46 @@
+{
+  "head": "a5966b1e87a9f4fbecf3888456fbd272f186fcb8",
+  "base": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "checkoutIndexUnchanged": true,
+  "trackedFilesPreserved": 910,
+  "builderFilesPreserved": 197,
+  "priorRecoveryUnchanged": true,
+  "mapScopeVerifiedAgainstExactBase": true,
+  "sourceBundleParity": {
+    "candidate": {
+      "mapLifecycle.ts": "15384ac96988307c70d4440d6802be0b0a7bb25e018a7e99d9fbf1abff853f91",
+      "TransitMap.tsx": "9416a432e78dd2002105f314b36c246fb13fba8b87409b464dd52b6598800314",
+      "CrashRecovery.tsx": "26436a5f436f845a237b5c8eb2fbd95b471aa8b717fe24392e84ee7a7750211f",
+      "main.tsx": "b4d73637dee16ed6819d6ed8ff3a5a6cdd052c6316bd8c0820cd33577929c6f4"
+    },
+    "frozen-entry": {
+      "TransitMap.tsx": "717f6e90c42f2db26e81d400ba9fd01f7a28ee78098c3f14132558ccf27dcbec",
+      "CrashRecovery.tsx": "26436a5f436f845a237b5c8eb2fbd95b471aa8b717fe24392e84ee7a7750211f",
+      "main.tsx": "b4d73637dee16ed6819d6ed8ff3a5a6cdd052c6316bd8c0820cd33577929c6f4"
+    },
+    "frozen-base": {
+      "TransitMap.tsx": "e2e535591ac4e643ae385a5a0a5c613b2d0f08a64a103537468c9d9b820ad9b2",
+      "main.tsx": "c7ecfcf001ac0da4b9b6854cd55cc8a8262965da643bba33ad2b0381800515ce"
+    }
+  },
+  "passingBrowserReports": [
+    "verified/touch/map-touch-teardown.json",
+    "verified/reviewer-manual/interrupt-pinch.json",
+    "verified/reviewer-expiry/interrupt-pinch.json",
+    "verified/mobile/map-lifecycle.json",
+    "verified/desktop/map-lifecycle.json",
+    "verified/original-repro/map-stress.json",
+    "verified/feed/empty-service.json",
+    "verified/fullscreen/after-browser.json",
+    "recovery-mobile/crash-recovery.json",
+    "recovery-desktop/crash-recovery.json",
+    "recovery-real-trip/lifecycle.json",
+    "offline/offline-shell.json",
+    "isolation-corrected/isolation.json"
+  ],
+  "heldGestureCases": 8,
+  "screenshots": {
+    "count": 391,
+    "bytes": 17950262
+  }
+}

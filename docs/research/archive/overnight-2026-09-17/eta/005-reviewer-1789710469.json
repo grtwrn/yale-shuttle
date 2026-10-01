@@ -1,0 +1,35 @@
+{
+  "verdict": "research_only",
+  "summary": "Confirmed the prototype restores 30 journeys without changing bus choices or rankings. The 443-second regression remains documented. The supplied smoothing diff exactly matches the prior approved repair. Review saved in independent-review-round-6.md; checkout unchanged.",
+  "head_sha": "77c32b80256215eb36516e7bb68c9d7664c7697e",
+  "base_sha": "8de0eed1c6a869606272824fd3dcac753ce32836",
+  "next_task": "Controller: complete publication gates for the existing smoothing repair separately. Coordinate the ordered-pickup join with UX, adding application tests for repeated stops, nonzero walking and class-deadline availability. Keep the remaining 38 cases and cache determinism separate.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-6/verify.sh",
+      "exit_code": 0,
+      "result": "163 tests, both typechecks, application/prototype builds, 4,688 exact baseline decisions and 210 browser comparisons passed; zero page errors."
+    },
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-6/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Verified source provenance, all 68 missing cases, 1,400 connected outcomes, exact restored distributions, retained regression and unchanged builder artifacts."
+    },
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-6/score_counterfactual.py",
+      "exit_code": 0,
+      "result": "Reproduced scoring artifacts exactly. Selected-case MAE improved 880.88→396.87 seconds; six source means improved and two worsened."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash -c 'set -eu; npm test -- src/server/serverEta.release.test.ts; ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-6/join-boundaries.mts'",
+      "exit_code": 0,
+      "result": "Recorded release/both-occurrence/warm-checkpoint test and 18 independent join-boundary assertions passed."
+    },
+    {
+      "command": "git diff --check 8de0eed1c6a869606272824fd3dcac753ce32836 HEAD && git diff --exit-code && git diff --cached --exit-code && git status --porcelain && git rev-parse HEAD && git merge-base 8de0eed1c6a869606272824fd3dcac753ce32836 HEAD",
+      "exit_code": 0,
+      "result": "Exact head/base verified; worktree and index clean."
+    }
+  ]
+}

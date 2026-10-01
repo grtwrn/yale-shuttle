@@ -1,0 +1,2542 @@
+[
+  {
+    "session": "57454:48:0",
+    "sourceId": 57454,
+    "at": 1789561846275,
+    "target": 48,
+    "beforeRecordedDeparture": false,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789564462877.jsonl",
+        "line": 773,
+        "receiptAt": 1789561853461,
+        "sampledAt": 1789561858321,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1744,
+              "121": 3460
+            },
+            "reconstructed": {
+              "11": 1742,
+              "121": 3458
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": true,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "57454:4:0",
+    "sourceId": 57454,
+    "at": 1789561846275,
+    "target": 3,
+    "beforeRecordedDeparture": false,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789564462877.jsonl",
+        "line": 773,
+        "receiptAt": 1789561853461,
+        "sampledAt": 1789561858321,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1744,
+              "121": 3460
+            },
+            "reconstructed": {
+              "11": 1742,
+              "121": 3458
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": true,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "57454:48:0",
+    "sourceId": 57454,
+    "at": 1789561851214,
+    "target": 48,
+    "beforeRecordedDeparture": false,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 322,
+        "receiptAt": 1789561860885,
+        "sampledAt": 1789561865579,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1752,
+              "121": 3468
+            },
+            "reconstructed": {
+              "11": 1747,
+              "121": 3463
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": true,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 5
+  },
+  {
+    "session": "57454:4:0",
+    "sourceId": 57454,
+    "at": 1789561851214,
+    "target": 3,
+    "beforeRecordedDeparture": false,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 322,
+        "receiptAt": 1789561860885,
+        "sampledAt": 1789561865579,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1752,
+              "121": 3468
+            },
+            "reconstructed": {
+              "11": 1747,
+              "121": 3463
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": true,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 5
+  },
+  {
+    "session": "57990:48:0",
+    "sourceId": 57990,
+    "at": 1789565852194,
+    "target": 48,
+    "beforeRecordedDeparture": false,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 140,
+        "receiptAt": 1789565858348,
+        "sampledAt": 1789565863122,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1406,
+              "121": 3942
+            },
+            "reconstructed": {
+              "11": 1405,
+              "121": 3941
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 715,
+        "receiptAt": 1789565858271,
+        "sampledAt": 1789565863123,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1406,
+              "121": 3942
+            },
+            "reconstructed": {
+              "11": 1405,
+              "121": 3941
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": true,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "57990:4:0",
+    "sourceId": 57990,
+    "at": 1789565852194,
+    "target": 3,
+    "beforeRecordedDeparture": false,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 140,
+        "receiptAt": 1789565858348,
+        "sampledAt": 1789565863122,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1406,
+              "121": 3942
+            },
+            "reconstructed": {
+              "11": 1405,
+              "121": 3941
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 715,
+        "receiptAt": 1789565858271,
+        "sampledAt": 1789565863123,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1406,
+              "121": 3942
+            },
+            "reconstructed": {
+              "11": 1405,
+              "121": 3941
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": true,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "57990:48:0",
+    "sourceId": 57990,
+    "at": 1789565857144,
+    "target": 48,
+    "beforeRecordedDeparture": false,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 4
+  },
+  {
+    "session": "57990:4:0",
+    "sourceId": 57990,
+    "at": 1789565857144,
+    "target": 3,
+    "beforeRecordedDeparture": false,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 4
+  },
+  {
+    "session": "58224:48:0",
+    "sourceId": 58224,
+    "at": 1789567302279,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 284,
+        "receiptAt": 1789567308673,
+        "sampledAt": 1789567313374,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2855,
+              "121": 1401
+            },
+            "reconstructed": {
+              "11": 2855,
+              "121": 1400
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 858,
+        "receiptAt": 1789567308566,
+        "sampledAt": 1789567313374,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2855,
+              "121": 1401
+            },
+            "reconstructed": {
+              "11": 2855,
+              "121": 1400
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 285,
+        "receiptAt": 1789567318675,
+        "sampledAt": 1789567323375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2866,
+              "121": 1411
+            },
+            "reconstructed": {
+              "11": 2855,
+              "121": 1400
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 859,
+        "receiptAt": 1789567318567,
+        "sampledAt": 1789567323375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2866,
+              "121": 1411
+            },
+            "reconstructed": {
+              "11": 2855,
+              "121": 1400
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58224:4:0",
+    "sourceId": 58224,
+    "at": 1789567302279,
+    "target": 4,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 284,
+        "receiptAt": 1789567308673,
+        "sampledAt": 1789567313374,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2855,
+              "121": 1401
+            },
+            "reconstructed": {
+              "11": 2855,
+              "121": 1400
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 858,
+        "receiptAt": 1789567308566,
+        "sampledAt": 1789567313374,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2855,
+              "121": 1401
+            },
+            "reconstructed": {
+              "11": 2855,
+              "121": 1400
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 285,
+        "receiptAt": 1789567318675,
+        "sampledAt": 1789567323375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2866,
+              "121": 1411
+            },
+            "reconstructed": {
+              "11": 2855,
+              "121": 1400
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 859,
+        "receiptAt": 1789567318567,
+        "sampledAt": 1789567323375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2866,
+              "121": 1411
+            },
+            "reconstructed": {
+              "11": 2855,
+              "121": 1400
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58224:48:0",
+    "sourceId": 58224,
+    "at": 1789567307286,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 284,
+        "receiptAt": 1789567308673,
+        "sampledAt": 1789567313374,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2855,
+              "121": 1401
+            },
+            "reconstructed": {
+              "11": 2860,
+              "121": 1405
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 858,
+        "receiptAt": 1789567308566,
+        "sampledAt": 1789567313374,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2855,
+              "121": 1401
+            },
+            "reconstructed": {
+              "11": 2860,
+              "121": 1405
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 285,
+        "receiptAt": 1789567318675,
+        "sampledAt": 1789567323375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2866,
+              "121": 1411
+            },
+            "reconstructed": {
+              "11": 2860,
+              "121": 1405
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 859,
+        "receiptAt": 1789567318567,
+        "sampledAt": 1789567323375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2866,
+              "121": 1411
+            },
+            "reconstructed": {
+              "11": 2860,
+              "121": 1405
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58224:4:0",
+    "sourceId": 58224,
+    "at": 1789567307286,
+    "target": 4,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 284,
+        "receiptAt": 1789567308673,
+        "sampledAt": 1789567313374,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2855,
+              "121": 1401
+            },
+            "reconstructed": {
+              "11": 2860,
+              "121": 1405
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 858,
+        "receiptAt": 1789567308566,
+        "sampledAt": 1789567313374,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2855,
+              "121": 1401
+            },
+            "reconstructed": {
+              "11": 2860,
+              "121": 1405
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 285,
+        "receiptAt": 1789567318675,
+        "sampledAt": 1789567323375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2866,
+              "121": 1411
+            },
+            "reconstructed": {
+              "11": 2860,
+              "121": 1405
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 859,
+        "receiptAt": 1789567318567,
+        "sampledAt": 1789567323375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2866,
+              "121": 1411
+            },
+            "reconstructed": {
+              "11": 2860,
+              "121": 1405
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58224:48:0",
+    "sourceId": 58224,
+    "at": 1789567322346,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 286,
+        "receiptAt": 1789567328626,
+        "sampledAt": 1789567333375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2876,
+              "121": 1421
+            },
+            "reconstructed": {
+              "11": 2875,
+              "121": 1420
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 860,
+        "receiptAt": 1789567328567,
+        "sampledAt": 1789567333376,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2876,
+              "121": 1421
+            },
+            "reconstructed": {
+              "11": 2875,
+              "121": 1420
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": true,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58224:4:0",
+    "sourceId": 58224,
+    "at": 1789567322346,
+    "target": 4,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 286,
+        "receiptAt": 1789567328626,
+        "sampledAt": 1789567333375,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2876,
+              "121": 1421
+            },
+            "reconstructed": {
+              "11": 2875,
+              "121": 1420
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+        "line": 860,
+        "receiptAt": 1789567328567,
+        "sampledAt": 1789567333376,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 1,
+        "atStopId": 11,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 2876,
+              "121": 1421
+            },
+            "reconstructed": {
+              "11": 2875,
+              "121": 1420
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": true,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:48:0",
+    "sourceId": 58510,
+    "at": 1789569243344,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 476,
+        "receiptAt": 1789569249088,
+        "sampledAt": 1789569253737,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1832,
+              "121": 3342
+            },
+            "reconstructed": {
+              "11": 1831,
+              "121": 3341
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 88,
+        "receiptAt": 1789569248972,
+        "sampledAt": 1789569253738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1832,
+              "121": 3342
+            },
+            "reconstructed": {
+              "11": 1831,
+              "121": 3341
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:4:0",
+    "sourceId": 58510,
+    "at": 1789569243344,
+    "target": 3,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 476,
+        "receiptAt": 1789569249088,
+        "sampledAt": 1789569253737,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1832,
+              "121": 3342
+            },
+            "reconstructed": {
+              "11": 1831,
+              "121": 3341
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 88,
+        "receiptAt": 1789569248972,
+        "sampledAt": 1789569253738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1832,
+              "121": 3342
+            },
+            "reconstructed": {
+              "11": 1831,
+              "121": 3341
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:48:0",
+    "sourceId": 58510,
+    "at": 1789569248325,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 476,
+        "receiptAt": 1789569249088,
+        "sampledAt": 1789569253737,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1832,
+              "121": 3342
+            },
+            "reconstructed": {
+              "11": 1836,
+              "121": 3346
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 88,
+        "receiptAt": 1789569248972,
+        "sampledAt": 1789569253738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1832,
+              "121": 3342
+            },
+            "reconstructed": {
+              "11": 1836,
+              "121": 3346
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:4:0",
+    "sourceId": 58510,
+    "at": 1789569248325,
+    "target": 3,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 476,
+        "receiptAt": 1789569249088,
+        "sampledAt": 1789569253737,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1832,
+              "121": 3342
+            },
+            "reconstructed": {
+              "11": 1836,
+              "121": 3346
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 88,
+        "receiptAt": 1789569248972,
+        "sampledAt": 1789569253738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1832,
+              "121": 3342
+            },
+            "reconstructed": {
+              "11": 1836,
+              "121": 3346
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:48:0",
+    "sourceId": 58510,
+    "at": 1789569253320,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 477,
+        "receiptAt": 1789569259039,
+        "sampledAt": 1789569263738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1842,
+              "121": 3352
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 89,
+        "receiptAt": 1789569258972,
+        "sampledAt": 1789569263738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1842,
+              "121": 3352
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 478,
+        "receiptAt": 1789569269025,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 90,
+        "receiptAt": 1789569268973,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 479,
+        "receiptAt": 1789569279037,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 91,
+        "receiptAt": 1789569278988,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 480,
+        "receiptAt": 1789569289044,
+        "sampledAt": 1789569293748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 92,
+        "receiptAt": 1789569288979,
+        "sampledAt": 1789569293749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 481,
+        "receiptAt": 1789569299424,
+        "sampledAt": 1789569303748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 93,
+        "receiptAt": 1789569299088,
+        "sampledAt": 1789569303749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:4:0",
+    "sourceId": 58510,
+    "at": 1789569253320,
+    "target": 3,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 477,
+        "receiptAt": 1789569259039,
+        "sampledAt": 1789569263738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1842,
+              "121": 3352
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 89,
+        "receiptAt": 1789569258972,
+        "sampledAt": 1789569263738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1842,
+              "121": 3352
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 478,
+        "receiptAt": 1789569269025,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 90,
+        "receiptAt": 1789569268973,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 479,
+        "receiptAt": 1789569279037,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 91,
+        "receiptAt": 1789569278988,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 480,
+        "receiptAt": 1789569289044,
+        "sampledAt": 1789569293748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 92,
+        "receiptAt": 1789569288979,
+        "sampledAt": 1789569293749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 481,
+        "receiptAt": 1789569299424,
+        "sampledAt": 1789569303748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 93,
+        "receiptAt": 1789569299088,
+        "sampledAt": 1789569303749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1841,
+              "121": 3351
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:48:0",
+    "sourceId": 58510,
+    "at": 1789569258324,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 477,
+        "receiptAt": 1789569259039,
+        "sampledAt": 1789569263738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1842,
+              "121": 3352
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 89,
+        "receiptAt": 1789569258972,
+        "sampledAt": 1789569263738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1842,
+              "121": 3352
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 478,
+        "receiptAt": 1789569269025,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 90,
+        "receiptAt": 1789569268973,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 479,
+        "receiptAt": 1789569279037,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 91,
+        "receiptAt": 1789569278988,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 480,
+        "receiptAt": 1789569289044,
+        "sampledAt": 1789569293748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 92,
+        "receiptAt": 1789569288979,
+        "sampledAt": 1789569293749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 481,
+        "receiptAt": 1789569299424,
+        "sampledAt": 1789569303748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 93,
+        "receiptAt": 1789569299088,
+        "sampledAt": 1789569303749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:4:0",
+    "sourceId": 58510,
+    "at": 1789569258324,
+    "target": 3,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 477,
+        "receiptAt": 1789569259039,
+        "sampledAt": 1789569263738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1842,
+              "121": 3352
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 89,
+        "receiptAt": 1789569258972,
+        "sampledAt": 1789569263738,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 2,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1842,
+              "121": 3352
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 478,
+        "receiptAt": 1789569269025,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 90,
+        "receiptAt": 1789569268973,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 479,
+        "receiptAt": 1789569279037,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 91,
+        "receiptAt": 1789569278988,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 480,
+        "receiptAt": 1789569289044,
+        "sampledAt": 1789569293748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 92,
+        "receiptAt": 1789569288979,
+        "sampledAt": 1789569293749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 481,
+        "receiptAt": 1789569299424,
+        "sampledAt": 1789569303748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 93,
+        "receiptAt": 1789569299088,
+        "sampledAt": 1789569303749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1846,
+              "121": 3356
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:48:0",
+    "sourceId": 58510,
+    "at": 1789569263355,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 478,
+        "receiptAt": 1789569269025,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 90,
+        "receiptAt": 1789569268973,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 479,
+        "receiptAt": 1789569279037,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 91,
+        "receiptAt": 1789569278988,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 480,
+        "receiptAt": 1789569289044,
+        "sampledAt": 1789569293748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 92,
+        "receiptAt": 1789569288979,
+        "sampledAt": 1789569293749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 481,
+        "receiptAt": 1789569299424,
+        "sampledAt": 1789569303748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 93,
+        "receiptAt": 1789569299088,
+        "sampledAt": 1789569303749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "58510:4:0",
+    "sourceId": 58510,
+    "at": 1789569263355,
+    "target": 3,
+    "beforeRecordedDeparture": true,
+    "supports": [
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 478,
+        "receiptAt": 1789569269025,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 90,
+        "receiptAt": 1789569268973,
+        "sampledAt": 1789569273746,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 4,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1852,
+              "121": 3362
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 479,
+        "receiptAt": 1789569279037,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 91,
+        "receiptAt": 1789569278988,
+        "sampledAt": 1789569283747,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 6,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1862,
+              "121": 3372
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 480,
+        "receiptAt": 1789569289044,
+        "sampledAt": 1789569293748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 92,
+        "receiptAt": 1789569288979,
+        "sampledAt": 1789569293749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 8,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1872,
+              "121": 3382
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+        "line": 481,
+        "receiptAt": 1789569299424,
+        "sampledAt": 1789569303748,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      },
+      {
+        "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+        "line": 93,
+        "receiptAt": 1789569299088,
+        "sampledAt": 1789569303749,
+        "matchMethod": "position-and-movement-clock",
+        "candidateCount": 9,
+        "atStopId": 121,
+        "stationary": true,
+        "differences": {
+          "lap": {
+            "sample": {
+              "11": 1882,
+              "121": 3392
+            },
+            "reconstructed": {
+              "11": 1851,
+              "121": 3361
+            }
+          }
+        }
+      }
+    ],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": true,
+    "nearbySamples": 6,
+    "nearbyAtSource": 6
+  },
+  {
+    "session": "60836:48:0",
+    "sourceId": 60836,
+    "at": 1789587929284,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "60836:4:0",
+    "sourceId": 60836,
+    "at": 1789587929284,
+    "target": 4,
+    "beforeRecordedDeparture": true,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "61538:48:0",
+    "sourceId": 61538,
+    "at": 1789593309876,
+    "target": 48,
+    "beforeRecordedDeparture": false,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "61538:4:0",
+    "sourceId": 61538,
+    "at": 1789593309876,
+    "target": 3,
+    "beforeRecordedDeparture": false,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "61538:48:0",
+    "sourceId": 61538,
+    "at": 1789593314830,
+    "target": 48,
+    "beforeRecordedDeparture": false,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "61538:4:0",
+    "sourceId": 61538,
+    "at": 1789593314830,
+    "target": 3,
+    "beforeRecordedDeparture": false,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "61907:48:0",
+    "sourceId": 61907,
+    "at": 1789596100109,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "61907:4:0",
+    "sourceId": 61907,
+    "at": 1789596100109,
+    "target": 4,
+    "beforeRecordedDeparture": true,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "61907:48:0",
+    "sourceId": 61907,
+    "at": 1789596105122,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "61907:4:0",
+    "sourceId": 61907,
+    "at": 1789596105122,
+    "target": 4,
+    "beforeRecordedDeparture": true,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "63523:48:0",
+    "sourceId": 63523,
+    "at": 1789644111334,
+    "target": 48,
+    "beforeRecordedDeparture": false,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "63523:4:0",
+    "sourceId": 63523,
+    "at": 1789644111334,
+    "target": 3,
+    "beforeRecordedDeparture": false,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 0,
+    "nearbyAtSource": 0
+  },
+  {
+    "session": "65347:48:0",
+    "sourceId": 65347,
+    "at": 1789657097847,
+    "target": 48,
+    "beforeRecordedDeparture": true,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 4
+  },
+  {
+    "session": "65347:4:0",
+    "sourceId": 65347,
+    "at": 1789657097847,
+    "target": 4,
+    "beforeRecordedDeparture": true,
+    "supports": [],
+    "exactObservedAt": false,
+    "uniqueCompatible": false,
+    "ambiguousOnly": false,
+    "nearbySamples": 6,
+    "nearbyAtSource": 4
+  }
+]

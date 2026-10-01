@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { ROUTE_LISTS } from "./routes";
 
@@ -41,111 +41,46 @@ export function YaleTrackerPreview({
   color: string;
 }) {
   const [open, setOpen] = useState(false);
+  const frameId = useId();
   const url = trackerUrl(routeLabel);
-  // A route we cannot map to an upstream id has nothing to open.
   if (!url) return null;
 
-  if (!open) {
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(true);
-        }}
-        title={`Open the official Yale tracker for ${routeLabel}`}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 14px",
-          marginTop: 8,
-          borderRadius: 8,
-          minHeight: 44,
-          fontSize: 14,
-          fontWeight: 600,
-          fontFamily: "inherit",
-          border: `1px solid ${color}`,
-          background: "#fff",
-          color,
-          cursor: "pointer",
-        }}
-      >
-        <span>📱 Yale tracker</span>
-        <span style={{ fontSize: 16, lineHeight: 1 }}>▾</span>
-      </button>
-    );
-  }
-
   return (
-    <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
-      {/* The whole bar collapses, so the rider does not have to hunt for a
-          small ✕. "Open ↗" stops propagation so it opens instead of closing. */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(false);
-        }}
-        title="Hide preview"
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          padding: "10px 14px",
-          borderRadius: "8px 8px 0 0",
-          border: `1px solid ${color}`,
-          borderBottom: "none",
-          background: color,
-          color: "#fff",
-          fontSize: 14,
-          fontWeight: 600,
-          minHeight: 44,
-          fontFamily: "inherit",
-          cursor: "pointer",
-        }}
-      >
-        <span>📱 Yale tracker — {routeLabel}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 20 }}>
+    <div className={open ? "trip-tracker-open" : undefined} onClick={(e) => e.stopPropagation()}>
+      <div style={open ? { display: "flex", alignItems: "center", gap: 8 } : undefined}>
+        <button
+          className="trip-action-button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-controls={frameId}
+          title={open ? "Hide preview" : `Open the official Yale tracker for ${routeLabel}`}
+          style={open ? { flex: 1, color, borderColor: color } : undefined}
+        >
+          <span>📱 Yale tracker{open ? ` — ${routeLabel}` : ""}</span>
+          <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+        </button>
+        {open && (
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
             title="Open in a new tab"
-            style={{
-              fontSize: 13,
-              color: "#fff",
-              textDecoration: "underline",
-              fontWeight: 500,
-              minHeight: 44,
-              display: "inline-flex",
-              alignItems: "center",
-            }}
-          >
-            open ↗
-          </a>
-          <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 1 }}>
-            ✕
-          </span>
-        </span>
-      </button>
-      <iframe
-        src={url}
-        title={`Official Yale tracker for ${routeLabel}`}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        style={{
-          display: "block",
-          width: "100%",
-          height: 360,
-          border: `1px solid ${color}`,
-          borderTop: "none",
-          borderRadius: "0 0 8px 8px",
-          background: "#fff",
-        }}
-      />
+            style={{ minHeight: 44, display: "inline-flex", alignItems: "center",
+              padding: "0 8px", fontSize: 13, color: "#1a73e8", whiteSpace: "nowrap" }}
+          >Open ↗</a>
+        )}
+      </div>
+      {open && (
+        <iframe
+          id={frameId}
+          src={url}
+          title={`Official Yale tracker for ${routeLabel}`}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          style={{ display: "block", boxSizing: "border-box", width: "100%", height: 360,
+            marginTop: 8, border: `1px solid ${color}`, borderRadius: 8, background: "#fff" }}
+        />
+      )}
     </div>
   );
 }

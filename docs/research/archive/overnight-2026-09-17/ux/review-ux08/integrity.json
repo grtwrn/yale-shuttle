@@ -1,0 +1,29 @@
+{
+  "head": "48651d63165bc4cddd7160a73fa6933583ecb856",
+  "base": "7e29064475315c2d621b77cdca130c05737d1ab8",
+  "cleanHeadIndexCheckout": true,
+  "exactTwoFileDiff": true,
+  "builderSourceHashesMatch": true,
+  "bundleSourceMatch": true,
+  "plannerMapCardEstimatorAlertEngineRideUnchanged": true,
+  "unchangedModules": [
+    "web/src/stopAlerts.ts",
+    "web/src/leaveAlert.ts",
+    "web/src/planner.ts",
+    "web/src/arrivals.ts",
+    "web/src/etaSource.ts",
+    "web/src/liveUpdates.ts",
+    "web/src/journeyArrival.ts",
+    "web/src/mapFilter.ts",
+    "web/src/schedule.ts",
+    "src/server/serverEta.ts",
+    "Dockerfile"
+  ],
+  "sourceSha256": {
+    "services/shuttle-v2/scripts/stop-alert-controls-check.mjs": "ff309df1a5dab87b890ae88e2b0f6abc932007be3bb012be5fd3eec4937a353a",
+    "services/shuttle-v2/web/src/TransitMap.tsx": "3c2ac6fefcb8b6e57e0c8aff7df42820907b1a0b38a76b34f289ded1749a1974"
+  },
+  "priorEvidencePreserved": 44,
+  "images": 215,
+  "imageBytes": 9445149
+}

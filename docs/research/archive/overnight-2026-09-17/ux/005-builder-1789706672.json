@@ -1,0 +1,11 @@
+{
+  "outcome": "candidate",
+  "summary": "Keep minimap times attributable to routes and buses\nDisambiguated shared route initials, added bus numbers to compact waits, and named keyboard-accessible markers. Tested proposal and evidence saved in ux/ux-05/REPORT.md. HEAD and index preserved.",
+  "next_task": "Independently review UX-05 attribution, compactness and stale-label removal. Controller retains publication gates. Next builder: UX-06 trip details, including reproduced fullscreen Back focus loss.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-05/verify.sh — exit 0: 65 tests, backend/frontend typechecks, Vite build and mobile/desktop browser checks.",
+    "Locked ux/ux-05/browser-supplement.sh — exit 0: candidate mobile/desktop and frozen baseline each passed 10 checks across 12 states; no page errors.",
+    "Locked ux/ux-05/shell-map.mjs — final exit 0: built-app bus identity, following arrival and stale-label removal passed. Initial mock-clock timing failure preserved and explained.",
+    "node --check services/shuttle-v2/scripts/minimap-label-check.mjs; git diff --check; git diff --cached --exit-code — passed. Full suite and complete staging remain controller gates."
+  ]
+}

@@ -1,0 +1,516 @@
+{
+  "cohortCounts": [
+    {
+      "stop": 11,
+      "split": "calibration",
+      "visits": 58
+    },
+    {
+      "stop": 11,
+      "split": "development",
+      "visits": 99
+    },
+    {
+      "stop": 11,
+      "split": "train",
+      "visits": 102
+    },
+    {
+      "stop": 121,
+      "split": "calibration",
+      "visits": 61
+    },
+    {
+      "stop": 121,
+      "split": "development",
+      "visits": 103
+    },
+    {
+      "stop": 121,
+      "split": "train",
+      "visits": 112
+    }
+  ],
+  "temporalCensorComparisons": 200,
+  "weightSumsChecked": 1070,
+  "retainedAuditedEpisodes": [
+    {
+      "id": 48550,
+      "bus": "#310",
+      "stop": 121,
+      "a": 1789414931026,
+      "d": 1789415951182,
+      "ready": 1789416071182,
+      "y": 1020.156,
+      "day": "2026-09-14",
+      "hour": 15.703055555555554,
+      "lap": 2670.264
+    },
+    {
+      "id": 51469,
+      "bus": "#316",
+      "stop": 121,
+      "a": 1789474877682,
+      "d": 1789475427863,
+      "ready": 1789475547863,
+      "y": 550.181,
+      "day": "2026-09-15",
+      "hour": 8.354722222222222,
+      "lap": 2986.406
+    },
+    {
+      "id": 52168,
+      "bus": "#310",
+      "stop": 121,
+      "a": 1789480340081,
+      "d": 1789480850120,
+      "ready": 1789480970120,
+      "y": 510.039,
+      "day": "2026-09-15",
+      "hour": 9.872222222222224,
+      "lap": 2960.262
+    },
+    {
+      "id": 52633,
+      "bus": "#310",
+      "stop": 121,
+      "a": 1789484065559,
+      "d": 1789484475626,
+      "ready": 1789484595626,
+      "y": 410.067,
+      "day": "2026-09-15",
+      "hour": 10.906944444444445,
+      "lap": 3150.404
+    },
+    {
+      "id": 53429,
+      "bus": "#310",
+      "stop": 121,
+      "a": 1789491181365,
+      "d": 1789491686527,
+      "ready": 1789491806527,
+      "y": 505.162,
+      "day": "2026-09-15",
+      "hour": 12.88361111111111,
+      "lap": 3105.39
+    },
+    {
+      "id": 54002,
+      "bus": "#316",
+      "stop": 121,
+      "a": 1789497120157,
+      "d": 1789497150090,
+      "ready": 1789497270090,
+      "y": 29.933,
+      "day": "2026-09-15",
+      "hour": 14.533333333333333,
+      "lap": 3593.565
+    },
+    {
+      "id": 54777,
+      "bus": "#316",
+      "stop": 121,
+      "a": 1789503790925,
+      "d": 1789504261007,
+      "ready": 1789504381007,
+      "y": 470.082,
+      "day": "2026-09-15",
+      "hour": 16.38611111111111,
+      "lap": 3060.38
+    },
+    {
+      "id": 58224,
+      "bus": "#309",
+      "stop": 11,
+      "a": 1789567242326,
+      "d": 1789567392398,
+      "ready": 1789567512398,
+      "y": 150.072,
+      "day": "2026-09-16",
+      "hour": 10.011666666666667,
+      "lap": 2795.161
+    },
+    {
+      "id": 64318,
+      "bus": "#309",
+      "stop": 11,
+      "a": 1789649768217,
+      "d": 1789649928303,
+      "ready": 1789650048303,
+      "y": 160.086,
+      "day": "2026-09-17",
+      "hour": 8.935555555555556,
+      "lap": 3281.664
+    },
+    {
+      "id": 65347,
+      "bus": "#309",
+      "stop": 11,
+      "a": 1789656652856,
+      "d": 1789657152981,
+      "ready": 1789657272981,
+      "y": 500.125,
+      "day": "2026-09-17",
+      "hour": 10.847777777777779,
+      "lap": 2964.211
+    }
+  ],
+  "groups": [
+    {
+      "stop": 11,
+      "split": "train",
+      "regime": "arrival15",
+      "visits": 102,
+      "landmarks": 346,
+      "dates": [
+        "2026-09-03",
+        "2026-09-04",
+        "2026-09-08",
+        "2026-09-09"
+      ],
+      "unsupportedLap": 48,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 49,
+        "known": 297
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 18,
+        "known": 316,
+        "stale_or_invalid_anchor": 12
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 49,
+        "known": 282,
+        "stale_or_invalid_anchor": 15
+      },
+      "sameAsAhead": 90
+    },
+    {
+      "stop": 11,
+      "split": "train",
+      "regime": "completed120",
+      "visits": 102,
+      "landmarks": 346,
+      "dates": [
+        "2026-09-03",
+        "2026-09-04",
+        "2026-09-08",
+        "2026-09-09"
+      ],
+      "unsupportedLap": 48,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 49,
+        "known": 297
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 18,
+        "known": 316,
+        "stale_or_invalid_anchor": 12
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 49,
+        "known": 282,
+        "stale_or_invalid_anchor": 15
+      },
+      "sameAsAhead": 90
+    },
+    {
+      "stop": 11,
+      "split": "calibration",
+      "regime": "arrival15",
+      "visits": 58,
+      "landmarks": 223,
+      "dates": [
+        "2026-09-10",
+        "2026-09-11"
+      ],
+      "unsupportedLap": 36,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 26,
+        "known": 187,
+        "no_confirmed_follower_yet": 10
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 20,
+        "known": 191,
+        "stale_or_invalid_anchor": 12
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 36,
+        "known": 185,
+        "stale_or_invalid_anchor": 2
+      },
+      "sameAsAhead": 32
+    },
+    {
+      "stop": 11,
+      "split": "calibration",
+      "regime": "completed120",
+      "visits": 58,
+      "landmarks": 223,
+      "dates": [
+        "2026-09-10",
+        "2026-09-11"
+      ],
+      "unsupportedLap": 36,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 26,
+        "known": 187,
+        "no_confirmed_follower_yet": 10
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 20,
+        "known": 191,
+        "stale_or_invalid_anchor": 12
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 36,
+        "known": 185,
+        "stale_or_invalid_anchor": 2
+      },
+      "sameAsAhead": 32
+    },
+    {
+      "stop": 11,
+      "split": "development",
+      "regime": "arrival15",
+      "visits": 99,
+      "landmarks": 352,
+      "dates": [
+        "2026-09-14",
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17"
+      ],
+      "unsupportedLap": 55,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 48,
+        "known": 302,
+        "no_observed_intervening_opposite_stop": 2
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 20,
+        "known": 315,
+        "stale_or_invalid_anchor": 17
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 50,
+        "known": 294,
+        "stale_or_invalid_anchor": 8
+      },
+      "sameAsAhead": 99
+    },
+    {
+      "stop": 11,
+      "split": "development",
+      "regime": "completed120",
+      "visits": 99,
+      "landmarks": 352,
+      "dates": [
+        "2026-09-14",
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17"
+      ],
+      "unsupportedLap": 55,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 48,
+        "known": 302,
+        "no_observed_intervening_opposite_stop": 2
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 20,
+        "known": 315,
+        "stale_or_invalid_anchor": 17
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 50,
+        "known": 294,
+        "stale_or_invalid_anchor": 8
+      },
+      "sameAsAhead": 99
+    },
+    {
+      "stop": 121,
+      "split": "train",
+      "regime": "arrival15",
+      "visits": 112,
+      "landmarks": 436,
+      "dates": [
+        "2026-09-03",
+        "2026-09-04",
+        "2026-09-08",
+        "2026-09-09"
+      ],
+      "unsupportedLap": 54,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 38,
+        "known": 382,
+        "intervening_known_focal_source_return": 16
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 8,
+        "known": 414,
+        "stale_or_invalid_anchor": 14
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 54,
+        "known": 360,
+        "stale_or_invalid_anchor": 22
+      },
+      "sameAsAhead": 128
+    },
+    {
+      "stop": 121,
+      "split": "train",
+      "regime": "completed120",
+      "visits": 112,
+      "landmarks": 436,
+      "dates": [
+        "2026-09-03",
+        "2026-09-04",
+        "2026-09-08",
+        "2026-09-09"
+      ],
+      "unsupportedLap": 54,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 38,
+        "known": 382,
+        "intervening_known_focal_source_return": 16
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 8,
+        "known": 414,
+        "stale_or_invalid_anchor": 14
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 54,
+        "known": 360,
+        "stale_or_invalid_anchor": 22
+      },
+      "sameAsAhead": 128
+    },
+    {
+      "stop": 121,
+      "split": "calibration",
+      "regime": "arrival15",
+      "visits": 61,
+      "landmarks": 222,
+      "dates": [
+        "2026-09-10",
+        "2026-09-11"
+      ],
+      "unsupportedLap": 23,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 12,
+        "known": 204,
+        "intervening_known_focal_source_return": 2,
+        "no_confirmed_follower_yet": 4
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 6,
+        "known": 210,
+        "stale_or_invalid_anchor": 6
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 18,
+        "known": 201,
+        "stale_or_invalid_anchor": 3
+      },
+      "sameAsAhead": 42
+    },
+    {
+      "stop": 121,
+      "split": "calibration",
+      "regime": "completed120",
+      "visits": 61,
+      "landmarks": 222,
+      "dates": [
+        "2026-09-10",
+        "2026-09-11"
+      ],
+      "unsupportedLap": 23,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 12,
+        "known": 204,
+        "intervening_known_focal_source_return": 2,
+        "no_confirmed_follower_yet": 4
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 6,
+        "known": 210,
+        "stale_or_invalid_anchor": 6
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 18,
+        "known": 201,
+        "stale_or_invalid_anchor": 3
+      },
+      "sameAsAhead": 42
+    },
+    {
+      "stop": 121,
+      "split": "development",
+      "regime": "arrival15",
+      "visits": 103,
+      "landmarks": 370,
+      "dates": [
+        "2026-09-14",
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17"
+      ],
+      "unsupportedLap": 23,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 26,
+        "known": 344
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 6,
+        "known": 363,
+        "stale_or_invalid_anchor": 1
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 26,
+        "known": 342,
+        "stale_or_invalid_anchor": 2
+      },
+      "sameAsAhead": 113
+    },
+    {
+      "stop": 121,
+      "split": "development",
+      "regime": "completed120",
+      "visits": 103,
+      "landmarks": 370,
+      "dates": [
+        "2026-09-14",
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17"
+      ],
+      "unsupportedLap": 23,
+      "followerReasons": {
+        "no_prior_own_confirmed_source_departure": 26,
+        "known": 344
+      },
+      "aheadSnapshotReasons": {
+        "identity_unknown": 6,
+        "known": 363,
+        "stale_or_invalid_anchor": 1
+      },
+      "followerSnapshotReasons": {
+        "identity_unknown": 26,
+        "known": 342,
+        "stale_or_invalid_anchor": 2
+      },
+      "sameAsAhead": 113
+    }
+  ],
+  "rows": 3898,
+  "uniqueVisits": 535,
+  "limitations": [
+    "No fitted forecasts or remaining-wait score yet. Full causal invariance uses one deterministic case per date/stop/landmark/regime, not every row.",
+    "Actual physical rest pin can precede first published pin: component dataset only."
+  ]
+}

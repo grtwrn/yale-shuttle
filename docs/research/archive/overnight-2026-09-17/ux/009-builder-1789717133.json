@@ -1,0 +1,9 @@
+{
+  "outcome": "candidate",
+  "summary": "Preserve keyboard focus when configuring stop alerts\nFixed Escape, arm/cancel focus and accessibility semantics. Evidence and checkpoints saved in ux/ux-08/REPORT.md. HEAD and index preserved; ready for independent review.",
+  "next_task": "Independently review this alert candidate. After ETA prototype review, integrate cycle-11/eta-projection.patch with UX identity/wait/action changes as one proposal; otherwise continue on-board recovery verification.",
+  "tests": [
+    "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08/release flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08/verify.sh — exit 0: 126 tests, backend/frontend typechecks, Vite build and mobile/desktop browser checks across four notification-permission states.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08/verify-integrity.py — exit 0: HEAD/index preserved, numerical and alert-engine behavior unchanged, tested bundles match source, screenshots below budget."
+  ]
+}

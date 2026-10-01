@@ -17,6 +17,11 @@ name: accuracy
 on:
   pull_request:
     paths:
+      - "services/shuttle-v2/src/server/serverEta*.ts"
+      - "services/shuttle-v2/src/server/etaCheckpoint.ts"
+      - "services/shuttle-v2/web/src/etaSource.ts"
+      - "services/shuttle-v2/web/src/liveArrivals.ts"
+      - "services/shuttle-v2/web/src/liveAnchor.ts"
       - "services/shuttle-v2/web/src/arrivals.ts"
       - "services/shuttle-v2/web/src/anchor.ts"
       - "services/shuttle-v2/web/src/planner.ts"
@@ -35,6 +40,11 @@ on:
   push:
     branches: [master]
     paths:
+      - "services/shuttle-v2/src/server/serverEta*.ts"
+      - "services/shuttle-v2/src/server/etaCheckpoint.ts"
+      - "services/shuttle-v2/web/src/etaSource.ts"
+      - "services/shuttle-v2/web/src/liveArrivals.ts"
+      - "services/shuttle-v2/web/src/liveAnchor.ts"
       - "services/shuttle-v2/web/src/arrivals.ts"
       - "services/shuttle-v2/web/src/anchor.ts"
       - "services/shuttle-v2/web/src/planner.ts"

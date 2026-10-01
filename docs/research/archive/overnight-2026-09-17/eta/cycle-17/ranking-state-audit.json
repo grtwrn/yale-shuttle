@@ -1,0 +1,4548 @@
+{
+  "checked": 3672,
+  "focus": "61538:4:150",
+  "when": 1789593014852,
+  "context": {
+    "current": [
+      {
+        "at": 1789592974785,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Orange Day",
+              "Gold"
+            ],
+            "since": 1789592965042
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Orange Day",
+              "Gold"
+            ],
+            "since": 1789592965042
+          }
+        },
+        "desired": [
+          "Walk",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Orange Day",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2874.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1246,
+            "window": [
+              2444.6819653320313,
+              3373.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3454.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 278,
+            "window": [
+              2984.6819653320313,
+              4016.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2548.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 467,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2298,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4323.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1541,
+            "window": [
+              3431.688033203125,
+              5269.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592979811,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Orange Day",
+              "Gold"
+            ],
+            "since": 1789592965042
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2877.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1242,
+            "window": [
+              2449.6819653320313,
+              3397.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3444.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 261,
+            "window": [
+              2973.6819653320313,
+              4015.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 466,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2298,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4323.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1538,
+            "window": [
+              3436.688033203125,
+              5269.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592984854,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2892.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1254,
+            "window": [
+              2455.6819653320313,
+              3412.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3433.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 274,
+            "window": [
+              2966.6819653320313,
+              4015.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 464,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2298,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4323.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1537,
+            "window": [
+              3437.688033203125,
+              5269.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592989868,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2902.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1258,
+            "window": [
+              2466.6819653320313,
+              3430.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3427.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 277,
+            "window": [
+              2960.6819653320313,
+              4014.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 463,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2298,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4323.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1534,
+            "window": [
+              3438.688033203125,
+              5269.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592994762,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2868.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1239,
+            "window": [
+              2440.6819653320313,
+              3368.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3423.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 282,
+            "window": [
+              2954.6819653320313,
+              4010.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 462,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2298,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4320.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1533,
+            "window": [
+              3435.688033203125,
+              5266.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592999781,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2842.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1231,
+            "window": [
+              2415.6819653320313,
+              3344.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3423.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 286,
+            "window": [
+              2954.6819653320313,
+              4010.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 461,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2298,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4315.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1533,
+            "window": [
+              3431.688033203125,
+              5261.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593004828,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2839.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1224,
+            "window": [
+              2414.6819653320313,
+              3340.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3417.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 282,
+            "window": [
+              2948.6819653320313,
+              7408.681965332031
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 460,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2992,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 234,
+            "window": [
+              2289,
+              3717
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4311.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1532,
+            "window": [
+              3427.688033203125,
+              5256.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593009792,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2833.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1215,
+            "window": [
+              2413.6819653320313,
+              3337.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3417.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 279,
+            "window": [
+              2948.6819653320313,
+              7499.681965332031
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 459,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2983,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 216,
+            "window": [
+              2275,
+              3696
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4311.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1527,
+            "window": [
+              3422.688033203125,
+              5251.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593014852,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592979811
+          }
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2833.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1211,
+            "window": [
+              2413.6819653320313,
+              3337.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3428.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 253,
+            "window": [
+              2921.6819653320313,
+              4145.681965332031
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 458,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2977,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 212,
+            "window": [
+              2263,
+              3690
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1522,
+            "window": [
+              3418.688033203125,
+              5247.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593019802,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2825.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1199,
+            "window": [
+              2423.6819653320313,
+              3301.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3420.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1778,
+            "window": [
+              2917.6819653320313,
+              4124.681965332031
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 457,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2970,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 200,
+            "window": [
+              2253,
+              3684
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1518,
+            "window": [
+              3405.688033203125,
+              5233.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593024770,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2823.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1198,
+            "window": [
+              2422.6819653320313,
+              3298.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3419.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1778,
+            "window": [
+              2913.6819653320313,
+              4089.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 456,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2970,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 200,
+            "window": [
+              2252,
+              3684
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1513,
+            "window": [
+              3401.688033203125,
+              5229.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593029775,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1193,
+            "window": [
+              2423.6819653320313,
+              3297.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3413.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1777,
+            "window": [
+              2909.6819653320313,
+              4087.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2540.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 456,
+            "window": [
+              2254.048395019531,
+              2878.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2970,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 200,
+            "window": [
+              2253,
+              3684
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1512,
+            "window": [
+              3397.688033203125,
+              5224.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593034787,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1193,
+            "window": [
+              2424.6819653320313,
+              3296.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3410.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1776,
+            "window": [
+              2908.6819653320313,
+              4084.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2540.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 455,
+            "window": [
+              2241.048395019531,
+              2878.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2970,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 200,
+            "window": [
+              2245,
+              3684
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1512,
+            "window": [
+              3398.688033203125,
+              5225.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593039874,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1195,
+            "window": [
+              2426.6819653320313,
+              3298.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3407.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1773,
+            "window": [
+              2908.6819653320313,
+              4080.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2540.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 454,
+            "window": [
+              2218.048395019531,
+              2878.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2961,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 199,
+            "window": [
+              2236,
+              3661
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4301.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1509,
+            "window": [
+              3400.688033203125,
+              5224.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593044783,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1196,
+            "window": [
+              2426.6819653320313,
+              3299.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3344.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1745,
+            "window": [
+              2876.6819653320313,
+              3926.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2476.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 454,
+            "window": [
+              2190.048395019531,
+              2817.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2929,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 177,
+            "window": [
+              2201,
+              3624
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4298.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1504,
+            "window": [
+              3400.688033203125,
+              5220.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593049826,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1197,
+            "window": [
+              2426.6819653320313,
+              3299.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3334.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1735,
+            "window": [
+              2869.6819653320313,
+              3922.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2474.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 454,
+            "window": [
+              2188.048395019531,
+              2817.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2922,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 174,
+            "window": [
+              2196,
+              3616
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4297.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1500,
+            "window": [
+              3400.688033203125,
+              5215.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593054896,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1197,
+            "window": [
+              2426.6819653320313,
+              3299.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3331.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1726,
+            "window": [
+              2861.6819653320313,
+              3916.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2470.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 455,
+            "window": [
+              2188.048395019531,
+              2816.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2915,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 171,
+            "window": [
+              2195,
+              3609
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4292.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1496,
+            "window": [
+              3400.688033203125,
+              5211.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593059799,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1197,
+            "window": [
+              2427.6819653320313,
+              3299.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3310.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1714,
+            "window": [
+              2851.6819653320313,
+              3907.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2467.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 455,
+            "window": [
+              2187.048395019531,
+              2813.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2918,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 173,
+            "window": [
+              2207,
+              3611
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4287.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1497,
+            "window": [
+              3400.688033203125,
+              5206.688033203125
+            ]
+          }
+        ]
+      }
+    ],
+    "canonical": [
+      {
+        "at": 1789592974785,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Orange Day",
+              "Gold"
+            ],
+            "since": 1789592965042
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Orange Day",
+              "Gold"
+            ],
+            "since": 1789592965042
+          }
+        },
+        "desired": [
+          "Walk",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Orange Day",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2874.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1246,
+            "window": [
+              2444.6819653320313,
+              3373.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3454.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 283,
+            "window": [
+              2984.6819653320313,
+              4016.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2549.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 467,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2299,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4323.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1541,
+            "window": [
+              3431.688033203125,
+              5269.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592979811,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Orange Day",
+              "Gold"
+            ],
+            "since": 1789592965042
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Orange Day",
+              "Gold"
+            ],
+            "since": 1789592965042
+          }
+        },
+        "desired": [
+          "Walk",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Orange Day",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2877.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1242,
+            "window": [
+              2449.6819653320313,
+              3397.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3444.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 261,
+            "window": [
+              2974.6819653320313,
+              4015.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 466,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2299,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4323.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1538,
+            "window": [
+              3436.688033203125,
+              5269.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592984854,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Orange Day",
+              "Gold"
+            ],
+            "since": 1789592965042
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2892.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1254,
+            "window": [
+              2455.6819653320313,
+              3412.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3433.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 274,
+            "window": [
+              2966.6819653320313,
+              4015.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 464,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2299,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4323.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1537,
+            "window": [
+              3437.688033203125,
+              5269.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592989868,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2902.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1258,
+            "window": [
+              2466.6819653320313,
+              3430.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3427.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 278,
+            "window": [
+              2960.6819653320313,
+              4014.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 463,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2299,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4323.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1534,
+            "window": [
+              3438.688033203125,
+              5269.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592994762,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2868.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1239,
+            "window": [
+              2440.6819653320313,
+              3368.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3423.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 282,
+            "window": [
+              2955.6819653320313,
+              4010.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 462,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2299,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4320.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1533,
+            "window": [
+              3435.688033203125,
+              5266.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789592999781,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2842.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1231,
+            "window": [
+              2415.6819653320313,
+              3344.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3423.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 286,
+            "window": [
+              2955.6819653320313,
+              4010.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 461,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2999,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 244,
+            "window": [
+              2299,
+              3731
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4315.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1533,
+            "window": [
+              3431.688033203125,
+              5261.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593004828,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2839.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1224,
+            "window": [
+              2414.6819653320313,
+              3340.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3417.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 282,
+            "window": [
+              2948.6819653320313,
+              7394.681965332031
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 460,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2993,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 234,
+            "window": [
+              2289,
+              3717
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4311.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1532,
+            "window": [
+              3427.688033203125,
+              5256.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593009792,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2833.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1215,
+            "window": [
+              2413.6819653320313,
+              3337.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3417.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 279,
+            "window": [
+              2948.6819653320313,
+              7491.681965332031
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 458,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2983,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 216,
+            "window": [
+              2275,
+              3696
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4311.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1527,
+            "window": [
+              3422.688033203125,
+              5251.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593014852,
+        "visible": [
+          "Orange Day",
+          "Red",
+          "Walk",
+          "Blue Day"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "state": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2833.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1211,
+            "window": [
+              2413.6819653320313,
+              3337.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3417.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 253,
+            "window": [
+              2948.6819653320313,
+              7608.681965332031
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 457,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2977,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 212,
+            "window": [
+              2263,
+              3690
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1522,
+            "window": [
+              3418.688033203125,
+              5247.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593019802,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Orange Day",
+            "Red",
+            "Walk",
+            "Blue Day",
+            "Brown",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0",
+          "pending": {
+            "order": [
+              "Walk",
+              "Orange Day",
+              "Blue Day",
+              "Brown",
+              "Red",
+              "Gold"
+            ],
+            "since": 1789592984854
+          }
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2825.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1199,
+            "window": [
+              2423.6819653320313,
+              3301.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3420.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1778,
+            "window": [
+              2917.6819653320313,
+              4124.681965332031
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 457,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2971,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 200,
+            "window": [
+              2253,
+              3684
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1518,
+            "window": [
+              3405.688033203125,
+              5233.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593024770,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2823.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1198,
+            "window": [
+              2422.6819653320313,
+              3298.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3419.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1778,
+            "window": [
+              2913.6819653320313,
+              4089.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2546.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 456,
+            "window": [
+              2284.048395019531,
+              2884.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2971,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 200,
+            "window": [
+              2252,
+              3684
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1513,
+            "window": [
+              3401.688033203125,
+              5229.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593029775,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1193,
+            "window": [
+              2423.6819653320313,
+              3297.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3413.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1777,
+            "window": [
+              2909.6819653320313,
+              4087.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2540.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 456,
+            "window": [
+              2254.048395019531,
+              2878.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2971,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 200,
+            "window": [
+              2253,
+              3684
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1512,
+            "window": [
+              3397.688033203125,
+              5224.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593034787,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1193,
+            "window": [
+              2424.6819653320313,
+              3296.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3410.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1776,
+            "window": [
+              2908.6819653320313,
+              4084.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2540.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 455,
+            "window": [
+              2241.048395019531,
+              2878.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2971,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 200,
+            "window": [
+              2245,
+              3684
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4302.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1512,
+            "window": [
+              3398.688033203125,
+              5225.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593039874,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1195,
+            "window": [
+              2426.6819653320313,
+              3298.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3407.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1773,
+            "window": [
+              2908.6819653320313,
+              4080.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2540.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 454,
+            "window": [
+              2218.048395019531,
+              2878.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2961,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 199,
+            "window": [
+              2236,
+              3661
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4301.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1509,
+            "window": [
+              3400.688033203125,
+              5224.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593044783,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1196,
+            "window": [
+              2426.6819653320313,
+              3299.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3344.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1745,
+            "window": [
+              2876.6819653320313,
+              3926.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2476.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 454,
+            "window": [
+              2190.048395019531,
+              2817.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2929,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 177,
+            "window": [
+              2201,
+              3625
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4298.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1504,
+            "window": [
+              3400.688033203125,
+              5220.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593049826,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1197,
+            "window": [
+              2426.6819653320313,
+              3299.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3334.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1735,
+            "window": [
+              2869.6819653320313,
+              3922.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2474.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 454,
+            "window": [
+              2188.048395019531,
+              2817.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2923,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 174,
+            "window": [
+              2196,
+              3616
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4297.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1500,
+            "window": [
+              3400.688033203125,
+              5215.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593054896,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1197,
+            "window": [
+              2426.6819653320313,
+              3299.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3331.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1726,
+            "window": [
+              2861.6819653320313,
+              3916.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2470.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 455,
+            "window": [
+              2188.048395019531,
+              2816.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2915,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 171,
+            "window": [
+              2195,
+              3610
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4292.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1496,
+            "window": [
+              3400.688033203125,
+              5211.688033203125
+            ]
+          }
+        ]
+      },
+      {
+        "at": 1789593059799,
+        "visible": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown"
+        ],
+        "priorState": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "state": {
+          "order": [
+            "Walk",
+            "Orange Day",
+            "Blue Day",
+            "Brown",
+            "Red",
+            "Gold"
+          ],
+          "tiers": "Blue Day:0|Brown:0|Gold:0|Orange Day:0|Red:0|Walk:0"
+        },
+        "desired": [
+          "Walk",
+          "Orange Day",
+          "Blue Day",
+          "Brown",
+          "Red",
+          "Gold"
+        ],
+        "options": [
+          {
+            "route": "Blue Day",
+            "tier": 0,
+            "commuteSec": 950.0234745717078,
+            "totalSec": 2822.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1197,
+            "window": [
+              2427.6819653320313,
+              3299.6819653320313
+            ]
+          },
+          {
+            "route": "Orange Day",
+            "tier": 0,
+            "commuteSec": 946.8876331442136,
+            "totalSec": 3310.6819653320313,
+            "walkToSec": 551.5973366053981,
+            "walkFromSec": 64.68196535761463,
+            "busLowSec": 1714,
+            "window": [
+              2850.6819653320313,
+              3907.6819653320313
+            ]
+          },
+          {
+            "route": "Red",
+            "tier": 0,
+            "commuteSec": 1168.5524973881643,
+            "totalSec": 2467.048395019531,
+            "walkToSec": 852.4589353260236,
+            "walkFromSec": 21.048394918168082,
+            "busLowSec": 455,
+            "window": [
+              2187.048395019531,
+              2813.048395019531
+            ]
+          },
+          {
+            "route": "Brown",
+            "tier": 0,
+            "commuteSec": 890.2464807884983,
+            "totalSec": 2918,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 0,
+            "busLowSec": 173,
+            "window": [
+              2207,
+              3611
+            ]
+          },
+          {
+            "route": "Walk",
+            "tier": 0,
+            "commuteSec": 1773.1793666819706,
+            "totalSec": 1773.1793666819706,
+            "walkToSec": 1773.1793666819706,
+            "walkFromSec": 0,
+            "window": null
+          },
+          {
+            "route": "Gold",
+            "tier": 0,
+            "commuteSec": 1207.6373575538921,
+            "totalSec": 4287.688033203125,
+            "walkToSec": 136.21042527965895,
+            "walkFromSec": 709.6880332252525,
+            "busLowSec": 1497,
+            "window": [
+              3400.688033203125,
+              5206.688033203125
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "limits": "Replay of saved exact numerical options through unchanged current ordering and visibility rules. No new forecasts, no browser proof, no threshold tuning or rider-preference claim."
+}

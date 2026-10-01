@@ -1,0 +1,80 @@
+{
+  "adapters": [
+    {
+      "file": "score.py",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/score.py",
+      "originalSHA256": "0ad3539b9bf324942ff17a55fd84bd39f88d3fca172e23afe2adf9214863cd8b",
+      "newSHA256": "2b4938508d7fb0b3106c66436a13298d3782c9a2746f657acd7e2f889d2990dc"
+    },
+    {
+      "file": "verify_score.py",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/verify_score.py",
+      "originalSHA256": "452421ea3342eac8eda4880e1b41dfeda9c5196098e679a549d7651c7e7babf8",
+      "newSHA256": "3e3f8d31bc67aa25daf40b27f8aee61abd0efff1b991432764558907ab389dad"
+    },
+    {
+      "file": "verify_semantics.py",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/verify_semantics.py",
+      "originalSHA256": "a9dbc8d58a64994337e19cccd7427135f95a20872469b1fb921963effdf22e77",
+      "newSHA256": "d9764883cb71748a34c20233ce778b914f61e957237b8c3bcf5d4e9f87b3fdbe"
+    },
+    {
+      "file": "zero_hop_inventory.py",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/zero_hop_inventory.py",
+      "originalSHA256": "04cdaaa9dc25d62c18411555f134a652f862e3653f65bfc1219d848fff5470fd",
+      "newSHA256": "d56dec4239199ca3be9e193a84af5848f22197142744d57ea82cc5c1ffc19e1e"
+    },
+    {
+      "file": "decisions.mts",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/decisions.mts",
+      "originalSHA256": "68bc592369a1bc2925ba19bf2abaab9072c5235575c6ee3999762d8f1d1693d1",
+      "newSHA256": "e528e77dfc8ecb1a8baf48ea65a4ee439d5f654b079f4db3436253f3f72de278"
+    },
+    {
+      "file": "rider_outcomes.py",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/rider_outcomes.py",
+      "originalSHA256": "f92b898cc216d930eeafabef7ed7c5e194678e3bd746ef2a88cef56437a094d3",
+      "newSHA256": "91f2476fc1f430086ad9ab8e25735856e964684c3f8d292f8bc4045295a48dde"
+    },
+    {
+      "file": "verify_decisions.py",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/verify_decisions.py",
+      "originalSHA256": "406b92919a035093b786ec84ef5eb280fc38df95c9459d144fc88a2dd385aeb6",
+      "newSHA256": "2eebb93529da410dbe03febc681a33e91c4d8f4e61596e5e794532e48d2ab156"
+    },
+    {
+      "file": "shell-current.generated.mts",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-15/shell-current.generated.mts",
+      "originalSHA256": "f65379da28ded41dee5c30cadefb7d91deea653755ad5423ee4588092091ef45",
+      "newSHA256": "f65379da28ded41dee5c30cadefb7d91deea653755ad5423ee4588092091ef45"
+    },
+    {
+      "file": "verify_alignment.py",
+      "original": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-16/verify_alignment.py",
+      "originalSHA256": "c7d448c37bcae1b8e7afd802180941d81164db05e29b0cc9be184f9c58b83431",
+      "newSHA256": "dc58e406d5b00cbb3b6d0107f4319fe25d066edec2e925697fb5f5344bbdde9c",
+      "scope": "Same all-aligned wire/SQL proof, omit prefix acceptance cases and before/after comparison outside resumed slice."
+    }
+  ],
+  "runtimeModulesUnchanged": [
+    "planner.ts",
+    "livePickupSelection.ts",
+    "journeyArrival.ts",
+    "liveArrivals.ts",
+    "etaSource.ts",
+    "geo.ts",
+    "walk.ts",
+    "routes.ts",
+    "endpoints.ts",
+    "tripRanking.ts",
+    "schedule.ts",
+    "anchor.ts"
+  ],
+  "shellDiffFile": "shell-head-diff.patch",
+  "frozenShellSHA256": "f65379da28ded41dee5c30cadefb7d91deea653755ad5423ee4588092091ef45",
+  "currentNumericalMemoExactlyMatchesFrozenBaseline": true,
+  "memoSHA256": "4f8d1dd5eb2254539447ed13a91c016c7affa322db504bf00c87d28e67e1ee77",
+  "boundaryAccounting": "verify_capture retains original last poll5999; score/semantic verifier seed only tracking and stability, never rescore prefix. Session windows are wholly inside new range.",
+  "preflightCorrection": "Before any scoring, boundary insertion assertion caught an unadapted canonical-wire literal. Corrected to explicit canonical-resume6000 input; no forecasts or scored outputs changed.",
+  "reportingCorrection": "Initial copied verify_decisions note incorrectly said zero differences from the prefix. Source/output/log preserved with initial-inherited-note suffix; corrected only explanation, exact numerical assertions unchanged."
+}

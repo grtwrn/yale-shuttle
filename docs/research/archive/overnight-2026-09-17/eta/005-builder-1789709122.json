@@ -1,0 +1,13 @@
+{
+  "outcome": "research",
+  "summary": "Diagnosed all 68 missing journeys. A browser prototype restores 30 without changing bus choices or rankings; a 443-second regression is retained. Application files and HEAD remain unchanged. Evidence and checkpoint saved in cycle-6.",
+  "next_task": "Independently review cycle-6/RESULTS.md and REVIEW_REQUEST.md, then coordinate the ordered pickup-to-destination join with UX. Add repeated-stop and folded-route tests; keep the remaining 38 cases separate.",
+  "tests": [
+    "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/audit_missing.py — passed: all 68 cases and connected outcomes accounted for.",
+    "Locked observe_states.mts — passed: 11,081 polls, 160,496 exact wire rows and 34 diagnostic states.",
+    "Locked counterfactual.mts — passed: 4,688 exact baseline decisions; prototype restores 30 journeys with none lost.",
+    "Prototype Vite build and browser runs — passed: 407 numerical comparisons plus keyboard, touch and stale/missing-data recovery.",
+    "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/verify_evidence.py — passed: input hashes, identities, distributions and clean HEAD verified.",
+    "git diff --check && git diff --exit-code && git diff --cached --exit-code — passed."
+  ]
+}

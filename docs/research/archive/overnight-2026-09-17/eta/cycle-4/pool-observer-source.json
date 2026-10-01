@@ -1,0 +1,5 @@
+{
+  "source": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/index.ts",
+  "sha256": "70a04d165c73215cfe6c994fe7e54ef2082b7d77a55687d7ebb98ec1751298c5",
+  "modification": "Resolve imports to original modules; clone raw rows immediately before pooling. No computation change."
+}

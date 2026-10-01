@@ -320,3 +320,54 @@ describe("rideStopDots", () => {
     expect(rideStopDots(ride)).toEqual([at(STOP.collegeWallN), collegeWallS]);
   });
 });
+
+// Published Blue Weekend path and stop order from /api/buses, 2026-09-13.
+// The opposite-direction College/Wall stops are just 28 m apart.
+import blueWeekend from "./__fixtures__/blue-weekend-geometry.json";
+
+describe("Blue Weekend: preserve the route pass when a ride starts mid-loop", () => {
+  const path = blueWeekend.path as [number, number][];
+  const stops = blueWeekend.stops;
+  const atId = (id: number) => stops[blueWeekend.stopIds.indexOf(id)]!;
+
+  it("draws College/Wall northbound to Becton directly along College/Prospect", () => {
+    const line = buildStopSequencePolyline(path, [atId(41), atId(20)], stops)!;
+    // The wrong southbound pass sends this hop around Union Station and
+    // Stop & Shop: 7,634 m instead of the published 240 m northbound street.
+    expect(polylineMeters(line)).toBeGreaterThan(200);
+    expect(polylineMeters(line)).toBeLessThan(300);
+    expect(Math.min(...line.map(([lat]) => lat))).toBeGreaterThan(41.3104);
+    expect(traceStopLegs(path, [atId(41), atId(20)], stops)[0]!.bridged).toBe(false);
+  });
+
+  it("keeps the return from Elm/York on Elm instead of revisiting Stop & Shop", () => {
+    const line = buildStopSequencePolyline(path, [atId(53), atId(41)], stops)!;
+    expect(polylineMeters(line)).toBeGreaterThan(400);
+    expect(polylineMeters(line)).toBeLessThan(500);
+    expect(Math.min(...line.map(([, lon]) => lon))).toBeGreaterThan(-72.931);
+  });
+
+  it("keeps every pickup approach on the same pass, including the loop wrap", () => {
+    const full = traceStopLegs(path, [...stops, stops[0]!]);
+    for (let start = 0; start < stops.length; start++) {
+      const approach = [...stops.slice(start), stops[0]!];
+      expect(traceStopLegs(path, approach, stops)).toEqual(full.slice(start));
+    }
+  });
+
+  it("draws every partial ride from the same ordered route geometry", () => {
+    const full = traceStopLegs(path, [...stops, stops[0]!]);
+    for (let start = 0; start < stops.length; start++) {
+      for (let span = 1; span < stops.length; span++) {
+        const ride = Array.from({ length: span + 1 }, (_, i) => stops[(start + i) % stops.length]!);
+        const expected = Array.from({ length: span }, (_, i) => full[(start + i) % full.length]!);
+        expect(traceStopLegs(path, ride, stops)).toEqual(expected);
+      }
+    }
+  });
+
+  it("preserves the reported Prospect/Canner to Phelps Gate ride", () => {
+    const ride = stops.slice(0, blueWeekend.stopIds.indexOf(98) + 1);
+    expect(buildStopSequencePolyline(path, ride, stops)).toEqual(buildStopSequencePolyline(path, ride));
+  });
+});

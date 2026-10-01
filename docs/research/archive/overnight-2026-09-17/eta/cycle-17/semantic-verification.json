@@ -1,0 +1,173 @@
+{
+  "backwardNumericalLeadEvents": {
+    "current": [
+      [
+        1789586934073,
+        "Purple|329",
+        3,
+        14
+      ],
+      [
+        1789590029428,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789590064601,
+        "Purple|302",
+        10,
+        8
+      ],
+      [
+        1789590799553,
+        "Purple|329",
+        3,
+        14
+      ],
+      [
+        1789591674628,
+        "Green|325",
+        19,
+        16
+      ],
+      [
+        1789592119758,
+        "Green|122",
+        18,
+        17
+      ],
+      [
+        1789593319882,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789595225189,
+        "Green|325",
+        19,
+        16
+      ],
+      [
+        1789598120653,
+        "Blue Night|38",
+        18,
+        16
+      ],
+      [
+        1789598730715,
+        "Purple|330",
+        3,
+        0
+      ],
+      [
+        1789599095733,
+        "Blue Night|46",
+        18,
+        16
+      ],
+      [
+        1789601471252,
+        "Blue Night|38",
+        18,
+        17
+      ]
+    ],
+    "canonical": [
+      [
+        1789586934073,
+        "Purple|329",
+        3,
+        14
+      ],
+      [
+        1789590029428,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789590064601,
+        "Purple|302",
+        10,
+        8
+      ],
+      [
+        1789590799553,
+        "Purple|329",
+        3,
+        14
+      ],
+      [
+        1789591674628,
+        "Green|325",
+        19,
+        16
+      ],
+      [
+        1789592119758,
+        "Green|122",
+        18,
+        17
+      ],
+      [
+        1789593319882,
+        "Green|127",
+        18,
+        15
+      ],
+      [
+        1789595225189,
+        "Green|325",
+        19,
+        16
+      ],
+      [
+        1789598120653,
+        "Blue Night|38",
+        18,
+        16
+      ],
+      [
+        1789598730715,
+        "Purple|330",
+        3,
+        0
+      ],
+      [
+        1789599095733,
+        "Blue Night|46",
+        18,
+        16
+      ],
+      [
+        1789601471252,
+        "Blue Night|38",
+        18,
+        17
+      ]
+    ]
+  },
+  "sameBackwardEventIdentities": true,
+  "rawWireAndPhysicalOccurrenceChecks": {
+    "current:sameSourceZero": 451,
+    "current:wireAndCumulativeOccurrence": 70162,
+    "current:sameSourceFuture": 472,
+    "current:exactLaggedOrigin": 1668,
+    "canonical:sameSourceZero": 451,
+    "canonical:wireAndCumulativeOccurrence": 70162,
+    "canonical:sameSourceFuture": 472,
+    "canonical:exactLaggedOrigin": 1668
+  },
+  "correctedExample": [],
+  "riderDatabaseChecks": {
+    "current:options": 6688,
+    "current:legUses": 42224,
+    "current:connected": 4088,
+    "canonical:options": 6688,
+    "canonical:legUses": 42224,
+    "canonical:connected": 4088
+  },
+  "limits": "Independent cumulative-hop/actual wire verification, not an observed boarding proof. Unresolved source identities and incomplete chains are preserved."
+}

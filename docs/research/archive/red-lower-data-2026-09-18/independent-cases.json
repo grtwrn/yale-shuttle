@@ -1,0 +1,6136 @@
+{
+  "method": "Retrospective outcome audit. GPS/visit confirmation is a proxy for physical arrival, not proof of doors-open boarding. No record exclusions or model fitting.",
+  "data": [
+    {
+      "data": "reused Sep16\u201317",
+      "cases": [
+        {
+          "sourceId": 58061,
+          "targetId": 58080,
+          "bus": "#316",
+          "sourcePinET": "2026-09-16T09:37:22.083000-04:00",
+          "source": {
+            "id": 58061,
+            "bus_id": 66432,
+            "bus_name": "#316",
+            "anchor_bus_id": 66432,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789565822246,
+            "pinned_at": 1789565842083,
+            "arrived_at": 1789565842083,
+            "departed_at": 1789566367155,
+            "stand_sec": 525.072,
+            "inside_sec": 535.069,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.21477465696754,
+            "steps": 2,
+            "far_m": 66.75747126152066,
+            "confirm_sec": 4.997,
+            "rest_polls": 6,
+            "shuffles": 4,
+            "first_moved_at": 1789565852194,
+            "last_at_rest_at": 1789566367155,
+            "closest_m": 63.97336011178966,
+            "dow": 3,
+            "hour": 9
+          },
+          "target": {
+            "id": 58080,
+            "bus_id": 66432,
+            "bus_name": "#316",
+            "anchor_bus_id": 66432,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789566422157,
+            "pinned_at": 1789566422157,
+            "arrived_at": 1789566437170,
+            "departed_at": 1789566457191,
+            "stand_sec": 20.021,
+            "inside_sec": 40.006,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1.0,
+            "first_step_m": 32.09948337595217,
+            "steps": 3,
+            "far_m": 164.32467985624896,
+            "confirm_sec": 9.999,
+            "rest_polls": 4,
+            "shuffles": 0,
+            "first_moved_at": 1789566462163,
+            "last_at_rest_at": 1789566457191,
+            "closest_m": 5.918401323159271,
+            "dow": 3,
+            "hour": 9
+          },
+          "legs": [
+            {
+              "id": 53702,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789566367155,
+              "arrived_at": 1789566387156,
+              "to_pinned_at": 1789566377152,
+              "leg_sec": 20.001,
+              "hold_sec": 0.0,
+              "drive_sec": 20.001,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            },
+            {
+              "id": 53704,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789566387156,
+              "arrived_at": 1789566402144,
+              "to_pinned_at": 1789566397209,
+              "leg_sec": 14.988,
+              "hold_sec": 0.0,
+              "drive_sec": 14.988,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            },
+            {
+              "id": 53707,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789566402144,
+              "arrived_at": 1789566437170,
+              "to_pinned_at": 1789566422157,
+              "leg_sec": 35.026,
+              "hold_sec": 0.0,
+              "drive_sec": 35.026,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            }
+          ],
+          "earlyRows": [],
+          "raw": {
+            "n": 135,
+            "maxGapSec": 5.352,
+            "maxConsecutiveSpeedKmh": 57.69613703114991,
+            "sourceDeparture": [
+              {
+                "seconds": -34.979,
+                "distanceToStopM": 49.98,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -29.892,
+                "distanceToStopM": 29.78,
+                "stepM": 30.3,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.007,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.003,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -14.96,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.007,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.015,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 5.0,
+                "distanceToStopM": 52.3,
+                "stepM": 30.18,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.997,
+                "distanceToStopM": 66.68,
+                "stepM": 35.96,
+                "lastStop": 11
+              },
+              {
+                "seconds": 15.0,
+                "distanceToStopM": 91.83,
+                "stepM": 34.16,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.013,
+                "distanceToStopM": 73.94,
+                "stepM": null,
+                "lastStop": 49
+              },
+              {
+                "seconds": -9.85,
+                "distanceToStopM": 36.99,
+                "stepM": 37.28,
+                "lastStop": 49
+              },
+              {
+                "seconds": -5.008,
+                "distanceToStopM": 5.91,
+                "stepM": 33.64,
+                "lastStop": 49
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 27.85,
+                "stepM": 32.7,
+                "lastStop": 49
+              },
+              {
+                "seconds": 5.008,
+                "distanceToStopM": 27.85,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 10.018,
+                "distanceToStopM": 27.85,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 14.988,
+                "distanceToStopM": 27.85,
+                "stepM": 0.0,
+                "lastStop": 49
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 58061,
+          "targetId": 58110,
+          "bus": "#316",
+          "sourcePinET": "2026-09-16T09:37:22.083000-04:00",
+          "source": {
+            "id": 58061,
+            "bus_id": 66432,
+            "bus_name": "#316",
+            "anchor_bus_id": 66432,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789565822246,
+            "pinned_at": 1789565842083,
+            "arrived_at": 1789565842083,
+            "departed_at": 1789566367155,
+            "stand_sec": 525.072,
+            "inside_sec": 535.069,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.21477465696754,
+            "steps": 2,
+            "far_m": 66.75747126152066,
+            "confirm_sec": 4.997,
+            "rest_polls": 6,
+            "shuffles": 4,
+            "first_moved_at": 1789565852194,
+            "last_at_rest_at": 1789566367155,
+            "closest_m": 63.97336011178966,
+            "dow": 3,
+            "hour": 9
+          },
+          "target": {
+            "id": 58110,
+            "bus_id": 66432,
+            "bus_name": "#316",
+            "anchor_bus_id": 66432,
+            "route_id": 3,
+            "stop_id": 4,
+            "stop_index": 20,
+            "anchored_at": 1789566612184,
+            "pinned_at": 1789566622188,
+            "arrived_at": 1789566622188,
+            "departed_at": 1789566637187,
+            "stand_sec": 14.999,
+            "inside_sec": 29.977,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1.0,
+            "first_step_m": 30.44296614270426,
+            "steps": 6,
+            "far_m": 192.88803113439175,
+            "confirm_sec": 35.023,
+            "rest_polls": 3,
+            "shuffles": 0,
+            "first_moved_at": 1789566642184,
+            "last_at_rest_at": 1789566637187,
+            "closest_m": 72.7930512900023,
+            "dow": 3,
+            "hour": 9
+          },
+          "legs": [
+            {
+              "id": 53702,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789566367155,
+              "arrived_at": 1789566387156,
+              "to_pinned_at": 1789566377152,
+              "leg_sec": 20.001,
+              "hold_sec": 0.0,
+              "drive_sec": 20.001,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            },
+            {
+              "id": 53704,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789566387156,
+              "arrived_at": 1789566402144,
+              "to_pinned_at": 1789566397209,
+              "leg_sec": 14.988,
+              "hold_sec": 0.0,
+              "drive_sec": 14.988,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            },
+            {
+              "id": 53707,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789566402144,
+              "arrived_at": 1789566437170,
+              "to_pinned_at": 1789566422157,
+              "leg_sec": 35.026,
+              "hold_sec": 0.0,
+              "drive_sec": 35.026,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            },
+            {
+              "id": 53721,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 48,
+              "from_index": 17,
+              "to_stop_id": 104,
+              "to_index": 18,
+              "hops": 1,
+              "departed_at": 1789566457191,
+              "arrived_at": 1789566497166,
+              "to_pinned_at": 1789566487168,
+              "leg_sec": 39.975,
+              "hold_sec": 0.0,
+              "drive_sec": 39.975,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            },
+            {
+              "id": 53727,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 104,
+              "from_index": 18,
+              "to_stop_id": 113,
+              "to_index": 19,
+              "hops": 1,
+              "departed_at": 1789566522177,
+              "arrived_at": 1789566557311,
+              "to_pinned_at": 1789566547252,
+              "leg_sec": 35.134,
+              "hold_sec": 0.0,
+              "drive_sec": 35.134,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            },
+            {
+              "id": 53739,
+              "bus_id": 66432,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 113,
+              "from_index": 19,
+              "to_stop_id": 4,
+              "to_index": 20,
+              "hops": 1,
+              "departed_at": 1789566582337,
+              "arrived_at": 1789566622188,
+              "to_pinned_at": 1789566622188,
+              "leg_sec": 39.851,
+              "hold_sec": 0.0,
+              "drive_sec": 39.851,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 9
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789566262139,
+              "phase": "standing",
+              "checkpointSec": 420,
+              "truthSec": 360.049,
+              "baselineLow": 327.7983996350428,
+              "candidateLow": 390.619803456148,
+              "lowerExcessSec": 30.57080345614804,
+              "candidateLowerBeforeDetectorDepartureSec": -15.571803456148018
+            },
+            {
+              "at": 1789566367155,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 255.033,
+              "baselineLow": 293.2932167036524,
+              "candidateLow": 351.7304027570886,
+              "lowerExcessSec": 96.69740275708861,
+              "candidateLowerBeforeDetectorDepartureSec": -81.69840275708862
+            },
+            {
+              "at": 1789566372155,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 250.033,
+              "baselineLow": 288.3272005367464,
+              "candidateLow": 346.58141086207155,
+              "lowerExcessSec": 96.54841086207156,
+              "candidateLowerBeforeDetectorDepartureSec": -81.54941086207157
+            },
+            {
+              "at": 1789566382155,
+              "phase": "departure",
+              "checkpointSec": 15,
+              "truthSec": 240.033,
+              "baselineLow": 266.1413852129002,
+              "candidateLow": 321.9267703053668,
+              "lowerExcessSec": 81.89377030536681,
+              "candidateLowerBeforeDetectorDepartureSec": -66.89477030536679
+            }
+          ],
+          "raw": {
+            "n": 171,
+            "maxGapSec": 5.352,
+            "maxConsecutiveSpeedKmh": 57.69613703114991,
+            "sourceDeparture": [
+              {
+                "seconds": -34.979,
+                "distanceToStopM": 49.98,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -29.892,
+                "distanceToStopM": 29.78,
+                "stepM": 30.3,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.007,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.003,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -14.96,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.007,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.015,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 29.78,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 5.0,
+                "distanceToStopM": 52.3,
+                "stepM": 30.18,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.997,
+                "distanceToStopM": 66.68,
+                "stepM": 35.96,
+                "lastStop": 11
+              },
+              {
+                "seconds": 15.0,
+                "distanceToStopM": 91.83,
+                "stepM": 34.16,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -19.982,
+                "distanceToStopM": 243.07,
+                "stepM": null,
+                "lastStop": 104
+              },
+              {
+                "seconds": -15.004,
+                "distanceToStopM": 205.03,
+                "stepM": 38.04,
+                "lastStop": 104
+              },
+              {
+                "seconds": -10.004,
+                "distanceToStopM": 135.28,
+                "stepM": 69.9,
+                "lastStop": 104
+              },
+              {
+                "seconds": -4.908,
+                "distanceToStopM": 104.94,
+                "stepM": 30.38,
+                "lastStop": 113
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 72.71,
+                "stepM": 32.34,
+                "lastStop": 113
+              },
+              {
+                "seconds": 5.045,
+                "distanceToStopM": 72.71,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 10.05,
+                "distanceToStopM": 72.71,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 14.999,
+                "distanceToStopM": 72.71,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 19.996,
+                "distanceToStopM": 42.33,
+                "stepM": 30.41,
+                "lastStop": 113
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 60375,
+          "targetId": 60399,
+          "bus": "#316",
+          "sourcePinET": "2026-09-16T14:37:32.470000-04:00",
+          "source": {
+            "id": 60375,
+            "bus_id": 66452,
+            "bus_name": "#316",
+            "anchor_bus_id": 66452,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789583837442,
+            "pinned_at": 1789583852470,
+            "arrived_at": 1789583852470,
+            "departed_at": 1789584362504,
+            "stand_sec": 510.034,
+            "inside_sec": 525.026,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.215835999274194,
+            "steps": 3,
+            "far_m": 76.93267571998722,
+            "confirm_sec": 15.012,
+            "rest_polls": 9,
+            "shuffles": 2,
+            "first_moved_at": 1789583867432,
+            "last_at_rest_at": 1789584362504,
+            "closest_m": 62.07052614773744,
+            "dow": 3,
+            "hour": 14
+          },
+          "target": {
+            "id": 60399,
+            "bus_id": 66452,
+            "bus_name": "#316",
+            "anchor_bus_id": 66452,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789584442514,
+            "pinned_at": 1789584447569,
+            "arrived_at": 1789584452568,
+            "departed_at": 1789584512509,
+            "stand_sec": 59.941,
+            "inside_sec": 75.125,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1.0,
+            "first_step_m": 34.35086967247674,
+            "steps": 4,
+            "far_m": 176.4794578691091,
+            "confirm_sec": 14.998,
+            "rest_polls": 4,
+            "shuffles": 1,
+            "first_moved_at": 1789584492526,
+            "last_at_rest_at": 1789584512509,
+            "closest_m": 13.774509161462777,
+            "dow": 3,
+            "hour": 14
+          },
+          "legs": [
+            {
+              "id": 55900,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789584362504,
+              "arrived_at": 1789584387509,
+              "to_pinned_at": 1789584382497,
+              "leg_sec": 25.005,
+              "hold_sec": 0.0,
+              "drive_sec": 25.005,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            },
+            {
+              "id": 55908,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789584407489,
+              "arrived_at": 1789584427509,
+              "to_pinned_at": 1789584422542,
+              "leg_sec": 20.02,
+              "hold_sec": 0.0,
+              "drive_sec": 20.02,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            },
+            {
+              "id": 55913,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789584427509,
+              "arrived_at": 1789584452568,
+              "to_pinned_at": 1789584447569,
+              "leg_sec": 25.059,
+              "hold_sec": 0.0,
+              "drive_sec": 25.059,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            }
+          ],
+          "earlyRows": [],
+          "raw": {
+            "n": 143,
+            "maxGapSec": 5.253,
+            "maxConsecutiveSpeedKmh": 53.60263887501095,
+            "sourceDeparture": [
+              {
+                "seconds": -30.009,
+                "distanceToStopM": 46.41,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.026,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -19.946,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.03,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.015,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -4.762,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.981,
+                "distanceToStopM": 41.46,
+                "stepM": 30.18,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.994,
+                "distanceToStopM": 41.46,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.992,
+                "distanceToStopM": 57.94,
+                "stepM": 35.56,
+                "lastStop": 11
+              },
+              {
+                "seconds": 19.993,
+                "distanceToStopM": 76.85,
+                "stepM": 33.29,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -19.983,
+                "distanceToStopM": 224.76,
+                "stepM": null,
+                "lastStop": 146
+              },
+              {
+                "seconds": -15.014,
+                "distanceToStopM": 191.07,
+                "stepM": 33.72,
+                "lastStop": 146
+              },
+              {
+                "seconds": -10.054,
+                "distanceToStopM": 119.74,
+                "stepM": 71.34,
+                "lastStop": 49
+              },
+              {
+                "seconds": -4.999,
+                "distanceToStopM": 51.81,
+                "stepM": 67.96,
+                "lastStop": 49
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 13.76,
+                "stepM": 38.1,
+                "lastStop": 49
+              },
+              {
+                "seconds": 4.947,
+                "distanceToStopM": 13.76,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 9.962,
+                "distanceToStopM": 13.76,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 15.097,
+                "distanceToStopM": 13.76,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 19.952,
+                "distanceToStopM": 13.76,
+                "stepM": 0.0,
+                "lastStop": 49
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 60375,
+          "targetId": 60434,
+          "bus": "#316",
+          "sourcePinET": "2026-09-16T14:37:32.470000-04:00",
+          "source": {
+            "id": 60375,
+            "bus_id": 66452,
+            "bus_name": "#316",
+            "anchor_bus_id": 66452,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789583837442,
+            "pinned_at": 1789583852470,
+            "arrived_at": 1789583852470,
+            "departed_at": 1789584362504,
+            "stand_sec": 510.034,
+            "inside_sec": 525.026,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.215835999274194,
+            "steps": 3,
+            "far_m": 76.93267571998722,
+            "confirm_sec": 15.012,
+            "rest_polls": 9,
+            "shuffles": 2,
+            "first_moved_at": 1789583867432,
+            "last_at_rest_at": 1789584362504,
+            "closest_m": 62.07052614773744,
+            "dow": 3,
+            "hour": 14
+          },
+          "target": {
+            "id": 60434,
+            "bus_id": 66452,
+            "bus_name": "#316",
+            "anchor_bus_id": 66452,
+            "route_id": 3,
+            "stop_id": 4,
+            "stop_index": 20,
+            "anchored_at": 1789584652533,
+            "pinned_at": 1789584687537,
+            "arrived_at": 1789584687537,
+            "departed_at": 1789584692541,
+            "stand_sec": 5.004,
+            "inside_sec": 20.014,
+            "outcome": "passed",
+            "how": "far",
+            "confidence": 1.0,
+            "first_step_m": 33.09449484273798,
+            "steps": 6,
+            "far_m": 151.92247446651353,
+            "confirm_sec": 69.967,
+            "rest_polls": 1,
+            "shuffles": 0,
+            "first_moved_at": 1789584697593,
+            "last_at_rest_at": 1789584692541,
+            "closest_m": 46.86216046447087,
+            "dow": 3,
+            "hour": 14
+          },
+          "legs": [
+            {
+              "id": 55900,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789584362504,
+              "arrived_at": 1789584387509,
+              "to_pinned_at": 1789584382497,
+              "leg_sec": 25.005,
+              "hold_sec": 0.0,
+              "drive_sec": 25.005,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            },
+            {
+              "id": 55908,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789584407489,
+              "arrived_at": 1789584427509,
+              "to_pinned_at": 1789584422542,
+              "leg_sec": 20.02,
+              "hold_sec": 0.0,
+              "drive_sec": 20.02,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            },
+            {
+              "id": 55913,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789584427509,
+              "arrived_at": 1789584452568,
+              "to_pinned_at": 1789584447569,
+              "leg_sec": 25.059,
+              "hold_sec": 0.0,
+              "drive_sec": 25.059,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            },
+            {
+              "id": 55927,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 48,
+              "from_index": 17,
+              "to_stop_id": 104,
+              "to_index": 18,
+              "hops": 1,
+              "departed_at": 1789584512509,
+              "arrived_at": 1789584567675,
+              "to_pinned_at": 1789584552616,
+              "leg_sec": 55.166,
+              "hold_sec": 0.0,
+              "drive_sec": 55.166,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            },
+            {
+              "id": 55940,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 104,
+              "from_index": 18,
+              "to_stop_id": 113,
+              "to_index": 19,
+              "hops": 1,
+              "departed_at": 1789584592766,
+              "arrived_at": 1789584627753,
+              "to_pinned_at": 1789584622564,
+              "leg_sec": 34.987,
+              "hold_sec": 0.0,
+              "drive_sec": 34.987,
+              "holds": 0,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            },
+            {
+              "id": 55949,
+              "bus_id": 66452,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 113,
+              "from_index": 19,
+              "to_stop_id": 4,
+              "to_index": 20,
+              "hops": 1,
+              "departed_at": 1789584627753,
+              "arrived_at": 1789584687537,
+              "to_pinned_at": 1789584687537,
+              "leg_sec": 59.784,
+              "hold_sec": 20.003,
+              "drive_sec": 39.781,
+              "holds": 1,
+              "reached": 1,
+              "dow": 3,
+              "hour": 14
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789584272484,
+              "phase": "standing",
+              "checkpointSec": 420,
+              "truthSec": 415.053,
+              "baselineLow": 375.10013489452473,
+              "candidateLow": 424.7194777325572,
+              "lowerExcessSec": 9.666477732557212,
+              "candidateLowerBeforeDetectorDepartureSec": -4.662477732557193
+            },
+            {
+              "at": 1789584362504,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 325.033,
+              "baselineLow": 320.75737219165615,
+              "candidateLow": 385.15340311869335,
+              "lowerExcessSec": 60.12040311869333,
+              "candidateLowerBeforeDetectorDepartureSec": -55.11640311869337
+            },
+            {
+              "at": 1789584372498,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 315.039,
+              "baselineLow": 312.1836564765632,
+              "candidateLow": 377.9367248009979,
+              "lowerExcessSec": 62.897724800997935,
+              "candidateLowerBeforeDetectorDepartureSec": -57.893724800997916
+            },
+            {
+              "at": 1789584382497,
+              "phase": "departure",
+              "checkpointSec": 15,
+              "truthSec": 305.04,
+              "baselineLow": 289.2543439209138,
+              "candidateLow": 353.08323574037024,
+              "lowerExcessSec": 48.04323574037022,
+              "candidateLowerBeforeDetectorDepartureSec": -43.03923574037026
+            }
+          ],
+          "raw": {
+            "n": 180,
+            "maxGapSec": 5.253,
+            "maxConsecutiveSpeedKmh": 54.2800261628369,
+            "sourceDeparture": [
+              {
+                "seconds": -30.009,
+                "distanceToStopM": 46.41,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.026,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -19.946,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.03,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.015,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -4.762,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 46.41,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.981,
+                "distanceToStopM": 41.46,
+                "stepM": 30.18,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.994,
+                "distanceToStopM": 41.46,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.992,
+                "distanceToStopM": 57.94,
+                "stepM": 35.56,
+                "lastStop": 11
+              },
+              {
+                "seconds": 19.993,
+                "distanceToStopM": 76.85,
+                "stepM": 33.29,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.001,
+                "distanceToStopM": 144.96,
+                "stepM": null,
+                "lastStop": 113
+              },
+              {
+                "seconds": -9.999,
+                "distanceToStopM": 113.08,
+                "stepM": 31.9,
+                "lastStop": 113
+              },
+              {
+                "seconds": -4.953,
+                "distanceToStopM": 76.83,
+                "stepM": 36.28,
+                "lastStop": 113
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 46.81,
+                "stepM": 30.09,
+                "lastStop": 113
+              },
+              {
+                "seconds": 5.004,
+                "distanceToStopM": 46.81,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 10.056,
+                "distanceToStopM": 14.17,
+                "stepM": 33.06,
+                "lastStop": 113
+              },
+              {
+                "seconds": 15.05,
+                "distanceToStopM": 23.26,
+                "stepM": 36.53,
+                "lastStop": 113
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 64318,
+          "targetId": 64338,
+          "bus": "#309",
+          "sourcePinET": "2026-09-17T08:56:08.217000-04:00",
+          "source": {
+            "id": 64318,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789649753079,
+            "pinned_at": 1789649768217,
+            "arrived_at": 1789649768217,
+            "departed_at": 1789649928303,
+            "stand_sec": 160.086,
+            "inside_sec": 170.288,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.182977866156076,
+            "steps": 3,
+            "far_m": 77.52781842696558,
+            "confirm_sec": 10.046,
+            "rest_polls": 9,
+            "shuffles": 3,
+            "first_moved_at": 1789649778210,
+            "last_at_rest_at": 1789649928303,
+            "closest_m": 63.60766521184506,
+            "dow": 4,
+            "hour": 8
+          },
+          "target": {
+            "id": 64338,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789649998117,
+            "pinned_at": 1789650003136,
+            "arrived_at": 1789650008106,
+            "departed_at": 1789650058115,
+            "stand_sec": 50.009,
+            "inside_sec": 60.15,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 35.17415517994905,
+            "steps": 2,
+            "far_m": 127.01019030615245,
+            "confirm_sec": 5.049,
+            "rest_polls": 8,
+            "shuffles": 1,
+            "first_moved_at": 1789650018243,
+            "last_at_rest_at": 1789650058115,
+            "closest_m": 4.053598304352658,
+            "dow": 4,
+            "hour": 9
+          },
+          "legs": [
+            {
+              "id": 59630,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789649928303,
+              "arrived_at": 1789649943138,
+              "to_pinned_at": 1789649943138,
+              "leg_sec": 14.835,
+              "hold_sec": 0.0,
+              "drive_sec": 14.835,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 8
+            },
+            {
+              "id": 59638,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789649953115,
+              "arrived_at": 1789649978114,
+              "to_pinned_at": 1789649978114,
+              "leg_sec": 24.999,
+              "hold_sec": 0.0,
+              "drive_sec": 24.999,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 8
+            },
+            {
+              "id": 59642,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789649978114,
+              "arrived_at": 1789650008106,
+              "to_pinned_at": 1789650003136,
+              "leg_sec": 29.992,
+              "hold_sec": 0.0,
+              "drive_sec": 29.992,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 8
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789649928303,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 79.803,
+              "baselineLow": 28.498897231592668,
+              "candidateLow": 103.2610813146453,
+              "lowerExcessSec": 23.458081314645298,
+              "candidateLowerBeforeDetectorDepartureSec": 26.550918685354716
+            },
+            {
+              "at": 1789649938505,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 69.601,
+              "baselineLow": 7.199445634523501,
+              "candidateLow": 86.81668797505677,
+              "lowerExcessSec": 17.215687975056767,
+              "candidateLowerBeforeDetectorDepartureSec": 32.79331202494323
+            },
+            {
+              "at": 1789649948273,
+              "phase": "departure",
+              "checkpointSec": 15,
+              "truthSec": 59.833,
+              "baselineLow": 8.432644912782692,
+              "candidateLow": 65.92377529666393,
+              "lowerExcessSec": 6.090775296663935,
+              "candidateLowerBeforeDetectorDepartureSec": 43.918224703336065
+            }
+          ],
+          "raw": {
+            "n": 69,
+            "maxGapSec": 5.413,
+            "maxConsecutiveSpeedKmh": 55.55816159832801,
+            "sourceDeparture": [
+              {
+                "seconds": -29.909,
+                "distanceToStopM": 44.65,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.143,
+                "distanceToStopM": 44.65,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.16,
+                "distanceToStopM": 44.65,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.211,
+                "distanceToStopM": 44.65,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.19,
+                "distanceToStopM": 44.65,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.194,
+                "distanceToStopM": 44.65,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 44.65,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.789,
+                "distanceToStopM": 46.46,
+                "stepM": 30.15,
+                "lastStop": 11
+              },
+              {
+                "seconds": 10.202,
+                "distanceToStopM": 56.48,
+                "stepM": 30.42,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.835,
+                "distanceToStopM": 77.44,
+                "stepM": 37.83,
+                "lastStop": 11
+              },
+              {
+                "seconds": 19.97,
+                "distanceToStopM": 77.44,
+                "stepM": 0.0,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -19.873,
+                "distanceToStopM": 203.78,
+                "stepM": null,
+                "lastStop": 146
+              },
+              {
+                "seconds": -15.008,
+                "distanceToStopM": 137.13,
+                "stepM": 66.71,
+                "lastStop": 146
+              },
+              {
+                "seconds": -9.989,
+                "distanceToStopM": 105.83,
+                "stepM": 31.3,
+                "lastStop": 49
+              },
+              {
+                "seconds": -4.97,
+                "distanceToStopM": 67.02,
+                "stepM": 38.83,
+                "lastStop": 49
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 4.05,
+                "stepM": 68.77,
+                "lastStop": 49
+              },
+              {
+                "seconds": 5.101,
+                "distanceToStopM": 4.05,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 10.137,
+                "distanceToStopM": 30.39,
+                "stepM": 30.53,
+                "lastStop": 49
+              },
+              {
+                "seconds": 14.997,
+                "distanceToStopM": 30.39,
+                "stepM": 0.0,
+                "lastStop": 49
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 65347,
+          "targetId": 65364,
+          "bus": "#309",
+          "sourcePinET": "2026-09-17T10:50:52.856000-04:00",
+          "source": {
+            "id": 65347,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789656637744,
+            "pinned_at": 1789656652856,
+            "arrived_at": 1789656652856,
+            "departed_at": 1789657152981,
+            "stand_sec": 500.125,
+            "inside_sec": 515.262,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 31.691025689341433,
+            "steps": 3,
+            "far_m": 80.71910263683685,
+            "confirm_sec": 15.192,
+            "rest_polls": 7,
+            "shuffles": 3,
+            "first_moved_at": 1789656667748,
+            "last_at_rest_at": 1789657152981,
+            "closest_m": 65.86926007526351,
+            "dow": 4,
+            "hour": 10
+          },
+          "target": {
+            "id": 65364,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789657228094,
+            "pinned_at": 1789657232897,
+            "arrived_at": 1789657232897,
+            "departed_at": 1789657262862,
+            "stand_sec": 29.965,
+            "inside_sec": 44.987,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 33.54790660602794,
+            "steps": 4,
+            "far_m": 137.71077604208162,
+            "confirm_sec": 15.001,
+            "rest_polls": 6,
+            "shuffles": 0,
+            "first_moved_at": 1789657267880,
+            "last_at_rest_at": 1789657262862,
+            "closest_m": 15.873351666002648,
+            "dow": 4,
+            "hour": 11
+          },
+          "legs": [
+            {
+              "id": 60572,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789657152981,
+              "arrived_at": 1789657178012,
+              "to_pinned_at": 1789657173148,
+              "leg_sec": 25.031,
+              "hold_sec": 0.0,
+              "drive_sec": 25.031,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 10
+            },
+            {
+              "id": 60578,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789657192951,
+              "arrived_at": 1789657207886,
+              "to_pinned_at": 1789657202972,
+              "leg_sec": 14.935,
+              "hold_sec": 0.0,
+              "drive_sec": 14.935,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 10
+            },
+            {
+              "id": 60581,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789657207886,
+              "arrived_at": 1789657232897,
+              "to_pinned_at": 1789657232897,
+              "leg_sec": 25.011,
+              "hold_sec": 0.0,
+              "drive_sec": 25.011,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 11
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789657162971,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 69.926,
+              "baselineLow": 0.5568479784548788,
+              "candidateLow": 73.09396223062325,
+              "lowerExcessSec": 3.167962230623246,
+              "candidateLowerBeforeDetectorDepartureSec": 26.797037769376757
+            },
+            {
+              "at": 1789657168118,
+              "phase": "departure",
+              "checkpointSec": 15,
+              "truthSec": 64.779,
+              "baselineLow": 0,
+              "candidateLow": 65.75276411113461,
+              "lowerExcessSec": 0.9737641111346136,
+              "candidateLowerBeforeDetectorDepartureSec": 28.99123588886539
+            }
+          ],
+          "raw": {
+            "n": 133,
+            "maxGapSec": 5.301,
+            "maxConsecutiveSpeedKmh": 58.673518933114025,
+            "sourceDeparture": [
+              {
+                "seconds": -30.107,
+                "distanceToStopM": 44.28,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.135,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.128,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.071,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.098,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.032,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.975,
+                "distanceToStopM": 47.79,
+                "stepM": 31.66,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.99,
+                "distanceToStopM": 47.79,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 15.137,
+                "distanceToStopM": 59.34,
+                "stepM": 32.63,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -19.962,
+                "distanceToStopM": 207.41,
+                "stepM": null,
+                "lastStop": 146
+              },
+              {
+                "seconds": -14.973,
+                "distanceToStopM": 170.18,
+                "stepM": 37.24,
+                "lastStop": 146
+              },
+              {
+                "seconds": -10.045,
+                "distanceToStopM": 131.72,
+                "stepM": 38.48,
+                "lastStop": 49
+              },
+              {
+                "seconds": -4.803,
+                "distanceToStopM": 93.77,
+                "stepM": 37.97,
+                "lastStop": 49
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 15.86,
+                "stepM": 78.28,
+                "lastStop": 49
+              },
+              {
+                "seconds": 4.983,
+                "distanceToStopM": 15.86,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 10.017,
+                "distanceToStopM": 15.86,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 14.96,
+                "distanceToStopM": 15.86,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 19.958,
+                "distanceToStopM": 15.86,
+                "stepM": 0.0,
+                "lastStop": 49
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 65347,
+          "targetId": 65406,
+          "bus": "#309",
+          "sourcePinET": "2026-09-17T10:50:52.856000-04:00",
+          "source": {
+            "id": 65347,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789656637744,
+            "pinned_at": 1789656652856,
+            "arrived_at": 1789656652856,
+            "departed_at": 1789657152981,
+            "stand_sec": 500.125,
+            "inside_sec": 515.262,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 31.691025689341433,
+            "steps": 3,
+            "far_m": 80.71910263683685,
+            "confirm_sec": 15.192,
+            "rest_polls": 7,
+            "shuffles": 3,
+            "first_moved_at": 1789656667748,
+            "last_at_rest_at": 1789657152981,
+            "closest_m": 65.86926007526351,
+            "dow": 4,
+            "hour": 10
+          },
+          "target": {
+            "id": 65406,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 4,
+            "stop_index": 20,
+            "anchored_at": 1789657447871,
+            "pinned_at": 1789657462890,
+            "arrived_at": 1789657462890,
+            "departed_at": 1789657468050,
+            "stand_sec": 5.16,
+            "inside_sec": 20.0,
+            "outcome": "passed",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 32.895957528531135,
+            "steps": 5,
+            "far_m": 130.64393553952635,
+            "confirm_sec": 34.996,
+            "rest_polls": 1,
+            "shuffles": 0,
+            "first_moved_at": 1789657472889,
+            "last_at_rest_at": 1789657468050,
+            "closest_m": 68.74957089993501,
+            "dow": 4,
+            "hour": 11
+          },
+          "legs": [
+            {
+              "id": 60572,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789657152981,
+              "arrived_at": 1789657178012,
+              "to_pinned_at": 1789657173148,
+              "leg_sec": 25.031,
+              "hold_sec": 0.0,
+              "drive_sec": 25.031,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 10
+            },
+            {
+              "id": 60578,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789657192951,
+              "arrived_at": 1789657207886,
+              "to_pinned_at": 1789657202972,
+              "leg_sec": 14.935,
+              "hold_sec": 0.0,
+              "drive_sec": 14.935,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 10
+            },
+            {
+              "id": 60581,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789657207886,
+              "arrived_at": 1789657232897,
+              "to_pinned_at": 1789657232897,
+              "leg_sec": 25.011,
+              "hold_sec": 0.0,
+              "drive_sec": 25.011,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 11
+            },
+            {
+              "id": 60596,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 48,
+              "from_index": 17,
+              "to_stop_id": 104,
+              "to_index": 18,
+              "hops": 1,
+              "departed_at": 1789657262862,
+              "arrived_at": 1789657312958,
+              "to_pinned_at": 1789657307875,
+              "leg_sec": 50.096,
+              "hold_sec": 0.0,
+              "drive_sec": 50.096,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 11
+            },
+            {
+              "id": 60608,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 104,
+              "from_index": 18,
+              "to_stop_id": 113,
+              "to_index": 19,
+              "hops": 1,
+              "departed_at": 1789657357886,
+              "arrived_at": 1789657397895,
+              "to_pinned_at": 1789657387901,
+              "leg_sec": 40.009,
+              "hold_sec": 0.0,
+              "drive_sec": 40.009,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 11
+            },
+            {
+              "id": 60622,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 113,
+              "from_index": 19,
+              "to_stop_id": 4,
+              "to_index": 20,
+              "hops": 1,
+              "departed_at": 1789657427913,
+              "arrived_at": 1789657462890,
+              "to_pinned_at": 1789657462890,
+              "leg_sec": 34.977,
+              "hold_sec": 0.0,
+              "drive_sec": 34.977,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 11
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789657072892,
+              "phase": "standing",
+              "checkpointSec": 420,
+              "truthSec": 389.998,
+              "baselineLow": 378.438267224821,
+              "candidateLow": 430.0061877347604,
+              "lowerExcessSec": 40.008187734760384,
+              "candidateLowerBeforeDetectorDepartureSec": -34.84818773476036
+            },
+            {
+              "at": 1789657152981,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 309.909,
+              "baselineLow": 340.085649834962,
+              "candidateLow": 398.4084103231771,
+              "lowerExcessSec": 88.49941032317713,
+              "candidateLowerBeforeDetectorDepartureSec": -83.3394103231771
+            },
+            {
+              "at": 1789657162971,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 299.919,
+              "baselineLow": 325.9813218009992,
+              "candidateLow": 388.5488526557103,
+              "lowerExcessSec": 88.6298526557103,
+              "candidateLowerBeforeDetectorDepartureSec": -83.46985265571027
+            },
+            {
+              "at": 1789657168118,
+              "phase": "departure",
+              "checkpointSec": 15,
+              "truthSec": 294.772,
+              "baselineLow": 313.94162170719835,
+              "candidateLow": 378.2317063648219,
+              "lowerExcessSec": 83.4597063648219,
+              "candidateLowerBeforeDetectorDepartureSec": -78.29970636482187
+            },
+            {
+              "at": 1789657187851,
+              "phase": "departure",
+              "checkpointSec": 30,
+              "truthSec": 275.039,
+              "baselineLow": 261.3524828128315,
+              "candidateLow": 316.9766894472034,
+              "lowerExcessSec": 41.93768944720341,
+              "candidateLowerBeforeDetectorDepartureSec": -36.777689447203386
+            }
+          ],
+          "raw": {
+            "n": 175,
+            "maxGapSec": 5.301,
+            "maxConsecutiveSpeedKmh": 58.673518933114025,
+            "sourceDeparture": [
+              {
+                "seconds": -30.107,
+                "distanceToStopM": 44.28,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.135,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.128,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.071,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.098,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.032,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 44.28,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.975,
+                "distanceToStopM": 47.79,
+                "stepM": 31.66,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.99,
+                "distanceToStopM": 47.79,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 15.137,
+                "distanceToStopM": 59.34,
+                "stepM": 32.63,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.019,
+                "distanceToStopM": 163.44,
+                "stepM": null,
+                "lastStop": 104
+              },
+              {
+                "seconds": -9.931,
+                "distanceToStopM": 163.44,
+                "stepM": 0.0,
+                "lastStop": 104
+              },
+              {
+                "seconds": -5.012,
+                "distanceToStopM": 132.16,
+                "stepM": 31.28,
+                "lastStop": 113
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 68.67,
+                "stepM": 63.7,
+                "lastStop": 113
+              },
+              {
+                "seconds": 5.16,
+                "distanceToStopM": 68.67,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 9.999,
+                "distanceToStopM": 35.88,
+                "stepM": 32.86,
+                "lastStop": 113
+              },
+              {
+                "seconds": 15.029,
+                "distanceToStopM": 4.86,
+                "stepM": 34.12,
+                "lastStop": 113
+              },
+              {
+                "seconds": 20.0,
+                "distanceToStopM": 64.87,
+                "stepM": 66.13,
+                "lastStop": 113
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 66730,
+          "targetId": 66746,
+          "bus": "#309",
+          "sourcePinET": "2026-09-17T13:52:01.102000-04:00",
+          "source": {
+            "id": 66730,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789667506040,
+            "pinned_at": 1789667521102,
+            "arrived_at": 1789667521102,
+            "departed_at": 1789668146228,
+            "stand_sec": 625.126,
+            "inside_sec": 635.064,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.81144448438951,
+            "steps": 3,
+            "far_m": 75.66334663128616,
+            "confirm_sec": 10.054,
+            "rest_polls": 7,
+            "shuffles": 2,
+            "first_moved_at": 1789667606073,
+            "last_at_rest_at": 1789668146228,
+            "closest_m": 64.96393281223716,
+            "dow": 4,
+            "hour": 13
+          },
+          "target": {
+            "id": 66746,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789668201108,
+            "pinned_at": 1789668206305,
+            "arrived_at": 1789668216092,
+            "departed_at": 1789668251168,
+            "stand_sec": 35.076,
+            "inside_sec": 49.781,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1.0,
+            "first_step_m": 35.645540639477105,
+            "steps": 3,
+            "far_m": 172.21783163389392,
+            "confirm_sec": 10.227,
+            "rest_polls": 5,
+            "shuffles": 1,
+            "first_moved_at": 1789668226121,
+            "last_at_rest_at": 1789668251168,
+            "closest_m": 12.121414138470888,
+            "dow": 4,
+            "hour": 14
+          },
+          "legs": [
+            {
+              "id": 61889,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789668146228,
+              "arrived_at": 1789668166109,
+              "to_pinned_at": 1789668161158,
+              "leg_sec": 19.881,
+              "hold_sec": 0.0,
+              "drive_sec": 19.881,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            },
+            {
+              "id": 61893,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789668171166,
+              "arrived_at": 1789668186082,
+              "to_pinned_at": 1789668181168,
+              "leg_sec": 14.916,
+              "hold_sec": 0.0,
+              "drive_sec": 14.916,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            },
+            {
+              "id": 61895,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789668186082,
+              "arrived_at": 1789668216092,
+              "to_pinned_at": 1789668206305,
+              "leg_sec": 30.01,
+              "hold_sec": 0.0,
+              "drive_sec": 30.01,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            }
+          ],
+          "earlyRows": [],
+          "raw": {
+            "n": 158,
+            "maxGapSec": 5.242,
+            "maxConsecutiveSpeedKmh": 50.10489115642605,
+            "sourceDeparture": [
+              {
+                "seconds": -29.862,
+                "distanceToStopM": 43.14,
+                "stepM": null,
+                "lastStop": 31
+              },
+              {
+                "seconds": -25.119,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": -20.087,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": -15.077,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": -10.141,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": -5.123,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": 4.876,
+                "distanceToStopM": 51.11,
+                "stepM": 30.78,
+                "lastStop": 31
+              },
+              {
+                "seconds": 9.938,
+                "distanceToStopM": 58.04,
+                "stepM": 34.89,
+                "lastStop": 31
+              },
+              {
+                "seconds": 14.93,
+                "distanceToStopM": 75.58,
+                "stepM": 31.59,
+                "lastStop": 31
+              },
+              {
+                "seconds": 19.881,
+                "distanceToStopM": 102.93,
+                "stepM": 34.04,
+                "lastStop": 31
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -14.984,
+                "distanceToStopM": 96.03,
+                "stepM": null,
+                "lastStop": 31
+              },
+              {
+                "seconds": -9.787,
+                "distanceToStopM": 57.85,
+                "stepM": 38.26,
+                "lastStop": 31
+              },
+              {
+                "seconds": -4.929,
+                "distanceToStopM": 23.72,
+                "stepM": 34.3,
+                "lastStop": 31
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 12.11,
+                "stepM": 34.49,
+                "lastStop": 31
+              },
+              {
+                "seconds": 5.047,
+                "distanceToStopM": 12.11,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": 10.029,
+                "distanceToStopM": 35.32,
+                "stepM": 30.91,
+                "lastStop": 31
+              },
+              {
+                "seconds": 15.043,
+                "distanceToStopM": 35.32,
+                "stepM": 0.0,
+                "lastStop": 41
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 66730,
+          "targetId": 66782,
+          "bus": "#309",
+          "sourcePinET": "2026-09-17T13:52:01.102000-04:00",
+          "source": {
+            "id": 66730,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789667506040,
+            "pinned_at": 1789667521102,
+            "arrived_at": 1789667521102,
+            "departed_at": 1789668146228,
+            "stand_sec": 625.126,
+            "inside_sec": 635.064,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.81144448438951,
+            "steps": 3,
+            "far_m": 75.66334663128616,
+            "confirm_sec": 10.054,
+            "rest_polls": 7,
+            "shuffles": 2,
+            "first_moved_at": 1789667606073,
+            "last_at_rest_at": 1789668146228,
+            "closest_m": 64.96393281223716,
+            "dow": 4,
+            "hour": 13
+          },
+          "target": {
+            "id": 66782,
+            "bus_id": 66491,
+            "bus_name": "#309",
+            "anchor_bus_id": 66491,
+            "route_id": 3,
+            "stop_id": 4,
+            "stop_index": 20,
+            "anchored_at": 1789668406165,
+            "pinned_at": 1789668421204,
+            "arrived_at": 1789668421204,
+            "departed_at": 1789668436250,
+            "stand_sec": 15.046,
+            "inside_sec": 30.257,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 31.82149150294715,
+            "steps": 5,
+            "far_m": 149.71490111345048,
+            "confirm_sec": 59.705,
+            "rest_polls": 3,
+            "shuffles": 0,
+            "first_moved_at": 1789668441395,
+            "last_at_rest_at": 1789668436250,
+            "closest_m": 46.50054931495223,
+            "dow": 4,
+            "hour": 14
+          },
+          "legs": [
+            {
+              "id": 61889,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789668146228,
+              "arrived_at": 1789668166109,
+              "to_pinned_at": 1789668161158,
+              "leg_sec": 19.881,
+              "hold_sec": 0.0,
+              "drive_sec": 19.881,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            },
+            {
+              "id": 61893,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789668171166,
+              "arrived_at": 1789668186082,
+              "to_pinned_at": 1789668181168,
+              "leg_sec": 14.916,
+              "hold_sec": 0.0,
+              "drive_sec": 14.916,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            },
+            {
+              "id": 61895,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789668186082,
+              "arrived_at": 1789668216092,
+              "to_pinned_at": 1789668206305,
+              "leg_sec": 30.01,
+              "hold_sec": 0.0,
+              "drive_sec": 30.01,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            },
+            {
+              "id": 61903,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 48,
+              "from_index": 17,
+              "to_stop_id": 104,
+              "to_index": 18,
+              "hops": 1,
+              "departed_at": 1789668251168,
+              "arrived_at": 1789668291099,
+              "to_pinned_at": 1789668291099,
+              "leg_sec": 39.931,
+              "hold_sec": 0.0,
+              "drive_sec": 39.931,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            },
+            {
+              "id": 61921,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 104,
+              "from_index": 18,
+              "to_stop_id": 113,
+              "to_index": 19,
+              "hops": 1,
+              "departed_at": 1789668346438,
+              "arrived_at": 1789668376374,
+              "to_pinned_at": 1789668371321,
+              "leg_sec": 29.936,
+              "hold_sec": 0.0,
+              "drive_sec": 29.936,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            },
+            {
+              "id": 61925,
+              "bus_id": 66491,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 113,
+              "from_index": 19,
+              "to_stop_id": 4,
+              "to_index": 20,
+              "hops": 1,
+              "departed_at": 1789668376374,
+              "arrived_at": 1789668421204,
+              "to_pinned_at": 1789668421204,
+              "leg_sec": 44.83,
+              "hold_sec": 0.0,
+              "drive_sec": 44.83,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 14
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789668121109,
+              "phase": "standing",
+              "checkpointSec": 600,
+              "truthSec": 300.095,
+              "baselineLow": 278.94357634814327,
+              "candidateLow": 333.716667078217,
+              "lowerExcessSec": 33.621667078216944,
+              "candidateLowerBeforeDetectorDepartureSec": -18.575667078216952
+            },
+            {
+              "at": 1789668146228,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 274.976,
+              "baselineLow": 279.82649156404716,
+              "candidateLow": 333.0500656530153,
+              "lowerExcessSec": 58.07406565301528,
+              "candidateLowerBeforeDetectorDepartureSec": -43.02806565301529
+            },
+            {
+              "at": 1789668156166,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 265.038,
+              "baselineLow": 276.32411967871855,
+              "candidateLow": 329.2320432867146,
+              "lowerExcessSec": 64.19404328671459,
+              "candidateLowerBeforeDetectorDepartureSec": -49.148043286714596
+            }
+          ],
+          "raw": {
+            "n": 195,
+            "maxGapSec": 5.416,
+            "maxConsecutiveSpeedKmh": 51.94792639488097,
+            "sourceDeparture": [
+              {
+                "seconds": -29.862,
+                "distanceToStopM": 43.14,
+                "stepM": null,
+                "lastStop": 31
+              },
+              {
+                "seconds": -25.119,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": -20.087,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": -15.077,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": -10.141,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": -5.123,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 43.14,
+                "stepM": 0.0,
+                "lastStop": 31
+              },
+              {
+                "seconds": 4.876,
+                "distanceToStopM": 51.11,
+                "stepM": 30.78,
+                "lastStop": 31
+              },
+              {
+                "seconds": 9.938,
+                "distanceToStopM": 58.04,
+                "stepM": 34.89,
+                "lastStop": 31
+              },
+              {
+                "seconds": 14.93,
+                "distanceToStopM": 75.58,
+                "stepM": 31.59,
+                "lastStop": 31
+              },
+              {
+                "seconds": 19.881,
+                "distanceToStopM": 102.93,
+                "stepM": 34.04,
+                "lastStop": 31
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -19.877,
+                "distanceToStopM": 176.69,
+                "stepM": null,
+                "lastStop": 128
+              },
+              {
+                "seconds": -15.039,
+                "distanceToStopM": 144.61,
+                "stepM": 32.1,
+                "lastStop": 128
+              },
+              {
+                "seconds": -10.038,
+                "distanceToStopM": 110.68,
+                "stepM": 33.99,
+                "lastStop": 128
+              },
+              {
+                "seconds": -4.757,
+                "distanceToStopM": 80.27,
+                "stepM": 30.52,
+                "lastStop": 128
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 46.45,
+                "stepM": 33.91,
+                "lastStop": 128
+              },
+              {
+                "seconds": 5.093,
+                "distanceToStopM": 46.45,
+                "stepM": 0.0,
+                "lastStop": 128
+              },
+              {
+                "seconds": 10.296,
+                "distanceToStopM": 46.45,
+                "stepM": 0.0,
+                "lastStop": 128
+              },
+              {
+                "seconds": 15.046,
+                "distanceToStopM": 46.45,
+                "stepM": 0.0,
+                "lastStop": 128
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 67957,
+          "targetId": 67974,
+          "bus": "#316",
+          "sourcePinET": "2026-09-17T16:39:11.500000-04:00",
+          "source": {
+            "id": 67957,
+            "bus_id": 66508,
+            "bus_name": "#316",
+            "anchor_bus_id": 66508,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789677536524,
+            "pinned_at": 1789677551500,
+            "arrived_at": 1789677551500,
+            "departed_at": 1789677901607,
+            "stand_sec": 350.107,
+            "inside_sec": 365.06,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.28693238780247,
+            "steps": 3,
+            "far_m": 71.06663241243677,
+            "confirm_sec": 10.0,
+            "rest_polls": 8,
+            "shuffles": 2,
+            "first_moved_at": 1789677581524,
+            "last_at_rest_at": 1789677901607,
+            "closest_m": 58.22708904203518,
+            "dow": 4,
+            "hour": 16
+          },
+          "target": {
+            "id": 67974,
+            "bus_id": 66508,
+            "bus_name": "#316",
+            "anchor_bus_id": 66508,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789677971552,
+            "pinned_at": 1789677981592,
+            "arrived_at": 1789677991748,
+            "departed_at": 1789678001591,
+            "stand_sec": 9.843,
+            "inside_sec": 24.961,
+            "outcome": "passed",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 32.881766258747305,
+            "steps": 3,
+            "far_m": 140.6900925230583,
+            "confirm_sec": 10.008,
+            "rest_polls": 2,
+            "shuffles": 0,
+            "first_moved_at": 1789678006553,
+            "last_at_rest_at": 1789678001591,
+            "closest_m": 5.060211565844647,
+            "dow": 4,
+            "hour": 16
+          },
+          "legs": [
+            {
+              "id": 63058,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789677901607,
+              "arrived_at": 1789677921541,
+              "to_pinned_at": 1789677916560,
+              "leg_sec": 19.934,
+              "hold_sec": 0.0,
+              "drive_sec": 19.934,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            },
+            {
+              "id": 63067,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789677931600,
+              "arrived_at": 1789677956595,
+              "to_pinned_at": 1789677951542,
+              "leg_sec": 24.995,
+              "hold_sec": 0.0,
+              "drive_sec": 24.995,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            },
+            {
+              "id": 63071,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789677956595,
+              "arrived_at": 1789677991748,
+              "to_pinned_at": 1789677981592,
+              "leg_sec": 35.153,
+              "hold_sec": 0.0,
+              "drive_sec": 35.153,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            }
+          ],
+          "earlyRows": [],
+          "raw": {
+            "n": 103,
+            "maxGapSec": 5.252,
+            "maxConsecutiveSpeedKmh": 54.11886133420322,
+            "sourceDeparture": [
+              {
+                "seconds": -30.063,
+                "distanceToStopM": 45.95,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.026,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.0,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.065,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -9.923,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.065,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.953,
+                "distanceToStopM": 30.44,
+                "stepM": 30.25,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.95,
+                "distanceToStopM": 56.04,
+                "stepM": 32.46,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.953,
+                "distanceToStopM": 70.99,
+                "stepM": 31.4,
+                "lastStop": 11
+              },
+              {
+                "seconds": 19.934,
+                "distanceToStopM": 93.39,
+                "stepM": 29.98,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.039,
+                "distanceToStopM": 86.22,
+                "stepM": null,
+                "lastStop": 49
+              },
+              {
+                "seconds": -10.156,
+                "distanceToStopM": 55.69,
+                "stepM": 30.54,
+                "lastStop": 49
+              },
+              {
+                "seconds": -5.129,
+                "distanceToStopM": 25.64,
+                "stepM": 30.05,
+                "lastStop": 49
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 5.05,
+                "stepM": 30.34,
+                "lastStop": 49
+              },
+              {
+                "seconds": 4.842,
+                "distanceToStopM": 5.05,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 9.843,
+                "distanceToStopM": 5.05,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 14.805,
+                "distanceToStopM": 35.17,
+                "stepM": 32.84,
+                "lastStop": 49
+              },
+              {
+                "seconds": 19.803,
+                "distanceToStopM": 102.92,
+                "stepM": 75.14,
+                "lastStop": 48
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 67957,
+          "targetId": 68015,
+          "bus": "#316",
+          "sourcePinET": "2026-09-17T16:39:11.500000-04:00",
+          "source": {
+            "id": 67957,
+            "bus_id": 66508,
+            "bus_name": "#316",
+            "anchor_bus_id": 66508,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789677536524,
+            "pinned_at": 1789677551500,
+            "arrived_at": 1789677551500,
+            "departed_at": 1789677901607,
+            "stand_sec": 350.107,
+            "inside_sec": 365.06,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 30.28693238780247,
+            "steps": 3,
+            "far_m": 71.06663241243677,
+            "confirm_sec": 10.0,
+            "rest_polls": 8,
+            "shuffles": 2,
+            "first_moved_at": 1789677581524,
+            "last_at_rest_at": 1789677901607,
+            "closest_m": 58.22708904203518,
+            "dow": 4,
+            "hour": 16
+          },
+          "target": {
+            "id": 68015,
+            "bus_id": 66508,
+            "bus_name": "#316",
+            "anchor_bus_id": 66508,
+            "route_id": 3,
+            "stop_id": 4,
+            "stop_index": 20,
+            "anchored_at": 1789678201931,
+            "pinned_at": 1789678211597,
+            "arrived_at": 1789678211597,
+            "departed_at": 1789678251570,
+            "stand_sec": 39.973,
+            "inside_sec": 50.344,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 34.72308557273669,
+            "steps": 5,
+            "far_m": 143.07368079557537,
+            "confirm_sec": 19.942,
+            "rest_polls": 3,
+            "shuffles": 1,
+            "first_moved_at": 1789678236595,
+            "last_at_rest_at": 1789678251570,
+            "closest_m": 56.47518428348255,
+            "dow": 4,
+            "hour": 16
+          },
+          "legs": [
+            {
+              "id": 63058,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789677901607,
+              "arrived_at": 1789677921541,
+              "to_pinned_at": 1789677916560,
+              "leg_sec": 19.934,
+              "hold_sec": 0.0,
+              "drive_sec": 19.934,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            },
+            {
+              "id": 63067,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789677931600,
+              "arrived_at": 1789677956595,
+              "to_pinned_at": 1789677951542,
+              "leg_sec": 24.995,
+              "hold_sec": 0.0,
+              "drive_sec": 24.995,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            },
+            {
+              "id": 63071,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789677956595,
+              "arrived_at": 1789677991748,
+              "to_pinned_at": 1789677981592,
+              "leg_sec": 35.153,
+              "hold_sec": 0.0,
+              "drive_sec": 35.153,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            },
+            {
+              "id": 63074,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 48,
+              "from_index": 17,
+              "to_stop_id": 104,
+              "to_index": 18,
+              "hops": 1,
+              "departed_at": 1789678001591,
+              "arrived_at": 1789678046652,
+              "to_pinned_at": 1789678041553,
+              "leg_sec": 45.061,
+              "hold_sec": 0.0,
+              "drive_sec": 45.061,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            },
+            {
+              "id": 63098,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 104,
+              "from_index": 18,
+              "to_stop_id": 113,
+              "to_index": 19,
+              "hops": 1,
+              "departed_at": 1789678136559,
+              "arrived_at": 1789678176614,
+              "to_pinned_at": 1789678171649,
+              "leg_sec": 40.055,
+              "hold_sec": 0.0,
+              "drive_sec": 40.055,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            },
+            {
+              "id": 63103,
+              "bus_id": 66508,
+              "bus_name": "#316",
+              "route_id": 3,
+              "from_stop_id": 113,
+              "from_index": 19,
+              "to_stop_id": 4,
+              "to_index": 20,
+              "hops": 1,
+              "departed_at": 1789678176614,
+              "arrived_at": 1789678211597,
+              "to_pinned_at": 1789678211597,
+              "leg_sec": 34.983,
+              "hold_sec": 0.0,
+              "drive_sec": 34.983,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 16
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789677731561,
+              "phase": "standing",
+              "checkpointSec": 180,
+              "truthSec": 480.036,
+              "baselineLow": 436.23527743713703,
+              "candidateLow": 494.88834274367827,
+              "lowerExcessSec": 14.852342743678264,
+              "candidateLowerBeforeDetectorDepartureSec": 25.12065725632175
+            },
+            {
+              "at": 1789677851548,
+              "phase": "standing",
+              "checkpointSec": 300,
+              "truthSec": 360.049,
+              "baselineLow": 347.0974820523494,
+              "candidateLow": 402.67995389132835,
+              "lowerExcessSec": 42.630953891328375,
+              "candidateLowerBeforeDetectorDepartureSec": -2.6579538913283614
+            },
+            {
+              "at": 1789677901607,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 309.99,
+              "baselineLow": 343.6970552896939,
+              "candidateLow": 402.1547518942593,
+              "lowerExcessSec": 92.16475189425927,
+              "candidateLowerBeforeDetectorDepartureSec": -52.191751894259255
+            },
+            {
+              "at": 1789677911557,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 300.04,
+              "baselineLow": 321.38110893862927,
+              "candidateLow": 383.972981980973,
+              "lowerExcessSec": 83.93298198097295,
+              "candidateLowerBeforeDetectorDepartureSec": -43.959981980973
+            },
+            {
+              "at": 1789677921541,
+              "phase": "departure",
+              "checkpointSec": 15,
+              "truthSec": 290.056,
+              "baselineLow": 289.5358861391974,
+              "candidateLow": 348.3885422110498,
+              "lowerExcessSec": 58.33254221104983,
+              "candidateLowerBeforeDetectorDepartureSec": -18.359542211049813
+            }
+          ],
+          "raw": {
+            "n": 152,
+            "maxGapSec": 5.661,
+            "maxConsecutiveSpeedKmh": 54.53115559078699,
+            "sourceDeparture": [
+              {
+                "seconds": -30.063,
+                "distanceToStopM": 45.95,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.026,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.0,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.065,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -9.923,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.065,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 45.95,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.953,
+                "distanceToStopM": 30.44,
+                "stepM": 30.25,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.95,
+                "distanceToStopM": 56.04,
+                "stepM": 32.46,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.953,
+                "distanceToStopM": 70.99,
+                "stepM": 31.4,
+                "lastStop": 11
+              },
+              {
+                "seconds": 19.934,
+                "distanceToStopM": 93.39,
+                "stepM": 29.98,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -19.766,
+                "distanceToStopM": 226.48,
+                "stepM": null,
+                "lastStop": 104
+              },
+              {
+                "seconds": -14.971,
+                "distanceToStopM": 191.93,
+                "stepM": 34.57,
+                "lastStop": 104
+              },
+              {
+                "seconds": -9.666,
+                "distanceToStopM": 161.02,
+                "stepM": 30.9,
+                "lastStop": 104
+              },
+              {
+                "seconds": -4.911,
+                "distanceToStopM": 89.0,
+                "stepM": 72.03,
+                "lastStop": 113
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 56.41,
+                "stepM": 32.66,
+                "lastStop": 113
+              },
+              {
+                "seconds": 5.661,
+                "distanceToStopM": 56.41,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 10.235,
+                "distanceToStopM": 56.41,
+                "stepM": 0.0,
+                "lastStop": 4
+              },
+              {
+                "seconds": 15.102,
+                "distanceToStopM": 56.41,
+                "stepM": 0.0,
+                "lastStop": 4
+              },
+              {
+                "seconds": 19.997,
+                "distanceToStopM": 56.41,
+                "stepM": 0.0,
+                "lastStop": 4
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 68304,
+          "targetId": 68322,
+          "bus": "#300",
+          "sourcePinET": "2026-09-17T17:25:21.828000-04:00",
+          "source": {
+            "id": 68304,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789680306814,
+            "pinned_at": 1789680321828,
+            "arrived_at": 1789680326833,
+            "departed_at": 1789680606912,
+            "stand_sec": 280.079,
+            "inside_sec": 300.119,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 33.29224960097354,
+            "steps": 3,
+            "far_m": 74.37528377675305,
+            "confirm_sec": 10.088,
+            "rest_polls": 8,
+            "shuffles": 2,
+            "first_moved_at": 1789680356842,
+            "last_at_rest_at": 1789680606912,
+            "closest_m": 57.36287991901085,
+            "dow": 4,
+            "hour": 17
+          },
+          "target": {
+            "id": 68322,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789680672012,
+            "pinned_at": 1789680682111,
+            "arrived_at": 1789680682111,
+            "departed_at": 1789680706945,
+            "stand_sec": 24.834,
+            "inside_sec": 29.756,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 31.094712332544724,
+            "steps": 3,
+            "far_m": 136.95804761023751,
+            "confirm_sec": 15.077,
+            "rest_polls": 3,
+            "shuffles": 1,
+            "first_moved_at": 1789680691921,
+            "last_at_rest_at": 1789680706945,
+            "closest_m": 9.902489568987745,
+            "dow": 4,
+            "hour": 17
+          },
+          "legs": [
+            {
+              "id": 63394,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789680606912,
+              "arrived_at": 1789680626927,
+              "to_pinned_at": 1789680621947,
+              "leg_sec": 20.015,
+              "hold_sec": 0.0,
+              "drive_sec": 20.015,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            },
+            {
+              "id": 63399,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789680632070,
+              "arrived_at": 1789680656880,
+              "to_pinned_at": 1789680651877,
+              "leg_sec": 24.81,
+              "hold_sec": 0.0,
+              "drive_sec": 24.81,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            },
+            {
+              "id": 63402,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789680656880,
+              "arrived_at": 1789680682111,
+              "to_pinned_at": 1789680682111,
+              "leg_sec": 25.231,
+              "hold_sec": 0.0,
+              "drive_sec": 25.231,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789680616856,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 65.255,
+              "baselineLow": 5.50167600687157,
+              "candidateLow": 66.25371193124599,
+              "lowerExcessSec": 0.9987119312459924,
+              "candidateLowerBeforeDetectorDepartureSec": 23.83528806875401
+            }
+          ],
+          "raw": {
+            "n": 90,
+            "maxGapSec": 5.192,
+            "maxConsecutiveSpeedKmh": 56.236298395909834,
+            "sourceDeparture": [
+              {
+                "seconds": -30.02,
+                "distanceToStopM": 46.68,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.055,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.054,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.031,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.014,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.012,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.947,
+                "distanceToStopM": 50.05,
+                "stepM": 33.25,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.944,
+                "distanceToStopM": 58.67,
+                "stepM": 32.08,
+                "lastStop": 11
+              },
+              {
+                "seconds": 15.035,
+                "distanceToStopM": 74.29,
+                "stepM": 30.65,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.229,
+                "distanceToStopM": 148.83,
+                "stepM": null,
+                "lastStop": 49
+              },
+              {
+                "seconds": -10.099,
+                "distanceToStopM": 110.74,
+                "stepM": 38.1,
+                "lastStop": 49
+              },
+              {
+                "seconds": -5.192,
+                "distanceToStopM": 76.34,
+                "stepM": 34.4,
+                "lastStop": 49
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 9.89,
+                "stepM": 66.54,
+                "lastStop": 49
+              },
+              {
+                "seconds": 5.064,
+                "distanceToStopM": 9.89,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 9.81,
+                "distanceToStopM": 20.74,
+                "stepM": 30.51,
+                "lastStop": 49
+              },
+              {
+                "seconds": 14.777,
+                "distanceToStopM": 20.74,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 19.773,
+                "distanceToStopM": 20.74,
+                "stepM": 0.0,
+                "lastStop": 49
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 68304,
+          "targetId": 68360,
+          "bus": "#300",
+          "sourcePinET": "2026-09-17T17:25:21.828000-04:00",
+          "source": {
+            "id": 68304,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789680306814,
+            "pinned_at": 1789680321828,
+            "arrived_at": 1789680326833,
+            "departed_at": 1789680606912,
+            "stand_sec": 280.079,
+            "inside_sec": 300.119,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 33.29224960097354,
+            "steps": 3,
+            "far_m": 74.37528377675305,
+            "confirm_sec": 10.088,
+            "rest_polls": 8,
+            "shuffles": 2,
+            "first_moved_at": 1789680356842,
+            "last_at_rest_at": 1789680606912,
+            "closest_m": 57.36287991901085,
+            "dow": 4,
+            "hour": 17
+          },
+          "target": {
+            "id": 68360,
+            "bus_id": 66507,
+            "bus_name": "#300",
+            "anchor_bus_id": 66507,
+            "route_id": 3,
+            "stop_id": 4,
+            "stop_index": 20,
+            "anchored_at": 1789680911951,
+            "pinned_at": 1789680931996,
+            "arrived_at": 1789680931996,
+            "departed_at": 1789680956919,
+            "stand_sec": 24.923,
+            "inside_sec": 39.957,
+            "outcome": "stopped",
+            "how": "far",
+            "confidence": 1.0,
+            "first_step_m": 37.63535809307299,
+            "steps": 5,
+            "far_m": 182.83951851584337,
+            "confirm_sec": 20.028,
+            "rest_polls": 3,
+            "shuffles": 1,
+            "first_moved_at": 1789680942037,
+            "last_at_rest_at": 1789680956919,
+            "closest_m": 63.76873858687667,
+            "dow": 4,
+            "hour": 17
+          },
+          "legs": [
+            {
+              "id": 63394,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789680606912,
+              "arrived_at": 1789680626927,
+              "to_pinned_at": 1789680621947,
+              "leg_sec": 20.015,
+              "hold_sec": 0.0,
+              "drive_sec": 20.015,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            },
+            {
+              "id": 63399,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789680632070,
+              "arrived_at": 1789680656880,
+              "to_pinned_at": 1789680651877,
+              "leg_sec": 24.81,
+              "hold_sec": 0.0,
+              "drive_sec": 24.81,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            },
+            {
+              "id": 63402,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789680656880,
+              "arrived_at": 1789680682111,
+              "to_pinned_at": 1789680682111,
+              "leg_sec": 25.231,
+              "hold_sec": 0.0,
+              "drive_sec": 25.231,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            },
+            {
+              "id": 63418,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 48,
+              "from_index": 17,
+              "to_stop_id": 104,
+              "to_index": 18,
+              "hops": 1,
+              "departed_at": 1789680706945,
+              "arrived_at": 1789680756882,
+              "to_pinned_at": 1789680756882,
+              "leg_sec": 49.937,
+              "hold_sec": 0.0,
+              "drive_sec": 49.937,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            },
+            {
+              "id": 63436,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 104,
+              "from_index": 18,
+              "to_stop_id": 113,
+              "to_index": 19,
+              "hops": 1,
+              "departed_at": 1789680812054,
+              "arrived_at": 1789680871963,
+              "to_pinned_at": 1789680866902,
+              "leg_sec": 59.909,
+              "hold_sec": 0.0,
+              "drive_sec": 59.909,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            },
+            {
+              "id": 63443,
+              "bus_id": 66507,
+              "bus_name": "#300",
+              "route_id": 3,
+              "from_stop_id": 113,
+              "from_index": 19,
+              "to_stop_id": 4,
+              "to_index": 20,
+              "hops": 1,
+              "departed_at": 1789680887056,
+              "arrived_at": 1789680931996,
+              "to_pinned_at": 1789680931996,
+              "leg_sec": 44.94,
+              "hold_sec": 0.0,
+              "drive_sec": 44.94,
+              "holds": 0,
+              "reached": 1,
+              "dow": 4,
+              "hour": 17
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789680501844,
+              "phase": "standing",
+              "checkpointSec": 180,
+              "truthSec": 430.152,
+              "baselineLow": 384.12516759886216,
+              "candidateLow": 432.8259221716721,
+              "lowerExcessSec": 2.6739221716721318,
+              "candidateLowerBeforeDetectorDepartureSec": 22.24907782832787
+            },
+            {
+              "at": 1789680606912,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 325.084,
+              "baselineLow": 322.0127961476903,
+              "candidateLow": 384.08367340646913,
+              "lowerExcessSec": 58.99967340646913,
+              "candidateLowerBeforeDetectorDepartureSec": -34.076673406469126
+            },
+            {
+              "at": 1789680616856,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 315.14,
+              "baselineLow": 310.63571370085526,
+              "candidateLow": 373.7881085049113,
+              "lowerExcessSec": 58.648108504911306,
+              "candidateLowerBeforeDetectorDepartureSec": -33.725108504911304
+            },
+            {
+              "at": 1789680621947,
+              "phase": "departure",
+              "checkpointSec": 15,
+              "truthSec": 310.049,
+              "baselineLow": 295.23802927488055,
+              "candidateLow": 356.42027057352277,
+              "lowerExcessSec": 46.37127057352279,
+              "candidateLowerBeforeDetectorDepartureSec": -21.44827057352279
+            }
+          ],
+          "raw": {
+            "n": 140,
+            "maxGapSec": 5.262,
+            "maxConsecutiveSpeedKmh": 56.236298395909834,
+            "sourceDeparture": [
+              {
+                "seconds": -30.02,
+                "distanceToStopM": 46.68,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.055,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.054,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -15.031,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.014,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.012,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 46.68,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.947,
+                "distanceToStopM": 50.05,
+                "stepM": 33.25,
+                "lastStop": 11
+              },
+              {
+                "seconds": 9.944,
+                "distanceToStopM": 58.67,
+                "stepM": 32.08,
+                "lastStop": 11
+              },
+              {
+                "seconds": 15.035,
+                "distanceToStopM": 74.29,
+                "stepM": 30.65,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.051,
+                "distanceToStopM": 163.38,
+                "stepM": null,
+                "lastStop": 113
+              },
+              {
+                "seconds": -10.084,
+                "distanceToStopM": 163.38,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": -5.072,
+                "distanceToStopM": 130.46,
+                "stepM": 32.93,
+                "lastStop": 113
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 63.7,
+                "stepM": 66.8,
+                "lastStop": 113
+              },
+              {
+                "seconds": 4.927,
+                "distanceToStopM": 63.7,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 10.041,
+                "distanceToStopM": 33.4,
+                "stepM": 30.36,
+                "lastStop": 113
+              },
+              {
+                "seconds": 14.922,
+                "distanceToStopM": 33.4,
+                "stepM": 0.0,
+                "lastStop": 4
+              },
+              {
+                "seconds": 19.92,
+                "distanceToStopM": 33.4,
+                "stepM": 0.0,
+                "lastStop": 4
+              }
+            ]
+          }
+        }
+      ],
+      "groups": [
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 0,
+          "baseline": {
+            "n": 59,
+            "meanWidthSec": 464.54301265935555,
+            "WIS": 69.29796363487445,
+            "early": 4,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 59,
+            "meanWidthSec": 412.7964458775925,
+            "WIS": 72.79018136179587,
+            "early": 17,
+            "late": 0,
+            "earlyByMoreThan60": 4
+          }
+        },
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 5,
+          "baseline": {
+            "n": 59,
+            "meanWidthSec": 464.29941605686224,
+            "WIS": 69.58151829388252,
+            "early": 4,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 59,
+            "meanWidthSec": 412.21087154419337,
+            "WIS": 73.56770616157978,
+            "early": 18,
+            "late": 0,
+            "earlyByMoreThan60": 5
+          }
+        },
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 15,
+          "baseline": {
+            "n": 59,
+            "meanWidthSec": 449.325526691601,
+            "WIS": 63.73326171765933,
+            "early": 2,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 59,
+            "meanWidthSec": 404.5821442033672,
+            "WIS": 66.03703851572226,
+            "early": 15,
+            "late": 0,
+            "earlyByMoreThan60": 2
+          }
+        },
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 30,
+          "baseline": {
+            "n": 59,
+            "meanWidthSec": 426.27286202187906,
+            "WIS": 50.35529168681341,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 59,
+            "meanWidthSec": 414.2571229759829,
+            "WIS": 50.02811461423054,
+            "early": 1,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 60,
+          "baseline": {
+            "n": 59,
+            "meanWidthSec": 420.3924398836446,
+            "WIS": 49.012921738022165,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 59,
+            "meanWidthSec": 420.3924398836446,
+            "WIS": 49.012921738022165,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 0,
+          "baseline": {
+            "n": 59,
+            "meanWidthSec": 800.4052012089719,
+            "WIS": 88.53466513031509,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 59,
+            "meanWidthSec": 797.49976228757,
+            "WIS": 88.51086472070608,
+            "early": 1,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 60,
+          "baseline": {
+            "n": 58,
+            "meanWidthSec": 650.2899700751025,
+            "WIS": 77.51685832537095,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 58,
+            "meanWidthSec": 594.1840823969579,
+            "WIS": 73.77646581349465,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 180,
+          "baseline": {
+            "n": 37,
+            "meanWidthSec": 599.5782022800125,
+            "WIS": 78.0224307601808,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 37,
+            "meanWidthSec": 546.7374047349703,
+            "WIS": 74.81549948087799,
+            "early": 2,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 300,
+          "baseline": {
+            "n": 28,
+            "meanWidthSec": 551.2052489705181,
+            "WIS": 69.23617712461699,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 28,
+            "meanWidthSec": 500.70026914309386,
+            "WIS": 67.89763762136306,
+            "early": 3,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 420,
+          "baseline": {
+            "n": 20,
+            "meanWidthSec": 493.50031593400024,
+            "WIS": 63.27016294867246,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 20,
+            "meanWidthSec": 443.0911299775412,
+            "WIS": 63.04993239785461,
+            "early": 4,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 600,
+          "baseline": {
+            "n": 4,
+            "meanWidthSec": 425.45201085429153,
+            "WIS": 60.00957857427563,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 4,
+            "meanWidthSec": 371.5927858016126,
+            "WIS": 62.02257475046652,
+            "early": 1,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 0,
+          "baseline": {
+            "n": 61,
+            "meanWidthSec": 260.24754667738847,
+            "WIS": 31.813501753273222,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 61,
+            "meanWidthSec": 224.62148655851448,
+            "WIS": 29.694803552065725,
+            "early": 1,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 5,
+          "baseline": {
+            "n": 61,
+            "meanWidthSec": 256.81588813764046,
+            "WIS": 31.91348845029823,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 61,
+            "meanWidthSec": 222.89678278172246,
+            "WIS": 29.8859017777936,
+            "early": 3,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 15,
+          "baseline": {
+            "n": 61,
+            "meanWidthSec": 205.75202126541555,
+            "WIS": 26.422032369686313,
+            "early": 0,
+            "late": 2,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 61,
+            "meanWidthSec": 180.4708560721851,
+            "WIS": 24.81382943776383,
+            "early": 2,
+            "late": 2,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 30,
+          "baseline": {
+            "n": 61,
+            "meanWidthSec": 73.43288827846614,
+            "WIS": 11.969110817492426,
+            "early": 0,
+            "late": 7,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 61,
+            "meanWidthSec": 68.50347689867729,
+            "WIS": 11.64048339217317,
+            "early": 0,
+            "late": 7,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 60,
+          "baseline": {
+            "n": 60,
+            "meanWidthSec": 158.01950225448456,
+            "WIS": 14.343606522887471,
+            "early": 0,
+            "late": 13,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 60,
+            "meanWidthSec": 158.01950225448456,
+            "WIS": 14.343606522887471,
+            "early": 0,
+            "late": 13,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 0,
+          "baseline": {
+            "n": 61,
+            "meanWidthSec": 720.3137966106386,
+            "WIS": 81.85739185246467,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 61,
+            "meanWidthSec": 716.7199444419687,
+            "WIS": 81.61780170788667,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 60,
+          "baseline": {
+            "n": 60,
+            "meanWidthSec": 522.5277557289343,
+            "WIS": 66.09880711981376,
+            "early": 0,
+            "late": 2,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 60,
+            "meanWidthSec": 466.3586678808585,
+            "WIS": 62.35420126327537,
+            "early": 0,
+            "late": 2,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 180,
+          "baseline": {
+            "n": 38,
+            "meanWidthSec": 436.7298191318595,
+            "WIS": 64.93163046554682,
+            "early": 0,
+            "late": 3,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 38,
+            "meanWidthSec": 364.0435395764519,
+            "WIS": 60.0858784951863,
+            "early": 0,
+            "late": 3,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 300,
+          "baseline": {
+            "n": 29,
+            "meanWidthSec": 388.0500887900721,
+            "WIS": 58.11663061253494,
+            "early": 0,
+            "late": 3,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 29,
+            "meanWidthSec": 324.04154828528095,
+            "WIS": 53.8493945788822,
+            "early": 0,
+            "late": 3,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 420,
+          "baseline": {
+            "n": 21,
+            "meanWidthSec": 316.7437197870871,
+            "WIS": 47.17200948284197,
+            "early": 0,
+            "late": 2,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 21,
+            "meanWidthSec": 264.47856538664007,
+            "WIS": 43.6876658561455,
+            "early": 0,
+            "late": 2,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 600,
+          "baseline": {
+            "n": 4,
+            "meanWidthSec": 221.70505459373328,
+            "WIS": 25.569430199310364,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 4,
+            "meanWidthSec": 184.9143422749439,
+            "WIS": 23.116716044724406,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        }
+      ]
+    },
+    {
+      "data": "new date Sep18 morning",
+      "cases": [
+        {
+          "sourceId": 70927,
+          "targetId": 70954,
+          "bus": "#309",
+          "sourcePinET": "2026-09-18T08:48:02.156000-04:00",
+          "source": {
+            "id": 70927,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789735666965,
+            "pinned_at": 1789735682156,
+            "arrived_at": 1789735686969,
+            "departed_at": 1789736432044,
+            "stand_sec": 745.075,
+            "inside_sec": 759.895,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 33.738072977297115,
+            "steps": 3,
+            "far_m": 76.90738387693402,
+            "confirm_sec": 9.897,
+            "rest_polls": 4,
+            "shuffles": 2,
+            "first_moved_at": 1789735712210,
+            "last_at_rest_at": 1789736432044,
+            "closest_m": 54.13624048414833,
+            "dow": 5,
+            "hour": 8
+          },
+          "target": {
+            "id": 70954,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789736482058,
+            "pinned_at": 1789736487045,
+            "arrived_at": 1789736492184,
+            "departed_at": 1789736552060,
+            "stand_sec": 59.876,
+            "inside_sec": 65.015,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 72.08167312118796,
+            "steps": 2,
+            "far_m": 125.90358885031623,
+            "confirm_sec": 5.013,
+            "rest_polls": 9,
+            "shuffles": 1,
+            "first_moved_at": 1789736507044,
+            "last_at_rest_at": 1789736552060,
+            "closest_m": 4.330585515353788,
+            "dow": 5,
+            "hour": 9
+          },
+          "legs": [
+            {
+              "id": 65855,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789736432044,
+              "arrived_at": 1789736452091,
+              "to_pinned_at": 1789736447041,
+              "leg_sec": 20.047,
+              "hold_sec": 0.0,
+              "drive_sec": 20.047,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 65857,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789736452091,
+              "arrived_at": 1789736467138,
+              "to_pinned_at": 1789736467138,
+              "leg_sec": 15.047,
+              "hold_sec": 0.0,
+              "drive_sec": 15.047,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 65864,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789736467138,
+              "arrived_at": 1789736492184,
+              "to_pinned_at": 1789736487045,
+              "leg_sec": 25.046,
+              "hold_sec": 0.0,
+              "drive_sec": 25.046,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789735387053,
+              "phase": "approach",
+              "checkpointSec": -300,
+              "truthSec": 1105.131,
+              "baselineLow": 2535.972185450987,
+              "candidateLow": 2535.972185450987,
+              "lowerExcessSec": 1430.841185450987,
+              "candidateLowerBeforeDetectorDepartureSec": -1370.965185450987
+            },
+            {
+              "at": 1789736437144,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 55.04,
+              "baselineLow": 4.8645992175489905,
+              "candidateLow": 57.075733837582476,
+              "lowerExcessSec": 2.0357338375824767,
+              "candidateLowerBeforeDetectorDepartureSec": 57.84026616241752
+            }
+          ],
+          "raw": {
+            "n": 185,
+            "maxGapSec": 5.424,
+            "maxConsecutiveSpeedKmh": 75.98296375864119,
+            "sourceDeparture": [
+              {
+                "seconds": -34.997,
+                "distanceToStopM": 80.78,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -29.909,
+                "distanceToStopM": 104.19,
+                "stepM": 30.04,
+                "lastStop": 11
+              },
+              {
+                "seconds": -24.97,
+                "distanceToStopM": 69.86,
+                "stepM": 36.95,
+                "lastStop": 11
+              },
+              {
+                "seconds": -19.988,
+                "distanceToStopM": 43.77,
+                "stepM": 30.22,
+                "lastStop": 11
+              },
+              {
+                "seconds": -14.996,
+                "distanceToStopM": 43.77,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -9.896,
+                "distanceToStopM": 43.77,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -4.994,
+                "distanceToStopM": 43.77,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 43.77,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 5.1,
+                "distanceToStopM": 50.74,
+                "stepM": 33.7,
+                "lastStop": 11
+              },
+              {
+                "seconds": 10.007,
+                "distanceToStopM": 58.86,
+                "stepM": 33.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.997,
+                "distanceToStopM": 76.82,
+                "stepM": 31.08,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.131,
+                "distanceToStopM": 166.1,
+                "stepM": null,
+                "lastStop": 146
+              },
+              {
+                "seconds": -10.126,
+                "distanceToStopM": 100.27,
+                "stepM": 65.86,
+                "lastStop": 49
+              },
+              {
+                "seconds": -5.139,
+                "distanceToStopM": 68.32,
+                "stepM": 32.04,
+                "lastStop": 49
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 4.33,
+                "stepM": 65.91,
+                "lastStop": 49
+              },
+              {
+                "seconds": 4.872,
+                "distanceToStopM": 4.33,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 9.895,
+                "distanceToStopM": 4.33,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 14.86,
+                "distanceToStopM": 27.58,
+                "stepM": 31.05,
+                "lastStop": 49
+              },
+              {
+                "seconds": 19.954,
+                "distanceToStopM": 27.58,
+                "stepM": 0.0,
+                "lastStop": 49
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 70927,
+          "targetId": 70999,
+          "bus": "#309",
+          "sourcePinET": "2026-09-18T08:48:02.156000-04:00",
+          "source": {
+            "id": 70927,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789735666965,
+            "pinned_at": 1789735682156,
+            "arrived_at": 1789735686969,
+            "departed_at": 1789736432044,
+            "stand_sec": 745.075,
+            "inside_sec": 759.895,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 33.738072977297115,
+            "steps": 3,
+            "far_m": 76.90738387693402,
+            "confirm_sec": 9.897,
+            "rest_polls": 4,
+            "shuffles": 2,
+            "first_moved_at": 1789735712210,
+            "last_at_rest_at": 1789736432044,
+            "closest_m": 54.13624048414833,
+            "dow": 5,
+            "hour": 8
+          },
+          "target": {
+            "id": 70999,
+            "bus_id": 66544,
+            "bus_name": "#309",
+            "anchor_bus_id": 66544,
+            "route_id": 3,
+            "stop_id": 4,
+            "stop_index": 20,
+            "anchored_at": 1789736742073,
+            "pinned_at": 1789736752122,
+            "arrived_at": 1789736752122,
+            "departed_at": 1789736792154,
+            "stand_sec": 40.032,
+            "inside_sec": 55.074,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 32.61574839015753,
+            "steps": 5,
+            "far_m": 126.76446981038518,
+            "confirm_sec": 25.179,
+            "rest_polls": 8,
+            "shuffles": 0,
+            "first_moved_at": 1789736797064,
+            "last_at_rest_at": 1789736792154,
+            "closest_m": 62.95702292842587,
+            "dow": 5,
+            "hour": 9
+          },
+          "legs": [
+            {
+              "id": 65855,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789736432044,
+              "arrived_at": 1789736452091,
+              "to_pinned_at": 1789736447041,
+              "leg_sec": 20.047,
+              "hold_sec": 0.0,
+              "drive_sec": 20.047,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 65857,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789736452091,
+              "arrived_at": 1789736467138,
+              "to_pinned_at": 1789736467138,
+              "leg_sec": 15.047,
+              "hold_sec": 0.0,
+              "drive_sec": 15.047,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 65864,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789736467138,
+              "arrived_at": 1789736492184,
+              "to_pinned_at": 1789736487045,
+              "leg_sec": 25.046,
+              "hold_sec": 0.0,
+              "drive_sec": 25.046,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 65882,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 48,
+              "from_index": 17,
+              "to_stop_id": 104,
+              "to_index": 18,
+              "hops": 1,
+              "departed_at": 1789736552060,
+              "arrived_at": 1789736582075,
+              "to_pinned_at": 1789736577086,
+              "leg_sec": 30.015,
+              "hold_sec": 0.0,
+              "drive_sec": 30.015,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 65905,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 104,
+              "from_index": 18,
+              "to_stop_id": 113,
+              "to_index": 19,
+              "hops": 1,
+              "departed_at": 1789736682070,
+              "arrived_at": 1789736712094,
+              "to_pinned_at": 1789736707093,
+              "leg_sec": 30.024,
+              "hold_sec": 0.0,
+              "drive_sec": 30.024,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 65908,
+              "bus_id": 66544,
+              "bus_name": "#309",
+              "route_id": 3,
+              "from_stop_id": 113,
+              "from_index": 19,
+              "to_stop_id": 4,
+              "to_index": 20,
+              "hops": 1,
+              "departed_at": 1789736722072,
+              "arrived_at": 1789736752122,
+              "to_pinned_at": 1789736752122,
+              "leg_sec": 30.05,
+              "hold_sec": 0.0,
+              "drive_sec": 30.05,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789735387053,
+              "phase": "approach",
+              "checkpointSec": -300,
+              "truthSec": 1365.069,
+              "baselineLow": 2915.7377369080086,
+              "candidateLow": 2915.7377369080086,
+              "lowerExcessSec": 1550.6687369080087,
+              "candidateLowerBeforeDetectorDepartureSec": -1510.6367369080085
+            },
+            {
+              "at": 1789736432044,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 320.078,
+              "baselineLow": 299.51546773977407,
+              "candidateLow": 362.8668047442773,
+              "lowerExcessSec": 42.78880474427734,
+              "candidateLowerBeforeDetectorDepartureSec": -2.7568047442773036
+            },
+            {
+              "at": 1789736437144,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 314.978,
+              "baselineLow": 296.94735813766266,
+              "candidateLow": 360.45242343173913,
+              "lowerExcessSec": 45.474423431739126,
+              "candidateLowerBeforeDetectorDepartureSec": -5.442423431739144
+            }
+          ],
+          "raw": {
+            "n": 233,
+            "maxGapSec": 5.424,
+            "maxConsecutiveSpeedKmh": 75.98296375864119,
+            "sourceDeparture": [
+              {
+                "seconds": -34.997,
+                "distanceToStopM": 80.78,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -29.909,
+                "distanceToStopM": 104.19,
+                "stepM": 30.04,
+                "lastStop": 11
+              },
+              {
+                "seconds": -24.97,
+                "distanceToStopM": 69.86,
+                "stepM": 36.95,
+                "lastStop": 11
+              },
+              {
+                "seconds": -19.988,
+                "distanceToStopM": 43.77,
+                "stepM": 30.22,
+                "lastStop": 11
+              },
+              {
+                "seconds": -14.996,
+                "distanceToStopM": 43.77,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -9.896,
+                "distanceToStopM": 43.77,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -4.994,
+                "distanceToStopM": 43.77,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 43.77,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 5.1,
+                "distanceToStopM": 50.74,
+                "stepM": 33.7,
+                "lastStop": 11
+              },
+              {
+                "seconds": 10.007,
+                "distanceToStopM": 58.86,
+                "stepM": 33.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.997,
+                "distanceToStopM": 76.82,
+                "stepM": 31.08,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.052,
+                "distanceToStopM": 236.06,
+                "stepM": null,
+                "lastStop": 113
+              },
+              {
+                "seconds": -10.049,
+                "distanceToStopM": 157.13,
+                "stepM": 79.04,
+                "lastStop": 113
+              },
+              {
+                "seconds": -4.998,
+                "distanceToStopM": 92.91,
+                "stepM": 64.3,
+                "lastStop": 113
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 62.89,
+                "stepM": 30.13,
+                "lastStop": 113
+              },
+              {
+                "seconds": 4.951,
+                "distanceToStopM": 62.89,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 10.018,
+                "distanceToStopM": 62.89,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 15.035,
+                "distanceToStopM": 62.89,
+                "stepM": 0.0,
+                "lastStop": 113
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 71209,
+          "targetId": 71228,
+          "bus": "#306",
+          "sourcePinET": "2026-09-18T09:24:02.274000-04:00",
+          "source": {
+            "id": 71209,
+            "bus_id": 66539,
+            "bus_name": "#306",
+            "anchor_bus_id": 66539,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789737827400,
+            "pinned_at": 1789737842274,
+            "arrived_at": 1789737847209,
+            "departed_at": 1789738397251,
+            "stand_sec": 550.042,
+            "inside_sec": 565.007,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 34.56111401668268,
+            "steps": 3,
+            "far_m": 78.79873811836237,
+            "confirm_sec": 9.984,
+            "rest_polls": 10,
+            "shuffles": 2,
+            "first_moved_at": 1789737862246,
+            "last_at_rest_at": 1789738397251,
+            "closest_m": 53.325390167451545,
+            "dow": 5,
+            "hour": 9
+          },
+          "target": {
+            "id": 71228,
+            "bus_id": 66539,
+            "bus_name": "#306",
+            "anchor_bus_id": 66539,
+            "route_id": 3,
+            "stop_id": 48,
+            "stop_index": 17,
+            "anchored_at": 1789738467248,
+            "pinned_at": 1789738477322,
+            "arrived_at": 1789738482272,
+            "departed_at": 1789738527260,
+            "stand_sec": 44.988,
+            "inside_sec": 55.018,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 35.7712939659079,
+            "steps": 2,
+            "far_m": 132.9760707837221,
+            "confirm_sec": 4.896,
+            "rest_polls": 7,
+            "shuffles": 1,
+            "first_moved_at": 1789738492342,
+            "last_at_rest_at": 1789738527260,
+            "closest_m": 14.118986558507777,
+            "dow": 5,
+            "hour": 9
+          },
+          "legs": [
+            {
+              "id": 66130,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789738397251,
+              "arrived_at": 1789738417236,
+              "to_pinned_at": 1789738412214,
+              "leg_sec": 19.985,
+              "hold_sec": 0.0,
+              "drive_sec": 19.985,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 66131,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789738417236,
+              "arrived_at": 1789738437233,
+              "to_pinned_at": 1789738432237,
+              "leg_sec": 19.997,
+              "hold_sec": 0.0,
+              "drive_sec": 19.997,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 66137,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789738447252,
+              "arrived_at": 1789738482272,
+              "to_pinned_at": 1789738477322,
+              "leg_sec": 35.02,
+              "hold_sec": 0.0,
+              "drive_sec": 35.02,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            }
+          ],
+          "earlyRows": [],
+          "raw": {
+            "n": 149,
+            "maxGapSec": 5.302,
+            "maxConsecutiveSpeedKmh": 54.6955032412965,
+            "sourceDeparture": [
+              {
+                "seconds": -34.949,
+                "distanceToStopM": 47.7,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -30.026,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.019,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.044,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -14.971,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.021,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.006,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.979,
+                "distanceToStopM": 50.34,
+                "stepM": 34.52,
+                "lastStop": 11
+              },
+              {
+                "seconds": 10.03,
+                "distanceToStopM": 60.07,
+                "stepM": 36.52,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.963,
+                "distanceToStopM": 78.71,
+                "stepM": 32.15,
+                "lastStop": 11
+              },
+              {
+                "seconds": 19.985,
+                "distanceToStopM": 102.76,
+                "stepM": 30.37,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -15.024,
+                "distanceToStopM": 124.0,
+                "stepM": null,
+                "lastStop": 49
+              },
+              {
+                "seconds": -10.031,
+                "distanceToStopM": 87.04,
+                "stepM": 36.97,
+                "lastStop": 49
+              },
+              {
+                "seconds": -4.95,
+                "distanceToStopM": 18.61,
+                "stepM": 68.56,
+                "lastStop": 49
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 14.1,
+                "stepM": 32.43,
+                "lastStop": 49
+              },
+              {
+                "seconds": 4.987,
+                "distanceToStopM": 14.1,
+                "stepM": 0.0,
+                "lastStop": 49
+              },
+              {
+                "seconds": 10.07,
+                "distanceToStopM": 39.48,
+                "stepM": 32.28,
+                "lastStop": 49
+              },
+              {
+                "seconds": 14.951,
+                "distanceToStopM": 39.48,
+                "stepM": 0.0,
+                "lastStop": 49
+              }
+            ]
+          }
+        },
+        {
+          "sourceId": 71209,
+          "targetId": 71258,
+          "bus": "#306",
+          "sourcePinET": "2026-09-18T09:24:02.274000-04:00",
+          "source": {
+            "id": 71209,
+            "bus_id": 66539,
+            "bus_name": "#306",
+            "anchor_bus_id": 66539,
+            "route_id": 3,
+            "stop_id": 11,
+            "stop_index": 14,
+            "anchored_at": 1789737827400,
+            "pinned_at": 1789737842274,
+            "arrived_at": 1789737847209,
+            "departed_at": 1789738397251,
+            "stand_sec": 550.042,
+            "inside_sec": 565.007,
+            "outcome": "stopped",
+            "how": "next",
+            "confidence": 1.0,
+            "first_step_m": 34.56111401668268,
+            "steps": 3,
+            "far_m": 78.79873811836237,
+            "confirm_sec": 9.984,
+            "rest_polls": 10,
+            "shuffles": 2,
+            "first_moved_at": 1789737862246,
+            "last_at_rest_at": 1789738397251,
+            "closest_m": 53.325390167451545,
+            "dow": 5,
+            "hour": 9
+          },
+          "target": {
+            "id": 71258,
+            "bus_id": 66539,
+            "bus_name": "#306",
+            "anchor_bus_id": 66539,
+            "route_id": 3,
+            "stop_id": 4,
+            "stop_index": 20,
+            "anchored_at": 1789738662284,
+            "pinned_at": 1789738677271,
+            "arrived_at": 1789738677271,
+            "departed_at": 1789738697272,
+            "stand_sec": 20.001,
+            "inside_sec": 35.116,
+            "outcome": "stopped",
+            "how": "clock",
+            "confidence": 0.96,
+            "first_step_m": 32.82584238208105,
+            "steps": 6,
+            "far_m": 141.75003440595478,
+            "confirm_sec": 49.972,
+            "rest_polls": 4,
+            "shuffles": 0,
+            "first_moved_at": 1789738702298,
+            "last_at_rest_at": 1789738697272,
+            "closest_m": 61.31823233918702,
+            "dow": 5,
+            "hour": 9
+          },
+          "legs": [
+            {
+              "id": 66130,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 11,
+              "from_index": 14,
+              "to_stop_id": 146,
+              "to_index": 15,
+              "hops": 1,
+              "departed_at": 1789738397251,
+              "arrived_at": 1789738417236,
+              "to_pinned_at": 1789738412214,
+              "leg_sec": 19.985,
+              "hold_sec": 0.0,
+              "drive_sec": 19.985,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 66131,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 146,
+              "from_index": 15,
+              "to_stop_id": 49,
+              "to_index": 16,
+              "hops": 1,
+              "departed_at": 1789738417236,
+              "arrived_at": 1789738437233,
+              "to_pinned_at": 1789738432237,
+              "leg_sec": 19.997,
+              "hold_sec": 0.0,
+              "drive_sec": 19.997,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 66137,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 49,
+              "from_index": 16,
+              "to_stop_id": 48,
+              "to_index": 17,
+              "hops": 1,
+              "departed_at": 1789738447252,
+              "arrived_at": 1789738482272,
+              "to_pinned_at": 1789738477322,
+              "leg_sec": 35.02,
+              "hold_sec": 0.0,
+              "drive_sec": 35.02,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 66148,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 48,
+              "from_index": 17,
+              "to_stop_id": 104,
+              "to_index": 18,
+              "hops": 1,
+              "departed_at": 1789738527260,
+              "arrived_at": 1789738567321,
+              "to_pinned_at": 1789738567321,
+              "leg_sec": 40.061,
+              "hold_sec": 0.0,
+              "drive_sec": 40.061,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 66159,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 104,
+              "from_index": 18,
+              "to_stop_id": 113,
+              "to_index": 19,
+              "hops": 1,
+              "departed_at": 1789738587342,
+              "arrived_at": 1789738642321,
+              "to_pinned_at": 1789738632256,
+              "leg_sec": 54.979,
+              "hold_sec": 0.0,
+              "drive_sec": 54.979,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            },
+            {
+              "id": 66166,
+              "bus_id": 66539,
+              "bus_name": "#306",
+              "route_id": 3,
+              "from_stop_id": 113,
+              "from_index": 19,
+              "to_stop_id": 4,
+              "to_index": 20,
+              "hops": 1,
+              "departed_at": 1789738642321,
+              "arrived_at": 1789738677271,
+              "to_pinned_at": 1789738677271,
+              "leg_sec": 34.95,
+              "hold_sec": 0.0,
+              "drive_sec": 34.95,
+              "holds": 0,
+              "reached": 1,
+              "dow": 5,
+              "hour": 9
+            }
+          ],
+          "earlyRows": [
+            {
+              "at": 1789738397251,
+              "phase": "departure",
+              "checkpointSec": 0,
+              "truthSec": 280.02,
+              "baselineLow": 280.0663966496314,
+              "candidateLow": 334.18193110062543,
+              "lowerExcessSec": 54.16193110062545,
+              "candidateLowerBeforeDetectorDepartureSec": -34.16093110062542
+            },
+            {
+              "at": 1789738407281,
+              "phase": "departure",
+              "checkpointSec": 5,
+              "truthSec": 269.99,
+              "baselineLow": 277.1830733181609,
+              "candidateLow": 330.96964769415933,
+              "lowerExcessSec": 60.979647694159326,
+              "candidateLowerBeforeDetectorDepartureSec": -40.97864769415935
+            },
+            {
+              "at": 1789738417236,
+              "phase": "departure",
+              "checkpointSec": 15,
+              "truthSec": 260.035,
+              "baselineLow": 257.6359616330697,
+              "candidateLow": 309.40887512799554,
+              "lowerExcessSec": 49.37387512799552,
+              "candidateLowerBeforeDetectorDepartureSec": -29.372875127995542
+            }
+          ],
+          "raw": {
+            "n": 183,
+            "maxGapSec": 5.302,
+            "maxConsecutiveSpeedKmh": 55.590100583802716,
+            "sourceDeparture": [
+              {
+                "seconds": -34.949,
+                "distanceToStopM": 47.7,
+                "stepM": null,
+                "lastStop": 11
+              },
+              {
+                "seconds": -30.026,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -25.019,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -20.044,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -14.971,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -10.021,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": -5.006,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 47.7,
+                "stepM": 0.0,
+                "lastStop": 11
+              },
+              {
+                "seconds": 4.979,
+                "distanceToStopM": 50.34,
+                "stepM": 34.52,
+                "lastStop": 11
+              },
+              {
+                "seconds": 10.03,
+                "distanceToStopM": 60.07,
+                "stepM": 36.52,
+                "lastStop": 11
+              },
+              {
+                "seconds": 14.963,
+                "distanceToStopM": 78.71,
+                "stepM": 32.15,
+                "lastStop": 11
+              },
+              {
+                "seconds": 19.985,
+                "distanceToStopM": 102.76,
+                "stepM": 30.37,
+                "lastStop": 11
+              }
+            ],
+            "targetArrival": [
+              {
+                "seconds": -19.948,
+                "distanceToStopM": 190.36,
+                "stepM": null,
+                "lastStop": 104
+              },
+              {
+                "seconds": -14.987,
+                "distanceToStopM": 155.37,
+                "stepM": 34.99,
+                "lastStop": 113
+              },
+              {
+                "seconds": -9.718,
+                "distanceToStopM": 124.08,
+                "stepM": 31.3,
+                "lastStop": 113
+              },
+              {
+                "seconds": -5.004,
+                "distanceToStopM": 92.5,
+                "stepM": 31.59,
+                "lastStop": 113
+              },
+              {
+                "seconds": 0.0,
+                "distanceToStopM": 61.25,
+                "stepM": 31.31,
+                "lastStop": 113
+              },
+              {
+                "seconds": 5.11,
+                "distanceToStopM": 61.25,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 10.095,
+                "distanceToStopM": 61.25,
+                "stepM": 0.0,
+                "lastStop": 113
+              },
+              {
+                "seconds": 14.995,
+                "distanceToStopM": 61.25,
+                "stepM": 0.0,
+                "lastStop": 4
+              }
+            ]
+          }
+        }
+      ],
+      "groups": [
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 0,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 507.29304360712507,
+            "WIS": 104.65198839998119,
+            "early": 1,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 475.03115829450866,
+            "WIS": 111.73018073107072,
+            "early": 2,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 5,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 503.77564623324025,
+            "WIS": 105.22765216006908,
+            "early": 1,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 471.58487734605194,
+            "WIS": 112.53502926356488,
+            "early": 2,
+            "late": 1,
+            "earlyByMoreThan60": 1
+          }
+        },
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 15,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 477.5614717987707,
+            "WIS": 98.80631289035028,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 455.0695996247396,
+            "WIS": 102.00912856712873,
+            "early": 1,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 30,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 418.7942271350883,
+            "WIS": 87.01166780938553,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 418.7942271350883,
+            "WIS": 87.01166780938553,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "departure",
+          "checkpointSec": 60,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 409.03207481304867,
+            "WIS": 85.63771145072869,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 409.03207481304867,
+            "WIS": 85.63771145072869,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 0,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 945.3314642039684,
+            "WIS": 158.29574835039008,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 942.1850318647914,
+            "WIS": 158.08598619444496,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 60,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 864.3083336300188,
+            "WIS": 176.0545347110908,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 820.7902811914087,
+            "WIS": 173.1533312151835,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 180,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 741.9174211616505,
+            "WIS": 166.4109142026478,
+            "early": 0,
+            "late": 2,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 695.8643206711906,
+            "WIS": 163.34070750328382,
+            "early": 0,
+            "late": 2,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 300,
+          "baseline": {
+            "n": 6,
+            "meanWidthSec": 674.4309042744111,
+            "WIS": 158.40631405150262,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 6,
+            "meanWidthSec": 639.300862137917,
+            "WIS": 156.064311242403,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 420,
+          "baseline": {
+            "n": 5,
+            "meanWidthSec": 573.7266696765644,
+            "WIS": 156.71723207438478,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 5,
+            "meanWidthSec": 532.1034374838197,
+            "WIS": 153.9423499282018,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 4,
+          "phase": "standing",
+          "checkpointSec": 600,
+          "baseline": {
+            "n": 4,
+            "meanWidthSec": 537.7533392619783,
+            "WIS": 130.13983298178238,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 4,
+            "meanWidthSec": 511.14957684310366,
+            "WIS": 128.36624882052408,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 0,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 274.46658664383875,
+            "WIS": 28.996216054016067,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 257.21143298189327,
+            "WIS": 27.845872476553033,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 5,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 261.3456002388773,
+            "WIS": 28.986835781954422,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 245.23400461021058,
+            "WIS": 28.10660881981307,
+            "early": 1,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 15,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 191.1695409590825,
+            "WIS": 19.291692143275252,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 184.43764951868678,
+            "WIS": 18.842899380582203,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 30,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 27.667551611142162,
+            "WIS": 6.131449143712982,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 27.667551611142162,
+            "WIS": 6.131449143712982,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "departure",
+          "checkpointSec": 60,
+          "baseline": {
+            "n": 5,
+            "meanWidthSec": 795.5572925816286,
+            "WIS": 54.643880943169336,
+            "early": 1,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 5,
+            "meanWidthSec": 795.5572925816286,
+            "WIS": 54.643880943169336,
+            "early": 1,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 0,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 894.0281463384067,
+            "WIS": 147.53697195088586,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 891.0530011113595,
+            "WIS": 147.33862893574937,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 60,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 735.4090166370083,
+            "WIS": 158.86396433948977,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 689.901270845154,
+            "WIS": 155.83011462003282,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 180,
+          "baseline": {
+            "n": 7,
+            "meanWidthSec": 531.0226148477329,
+            "WIS": 142.50934771479965,
+            "early": 0,
+            "late": 3,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 7,
+            "meanWidthSec": 483.6148845218925,
+            "WIS": 139.34883235974362,
+            "early": 0,
+            "late": 3,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 300,
+          "baseline": {
+            "n": 6,
+            "meanWidthSec": 499.7217306052164,
+            "WIS": 127.54306048304336,
+            "early": 0,
+            "late": 3,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 6,
+            "meanWidthSec": 453.54190768901674,
+            "WIS": 124.4644056219634,
+            "early": 0,
+            "late": 3,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 420,
+          "baseline": {
+            "n": 5,
+            "meanWidthSec": 433.50583589319655,
+            "WIS": 99.61828598228398,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 5,
+            "meanWidthSec": 383.233992415862,
+            "WIS": 96.26682975046168,
+            "early": 0,
+            "late": 1,
+            "earlyByMoreThan60": 0
+          }
+        },
+        {
+          "target": 48,
+          "phase": "standing",
+          "checkpointSec": 600,
+          "baseline": {
+            "n": 4,
+            "meanWidthSec": 363.3281433597919,
+            "WIS": 66.52011406887182,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          },
+          "candidate": {
+            "n": 4,
+            "meanWidthSec": 337.62411083179313,
+            "WIS": 64.80651190033858,
+            "early": 0,
+            "late": 0,
+            "earlyByMoreThan60": 0
+          }
+        }
+      ]
+    }
+  ],
+  "trackingHashes": {
+    "baseline-tracking.jsonl": "507222c61957e1ba3269d41f813c573503d62c210e2660270ac14b99160bfb97",
+    "candidate-tracking.jsonl": "507222c61957e1ba3269d41f813c573503d62c210e2660270ac14b99160bfb97"
+  }
+}

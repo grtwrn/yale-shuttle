@@ -1,0 +1,41 @@
+{
+  "head_sha": "288b2955ab8b4bf603d05e320c0901bd837400e6",
+  "base_sha": "e436041a9b4617cbf14ef82c37dc6978f6e7fa3c",
+  "verdict": "approve",
+  "blocking_findings": [],
+  "tests_passed": 82,
+  "tests_skipped_unclaimed": 108,
+  "typechecks": [
+    "backend",
+    "frontend"
+  ],
+  "vite_modules": 124,
+  "browser_reports": [
+    "after-browser.json",
+    "desktop/after-browser.json",
+    "shell-history.json"
+  ],
+  "tracked_checkout_unchanged": true,
+  "resources_closed": true,
+  "full_suite_and_staging": "controller gates; not executed by reviewer",
+  "sha256": {
+    "after-browser.json": "efbb699c8e7d86ef1a75286a5ce16292ab41e5230a58eade915cbb28c8ec90ff",
+    "after-departure.png": "3433e5fb936907e4884a64b831a5f66c21d07e57896f6cdccc3a8ec0ce04b7c0",
+    "after-history.png": "4ed8bf48617f2b7484abd7a8436dd606d41a74b15174ddfd0478e908134e8ae3",
+    "after-standing.png": "e7e80b572d6ca793f6c5fd9cbe8ac14cb94388ff9ac49e0131de9518b85fcef5",
+    "api-tests.log": "4c5912587a33795bde0c9c910312b7a8b19c019a1a30a7cec5c2eff2e3d19e9f",
+    "desktop/after-browser.json": "97b31c9c786f69395a599753d345169ed5d887a734abb10b14406de3b87213e5",
+    "desktop/after-departure.png": "6571342404c2347e487504bfba70033d89b269941909df235b378fb3c17720a4",
+    "desktop/after-history.png": "d94b3eba4f711c07ad71523d61daaf40d0171be0be70b2dba7aae0395268071b",
+    "desktop/after-standing.png": "5423dfae66f4063be4c801b64fb30dafaac5055e3ef7b5fa0359f1392188227f",
+    "shell-history-final.log": "215d2e6990bffb4d8bd2f61e3f1e35ed310ebba83f18905e1b83f337260ecde0",
+    "shell-history-first.json": "5212e3a3274bb97926eac69fb261f393cb727d1029ca7a3daaf8c59a79ee8000",
+    "shell-history-first.log": "d1f313390b6d449caa1117e2965238167202c16dc7f49323be35bc82c42b64b3",
+    "shell-history-honolulu-390.png": "f9e4c0f554f1937bc3af9af8d41c569bc5cf07f1d296292ed53fe1867b1049b5",
+    "shell-history-honolulu-corrected-390.png": "b5e7dc7935284a1568e249c884de7de25ea158825ec7c496a224edd730859381",
+    "shell-history.json": "aa70baf19178514b3c50ce65a4da7f792e6b7fcc549dd8179e1ba356e751edf6",
+    "shell-history.mjs": "535c1426240ec5ec7a967cf92b7a44f64112415ae3be7c27bffc6841756bb0ad",
+    "transport-tests.log": "505cfe59bfc6b2bff31d5f7d1ee91fc5a09a64c4d99c1fb542e83854fe9bce86",
+    "verify.log": "ab7258072f7366b30ef8a675b169701c8cc314f72bf78ff1d379f93272fa0c6b"
+  }
+}

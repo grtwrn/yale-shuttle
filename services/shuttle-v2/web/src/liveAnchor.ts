@@ -30,11 +30,25 @@
  */
 import { beliefFor, ringForBus, type AnchorStore } from "./eta";
 import { standingSec, type FilterBus } from "./eta/filter";
-import type { LatLon } from "./geo";
+import { haversineMeters, type LatLon } from "./geo";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
+import { serverTrack } from './etaSource';
 
 /** What the anchor needs of a bus: a fix, the clocks, and the route whose line it is measured against. */
 export type AnchorBus = FilterBus & { route_id: number | string };
+
+/** A direct stop observation can settle a display disagreement
+ * while the route belief catches up. Require the stop id, a stationary fix,
+ * and proximity: at_stop_id alone can linger after departure. */
+export function observedAtStop(
+  bus: LatLon & { at_stop_id?: number | null; stationary?: boolean },
+  stopId: number,
+  stopCoords: Record<number, LatLon>,
+): boolean {
+  const stop = stopCoords[stopId];
+  return bus.stationary === true && bus.at_stop_id === stopId && !!stop
+    && haversineMeters(bus, stop) <= 75;
+}
 
 /**
  * The store's per-vehicle key. Route label plus the bus NAME, never `bus_id`:
@@ -90,7 +104,8 @@ export function anchorIndexOnList(
 ): number {
   const canonical = mergedRouteStops(cfg, routeStops);
   if (canonical.length === 0) return -1;
-  const idx = resolveAnchorIndex(
+  const served = serverTrack(bus, cfg.label, now);
+  const idx = served !== undefined ? (served?.index ?? -1) : resolveAnchorIndex(
     bus, canonical, stopCoords, anchorKeyFor(cfg.label, bus.bus_name), now, store,
   );
   if (idx < 0) return idx;
@@ -146,14 +161,26 @@ export function resolveStandingStop(
   now: number,
   store: AnchorStore | undefined,
 ): StandingAnswer | null {
+  const served = serverTrack(bus, cfg.label, now);
+  if (served !== undefined) return served?.standing ?? null;
   if (!store) return null;
   const stops = mergedRouteStops(cfg, routeStops);
   if (stops.length === 0) return null;
   const ring = ringForBus(bus, stops, stopCoords);
   if (!ring) return null;
-  const b = beliefFor(store, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, now);
+  // The belief's indices are positions in the RING's sequence, which on a route
+  // whose order was repaired against its published line is not upstream's list
+  // (#160, src/network/alignStops.ts) — the same `seq` every other reader of the
+  // belief takes (eta/index.ts `beliefFor` / `arrivalsForBus`). Read `restStop`
+  // out of upstream's list instead and a rest is named by whatever stop happens
+  // to sit in that slot: on Green, a 435 s stand at Building 800 (ring 13/18)
+  // came back as Building 600 and as WEST HAVEN TRAIN STATION, 2.4 km away, so
+  // the pause chip was drawn on the wrong row and priced from the wrong stop's
+  // stand table (production, 2026-09-12 10:16-10:24 ET, #331).
+  const seq = ring.stops.length === ring.N ? ring.stops : stops;
+  const b = beliefFor(store, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, seq, now);
   if (!b.rested || b.restStop < 0) return null;
-  const stopId = stops[b.restStop];
+  const stopId = seq[b.restStop];
   if (stopId === undefined) return null;
   return {
     stopId,

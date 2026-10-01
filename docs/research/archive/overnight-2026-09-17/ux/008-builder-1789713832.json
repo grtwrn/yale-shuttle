@@ -1,0 +1,10 @@
+{
+  "outcome": "candidate",
+  "summary": "Distinguish missing shuttle updates from an empty fleet\nTrip and Map now separate loading, unavailable updates and fresh empty results, preserve counts when only forecasts fail, and provide accessible filter recovery. Evidence saved in ux/ux-07/REPORT.md. HEAD and index preserved.",
+  "next_task": "Independently review availability labels and filter recovery/focus. Then continue UX08 alerts/on-board recovery; retain the documented rapid-map timer experiment as a separate follow-up.",
+  "tests": [
+    "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-07/verified flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-07/verify.sh — exit 0: 158 tests, both typechecks, Vite build, mobile/desktop browser checks; all browser resources closed.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-07/verify-integrity.py — exit 0: preserved HEAD, source hashes, unchanged numerical/filter behavior, empty index, syntax and whitespace.",
+    "Frozen-baseline browser reproduction passed. Full suite, staging, CI and deployment remain controller gates."
+  ]
+}

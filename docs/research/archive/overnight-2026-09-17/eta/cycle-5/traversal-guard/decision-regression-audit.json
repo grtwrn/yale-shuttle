@@ -1,0 +1,328 @@
+{
+  "selection": "Five largest absolute-error increases, deduplicated by source/alight; exact same connected outcomes, all retained. Prior raw audits remain source evidence; no new GPS labeling/exclusions.",
+  "cases": [
+    {
+      "identity": [
+        "65347:4:0",
+        1789657152981,
+        65347,
+        65406,
+        "309"
+      ],
+      "baseline": {
+        "session": "65347:4:0",
+        "sourceId": 65347,
+        "sourceVisit": 65347,
+        "targetVisit": 65406,
+        "boardStop": 11,
+        "alightStop": 4,
+        "bus": "309",
+        "at": 1789657152981,
+        "firstOccurrence": true,
+        "legIds": [
+          60572,
+          60578,
+          60581,
+          60596,
+          60608,
+          60622
+        ],
+        "predictedSec": 283.32446991848775,
+        "actualConnectedSec": 309.909,
+        "modeledDirectWalkSec": 1006.0079102854546,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": false,
+        "top": "Red",
+        "errorSec": -26.58453008151224,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "candidate": {
+        "session": "65347:4:0",
+        "sourceId": 65347,
+        "sourceVisit": 65347,
+        "targetVisit": 65406,
+        "boardStop": 11,
+        "alightStop": 4,
+        "bus": "309",
+        "at": 1789657152981,
+        "firstOccurrence": true,
+        "legIds": [
+          60572,
+          60578,
+          60581,
+          60596,
+          60608,
+          60622
+        ],
+        "predictedSec": 565,
+        "actualConnectedSec": 309.909,
+        "modeledDirectWalkSec": 1006.0079102854546,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": true,
+        "top": "Red",
+        "errorSec": 255.091,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": true,
+        "lateMiss": false
+      }
+    },
+    {
+      "identity": [
+        "58224:48:0",
+        1789567387376,
+        58224,
+        58260,
+        "309"
+      ],
+      "baseline": {
+        "session": "58224:48:0",
+        "sourceId": 58224,
+        "sourceVisit": 58224,
+        "targetVisit": 58260,
+        "boardStop": 11,
+        "alightStop": 48,
+        "bus": "309",
+        "at": 1789567387376,
+        "firstOccurrence": true,
+        "legIds": [
+          53858,
+          53866,
+          53876
+        ],
+        "predictedSec": 103.67656663560257,
+        "actualConnectedSec": 99.92,
+        "modeledDirectWalkSec": 391.4874972682418,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": false,
+        "top": "Red",
+        "errorSec": 3.7565666356025673,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "candidate": {
+        "session": "58224:48:0",
+        "sourceId": 58224,
+        "sourceVisit": 58224,
+        "targetVisit": 58260,
+        "boardStop": 11,
+        "alightStop": 48,
+        "bus": "309",
+        "at": 1789567387376,
+        "firstOccurrence": true,
+        "legIds": [
+          53858,
+          53866,
+          53876
+        ],
+        "predictedSec": 238,
+        "actualConnectedSec": 99.92,
+        "modeledDirectWalkSec": 391.4874972682418,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": true,
+        "top": "Red",
+        "errorSec": 138.07999999999998,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      }
+    },
+    {
+      "identity": [
+        "61907:4:0",
+        1789596160136,
+        61907,
+        61959,
+        "309"
+      ],
+      "baseline": {
+        "session": "61907:4:0",
+        "sourceId": 61907,
+        "sourceVisit": 61907,
+        "targetVisit": 61959,
+        "boardStop": 11,
+        "alightStop": 4,
+        "bus": "309",
+        "at": 1789596160136,
+        "firstOccurrence": true,
+        "legIds": [
+          57384,
+          57393,
+          57395,
+          57405,
+          57414,
+          57423
+        ],
+        "predictedSec": 283.32446991848775,
+        "actualConnectedSec": 330.009,
+        "modeledDirectWalkSec": 1006.0079102854546,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": false,
+        "top": "Red",
+        "errorSec": -46.684530081512264,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "candidate": {
+        "session": "61907:4:0",
+        "sourceId": 61907,
+        "sourceVisit": 61907,
+        "targetVisit": 61959,
+        "boardStop": 11,
+        "alightStop": 4,
+        "bus": "309",
+        "at": 1789596160136,
+        "firstOccurrence": true,
+        "legIds": [
+          57384,
+          57393,
+          57395,
+          57405,
+          57414,
+          57423
+        ],
+        "predictedSec": 506,
+        "actualConnectedSec": 330.009,
+        "modeledDirectWalkSec": 1006.0079102854546,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": true,
+        "top": "Red",
+        "errorSec": 175.99099999999999,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      }
+    },
+    {
+      "identity": [
+        "65347:48:0",
+        1789657132853,
+        65347,
+        65364,
+        "309"
+      ],
+      "baseline": {
+        "session": "65347:48:0",
+        "sourceId": 65347,
+        "sourceVisit": 65347,
+        "targetVisit": 65364,
+        "boardStop": 11,
+        "alightStop": 48,
+        "bus": "309",
+        "at": 1789657132853,
+        "firstOccurrence": true,
+        "legIds": [
+          60572,
+          60578,
+          60581
+        ],
+        "predictedSec": 103.67656663560257,
+        "actualConnectedSec": 100.044,
+        "modeledDirectWalkSec": 391.4874972682418,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": false,
+        "top": "Red",
+        "errorSec": 3.632566635602572,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "candidate": {
+        "session": "65347:48:0",
+        "sourceId": 65347,
+        "sourceVisit": 65347,
+        "targetVisit": 65364,
+        "boardStop": 11,
+        "alightStop": 48,
+        "bus": "309",
+        "at": 1789657132853,
+        "firstOccurrence": true,
+        "legIds": [
+          60572,
+          60578,
+          60581
+        ],
+        "predictedSec": 210,
+        "actualConnectedSec": 100.044,
+        "modeledDirectWalkSec": 391.4874972682418,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": true,
+        "top": "Red",
+        "errorSec": 109.956,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      }
+    },
+    {
+      "identity": [
+        "60836:4:0",
+        1789587999220,
+        60836,
+        60896,
+        "316"
+      ],
+      "baseline": {
+        "session": "60836:4:0",
+        "sourceId": 60836,
+        "sourceVisit": 60836,
+        "targetVisit": 60896,
+        "boardStop": 11,
+        "alightStop": 4,
+        "bus": "316",
+        "at": 1789587999220,
+        "firstOccurrence": true,
+        "legIds": [
+          56348,
+          56357,
+          56360,
+          56380,
+          56396,
+          56403
+        ],
+        "predictedSec": 283.32446991848775,
+        "actualConnectedSec": 340.064,
+        "modeledDirectWalkSec": 1006.0079102854546,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": false,
+        "top": "Red",
+        "errorSec": -56.73953008151227,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      },
+      "candidate": {
+        "session": "60836:4:0",
+        "sourceId": 60836,
+        "sourceVisit": 60836,
+        "targetVisit": 60896,
+        "boardStop": 11,
+        "alightStop": 4,
+        "bus": "316",
+        "at": 1789587999220,
+        "firstOccurrence": true,
+        "legIds": [
+          56348,
+          56357,
+          56360,
+          56380,
+          56396,
+          56403
+        ],
+        "predictedSec": 474,
+        "actualConnectedSec": 340.064,
+        "modeledDirectWalkSec": 1006.0079102854546,
+        "modeledAccessReachesBeforeRecordedDeparture": true,
+        "journeyAvailable": true,
+        "top": "Red",
+        "errorSec": 133.93599999999998,
+        "actualBusBeatsModeledWalk": true,
+        "earlyMiss": false,
+        "lateMiss": false
+      }
+    }
+  ]
+}

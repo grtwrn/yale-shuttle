@@ -1,0 +1,96 @@
+{
+  "scope": "Actual built SPA with synthetic two-bus feed and mocked Notification API; no native notification/accuracy claim",
+  "states": [
+    {
+      "permission": "denied",
+      "checks": [
+        "Enter/Space/Tab/Escape, cancel/arm/disarm focus, group and disclosure semantics, 44px targets, phone/desktop reflow, navigation and polling ownership",
+        "Armed state survives tab changes; missing/failed forecasts do not fire; recovered live threshold uses OS or in-app fallback for all four permission states"
+      ],
+      "expanded": "true",
+      "escapeClosed": true,
+      "escapeFocus": true,
+      "cancelFocus": true,
+      "armFocus": true,
+      "stored": [
+        {
+          "routeId": "3",
+          "routeLabel": "Red",
+          "stopId": 48,
+          "stopName": "Division / Prospect",
+          "leadMin": 3,
+          "createdAt": 1789668001669
+        }
+      ]
+    },
+    {
+      "permission": "unsupported",
+      "checks": [
+        "Enter/Space/Tab/Escape, cancel/arm/disarm focus, group and disclosure semantics, 44px targets, phone/desktop reflow, navigation and polling ownership",
+        "Armed state survives tab changes; missing/failed forecasts do not fire; recovered live threshold uses OS or in-app fallback for all four permission states"
+      ],
+      "expanded": "true",
+      "escapeClosed": true,
+      "escapeFocus": true,
+      "cancelFocus": true,
+      "armFocus": true,
+      "stored": [
+        {
+          "routeId": "3",
+          "routeLabel": "Red",
+          "stopId": 48,
+          "stopName": "Division / Prospect",
+          "leadMin": 3,
+          "createdAt": 1789668001529
+        }
+      ]
+    },
+    {
+      "permission": "default",
+      "checks": [
+        "Enter/Space/Tab/Escape, cancel/arm/disarm focus, group and disclosure semantics, 44px targets, phone/desktop reflow, navigation and polling ownership",
+        "Armed state survives tab changes; missing/failed forecasts do not fire; recovered live threshold uses OS or in-app fallback for all four permission states"
+      ],
+      "expanded": "true",
+      "escapeClosed": true,
+      "escapeFocus": true,
+      "cancelFocus": true,
+      "armFocus": true,
+      "stored": [
+        {
+          "routeId": "3",
+          "routeLabel": "Red",
+          "stopId": 48,
+          "stopName": "Division / Prospect",
+          "leadMin": 3,
+          "createdAt": 1789668001591
+        }
+      ]
+    },
+    {
+      "permission": "granted",
+      "checks": [
+        "Enter/Space/Tab/Escape, cancel/arm/disarm focus, group and disclosure semantics, 44px targets, phone/desktop reflow, navigation and polling ownership",
+        "Armed state survives tab changes; missing/failed forecasts do not fire; recovered live threshold uses OS or in-app fallback for all four permission states"
+      ],
+      "expanded": "true",
+      "escapeClosed": true,
+      "escapeFocus": true,
+      "cancelFocus": true,
+      "armFocus": true,
+      "stored": [
+        {
+          "routeId": "3",
+          "routeLabel": "Red",
+          "stopId": 48,
+          "stopName": "Division / Prospect",
+          "leadMin": 3,
+          "createdAt": 1789668001529
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "completed": true,
+  "resourcesClosed": true
+}

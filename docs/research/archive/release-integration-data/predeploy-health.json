@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "pollStalenessMs": 2311,
+  "collectorLagMs": 2271,
+  "knownBuses": 7,
+  "serverEta": {
+    "restored": 17,
+    "forecastAt": 1789692747646,
+    "checkpointAt": 1789692737701,
+    "beliefs": 7,
+    "steps": 3498,
+    "failures": 0,
+    "lastStepMs": 51,
+    "rows": 231
+  },
+  "pollSkipped": 1,
+  "droppedObservations": 0,
+  "build": "a5ac85abb0f4"
+}

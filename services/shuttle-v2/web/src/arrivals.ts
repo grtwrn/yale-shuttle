@@ -46,6 +46,16 @@ export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: 
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
+/** Blue West's pre-service vehicle may already carry route 16 while it is
+ * deadheading toward 333 Cedar. Upstream reports last_stop_id=0 until it
+ * reaches its first route stop. Before that point, the ring can put mass on
+ * both sides of Mansfield/Division and show a spurious near-arrival bound.
+ * Keep the vehicle on the map, but do not price an ETA for it yet. */
+export function busReadyForEta(bus: BusData, routeLabel: string, stops: readonly number[]): boolean {
+  if (routeLabel !== "Blue West" || bus.last_stop_id !== 0 || stops.includes(0)) return true;
+  return bus.at_stop_id !== undefined && stops.includes(bus.at_stop_id);
+}
+
 /** What the pause chip should say, and whether it is a remainder or a total. */
 export interface ShownStand {
   sec: number;
@@ -161,6 +171,7 @@ export function shownStandSec(
 }
 
 export type UpcomingArrival = {
+  distribution?: number[] | undefined;
   eta: number; low: number; high: number;
   /**
    * The DRIVE FLOOR (eta/arrival.ts `departNow`): this same arrival with the
@@ -233,6 +244,7 @@ export function computeUpcomingArrivals(
    * what the existing tests assert.
    */
   anchorStore?: AnchorStore,
+  includeDistribution = false,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -242,7 +254,8 @@ export function computeUpcomingArrivals(
     if (!hitsTarget) continue;
 
     const routeBuses = buses.filter((b) =>
-      cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, stops, stopCoords),
+      cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, stops, stopCoords)
+        && busReadyForEta(b, cfg.label, stops),
     );
     if (routeBuses.length === 0) continue;
 
@@ -268,10 +281,11 @@ export function computeUpcomingArrivals(
     for (const bus of routeBuses) {
       const rows = arrivalsForBus(
         anchorStore, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, stopCoords,
-        routeSegs, routeDwells, targetSet, now, undefined, dwellTimes,
+        routeSegs, routeDwells, targetSet, now, undefined, dwellTimes, includeDistribution,
       );
       for (const row of rows) {
         result.push({
+          ...(row.distribution ? { distribution: row.distribution } : {}),
           eta: row.eta, low: row.low, high: row.high, departNow: row.departNow, lowFloor: row.lowFloor,
           routeLabel: cfg.label, color: cfg.color,
           busName: bus.bus_name.replace("#", ""),

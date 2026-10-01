@@ -1,0 +1,22 @@
+{
+  "source": "https://yale-shuttle.fly.dev",
+  "errors": [],
+  "checks": [
+    "390px and 320px layouts",
+    "buffer changes destination target",
+    "destination distribution has 50 server outcomes, deadline and walking markers",
+    "hollow historical dots display dated observed trips",
+    "pickup distribution and following-shuttle wording",
+    "history failure leaves live distribution and forecast usable",
+    "deadline survives reload",
+    "trip details, pickup gap and Escape focus still work",
+    "passed deadline rejected",
+    "empty time remains editable",
+    "failed feed suppresses shuttle recommendation",
+    "clear returns to normal planner"
+  ],
+  "comparison": "Arrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach LEPH / 60 College by 10:09 PM · 10 min before class.\n\nYour arrival is at risk\n\nNo available option fits your buffer with enough information. Check the times below.\n\nEstimated arrival at destination\n\nBlue West · #300\n9:43 PM–10:12 PM\nConnection uncertain · View trip ›\nThe bus could reach pickup before you. This window assumes you catch it.\nWalk\nAbout 10:11 PM\nMay use your buffer · View trip ›\nSee possible arrival times ▾\nHow to read these times ▾",
+  "route": "Blue West",
+  "pickupDetails": "Blue West arrival\n×\n\nAbout 1 min\n\nLikely arrival window: <1–7 min\n\nPossible pickup times\n9:34 PM\n9:42 PM\n9:50 PM\n│ Estimate 9:36 PM\n\nFilled dots show possible arrivals in the forecast. A taller stack means more modeled outcomes around that time; these are not past buses.\n\nThis is an estimated window, not a guaranteed cutoff. Use the early end when deciding when to reach your stop.\n\nWaiting at Canal / Munson. The window may stay wide until the shuttle leaves.\n\nShuttle\n#300\nStops to pickup\n1\nNext pass by this shuttle\nAbout 42 min later\n\nThe following arrival is estimated in about 43 min from now. Both arrival estimates can change.\n\nWhat happened on past trips\nRecorded time until arrival\n0 min\n1 min\n2 min\n\n1 recorded trips · each hollow dot is one observed arrival, not a predicted outcome.\n\nSame line and stop, with forecasts of 1 min–2 min, near this time of day. These past waits are context, not a probability for your shuttle.\n\nDates and recorded waits ▾\nRecent recorded arrivals at this stop\nSep 16, 8:51 PM · #300\nSep 16, 8:13 PM · #300\nSep 16, 7:35 PM · #300\n\nUp to 24 matches among recent recorded trips from the past 30 days, within two hours of this time and the same weekday/weekend category. Arrivals are detected from shuttle GPS; recording gaps can leave trips out.",
+  "historyQueries": []
+}

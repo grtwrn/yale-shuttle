@@ -1,5 +1,5 @@
 /**
- * The server-side belief's contract: it is OFF by default, it cannot break the
+ * The server-side belief's contract: it is ON by default, it cannot break the
  * poll, it keys on the bus NAME, and it lets go of a bus that stops reporting.
  *
  * The parity test (`serverEta.parity.test.ts`) is the deliverable; this file is
@@ -10,6 +10,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { gunzipSync } from 'node:zlib';
 
 import { Collector } from "../collector/collector.js";
 import type { RawBus, UpstreamClient } from "../collector/upstream.js";
@@ -25,6 +26,9 @@ import {
   type EtaPayloadView,
 } from "./serverEta.js";
 import { buildBusesPayload, createBusesPayloadCache } from "./v1compat.js";
+import { BLUE_K10_MODELS, blueK10GroupPredictions } from './blueK10Trial.js';
+import { ADDITIONAL_K10_MODELS } from './routeK10Trial.js';
+import type { K10Evidence } from '../collector/k10Clock.js';
 
 // Read rather than `import ... from`: `resolveJsonModule` would have tsc infer
 // a literal type for a quarter-megabyte of captured JSON on every typecheck.
@@ -57,18 +61,57 @@ function payloadFor(i: number): EtaPayloadView {
 const ALL_ROUTES = ROUTE_LISTS.map((c) => c.label);
 
 describe("the flag", () => {
-  it("is off unless SHUTTLE_SERVER_ETA=1", () => {
-    expect(serverEtaFromEnv({} as NodeJS.ProcessEnv)).toBeNull();
-    expect(serverEtaFromEnv({ SHUTTLE_SERVER_ETA: "0" } as unknown as NodeJS.ProcessEnv)).toBeNull();
-    expect(serverEtaFromEnv({ SHUTTLE_SERVER_ETA: "true" } as unknown as NodeJS.ProcessEnv)).toBeNull();
+  it("withholds Blue West ETAs while its assigned bus approaches the first route stop", () => {
+    // Report #133, 2026-09-26 18:00 ET: #127 was deadheading south with
+    // last_stop_id=0, yet Mansfield/Division showed a 1–56 minute window.
+    const engine = new ServerEta({ routes: ["Blue West"] });
+    const now = Date.parse("2026-09-26T22:00:35Z");
+    const bus: BusData = {
+      bus_id: 66904, bus_name: "#127", route_id: 16,
+      lat: 41.319058, lon: -72.933916, heading: 168,
+      last_stop_id: 0, observed_at: now,
+    };
+    const payload = (b: BusData): EtaPayloadView => ({ ...payloadFor(0), buses: [b] });
+    expect(engine.contribute(payload(bus), 1, now)).toBeNull();
+
+    // At 18:08 the vehicle actually reached 333 Cedar, its first route stop.
+    const atFirst = { ...bus, lat: 41.303254, lon: -72.934247,
+      stationary: true, at_stop_id: 10, observed_at: now + 8 * 60_000 };
+    const atStop = engine.contribute(payload(atFirst), 2, now + 8 * 60_000);
+    expect(atStop?.buses.some(b => b[1] === "Blue West")).toBe(true);
+    expect(atStop?.rows.some(r => r[1] === 163)).toBe(true);
+
+    // The feed then advanced last_stop_id to 10 after departure; predictions
+    // must continue even after at_stop_id clears.
+    const departed = { ...bus, lat: 41.303353, lon: -72.936055,
+      stationary: false, last_stop_id: 10, observed_at: now + 10 * 60_000 };
+    const underway = engine.contribute(payload(departed), 3, now + 10 * 60_000);
+    expect(underway?.rows.some(r => r[1] === 163)).toBe(true);
   });
 
-  it("serves a bounded set of lines, not the whole network", () => {
-    // Client-side a bug is bounded by which routes the bundle prices. There is
-    // no such bound on the server, so the allowlist is the bound.
+  it('reads the displayed history origin without advancing belief and expires missing buses', () => {
+    const engine = new ServerEta({ routes: ALL_ROUTES });
+    const t = CAP.frames[0]!.t, payload = payloadFor(0);
+    const wire = engine.contribute(payload, 1, t)!;
+    const row = wire.rows.find(r => r[5] > 0)!;
+    const bus = wire.buses[row[0]]!;
+    const steps = engine.stats().steps;
+    expect(engine.historyPosition(bus[1], bus[0], row[1], row[2], t)).toMatchObject({ index: bus[2], stopsAhead: row[5] });
+    expect(engine.stats().steps).toBe(steps);
+    expect(engine.historyPosition(bus[1], bus[0], row[1], row[2], t + 45_000)).toBeNull();
+    engine.contribute({ ...payload, buses: [] }, 1, t + 1000);
+    expect(engine.historyPosition(bus[1], bus[0], row[1], row[2], t + 1000)).toBeNull();
+  });
+  it("runs by default and can explicitly withhold forecasts", () => {
+    expect(serverEtaFromEnv({} as NodeJS.ProcessEnv)).toBeInstanceOf(ServerEta);
+    expect(serverEtaFromEnv({ SHUTTLE_SERVER_ETA: "0" } as unknown as NodeJS.ProcessEnv)).toBeNull();
+
+  });
+
+  it("serves all supported lines by default", () => {
     const on = serverEtaFromEnv({ SHUTTLE_SERVER_ETA: "1" } as unknown as NodeJS.ProcessEnv)!;
     expect(on.servedRoutes()).toEqual([...DEFAULT_SERVER_ETA_ROUTES]);
-    expect(on.servedRoutes().length).toBeLessThan(ROUTE_LISTS.length);
+    expect(on.servedRoutes()).toEqual(ALL_ROUTES);
     for (const label of on.servedRoutes()) {
       expect(ALL_ROUTES, `${label} is not a route`).toContain(label);
     }
@@ -87,6 +130,68 @@ describe("the flag", () => {
 describe("the served answer", () => {
   beforeEach(() => registerRoutePaths(CAP.static.route_paths));
   afterEach(() => registerRoutePaths(null));
+
+  for (const model of [...BLUE_K10_MODELS, ...ADDITIONAL_K10_MODELS]) it(`serves ${model.label}'s updated and usual forecasts from one live step`, () => {
+    // Use an observed, supported service-time clock. An arbitrary midday
+    // departure is not representative of Blue West's operating history.
+    const fixtureFile = [14, 15].includes(model.routeId) ? 'route-k10-parity.json.gz' : 'blue-k10-parity.json.gz';
+    const cases = JSON.parse(gunzipSync(fs.readFileSync(new URL(`./__fixtures__/${fixtureFile}`, import.meta.url))).toString()) as
+      { route: number; now: number; evidence: K10Evidence | null; expected: { changed: boolean } }[];
+    const sample = cases.find(f => f.route === model.routeId && f.expected.changed
+      && f.evidence?.index === model.waitIndex && f.evidence.phase === 'hold')!;
+    expect(sample).toBeDefined();
+    const now = sample.now, stopId = model.sequence[model.waitIndex]!;
+    expect(blueK10GroupPredictions(model, sample.evidence!.origin.departed, now)).not.toBeNull();
+    const bus: BusData = { bus_id: 99, bus_name: '#306', route_id: model.routeId,
+      ...CAP.static.stop_coords[stopId]!, heading: 0, last_stop_id: stopId, observed_at: now,
+      stationary: true, at_stop_id: stopId, at_stop_since: new Date(now - 60_000).toISOString(),
+      stationary_since: new Date(now - 60_000).toISOString(), last_moved_at: new Date(now - 60_000).toISOString() };
+    const payload = { ...payloadFor(0), routes: { ...CAP.static.routes, [model.routeId]: model.sequence }, buses: [bus] };
+    const engine = new ServerEta({ routes: [model.label] });
+    let released = false;
+    engine.useK10Trial(at => new Map([['306', { routeId: model.routeId, index: model.waitIndex,
+      phase: 'hold' as const, observedAt: at, origin: sample.evidence!.origin, released }]]));
+    const usual = engine.contribute(payload, 1, now)!, updated = engine.contribute(payload, 1, now, true)!;
+    expect(updated.trial!.byRoute![model.label]).toBeGreaterThan(0);
+    expect(usual.trial).toBeUndefined(); expect(engine.stats().steps).toBe(1);
+    const row = updated.rows.find(r => r[2] !== usual.rows.find(c => c[0] === r[0] && c[1] === r[1] && c[5] === r[5])![2])!;
+    expect(engine.historyPosition(model.label, '306', row[1], row[2], now, true)).not.toBeNull();
+    released = true;
+    const next = { ...payload, buses: [{ ...bus, observed_at: now + 5000 }] };
+    const live = engine.contribute(next, 2, now + 5000)!, handedOff = engine.contribute(next, 2, now + 5000, true)!;
+    expect(handedOff.rows).toEqual(live.rows); expect(handedOff.distributions).toEqual(live.distributions);
+    expect(engine.stats().steps).toBe(2);
+  });
+
+  it('serves both variants from one warm step and hands the trial back to the exact live wire', () => {
+    const now = Date.parse('2026-09-21T16:00:00Z');
+    const position = CAP.static.stop_coords[128]!;
+    const bus: BusData = { bus_id: 99, bus_name: '#306', route_id: 3, ...position, heading: 0,
+      last_stop_id: 128, observed_at: now, stationary: true, at_stop_id: 128,
+      at_stop_since: new Date(now - 60_000).toISOString(),
+      stationary_since: new Date(now - 60_000).toISOString(), last_moved_at: new Date(now - 60_000).toISOString() };
+    const payload = { ...payloadFor(0), buses: [bus] };
+    const engine = new ServerEta({ routes: ['Red'] });
+    let released = false;
+    engine.useK10Trial(at => new Map([['306', { index: 9, phase: 'hold' as const, observedAt: at,
+      origin: { departed: now - 600_000, knownAt: now - 595_000 }, released }]]));
+    const control = engine.contribute(payload, 1, now)!;
+    const trial = engine.contribute(payload, 1, now, true)!;
+    expect(trial.trial!.changedRows).toBeGreaterThan(0);
+    expect(engine.stats().steps).toBe(1);
+    expect(engine.contribute(payload, 1, now)).toEqual(control);
+    expect(control.trial).toBeUndefined();
+    const row = trial.rows.find(r => r[2] !== control.rows.find(c => c[0] === r[0] && c[1] === r[1] && c[5] === r[5])![2])!;
+    expect(engine.historyPosition('Red','306',row[1],row[2],now,true)).not.toBeNull();
+    released = true;
+    const next = { ...payload, buses: [{ ...bus, observed_at: now + 5000 }] };
+    const live = engine.contribute(next, 2, now + 5000)!;
+    const handedOff = engine.contribute(next, 2, now + 5000, true)!;
+    expect(handedOff.rows).toEqual(live.rows);
+    expect(handedOff.distributions).toEqual(live.distributions);
+    expect(engine.stats().steps).toBe(2);
+    expect(engine.contribute({ ...next, buses: [] }, 2, now + 6000, true)).toBeNull();
+  });
 
   it("carries only the allowlisted lines", () => {
     const red = new ServerEta({ routes: ["Red"] });
@@ -112,6 +217,11 @@ describe("the served answer", () => {
     expect(thinned.buses.map((b) => b[0])).toEqual([one.bus_name.replace("#", "")]);
     // Reindexed, not left with holes: `buses` is the row index space.
     for (const r of thinned.rows) expect(r[0]).toBe(0);
+    expect(full.distributions).toHaveLength(full.rows.length);
+    expect(full.distributions!.every(d => d.length === 50 && d.every(Number.isFinite))).toBe(true);
+    expect(thinned.distributions).toEqual(full.distributions!.filter((_, i) =>
+      full.buses[full.rows[i]![0]]![0] === one.bus_name.replace('#', '')));
+
 
     expect(eta.contribute({ ...payloadFor(0), buses: [] }, 1, t + 1_800)).toBeNull();
   });
@@ -251,5 +361,54 @@ describe("/api/buses with the flag off", () => {
     // price and no field — which is itself the invariant: absent, never a stub.
     delete on["server_eta"];
     expect(on).toEqual(off);
+  });
+});
+
+describe('restart recovery and observation freshness', () => {
+  afterEach(() => registerRoutePaths(null));
+
+  it('continues the same forecast after restoring a recent checkpoint', () => {
+    let bytes: Uint8Array | null = null;
+    const checkpoint = { load: () => bytes, save: (b: Uint8Array) => { bytes = b; } };
+    const original = new ServerEta({ routes: ALL_ROUTES });
+    original.useCheckpoint(checkpoint, CAP.frames[0]!.t);
+    original.contribute(payloadFor(0), 0, CAP.frames[0]!.t);
+    expect((bytes as Uint8Array | null)?.byteLength).toBeGreaterThan(1000);
+    const restarted = new ServerEta({ routes: ALL_ROUTES });
+    restarted.useCheckpoint(checkpoint, CAP.frames[1]!.t);
+    expect(restarted.stats().restored).toBe(original.stats().beliefs);
+    for (let i = 1; i < 8; i++) {
+      expect(restarted.contribute(payloadFor(i), i, CAP.frames[i]!.t))
+        .toEqual(original.contribute(payloadFor(i), i, CAP.frames[i]!.t));
+    }
+  });
+
+  it('discards corrupt and old checkpoints, and write failures do not suppress live arrivals', () => {
+    let bytes: Uint8Array | null = null;
+    const original = new ServerEta({ routes: ALL_ROUTES });
+    original.useCheckpoint({ load: () => null, save: b => { bytes = b; } });
+    original.contribute(payloadFor(0), 0, CAP.frames[0]!.t);
+    for (const value of [bytes, new Uint8Array([0, 1, 2])]) {
+      const restarted = new ServerEta({ routes: ALL_ROUTES });
+      restarted.useCheckpoint({ load: () => value, save: () => { throw new Error('disk full'); } }, CAP.frames[0]!.t + 180_000);
+      expect(restarted.stats().restored).toBe(0);
+      expect(restarted.contribute(payloadFor(1), 1, CAP.frames[1]!.t)).not.toBeNull();
+      expect(restarted.stats().failures).toBe(0);
+    }
+  });
+
+  it('expires a missing bus even while other buses keep polling', () => {
+    const server = new ServerEta({ routes: ALL_ROUTES });
+    const t = CAP.frames[0]!.t;
+    const p = payloadFor(0);
+    p.buses = p.buses.map(b => ({ ...b, observed_at: t }));
+    const first = server.contribute(p, 0, t)!;
+    const missing = first.buses[0]![0];
+    const next = { ...p, buses: p.buses.map(b => ({ ...b, observed_at: b.bus_name.replace(/^#/, '') === missing ? t : t + 44_000 })) };
+    expect(server.contribute(next, 1, t + 44_000)!.buses.some(b => b[0] === missing)).toBe(true);
+    const wire = server.contribute(next, 1, t + 45_000)!;
+    expect(wire.buses.some(b => b[0] === missing)).toBe(false);
+    expect(wire.buses.length).toBeGreaterThan(0);
+    expect(server.stats().steps).toBe(2);
   });
 });

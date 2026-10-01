@@ -1,0 +1,39 @@
+{
+  "created": "2026-09-18T11:12:32.085309+00:00",
+  "head": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+  "frozenBaseline": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "sourceParity": [
+    "services/shuttle-v2/web/src/eta",
+    "services/shuttle-v2/src/server/serverEta.ts",
+    "services/shuttle-v2/web/src/routes.ts",
+    "services/shuttle-v2/web/src/routeTopology.ts",
+    "services/shuttle-v2/web/src/planner.ts",
+    "services/shuttle-v2/web/src/arrivals.ts"
+  ],
+  "start": 6000,
+  "end": 9000,
+  "arms": "unchanged current and canonical-mean diagnostic; artifact only",
+  "frozen": {
+    "current.mjs": "19446d4142b3c8a807c46fa3da1781939b5de33ab2d1aa72493c4651ab66ea29",
+    "canonical.mjs": "738d21c609a1d018851db100f126c42fe1437d02e4eee3c6c45157de65166b8e",
+    "current-checkpoint-6000.v8": "2a815becba963990ca56509f9b3dcf24f459a780e1755279167a4998c7e91199",
+    "canonical-checkpoint-6000.v8": "3f9e861f47090e7595cb042c443a353766843cc15bd6f6d261db7ebe8b92ff96"
+  },
+  "chronology": "reused Sep16 history, not a fresh holdout",
+  "scoring": "cycle16 corrected scorer, all identities and both occurrences retained; remaining identities provisional",
+  "priorCaveats": "57/58 zero-hop identity uncertainty and poll508 sign sensitivity remain; no old result superseded",
+  "deadline": "2026-09-18T11:30:00Z",
+  "scope": "bounded continuation; no application changes, no publication",
+  "base": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+  "inputHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/all-route-raw-frames.jsonl": "1e1091a2c7944ff23ccb84bb99be6c6fe5a52526c94232781f79ae10a6a80207",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-14/all-route-topology.json": "2bc257cc89577c959c56f70c196ca7a2dd78bad9c13bdcdf491990274d3b41a1",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/outcomes-complete.db": "fe8f6efd8ba7a1d0eb472307eca02f3a76f7c1a3ecdcc9972f37cda520605283",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/baseline-patch.json": "f7adb4932de11f6fdcd92fd950baefe1a7561b8b8617143526fd96b61ae8478d",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/params.json": "ab2e69d08bf7d09a969f3a3645663bf47a66ed1b5a318b633cd015d5af81e328",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/payload.json": "a9654f864661923f97b4c240defaf62b2a6cbafec7805f920bb9a925f4fd38d6",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-pre-sep10.json": "be2350420f438d609e12d18b458de5da06578a2533df757efcbbade17b9c4fc8",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-development.json": "d78e229e6f98cc98385cec11fd4fac4ebd625a92028cae240169d0f81a2af7a3"
+  },
+  "riderSlice": "Prior fixed sessions 60836,61538,61907 begin wholly after poll6000 and end before9000; no session state is reset mid-window. Actual current planner/selector with frozen equivalent source. Original geometries, both target stops and access offsets retained."
+}

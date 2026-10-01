@@ -1,0 +1,83 @@
+{
+  "builderFilesPreserved": 58,
+  "byteIdenticalReplayOutputs": 4,
+  "byteIdenticalReceiptOutputs": [
+    "sanitized-receipts.jsonl",
+    "receipt-audit.json",
+    "case-evidence.json",
+    "coverage-gaps.json",
+    "verification.json"
+  ],
+  "comparisons": [
+    {
+      "a": "current-warm",
+      "b": "current-cold",
+      "counts": {
+        "rows": 10592,
+        "changedRows": 1817,
+        "changedQuantiles": 7044,
+        "lowDecrease": 352,
+        "etaDecrease": 401,
+        "highDecrease": 398,
+        "highIncrease": 239,
+        "etaIncrease": 358,
+        "lowIncrease": 345
+      },
+      "maxima": {
+        "eta": 21,
+        "low": 61,
+        "high": 3768,
+        "quantile": 4153
+      },
+      "occurrences": {
+        "0": 6786,
+        "1": 3806
+      }
+    },
+    {
+      "a": "canonical-warm",
+      "b": "canonical-cold",
+      "counts": {
+        "rows": 10592,
+        "changedRows": 0,
+        "changedQuantiles": 0
+      },
+      "maxima": {
+        "eta": 0,
+        "low": 0,
+        "high": 0,
+        "quantile": 0
+      },
+      "occurrences": {
+        "0": 6786,
+        "1": 3806
+      }
+    },
+    {
+      "a": "current-warm",
+      "b": "canonical-warm",
+      "counts": {
+        "rows": 10592,
+        "changedRows": 1373,
+        "changedQuantiles": 4834,
+        "lowIncrease": 161,
+        "highIncrease": 93,
+        "etaIncrease": 292,
+        "lowDecrease": 348,
+        "highDecrease": 450,
+        "etaDecrease": 441
+      },
+      "maxima": {
+        "eta": 21,
+        "low": 20,
+        "high": 3751,
+        "quantile": 4150
+      },
+      "occurrences": {
+        "0": 6786,
+        "1": 3806
+      }
+    }
+  ],
+  "scope": "Both occurrences, independent physical-key joins; no outcome accuracy assertion."
+}

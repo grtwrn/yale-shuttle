@@ -1,0 +1,598 @@
+{
+  "checks": [
+    {
+      "name": "same bus later pickup must remain distinct despite equal bus name",
+      "selected": {
+        "match": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "boardable": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 30,
+          "eta": 1200,
+          "low": 1180,
+          "high": 1280,
+          "departNow": 1200,
+          "lowFloor": 1180,
+          "estimated": false
+        },
+        "departed": false
+      },
+      "journey": {
+        "busName": "307",
+        "pointMs": 1789669860000,
+        "lowMs": 1789669840000,
+        "highMs": 1789669940000,
+        "catchRisk": false,
+        "estimated": false
+      },
+      "identity": {
+        "pickup": "307",
+        "ride": "307",
+        "different": false
+      },
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 30,
+          "etaSec": 1200,
+          "lowSec": 1180,
+          "highSec": 1280
+        },
+        "relation": "same-bus-later-visit",
+        "destinationAvailable": true
+      }
+    },
+    {
+      "name": "same bus later pickup remains selected with missing destination",
+      "selected": {
+        "match": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "boardable": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 30,
+          "eta": 1200,
+          "low": 1180,
+          "high": 1280,
+          "departNow": 1200,
+          "lowFloor": 1180,
+          "estimated": false
+        },
+        "departed": false
+      },
+      "identity": {
+        "pickup": "307",
+        "ride": "307",
+        "different": false
+      },
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 30,
+          "etaSec": 1200,
+          "lowSec": 1180,
+          "highSec": 1280
+        },
+        "relation": "same-bus-later-visit",
+        "destinationAvailable": false
+      }
+    },
+    {
+      "name": "distinct bus selected while closing bus stays pinned",
+      "selected": {
+        "match": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "boardable": {
+          "busName": "309",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 3,
+          "eta": 300,
+          "low": 280,
+          "high": 380,
+          "departNow": 300,
+          "lowFloor": 280,
+          "estimated": false
+        },
+        "departed": false
+      },
+      "journey": {
+        "busName": "309",
+        "pointMs": 1789668860000,
+        "lowMs": 1789668840000,
+        "highMs": 1789668940000,
+        "catchRisk": false,
+        "estimated": false
+      },
+      "identity": {
+        "pickup": "307",
+        "ride": "309",
+        "different": true
+      },
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 48,
+          "stopsAhead": 3,
+          "etaSec": 300,
+          "lowSec": 280,
+          "highSec": 380
+        },
+        "relation": "different-bus",
+        "destinationAvailable": true
+      }
+    },
+    {
+      "name": "known distinct boarding survives missing target rows",
+      "selected": {
+        "match": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "boardable": {
+          "busName": "309",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 3,
+          "eta": 300,
+          "low": 280,
+          "high": 380,
+          "departNow": 300,
+          "lowFloor": 280,
+          "estimated": false
+        },
+        "departed": false
+      },
+      "identity": {
+        "pickup": "307",
+        "ride": "307",
+        "different": false
+      },
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 48,
+          "stopsAhead": 3,
+          "etaSec": 300,
+          "lowSec": 280,
+          "highSec": 380
+        },
+        "relation": "different-bus",
+        "destinationAvailable": false
+      }
+    },
+    {
+      "name": "no catchable arrival does not expose fallback as boardable",
+      "selected": {
+        "match": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "boardable": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "departed": true
+      },
+      "identity": {
+        "pickup": "307",
+        "ride": "307",
+        "different": false
+      },
+      "contract": {
+        "status": "unavailable",
+        "reason": "departed"
+      }
+    },
+    {
+      "name": "same current visit with normalized planned identity",
+      "selected": {
+        "match": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "boardable": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "departed": false
+      },
+      "journey": {
+        "busName": "307",
+        "pointMs": 1789668560000,
+        "lowMs": 1789668540000,
+        "highMs": 1789668640000,
+        "catchRisk": false,
+        "estimated": false
+      },
+      "identity": {
+        "pickup": "307",
+        "ride": "307",
+        "different": false
+      },
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "relation": "same-visit",
+        "destinationAvailable": true
+      }
+    },
+    {
+      "name": "folded route retains only permitted pickup occurrence",
+      "selected": {
+        "match": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 6,
+          "eta": 150,
+          "low": 130,
+          "high": 230,
+          "departNow": 150,
+          "lowFloor": 130,
+          "estimated": false
+        },
+        "boardable": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 6,
+          "eta": 150,
+          "low": 130,
+          "high": 230,
+          "departNow": 150,
+          "lowFloor": 130,
+          "estimated": false
+        },
+        "departed": false
+      },
+      "journey": {
+        "busName": "307",
+        "pointMs": 1789668560000,
+        "lowMs": 1789668540000,
+        "highMs": 1789668640000,
+        "catchRisk": false,
+        "estimated": false
+      },
+      "identity": {
+        "pickup": "307",
+        "ride": "307",
+        "different": false
+      },
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 6,
+          "etaSec": 150,
+          "lowSec": 130,
+          "highSec": 230
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 6,
+          "etaSec": 150,
+          "lowSec": 130,
+          "highSec": 230
+        },
+        "relation": "same-visit",
+        "destinationAvailable": true
+      }
+    },
+    {
+      "name": "missing folded destination remains unknown, not positively rejected",
+      "selected": {
+        "match": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "boardable": {
+          "busName": "307",
+          "routeLabel": "Red",
+          "color": "#C62828",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "eta": 20,
+          "low": 0,
+          "high": 100,
+          "departNow": 20,
+          "lowFloor": 0,
+          "estimated": false
+        },
+        "departed": false
+      },
+      "identity": {
+        "pickup": "307",
+        "ride": "307",
+        "different": false
+      },
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48,
+          "stopsAhead": 1,
+          "etaSec": 20,
+          "lowSec": 0,
+          "highSec": 100
+        },
+        "relation": "same-visit",
+        "destinationAvailable": false
+      }
+    },
+    {
+      "name": "raw current without matching forecast cannot borrow next lap",
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "raw-at-stop",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48
+        },
+        "boarding": {
+          "source": "raw-at-stop",
+          "selectedAtMs": 1789668000000,
+          "routeLabel": "Red",
+          "busName": "307",
+          "stopId": 48
+        },
+        "relation": "raw-current",
+        "forecastLink": null,
+        "destinationAvailable": false
+      }
+    },
+    {
+      "name": "inactive metadata must clear",
+      "flags": {
+        "etaUnavailable": true
+      },
+      "contract": {
+        "status": "unavailable",
+        "reason": "stale-or-missing"
+      }
+    },
+    {
+      "name": "inactive metadata must clear",
+      "flags": {
+        "departed": true
+      },
+      "contract": {
+        "status": "unavailable",
+        "reason": "departed"
+      }
+    },
+    {
+      "name": "future or absent live selection carries no forecast visit"
+    },
+    {
+      "name": "relative hops are snapshot-local, not a stable visit identifier",
+      "before": {
+        "source": "forecast",
+        "selectedAtMs": 1789668000000,
+        "routeLabel": "Red",
+        "busName": "307",
+        "stopId": 48,
+        "stopsAhead": 1,
+        "etaSec": 20,
+        "lowSec": 0,
+        "highSec": 100
+      },
+      "after": {
+        "source": "forecast",
+        "selectedAtMs": 1789668005000,
+        "routeLabel": "Red",
+        "busName": "307",
+        "stopId": 48,
+        "stopsAhead": 0,
+        "etaSec": 0,
+        "lowSec": 0,
+        "highSec": 100
+      }
+    }
+  ],
+  "passed": 13,
+  "scope": "Synthetic contract boundaries executed against unchanged production selector/journey/display helper. No observed incidence or catch guarantees."
+}

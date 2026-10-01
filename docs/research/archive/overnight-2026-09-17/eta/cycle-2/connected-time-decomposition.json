@@ -1,0 +1,1202 @@
+[
+  {
+    "sourceId": 58224,
+    "sourceStop": 11,
+    "pinnedHoldSec": 150.072,
+    "pinMinusBroadRestSec": [
+      25.06
+    ],
+    "restedAtPin": true,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 244.97,
+        "sourcePinnedHoldSec": 150.072,
+        "legElapsedSec": 84.9,
+        "betweenLegResidenceSec": 9.998000000000001,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          53858,
+          53866,
+          53876
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 237.29659988513893,
+            "actual": 94.898,
+            "errorPredictedMinusActual": 142.39859988513894
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 222.28917566209967,
+            "actual": 85.007,
+            "errorPredictedMinusActual": 137.28217566209966
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 187.53825572234246,
+            "actual": 74.952,
+            "errorPredictedMinusActual": 112.58625572234246
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 40.79517222382194,
+            "actual": 59.97,
+            "errorPredictedMinusActual": -19.174827776178056
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 22.758888403842942,
+            "actual": 29.971,
+            "errorPredictedMinusActual": -7.212111596157058
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 580.012,
+        "sourcePinnedHoldSec": 150.072,
+        "legElapsedSec": 254.828,
+        "betweenLegResidenceSec": 175.112,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          53858,
+          53866,
+          53876,
+          53895,
+          53913,
+          53923
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 643.9109602336041,
+            "actual": 429.94,
+            "errorPredictedMinusActual": 213.9709602336041
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 627.4305734404605,
+            "actual": 420.049,
+            "errorPredictedMinusActual": 207.38157344046056
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 583.4156157445776,
+            "actual": 409.994,
+            "errorPredictedMinusActual": 173.4216157445776
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 380.19490408454084,
+            "actual": 395.012,
+            "errorPredictedMinusActual": -14.817095915459163
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 361.5895321919232,
+            "actual": 365.013,
+            "errorPredictedMinusActual": -3.4234678080767935
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 61907,
+    "sourceStop": 11,
+    "pinnedHoldSec": 119.845,
+    "pinMinusBroadRestSec": [
+      15.164
+    ],
+    "restedAtPin": false,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 209.942,
+        "sourcePinnedHoldSec": 119.845,
+        "legElapsedSec": 65.12100000000001,
+        "betweenLegResidenceSec": 24.976,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          57384,
+          57393,
+          57395
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 141.03778000736196,
+            "actual": 90.097,
+            "errorPredictedMinusActual": 50.940780007361965
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 132.9012735065622,
+            "actual": 79.982,
+            "errorPredictedMinusActual": 52.919273506562206
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 129.54326245935985,
+            "actual": 75.073,
+            "errorPredictedMinusActual": 54.47026245935986
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 54.60686081084433,
+            "actual": 59.975,
+            "errorPredictedMinusActual": -5.36813918915567
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 33.116149257101966,
+            "actual": 25.024,
+            "errorPredictedMinusActual": 8.092149257101966
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 449.854,
+        "sourcePinnedHoldSec": 119.845,
+        "legElapsedSec": 235.166,
+        "betweenLegResidenceSec": 94.84299999999999,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          57384,
+          57393,
+          57395,
+          57405,
+          57414,
+          57423
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 506.093483731436,
+            "actual": 330.009,
+            "errorPredictedMinusActual": 176.08448373143597
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 497.6678130914574,
+            "actual": 319.894,
+            "errorPredictedMinusActual": 177.77381309145738
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 494.5156163351911,
+            "actual": 314.985,
+            "errorPredictedMinusActual": 179.5306163351911
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 394.5653460282936,
+            "actual": 299.887,
+            "errorPredictedMinusActual": 94.67834602829362
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 374.41013535909724,
+            "actual": 264.936,
+            "errorPredictedMinusActual": 109.47413535909726
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 60836,
+    "sourceStop": 11,
+    "pinnedHoldSec": 835.143,
+    "pinMinusBroadRestSec": [
+      29.989
+    ],
+    "restedAtPin": true,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 910.21,
+        "sourcePinnedHoldSec": 835.143,
+        "legElapsedSec": 70.184,
+        "betweenLegResidenceSec": 4.883,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          56348,
+          56357,
+          56360
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 114.26150257800536,
+            "actual": 75.067,
+            "errorPredictedMinusActual": 39.19450257800537
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 112.02108503180297,
+            "actual": 69.916,
+            "errorPredictedMinusActual": 42.10508503180297
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 94.45502818927761,
+            "actual": 54.952,
+            "errorPredictedMinusActual": 39.503028189277615
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 35.6017382744241,
+            "actual": 40.01,
+            "errorPredictedMinusActual": -4.408261725575898
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 10.672732527309883,
+            "actual": 14.998,
+            "errorPredictedMinusActual": -4.325267472690117
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 1175.207,
+        "sourcePinnedHoldSec": 835.143,
+        "legElapsedSec": 204.864,
+        "betweenLegResidenceSec": 135.2,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          56348,
+          56357,
+          56360,
+          56380,
+          56396,
+          56403
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 473.9895905363044,
+            "actual": 340.064,
+            "errorPredictedMinusActual": 133.92559053630436
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 471.9214885460816,
+            "actual": 334.913,
+            "errorPredictedMinusActual": 137.0084885460816
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 451.3085131041989,
+            "actual": 319.949,
+            "errorPredictedMinusActual": 131.35951310419887
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 376.8437295849836,
+            "actual": 305.007,
+            "errorPredictedMinusActual": 71.83672958498357
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 348.4331186222123,
+            "actual": 279.995,
+            "errorPredictedMinusActual": 68.4381186222123
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 65347,
+    "sourceStop": 11,
+    "pinnedHoldSec": 500.125,
+    "pinMinusBroadRestSec": [
+      20.102
+    ],
+    "restedAtPin": false,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 580.041,
+        "sourcePinnedHoldSec": 500.125,
+        "legElapsedSec": 64.977,
+        "betweenLegResidenceSec": 14.939,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          60572,
+          60578,
+          60581
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 200.2865774587136,
+            "actual": 79.916,
+            "errorPredictedMinusActual": 120.3705774587136
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 192.59951409767785,
+            "actual": 69.926,
+            "errorPredictedMinusActual": 122.67351409767785
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 184.18543677605095,
+            "actual": 64.779,
+            "errorPredictedMinusActual": 119.40643677605095
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 104.17241979250903,
+            "actual": 45.046,
+            "errorPredictedMinusActual": 59.12641979250903
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 17.817438898119516,
+            "actual": 14.973,
+            "errorPredictedMinusActual": 2.844438898119515
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 810.034,
+        "sourcePinnedHoldSec": 500.125,
+        "legElapsedSec": 190.059,
+        "betweenLegResidenceSec": 119.85,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          60572,
+          60578,
+          60581,
+          60596,
+          60608,
+          60622
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 564.7627742296747,
+            "actual": 309.909,
+            "errorPredictedMinusActual": 254.85377422967474
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 555.7393917385393,
+            "actual": 299.919,
+            "errorPredictedMinusActual": 255.82039173853934
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 545.8227797463289,
+            "actual": 294.772,
+            "errorPredictedMinusActual": 251.05077974632894
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 455.3408287498073,
+            "actual": 275.039,
+            "errorPredictedMinusActual": 180.30182874980733
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 355.51123433864876,
+            "actual": 244.966,
+            "errorPredictedMinusActual": 110.54523433864875
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 58717,
+    "sourceStop": 11,
+    "pinnedHoldSec": 170.095,
+    "pinMinusBroadRestSec": [
+      9.935
+    ],
+    "restedAtPin": false,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 265.138,
+        "sourcePinnedHoldSec": 170.095,
+        "legElapsedSec": 84.939,
+        "betweenLegResidenceSec": 10.104,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          54339,
+          54344,
+          54348
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 192.39161086578616,
+            "actual": 95.043,
+            "errorPredictedMinusActual": 97.34861086578616
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 184.25477833084986,
+            "actual": 85.105,
+            "errorPredictedMinusActual": 99.14977833084986
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 168.9688004187562,
+            "actual": 75.112,
+            "errorPredictedMinusActual": 93.8568004187562
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 112.86275179692606,
+            "actual": 60.092,
+            "errorPredictedMinusActual": 52.77075179692606
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 24.515838504667062,
+            "actual": 34.997,
+            "errorPredictedMinusActual": -10.481161495332938
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 575.109,
+        "sourcePinnedHoldSec": 170.095,
+        "legElapsedSec": 239.939,
+        "betweenLegResidenceSec": 165.075,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          54339,
+          54344,
+          54348,
+          54366,
+          54380,
+          54392
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 556.5608609979798,
+            "actual": 405.014,
+            "errorPredictedMinusActual": 151.54686099797982
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 547.5150450335549,
+            "actual": 395.076,
+            "errorPredictedMinusActual": 152.43904503355486
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 531.6922851429027,
+            "actual": 385.083,
+            "errorPredictedMinusActual": 146.6092851429027
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 467.5094745106914,
+            "actual": 370.063,
+            "errorPredictedMinusActual": 97.44647451069142
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 361.69989757178683,
+            "actual": 344.968,
+            "errorPredictedMinusActual": 16.731897571786817
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 57454,
+    "sourceStop": 121,
+    "pinnedHoldSec": 355.205,
+    "pinMinusBroadRestSec": [
+      0.0
+    ],
+    "restedAtPin": false,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 3030.928,
+        "sourcePinnedHoldSec": 355.205,
+        "legElapsedSec": 1425.629,
+        "betweenLegResidenceSec": 1250.094,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          53157,
+          53213,
+          53222,
+          53271,
+          53291,
+          53301,
+          53310,
+          53316,
+          53329,
+          53341,
+          53354,
+          53367,
+          53392,
+          53408,
+          53438,
+          53440,
+          53446
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2102.749787396404,
+            "actual": 2675.723,
+            "errorPredictedMinusActual": -572.973212603596
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2066.9794091412405,
+            "actual": 2670.652,
+            "errorPredictedMinusActual": -603.6725908587596
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2001.105501251938,
+            "actual": 2655.66,
+            "errorPredictedMinusActual": -654.5544987480619
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 1997.922919771355,
+            "actual": 2645.673,
+            "errorPredictedMinusActual": -647.7500802286447
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 1957.3153431261605,
+            "actual": 2615.713,
+            "errorPredictedMinusActual": -658.3976568738397
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 3430.966,
+        "sourcePinnedHoldSec": 355.205,
+        "legElapsedSec": 1590.796,
+        "betweenLegResidenceSec": 1484.965,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          53157,
+          53213,
+          53222,
+          53271,
+          53291,
+          53301,
+          53310,
+          53316,
+          53329,
+          53341,
+          53354,
+          53367,
+          53392,
+          53408,
+          53438,
+          53440,
+          53446,
+          53463,
+          53478,
+          53490
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2447.725522240161,
+            "actual": 3075.761,
+            "errorPredictedMinusActual": -628.0354777598391
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2427.3124239367444,
+            "actual": 3070.69,
+            "errorPredictedMinusActual": -643.3775760632557
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2360.012459427742,
+            "actual": 3055.698,
+            "errorPredictedMinusActual": -695.6855405722577
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 2356.5474016021135,
+            "actual": 3045.711,
+            "errorPredictedMinusActual": -689.1635983978863
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 2318.469941689489,
+            "actual": 3015.751,
+            "errorPredictedMinusActual": -697.2810583105111
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 63523,
+    "sourceStop": 121,
+    "pinnedHoldSec": 39.98,
+    "pinMinusBroadRestSec": [
+      0.0
+    ],
+    "restedAtPin": false,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 1660.142,
+        "sourcePinnedHoldSec": 39.98,
+        "legElapsedSec": 859.981,
+        "betweenLegResidenceSec": 760.1809999999999,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          58890,
+          58913,
+          58914,
+          58924,
+          58934,
+          58945,
+          58953,
+          58958,
+          58964,
+          58970,
+          58979,
+          58981,
+          58995,
+          59011,
+          59070,
+          59080,
+          59083
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2460.634289200005,
+            "actual": 1620.162,
+            "errorPredictedMinusActual": 840.4722892000048
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2335.7301203094694,
+            "actual": 1615.156,
+            "errorPredictedMinusActual": 720.5741203094694
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2035.3801835286106,
+            "actual": 1605.133,
+            "errorPredictedMinusActual": 430.24718352861055
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 2001.8960901967218,
+            "actual": 1590.16,
+            "errorPredictedMinusActual": 411.73609019672176
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 1965.3476240264483,
+            "actual": 1560.151,
+            "errorPredictedMinusActual": 405.19662402644826
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 2015.302,
+        "sourcePinnedHoldSec": 39.98,
+        "legElapsedSec": 970.116,
+        "betweenLegResidenceSec": 1005.206,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          58890,
+          58913,
+          58914,
+          58924,
+          58934,
+          58945,
+          58953,
+          58958,
+          58964,
+          58970,
+          58979,
+          58981,
+          58995,
+          59011,
+          59070,
+          59080,
+          59083,
+          59100,
+          59128,
+          59130
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2814.811836038275,
+            "actual": 1975.322,
+            "errorPredictedMinusActual": 839.4898360382751
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2709.097144278622,
+            "actual": 1970.316,
+            "errorPredictedMinusActual": 738.7811442786222
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2397.8323813305997,
+            "actual": 1960.293,
+            "errorPredictedMinusActual": 437.5393813305998
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 2365.8345471533985,
+            "actual": 1945.32,
+            "errorPredictedMinusActual": 420.51454715339855
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 2325.846793619983,
+            "actual": 1915.311,
+            "errorPredictedMinusActual": 410.5357936199832
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 57990,
+    "sourceStop": 121,
+    "pinnedHoldSec": 54.991,
+    "pinMinusBroadRestSec": [
+      0.0
+    ],
+    "restedAtPin": false,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 1695.199,
+        "sourcePinnedHoldSec": 54.991,
+        "legElapsedSec": 1125.405,
+        "betweenLegResidenceSec": 514.803,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          53641,
+          53663,
+          53670,
+          53690,
+          53710,
+          53725,
+          53735,
+          53743,
+          53764,
+          53777,
+          53786,
+          53797,
+          53820,
+          53836,
+          53858,
+          53866,
+          53876
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2215.907980349858,
+            "actual": 1640.208,
+            "errorPredictedMinusActual": 575.6999803498579
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2175.997689375402,
+            "actual": 1635.102,
+            "errorPredictedMinusActual": 540.8956893754018
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2117.370219668165,
+            "actual": 1625.161,
+            "errorPredictedMinusActual": 492.20921966816513
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 2092.441764047776,
+            "actual": 1610.08,
+            "errorPredictedMinusActual": 482.361764047776
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 2054.7451638094262,
+            "actual": 1579.868,
+            "errorPredictedMinusActual": 474.8771638094263
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 2030.241,
+        "sourcePinnedHoldSec": 54.991,
+        "legElapsedSec": 1295.333,
+        "betweenLegResidenceSec": 679.917,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          53641,
+          53663,
+          53670,
+          53690,
+          53710,
+          53725,
+          53735,
+          53743,
+          53764,
+          53777,
+          53786,
+          53797,
+          53820,
+          53836,
+          53858,
+          53866,
+          53876,
+          53895,
+          53913,
+          53923
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2585.7599422543035,
+            "actual": 1975.25,
+            "errorPredictedMinusActual": 610.5099422543035
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2526.9227488581973,
+            "actual": 1970.144,
+            "errorPredictedMinusActual": 556.7787488581973
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2487.837885196893,
+            "actual": 1960.203,
+            "errorPredictedMinusActual": 527.6348851968928
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 2454.0797001891415,
+            "actual": 1945.122,
+            "errorPredictedMinusActual": 508.9577001891414
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 2412.8307122032156,
+            "actual": 1914.91,
+            "errorPredictedMinusActual": 497.92071220321554
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 61538,
+    "sourceStop": 121,
+    "pinnedHoldSec": 630.099,
+    "pinMinusBroadRestSec": [
+      4.979
+    ],
+    "restedAtPin": false,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 3030.402,
+        "sourcePinnedHoldSec": 630.099,
+        "legElapsedSec": 1335.7259999999999,
+        "betweenLegResidenceSec": 1064.577,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          57047,
+          57100,
+          57112,
+          57168,
+          57190,
+          57206,
+          57213,
+          57220,
+          57235,
+          57247,
+          57268,
+          57275,
+          57290,
+          57323,
+          57336,
+          57340,
+          57342
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2097.1936981753815,
+            "actual": 2400.303,
+            "errorPredictedMinusActual": -303.10930182461834
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2040.5956683633476,
+            "actual": 2395.253,
+            "errorPredictedMinusActual": -354.65733163665254
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2004.3398533954694,
+            "actual": 2385.247,
+            "errorPredictedMinusActual": -380.90714660453045
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 1981.6769000931704,
+            "actual": 2370.302,
+            "errorPredictedMinusActual": -388.62509990682975
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 1941.8404613778866,
+            "actual": 2340.279,
+            "errorPredictedMinusActual": -398.43853862211336
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 3335.37,
+        "sourcePinnedHoldSec": 630.099,
+        "legElapsedSec": 1470.698,
+        "betweenLegResidenceSec": 1234.573,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          57047,
+          57100,
+          57112,
+          57168,
+          57190,
+          57206,
+          57213,
+          57220,
+          57235,
+          57247,
+          57268,
+          57275,
+          57290,
+          57323,
+          57336,
+          57340,
+          57342,
+          57350,
+          57367,
+          57371
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2444.395971029392,
+            "actual": 2705.271,
+            "errorPredictedMinusActual": -260.8750289706081
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2388.997745423425,
+            "actual": 2700.221,
+            "errorPredictedMinusActual": -311.2232545765751
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2365.176350553171,
+            "actual": 2690.215,
+            "errorPredictedMinusActual": -325.03864944682937
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 2339.7692548997848,
+            "actual": 2675.27,
+            "errorPredictedMinusActual": -335.5007451002152
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 2299.9237983323537,
+            "actual": 2645.247,
+            "errorPredictedMinusActual": -345.3232016676461
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sourceId": 58510,
+    "sourceStop": 121,
+    "pinnedHoldSec": 620.799,
+    "pinMinusBroadRestSec": [
+      0.0
+    ],
+    "restedAtPin": false,
+    "journeys": [
+      {
+        "target": 48,
+        "targetOutcome": "stopped",
+        "totalObservedSec": 2236.712,
+        "sourcePinnedHoldSec": 620.799,
+        "legElapsedSec": 1070.346,
+        "betweenLegResidenceSec": 545.567,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          54155,
+          54173,
+          54179,
+          54197,
+          54207,
+          54221,
+          54233,
+          54238,
+          54244,
+          54267,
+          54274,
+          54286,
+          54304,
+          54319,
+          54339,
+          54344,
+          54348
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2031.8223163433086,
+            "actual": 1615.913,
+            "errorPredictedMinusActual": 415.90931634330855
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 1974.439919931887,
+            "actual": 1610.887,
+            "errorPredictedMinusActual": 363.5529199318871
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 1941.0840865124815,
+            "actual": 1595.952,
+            "errorPredictedMinusActual": 345.13208651248146
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 1931.2926967498915,
+            "actual": 1580.946,
+            "errorPredictedMinusActual": 350.34669674989163
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 1900.3088590755754,
+            "actual": 1550.943,
+            "errorPredictedMinusActual": 349.3658590755754
+          }
+        ]
+      },
+      {
+        "target": 4,
+        "targetOutcome": "passed",
+        "totalObservedSec": 2546.683,
+        "sourcePinnedHoldSec": 620.799,
+        "legElapsedSec": 1225.346,
+        "betweenLegResidenceSec": 700.538,
+        "endpointTimestampAdjustmentSec": 0.0,
+        "legIds": [
+          54155,
+          54173,
+          54179,
+          54197,
+          54207,
+          54221,
+          54233,
+          54238,
+          54244,
+          54267,
+          54274,
+          54286,
+          54304,
+          54319,
+          54339,
+          54344,
+          54348,
+          54366,
+          54380,
+          54392
+        ],
+        "departureErrors": [
+          {
+            "checkpointSec": 0,
+            "predicted": 2382.7775350862094,
+            "actual": 1925.884,
+            "errorPredictedMinusActual": 456.89353508620934
+          },
+          {
+            "checkpointSec": 5,
+            "predicted": 2318.943443424838,
+            "actual": 1920.858,
+            "errorPredictedMinusActual": 398.0854434248379
+          },
+          {
+            "checkpointSec": 15,
+            "predicted": 2290.602265863805,
+            "actual": 1905.923,
+            "errorPredictedMinusActual": 384.67926586380486
+          },
+          {
+            "checkpointSec": 30,
+            "predicted": 2279.204604340176,
+            "actual": 1890.917,
+            "errorPredictedMinusActual": 388.28760434017613
+          },
+          {
+            "checkpointSec": 60,
+            "predicted": 2246.893978677319,
+            "actual": 1860.914,
+            "errorPredictedMinusActual": 385.97997867731897
+          }
+        ]
+      }
+    ]
+  }
+]

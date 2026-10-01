@@ -1,0 +1,9 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';
+const O=new URL('.',import.meta.url).pathname,load=(p:string)=>import(pathToFileURL(process.cwd()+'/web/src/'+p).href);
+const {stableTripOrder,preferredTripOrder,optionTier}=await load('tripRanking.ts'),{topVisibleOptions,keptThirdLabel,commuteSec}=await load('planner.ts');
+const focus='61538:4:150',when=1789593014852;let checked=0;const context:any={};
+for(const arm of ['current','canonical']){const sessions=new Map();context[arm]=[];
+ for(const line of fs.readFileSync(O+arm+'-decisions.jsonl','utf8').trim().split('\n')){const row=JSON.parse(line),prior=sessions.get(row.session)??{order:null,third:null};const result=stableTripOrder(row.options,prior.order,row.at),visible=topVisibleOptions(result.options,prior.third),labels=visible.map((o:any)=>o.routeLabel);assert.deepEqual(labels,row.visible);checked++;sessions.set(row.session,{order:result.state,third:keptThirdLabel(visible)});
+ if(row.session===focus&&Math.abs(row.at-when)<=45000)context[arm].push({at:row.at,visible:labels,priorState:prior.order,state:result.state,desired:preferredTripOrder(row.options,prior.order?.order??[]).map((o:any)=>o.routeLabel),options:row.options.map((o:any)=>({route:o.routeLabel,tier:optionTier(o),commuteSec:commuteSec(o),totalSec:o.totalSec,walkToSec:o.walkToSec,walkFromSec:o.walkFromSec,busLowSec:o.busLowSec,window:o.journeyArrival?[(o.journeyArrival.lowMs-o.computedAtMs)/1000,(o.journeyArrival.highMs-o.computedAtMs)/1000]:null}))});
+ }}
+fs.writeFileSync(O+'ranking-state-audit.json',JSON.stringify({checked,focus,when,context,limits:'Replay of saved exact numerical options through unchanged current ordering and visibility rules. No new forecasts, no browser proof, no threshold tuning or rider-preference claim.'},null,2));console.log(JSON.stringify({checked,focus,windowRows:context.current.length}));

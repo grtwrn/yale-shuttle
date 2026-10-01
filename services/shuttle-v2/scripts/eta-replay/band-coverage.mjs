@@ -26,6 +26,7 @@
  */
 import fs from "node:fs";
 import readline from "node:readline";
+import { conformalFactor } from '../../web/src/eta/conformal.mjs';
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith("--"));
@@ -78,7 +79,7 @@ for await (const line of rl) {
   if (!h) continue;
   const routes = ROUTES.includes(p.r) ? [String(p.r), "pooled"] : ["pooled"];
   const mode = p.atStop ? "standing" : "moving";
-  const [low, high] = band(p, W[h] ?? 1);
+  const [low, high] = band(p, conformalFactor(p.eta, W));
   // The factor this pair NEEDS (conformal), under the floor.
   let need;
   if (a > p.eta) need = p.high > p.eta ? (a - p.eta) / (p.high - p.eta) : Infinity;

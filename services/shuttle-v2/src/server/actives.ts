@@ -233,8 +233,10 @@ export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}
       -- NULL timestamp forever and never contribute a session length.
       first_seen_ms = MIN(IFNULL(first_seen_ms, excluded.first_seen_ms), excluded.first_seen_ms),
       last_seen_ms  = MAX(IFNULL(last_seen_ms,  excluded.last_seen_ms),  excluded.last_seen_ms),
-      polls         = excluded.polls,
-      searches      = excluded.searches
+      -- The in-memory counters are deltas since the last flush. Add them to
+      -- the persisted totals so a process restart does not erase earlier use.
+      polls         = COALESCE(daily_actives.polls, 0) + excluded.polls,
+      searches      = COALESCE(daily_actives.searches, 0) + excluded.searches
   `);
 
   function flush(now = Date.now()): void {
@@ -253,9 +255,15 @@ export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}
             polls: v.polls,
             searches: v.searches,
           });
-          v.dirty = false;
         }
       })();
+      // Only clear deltas after the whole transaction commits. If it rolls
+      // back, the next flush must retry every browser's counts.
+      for (const [, v] of rows) {
+        v.polls = 0;
+        v.searches = 0;
+        v.dirty = false;
+      }
     } catch {
       // Counting must never break the endpoint riders depend on. Leave the
       // entries dirty so the next flush retries them.

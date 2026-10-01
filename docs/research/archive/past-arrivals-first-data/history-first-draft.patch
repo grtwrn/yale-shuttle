@@ -1,0 +1,131 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 858bbe8..90134b4 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -18,7 +18,8 @@ and following-shuttle timing, and `ArriveBy.tsx` overlays class/walking targets
+ on destination arrivals. `ArrivalHistory.tsx` fetches the bounded public
+ `/api/arrival-history` endpoint only when expanded. Filled forecast dots and
+ hollow dated observations are distinct; no validated on-time percentage is
+-claimed. See `docs/server-side-eta.md` for matching and transport semantics.
++claimed. Pickup details show recorded waits first; the current shuttle forecast
++expands separately. See `docs/server-side-eta.md` for matching and transport semantics.
+ 
+ ## Architecture (v2 — `services/shuttle-v2/`)
+ 
+diff --git a/docs/server-side-eta.md b/docs/server-side-eta.md
+index d4d798b..cf334cd 100644
+--- a/docs/server-side-eta.md
++++ b/docs/server-side-eta.md
+@@ -45,7 +45,9 @@ fit a normal curve through the displayed low/point/high. The point and bounds
+ are unchanged. Missing or malformed optional samples suppress only the graph.
+ Samples age and expire with their corresponding live arrival rows.
+ 
+-The pickup dialog uses filled quantile dots on a clock axis. The class-arrival
++The pickup dialog leads with recorded waits after similar ETAs. Filled forecast
++dots on a clock axis sit in a separate, initially collapsed "Forecast for this
++shuttle" section. The class-arrival
+ disclosure uses the selected bus's forward drop-off distribution plus its final
+ walk, with target, class and walking markers. It does not add marginal pickup
+ and ride quantiles. The following-shuttle label states how many minutes later
+diff --git a/services/shuttle-v2/scripts/arrive-by-check.mjs b/services/shuttle-v2/scripts/arrive-by-check.mjs
+index 12e938c..9e8a5ee 100644
+--- a/services/shuttle-v2/scripts/arrive-by-check.mjs
++++ b/services/shuttle-v2/scripts/arrive-by-check.mjs
+@@ -116,16 +116,15 @@ try {
+   await dialog.waitFor();
+   assert.match(await dialog.innerText(), /Following shuttle|Next pass|Next arrival/);
+   assert.doesNotMatch(await dialog.innerText(), /Estimated gap|8 in 10/);
+-  const pickupPlot = dialog.getByRole('img', { name: /^Possible pickup times/ });
+-  await pickupPlot.waitFor();
+-  assert.equal(await pickupPlot.locator('circle').count(), 50);
++  const pickupPlot = dialog.getByRole('img', { name: /^Current shuttle forecast/ });
++  assert.equal(await pickupPlot.count(), 0, 'modeled pickup dots start collapsed');
+   await dialog.getByRole('region', { name: 'Recorded arrival history' }).waitFor();
+   await page.waitForTimeout(400);
+   result.pickupDetails = await dialog.innerText();
+   result.historyQueries = historyQueries;
+   await page.setViewportSize({ width: 390, height: 844 });
+   await page.screenshot({ path: out + '/pickup-distribution-390.png' });
+-  const historyPlot = dialog.getByRole('img', { name: /^Recorded time until arrival/ });
++  const historyPlot = dialog.getByRole('img', { name: /^Actual waits after similar ETAs/ });
+   if (await historyPlot.count()) {
+     assert((await historyPlot.locator('circle').count()) > 0);
+     assert.equal(await historyPlot.locator('circle:not([fill="#fff"])').count(), 0);
+@@ -137,8 +136,13 @@ try {
+     result.checks.push('hollow historical dots display dated observed trips');
+   }
+   if (local && historyFixture.length) assert(await historyPlot.count(), 'real recorded fixture must produce historical dots');
++  await dialog.getByText('Forecast for this shuttle ▾', { exact: true }).click();
++  await pickupPlot.waitFor();
++  assert.equal(await pickupPlot.locator('circle').count(), 50);
++  await pickupPlot.scrollIntoViewIfNeeded();
++  await page.screenshot({ path: out + '/pickup-forecast-expanded-390.png' });
+   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'pickup distribution viewport overflow');
+-  result.checks.push('pickup distribution and following-shuttle wording');
++  result.checks.push('recorded waits are the primary pickup graph; current forecast expands separately', 'pickup distribution and following-shuttle wording');
+   await page.keyboard.press('Escape');
+   assert(await eta.evaluate(e => e === document.activeElement));
+   await page.route('**/api/arrival-history?**', route => route.fulfill({ status: 503, json: { error: 'test interruption' } }));
+diff --git a/services/shuttle-v2/web/src/ArrivalDetails.tsx b/services/shuttle-v2/web/src/ArrivalDetails.tsx
+index aef53d6..7106438 100644
+--- a/services/shuttle-v2/web/src/ArrivalDetails.tsx
++++ b/services/shuttle-v2/web/src/ArrivalDetails.tsx
+@@ -60,18 +60,7 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
+       <p style={{ margin: '18px 0 4px', fontSize: 28, fontWeight: 650 }}>{point}</p>
+       {band && !atPickup ? <>
+         <p style={{ margin: 0, color: '#4b5563' }}>Likely arrival window: <strong>{band.text}</strong></p>
+-        {dots?.length ? <ArrivalPlot values={dots} title="Possible pickup times"
+-          markers={[{ value: now + etaSec * 1000, label: 'Estimate', color: '#174ea6' }]}
+-          description="Filled dots show possible arrivals in the forecast. A taller stack means more modeled outcomes around that time; these are not past buses." /> : <>
+-        <div role="img" aria-label={`Likely arrival window ${band.text}; estimate ${fmtMin(etaSec)}`} style={{ margin: '30px 6px 22px' }}>
+-          <div style={{ height: 8, position: 'relative', background: '#e5e7eb', borderRadius: 5 }}>
+-            <span style={{ position: 'absolute', left: position(band.lowSec), right: position(extent - band.highSec), height: 8, borderRadius: 5, background: '#a8c7fa' }} />
+-            <span style={{ position: 'absolute', left: position(etaSec), top: -5, height: 18, width: 4, borderRadius: 2, background: '#174ea6', transform: 'translateX(-50%)' }} />
+-          </div>
+-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#5f6368', marginTop: 8 }}><span>Now</span><span>{Math.ceil(extent / 60)} min</span></div>
+-        </div>
+-        </>}
+-        <p style={{ fontSize: 13, lineHeight: 1.5, color: '#5f6368' }}>This is an estimated window, not a guaranteed cutoff. Use the early end when deciding when to reach your stop.</p>
++        <p style={{ fontSize: 13, lineHeight: 1.5, color: '#5f6368' }}>Use the early end of the estimated window when deciding when to reach your stop.</p>
+       </> : !atPickup ? <p style={{ color: '#5f6368', fontSize: 13 }}>An arrival window is not available yet.</p> : null}
+       {holdingAt && !atPickup && <p style={{ padding: 12, borderRadius: 10, background: '#fff8e1', fontSize: 13, lineHeight: 1.5 }}>Waiting at {holdingAt}. The window may stay wide until the shuttle leaves.</p>}
+       <dl style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '14px 18px', fontSize: 14, borderTop: '1px solid #e5e7eb', paddingTop: 18, marginBottom: 0 }}>
+@@ -84,6 +73,20 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
+       </dl>
+       {next && <p style={{ fontSize: 12, lineHeight: 1.5, color: '#5f6368', marginBottom: 0 }}>The following arrival is estimated in about {next} from now. Both arrival estimates can change.</p>}
+       {open && stopId !== undefined && <ArrivalHistory route={routeLabel} stopId={stopId} etaSec={etaSec} />}
++      {band && !atPickup && <details style={{ borderTop: '1px solid #e5e7eb', marginTop: 16, fontSize: 13 }}>
++        <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#174ea6' }}>Forecast for this shuttle ▾</summary>
++        {dots?.length ? <ArrivalPlot values={dots} title="Current shuttle forecast"
++          markers={[{ value: now + etaSec * 1000, label: 'Estimate', color: '#174ea6' }]}
++          description="Predicted pickup times for this shuttle. Taller stacks show times the forecast considers more likely." /> : <>
++          <div role="img" aria-label={`Likely arrival window ${band.text}; estimate ${fmtMin(etaSec)}`} style={{ margin: '30px 6px 22px' }}>
++            <div style={{ height: 8, position: 'relative', background: '#e5e7eb', borderRadius: 5 }}>
++              <span style={{ position: 'absolute', left: position(band.lowSec), right: position(extent - band.highSec), height: 8, borderRadius: 5, background: '#a8c7fa' }} />
++              <span style={{ position: 'absolute', left: position(etaSec), top: -5, height: 18, width: 4, borderRadius: 2, background: '#174ea6', transform: 'translateX(-50%)' }} />
++            </div>
++            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#5f6368', marginTop: 8 }}><span>Now</span><span>{Math.ceil(extent / 60)} min</span></div>
++          </div>
++        </>}
++      </details>}
+     </dialog>, document.body)}
+   </>;
+ }
+diff --git a/services/shuttle-v2/web/src/ArrivalHistory.tsx b/services/shuttle-v2/web/src/ArrivalHistory.tsx
+index 21aed9d..949d767 100644
+--- a/services/shuttle-v2/web/src/ArrivalHistory.tsx
++++ b/services/shuttle-v2/web/src/ArrivalHistory.tsx
+@@ -39,10 +39,10 @@ export function ArrivalHistory({ route, stopId, etaSec }: { route: string; stopI
+     <h3 style={{ fontSize: 16, margin: '0 0 8px' }}>What happened on past trips</h3>
+     {!data ? <p style={{ fontSize: 13, color: '#5f6368' }}>{state?.error ? 'Recorded trips are unavailable right now.' : 'Loading recorded trips…'}</p> : <>
+       {data.trips.length ? <>
+-        <ArrivalPlot observed clock={false} values={data.trips.map(t => t.actualSec)} title="Recorded time until arrival"
++        <ArrivalPlot observed clock={false} values={data.trips.map(t => t.actualSec)} title="Actual waits after similar ETAs"
+           labels={data.trips.map(t => `${when(t.arrivedAt)} · #${t.busName.replace(/^#/, '')}: predicted ${minutes(t.predictedSec)}, arrived after ${minutes(t.actualSec)}`)}
+-          description={`${data.trips.length} recorded trips · each hollow dot is one observed arrival, not a predicted outcome.`} />
+-        <p style={{ fontSize: 12, color: '#5f6368', lineHeight: 1.5 }}>Same line and stop, with forecasts of {minutes(data.forecastLowSec)}–{minutes(data.forecastHighSec)}, near this time of day. These past waits are context, not a probability for your shuttle.</p>
++          description={`${data.trips.length} recorded ${data.trips.length === 1 ? 'trip' : 'trips'}. Each dot shows how long a shuttle took to arrive after its earlier forecast.`} />
++        <p style={{ fontSize: 12, color: '#5f6368', lineHeight: 1.5 }}>Same line and stop, with earlier forecasts of {minutes(data.forecastLowSec)}–{minutes(data.forecastHighSec)}, near this time of day.</p>
+         <details style={{ fontSize: 12 }}><summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>Dates and recorded waits ▾</summary>
+           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+             <thead><tr><th>Arrival · bus</th><th>Forecast</th><th>Actual wait</th></tr></thead>

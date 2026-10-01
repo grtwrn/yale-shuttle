@@ -1,0 +1,29 @@
+{
+  "scope": "Synthetic intercepted feed on unmodified built SPA; no accuracy claim",
+  "checks": [
+    "Automatic recovery focus, external-focus control, and fresh reporting off-route fleet checked in built SPA"
+  ],
+  "snapshots": {},
+  "errors": [],
+  "automaticRecovery": {
+    "focus": {
+      "tag": "BODY",
+      "text": "\n    \n        * { box-sizing: border-box; }\n        body { margin: 0; }\n        "
+    },
+    "modeFocused": false
+  },
+  "blockingFindings": [
+    "Recovery button disappears after a fresh empty poll and loses keyboard focus to BODY instead of persistent map mode control",
+    "Reporting off-route buses are described as no buses reporting in the Running now empty state"
+  ],
+  "externalFocusPreserved": true,
+  "offRoute": {
+    "filteredText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nLive bus updates interrupted. Times and positions may be out of date. Reconnecting…\nHide all\nRed\nBlue Day\nBlue Wknd\nBlue Night\nBlue West\nOrange\nOrg Night\nOrg East\nBrown\nPink\nGreen\nPurple\nGold\nGrocery TJ\nGrocery Ham\n+\n−\n Leaflet | © OpenStreetMap contributors\n📍\nRunning now\nNo buses are reporting on your selected routes.\nShow selected routes\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+    "chipTitle": "Red has no bus in the last update — hidden by \"Running now\"",
+    "recoveredCard": "RED\n★\n~loop 25 min · M–F 5:40a–7p\n2/2 buses\n29 stops · 2 buses off route ›"
+  },
+  "completed": true,
+  "resourcesClosed": true,
+  "requests": 5,
+  "failedRequests": 0
+}

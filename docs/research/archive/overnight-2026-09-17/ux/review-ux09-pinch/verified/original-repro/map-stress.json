@@ -1,0 +1,18 @@
+{
+  "scope": "Built SPA on bounded local server, normal browser clock; synthetic feed; no live backend",
+  "checks": [
+    "Up to 3 normal-clock zoom-in/unmount and zoom-out/filter/unmount cycles completed; no page error or crash fallback"
+  ],
+  "states": [
+    {
+      "name": "after-rapid-map-transitions",
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n🚌 2 shuttles reporting on 1 route\nPick a destination — we compare walking against every shuttle.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout"
+    }
+  ],
+  "errors": [],
+  "errorStacks": [],
+  "iterations": 3,
+  "completed": true,
+  "requests": 1,
+  "resourcesClosed": true
+}

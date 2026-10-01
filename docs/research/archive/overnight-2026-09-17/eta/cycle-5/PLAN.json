@@ -1,0 +1,129 @@
+{
+  "createdAtUTC": "2026-09-18T04:46:03.315751+00:00",
+  "head": "6220b860a69f5567557926f41de59ed1af72d2f8",
+  "purpose": "Conservative pooling identity repair: only smooth positive rows with unchanged stop/occurrence/hop count; otherwise seed fresh memory. No tracking, pricing, horizon, ranking or outcome-label changes.",
+  "windows": [
+    {
+      "sourceId": 58224,
+      "sourceStop": 11,
+      "bus": "309",
+      "start": 1789567182326,
+      "end": 1789567572398,
+      "pin": 1789567242326,
+      "departure": 1789567392398
+    },
+    {
+      "sourceId": 61907,
+      "sourceStop": 11,
+      "bus": "309",
+      "start": 1789595980291,
+      "end": 1789596340136,
+      "pin": 1789596040291,
+      "departure": 1789596160136
+    },
+    {
+      "sourceId": 60836,
+      "sourceStop": 11,
+      "bus": "316",
+      "start": 1789587104077,
+      "end": 1789588179220,
+      "pin": 1789587164077,
+      "departure": 1789587999220
+    },
+    {
+      "sourceId": 65347,
+      "sourceStop": 11,
+      "bus": "309",
+      "start": 1789656592856,
+      "end": 1789657332981,
+      "pin": 1789656652856,
+      "departure": 1789657152981
+    },
+    {
+      "sourceId": 58717,
+      "sourceStop": 11,
+      "bus": "309",
+      "start": 1789570584134,
+      "end": 1789570994229,
+      "pin": 1789570644134,
+      "departure": 1789570814229
+    },
+    {
+      "sourceId": 57454,
+      "sourceStop": 121,
+      "bus": "309",
+      "start": 1789561421036,
+      "end": 1789562016241,
+      "pin": 1789561481036,
+      "departure": 1789561836241
+    },
+    {
+      "sourceId": 63523,
+      "sourceStop": 121,
+      "bus": "316",
+      "start": 1789644001356,
+      "end": 1789644281336,
+      "pin": 1789644061356,
+      "departure": 1789644101336
+    },
+    {
+      "sourceId": 57990,
+      "sourceStop": 121,
+      "bus": "309",
+      "start": 1789565732097,
+      "end": 1789566027088,
+      "pin": 1789565792097,
+      "departure": 1789565847088
+    },
+    {
+      "sourceId": 61538,
+      "sourceStop": 121,
+      "bus": "316",
+      "start": 1789592614727,
+      "end": 1789593484826,
+      "pin": 1789592674727,
+      "departure": 1789593304826
+    },
+    {
+      "sourceId": 58510,
+      "sourceStop": 121,
+      "bus": "309",
+      "start": 1789568612560,
+      "end": 1789569473359,
+      "pin": 1789568672560,
+      "departure": 1789569293359
+    }
+  ],
+  "geometries": "For each source, destinations 48 and 4; exact source coordinate and 150m due-west longitude offset (150/(111320*cos(lat))) as stationary hypothetical explicit origins. 40 independent sessions.",
+  "sessions": "Begin first actual poll >= pin-60sec, retain candidate board/alight/plannedRideSec through departure+180sec; empty-plan roster recovery matches shell. No user refresh, GPS movement, future planning or aboard state.",
+  "checkpoints": "Every observed poll in selected windows, plus first actual poll >= source pin+[0,60,180,300]sec before departure and departure+[0,15,60]sec. Missing remains missing.",
+  "forecast": "Current HEAD release ON, archived preSep14 marginal calibration and preSep10 release fit. All actual Red observations stepped continuously; reset >60sec recording gaps. No future outcomes as inputs; reconstructed collector clock provenance.",
+  "comparison": "Continuous-prefix candidate ServerEta versus preserved cycle-4 current-production wires. Relevant baseline estimator/transport source unchanged through current HEAD; historical causal calibration and all selected windows unchanged.",
+  "decision": "Use current planTrip and a mechanically extracted current shell live-map body, actual journeyArrival, stableTripOrder and visibility with persistent state. Keep countdown and catchable bus/occurrence distinct. Until a bounded actual-shell fixture passes, call this extracted numerical-path evidence, not browser/display validation.",
+  "usefulness": "Describe identity/availability/tiers/order changes, pending rank persistence, modeled walking saving, predicted point/window comparisons. A switch or slower median is not automatically a defect. Connect actual endpoint outcomes only with exact chosen bus/board/alight/occurrence; report missing/ambiguous chains. No actual rider intent/walk/deadline probability is observed.",
+  "limits": [
+    "Deliberately selected worst prior ETA windows; not population or fresh holdout.",
+    "Archive contains Red only; no all-route comparison.",
+    "150m geometric offset is hypothetical and does not verify walkable street access.",
+    "No new coefficients, thresholds, caps, outcome exclusions or shared semantics changes.",
+    "Conservative hop-change bypass may remove valid smoothing at a transition; score both occurrences and connected outcomes before proposing release."
+  ],
+  "hashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/case-manifest.json": "1d67f491ebd01d2617dd99dd3c40bab6638ef75e5bcbc0325477748c3cc34198",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/raw-frames.jsonl": "2f65e30e8986a7cada4f5527adb77444748367d62bf68e508c17edd0ba25bcb6",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/outcomes.db": "daf4702f128f47f010b6a2235e54196e0aacc5cc5b3db790cc8cdbc951a69b5e",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/baseline-patch.json": "f7adb4932de11f6fdcd92fd950baefe1a7561b8b8617143526fd96b61ae8478d",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/params.json": "ab2e69d08bf7d09a969f3a3645663bf47a66ed1b5a318b633cd015d5af81e328",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-pre-sep10.json": "be2350420f438d609e12d18b458de5da06578a2533df757efcbbade17b9c4fc8",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-eta-data/payload.json": "a9654f864661923f97b4c240defaf62b2a6cbafec7805f920bb9a925f4fd38d6",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-2/current-trace.jsonl": "672a196f2b29d18cda3c9d1742590af14d4ffa5dbe1ca6bfd18ba9010382d24a",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/src/server/serverEta.ts": "283de1730e1de77bc7ccdee5921bf0e88aa45d185fccc750ef7217769921ca83",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/TransitMap.tsx": "765df568de65e18d54ce7dbff9a014c9b0e090bf8f5f7a306e932140bdaf6424",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/planner.ts": "c6e48d8592052d44f66b4b39d1e222e31315af698f4ff58fb6febe7ff5f0cda9",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/journeyArrival.ts": "fcaf4c8da87b654dc40ede762c3a238a6c3e75830901acd32fa3e82f8d573e45",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/tripRanking.ts": "21e62994f9d2c97b4af74b0d195091da739f88388a8bdf294ff7d052128536be",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/etaSource.ts": "d98b34b493788f091e1c8bcd2fcb576222b83b907ff33aaffbc27cb4473cf0ef",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/walk.ts": "689fa745fbff2f76d283c23e60f9303480e738364d0c6a1fea73031e8a222b44"
+  },
+  "candidateIndexSha256": "1f09e69b0fc6fdb6a46209f1b76b4b6f11772c934e0a943698c66d83a9f53f13"
+}

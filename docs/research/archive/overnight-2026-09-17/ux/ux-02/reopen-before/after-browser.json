@@ -1,0 +1,56 @@
+{
+  "source": "Built SPA with intercepted API fixture; no external requests",
+  "mode": "after",
+  "checks": [
+    "ArrowDown/ArrowUp wrap the displayed destination matches; Escape closes suggestions with focus retained; no dangling active descendant",
+    "360/390/430/1280px and 640 CSS-pixel reflow, 16px inputs and >=44px height",
+    "Destination suggestion pick focuses its summary; Tab continues to Save this destination",
+    "From editor opens by Enter; Current location plus recent place are navigable; Enter picks recent origin"
+  ],
+  "snapshots": {
+    "initial": "- combobox \"To\"",
+    "navigation": "- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻",
+    "matches": "- listbox \"To suggestions\":\n  - option \"📚 Sterling Memorial Library\"\n  - option \"📚 Sterling Hall of Medicine / Medical Historical Library\" [selected]",
+    "afterPickFocus": {
+      "tag": "DIV",
+      "text": "To🏁 Sterling Memorial Library☆"
+    },
+    "from": "- combobox \"From\" [expanded]"
+  },
+  "errors": [],
+  "requests": [
+    {
+      "path": "/api/weather",
+      "method": "GET"
+    },
+    {
+      "path": "/api/my-reports",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/geocode",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/buses",
+      "method": "GET"
+    }
+  ],
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- button \"From 📍 Tap to set start\"\n- button \"To 🏁 Sterling Memorial Library Save this destination\":\n  - text: To 🏁 Sterling Memorial Library\n  - button \"Save this destination\": ☆\n- text: Leave Now\n- button \"Plan for later…\"\n- text: Pick a start from the list to see trips. 😴 No shuttles running right now Recent places\n- button \"Clear all\"\n- text: →Sterling Memorial Library\n- button \"☆\"\n- button \"✕\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about"
+}
