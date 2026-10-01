@@ -8,12 +8,17 @@ const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+export const SELECTION_BACKOFF_MS=2*60000;
 export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
  const ROOT=outputDir;
  await fs.mkdir(ROOT,{recursive:true});
  let feed=initialFeed,feedAt=Date.now(),busy=false,stopped=false,timer,run=null,lastImage=0,lastPhase='',cursor=metrics.CANARY_LINES.findIndex(l=>l.label===initialLine?.label),imageBytes=0;
  const images=[];
+ // A line whose trip row is missing (e.g. a bus still in the feed after its
+ // last loop) is skipped for a while, so a fixed-trip rider does not reload,
+ // log and screenshot the same empty planner every 10 s.
+ const unavailableUntil={};
  try { for(const line of (await fs.readFile(path.join(ROOT,'images.jsonl'),'utf8')).trim().split('\n')) if(line)images.push(JSON.parse(line)); } catch {}
  await fs.appendFile(path.join(ROOT,'journeys.jsonl'),'');
  await fs.mkdir(path.join(ROOT,'images'),{recursive:true});
@@ -50,6 +55,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    const line=metrics.CANARY_LINES[idx];
    if(allowedLabels && !allowedLabels.includes(line.label))continue;
    if(!metrics.liveBusesOf(feed,line).length)continue;
+   if((unavailableUntil[line.label]??0)>Date.now())continue;
    let picked=fixedTrip ?? null;
    for(let attempt=0;!picked && attempt<12;attempt++){
     const candidate=rotation.randomTripForLine(feed,line).trip;if(!candidate)break;
@@ -68,7 +74,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    await sleep(1500);
    const more=page.getByRole('button',{name:/Show \d+ more route/});if(await more.isVisible())await more.click();
    const row=page.getByRole('button',{name:'View '+line.label+' trip details',exact:true});
-   if(!await row.isVisible()){await event('selection-unavailable',{line:line.label,trip:picked,text:await page.locator('body').innerText()});await capture('selection-unavailable');return;}
+   if(!await row.isVisible()){unavailableUntil[line.label]=Date.now()+SELECTION_BACKOFF_MS;await event('selection-unavailable',{line:line.label,trip:picked,text:await page.locator('body').innerText()});await capture('selection-unavailable');return;}
    // A centre click can hit the nested arrival disclosure. Activate the
    // focused trip card itself; its keyboard handler opens the trip view.
    await row.focus();await page.keyboard.press('Enter');await begin(picked,line);return;
