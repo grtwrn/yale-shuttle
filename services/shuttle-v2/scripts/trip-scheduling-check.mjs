@@ -100,7 +100,7 @@ try {
       assert.doesNotMatch(text, /When arrival timing is unclear, shorter walks and rides come first/);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal page overflow');
       const box = await destination.boundingBox();
-      const pickup = row.getByRole('button', { name: /^Red arrival details:/ });
+      const pickup = row.getByTestId('route-pickup');
       const pickupBox = await pickup.count() ? await pickup.boundingBox() : null;
       if (pickupBox) {
         assert(pickupBox.x + pickupBox.width <= box.x, 'pickup overlaps destination');
@@ -129,8 +129,11 @@ try {
     }
     assert.equal(await destination.getAttribute('data-kind'), 'window');
     assert.match(await destination.innerText(), /10:21a – 10:27a/);
-    const pickup = row.getByRole('button', { name: /^Red arrival details:/ });
+    const pickup = row.getByTestId('route-pickup');
     assert.match(await pickup.innerText(), /~5 \(3 – 9\)/);
+    // One control per route: the pickup time is text, not an arrival-chart button.
+    assert.equal(await row.getByRole('button').count(), 1, 'route row has more than one control');
+    assert.equal(await row.getByRole('button', { name: /arrival details:/ }).count(), 0);
     assert(await pickup.getByTestId('pickup-range').isVisible(), 'pickup window must remain visible in the key');
     assert.doesNotMatch(await pickup.innerText(), /Next/);
     assert.doesNotMatch(await card.innerText(), /^23 min$/m, 'total duration still occupies card');
@@ -154,16 +157,12 @@ try {
     assert.equal(parsedPickup.second, null);
     assert.deepEqual(parsedPickup.first, [180, 540]);
     assert.deepEqual(parsedPickup.median, [300, 360]);
-    await pickup.click();
-    const details = page.getByRole('dialog');
-    assert.equal(await page.getByTestId('trip-detail-panel').count(), 0, 'arrival details also selected the route');
-    assert.match(await details.innerText(), /Likely arrival window: 3–9 min/);
-    assert.match(await details.innerText(), /The following arrival is estimated in about 20 min from now/);
-    await details.getByRole('button', { name: 'Close arrival details' }).click();
-    // The destination and journey legs are part of the route's click target.
-    for (const target of [destination, row.getByTestId('journey-legs')]) {
+    // The pickup time, destination and journey legs are all part of the
+    // route's click target; tapping the pickup time opens no arrival chart.
+    for (const target of [pickup, destination, row.getByTestId('journey-legs')]) {
       await target.click();
       await page.getByTestId('trip-detail-panel').waitFor();
+      assert.equal(await page.getByRole('dialog').count(), 0, 'route tap opened an arrival chart');
       assert.equal(await table.locator('tbody[data-route]').count(), 1);
       assert.equal(await page.getByTestId('map-trip-panel').getByTestId('trip-stop-list').count(), 1);
       await page.getByRole('button', { name: '← All routes', exact: true }).click();
