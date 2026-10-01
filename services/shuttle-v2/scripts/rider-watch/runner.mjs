@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {followedBusName,labeledStopId,selectDestination} from './inputs.mjs';
+import {followedBusName,labeledStopId,quotedRideMin,rideCapMin,selectDestination} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -136,7 +136,10 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      if(coord&&(run.lastExitDistanceM<=45 || (run.lastExitDistanceM<=60 && bus.at_stop_id===run.exitStopId && bus.stationary===true))&&now-Date.parse(run.boardedAt)>30000){run.arrivalCriterion=run.lastExitDistanceM<=45?'GPS-within-45m':'stationary-at-target-within-60m';run.arrivedAt=new Date().toISOString();run.arrivalText=text;run.phase='arrived';await event('arrived',{bus:run.busName,stop:feed.stop_names[run.exitStopId],rideSeconds:(now-Date.parse(run.boardedAt))/1000});}
     }
     if(/Get off in 2 stops/.test(text)&&/Get off NEXT stop|Arriving at/.test(text)&&!run.popupMismatch){run.popupMismatch=true;await event('candidate-stale-alert',text);await capture('candidate-stale-alert');}
-    if(now-Date.parse(run.boardedAt)>50*60000)await finish('ride-timeout-needs-review');
+    // Ride at least as long as the card quoted at pickup (bounded); a fixed
+    // 50 min gave up on a quoted 54 min ride before it could be scored.
+    run.rideCapMin??=rideCapMin(quotedRideMin(run.pickupText));
+    if(now-Date.parse(run.boardedAt)>run.rideCapMin*60000)await finish('ride-timeout-needs-review');
    }else if(run.phase==='arrived'&&now-Date.parse(run.arrivedAt)>15000){
     const got=page.getByRole('button',{name:'Got it',exact:true});if(await got.isVisible())await got.click();
     await capture('arrival-dismissed');const done=page.getByRole('button',{name:'Done',exact:true});if(await done.isVisible())await done.click();await finish('completed');

@@ -38,6 +38,19 @@ export function followedBusName(text, boardStopId, buses, routeIds, previous, st
   if (tracked && haversineM(tracked, stop) <= FOLLOWED_NEAR_STOP_M) return null;
   return here.length === 1 ? here[0].bus_name : null;
 }
+/** The ride the trip card quoted ("🚌 54 min" on its own line, fmtMin), or
+ * null when it shows none or disagreeing values. */
+export function quotedRideMin(text) {
+  const quotes = [...String(text ?? '').matchAll(/(?:^|\n)🚌 (\d+) min(?=\n|$)/g)].map(m => Number(m[1]));
+  return quotes.length && quotes.every(q => q === quotes[0]) ? quotes[0] : null;
+}
+export const RIDE_CAP_MIN = 50, RIDE_CAP_MAX_MIN = 90;
+/** Minutes to ride before giving up: 1.5× the quoted ride, never below the
+ * old fixed 50 min (an unquoted ride keeps it) and never above 90 min, so a
+ * bus that never reaches the stop still ends the run. */
+export function rideCapMin(quoted) {
+  return Math.min(RIDE_CAP_MAX_MIN, Math.max(RIDE_CAP_MIN, Math.ceil((quoted ?? 0) * 1.5)));
+}
 export function destinationMatches(draft, destination) {
   const p = draft?.toLL;
   return !!p && [p.lat,p.lon,destination.lat,destination.lon].every(Number.isFinite)
