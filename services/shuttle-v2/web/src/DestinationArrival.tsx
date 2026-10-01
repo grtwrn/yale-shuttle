@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { fmtClock } from './format';
+import { fmtClock, fmtDate, sameCampusDay } from './format';
 import type { TripOption } from './planner';
 
 type ArrivalOption = Pick<TripOption, 'mode' | 'totalSec' | 'journeyArrival' | 'departed' | 'etaUnavailable'>;
@@ -9,12 +9,8 @@ type ArrivalOption = Pick<TripOption, 'mode' | 'totalSec' | 'journeyArrival' | '
  * bounds here, or substitute the countdown bus's window for this journey. */
 export function destinationArrivalView(option: ArrivalOption, now: number, departureMs?: number) {
   if (option.departed || option.etaUnavailable || !Number.isFinite(now)) return null;
-  const clock = (at: number) => {
-    const date = new Date(at);
-    const prefix = date.toDateString() === new Date(now).toDateString() ? ''
-      : `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, `;
-    return prefix + fmtClock(0, date);
-  };
+  // New Haven's day and clock, whatever zone the phone is set to.
+  const clock = (at: number) => (sameCampusDay(at, now) ? '' : `${fmtDate(at)}, `) + fmtClock(0, new Date(at));
   const arrival = option.mode === 'shuttle' && departureMs === undefined ? option.journeyArrival : undefined;
   if (arrival && [arrival.pointMs, arrival.lowMs, arrival.highMs].every(Number.isFinite)
     && arrival.highMs >= arrival.lowMs && arrival.pointMs >= now) {
@@ -48,8 +44,9 @@ export function DestinationArrival({ option, destination, departureMs, now = Dat
     style={{ flexShrink: 0, maxWidth: compact ? undefined : '60%', textAlign: 'right', color: '#202124', fontSize: compact ? 12 : 16, fontWeight: 600 }}>
     {!compact && <span style={{ display: 'block', fontSize: 11, fontWeight: 400, color: '#5f6368' }}>At destination</span>}
     <span style={{ display: compact ? 'inline' : 'block', fontVariantNumeric: 'tabular-nums' }}>{view.text.split('–').map((endpoint, i) => {
-      // A date can wrap above its clock; the digits of a clock stay together.
-      const timeAt = endpoint.lastIndexOf(' ') + 1;
+      // A date can wrap above its clock; the digits of a clock (and its
+      // " ET" on a phone in another zone) stay together.
+      const timeAt = Math.max(0, endpoint.search(/~?\d{1,2}:\d{2}/));
       return <Fragment key={i}>{i > 0 && <> – <wbr /></>}{endpoint.slice(0, timeAt)}<span style={{ whiteSpace: 'nowrap' }}>{endpoint.slice(timeAt)}</span></Fragment>;
     })}</span>
   </span>;

@@ -4,7 +4,7 @@ import { fmtMin } from "./format";
 import { fmtBusLine } from "./bunching";
 import { boardArrivalText, chipCountdownText, waitLegText } from "./etaBand";
 import { readFileSync } from "node:fs";
-import { arrivalBand, standChipFor, standLeftText, standWaitFor, standWaitView, stopEtaText } from "./standWait";
+import { arrivalBand, rideHoldText, standChipFor, standLeftText, standWaitFor, standWaitView, stopEtaText } from "./standWait";
 import RED_STAND from "./__fixtures__/red-stand-2026-09-11.json";
 import { shownStandSec, type DwellStat } from "./arrivals";
 
@@ -372,7 +372,7 @@ describe("the render sites read the shared composition", () => {
   const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
 
   it("uses the shared stop-list compositions", () => {
-    expect(src).toContain('import { standChipFor } from "./standWait";');
+    expect(src).toContain('import { rideHoldText, standChipFor } from "./standWait";');
     // The trip card's expanded stop list and the Map tab's route card.
     expect(src.match(/standChipFor\(/g)?.length).toBe(2);
     // The trip's BOARD row and the Map tab's per-stop countdown.
@@ -386,6 +386,32 @@ describe("the render sites read the shared composition", () => {
     expect(src).not.toMatch(/\.med \+ [a-zA-Z]*\.?sd\)? \/ 60/);
     // A bare point for a stop's arrival, beside surfaces that print a range.
     expect(src).not.toContain("fmtMin(e.eta)");
+  });
+
+  it("names a hold once — both ride surfaces print rideHoldText, neither coins its own", () => {
+    // The banner and the ride stop list's header are 150 lines apart; the
+    // "2 min" that sat through a two-minute dwell (2026-09-17 eval) needs
+    // the same words on both, from the same composer — and the same lapped-
+    // exit rule, read off the priced stand rather than the payload's flag.
+    expect(src.match(/rideHoldText\(/g)?.length).toBe(2);
+    // No string literal of its own (comments may describe the words).
+    expect(src).not.toMatch(/[`"']holding\b/);
+    for (const name of ["OnBusBanner", "RideStopList"]) {
+      const from = src.indexOf(`const ${name}: FC`);
+      const to = src.indexOf("\nconst ", from + 10);
+      expect(from).toBeGreaterThan(0);
+      const body = src.slice(from, to > from ? to : undefined);
+      expect(body).toContain("rideHoldText(");
+      expect(body).toContain("resolveStandingStop(");
+      expect(body).toContain("rideLappedExit(");
+    }
+    expect(rideHoldText("Prospect/Hillside")).toBe("holding at Prospect/Hillside");
+    expect(rideHoldText("344 Winchester", true)).toBe("holding near 344 Winchester");
+    // A pause with no stop to name — a light, a queue — is not a hold the
+    // rider can place, so it must not brand the line.
+    for (const empty of [null, undefined, ""]) {
+      expect(rideHoldText(empty)).toBeNull();
+    }
   });
 
   it("does not let the Map tab's stop rows read the payload's own clock", () => {
