@@ -9,6 +9,8 @@ const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 export const SELECTION_BACKOFF_MS=2*60000;
+// The app's BUS_ABSENT_MS (web/src/rideEnd.ts).
+export const BUS_GONE_MS=10*60000;
 export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
  const ROOT=outputDir;
@@ -138,6 +140,11 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    }else if(run.phase==='riding'){
     const bus=feed.buses.find(b=>b.bus_name===run.busName&&run.line.busRouteIds.includes(b.route_id));
     const coord=feed.stop_coords[run.exitStopId];
+    // The boarded bus left a fresh feed (stale feeds return above): end the
+    // ride when the app does ("Ride tracking stopped" after 10 min absent,
+    // web/src/rideEnd.ts) rather than riding out the cap with nothing to score.
+    if(bus)run.busLastSeenAt=new Date(now).toISOString();
+    else if(now-Date.parse(run.busLastSeenAt??run.boardedAt)>BUS_GONE_MS){run.excludeAccuracy=true;await event('bus-left-feed',{bus:run.busName,lastSeenAt:run.busLastSeenAt??run.boardedAt,lastExitDistanceM:run.lastExitDistanceM});await finish('bus-left-feed-excluded');await status();return;}
     if(bus){await ctx.setGeolocation({latitude:bus.lat,longitude:bus.lon});run.lastExitDistanceM=coord?metrics.haversineM(bus,coord):null;
      if(coord&&(run.lastExitDistanceM<=45 || (run.lastExitDistanceM<=60 && bus.at_stop_id===run.exitStopId && bus.stationary===true))&&now-Date.parse(run.boardedAt)>30000){run.arrivalCriterion=run.lastExitDistanceM<=45?'GPS-within-45m':'stationary-at-target-within-60m';run.arrivedAt=new Date().toISOString();run.arrivalText=text;run.phase='arrived';await event('arrived',{bus:run.busName,stop:feed.stop_names[run.exitStopId],rideSeconds:(now-Date.parse(run.boardedAt))/1000});}
     }

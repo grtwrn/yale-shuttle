@@ -15,20 +15,20 @@ const dwelling="🚌 20 min\nBOARD🚌Union Station (S)⏸ 0:29\nWest Haven Trai
 const at126={bus_name:'#126',route_id:10,lat:41.297912,lon:-72.926694,at_stop_id:122,stationary:true};
 const near126={bus_name:'#126',route_id:10,lat:41.296923,lon:-72.927685,stationary:false};
 
-async function harness(initialFeed,initialTrip=trip){
+async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z'}={}){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});
- vi.setSystemTime(Date.parse('2026-10-01T11:00:00Z'));
+ vi.setSystemTime(Date.parse(at));
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
- const h={text:approaching,clicks:[],handlers:{}};
+ const h={text,clicks:[],handlers:{}};
  const button=name=>({isVisible:async()=>name==="🚌 I'm on it",click:async()=>h.clicks.push(name)});
  const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:()=>({innerText:async()=>h.text}),
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
  const ctx={setGeolocation:async()=>{}};
- h.watcher=await attach({page,ctx,initialTrip,initialLine:line,initialFeed,outputDir:dir});
+ h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,outputDir:dir});
  // The runner's own 10 s interval drives each poll; wait for it to settle.
  h.poll=async(text,buses)=>{h.text=text;
-  await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedWith(buses)});
+  await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedOf(buses)});
   vi.advanceTimersByTime(10000);
   do await new Promise(r=>setImmediate(r)); while(h.watcher.status().busy);};
  h.journeys=async()=>(await fs.readFile(path.join(dir,'journeys.jsonl'),'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
@@ -103,6 +103,48 @@ test('a quoted 54 min ride is ridden to arrival, not cut off at 50 min',async()=
  const run=h.watcher.status().run;
  assert.equal(run.phase,'arrived');
  assert.equal(run.rideCapMin,81);
+ assert.deepEqual(await h.journeys(),[]);
+});
+
+// Pink run 1790893847183: boarded #324 at VA Hospital at 22:30:54Z, just past
+// Pink's 6:30pm end. #324 was last in the feed at 22:42:24Z, 1.08 km short of
+// Davenport/Howard, and never came back (#307 kept reporting). The app said
+// "Ride tracking stopped" at 22:52:34Z; the runner rode on to its 50 min cap.
+const va={lat:41.281934,lon:-72.96194},dav={lat:41.303096,lon:-72.936589};
+const pinkTrip={kind:'random',origin:{label:'VA Hospital',...va,stopId:125},destination:{display_name:'Davenport / Howard',...dav,stopId:46}};
+const pinkOpts={initialLine:{label:'Pink',busRouteIds:[8]},at:'2026-10-01T22:30:44Z',text:"🚌 14 min\n🚌 #324 · 1 stop away\nBOARDVA Hospital\nGET OFFDavenport / Howard",
+ feedOf:buses=>({buses,routes:{8:[125,46]},stop_names:{125:'VA Hospital',46:'Davenport / Howard'},stop_coords:{125:va,46:dav}})};
+const b324={bus_name:'#324',route_id:8,lat:41.28183,lon:-72.962293,at_stop_id:125,stationary:true};
+const b307={bus_name:'#307',route_id:8,lat:41.299,lon:-72.94,stationary:false};
+const missing="Looking for your bus…\n🚌 Pink #324 → Davenport/Howard";
+test('a boarded bus gone from the feed for 10 min ends the ride, as the app does',async()=>{
+ const h=current=await harness(pinkOpts.feedOf([b324]),pinkTrip,pinkOpts);
+ await h.poll("🚌 14 min\nBOARD🚌VA Hospital⏸ 0:07\nGET OFFDavenport / Howard",[b324]);
+ assert.equal(h.watcher.status().run.phase,'riding');
+ vi.setSystemTime(Date.parse('2026-10-01T22:42:14Z'));
+ await h.poll("Pink · Bus #324",[{...b324,lat:41.297971,lon:-72.947605,at_stop_id:undefined,stationary:false},b307]);
+ // Gone for 9 min 50 s: the app is still looking, so is the rider.
+ for(let i=0;i<59;i++)await h.poll(missing,[b307]);
+ assert.equal(h.watcher.status().run?.phase,'riding');
+ for(let i=0;i<2;i++)await h.poll("Ride tracking stopped\n\nYour shuttle has been missing from live updates for 10 min, so tracking stopped. You may still be on board.",[b307]);
+ assert.equal(h.watcher.status().run,null);
+ const [journey]=await h.journeys();
+ assert.equal(journey.result,'bus-left-feed-excluded');
+ assert.equal(journey.excludeAccuracy,true);
+ assert.equal(journey.busLastSeenAt,'2026-10-01T22:42:24.000Z');
+ // The first poll past 10 min, the same poll the app stopped tracking on.
+ assert.equal(journey.finishedAt,'2026-10-01T22:52:34.000Z');
+});
+
+test('a boarded bus that drops out for a few minutes and returns is still ridden',async()=>{
+ const h=current=await harness(pinkOpts.feedOf([b324]),pinkTrip,pinkOpts);
+ await h.poll("🚌 14 min\nBOARD🚌VA Hospital⏸ 0:07\nGET OFFDavenport / Howard",[b324]);
+ const moving={...b324,lat:41.297971,lon:-72.947605,at_stop_id:undefined,stationary:false};
+ for(let gap=0;gap<2;gap++){
+  for(let i=0;i<54;i++)await h.poll(missing,[b307]);
+  await h.poll("Pink · Bus #324",[moving,b307]);
+ }
+ assert.equal(h.watcher.status().run.phase,'riding');
  assert.deepEqual(await h.journeys(),[]);
 });
 
