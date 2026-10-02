@@ -42,23 +42,52 @@ export function rideInWindow(
 }
 
 /**
+ * What this ride has seen its bus do, in order: carry the rider (at the pickup,
+ * or between it and the exit), then reach the exit. Being seen inside the
+ * window alone is not enough. The ride list keeps one slot per stop, so a bus
+ * on a stop the line passes twice reads off that one slot: Green's second West
+ * Campus pass (23, 25, 26), and Pink's run out past Quigley Stadium Outbound
+ * and VA Entrance Outbound (110, 124), which the repaired ring visits on the
+ * way to the hospital (#160), land in (alight, board) while the bus is still
+ * driving to the exit. That printed "May have passed West Haven Train Station
+ * · back in 5 min" 2.6 km short of it (incident mayhavepassed20261002). Only a
+ * bus that has been AT the exit can have passed it, and only after it carried
+ * the ride: a bus coming to the pickup can cross the exit's slot first (Pink,
+ * VA Hospital → Quigley Stadium Outbound).
+ */
+export type RideEvidence = "none" | "rode" | "reached";
+
+export function rideEvidence(
+  prev: RideEvidence,
+  busIndex: number,
+  boardIndex: number,
+  alightIndex: number,
+  stopCount: number,
+): RideEvidence {
+  if (prev === "reached" || busIndex < 0) return prev;
+  if (busIndex === alightIndex) return prev === "rode" ? "reached" : prev;
+  return busIndex === boardIndex || rideInWindow(busIndex, boardIndex, alightIndex, stopCount) ? "rode" : prev;
+}
+
+/**
  * `rideStopPassed`, said only on evidence. Position alone cannot tell a lapped
  * exit from a bus still coming to the pickup — both sit in (alight, board),
- * and a ride can start before its bus arrives (TripBoardingActions) — so the
- * bus must have been seen inside the ride's window (`rode`) first. A stop the
- * line visits twice is never called passed: the ride list keeps only its first
- * visit, so the second may still be ahead (as in `isUnambiguousRideArrival`).
+ * and a ride can start before its bus arrives (TripBoardingActions) — or from
+ * a bus on a repeated pass still driving to the exit, so the bus must have
+ * carried the ride to the exit first (`reachedExit`, `rideEvidence`). A stop
+ * the line visits twice is never called passed: the ride list keeps only its
+ * first visit, so the second may still be ahead (as in `isUnambiguousRideArrival`).
  */
 export function rideLappedExit(p: {
   busIndex: number;
   boardIndex: number;
   alightIndex: number;
   stopCount: number;
-  rode: boolean;
+  reachedExit: boolean;
   rawRoute: readonly number[] | undefined;
   alightStopId: number;
 }): boolean {
-  if (!p.rode || !p.rawRoute || p.rawRoute.filter((id) => id === p.alightStopId).length !== 1) return false;
+  if (!p.reachedExit || !p.rawRoute || p.rawRoute.filter((id) => id === p.alightStopId).length !== 1) return false;
   return rideStopPassed(p.busIndex, p.boardIndex, p.alightIndex, p.stopCount);
 }
 
