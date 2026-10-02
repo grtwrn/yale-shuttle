@@ -5848,7 +5848,10 @@ const RideRouteMap: FC<{
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 8px 4px", boxSizing: "border-box" }}>
       <style>{`@keyframes shuttlePulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }`}</style>
-      <div style={{ position: "relative", width: "100%" }}>
+      {/* Own stacking context: Leaflet's panes/controls (up to 1000) and the 📍
+          button would otherwise outrank the sticky OnBusBanner (500) and paint
+          over its headline and "Done" once the ride page scrolls under it. */}
+      <div style={{ position: "relative", width: "100%", isolation: "isolate" }}>
         {/* Capped height so the stop list starts above the fold on phones
             (report #21: "the stops list is too low on page"). */}
         <div ref={ref} style={{ position: "relative", width: "100%", height: "min(32vh, 300px)", borderRadius: 8, border: "1px solid #e0ddd8", overflow: "hidden" }} />
