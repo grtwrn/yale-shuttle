@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {followedBusName,labeledStopId,quotedRideMin,rideCapMin,selectDestination} from './inputs.mjs';
+import {followedBusName,labeledStopId,observedAtStop,quotedRideMin,rideCapMin,selectDestination} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -128,7 +128,11 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      if(!run.walkUntil || run.walkStopId!==run.boardStopId){run.walkStopId=run.boardStopId;run.walkUntil=now+metrics.haversineM(run.trip.origin,coord)/1.1*1000;run.walkStart=now;}
      const f=Math.min(1,(now-run.walkStart)/Math.max(1,run.walkUntil-run.walkStart));
      await ctx.setGeolocation({latitude:run.trip.origin.lat+(coord.lat-run.trip.origin.lat)*f,longitude:run.trip.origin.lon+(coord.lon-run.trip.origin.lon)*f});
-     if(distance<=45&&now>=run.walkUntil){
+     // Also board when the card marks the bus at the stop (BOARD🚌) and the
+     // feed agrees: Red #119 stood at Division / Prospect 47 m from the pole
+     // for one poll and was missed (run 1790956246494).
+     const atStop=/(?:^|\n)BOARD\s*🚌/.test(text)&&observedAtStop(bus,run.boardStopId,feed.stop_coords);
+     if((distance<=45||atStop)&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
       await boardSelectedRide(page,name);
       run.boardedAt=new Date().toISOString();run.phase='riding';

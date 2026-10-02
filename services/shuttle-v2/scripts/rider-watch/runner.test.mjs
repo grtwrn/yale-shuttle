@@ -195,3 +195,39 @@ test('a missing Red trip row backs off instead of reloading every 10 s',async()=
  assert.equal(g.geo.length,2);
  assert.equal(g.watcher.status().run.line.label,'Red');
 },30000); // master reloads every poll (1.5 s each), so fail on the assertion, not the timeout
+
+// Red run 1790956246494, 2026-10-02: the card followed #119 to Division /
+// Prospect. At 16:01:52Z #119 rolled past the pole (2.6 m, moving) and the card
+// dropped its name; at 16:02:02Z it stood at the stop (at_stop_id 48, 47 m from
+// the pole, card "At stop" and "On Red #119?"); at 16:02:12Z it had left and
+// the card moved on to #308, 17 stops away. A rider at the stop gets on.
+const red119={bus_name:'#119',route_id:3,last_stop_id:49,stationary:false};
+const red308={bus_name:'#308',route_id:3,lat:41.303872,lon:-72.921817,last_stop_id:121,at_stop_id:115,stationary:true};
+const redCard=(head,board="BOARDDivision/Prospect")=>head+"\n"+board+"\nProspect/Hillside\nGET OFFLEPH/60 College";
+test('Red #119 standing at Division / Prospect 47 m from the pole is boarded',async()=>{
+ const approach=redCard("🚌 14 min\n🚌 #119 · 1 stop away\n🚌Division/Sheffield");
+ const h=current=await harness({...red,buses:[{...red119,lat:41.325293,lon:-72.925228}]},fixedTrip,
+  {initialLine:{label:'Red',busRouteIds:[3]},feedOf:buses=>({...red,buses}),text:approach,at:'2026-10-02T16:01:32Z'});
+ await h.poll(approach,[{...red119,lat:41.324957,lon:-72.924418}]);
+ assert.equal(h.watcher.status().run.busName,'#119');
+ await h.poll(redCard("Red\t\n<1\n\t12:13p – 12:21p\n\n🚌 14 min","BOARD🚌Division/Prospect"),[{...red119,lat:41.324792,lon:-72.92353}]);
+ await h.poll(redCard("Red\t\nAt stop\n\t~12:17p\n\n🚌 14 min","BOARD🚌Division/Prospect⏸ 0:22")+"\n🚌 On Red #119?\nDetected near your board stop",
+  [{...red119,lat:41.324403,lon:-72.923236,last_stop_id:48,at_stop_id:48,stationary:true}]);
+ await h.poll(redCard("Red\t\n~32 (26 – 39)\n\t12:43p – 12:58p\n\n🚌 15 min\n🚌 #308 · 17 stops away"),[{...red119,lat:41.323513,lon:-72.923354,last_stop_id:48},red308]);
+ const run=h.watcher.status().run;
+ assert.equal(run.phase,'riding');
+ assert.equal(run.busName,'#119');
+ assert.equal(run.boardedAt,'2026-10-02T16:02:02.000Z');
+ assert.equal(Math.round(run.lastBoardDistanceM),47);
+ assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+});
+test('a bus standing at the stop that the card says is still stops away is not boarded',async()=>{
+ const lapping=redCard("🚌 15 min\n🚌 #119 · 17 stops away");
+ const h=current=await harness({...red,buses:[]},fixedTrip,
+  {initialLine:{label:'Red',busRouteIds:[3]},feedOf:buses=>({...red,buses}),text:lapping,at:'2026-10-02T16:01:32Z'});
+ await h.poll(lapping,[{...red119,lat:41.324403,lon:-72.923236,last_stop_id:48,at_stop_id:48,stationary:true}]);
+ const run=h.watcher.status().run;
+ assert.equal(run.phase,'waiting');
+ assert.equal(Math.round(run.lastBoardDistanceM),47);
+ assert.deepEqual(h.clicks,[]);
+});
