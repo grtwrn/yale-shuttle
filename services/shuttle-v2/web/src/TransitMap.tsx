@@ -85,7 +85,7 @@ import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
-import { isUnambiguousRideArrival, rideHeadline, rideInWindow, rideLappedExit } from "./rideArrival";
+import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
 import { getOffAlertTitle, getOffPromptTitle } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
@@ -368,19 +368,24 @@ function saveBoardedRide(r: BoardedRide | null): void {
     /* quota / private mode — best effort */
   }
 }
-// This ride's bus has been seen carrying it — past the pickup, up to the exit
-// — the evidence `rideLappedExit` needs before a bus between the exit and the
-// pickup may read as having passed the exit rather than still coming to pick
-// the rider up. Kept beside the ride, so a reload (the 2026-09-17 restart
-// recovery) still knows. One ride at a time, so one key.
+// What this ride's bus has been seen doing — carrying it, then at the exit
+// (`rideEvidence`) — the evidence `rideLappedExit` needs before a bus between
+// the exit and the pickup may read as having passed the exit rather than still
+// coming to it. Kept beside the ride, so a reload (the 2026-09-17 restart
+// recovery) still knows. One ride at a time, so one key; #350 stored the bare
+// ride key here, which reads as nothing seen.
 const RIDE_WINDOW_LS_KEY = "shuttle-ride-window";
 const rideWindowKey = (r: BoardedRide) =>
   `${r.startedAt}:${r.busName.replace(/^#/, "")}:${r.boardStopId}:${r.alightStopId}`;
-function rideWindowSeen(r: BoardedRide): boolean {
-  try { return localStorage.getItem(RIDE_WINDOW_LS_KEY) === rideWindowKey(r); } catch { return false; }
+function rideEvidenceSeen(r: BoardedRide): RideEvidence {
+  try {
+    const v = localStorage.getItem(RIDE_WINDOW_LS_KEY);
+    return v === `${rideWindowKey(r)}#reached` ? "reached" : v === `${rideWindowKey(r)}#rode` ? "rode" : "none";
+  } catch { return "none"; }
 }
-function noteRideWindow(r: BoardedRide): void {
-  try { localStorage.setItem(RIDE_WINDOW_LS_KEY, rideWindowKey(r)); } catch { /* best effort */ }
+function noteRideEvidence(r: BoardedRide, e: RideEvidence): void {
+  if (e === "none") return;
+  try { localStorage.setItem(RIDE_WINDOW_LS_KEY, `${rideWindowKey(r)}#${e}`); } catch { /* best effort */ }
 }
 
 // Two retired features left keys behind in localStorage: the guided "Go"
@@ -5935,7 +5940,7 @@ const RideStopList: FC<{
   // the hold that explains a countdown which cannot rise (#119).
   const alightPassed = bus ? rideLappedExit({
     busIndex: busIdx, boardIndex: boardIdx, alightIndex: alightIdx, stopCount: n,
-    rode: rideWindowSeen(ride), rawRoute: routeStops[String(bus.route_id)], alightStopId: ride.alightStopId,
+    reachedExit: rideEvidenceSeen(ride) === "reached", rawRoute: routeStops[String(bus.route_id)], alightStopId: ride.alightStopId,
   }) : false;
   const standAnswer = bus && cfg && busIdx !== alightIdx
     ? resolveStandingStop(bus, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore)
@@ -6071,13 +6076,14 @@ const OnBusBanner: FC<{
   }
 
   // The bus has gone PAST the rider's exit and is looping back around — but
-  // only once it has been seen carrying this ride, or a bus still coming to
-  // the pickup would read as having passed the exit (rideArrival.ts).
-  const inWindow = rideInWindow(anchorIdx, boardIdx, alightIdx, allStops.length);
-  useEffect(() => { if (inWindow) noteRideWindow(ride); }, [inWindow, ride]);
+  // only once it has been seen carrying this ride and then at the exit, or a
+  // bus still coming to the pickup, or still driving to the exit on a stop the
+  // line passes twice, would read as having passed it (rideArrival.ts).
+  const evidence = rideEvidence(rideEvidenceSeen(ride), anchorIdx, boardIdx, alightIdx, allStops.length);
+  useEffect(() => { noteRideEvidence(ride, evidence); }, [evidence, ride]);
   const alightPassed = bus ? rideLappedExit({
     busIndex: anchorIdx, boardIndex: boardIdx, alightIndex: alightIdx, stopCount: allStops.length,
-    rode: inWindow || rideWindowSeen(ride), rawRoute: routeStops[String(bus.route_id)], alightStopId: ride.alightStopId,
+    reachedExit: evidence === "reached", rawRoute: routeStops[String(bus.route_id)], alightStopId: ride.alightStopId,
   }) : false;
 
   // A hold at a named stop explains a countdown that cannot rise while the
