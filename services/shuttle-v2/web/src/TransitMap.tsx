@@ -44,7 +44,7 @@ import { TripServiceNotices } from "./TripServiceNotices";
 import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
 import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelection";
-import { tripBusIdentity } from "./tripBusIdentity";
+import { boardingBusName, tripBusIdentity } from "./tripBusIdentity";
 import { TripBoardingActions } from "./TripBoardingActions";
 import {
   fmtClock, fmtDateTime, fmtMin, fmtWeekday, formatEtaRange, remainingSec,
@@ -4354,9 +4354,15 @@ const TripPlanner: FC<{
                           )}
                         </div>
                         <div className="trip-action-grid" onTouchStart={(e) => e.stopPropagation()}>
-                          {/* Keep both named choices when the trip uses a later bus. */}
+                          {/* Keep both named choices when the trip uses a later bus.
+                              A named button means that bus; the unnamed one means
+                              the bus the rider is on (boardingBusName). */}
                           <TripBoardingActions {...tripBus} onBoard={(busName) => onBoard({
-                            routeLabel: o.routeLabel, color: o.color, busName,
+                            routeLabel: o.routeLabel, color: o.color,
+                            busName: tripBus.different || !shuttleCtx ? busName : boardingBusName(busName,
+                              buses.filter((b) => shuttleCtx.cfg.busRouteIds.includes(b.route_id)
+                                && isBusOnRoute(b, shuttleCtx.allStops, stopCoords)),
+                              userLatLon ?? stopCoords[o.boardStopId]),
                             boardStopId: o.boardStopId, alightStopId: o.alightStopId,
                             startedAt: Date.now(),
                             ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),

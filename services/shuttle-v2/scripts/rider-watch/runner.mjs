@@ -134,7 +134,15 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      const atStop=/(?:^|\n)BOARD\s*🚌/.test(text)&&observedAtStop(bus,run.boardStopId,feed.stop_coords);
      if((distance<=45||atStop)&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
-      await boardSelectedRide(page,name);
+      // A ride the app started on another bus replaces the trip card, so
+      // waiting on only reaches the 45 min cap (wrongbusboard20261002: it
+      // stored Green #331 while #122 pulled in). No ride stored: retry as
+      // before; our bus stored late: it boarded.
+      try{await boardSelectedRide(page,name);}catch(e){
+       const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null')?.busName??null);
+       if(!stored)throw e;
+       if(stored.replace(/^#/,'')!==name.replace(/^#/,'')){run.excludeAccuracy=true;await event('wrong-bus-boarded',{bus:name,stored,stop:boardLabel,observedDistanceM:distance});await finish('wrong-bus-boarded-excluded');await status();return;}
+      }
       run.boardedAt=new Date().toISOString();run.phase='riding';
       run.boardedStorage=await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage).filter(([k])=>/board/i.test(k))));
       await event('boarded',{bus:name,stop:boardLabel,observedDistanceM:distance});
