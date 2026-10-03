@@ -14,7 +14,7 @@ import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
 import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
 import { liveAnchorStore } from "./eta";
-import { anchorIndexOnList, observedAtStop, resolveStandingStop } from "./liveAnchor";
+import { anchorIndexOnList, observedAtStop, resolveStandingStop, tripApproach } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import {
@@ -2619,13 +2619,13 @@ const TripPlanner: FC<{
       ) ?? null;
       let stopsAway: number | null = null;
       if (busMatch) {
-        // Counted in travel order (liveAnchor.ts `travelSlot`).
-        const busIdx = anchorIndexOnList(
-          busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore, true,
+        // Counted on the canonical sequence in travel order, not on
+        // `allStops` (liveAnchor.ts `tripApproach`).
+        const approach = tripApproach(
+          busMatch, cfg, routeStops, stopCoords, o.boardStopId, Date.now(), liveAnchorStore,
         );
-        if (busIdx >= 0) {
-          stopsAway = observedAtStop(busMatch, o.boardStopId, stopCoords)
-            ? 0 : (bi - busIdx + allStops.length) % allStops.length;
+        if (approach) {
+          stopsAway = observedAtStop(busMatch, o.boardStopId, stopCoords) ? 0 : approach.length;
         }
       }
       // How many buses are really on this line — the same on-route
@@ -2733,26 +2733,26 @@ const TripPlanner: FC<{
     // the same gated anchor the countdown does. In TRAVEL order:
     // Green's outbound West Haven call otherwise counted from the
     // return call's slot, "18 stops away" four stops out
-    // (greenstopsjump20261003, liveAnchor.ts `travelSlot`).
-    const busAnchorIdx = busMatch
+    // (greenstopsjump20261003, liveAnchor.ts `travelSlot`). And on the
+    // CANONICAL sequence, not `allStops`: that list has no West Campus
+    // return leg, so Purple's return run downtown read "9 stops away"
+    // with Building 900 ... 400 still ahead, five stops out
+    // (purplestopsjump20261003, liveAnchor.ts `tripApproach`).
+    const approach = busMatch
       ? observedAtStop(busMatch, o.boardStopId, stopCoords)
-        ? bi
-        : anchorIndexOnList(
-            busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore, true,
-          )
-      : -1;
-    const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
+        ? []
+        : tripApproach(busMatch, cfg, routeStops, stopCoords, o.boardStopId, Date.now(), liveAnchorStore)
+      : null;
+    // The stop the bus is at or last cleared.
+    const busStopId = approach ? (approach[0] ?? o.boardStopId) : undefined;
+    const busSegPos = busStopId !== undefined ? segStops.indexOf(busStopId) : -1;
     // Follow the loop to the pickup even when the bus is currently on a
     // stop the rider will visit AFTER boarding. That is an earlier visit,
     // not evidence the rider is already aboard (report #121: Phelps Gate
     // before a Mansfield / Division pickup hid the rest of Blue West's loop).
     // A watched bus explicitly marked departed still belongs on the ride.
-    const stopsAway = busAnchorIdx >= 0 ? (bi - busAnchorIdx + allStops.length) % allStops.length : 0;
-    const approachStops = busAnchorIdx >= 0 && stopsAway > 0 && !o.departed
-      ? (busAnchorIdx <= bi
-          ? allStops.slice(busAnchorIdx, bi)
-          : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
-      : [];
+    const stopsAway = approach?.length ?? 0;
+    const approachStops = approach && stopsAway > 0 && !o.departed ? approach : [];
     // Same point + complete window as the card and mini-map,
     // without the legacy rounded-width switch (reports 113/114).
     const boardArrival = approachStops.length > 0 && busEtaLive !== null && !o.departed
@@ -2874,7 +2874,9 @@ const TripPlanner: FC<{
               const stand = standAt(sid, showLive ? liveElapsedSec : null);
               const hl = stopRowHighlight(isBusHere, false, o.color);
               return (
-                <div key={sid} data-stop-id={sid} data-bus-here={isBusHere || undefined} style={{
+                // Keyed by position: an approach down the spur and back names
+                // a stop twice.
+                <div key={`${j}-${sid}`} data-stop-id={sid} data-bus-here={isBusHere || undefined} style={{
                   position: "relative", display: "flex", alignItems: "center",
                   padding: hl.banded ? "4px 6px" : "2px 0",
                   marginLeft: hl.banded ? -6 : 0,
@@ -3983,20 +3985,20 @@ const TripPlanner: FC<{
                 // The gated anchor, off the app's one live store — the dashed
                 // approach must start where the cards and the countdown say
                 // the bus is (liveAnchor.ts), counted as the card counts it.
-                const busIdx = observedAtStop(busMatch, o.boardStopId, stopCoords)
-                  ? bi
-                  : anchorIndexOnList(
-                      busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore, true,
-                    );
-                if (busIdx >= 0 && busIdx !== bi) {
-                  const upstream = busIdx <= bi
-                    ? allStops.slice(busIdx, bi + 1)
-                    : [...allStops.slice(busIdx), ...allStops.slice(0, bi + 1)];
-                  const upCoords = upstream
+                const upstream = observedAtStop(busMatch, o.boardStopId, stopCoords)
+                  ? []
+                  : tripApproach(busMatch, cfg, routeStops, stopCoords, o.boardStopId, Date.now(), liveAnchorStore);
+                if (upstream && upstream.length > 0) {
+                  const upCoords = [...upstream, o.boardStopId]
+                    .map((sid) => stopCoords[sid])
+                    .filter((c): c is LatLon => !!c);
+                  // Traced against the canonical sequence the approach was
+                  // counted on, so a return-leg approach follows the return leg.
+                  const seqCoords = mergedRouteStops(cfg, routeStops)
                     .map((sid) => stopCoords[sid])
                     .filter((c): c is LatLon => !!c);
                   if (upCoords.length >= 2) {
-                    approach = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], upCoords, routeCoords)
+                    approach = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], upCoords, seqCoords)
                       ?? upCoords.map((c) => [c.lat, c.lon] as [number, number]);
                   }
                 }
