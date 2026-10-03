@@ -23,22 +23,26 @@
  * out to Building 400 (`__fixtures__/green-building-800-outbound.json`, and
  * production at 2026-10-03 21:00Z). So a count reads the pass the belief's mass
  * is on (liveAnchor.ts `travelPass`), and those rides read exactly what they
- * read before.
+ * read before. Pink, whose ring adds twin passes of stops its list names once,
+ * reads exactly as before too (`__fixtures__/pink-twin-passes.json`).
  */
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { registerRoutePaths } from './anchor';
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from './arrivals';
-import type { AnchorStore } from './eta';
+import { beliefFor, ringForBus, type AnchorStore } from './eta';
+import { LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass } from './eta/filter';
 import { applyModelParams } from './eta/params';
 import { buildStopSequencePolyline, haversineMeters, polylineMeters, type LatLon } from './geo';
-import { anchorIndexOnList, observedAtStop, tripApproach } from './liveAnchor';
+import { anchorIndexOnList, anchorKeyFor, observedAtStop, travelSlot, tripApproach } from './liveAnchor';
 import type { BusData } from './map-data';
 import { mergedRouteStops, ROUTE_LISTS, type RouteListConfig } from './routes';
 import purpleFx from './__fixtures__/purple-return-leg.json';
 import greenFx from './__fixtures__/green-building-800-outbound.json';
 import greenRoute from './__fixtures__/green-wrong-bus-board.json';
+import pinkFx from './__fixtures__/pink-twin-passes.json';
+import pinkRoute from './__fixtures__/pink-published-order.json';
 
 interface Poll {
   runId: string; window: number; build: string; at: string;
@@ -222,6 +226,66 @@ describe('Green running out past Building 800 to Building 400 (2026-10-03)', () 
       expect((bi - p.stop + canonical.length) % canonical.length).toBe(20);
       expect(p.after!.away).toBe(2);
     }
+  });
+});
+
+/**
+ * Every poll on a fresh store per window: the travel answer must be the lead's
+ * own pass (`travelSlot` of the lead, the answer #358 gave). Returns how many
+ * polls had the mass on ANOTHER pass of the lead's stop rather than the lead's,
+ * which is what made the first draft of `travelPass` hop.
+ */
+function leadPassKept(line: Omit<Line, 'stopNames' | 'rides' | 'polls'>, polls: { window: number; at: string; buses: BusData[] }[]) {
+  registerRoutePaths(line.routePath);
+  applyModelParams(line.model_params);
+  const canonical = mergedRouteStops(line.cfg, line.routeStops);
+  const stores = new Map<number, AnchorStore>();
+  let split = 0;
+  for (const p of polls) {
+    const store = stores.get(p.window) ?? new Map();
+    stores.set(p.window, store);
+    const now = Date.parse(p.at);
+    computeUpcomingArrivals(canonical, p.buses, line.routeStops, line.stopCoords, line.segments, now, line.dwells, store, true);
+    for (const bus of p.buses) {
+      const ring = ringForBus(bus, canonical, line.stopCoords)!;
+      const b = beliefFor(store, anchorKeyFor(line.cfg.label, bus.bus_name), bus, ring, canonical, now);
+      const travel = anchorIndexOnList(bus, line.cfg, line.routeStops, line.stopCoords, canonical, now, store, true);
+      expect({ at: p.at, bus: bus.bus_name, travel }).toEqual({ at: p.at, bus: bus.bus_name, travel: travelSlot(ring.order, b.lead) });
+      const m = legMass(b, ring);
+      const reach = (q: number) => {
+        let sum = 0;
+        for (let k = 0; k <= LEAD_FOLLOW_LEGS; k++) sum += m[(q + k) % ring.N]!;
+        return sum;
+      };
+      const other = ring.stops.findIndex((s, q) => q !== b.lead && s === ring.stops[b.lead]
+        && reach(q) >= LEAD_SWITCH_MASS);
+      if (other >= 0 && reach(b.lead) <= 1 - LEAD_SWITCH_MASS) split++;
+    }
+  }
+  return split;
+}
+
+describe('passes travelPass leaves to the lead', () => {
+  it('Pink\'s twins, which the repair added: counted as before', () => {
+    const PK = pinkFx as unknown as Pick<Line, 'segments' | 'dwells' | 'model_params'> & {
+      polls: { window: number; at: string; buses: BusData[] }[];
+    };
+    const PR = pinkRoute as unknown as { stops: number[]; path: [number, number][]; stopCoords: Record<string, [number, number]> };
+    const coords: Record<number, LatLon> = {};
+    for (const [k, [lat, lon]] of Object.entries(PR.stopCoords)) coords[Number(k)] = { lat, lon };
+    const PINK = {
+      ...PK, cfg: ROUTE_LISTS.find(c => c.label === 'Pink')!, routeStops: { '8': PR.stops },
+      stopCoords: coords, routePath: { '8': PR.path },
+    };
+    // #307 and #324 at 109 and its added twin, 2026-10-02.
+    expect(leadPassKept(PINK, PK.polls)).toBeGreaterThanOrEqual(20);
+  });
+
+  it('Purple\'s Building 600 either side of the turnaround: the lead following, counted as before', () => {
+    // #330 laying over at Building 400 with the lead on Building 600's return pass (window 4).
+    const polls = PURPLE.polls.filter(p => p.window === 4);
+    expect(polls.length).toBeGreaterThan(50);
+    expect(leadPassKept(PURPLE, polls)).toBeGreaterThanOrEqual(20);
   });
 });
 

@@ -109,28 +109,40 @@ export function resolveAnchorIndex(
  * lap: "20 stops away" beside a countdown of one minute.
  *
  * So a count reads the pass the mass is on. It never moves to another stop,
- * only to another pass of the same one, and only when the lead's own pass
- * has lost the mass (no more than 1 - LEAD_SWITCH_MASS) and another holds
- * LEAD_SWITCH_MASS, each counted over the pass's leg and the LEAD_FOLLOW_LEGS
- * after it, the reach `leadLeg` gives a lead that is following.
+ * only to another pass of the same one, and only to a pass that is both:
+ *  - named apart by upstream's list (its own slot), i.e. the West Campus
+ *    out-and-back. A twin the repair ADDED (Pink's, the station's added
+ *    call) carries the slot of the pass it doubles, and `travelSlot` already
+ *    places it. Hopping between such twins moved Pink's count a lap (review
+ *    of #360);
+ *  - more than LEAD_FOLLOW_LEGS from the lead, i.e. a jump, the move the
+ *    feed is asked to confirm. A pass that near (Building 600 either side
+ *    of the turnaround) is the lead following, which `leadLeg` already does.
+ * And only when the lead's own pass has lost the mass (no more than
+ * 1 - LEAD_SWITCH_MASS) and that pass holds LEAD_SWITCH_MASS, each counted
+ * over the pass's leg and the LEAD_FOLLOW_LEGS after it, the reach `leadLeg`
+ * gives a lead that is following.
  */
 export function travelPass(b: Belief, ring: Ring): number {
   const lead = b.lead;
   const stop = ring.stops[lead];
-  if (stop === undefined || ring.stops.length !== ring.N) return lead;
-  let passes = 0;
-  for (const s of ring.stops) if (s === stop) passes++;
-  if (passes < 2) return lead;
+  const N = ring.N;
+  if (stop === undefined || ring.stops.length !== N) return lead;
+  const passes: number[] = [];
+  for (let q = 0; q < N; q++) {
+    const legs = ((q - lead) % N + N) % N;
+    if (ring.stops[q] === stop && ring.order[q] !== ring.order[lead]
+      && Math.min(legs, N - legs) > LEAD_FOLLOW_LEGS) passes.push(q);
+  }
+  if (passes.length === 0) return lead;
   const m = legMass(b, ring);
   const near = (q: number) => {
     let sum = 0;
-    for (let k = 0; k <= LEAD_FOLLOW_LEGS; k++) sum += m[(q + k) % ring.N]!;
+    for (let k = 0; k <= LEAD_FOLLOW_LEGS; k++) sum += m[(q + k) % N]!;
     return sum;
   };
   if (near(lead) > 1 - LEAD_SWITCH_MASS) return lead;
-  for (let q = 0; q < ring.N; q++) {
-    if (q !== lead && ring.stops[q] === stop && near(q) >= LEAD_SWITCH_MASS) return q;
-  }
+  for (const q of passes) if (near(q) >= LEAD_SWITCH_MASS) return q;
   return lead;
 }
 
