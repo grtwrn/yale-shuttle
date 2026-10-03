@@ -16,6 +16,8 @@ export interface TimingRow {
   pickup?: ArrivalDetailsProps;
   status: string;
   note?: string;
+  /** Full-width notice under the times, e.g. recent buses skipping the pickup (stopSkips.ts). */
+  warning?: string;
 }
 
 /** One route entry owns arrivals, journey legs, and navigation to its details. */
@@ -31,7 +33,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Board in <span style={{ fontWeight: 400 }}>(min)</span></th>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500, textAlign: 'right' }}>Arrive at</th>
     </tr></thead>
-    {rows.map(({ option, pickup, status, note }) => <tbody key={option.routeLabel} data-route={option.routeLabel}
+    {rows.map(({ option, pickup, status, note, warning }) => <tbody key={option.routeLabel} data-route={option.routeLabel}
       onClick={onSelectRoute ? () => onSelectRoute(option.routeLabel) : undefined}
       style={{ borderTop: '1px solid #eceff1', cursor: onSelectRoute ? 'pointer' : undefined }}>
       <tr>
@@ -51,6 +53,10 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
             : <DestinationArrival compact option={option} destination={destination} departureMs={departureMs} />}
         </td>
       </tr>
+      {warning && <tr><td colSpan={3} style={{ padding: '0 6px 6px' }}>
+        <span role="note" data-testid="stop-skip-warning" style={{ display: 'block', padding: '4px 6px', borderRadius: 6,
+          background: '#fff8e1', color: '#795000', fontSize: 12, lineHeight: '16px' }}>{warning}</span>
+      </td></tr>}
       <tr><td colSpan={3} style={{ padding: '0 6px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span data-testid="journey-legs" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, flex: 1, minWidth: 0, fontSize: 12, color: '#5f6368' }}>

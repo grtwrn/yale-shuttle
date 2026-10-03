@@ -27,6 +27,14 @@ describe('route option arrival times', () => {
     expect(html).not.toContain('aria-haspopup');
     expect([...html.matchAll(/<button\b[^>]*aria-label="([^"]*)"/g)].map(m => m[1])).toEqual(['View Red trip details']);
   });
+  it('puts a skipped-stop warning on its own full-width line, and nothing when there is none', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const warning = '⚠️ 2 of the last 3 Red buses skipped Union Station (S). Try 100 Church Street South (4 min walk).';
+    const html = renderToStaticMarkup(<MiniMapKey rows={[{ ...rows[0]!, warning }]} destination="Union Station" />);
+    expect(html).toContain('<td colSpan="3" style="padding:0 6px 6px"><span role="note" data-testid="stop-skip-warning"');
+    expect(html).toContain(`>${warning}</span>`);
+    expect(renderToStaticMarkup(<MiniMapKey rows={rows} destination="Union Station" />)).not.toContain('stop-skip-warning');
+  });
   it('selects the route when anywhere on the row, including the pickup time, is tapped', () => {
     const select = vi.fn();
     const body = elements(MiniMapKey({ rows, destination: 'Union Station', onSelectRoute: select }))
