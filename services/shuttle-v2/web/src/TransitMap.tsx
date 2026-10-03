@@ -2616,8 +2616,9 @@ const TripPlanner: FC<{
       ) ?? null;
       let stopsAway: number | null = null;
       if (busMatch) {
+        // Counted in travel order (liveAnchor.ts `travelSlot`).
         const busIdx = anchorIndexOnList(
-          busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+          busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore, true,
         );
         if (busIdx >= 0) {
           stopsAway = observedAtStop(busMatch, o.boardStopId, stopCoords)
@@ -2726,12 +2727,15 @@ const TripPlanner: FC<{
     // THE number the rider reads on the "🚌 #316 · N stops away"
     // line below. Ungated it oscillated 3/4/4/2/4 across polls
     // beside a countdown that was not moving; it now comes from
-    // the same gated anchor the countdown does.
+    // the same gated anchor the countdown does. In TRAVEL order:
+    // Green's outbound West Haven call otherwise counted from the
+    // return call's slot, "18 stops away" four stops out
+    // (greenstopsjump20261003, liveAnchor.ts `travelSlot`).
     const busAnchorIdx = busMatch
       ? observedAtStop(busMatch, o.boardStopId, stopCoords)
         ? bi
         : anchorIndexOnList(
-            busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+            busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore, true,
           )
       : -1;
     const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
@@ -3975,11 +3979,11 @@ const TripPlanner: FC<{
               if (expandedKey === o.routeLabel && busMatch) {
                 // The gated anchor, off the app's one live store — the dashed
                 // approach must start where the cards and the countdown say
-                // the bus is (liveAnchor.ts).
+                // the bus is (liveAnchor.ts), counted as the card counts it.
                 const busIdx = observedAtStop(busMatch, o.boardStopId, stopCoords)
                   ? bi
                   : anchorIndexOnList(
-                      busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                      busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore, true,
                     );
                 if (busIdx >= 0 && busIdx !== bi) {
                   const upstream = busIdx <= bi

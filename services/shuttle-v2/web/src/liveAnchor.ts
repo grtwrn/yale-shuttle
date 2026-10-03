@@ -66,6 +66,10 @@ export function anchorKeyFor(routeLabel: string, busName: string): string {
  *
  * Returns -1 when there is nothing to answer from — an empty stop list, or a
  * stop with no coordinate, which is the one case the ring cannot be built.
+ *
+ * `travel` asks for the slot in TRAVEL order instead of the stop the bus is at;
+ * the two differ only on a pass upstream's list has no slot for
+ * ({@link travelSlot}).
  */
 export function resolveAnchorIndex(
   bus: AnchorBus,
@@ -74,6 +78,7 @@ export function resolveAnchorIndex(
   key: string,
   now: number,
   store?: AnchorStore | undefined,
+  travel = false,
 ): number {
   const ring = ringForBus(bus, stops, stopCoords);
   if (!ring) return -1;
@@ -81,7 +86,63 @@ export function resolveAnchorIndex(
   // The belief runs on the RING's sequence, which on a route whose order was
   // repaired against its published line is not upstream's (#160,
   // src/network/alignStops.ts); every caller indexes upstream's list.
-  return ring.repaired ? (ring.order[lead] ?? lead) : lead;
+  if (!ring.repaired) return lead;
+  return travel ? travelSlot(ring.order, lead) : (ring.order[lead] ?? lead);
+}
+
+/** Per repaired ring order (rings are cached, so the array is stable): ring position -> travel slot. */
+const travelSlotsByOrder = new WeakMap<readonly number[], number[]>();
+
+/**
+ * A repaired ring position as a slot in upstream's list, in TRAVEL order:
+ * `order[pos]`, except on a pass upstream's list has no slot for.
+ *
+ * The repair can ADD a pass (src/network/alignStops.ts): the line drives past
+ * a stop twice and upstream names it once, so two ring positions carry the one
+ * slot, and only one of them is the visit that slot describes. As an answer to
+ * "which stop is the bus at" that is right, and the ride page relies on it (a
+ * bus at either pass of the rider's exit is at the exit, rideArrival.ts). As a
+ * place to COUNT from it is not: Green's outbound call at West Haven Train
+ * Station (Bradley (S) -> station -> Building 900) carries the slot of the
+ * RETURN call, eight slots on and past the whole West Campus spur, so the trip
+ * card counted a bus standing there "18 stops away" from a rider at Building
+ * 400 it was four stops from, listed the Orange Street loop as its approach,
+ * then read "3" at Building 900 — while the countdown beside it held ~8 min
+ * (greenstopsjump20261003). Purple's added return pass at the station counted
+ * from its outbound one, and Pink's twin passes from their twins.
+ *
+ * The visit a slot describes is the pass that keeps upstream's order — the one
+ * on the longest run of passes in published order. Any other pass answers with
+ * the slot of the last named pass before it: the stop the bus last cleared,
+ * which is what a count along upstream's list needs of a bus between two of
+ * its slots.
+ */
+export function travelSlot(order: readonly number[], pos: number): number {
+  let slots = travelSlotsByOrder.get(order);
+  if (!slots) {
+    const N = order.length;
+    // Longest run in published order ending at, and starting from, each pass.
+    const ending = order.map(() => 1), starting = order.map(() => 1);
+    for (let p = 0; p < N; p++) {
+      for (let q = 0; q < p; q++) if (order[q]! < order[p]!) ending[p] = Math.max(ending[p]!, ending[q]! + 1);
+    }
+    for (let p = N - 1; p >= 0; p--) {
+      for (let q = p + 1; q < N; q++) if (order[q]! > order[p]!) starting[p] = Math.max(starting[p]!, starting[q]! + 1);
+    }
+    const run = (p: number) => ending[p]! + starting[p]!;
+    // The pass a slot describes; on a tie, the earlier one.
+    const named = order.map((slot, p) =>
+      order.every((s, q) => s !== slot || run(q) < run(p) || (run(q) === run(p) && q >= p)));
+    slots = order.map((slot, p) => {
+      for (let k = 0; k < N; k++) {
+        const q = (p - k + N) % N;
+        if (named[q]) return order[q]!;
+      }
+      return slot;
+    });
+    travelSlotsByOrder.set(order, slots);
+  }
+  return slots[pos] ?? order[pos] ?? pos;
 }
 
 /**
@@ -92,6 +153,10 @@ export function resolveAnchorIndex(
  * stop id. A caller whose list de-duplicates a repeated stop gets that stop's
  * first slot, which is all such a list can express and exactly what it showed
  * before; a caller passing the canonical list gets the index untouched.
+ *
+ * A caller that COUNTS stops from the answer to a stop ahead of the bus (the
+ * trip option's "N stops away" and its approach) passes `travel`
+ * ({@link travelSlot}); a caller asking which stop the bus is at does not.
  */
 export function anchorIndexOnList(
   bus: AnchorBus & { bus_name: string },
@@ -101,13 +166,14 @@ export function anchorIndexOnList(
   displayStops: number[],
   now: number,
   store?: AnchorStore | undefined,
+  travel = false,
 ): number {
   const canonical = mergedRouteStops(cfg, routeStops);
   if (canonical.length === 0) return -1;
   const served = serverTrack(bus, cfg.label, now);
-  const idx = served !== undefined ? (served?.index ?? -1) : resolveAnchorIndex(
-    bus, canonical, stopCoords, anchorKeyFor(cfg.label, bus.bus_name), now, store,
-  );
+  const idx = served !== undefined
+    ? (served ? (travel ? served.travel : served.index) : -1)
+    : resolveAnchorIndex(bus, canonical, stopCoords, anchorKeyFor(cfg.label, bus.bus_name), now, store, travel);
   if (idx < 0) return idx;
   const stopId = canonical[idx];
   if (stopId === undefined) return -1;

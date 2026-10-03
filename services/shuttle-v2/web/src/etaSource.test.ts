@@ -19,7 +19,8 @@ describe('authoritative live forecast', () => {
     expect(serverArrivals(a, [48], 55_000)).toEqual(serverArrivals(b, [48], 9_055_000));
     expect(serverArrivals(a, [48], 55_000)?.map(r => [r.eta, r.low, r.high, r.departNow, r.lowFloor]))
       .toEqual([[105, 75, 165, 45, 55], [1185, 885, 1485, 1085, 785]]);
-    expect(serverTrack(a[0]!, 'Red', 55_000)).toEqual({ index: 2, standing: { stopId: 48, standingSec: 45, approach: false } });
+    // No `travel` on this wire: the travel slot is the stop index.
+    expect(serverTrack(a[0]!, 'Red', 55_000)).toEqual({ index: 2, travel: 2, standing: { stopId: 48, standingSec: 45, approach: false } });
     expect(serverArrivals(a, [99], 55_000)).toEqual([]);
   });
 
