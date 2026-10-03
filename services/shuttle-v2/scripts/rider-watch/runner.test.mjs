@@ -324,3 +324,41 @@ test('a bus standing at the stop that the card says is still stops away is not b
  assert.equal(Math.round(run.lastBoardDistanceM),47);
  assert.deepEqual(h.clicks,[]);
 });
+
+// 96f99a88, Grocery Ham run 1791026050850 (trip kind 'longest'): the first card
+// quoted "About 44 min · Likely 33–60 min". #42 laid over at Aldi/Walmart, then
+// held at Elm / York (TYCO) from 11:52:03Z, and the fixed 45 min cap ended the
+// wait at 11:59:18Z. The next run, on the same trip, boarded it at 12:01:48Z.
+const ham=JSON.parse(await fs.readFile(new URL('./__fixtures__/grocery-ham-long-wait-2026-10-03.json',import.meta.url),'utf8'));
+const hamFeedOf=buses=>({buses,routes:{18:ham.route.stops},route_paths:{18:ham.route.path},stop_names:ham.route.stop_names,stop_coords:ham.route.stop_coords});
+const ham42=([lat,lon,stationary,at_stop_id,last_stop_id])=>[{bus_name:'#42',route_id:18,lat,lon,stationary:!!stationary,last_stop_id,...(at_stop_id==null?{}:{at_stop_id})}];
+async function waitForHam42(polls){
+ const c=ham.route.stop_coords,[first]=ham.polls;
+ const hamTrip={kind:'longest',origin:{label:'Elm / College',...c[54],stopId:54},destination:{display_name:'Aldi/Walmart',...c[170],stopId:170}};
+ const h=current=await harness(hamFeedOf(ham42(first.slice(1))),hamTrip,{initialLine:{label:'Grocery Ham',busRouteIds:[18]},feedOf:hamFeedOf,text:ham.cards[first[6]],at:ham.startedAt});
+ for(const [at,...p] of polls){
+  vi.setSystemTime(Date.parse(at)-10000);await h.poll(ham.cards[p[5]],ham42(p));
+  if(h.watcher.status().run?.phase!=='waiting')break;
+ }
+ return h;
+}
+test('replay: a quoted 44 min wait is waited out to boarding, not cut off at 45 min',async()=>{
+ const h=await waitForHam42(ham.polls);
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'riding');
+ assert.equal(run.waitCapMin,66);
+ assert.equal(run.boardedAt,'2026-10-03T12:01:48.158Z');
+ assert.deepEqual(await h.journeys(),[]);
+});
+test('a bus that never comes still ends the wait at the quoted cap',async()=>{
+ const held=ham.polls.filter(([at])=>at<'2026-10-03T11:59:20');
+ const [,...last]=held.at(-1);
+ let t=Date.parse(held.at(-1)[0]);
+ while(t<Date.parse('2026-10-03T12:21:00Z'))held.push([new Date(t+=10000).toISOString(),...last]);
+ const h=await waitForHam42(held);
+ const [journey]=await h.journeys();
+ assert.equal(journey?.result,'waiting-timeout-needs-review');
+ assert.equal(journey.waitCapMin,66);
+ // The first poll past 66 min from the 11:14:10.850Z start.
+ assert.ok(journey.finishedAt>'2026-10-03T12:20:10.850Z'&&journey.finishedAt<'2026-10-03T12:20:21Z',journey.finishedAt);
+});
