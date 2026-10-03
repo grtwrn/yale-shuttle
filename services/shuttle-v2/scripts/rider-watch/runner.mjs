@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {followedBusName,labeledStopId,observedAtStop,quotedRideMin,rideCapMin,selectDestination} from './inputs.mjs';
+import {followedBusName,labeledStopId,observedAtStop,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -98,8 +98,13 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    await fs.appendFile(log,JSON.stringify(sample)+'\n');run.samples++;
    if(now-feedAt>30000){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
+    // Wait as long as the card's first quote allows, as the ride cap does:
+    // Grocery Ham quoted "About 44 min · Likely 33–60 min" and #42 pulled in
+    // at 47.6 min, 2.6 min after a fixed 45 min cap ended the run (96f99a88).
+    if(run.waitCapMin==null){const quoted=quotedWaitMin(text);if(quoted!==null)run.waitCapMin=waitCapMin(quoted);}
+    const waitCapMs=(run.waitCapMin??WAIT_CAP_MIN)*60000;
     // The line left service (e.g. Orange Night after its last loop): nothing
-    // to board, so stop instead of waiting out the 45 minutes.
+    // to board, so stop instead of waiting out the cap.
     if(metrics.liveBusesOf(feed,run.line).length){run.noServiceSince=undefined;}
     else{run.noServiceSince??=now;if(now-run.noServiceSince>5*60000){run.excludeAccuracy=true;await finish('no-service-excluded');await status();return;}}
     const boardLabel=text.match(/(?:^|\n)BOARD([^\n]+)/)?.[1],exitLabel=text.match(/(?:^|\n)GET OFF([^\n]+)/)?.[1];
@@ -110,7 +115,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     if(board===null || exit===null){
      run.invalidStopSamples=(run.invalidStopSamples??0)+1;run.excludeAccuracy=true;
      if(!run.invalidStopReported){run.invalidStopReported=true;await event('measurement-invalid-stop-label',{boardLabel,exitLabel});}
-     if(now-Date.parse(run.startedAt)>45*60000)await finish('invalid-stop-label-excluded');
+     if(now-Date.parse(run.startedAt)>waitCapMs)await finish('invalid-stop-label-excluded');
      await status();return;
     }
     // No followed bus (e.g. "Unavailable" with no prediction) only skips this
@@ -118,7 +123,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     if(!name){
      run.unnamedBusSamples=(run.unnamedBusSamples??0)+1;
      if(!run.unnamedBusReported){run.unnamedBusReported=true;await event('waiting-bus-unnamed',{boardLabel,exitLabel});}
-     if(now-Date.parse(run.startedAt)>45*60000)await finish('waiting-timeout-needs-review');
+     if(now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
      await status();return;
     }
     run.boardStopId=board;run.exitStopId=exit;run.busName=name;
@@ -151,7 +156,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
       await event('boarded',{bus:name,stop:boardLabel,observedDistanceM:distance});
      }
     }
-    if(now-Date.parse(run.startedAt)>45*60000)await finish('waiting-timeout-needs-review');
+    if(now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
    }else if(run.phase==='riding'){
     const bus=feed.buses.find(b=>b.bus_name===run.busName&&run.line.busRouteIds.includes(b.route_id));
     const coord=feed.stop_coords[run.exitStopId];

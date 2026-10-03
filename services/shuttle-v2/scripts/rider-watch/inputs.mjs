@@ -51,6 +51,19 @@ export const RIDE_CAP_MIN = 50, RIDE_CAP_MAX_MIN = 90;
 export function rideCapMin(quoted) {
   return Math.min(RIDE_CAP_MAX_MIN, Math.max(RIDE_CAP_MIN, Math.ceil((quoted ?? 0) * 1.5)));
 }
+/** The wait the trip card quoted ("Arrival: About 44 min · Likely 33–60 min";
+ * "About <1 min" is 0), or null when it shows none or disagreeing values. */
+export function quotedWaitMin(text) {
+  const quotes = [...String(text ?? '').matchAll(/(?:^|\n)Arrival: About (<1|\d+) min/g)].map(m => m[1] === '<1' ? 0 : Number(m[1]));
+  return quotes.length && quotes.every(q => q === quotes[0]) ? quotes[0] : null;
+}
+export const WAIT_CAP_MIN = 45, WAIT_CAP_MAX_MIN = 90;
+/** Minutes to wait before giving up, from the journey's start: 1.5× the
+ * first quoted wait, never below the old fixed 45 min (an unquoted wait keeps
+ * it) and never above 90 min. */
+export function waitCapMin(quoted) {
+  return Math.min(WAIT_CAP_MAX_MIN, Math.max(WAIT_CAP_MIN, Math.ceil((quoted ?? 0) * 1.5)));
+}
 /** The rider's assignment from the environment. Unset: random lines and
  * trips. RIDER_LINE alone pins the line. With RIDER_FROM (board stop id) and
  * RIDER_TO (stop id, or `ysph` for the School of Public Health landmark riders

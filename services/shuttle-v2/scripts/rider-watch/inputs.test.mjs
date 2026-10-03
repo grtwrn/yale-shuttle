@@ -1,6 +1,6 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {labeledStopId,destinationMatches,selectDestination,followedBusName,quotedRideMin,rideCapMin,riderConfig} from './inputs.mjs';
+import {labeledStopId,destinationMatches,selectDestination,followedBusName,quotedRideMin,quotedWaitMin,rideCapMin,riderConfig,waitCapMin} from './inputs.mjs';
 const names={145:'Science Park Garage',98:'Phelps Gate',48:'Division / Prospect'};
 test('recorded Brown boarding prompt resolves on the first poll',()=>{
  const text="BOARD🚌Science Park Garage⏸ 14:04\nWinchester/Sachem\nGET OFFPhelps Gate\n🚌 On Brown #309?";
@@ -83,6 +83,19 @@ test('the ride cap covers the quoted ride, bounded to 50–90 min',()=>{
  assert.equal(rideCapMin(null),50);
  assert.equal(rideCapMin(20),50);
  assert.equal(rideCapMin(120),90);
+});
+// 96f99a88, Grocery Ham run 1791026050850's first card, 2026-10-03T11:14:17Z.
+test('the wait cap covers the quoted wait, bounded to 45–90 min',()=>{
+ const card="Grocery Ham\t\n~44 (33 – 60)\n\t8:11a – 8:47a\n\n🚌 27 min\n🚌 #42 · 4 stops away\nBOARDElm/College\nArrival: About 44 min · Likely 33–60 min\nGET OFFAldi/Walmart";
+ assert.equal(quotedWaitMin(card),44);
+ assert.equal(waitCapMin(44),66);
+ assert.equal(quotedWaitMin('BOARDElm/College\nArrival: About <1 min · Likely ~1 min'),0);
+ for(const text of [undefined,'','~44 (33 – 60)\nBOARDX','Arrival: About 20 min\nArrival: About 30 min'])
+  assert.equal(quotedWaitMin(text),null);
+ assert.equal(waitCapMin(null),45);
+ assert.equal(waitCapMin(0),45);
+ assert.equal(waitCapMin(25),45);
+ assert.equal(waitCapMin(75),90);
 });
 const redFeed={routes:{3:[11,146,49,48,104,72],1:[106,34]},stop_names:{48:'Division / Prospect',72:'LEPH / 60 College',106:'Elm / High'},
  stop_coords:{48:{lat:41.324769,lon:-72.923522},72:{lat:41.30378,lon:-72.93261},106:{lat:41.31,lon:-72.93}}};
