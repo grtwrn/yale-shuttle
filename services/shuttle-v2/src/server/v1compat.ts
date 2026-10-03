@@ -22,6 +22,7 @@ import type { DwellStats, PaceStats, SegmentStats, TransitNetwork } from "../net
 import { geocode, normalizeName, relevanceOf } from "./geocode.js";
 import type { ModelParamsSource } from "./modelParams.js";
 import type { EtaPayloadView, ServerEta } from "./serverEta.js";
+import type { StopSkipsWire } from "./stopSkips.js";
 import { RIDER_SURFACES_SQL } from "./predictions.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
@@ -422,6 +423,12 @@ export function createBusesPayloadCache(
    * ordering that keeps that true.
    */
   serverEta?: ServerEta | null,
+  /**
+   * Stops the buses are skipping right now (see stopSkips.ts), served as
+   * `stop_skips` only while there is one. Additive: an old client ignores it,
+   * and with nothing to report the bytes are unchanged.
+   */
+  stopSkips?: ((net: TransitNetwork, nowMs: number) => StopSkipsWire | null) | null,
 ): (trial?: boolean) => string {
   let cachedVersion = -1;
   let cachedParamsVersion = -1;
@@ -444,6 +451,8 @@ export function createBusesPayloadCache(
     cachedVersion = collector.dataVersion();
     cachedParamsVersion = paramsVersion;
     const payload = buildBusesPayload(collector, modelParams);
+    const skips = stopSkips?.(collector.ref.get(), nowMs);
+    if (skips) payload["stop_skips"] = skips;
     if (serverEta) {
       // Non-throwing by contract (see serverEta.ts): the worst case is an
       // absent field, never a failed /api/buses.

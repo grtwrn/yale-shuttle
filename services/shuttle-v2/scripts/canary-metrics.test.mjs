@@ -2944,3 +2944,70 @@ Red
   expect(cards[4]).toMatchObject({ eta: null, arriveText: '~11:32a' });
   expect(cards[5]).toMatchObject({ mode: 'walk', eta: null, arriveText: '~10:45a' });
 });
+
+
+// unionskip20261003: the trip card gained a full-width warning line under the
+// times when recent buses skipped the pickup. Captured from the built app (390
+// px, staging server fed 2026-10-03's real Purple visits) — the line carries
+// "4 min walk" and "(S)", and it must not become a card, a countdown or a label.
+describe('a trip card carrying the skipped-stop warning', () => {
+  const LIVE_SKIP_WARNING = `YALE SHUTTLE TRACKER
+Not affiliated with or endorsed by Yale University.
+Trip
+Map
+Issues
+↻
+← All routes
+PURPLE ROUTE · Runs Daily 5:30a–11:45p
+▴
+🚌
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Route\tBoard in (min)\tArrive at
+Purple\t
+~44 (33 – 59)
+\t6:02p – 6:41p
+
+⚠️ The last 3 Purple buses skipped Union Station (S). Try 100 Church Street South (4 min walk).
+
+
+🚌 30 min
+🚌 #330 · 5 stops away
+🚌Building 400⏸ 0:25nearby
+LEPH/60 College
+333 Cedar
+300 George St
+100 Church Street South
+BOARDUnion Station (S)
+Arrival: About 44 min · Likely 33–59 min
+West Haven Train Station
+Building 900
+Building 800
+Building 750
+Building 600
+GET OFFBuilding 400
+🧭 Directions to stop
+🚌 I'm on it
+🚩 Report
+📱 Yale tracker
+▾
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+About`;
+
+  it('still reads one Purple card with its own countdown and arrival', () => {
+    const cards = parseOptions(LIVE_SKIP_WARNING);
+    expect(cards.map(c => c.routeLabel)).toEqual(['Purple']);
+    expect(cards[0]).toMatchObject({ mode: 'shuttle', departed: false, etaUnavailable: false, arriveText: '6:02p – 6:41p' });
+    expect(cards[0].eta).toMatchObject({ first: [1980, 3540], spread: true });
+    const without = LIVE_SKIP_WARNING.replace(/\n⚠️ The last 3 Purple buses skipped[^\n]*\n/, '\n');
+    expect(without).not.toContain('skipped');
+    expect(parseOptions(without)).toEqual(cards);
+  });
+});

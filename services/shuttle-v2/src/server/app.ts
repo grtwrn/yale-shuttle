@@ -52,6 +52,7 @@ import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
+import { createStopSkips } from "./stopSkips.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
 import {
   buildAccuracyV1,
@@ -298,7 +299,9 @@ export function buildApp(opts: AppOptions): Hono {
       console.error(JSON.stringify({ level: "error", msg, ...fields })));
   if (serverEta) serverEta.useCheckpoint(etaCheckpointStore(opts.bundle.sqlite), now());
   if (serverEta && process.env.SHUTTLE_K10_TRIAL !== '0') serverEta.useK10Trial(at => opts.collector.k10Evidence(at));
-  const busesJson = createBusesPayloadCache(opts.collector, modelParams, serverEta);
+  // Stops the buses are skipping right now, from the collector's own visits
+  // (unionskip20261003). Re-read once a minute; absent while there are none.
+  const busesJson = createBusesPayloadCache(opts.collector, modelParams, serverEta, createStopSkips(opts.bundle.sqlite));
   if (serverEta) {
     // Priming the cache on the collector's own poll is what steps the belief:
     // it must advance on every observation, not only when a rider happens to

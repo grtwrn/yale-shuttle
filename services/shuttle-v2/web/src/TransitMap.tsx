@@ -39,6 +39,7 @@ import { useMapFullscreen } from "./useMapFullscreen";
 import { rideHoldText, standChipFor } from "./standWait";
 import "./TripActions.css";
 import { MiniMapKey, type TimingRow } from "./MiniMapKey";
+import { parseStopSkips, skipNotice, type StopSkips } from "./stopSkips";
 import { isMilfordGroceryPlace, isMilfordGrocerySearch } from "./grocerySearch";
 import { TripServiceNotices } from "./TripServiceNotices";
 import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
@@ -1625,6 +1626,8 @@ const TripPlanner: FC<{
   onDeleteRecent: (id: string) => void;
   onClearRecents: () => void;
   announcements: ServiceAnnouncement[];
+  // Stops the buses are skipping right now (`/api/buses` `stop_skips`).
+  stopSkips?: StopSkips;
   onReportSubmitted?: () => void;
   pendingTrip: (Pick<SavedTrip, "toText" | "toLat" | "toLon"> & { recoverRide?: boolean }) | null;
   onConsumePending: () => void;
@@ -1634,7 +1637,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [initialDraft] = useState(loadTripDraft);
   const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
   const [toText, setToText] = useState(initialDraft?.toText ?? "");
@@ -4028,6 +4031,11 @@ const TripPlanner: FC<{
                 } : undefined,
                 status: o.mode === 'walk' ? '—' : o.departed ? 'Missed' : o.etaUnavailable ? 'Unavailable' : isFuture ? 'Scheduled' : 'Unavailable',
                 note: lastBus?.headline ?? (o.missedBus && !o.departed ? 'Showing next bus' : undefined),
+                // Live evidence about now, so never on a plan for later.
+                warning: o.mode === 'shuttle' && !isFuture && stopSkips
+                  ? skipNotice(stopSkips, o.routeLabel, ROUTE_LISTS.find((c) => c.label === o.routeLabel)?.busRouteIds ?? [],
+                    o.boardStopId, stopNames, stopCoords) ?? undefined
+                  : undefined,
               };
             });
             const timingKey = <div data-testid="map-trip-panel">
@@ -6278,6 +6286,8 @@ const TransitMap: FC = () => {
   // picked the wrong street.
   const [routePaths, setRoutePaths] = useState<Record<string, [number, number][]>>({});
   const [announcements, setAnnouncements] = useState<ServiceAnnouncement[]>([]);
+  // Stops the buses are skipping right now (`stop_skips`, stopSkips.ts).
+  const [stopSkips, setStopSkips] = useState<StopSkips>({});
   // Nested: {bus_name: {route_id: {stop_id: {med, sd, n}}}} — per-bus dwell
   // that we prefer over route-level when computing stall credit.
   const [dwellsByBus, setDwellsByBus] = useState<Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>>({});
@@ -7145,6 +7155,9 @@ const TransitMap: FC = () => {
           setRoutePaths(data.route_paths);
         }
         if (Array.isArray(data.announcements)) setAnnouncements(data.announcements as ServiceAnnouncement[]);
+        // Absent means no stop is being skipped now: clear, never keep the last one.
+        const skips = parseStopSkips(data.stop_skips);
+        setStopSkips((prev) => (JSON.stringify(prev) === JSON.stringify(skips) ? prev : skips));
       } catch {
         // Replaced requests and unmounts are not connection failures.
         if (!stopped && !controller.signal.aborted && mySeq > latestApplied) {
@@ -7691,6 +7704,7 @@ const TransitMap: FC = () => {
           onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
           onClearRecents={() => saveRecentTrips([])}
           announcements={announcements}
+          stopSkips={stopSkips}
           onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
           onBoard={(ride) => { saveTripDraft(null); setFinishedRide(null); setBoardedRide(ride); }}
