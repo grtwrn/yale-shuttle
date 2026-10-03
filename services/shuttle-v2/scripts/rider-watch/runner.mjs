@@ -11,6 +11,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 export const SELECTION_BACKOFF_MS=2*60000;
 // The app's BUS_ABSENT_MS (web/src/rideEnd.ts).
 export const BUS_GONE_MS=10*60000;
+// As long for a boarded bus the feed and the app both put off its route.
+export const BUS_OFF_ROUTE_MS=10*60000;
+const LOOKING_FOR_BUS=/(?:^|\n)Looking for your bus…(?:\n|$)/;
 export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
  const ROOT=outputDir;
@@ -157,6 +160,19 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     // web/src/rideEnd.ts) rather than riding out the cap with nothing to score.
     if(bus)run.busLastSeenAt=new Date(now).toISOString();
     else if(now-Date.parse(run.busLastSeenAt??run.boardedAt)>BUS_GONE_MS){run.excludeAccuracy=true;await event('bus-left-feed',{bus:run.busName,lastSeenAt:run.busLastSeenAt??run.boardedAt,lastExitDistanceM:run.lastExitDistanceM});await finish('bus-left-feed-excluded');await status();return;}
+    // The boarded bus is in the feed but off its route (an end-of-service
+    // deadhead: Pink #324 drove 7 km north after its last loop, run
+    // 1790978871687), so the app shows "Looking for your bus…" and no ride
+    // end fires. Only sustained agreement counts: a poll with the bus back on
+    // its route, or with the app tracking it, resets the clock, so a detour or
+    // a GPS jump is ridden through and an app that loses an on-route bus is
+    // still ridden to the cap for review. Polls without the bus don't reset it.
+    if(bus){
+     if(!metrics.busOnRoute(feed,bus,run.line)&&LOOKING_FOR_BUS.test(text)){
+      if(!run.offRouteSince){run.offRouteSince=new Date(now).toISOString();run.offRouteFrom={lat:bus.lat,lon:bus.lon};}
+      if(now-Date.parse(run.offRouteSince)>BUS_OFF_ROUTE_MS){run.excludeAccuracy=true;await event('bus-off-route',{bus:run.busName,offRouteSince:run.offRouteSince,from:run.offRouteFrom,at:{lat:bus.lat,lon:bus.lon},exitDistanceM:coord?metrics.haversineM(bus,coord):null});await finish('bus-off-route-excluded');await status();return;}
+     }else{run.offRouteSince=undefined;run.offRouteFrom=undefined;}
+    }
     if(bus){await ctx.setGeolocation({latitude:bus.lat,longitude:bus.lon});run.lastExitDistanceM=coord?metrics.haversineM(bus,coord):null;
      if(coord&&(run.lastExitDistanceM<=45 || (run.lastExitDistanceM<=60 && bus.at_stop_id===run.exitStopId && bus.stationary===true))&&now-Date.parse(run.boardedAt)>30000){run.arrivalCriterion=run.lastExitDistanceM<=45?'GPS-within-45m':'stationary-at-target-within-60m';run.arrivedAt=new Date().toISOString();run.arrivalText=text;run.phase='arrived';await event('arrived',{bus:run.busName,stop:feed.stop_names[run.exitStopId],rideSeconds:(now-Date.parse(run.boardedAt))/1000});}
     }
