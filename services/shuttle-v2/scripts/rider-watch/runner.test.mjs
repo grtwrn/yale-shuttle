@@ -32,7 +32,7 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
   vi.advanceTimersByTime(10000);
   do await new Promise(r=>setImmediate(r)); while(h.watcher.status().busy);};
  h.journeys=async()=>(await fs.readFile(path.join(dir,'journeys.jsonl'),'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
- h.dir=dir;return h;
+ h.dir=dir;h.page=page;return h;
 }
 let current;
 afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)await fs.rm(current.dir,{recursive:true,force:true});current=undefined;});
@@ -46,6 +46,40 @@ test('Purple #126 dwelling 18 m from the stop is boarded, not an invalid sample'
  assert.equal(run.busName,'#126');
  assert.deepEqual(h.clicks,["🚌 I'm on it"]);
  assert.equal(run.invalidStopSamples,undefined);
+ assert.equal(run.excludeAccuracy,undefined);
+});
+
+// wrongbusboard20261002: "I'm on it" stored Green #331 while #122 pulled in;
+// the run then waited behind the ride until the 45 min cap.
+const boardingTimeout=async()=>{throw new Error('page.waitForFunction: Timeout 5000ms exceeded.');};
+test('a ride the app started on another bus ends the run now, not at the cap',async()=>{
+ const h=current=await harness(feedWith([near126]));
+ h.page.waitForFunction=boardingTimeout;h.page.evaluate=async()=>'#331';
+ await h.poll(dwelling,[at126]);
+ assert.equal(h.watcher.status().run,null);
+ const [journey]=await h.journeys();
+ assert.equal(journey.result,'wrong-bus-boarded-excluded');
+ assert.equal(journey.excludeAccuracy,true);
+ assert.equal(journey.busName,'#126');
+});
+
+test('a boarding attempt that stored no ride is retried as before',async()=>{
+ const h=current=await harness(feedWith([near126]));
+ h.page.waitForFunction=boardingTimeout;h.page.evaluate=async()=>null;
+ await h.poll(dwelling,[at126]);
+ const run=h.watcher.status().run;
+ assert.equal(run.phase,'waiting');
+ assert.equal(run.harnessErrors,1);
+ assert.equal(run.excludeAccuracy,undefined);
+});
+
+test('our bus stored after the boarding wait is still a boarding',async()=>{
+ const h=current=await harness(feedWith([near126]));
+ h.page.waitForFunction=boardingTimeout;h.page.evaluate=async()=>'126';
+ await h.poll(dwelling,[at126]);
+ const run=h.watcher.status().run;
+ assert.equal(run.phase,'riding');
+ assert.equal(run.busName,'#126');
  assert.equal(run.excludeAccuracy,undefined);
 });
 
