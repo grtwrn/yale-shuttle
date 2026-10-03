@@ -182,6 +182,65 @@ test('a boarded bus that drops out for a few minutes and returns is still ridden
  assert.deepEqual(await h.journeys(),[]);
 });
 
+// riderbusoffroute20261002, Pink run 1790978871687: boarded the last #324 at
+// LEPH / 60 College at 22:29:48Z. Past Quigley Stadium Inbound it turned back
+// and drove 7 km north off the route, still in the feed, so the app showed
+// "Looking for your bus…" from 22:38:08Z, no ride end fired, and the runner
+// rode to its 50 min cap at 23:19:48Z (#324 left the feed at 23:10:08Z).
+const pink324=JSON.parse(await fs.readFile(new URL('./__fixtures__/pink-324-off-route-2026-10-02.json',import.meta.url),'utf8'));
+const pinkFeedOf=buses=>({buses,routes:{8:pink324.route.stops},route_paths:{8:pink324.route.path},stop_names:pink324.route.stop_names,stop_coords:pink324.route.stop_coords});
+const pink324At=([lat,lon,stationary,at_stop_id])=>lat==null?[]:[{bus_name:'#324',route_id:8,lat,lon,stationary,...(at_stop_id==null?{}:{at_stop_id})}];
+const lookingFor="Looking for your bus…\n🚌 Pink #324 → VA Entrance Inbound";
+async function boardPink324(){
+ const [first,pickup]=pink324.waiting,c=pink324.route.stop_coords;
+ const lephTrip={kind:'random',origin:{label:'LEPH / 60 College',...c[72],stopId:72},destination:{display_name:'VA Entrance Inbound',...c[123],stopId:123}};
+ const h=current=await harness(pinkFeedOf(pink324At(first.bus)),lephTrip,{initialLine:{label:'Pink',busRouteIds:[8]},feedOf:pinkFeedOf,text:first.card,at:first.at});
+ vi.setSystemTime(Date.parse(pickup.at)-10000);await h.poll(pickup.card,pink324At(pickup.bus));
+ h.ride=async(at,bus,text)=>{vi.setSystemTime(Date.parse(at)-10000);await h.poll(text,bus);};
+ return h;
+}
+const recorded=at=>pink324.riding.find(p=>p[0].startsWith(at));
+test('replay: a boarded bus off its route for 10 min, with the app looking for it, ends the ride',async()=>{
+ const h=await boardPink324();
+ assert.equal(h.watcher.status().run.boardedAt,'2026-10-02T22:29:48.333Z');
+ for(const [at,...p] of pink324.riding){
+  await h.ride(at,pink324At(p),pink324.headlines[p[4]]+"\n🚌 Pink #324 → VA Entrance Inbound");
+  if(!h.watcher.status().run)break;
+ }
+ const [journey]=await h.journeys();
+ assert.equal(journey?.result,'bus-off-route-excluded');
+ assert.equal(journey.excludeAccuracy,true);
+ assert.equal(journey.offRouteSince,'2026-10-02T22:38:08.414Z');
+ // The first poll past 10 min, 31 min before the cap ended it on master.
+ assert.equal(journey.finishedAt,'2026-10-02T22:48:08.522Z');
+ assert.equal(journey.busLastSeenAt,journey.finishedAt);
+ const offRoute=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse).find(e=>e.kind==='bus-off-route');
+ assert.equal(offRoute.detail.bus,'#324');
+ assert.ok(offRoute.detail.exitDistanceM>4000);
+});
+test('a detour off the route that comes back within 10 min is still ridden',async()=>{
+ const h=await boardPink324();
+ const off=pink324At(recorded('2026-10-02T22:45:08').slice(1)),on=pink324At(recorded('2026-10-02T22:34:48').slice(1));
+ let t=Date.parse('2026-10-02T22:35:00Z');const next=()=>new Date(t+=10000).toISOString();
+ for(let lap=0;lap<2;lap++){
+  for(let i=0;i<59;i++)await h.ride(next(),off,lookingFor);
+  await h.ride(next(),on,"3 stops · 5 min\n🚌 Pink #324 → VA Entrance Inbound");
+ }
+ assert.equal(h.watcher.status().run.phase,'riding');
+ assert.equal(h.watcher.status().run.offRouteSince,undefined);
+ assert.deepEqual(await h.journeys(),[]);
+});
+test('the app looking for an on-route bus, or tracking an off-route one, is not excluded',async()=>{
+ const h=await boardPink324();
+ const off=pink324At(recorded('2026-10-02T22:45:08').slice(1)),on=pink324At(recorded('2026-10-02T22:34:48').slice(1));
+ let t=Date.parse('2026-10-02T22:35:00Z');const next=()=>new Date(t+=10000).toISOString();
+ // Either would be an app question for review, not an end-of-service deadhead.
+ for(let i=0;i<70;i++)await h.ride(next(),on,lookingFor);
+ for(let i=0;i<70;i++)await h.ride(next(),off,"Get off NEXT stop! · 25 min\n🚌 Pink #324 → VA Entrance Inbound");
+ assert.equal(h.watcher.status().run.phase,'riding');
+ assert.deepEqual(await h.journeys(),[]);
+});
+
 // The dedicated Red rider (RIDER_LINE=Red RIDER_FROM=48 RIDER_TO=ysph).
 const ysph={display_name:'School of Public Health (YSPH)',lat:41.303735,lon:-72.932155,type:'college',class:'yale'};
 const fixedTrip={kind:'fixed',origin:{label:'Division / Prospect',lat:41.324769,lon:-72.923522,stopId:48},destination:ysph};
