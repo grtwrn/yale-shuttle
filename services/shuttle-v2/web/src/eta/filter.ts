@@ -255,6 +255,12 @@ export interface Belief {
   lead: number;
   /** When the mass first left `lead` for a leg BEHIND it (or a jump ahead the feed cannot judge), else null (see `leadLeg`). */
   leadDisagreeSince: number | null;
+  /**
+   * The last step at which the lead's leg carried mass above the propagation
+   * floor (see `leadOffItsLine`). Absent on a belief restored from a
+   * checkpoint written before it existed, which keeps master's pricing.
+   */
+  leadMassAt: number;
   /** True when this step saw a fresh fix. */
   fresh: boolean;
   /** Per cell: the anchor leg of standing mass (`anchorLeg(.., true)`), cached once per step. */
@@ -513,7 +519,7 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
     fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: since ?? now,
     rested: standing, restStop: -1, restApproach: false, restMask,
     leftStop: -1, leftSince: 0, leftAt: 0,
-    serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, fresh: true,
+    serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, leadMassAt: now, fresh: true,
     standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
   };
   applyLastStop(b, ring, bus, stops);
@@ -682,6 +688,61 @@ function lastStopReading(b: Belief, ring: Ring, best: number): "confirms" | "con
     if (((best - i) % ring.N + ring.N) % ring.N <= LEAD_FOLLOW_LEGS) return "confirms";
   }
   return known ? "contradicts" : "unknown";
+}
+
+/**
+ * Was the held lead's leg disproven only by the stray model? Then its
+ * remnant is kept, priced, and the number keeps following the lead.
+ *
+ * The lead holds against a posterior behind it, or a far jump the feed
+ * contradicts (`leadLeg`), and the number is meant to follow the lead
+ * (arrival.ts, DISPLAY). But `situations` dropped the lead's leg once its
+ * mass fell under the propagation floor, and pricing then took the top
+ * alternative. A line whose buses drive a street that is another leg's line
+ * gets there in two fixes. A fix off the line scores the stray weight, ~5e-6
+ * on Purple, and the TELEPORT mass on the other leg scores 1.
+ *
+ * Purple, 2026-10-03 (purplehold20261003): 206 of 220 runs from 300 George St
+ * to 100 Church Street South (7 archived days) go down College St, which is
+ * the return line (127 -> 72), not the published George St line. On #330 the
+ * mass moved to a stand at 72. The lead held at 300 George St, "1 stop away".
+ * The number priced 72 -> 10, a 13-minute layover, then 9 -> 1: "Board in ~12
+ * (6-23)". The bus passed the pole 2.4 min after the first quote.
+ *
+ * The test is narrow. It only uses evidence the filter already holds:
+ *  - the feed agrees: `last_stop_id` confirms the lead's leg and contradicts
+ *    the leg the mass is on (the arbiter `leadLeg` uses for far jumps). A
+ *    cold start's `last_stop_id` 0 says nothing, and keeps master's answer;
+ *  - the fix is OFF the lead's line by the filter's own emission. Past
+ *    `SIGMA_M * sqrt(2 ln(1 / offRouteWeight))`, ~100 m, the line's Gaussian
+ *    is below the stray weight. A fix ON the line that still left the lead's
+ *    leg was moved by the transition: a stand or a loop round the block back
+ *    to the terminal. The posterior saw that, and keeps the number;
+ *  - and within the stray band the weight was derived for
+ *    (`OFF_ROUTE_BAND_M` / 2). Beyond it the bus has left the route;
+ *  - for no longer than the lead itself holds against a posterior behind it
+ *    (`LEAD_MAX_HOLD_MS`) since its leg last carried mass. A far jump the
+ *    feed contradicts is held with no timer, and a bus that went off duty
+ *    with its feed frozen sat there for an hour.
+ *
+ * Measured on 7 archived days, every route (962,888 bus-polls): 19,327 have
+ * the lead's leg under the floor. The next stop's row changes on 2,921 of
+ * them. Against the recorded arrival, 2,393 get more than 30 s closer and 319
+ * further away. Purple's College St pass is 1,484 closer and 65 further. The
+ * misses that remain are wrong LEADS, which this rule cannot see: Green's spur
+ * fold, a loop back to Purple's terminal, a bus leaving service with its feed
+ * frozen. While the lead holds under 0.8 the band is still the full mixture,
+ * so the alternative stays inside "6-23".
+ */
+function leadOffItsLine(b: Belief, ring: Ring, top: number): boolean {
+  if (top === b.lead || b.lastFix === null) return false;
+  if (!(b.seenAt - b.leadMassAt <= LEAD_MAX_HOLD_MS)) return false;
+  if (lastStopReading(b, ring, b.lead) !== "confirms" || lastStopReading(b, ring, top) !== "contradicts") return false;
+  const d = distancesTo(ring, b.lastFix);
+  let near = Infinity;
+  for (let c = 0; c < ring.C; c++) if (ring.leg[c] === b.lead && d[c]! < near) near = d[c]!;
+  const offLine = SIGMA_M * Math.sqrt(2 * Math.log(1 / offRouteWeight(ring)));
+  return near > offLine && near <= OFF_ROUTE_BAND_M / 2;
 }
 
 /**
@@ -892,7 +953,7 @@ export function stepBelief(
     leftAt: moved && prev.restStop >= 0 && !prev.restApproach ? now : prev.leftAt,
     restMask: moved || closedIn ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
-    lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, fresh,
+    lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, leadMassAt: prev.leadMassAt, fresh,
     standLeg: moved || closedIn ? new Int32Array(C) : prev.standLeg,
     zoneKey: moved || closedIn ? new Int32Array(C) : prev.zoneKey,
   };
@@ -919,7 +980,19 @@ export function stepBelief(
     cacheZones(b, ring);
   }
   b.lead = leadLeg(b, ring, prev.lead, now, b);
+  if (leadCarries(b, ring)) b.leadMassAt = now;
   return b;
+}
+
+/** Does the lead's leg hold a situation `situations` keeps at the propagation floor? */
+function leadCarries(b: Belief, ring: Ring): boolean {
+  const C = ring.C;
+  let stand = 0, move = 0;
+  for (let c = 0; c < C; c++) {
+    if (b.standLeg[c] === b.lead) stand += b.p[c]!;
+    if (ring.leg[c] === b.lead) move += b.p[C + c]!;
+  }
+  return Math.max(stand, move) >= PROPAGATE_MIN;
 }
 
 /**
@@ -956,7 +1029,8 @@ function advance(q: Float64Array, ring: Ring, c: number, m: number, kern: Float6
 /**
  * Situations: the posterior collapsed to (anchor leg, mode) with the
  * mass-weighted mean position within the leg. Prune below `minMass`, except
- * the held lead may survive down to the filter's propagation floor.
+ * the held lead may survive down to the filter's propagation floor — and
+ * below it while `leadOffItsLine` holds.
  */
 export interface Situation {
   leg: number;
@@ -999,12 +1073,20 @@ export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
   }
   const out: Situation[] = [];
   let total = 0;
+  // Pruning must not silently switch the priced branch while leadLeg still
+  // holds it. Keep its meaningful mass, using the propagation floor to
+  // exclude numerical remnants of a physically disproven branch — unless
+  // what disproved it was only the stray model (`leadOffItsLine`).
+  let leadFloor = PROPAGATE_MIN;
+  const lead = b.lead;
+  if (lead >= 0 && lead < N && Math.max(mass[2 * lead]!, mass[2 * lead + 1]!) < PROPAGATE_MIN) {
+    let top = 0;
+    for (let i = 1; i < N; i++) if (mass[2 * i]! + mass[2 * i + 1]! > mass[2 * top]! + mass[2 * top + 1]!) top = i;
+    if (leadOffItsLine(b, ring, top)) leadFloor = 0;
+  }
   for (let k = 0; k < 2 * N; k++) {
     const m = mass[k]!;
-    // Pruning must not silently switch the priced branch while leadLeg still
-    // holds it. Keep its meaningful mass, using the propagation floor to
-    // exclude numerical remnants of a physically disproven branch.
-    if (m < PROPAGATE_MIN || (m < minMass && (k >> 1) !== b.lead)) continue;
+    if ((k >> 1) === lead ? !(m > 0) || m < leadFloor : m < PROPAGATE_MIN || m < minMass) continue;
     let zoneKey = -1, best = 0;
     if (k % 2 === 0) {
       for (const [zk, zm] of zoneMass) {
