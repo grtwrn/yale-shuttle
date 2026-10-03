@@ -16,11 +16,15 @@ export interface ServerEtaWire {
   rows: ServerEtaRow[];
   /** Optional row-aligned 50-point quantile distributions; old readers ignore it. */
   distributions?: number[][];
+  /** Optional, aligned with `buses`: the same anchor in TRAVEL order (liveAnchor.ts
+   * `travelSlot`), which differs from `buses[i][2]` only on a pass upstream's list
+   * has no slot for. Old readers ignore it; a reader without it counts from `buses[i][2]`. */
+  travel?: number[];
   /** Present when K10 is selected (the Red default), including live fallbacks. */
   trial?: { model: string; changedRows: number; validUntil: number; byRoute?: Record<string, number> };
 }
 interface Snapshot { at: number; rows: UpcomingArrival[]; valid: boolean }
-interface Track { snapshot: Snapshot; index: number; standing: StandingAnswer | null }
+interface Track { snapshot: Snapshot; index: number; travel: number; standing: StandingAnswer | null }
 const snapshots = new WeakMap<readonly BusData[], Snapshot>();
 const tracks = new WeakMap<object, Map<string, Track>>();
 const colours = new Map(ROUTE_LISTS.map(c => [c.label, c.color]));
@@ -40,6 +44,9 @@ export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Dat
   // Server observation age plus elapsed client time: no dependency on the
   // rider's phone clock agreeing with the server clock.
   snapshot.at = receivedAt - (w.servedAt - w.at);
+  // Malformed travel indices cost only themselves: the anchor is still served.
+  const travel = Array.isArray(w.travel) && w.travel.length === w.buses.length
+    && w.travel.every(n => Number.isInteger(n) && n >= -1) ? w.travel : undefined;
   const busIndex = new Map<number, { name: string; label: string; colour: string }>();
   for (let i = 0; i < w.buses.length; i++) {
     const b = w.buses[i];
@@ -53,7 +60,7 @@ export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Dat
     // The server may include lines the frontend's service-hours filter hides.
     if (!live.length) continue;
     busIndex.set(i, { name: norm(b[0]), label: b[1], colour: colours.get(b[1])! });
-    for (const bus of live) tracks.get(bus)!.set(b[1], { snapshot, index: b[2], standing: rest });
+    for (const bus of live) tracks.get(bus)!.set(b[1], { snapshot, index: b[2], travel: travel?.[i] ?? b[2], standing: rest });
   }
   for (const [ri, row] of w.rows.entries()) {
     if (!Array.isArray(row) || row.length !== 9 || !row.every(finite)
@@ -93,12 +100,12 @@ export function liveEtaAvailable(buses: readonly BusData[], now = Date.now(), ro
 }
 
 /** undefined means no server source registered; null means no usable track. */
-export function serverTrack(bus: object, label: string, now: number): { index: number; standing: StandingAnswer | null } | null | undefined {
+export function serverTrack(bus: object, label: string, now: number): { index: number; travel: number; standing: StandingAnswer | null } | null | undefined {
   const m = tracks.get(bus);
   if (!m) return undefined;
   const t = m.get(label);
   if (!t || !fresh(t.snapshot, now)) return null;
-  return { index: t.index, standing: t.standing ? { ...t.standing,
+  return { index: t.index, travel: t.travel, standing: t.standing ? { ...t.standing,
     standingSec: t.standing.standingSec + Math.max(0, (now - t.snapshot.at) / 1000) } : null };
 }
 

@@ -1,0 +1,3608 @@
+{
+ "note": "Green rider runs 1791023389299 and 1791030783373 (greenstopsjump20261003), waiting at Building 400 for West Haven Train Station: the watcher's recorded /api/buses row for #321, one per 10 s sample, verbatim, from its call at Orange / Bradley (S) to Building 900 (10:36:47-10:50:47Z and 12:41:01-12:55:51Z, 2026-10-03, production build 28d055bbd5d3). `card` is the number the trip card printed on its '🚌 #321 · N stops away' line in that sample (null when the line named no bus or another one). Route geometry, stop coordinates and the segment/dwell tables are route 9's slice of the production payload in green-wrong-bus-board.json (the stop list, line and coordinates are byte-identical to the payload served 2026-10-03); model_params is the set production served that day.",
+ "runIds": [
+  "1791023389299",
+  "1791030783373"
+ ],
+ "routeId": "9",
+ "busRouteId": 9,
+ "routeLabel": "Green",
+ "bus": "#321",
+ "boardStopId": 22,
+ "alightStopId": 127,
+ "model_params": {
+  "version": "fit-2026-09-15",
+  "publishedAt": 1789546901938,
+  "params": {
+   "P_REPEAT_STAND": 0.92583,
+   "P_REPEAT_MOVE": 0.14029,
+   "P_REPEAT_MOVE_ZONE": 0.5,
+   "HOLD_ENTER_PER_S": 0.01381,
+   "HOLD_LEAVE_PER_S": 0.01365,
+   "SHUFFLE_PER_POLL": 0.03272,
+   "P_DEPART_ON_FRESH": 0.70825,
+   "CONFORMAL": {
+    "0-2": 1,
+    "2-5": 1.619,
+    "5-10": 1.433,
+    "10-30": 1.236
+   },
+   "ROUTE_SCALE": {
+    "1": 1.083,
+    "2": 1.106,
+    "3": 1.1,
+    "13": 1.003,
+    "15": 1.164,
+    "16": 1.067
+   },
+   "HORIZON_BIAS": {
+    "0-2": {
+     "b": -1.3,
+     "n": 20234
+    },
+    "2-5": {
+     "b": 0,
+     "n": 0
+    },
+    "5-10": {
+     "b": 0,
+     "n": 0
+    },
+    "10-30": {
+     "b": 26.5,
+     "n": 32814
+    }
+   }
+  }
+ },
+ "polls": [
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:36:47.268Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023799584,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.312451,
+     "lon": -72.919033,
+     "heading": 207,
+     "last_stop_id": 92,
+     "stationary": true,
+     "at_stop_id": 81,
+     "at_stop_since": "2026-10-03T10:36:29.623",
+     "stationary_since": "2026-10-03T10:36:29.623",
+     "last_moved_at": "2026-10-03T10:36:39.584"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:36:57.270Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023809734,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.312451,
+     "lon": -72.919033,
+     "heading": 207,
+     "last_stop_id": 92,
+     "stationary": true,
+     "at_stop_id": 81,
+     "at_stop_since": "2026-10-03T10:36:29.623",
+     "stationary_since": "2026-10-03T10:36:29.623",
+     "last_moved_at": "2026-10-03T10:36:39.584"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:37:07.272Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023819683,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.312451,
+     "lon": -72.919033,
+     "heading": 207,
+     "last_stop_id": 92,
+     "stationary": true,
+     "at_stop_id": 81,
+     "at_stop_since": "2026-10-03T10:36:29.623",
+     "stationary_since": "2026-10-03T10:36:29.623",
+     "last_moved_at": "2026-10-03T10:36:39.584"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:37:17.275Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023829590,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.312451,
+     "lon": -72.919033,
+     "heading": 207,
+     "last_stop_id": 92,
+     "stationary": true,
+     "at_stop_id": 81,
+     "at_stop_since": "2026-10-03T10:36:29.623",
+     "stationary_since": "2026-10-03T10:36:29.623",
+     "last_moved_at": "2026-10-03T10:36:39.584"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:37:27.276Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023839595,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.312451,
+     "lon": -72.919033,
+     "heading": 207,
+     "last_stop_id": 92,
+     "stationary": true,
+     "at_stop_id": 81,
+     "at_stop_since": "2026-10-03T10:36:29.623",
+     "stationary_since": "2026-10-03T10:36:29.623",
+     "last_moved_at": "2026-10-03T10:36:39.584"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:37:37.278Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023849596,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.312451,
+     "lon": -72.919033,
+     "heading": 207,
+     "last_stop_id": 92,
+     "stationary": true,
+     "at_stop_id": 81,
+     "at_stop_since": "2026-10-03T10:36:29.623",
+     "stationary_since": "2026-10-03T10:36:29.623",
+     "last_moved_at": "2026-10-03T10:36:39.584"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:37:47.280Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023859588,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.311757,
+     "lon": -72.918573,
+     "heading": 116,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:37:34.590",
+     "last_moved_at": "2026-10-03T10:37:39.588"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:37:57.282Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023869698,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.311306,
+     "lon": -72.916464,
+     "heading": 105,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:37:44.613",
+     "last_moved_at": "2026-10-03T10:37:49.698"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:38:07.284Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023879711,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.310156,
+     "lon": -72.914905,
+     "heading": 160,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:37:54.639",
+     "last_moved_at": "2026-10-03T10:37:59.711"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:38:17.286Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023889778,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.308138,
+     "lon": -72.914614,
+     "heading": 173,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:38:04.655",
+     "last_moved_at": "2026-10-03T10:38:09.778"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:38:27.288Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023899589,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.305859,
+     "lon": -72.914404,
+     "heading": 177,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:38:14.647",
+     "last_moved_at": "2026-10-03T10:38:19.589"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:38:37.290Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023909595,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.30356,
+     "lon": -72.914292,
+     "heading": 178,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:38:24.608",
+     "last_moved_at": "2026-10-03T10:38:29.595"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:38:47.291Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023919593,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.301357,
+     "lon": -72.914593,
+     "heading": 200,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:38:34.656",
+     "last_moved_at": "2026-10-03T10:38:39.593"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:38:57.293Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023929593,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.299539,
+     "lon": -72.916092,
+     "heading": 208,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:38:44.650",
+     "last_moved_at": "2026-10-03T10:38:49.593"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:39:07.295Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023939674,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.297537,
+     "lon": -72.916711,
+     "heading": 190,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:38:54.688",
+     "last_moved_at": "2026-10-03T10:38:59.674"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:39:17.298Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023949684,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.295633,
+     "lon": -72.917729,
+     "heading": 207,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:39:04.703",
+     "last_moved_at": "2026-10-03T10:39:09.684"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:39:27.300Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023959599,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.293702,
+     "lon": -72.919421,
+     "heading": 214,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:39:14.595",
+     "last_moved_at": "2026-10-03T10:39:19.599"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:39:37.301Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023969602,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.291751,
+     "lon": -72.921155,
+     "heading": 213,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:39:24.641",
+     "last_moved_at": "2026-10-03T10:39:29.602"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:39:47.303Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023979601,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.289802,
+     "lon": -72.922864,
+     "heading": 213,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:39:34.606",
+     "last_moved_at": "2026-10-03T10:39:39.601"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:39:57.306Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023989600,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.287856,
+     "lon": -72.924601,
+     "heading": 213,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:39:44.604",
+     "last_moved_at": "2026-10-03T10:39:49.600"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:40:07.307Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791023999683,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.285975,
+     "lon": -72.926427,
+     "heading": 222,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:39:54.678",
+     "last_moved_at": "2026-10-03T10:39:59.683"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:40:17.308Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024009684,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284992,
+     "lon": -72.929149,
+     "heading": 258,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:40:04.602",
+     "last_moved_at": "2026-10-03T10:40:09.684"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:40:27.309Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024019603,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284515,
+     "lon": -72.93219,
+     "heading": 257,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:40:14.601",
+     "last_moved_at": "2026-10-03T10:40:19.603"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:40:37.309Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024029712,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284016,
+     "lon": -72.935154,
+     "heading": 257,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:40:24.638",
+     "last_moved_at": "2026-10-03T10:40:29.712"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:40:47.311Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024039715,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283729,
+     "lon": -72.938092,
+     "heading": 265,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:40:34.613",
+     "last_moved_at": "2026-10-03T10:40:39.715"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:40:57.313Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024049613,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283569,
+     "lon": -72.941069,
+     "heading": 266,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:40:44.608",
+     "last_moved_at": "2026-10-03T10:40:49.613"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:41:07.316Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024059615,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283899,
+     "lon": -72.94386,
+     "heading": 285,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:40:54.612",
+     "last_moved_at": "2026-10-03T10:40:59.615"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:41:17.317Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024069620,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284368,
+     "lon": -72.946353,
+     "heading": 278,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:41:04.614",
+     "last_moved_at": "2026-10-03T10:41:09.620"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:41:27.319Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024079637,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284249,
+     "lon": -72.948916,
+     "heading": 259,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:41:14.614",
+     "last_moved_at": "2026-10-03T10:41:19.637"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:41:37.320Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024089613,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283454,
+     "lon": -72.951444,
+     "heading": 243,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:41:24.648",
+     "last_moved_at": "2026-10-03T10:41:29.613"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:41:47.322Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024099655,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.28252,
+     "lon": -72.953905,
+     "heading": 242,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:41:34.648",
+     "last_moved_at": "2026-10-03T10:41:39.655"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:41:57.324Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024109619,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.28153,
+     "lon": -72.956327,
+     "heading": 242,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:41:44.618",
+     "last_moved_at": "2026-10-03T10:41:49.619"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:42:07.325Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024119614,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.280554,
+     "lon": -72.958715,
+     "heading": 240,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:41:54.617",
+     "last_moved_at": "2026-10-03T10:41:59.614"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:42:17.326Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024129626,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.279511,
+     "lon": -72.961234,
+     "heading": 240,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:42:04.652",
+     "last_moved_at": "2026-10-03T10:42:09.626"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:42:27.328Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024139665,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.278397,
+     "lon": -72.963972,
+     "heading": 242,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:42:14.621",
+     "last_moved_at": "2026-10-03T10:42:19.665"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:42:37.331Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024149625,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.277189,
+     "lon": -72.966824,
+     "heading": 236,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:42:24.645",
+     "last_moved_at": "2026-10-03T10:42:29.625"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:42:47.333Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024159621,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.275464,
+     "lon": -72.969069,
+     "heading": 216,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:42:34.653",
+     "last_moved_at": "2026-10-03T10:42:39.621"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:42:57.335Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024169623,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273408,
+     "lon": -72.970449,
+     "heading": 204,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:42:44.626",
+     "last_moved_at": "2026-10-03T10:42:49.623"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:43:07.337Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024179642,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271619,
+     "lon": -72.971642,
+     "heading": 208,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:42:54.624",
+     "last_moved_at": "2026-10-03T10:42:59.642"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:43:17.338Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024189630,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270843,
+     "lon": -72.973206,
+     "heading": 279,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:43:04.653",
+     "last_moved_at": "2026-10-03T10:43:09.630"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:43:27.341Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024199650,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270843,
+     "lon": -72.973206,
+     "heading": 279,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:43:04.653",
+     "last_moved_at": "2026-10-03T10:43:09.630"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:43:37.343Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024209679,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270843,
+     "lon": -72.973206,
+     "heading": 279,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:43:04.653",
+     "last_moved_at": "2026-10-03T10:43:09.630"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:43:47.345Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024219651,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271281,
+     "lon": -72.973427,
+     "heading": 13,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:43:04.653",
+     "last_moved_at": "2026-10-03T10:43:39.651"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:43:57.347Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024229629,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.272235,
+     "lon": -72.972088,
+     "heading": 46,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:43:49.629",
+     "last_moved_at": "2026-10-03T10:43:49.629"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:44:07.348Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024239625,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.272639,
+     "lon": -72.97149,
+     "heading": 49,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:43:49.629",
+     "last_moved_at": "2026-10-03T10:43:59.625"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:44:17.350Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024249626,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.27312,
+     "lon": -72.970444,
+     "heading": 61,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:44:04.626",
+     "last_moved_at": "2026-10-03T10:44:09.626"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:44:27.352Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024259624,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273525,
+     "lon": -72.969399,
+     "heading": 63,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:44:19.624",
+     "last_moved_at": "2026-10-03T10:44:19.624"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:44:37.354Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024269629,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273793,
+     "lon": -72.968304,
+     "heading": 74,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:44:19.624",
+     "last_moved_at": "2026-10-03T10:44:29.629"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:44:47.357Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024279692,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273997,
+     "lon": -72.966986,
+     "heading": 80,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:44:34.631",
+     "last_moved_at": "2026-10-03T10:44:39.692"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:44:57.360Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024289671,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.274034,
+     "lon": -72.965596,
+     "heading": 91,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:44:49.671",
+     "last_moved_at": "2026-10-03T10:44:49.671"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:45:07.361Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024299626,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273783,
+     "lon": -72.964144,
+     "heading": 114,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:44:49.671",
+     "last_moved_at": "2026-10-03T10:44:59.626"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:45:17.363Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024309685,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.2728,
+     "lon": -72.962762,
+     "heading": 134,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:45:04.627",
+     "last_moved_at": "2026-10-03T10:45:09.685"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:45:27.365Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024319628,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.2728,
+     "lon": -72.962762,
+     "heading": 134,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:45:04.627",
+     "last_moved_at": "2026-10-03T10:45:09.685"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:45:37.367Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024329629,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.272608,
+     "lon": -72.962489,
+     "heading": 133,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:45:04.627",
+     "last_moved_at": "2026-10-03T10:45:29.629"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:45:47.369Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791024339633,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271815,
+     "lon": -72.963307,
+     "heading": 226,
+     "last_stop_id": 81,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T10:45:39.633",
+     "stationary_since": "2026-10-03T10:45:39.633",
+     "last_moved_at": "2026-10-03T10:45:39.633"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:45:57.371Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024349632,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271399,
+     "lon": -72.963885,
+     "heading": 231,
+     "last_stop_id": 81,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T10:45:39.633",
+     "stationary_since": "2026-10-03T10:45:39.633",
+     "last_moved_at": "2026-10-03T10:45:49.632"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:46:07.371Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024359641,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.27117,
+     "lon": -72.963621,
+     "heading": 139,
+     "last_stop_id": 81,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T10:45:39.633",
+     "stationary_since": "2026-10-03T10:45:39.633",
+     "last_moved_at": "2026-10-03T10:45:54.626"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:46:17.374Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024369634,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271441,
+     "lon": -72.962953,
+     "heading": 58,
+     "last_stop_id": 81,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T10:45:39.633",
+     "stationary_since": "2026-10-03T10:45:39.633",
+     "last_moved_at": "2026-10-03T10:46:09.634"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:46:27.376Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024379630,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271715,
+     "lon": -72.962975,
+     "heading": 356,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:45:39.633",
+     "last_moved_at": "2026-10-03T10:46:14.666"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:46:37.379Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024389702,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271537,
+     "lon": -72.963682,
+     "heading": 226,
+     "last_stop_id": 81,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T10:45:39.633",
+     "stationary_since": "2026-10-03T10:45:39.633",
+     "last_moved_at": "2026-10-03T10:46:29.702"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:46:47.378Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024399653,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.27103,
+     "lon": -72.965527,
+     "heading": 257,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:46:39.653",
+     "last_moved_at": "2026-10-03T10:46:39.653"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:46:57.380Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024409635,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.27075,
+     "lon": -72.967359,
+     "heading": 242,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:46:49.635",
+     "last_moved_at": "2026-10-03T10:46:49.635"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:47:07.381Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024419641,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270091,
+     "lon": -72.969133,
+     "heading": 244,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:46:59.641",
+     "last_moved_at": "2026-10-03T10:46:59.641"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:47:17.384Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024429638,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270102,
+     "lon": -72.970482,
+     "heading": 263,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:46:59.641",
+     "last_moved_at": "2026-10-03T10:47:09.638"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:47:27.385Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024439641,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.269303,
+     "lon": -72.971815,
+     "heading": 229,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:47:14.636",
+     "last_moved_at": "2026-10-03T10:47:19.641"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:47:37.387Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024449694,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.268393,
+     "lon": -72.973221,
+     "heading": 229,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:47:24.693",
+     "last_moved_at": "2026-10-03T10:47:29.694"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:47:47.389Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024459639,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.267419,
+     "lon": -72.974757,
+     "heading": 229,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:47:34.634",
+     "last_moved_at": "2026-10-03T10:47:39.639"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:47:57.391Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024469638,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.26723,
+     "lon": -72.975047,
+     "heading": 229,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:47:34.634",
+     "last_moved_at": "2026-10-03T10:47:44.639"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:48:07.393Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024479707,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.266628,
+     "lon": -72.976071,
+     "heading": 234,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:47:54.656",
+     "last_moved_at": "2026-10-03T10:47:59.707"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:48:17.395Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024489681,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.265714,
+     "lon": -72.977692,
+     "heading": 233,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:48:04.654",
+     "last_moved_at": "2026-10-03T10:48:09.681"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:48:27.397Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024499683,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.264801,
+     "lon": -72.979331,
+     "heading": 236,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:48:14.642",
+     "last_moved_at": "2026-10-03T10:48:19.683"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:48:37.400Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024509681,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.264115,
+     "lon": -72.981139,
+     "heading": 238,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:48:24.639",
+     "last_moved_at": "2026-10-03T10:48:29.681"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:48:47.402Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024519677,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.263342,
+     "lon": -72.982867,
+     "heading": 239,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:48:34.637",
+     "last_moved_at": "2026-10-03T10:48:39.677"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:48:57.405Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024529644,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.262503,
+     "lon": -72.984645,
+     "heading": 237,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:48:44.650",
+     "last_moved_at": "2026-10-03T10:48:49.644"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:49:07.407Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024539643,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.261599,
+     "lon": -72.986331,
+     "heading": 226,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:48:54.644",
+     "last_moved_at": "2026-10-03T10:48:59.643"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:49:17.408Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024549651,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.261083,
+     "lon": -72.986841,
+     "heading": 214,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:49:09.651",
+     "last_moved_at": "2026-10-03T10:49:09.651"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:49:27.410Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791024559695,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.260566,
+     "lon": -72.986433,
+     "heading": 140,
+     "last_stop_id": 81,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:49:09.651",
+     "last_moved_at": "2026-10-03T10:49:19.695"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:49:37.413Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791024569647,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.260114,
+     "lon": -72.986982,
+     "heading": 230,
+     "last_stop_id": 81,
+     "stationary": true,
+     "at_stop_id": 26,
+     "at_stop_since": "2026-10-03T10:49:24.647",
+     "stationary_since": "2026-10-03T10:49:24.647",
+     "last_moved_at": "2026-10-03T10:49:29.647"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:49:47.415Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791024579678,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.260074,
+     "lon": -72.98595,
+     "heading": 71,
+     "last_stop_id": 26,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:49:24.647",
+     "last_moved_at": "2026-10-03T10:49:39.678"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:49:57.417Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791024589760,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.259084,
+     "lon": -72.985753,
+     "heading": 185,
+     "last_stop_id": 26,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:49:49.760",
+     "last_moved_at": "2026-10-03T10:49:49.760"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:50:07.418Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791024599681,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.25861,
+     "lon": -72.986442,
+     "heading": 229,
+     "last_stop_id": 26,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:49:49.760",
+     "last_moved_at": "2026-10-03T10:49:59.681"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:50:17.420Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791024609687,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.258218,
+     "lon": -72.987107,
+     "heading": 231,
+     "last_stop_id": 26,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:50:09.687",
+     "last_moved_at": "2026-10-03T10:50:09.687"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:50:27.422Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791024619674,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.258409,
+     "lon": -72.987733,
+     "heading": 320,
+     "last_stop_id": 26,
+     "stationary": false,
+     "stationary_since": "2026-10-03T10:50:09.687",
+     "last_moved_at": "2026-10-03T10:50:19.674"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:50:37.424Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791024629721,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.258003,
+     "lon": -72.988861,
+     "heading": 233,
+     "last_stop_id": 26,
+     "stationary": true,
+     "at_stop_id": 25,
+     "at_stop_since": "2026-10-03T10:50:24.964",
+     "stationary_since": "2026-10-03T10:50:24.964",
+     "last_moved_at": "2026-10-03T10:50:29.721"
+    }
+   ]
+  },
+  {
+   "runId": "1791023389299",
+   "at": "2026-10-03T10:50:47.426Z",
+   "card": 2,
+   "buses": [
+    {
+     "observed_at": 1791024639930,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.257952,
+     "lon": -72.988507,
+     "heading": 100,
+     "last_stop_id": 25,
+     "stationary": true,
+     "at_stop_id": 25,
+     "at_stop_since": "2026-10-03T10:50:24.964",
+     "stationary_since": "2026-10-03T10:50:24.964",
+     "last_moved_at": "2026-10-03T10:50:39.930"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:41:01.636Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031253263,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.312525,
+     "lon": -72.918981,
+     "heading": 208,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 81,
+     "at_stop_since": "2026-10-03T12:40:38.257",
+     "stationary_since": "2026-10-03T12:40:38.257",
+     "last_moved_at": "2026-10-03T12:40:53.263"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:41:11.638Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031263262,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.31179,
+     "lon": -72.918697,
+     "heading": 117,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:41:03.262",
+     "last_moved_at": "2026-10-03T12:41:03.262"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:41:21.640Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031273417,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.311414,
+     "lon": -72.916998,
+     "heading": 101,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:41:13.417",
+     "last_moved_at": "2026-10-03T12:41:13.417"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:41:31.643Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031283267,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.310656,
+     "lon": -72.915164,
+     "heading": 139,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:41:23.267",
+     "last_moved_at": "2026-10-03T12:41:23.267"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:41:41.645Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031293290,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.308815,
+     "lon": -72.914699,
+     "heading": 184,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:41:33.290",
+     "last_moved_at": "2026-10-03T12:41:33.290"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:41:51.645Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031303379,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.30658,
+     "lon": -72.914457,
+     "heading": 175,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:41:38.284",
+     "last_moved_at": "2026-10-03T12:41:43.379"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:42:01.645Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031313265,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.304141,
+     "lon": -72.914311,
+     "heading": 177,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:41:48.271",
+     "last_moved_at": "2026-10-03T12:41:53.265"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:42:11.646Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031323353,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.301841,
+     "lon": -72.914356,
+     "heading": 189,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:41:58.346",
+     "last_moved_at": "2026-10-03T12:42:03.353"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:42:21.649Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031333423,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.300026,
+     "lon": -72.915715,
+     "heading": 213,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:42:08.268",
+     "last_moved_at": "2026-10-03T12:42:13.423"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:42:31.651Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031343356,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.298194,
+     "lon": -72.916548,
+     "heading": 188,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:42:18.269",
+     "last_moved_at": "2026-10-03T12:42:23.356"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:42:41.653Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031353273,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.296403,
+     "lon": -72.917253,
+     "heading": 203,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:42:28.271",
+     "last_moved_at": "2026-10-03T12:42:33.273"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:42:51.655Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031363277,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.29471,
+     "lon": -72.918558,
+     "heading": 212,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:42:38.327",
+     "last_moved_at": "2026-10-03T12:42:43.277"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:43:01.657Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031373388,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.29292,
+     "lon": -72.920115,
+     "heading": 213,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:42:48.274",
+     "last_moved_at": "2026-10-03T12:42:53.388"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:43:11.659Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031383335,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.291159,
+     "lon": -72.921664,
+     "heading": 212,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:42:58.304",
+     "last_moved_at": "2026-10-03T12:43:03.335"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:43:21.662Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031393278,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.289369,
+     "lon": -72.923244,
+     "heading": 213,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:43:08.283",
+     "last_moved_at": "2026-10-03T12:43:13.278"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:43:31.664Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031403272,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.287531,
+     "lon": -72.924884,
+     "heading": 214,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:43:18.302",
+     "last_moved_at": "2026-10-03T12:43:23.272"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:43:41.666Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031413272,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.285801,
+     "lon": -72.926692,
+     "heading": 227,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:43:28.317",
+     "last_moved_at": "2026-10-03T12:43:33.272"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:43:51.668Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031423426,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284971,
+     "lon": -72.929334,
+     "heading": 259,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:43:38.375",
+     "last_moved_at": "2026-10-03T12:43:43.426"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:44:01.671Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031433273,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284635,
+     "lon": -72.931507,
+     "heading": 257,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:43:48.304",
+     "last_moved_at": "2026-10-03T12:43:53.273"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:44:11.673Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031443279,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284325,
+     "lon": -72.933321,
+     "heading": 257,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:43:58.274",
+     "last_moved_at": "2026-10-03T12:44:03.279"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:44:21.675Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031453391,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283964,
+     "lon": -72.935529,
+     "heading": 258,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:44:08.275",
+     "last_moved_at": "2026-10-03T12:44:13.391"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:44:31.675Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031463272,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283757,
+     "lon": -72.93773,
+     "heading": 266,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:44:18.317",
+     "last_moved_at": "2026-10-03T12:44:23.272"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:44:41.676Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031473278,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283636,
+     "lon": -72.939931,
+     "heading": 265,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:44:28.370",
+     "last_moved_at": "2026-10-03T12:44:33.278"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:44:51.679Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031483436,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283616,
+     "lon": -72.9421,
+     "heading": 274,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:44:38.327",
+     "last_moved_at": "2026-10-03T12:44:43.436"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:45:01.681Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031493373,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283947,
+     "lon": -72.944045,
+     "heading": 285,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:44:48.276",
+     "last_moved_at": "2026-10-03T12:44:53.373"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:45:11.683Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031503277,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284318,
+     "lon": -72.945829,
+     "heading": 282,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:44:58.347",
+     "last_moved_at": "2026-10-03T12:45:03.277"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:45:21.686Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031513623,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284427,
+     "lon": -72.947407,
+     "heading": 271,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:45:08.304",
+     "last_moved_at": "2026-10-03T12:45:13.623"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:45:31.688Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031523279,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.284095,
+     "lon": -72.9496,
+     "heading": 251,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:45:18.278",
+     "last_moved_at": "2026-10-03T12:45:23.279"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:45:41.690Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031533300,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.283285,
+     "lon": -72.951882,
+     "heading": 242,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:45:33.300",
+     "last_moved_at": "2026-10-03T12:45:33.300"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:45:51.691Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031543285,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.28231,
+     "lon": -72.954394,
+     "heading": 241,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:45:43.285",
+     "last_moved_at": "2026-10-03T12:45:43.285"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:46:01.693Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031553286,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.281253,
+     "lon": -72.956962,
+     "heading": 240,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:45:53.286",
+     "last_moved_at": "2026-10-03T12:45:53.286"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:46:11.695Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031563284,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.280172,
+     "lon": -72.959577,
+     "heading": 241,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:46:03.284",
+     "last_moved_at": "2026-10-03T12:46:03.284"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:46:21.697Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031573288,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.279061,
+     "lon": -72.962274,
+     "heading": 241,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:46:13.288",
+     "last_moved_at": "2026-10-03T12:46:13.288"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:46:31.700Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031583306,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.277961,
+     "lon": -72.965055,
+     "heading": 242,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:46:23.306",
+     "last_moved_at": "2026-10-03T12:46:23.306"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:46:41.701Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031593284,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.27664,
+     "lon": -72.967691,
+     "heading": 229,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:46:33.284",
+     "last_moved_at": "2026-10-03T12:46:33.284"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:46:51.704Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031603284,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.274896,
+     "lon": -72.969504,
+     "heading": 209,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:46:43.284",
+     "last_moved_at": "2026-10-03T12:46:43.284"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:47:01.707Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031613283,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273196,
+     "lon": -72.970565,
+     "heading": 204,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:46:53.283",
+     "last_moved_at": "2026-10-03T12:46:53.283"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:47:11.710Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031623288,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271618,
+     "lon": -72.971626,
+     "heading": 207,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:47:03.288",
+     "last_moved_at": "2026-10-03T12:47:03.288"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:47:21.711Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031633315,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270785,
+     "lon": -72.972701,
+     "heading": 251,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:47:13.315",
+     "last_moved_at": "2026-10-03T12:47:13.315"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:47:31.713Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031643289,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270803,
+     "lon": -72.973068,
+     "heading": 273,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:47:13.315",
+     "last_moved_at": "2026-10-03T12:47:23.289"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:47:41.715Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031653421,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271217,
+     "lon": -72.973503,
+     "heading": 348,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:47:13.315",
+     "last_moved_at": "2026-10-03T12:47:33.421"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:47:51.716Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031663359,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271838,
+     "lon": -72.972652,
+     "heading": 46,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:47:13.315",
+     "last_moved_at": "2026-10-03T12:47:43.359"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:48:01.719Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031673332,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.272427,
+     "lon": -72.971826,
+     "heading": 47,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:47:48.289",
+     "last_moved_at": "2026-10-03T12:47:53.332"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:48:11.720Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031683386,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.272427,
+     "lon": -72.971826,
+     "heading": 47,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:47:48.289",
+     "last_moved_at": "2026-10-03T12:47:53.332"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:48:21.722Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031693294,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.272631,
+     "lon": -72.971521,
+     "heading": 48,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:47:48.289",
+     "last_moved_at": "2026-10-03T12:48:13.294"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:48:31.725Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031703293,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273131,
+     "lon": -72.970457,
+     "heading": 61,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:48:23.293",
+     "last_moved_at": "2026-10-03T12:48:23.293"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:48:41.728Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031713288,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273576,
+     "lon": -72.969288,
+     "heading": 65,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:48:23.293",
+     "last_moved_at": "2026-10-03T12:48:33.288"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:48:51.730Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031723309,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273864,
+     "lon": -72.968024,
+     "heading": 75,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:48:38.303",
+     "last_moved_at": "2026-10-03T12:48:43.309"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:49:01.732Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031733299,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.27403,
+     "lon": -72.966218,
+     "heading": 88,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:48:53.299",
+     "last_moved_at": "2026-10-03T12:48:53.299"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:49:11.735Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031743294,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.274034,
+     "lon": -72.965429,
+     "heading": 89,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:48:53.299",
+     "last_moved_at": "2026-10-03T12:49:03.294"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:49:21.738Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031753297,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273943,
+     "lon": -72.964631,
+     "heading": 108,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:49:13.297",
+     "last_moved_at": "2026-10-03T12:49:13.297"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:49:31.741Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031763351,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.27346,
+     "lon": -72.963582,
+     "heading": 132,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:49:13.297",
+     "last_moved_at": "2026-10-03T12:49:23.351"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:49:41.744Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031773296,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273241,
+     "lon": -72.963312,
+     "heading": 137,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:49:28.320",
+     "last_moved_at": "2026-10-03T12:49:28.320"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:49:51.746Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031783296,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.273016,
+     "lon": -72.963049,
+     "heading": 138,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:49:28.320",
+     "last_moved_at": "2026-10-03T12:49:43.296"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:50:01.748Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031793299,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.272596,
+     "lon": -72.962486,
+     "heading": 134,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:49:28.320",
+     "last_moved_at": "2026-10-03T12:49:53.299"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:50:11.750Z",
+   "card": 4,
+   "buses": [
+    {
+     "observed_at": 1791031803293,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.27209,
+     "lon": -72.96293,
+     "heading": 223,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:50:03.293",
+     "last_moved_at": "2026-10-03T12:50:03.293"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:50:21.752Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031813502,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271448,
+     "lon": -72.963843,
+     "heading": 230,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T12:50:08.320",
+     "stationary_since": "2026-10-03T12:50:08.320",
+     "last_moved_at": "2026-10-03T12:50:13.502"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:50:31.754Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031823310,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271233,
+     "lon": -72.963446,
+     "heading": 76,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T12:50:08.320",
+     "stationary_since": "2026-10-03T12:50:08.320",
+     "last_moved_at": "2026-10-03T12:50:23.310"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:50:41.755Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031833325,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271377,
+     "lon": -72.963103,
+     "heading": 60,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T12:50:08.320",
+     "stationary_since": "2026-10-03T12:50:08.320",
+     "last_moved_at": "2026-10-03T12:50:33.325"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:50:51.757Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031843335,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271792,
+     "lon": -72.963048,
+     "heading": 324,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:50:08.320",
+     "last_moved_at": "2026-10-03T12:50:43.335"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:51:01.760Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031853301,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271671,
+     "lon": -72.963475,
+     "heading": 249,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 127,
+     "at_stop_since": "2026-10-03T12:50:08.320",
+     "stationary_since": "2026-10-03T12:50:08.320",
+     "last_moved_at": "2026-10-03T12:50:53.301"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:51:11.762Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031863372,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.271143,
+     "lon": -72.964943,
+     "heading": 251,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:50:08.320",
+     "last_moved_at": "2026-10-03T12:51:03.372"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:51:21.764Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031873424,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270965,
+     "lon": -72.966745,
+     "heading": 254,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:51:08.333",
+     "last_moved_at": "2026-10-03T12:51:13.424"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:51:31.766Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031883301,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270351,
+     "lon": -72.968399,
+     "heading": 243,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:51:18.340",
+     "last_moved_at": "2026-10-03T12:51:23.301"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:51:41.768Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031893363,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.270126,
+     "lon": -72.969951,
+     "heading": 283,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:51:28.335",
+     "last_moved_at": "2026-10-03T12:51:33.363"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:51:51.770Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031903519,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.269774,
+     "lon": -72.971058,
+     "heading": 230,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:51:43.519",
+     "last_moved_at": "2026-10-03T12:51:43.519"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:52:01.772Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031913328,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.268768,
+     "lon": -72.972615,
+     "heading": 229,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:51:53.328",
+     "last_moved_at": "2026-10-03T12:51:53.328"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:52:11.775Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031923406,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.26779,
+     "lon": -72.974142,
+     "heading": 229,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:52:03.406",
+     "last_moved_at": "2026-10-03T12:52:03.406"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:52:21.775Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031933430,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.267145,
+     "lon": -72.975171,
+     "heading": 230,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:52:03.406",
+     "last_moved_at": "2026-10-03T12:52:13.430"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:52:31.775Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031943303,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.266953,
+     "lon": -72.975467,
+     "heading": 229,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:52:23.303",
+     "last_moved_at": "2026-10-03T12:52:23.303"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:52:41.777Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031953304,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.266002,
+     "lon": -72.977171,
+     "heading": 233,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:52:33.304",
+     "last_moved_at": "2026-10-03T12:52:33.304"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:52:51.780Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031963304,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.265093,
+     "lon": -72.978786,
+     "heading": 231,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:52:43.304",
+     "last_moved_at": "2026-10-03T12:52:43.304"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:53:01.781Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031973420,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.264402,
+     "lon": -72.980537,
+     "heading": 243,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:52:53.420",
+     "last_moved_at": "2026-10-03T12:52:53.420"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:53:11.782Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031983401,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.263619,
+     "lon": -72.982265,
+     "heading": 239,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:53:03.401",
+     "last_moved_at": "2026-10-03T12:53:03.401"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:53:21.784Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791031993312,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.26281,
+     "lon": -72.984023,
+     "heading": 238,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:53:13.312",
+     "last_moved_at": "2026-10-03T12:53:13.312"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:53:31.786Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791032003313,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.261975,
+     "lon": -72.98577,
+     "heading": 239,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:53:23.313",
+     "last_moved_at": "2026-10-03T12:53:23.313"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:53:41.788Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791032013314,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.261761,
+     "lon": -72.986122,
+     "heading": 231,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:53:23.313",
+     "last_moved_at": "2026-10-03T12:53:28.315"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:53:51.790Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791032023552,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.261554,
+     "lon": -72.986387,
+     "heading": 223,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:53:23.313",
+     "last_moved_at": "2026-10-03T12:53:43.552"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:54:01.791Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791032033416,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.261085,
+     "lon": -72.986841,
+     "heading": 207,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:53:53.416",
+     "last_moved_at": "2026-10-03T12:53:53.416"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:54:11.794Z",
+   "card": 18,
+   "buses": [
+    {
+     "observed_at": 1791032043361,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.260538,
+     "lon": -72.986409,
+     "heading": 139,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:53:53.416",
+     "last_moved_at": "2026-10-03T12:54:03.361"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:54:21.795Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032053320,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.260287,
+     "lon": -72.986691,
+     "heading": 220,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 26,
+     "at_stop_since": "2026-10-03T12:54:08.392",
+     "stationary_since": "2026-10-03T12:54:08.392",
+     "last_moved_at": "2026-10-03T12:54:08.392"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:54:31.795Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032063320,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.260067,
+     "lon": -72.986585,
+     "heading": 88,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 26,
+     "at_stop_since": "2026-10-03T12:54:08.392",
+     "stationary_since": "2026-10-03T12:54:08.392",
+     "last_moved_at": "2026-10-03T12:54:23.320"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:54:41.797Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032073331,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.260247,
+     "lon": -72.986282,
+     "heading": 51,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 26,
+     "at_stop_since": "2026-10-03T12:54:08.392",
+     "stationary_since": "2026-10-03T12:54:08.392",
+     "last_moved_at": "2026-10-03T12:54:28.317"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:54:51.798Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032088320,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.259404,
+     "lon": -72.985261,
+     "heading": 146,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:54:43.358",
+     "last_moved_at": "2026-10-03T12:54:48.320"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:55:01.798Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032093322,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.259007,
+     "lon": -72.985809,
+     "heading": 232,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:54:43.358",
+     "last_moved_at": "2026-10-03T12:54:53.322"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:55:11.800Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032103326,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.258413,
+     "lon": -72.98678,
+     "heading": 232,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:55:03.326",
+     "last_moved_at": "2026-10-03T12:55:03.326"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:55:21.802Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032113411,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.258244,
+     "lon": -72.987062,
+     "heading": 231,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:55:03.326",
+     "last_moved_at": "2026-10-03T12:55:08.324"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:55:31.804Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032123365,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.258381,
+     "lon": -72.988104,
+     "heading": 274,
+     "last_stop_id": 23,
+     "stationary": false,
+     "stationary_since": "2026-10-03T12:55:03.326",
+     "last_moved_at": "2026-10-03T12:55:23.365"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:55:41.805Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032133374,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.258063,
+     "lon": -72.98876,
+     "heading": 232,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 25,
+     "at_stop_since": "2026-10-03T12:55:28.321",
+     "stationary_since": "2026-10-03T12:55:28.321",
+     "last_moved_at": "2026-10-03T12:55:33.374"
+    }
+   ]
+  },
+  {
+   "runId": "1791030783373",
+   "at": "2026-10-03T12:55:51.807Z",
+   "card": 3,
+   "buses": [
+    {
+     "observed_at": 1791032143381,
+     "bus_id": 67193,
+     "bus_name": "#321",
+     "route_id": 9,
+     "lat": 41.258063,
+     "lon": -72.98876,
+     "heading": 232,
+     "last_stop_id": 23,
+     "stationary": true,
+     "at_stop_id": 25,
+     "at_stop_since": "2026-10-03T12:55:28.321",
+     "stationary_since": "2026-10-03T12:55:28.321",
+     "last_moved_at": "2026-10-03T12:55:33.374"
+    }
+   ]
+  }
+ ]
+}

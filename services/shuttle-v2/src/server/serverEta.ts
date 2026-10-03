@@ -274,6 +274,7 @@ export class ServerEta {
 
     const index = new Map<string, number>();
     const buses: ServerEtaBus[] = [];
+    const travel: number[] = [];
     const rows: ServerEtaRow[] = [];
     const distributions: number[][] = [];
     for (const a of arrivals) {
@@ -289,12 +290,14 @@ export class ServerEta {
         buses.push([a.busName, a.routeLabel,
           anchorIndexOnList(bus, cfg, payload.routes, payload.stop_coords, seq, now, this.store),
           resolveStandingStop(bus, cfg, payload.routes, payload.stop_coords, now, this.store)]);
+        // The same belief, queried again this poll: read in travel order.
+        travel.push(anchorIndexOnList(bus, cfg, payload.routes, payload.stop_coords, seq, now, this.store, true));
       }
       distributions.push((a.distribution ?? []).map(Math.round));
       rows.push([i, a.stopId, Math.round(a.eta), Math.round(a.low), Math.round(a.high), a.stopsAhead, a.estimated ? 1 : 0, Math.round(a.departNow), Math.round(a.lowFloor)]);
     }
     if (rows.length === 0) return null;
-    return { v: 2, at: now, servedAt: now, buses, rows, distributions };
+    return { v: 2, at: now, servedAt: now, buses, rows, distributions, travel };
   }
 
   /**
@@ -329,7 +332,8 @@ export class ServerEta {
       .filter((r) => remap.has(r[0]))
       .map((r) => [remap.get(r[0])!, ...r.slice(1)] as unknown as ServerEtaRow);
     const distributions = wire.distributions?.filter((_, i) => remap.has(wire.rows[i]![0]));
-    return { ...wire, buses, rows, ...(distributions ? { distributions } : {}) };
+    const travel = wire.travel?.filter((_, i) => remap.has(i));
+    return { ...wire, buses, rows, ...(distributions ? { distributions } : {}), ...(travel ? { travel } : {}) };
   }
 
   /**
