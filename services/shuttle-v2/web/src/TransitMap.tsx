@@ -2173,7 +2173,7 @@ const TripPlanner: FC<{
           rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
           livePickupSelection: rawPickupSelection(hereBus.bus_name, o.boardStopId, nowMs),
           journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
-          busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, busBoardHops: board && boardHops(board, visits, o.boardStopId), computedAtMs: nowMs,
+          busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, busBoardHops: board && boardHops(board, visits, o.boardStopId, o.alightStopId), computedAtMs: nowMs,
         };
       }
 
@@ -2212,7 +2212,7 @@ const TripPlanner: FC<{
         journeyArrival: arrival, busName: match.busName, departed, missedBus,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
-        busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, busBoardHops: boardHops(match, visits, o.boardStopId), computedAtMs: nowMs,
+        busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, busBoardHops: boardHops(match, visits, o.boardStopId, o.alightStopId), computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

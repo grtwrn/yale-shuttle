@@ -282,10 +282,10 @@ export function tripApproach(
 /**
  * THE TRIP CARD'S APPROACH FOR A RIDE: {@link tripApproach}, counted to the
  * pass of the pickup the countdown is pinned to. `boardHops` is that pinned
- * arrival's `stopsAhead` (arrivals.ts `UpcomingArrival`) followed by those of
- * the same bus's other arrivals at the pickup, as the option carries them
- * (planner.ts `TripOption.busBoardHops`); without them the answer is what it
- * always was.
+ * arrival's `stopsAhead` and stop (arrivals.ts `UpcomingArrival`) followed by
+ * those of the same bus's other arrivals at the pickup and the destination, as
+ * the option carries them (planner.ts `TripOption.busBoardHops`); without them
+ * the answer is what it always was.
  *
  * A line that comes back the way it went (its published list names a stop
  * twice: Green and Purple, out to West Campus and back) passes some pickups
@@ -307,8 +307,13 @@ export function tripApproach(
  * added is not listed). The arrivals count hops from where the estimator has
  * the bus: usually the belief's lead, sometimes the leg the mass has moved
  * on to. So the pinned pass is read off the ring position every one of the
- * bus's arrivals at the pickup fits, the nearest ahead of the lead or of the
- * card's own pass (`travelPass`) when more than one does. Empty when the
+ * bus's arrivals at the pickup and the destination fits, the nearest ahead of
+ * the lead or of the card's own pass (`travelPass`) when more than one does.
+ * The pickup's alone can fit two: Purple passes Building 900 half a lap apart,
+ * so its arrivals there fit both, and with the estimator's origin a few legs
+ * behind the lead the nearest ahead was the other pass (stopcountb90020261004: the
+ * card read "3 stops away" for Building 800 beside a countdown 12 stops out).
+ * The destination's arrivals tell them apart. Empty when the
  * pinned arrival is the bus standing at the pickup. A bus the feed has
  * standing at the pickup is at the pass of it nearest its anchor: empty when
  * that is the pinned pass, counted on from it when the countdown has passed
@@ -326,14 +331,14 @@ export function rideApproach(
   routeStops: Record<string, number[]>,
   stopCoords: Record<number, LatLon>,
   boardStopId: number,
-  boardHops: readonly number[] | undefined,
+  boardHops: readonly (readonly [hops: number, stopId: number])[] | undefined,
   now: number,
   store?: AnchorStore | undefined,
 ): number[] | null {
   const atStop = observedAtStop(bus, boardStopId, stopCoords);
   const before = () => atStop ? [] : tripApproach(bus, cfg, routeStops, stopCoords, boardStopId, now, store);
-  if (!boardHops?.length || !boardHops.every(h => Number.isInteger(h) && h >= 0)) return before();
-  const pinned = boardHops[0]!;
+  if (!boardHops?.length || !boardHops.every(([h]) => Number.isInteger(h) && h >= 0)) return before();
+  const pinned = boardHops[0]![0];
   const seq = mergedRouteStops(cfg, routeStops);
   if (new Set(seq).size === seq.length) return before();
   const ring = ringForBus(bus, seq, stopCoords);
@@ -360,7 +365,7 @@ export function rideApproach(
   const near = (q: number) => Math.min(ahead(lead, q), ahead(from, q));
   let origin = -1;
   for (let o = 0; o < N; o++) {
-    if (!boardHops.every(h => h === 0 || ring.stops[(o + h) % N] === boardStopId)) continue;
+    if (!boardHops.every(([h, stopId]) => h === 0 || ring.stops[(o + h) % N] === stopId)) continue;
     if (origin < 0 || near(o) < near(origin)) origin = o;
   }
   if (origin < 0) return before();
