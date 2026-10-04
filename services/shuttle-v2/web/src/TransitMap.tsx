@@ -14,7 +14,7 @@ import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
 import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
 import { liveAnchorStore } from "./eta";
-import { anchorIndexOnList, observedAtStop, resolveStandingStop, tripApproach } from "./liveAnchor";
+import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import {
@@ -67,7 +67,7 @@ import {
   notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
-  directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
+  boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
 } from "./planner";
 import { optionTier, stableTripOrder, type TripOrderState } from './tripRanking';
 import { anonIdHeader } from "./anonId";
@@ -2173,7 +2173,7 @@ const TripPlanner: FC<{
           rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
           livePickupSelection: rawPickupSelection(hereBus.bus_name, o.boardStopId, nowMs),
           journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
-          busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
+          busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, busBoardHops: board && boardHops(board, visits, o.boardStopId), computedAtMs: nowMs,
         };
       }
 
@@ -2212,7 +2212,7 @@ const TripPlanner: FC<{
         journeyArrival: arrival, busName: match.busName, departed, missedBus,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
-        busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
+        busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, busBoardHops: boardHops(match, visits, o.boardStopId), computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2620,13 +2620,12 @@ const TripPlanner: FC<{
       let stopsAway: number | null = null;
       if (busMatch) {
         // Counted on the canonical sequence in travel order, not on
-        // `allStops` (liveAnchor.ts `tripApproach`).
-        const approach = tripApproach(
-          busMatch, cfg, routeStops, stopCoords, o.boardStopId, Date.now(), liveAnchorStore,
+        // `allStops` (liveAnchor.ts `tripApproach`), to the pass of the
+        // pickup the countdown is pinned to (`rideApproach`).
+        const approach = rideApproach(
+          busMatch, cfg, routeStops, stopCoords, o.boardStopId, o.busBoardHops, Date.now(), liveAnchorStore,
         );
-        if (approach) {
-          stopsAway = observedAtStop(busMatch, o.boardStopId, stopCoords) ? 0 : approach.length;
-        }
+        if (approach) stopsAway = approach.length;
       }
       // How many buses are really on this line — the same on-route
       // test the pin uses, so a depot ghost cannot make "2 buses out"
@@ -2737,11 +2736,12 @@ const TripPlanner: FC<{
     // CANONICAL sequence, not `allStops`: that list has no West Campus
     // return leg, so Purple's return run downtown read "9 stops away"
     // with Building 900 ... 400 still ahead, five stops out
-    // (purplestopsjump20261003, liveAnchor.ts `tripApproach`).
+    // (purplestopsjump20261003, liveAnchor.ts `tripApproach`). And to the
+    // pass of a twice-served pickup the countdown is pinned to: Purple's
+    // station for downtown read "10 stops away" beside the return call five
+    // stops out (stopcountpass20261003, liveAnchor.ts `rideApproach`).
     const approach = busMatch
-      ? observedAtStop(busMatch, o.boardStopId, stopCoords)
-        ? []
-        : tripApproach(busMatch, cfg, routeStops, stopCoords, o.boardStopId, Date.now(), liveAnchorStore)
+      ? rideApproach(busMatch, cfg, routeStops, stopCoords, o.boardStopId, o.busBoardHops, Date.now(), liveAnchorStore)
       : null;
     // The stop the bus is at or last cleared.
     const busStopId = approach ? (approach[0] ?? o.boardStopId) : undefined;
@@ -3985,9 +3985,9 @@ const TripPlanner: FC<{
                 // The gated anchor, off the app's one live store — the dashed
                 // approach must start where the cards and the countdown say
                 // the bus is (liveAnchor.ts), counted as the card counts it.
-                const upstream = observedAtStop(busMatch, o.boardStopId, stopCoords)
-                  ? []
-                  : tripApproach(busMatch, cfg, routeStops, stopCoords, o.boardStopId, Date.now(), liveAnchorStore);
+                const upstream = rideApproach(
+                  busMatch, cfg, routeStops, stopCoords, o.boardStopId, o.busBoardHops, Date.now(), liveAnchorStore,
+                );
                 if (upstream && upstream.length > 0) {
                   const upCoords = [...upstream, o.boardStopId]
                     .map((sid) => stopCoords[sid])
@@ -4027,7 +4027,10 @@ const TripPlanner: FC<{
                   distributionSec: o.busDistribution, stopId: o.boardStopId,
                   computedAtMs: o.computedAtMs, nextSec: nextArrLive?.eta,
                   nextBusName: nextArrLive?.busName, stopsAway: shuttleCtx?.stopsAway,
-                  atPickup: !!shuttleCtx?.busMatch && observedAtStop(shuttleCtx.busMatch, o.boardStopId, stopCoords),
+                  // Standing at the pickup on the pass the countdown is pinned to,
+                  // not at one it passed over for a later one (`rideApproach`).
+                  atPickup: !!shuttleCtx?.busMatch && shuttleCtx.stopsAway === 0
+                    && observedAtStop(shuttleCtx.busMatch, o.boardStopId, stopCoords),
                   holdingAt: shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
                     ? stopNames[shuttleCtx.busMatch.at_stop_id] : undefined,
                 } : undefined,

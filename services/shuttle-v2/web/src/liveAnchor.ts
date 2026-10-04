@@ -280,6 +280,105 @@ export function tripApproach(
 }
 
 /**
+ * THE TRIP CARD'S APPROACH FOR A RIDE: {@link tripApproach}, counted to the
+ * pass of the pickup the countdown is pinned to. `boardHops` is that pinned
+ * arrival's `stopsAhead` (arrivals.ts `UpcomingArrival`) followed by those of
+ * the same bus's other arrivals at the pickup, as the option carries them
+ * (planner.ts `TripOption.busBoardHops`); without them the answer is what it
+ * always was.
+ *
+ * A line that comes back the way it went (its published list names a stop
+ * twice: Green and Purple, out to West Campus and back) passes some pickups
+ * twice: the West Campus stops, and West Haven Train Station, where the repair
+ * adds the line's second call (Green on the way out, Purple on the way back;
+ * buses stand there both ways). The countdown boards whichever pass reaches
+ * the destination before the pickup comes round again (planner.ts
+ * `rideBoardArrivals`); `tripApproach` counts to the stop's first slot.
+ * Purple, at the station for downtown with the bus at Building 400 on its way
+ * back: the countdown was for the return call five stops out, and the card
+ * read "10 stops away", counted to the outbound call after the whole downtown
+ * loop (stopcountpass20261003). On Green, a rider at Building 800 for
+ * downtown was counted to the outbound pass the countdown had rejected.
+ *
+ * So on those lines a pickup the ring passes more than once is counted along
+ * the ring, in travel order, from the bus to the pinned pass, listing
+ * upstream's slots on the way: the stop the bus is at or last cleared, then
+ * every pass upstream names (`travelSlot`'s convention; a call the repair
+ * added is not listed). The arrivals count hops from where the estimator has
+ * the bus: usually the belief's lead, sometimes the leg the mass has moved
+ * on to. So the pinned pass is read off the ring position every one of the
+ * bus's arrivals at the pickup fits, the nearest ahead of the lead or of the
+ * card's own pass (`travelPass`) when more than one does. Empty when the
+ * pinned arrival is the bus standing at the pickup. A bus the feed has
+ * standing at the pickup is at the pass of it nearest its anchor: empty when
+ * that is the pinned pass, counted on from it when the countdown has passed
+ * it over for a later one. A bus that has just left the pinned pass, with the
+ * countdown a lap on, is a whole lap away.
+ *
+ * Every other pickup, and every pickup on a line whose list names each stop
+ * once, reads as before: empty at the stop, else `tripApproach`. That keeps
+ * Pink out: its ring's twins are the opposite curbs of the VA spur, which the
+ * feed reports once a lap each, in published order.
+ */
+export function rideApproach(
+  bus: AnchorBus & { bus_name: string; at_stop_id?: number | null; stationary?: boolean },
+  cfg: RouteListConfig,
+  routeStops: Record<string, number[]>,
+  stopCoords: Record<number, LatLon>,
+  boardStopId: number,
+  boardHops: readonly number[] | undefined,
+  now: number,
+  store?: AnchorStore | undefined,
+): number[] | null {
+  const atStop = observedAtStop(bus, boardStopId, stopCoords);
+  const before = () => atStop ? [] : tripApproach(bus, cfg, routeStops, stopCoords, boardStopId, now, store);
+  if (!boardHops?.length || !boardHops.every(h => Number.isInteger(h) && h >= 0)) return before();
+  const pinned = boardHops[0]!;
+  const seq = mergedRouteStops(cfg, routeStops);
+  if (new Set(seq).size === seq.length) return before();
+  const ring = ringForBus(bus, seq, stopCoords);
+  const N = ring?.N ?? 0;
+  if (!ring || ring.stops.length !== N) return before();
+  const passes: number[] = [];
+  for (let p = 0; p < N; p++) if (ring.stops[p] === boardStopId) passes.push(p);
+  if (passes.length < 2) return before();
+  // The countdown's bus is standing at the pickup: boarding now.
+  if (pinned === 0) return [];
+  const slot = (p: number) => ring.repaired ? travelSlot(ring.order, p) : p;
+  const named = (p: number) => ring.order[p] === slot(p);
+  // Ring positions from the anchor's two answers: the lead is the pass in the
+  // published slot `index`, the card's own the one in the travel slot.
+  const travel = anchorIndexOnList(bus, cfg, routeStops, stopCoords, seq, now, store, true);
+  if (travel < 0) return before();
+  const index = anchorIndexOnList(bus, cfg, routeStops, stopCoords, seq, now, store);
+  let lead = -1, from = -1;
+  for (let p = 0; p < N && from < 0; p++) if (ring.order[p] === index && slot(p) === travel) lead = from = p;
+  for (let p = 0; p < N && from < 0; p++) if (ring.order[p] === travel && named(p)) from = p;
+  for (let p = 0; p < N && lead < 0; p++) if (ring.order[p] === index && named(p)) lead = p;
+  if (from < 0 || lead < 0) return before();
+  const ahead = (a: number, b: number) => ((b - a) % N + N) % N;
+  const near = (q: number) => Math.min(ahead(lead, q), ahead(from, q));
+  let origin = -1;
+  for (let o = 0; o < N; o++) {
+    if (!boardHops.every(h => h === 0 || ring.stops[(o + h) % N] === boardStopId)) continue;
+    if (origin < 0 || near(o) < near(origin)) origin = o;
+  }
+  if (origin < 0) return before();
+  const target = (origin + pinned) % N;
+  if (atStop) {
+    const apart = (p: number) => Math.min(ahead(from, p), ahead(p, from));
+    from = passes.reduce((best, p) => (apart(p) < apart(best) ? p : best));
+  }
+  // On the pinned pass already: standing there, or the anchors disagree about
+  // the pass (short of a lap), which reads as before. Off it with the
+  // countdown a lap on, the bus has just left it: the count is the whole lap.
+  if (target === from && (atStop || pinned < N)) return before();
+  const approach = [seq[slot(from)]!];
+  for (let p = (from + 1) % N; p !== target; p = (p + 1) % N) if (named(p)) approach.push(seq[ring.order[p]!]!);
+  return approach;
+}
+
+/**
  * WHICH STOP IS THIS BUS STANDING AT, AND FOR HOW LONG — one answer, shared.
  *
  * The price has to decide this to bill the residual stand, and the SCREEN has

@@ -62,6 +62,13 @@ export type TripOption = {
   busDistribution?: number[] | undefined;
   busLowSec?: number;
   busHighSec?: number;
+  /**
+   * The same pinned arrival's hops from the bus (arrivals.ts `UpcomingArrival.
+   * stopsAhead`), then those of that bus's other arrivals at the board stop:
+   * which pass of a twice-served pickup the countdown is for, so the card's
+   * "N stops away" counts to that pass (liveAnchor.ts `rideApproach`).
+   */
+  busBoardHops?: number[];
   computedAtMs?: number;
   /** Destination arrival for the catchable bus, including the final walk. */
   journeyArrival?: JourneyArrival;
@@ -316,6 +323,15 @@ export function boardingVisitConflict(board: UpcomingArrival, arrivals: readonly
  * no retained arrival exists the usual unavailable/departed UI is used. */
 export function rideBoardArrivals(arrivals: readonly UpcomingArrival[], boardStopId: number, alightStopId: number): UpcomingArrival[] {
   return arrivals.filter(a => a.stopId === boardStopId && !boardingVisitConflict(a, arrivals, alightStopId));
+}
+
+/** The pinned arrival's hops from the bus, then those of every arrival that
+ * bus has at the board stop: `TripOption.busBoardHops`, which pass of a
+ * twice-served pickup the countdown is for (liveAnchor.ts `rideApproach`). */
+export function boardHops(pinned: UpcomingArrival, arrivals: readonly UpcomingArrival[], boardStopId: number): number[] {
+  return [pinned.stopsAhead, ...arrivals
+    .filter(a => a.stopId === boardStopId && a.busName === pinned.busName && a.routeLabel === pinned.routeLabel)
+    .map(a => a.stopsAhead)];
 }
 
 /** A raw at-stop flag cannot restore a pickup visit rejected above. No ETA
