@@ -58,14 +58,25 @@ export function geocode(
   // have meant, most literal first, and answer with the first that finds
   // anything. Only ever when the query found NOTHING, so no answer the
   // matcher already gives can move.
-  for (const alt of fallbackQueries(rawQuery)) {
-    const q = parseQuery(alt);
+  for (const { text, minScore } of fallbackQueries(rawQuery)) {
+    const q = parseQuery(text);
     if (q === null) continue;
-    const found = search(network, q, landmarks);
+    const found = search(network, q, landmarks).filter((h) => h.score >= minScore);
     if (found.length > 0) return found;
   }
   return [];
 }
+
+/**
+ * The least a hit from a guessed reading must score: the word-prefix tier
+ * (0.5), less the 1% the other reading's tie-break can take off
+ * ({@link scoreMatch}). Below it are the any-order, fuzzy and substring
+ * tiers, which a guess is too loose for. "2 prospect st, new haven, ct
+ * 06511" guessed as "2 prospect" prefixes 225 Prospect by house number, and
+ * the map picks a curated place on Enter, so the rider went to Chemistry
+ * instead of the house the providers find (review of PR #362).
+ */
+const GUESS_MIN_SCORE = 0.49;
 
 function search(
   network: TransitNetwork,
@@ -179,15 +190,22 @@ function search(
  *    reads "td college" as "tdcollege", two edits from every "college";
  *  - the street address inside a longer query: "corner grove 258 church st
  *    new haven ct 06510" is the place at 258 Church St.
+ *
+ * The first is how master read the query, so any hit counts; the other two
+ * are guesses and count only from {@link GUESS_MIN_SCORE} up.
  */
-function fallbackQueries(raw: string): string[] {
+function fallbackQueries(raw: string): { text: string; minScore: number }[] {
   const typed = normalizeName(raw);
-  const out: string[] = [];
-  if (/\p{Cf}/u.test(raw)) out.push(raw.replace(/\p{Cf}/gu, " "));
-  out.push(typed.replace(/\b([a-z]{1,2}) (?=[a-z]{1,2}\b)/g, "$1"));
+  const out: { text: string; minScore: number }[] = [];
+  if (/\p{Cf}/u.test(raw)) out.push({ text: raw.replace(/\p{Cf}/gu, " "), minScore: 0 });
+  out.push({
+    text: typed.replace(/\b([a-z]{1,2}) (?=[a-z]{1,2}\b)/g, "$1"),
+    minScore: GUESS_MIN_SCORE,
+  });
   const address = /(?:^| )(\d{1,5} [a-z]+)(?: |$)/.exec(typed);
-  if (address) out.push(address[1]!);
-  return [...new Set(out)].filter((q) => normalizeName(q) !== typed);
+  if (address) out.push({ text: address[1]!, minScore: GUESS_MIN_SCORE });
+  return out.filter(({ text }, i) =>
+    normalizeName(text) !== typed && out.findIndex((o) => o.text === text) === i);
 }
 
 // -- Normalisation ------------------------------------------------------------
@@ -387,18 +405,20 @@ function scoreForm(q: Query, c: Candidate): number {
 
 /**
  * Every token matches some word, in any order ("museum peabody") — unless
- * the query has a one-letter token. A lone letter is an initial, and
+ * the query has two or more one-letter tokens. Those are initials, and
  * initials come in the order of the words they stand for: "t d college" is
  * Timothy Dwight College and "j e edwards" Jonathan Edwards, but "ha m d"
  * is not "Dwight Hall & Memorial Chapel", whose words merely begin with
- * those letters in another order (2026-10-03 search-gap audit).
+ * those letters in another order (2026-10-03 search-gap audit). A single
+ * letter is usually a direction, which riders type anywhere: "bishop &
+ * orange n" is Orange / Bishop (N) (review of PR #362).
  */
 function tokensMatch(
   tokens: readonly string[],
   words: readonly string[],
   match: (token: string, word: string) => boolean,
 ): boolean {
-  if (!tokens.some((t) => /^[a-z]$/.test(t))) {
+  if (tokens.filter((t) => /^[a-z]$/.test(t)).length < 2) {
     return tokens.every((t) => words.some((w) => match(t, w)));
   }
   let from = 0;

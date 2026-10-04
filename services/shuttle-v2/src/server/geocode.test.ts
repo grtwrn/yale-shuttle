@@ -948,6 +948,15 @@ describe("search-gap audit (2026-10-03)", () => {
     it("keeps h&k off the academic buildings its letters prefix", () => {
       expect(top3("h&k")).toEqual(["H&K"]);
     });
+
+    it.each([
+      ["bishop & orange n", "Orange / Bishop (N)"],
+      ["n orange bishop", "Orange / Bishop (N)"],
+      ["s orange bishop", "Orange / Bishop (S)"],
+    ])("reads one letter as a direction in any position: %o finds %s first", (q, label) => {
+      // Review of PR #362: requiring word order for a lone letter lost these.
+      expect(labels(q)[0]).toBe(label);
+    });
   });
 
   describe("a house number glued to its street", () => {
@@ -989,6 +998,19 @@ describe("search-gap audit (2026-10-03)", () => {
 
     it("finds the place at a full address typed after a name", () => {
       expect(labels("corner grove 258 church st new haven ct 06510")[0]).toBe("Willoughby's Coffee (Church St)");
+    });
+
+    it.each([
+      "2 prospect st, new haven, ct 06511",
+      "10 wall st, new haven, ct 06511",
+      "6 high st, new haven, ct 06511",
+      "3 hillhouse ave, new haven, ct 06511",
+      "1 church st floor 2",
+    ])("leaves a full address the list doesn't have to the map providers: %o", (q) => {
+      // Review of PR #362: read as "2 prospect", the house number only
+      // prefixed 225 Prospect (Chemistry), and the map picks a curated
+      // place on Enter, so the rider went there instead of to the house.
+      expect(labels(q)).toEqual([]);
     });
 
     it("leaves Chef Jiang first for 'jiang', across the street from Taste of Jiang Nan", () => {
