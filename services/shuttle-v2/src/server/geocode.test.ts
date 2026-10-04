@@ -4,7 +4,7 @@ import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
 
-import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS, normalizeName, relevanceOf, splitGluedNumbers } from "./geocode.js";
+import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS, normalizeName, relevanceOf, soundKey, splitGluedNumbers } from "./geocode.js";
 import type { Landmark } from "./landmarks.js";
 import liveStops from "./__fixtures__/stops.json";
 
@@ -879,10 +879,12 @@ describe("dotted initials and ampersand abbreviations keep their spaced reading"
  * not read — broken by invisible characters or typed in pieces, a house
  * number glued to its street — or by a name nobody had entered yet.
  *
- * Deliberately NOT fixed: typos past the fuzzy tier's one edit from five
- * letters ("binekie", "shwartz", "willobuys"; "biencke" must stay a miss, see
- * "allows one edit from five letters and two from eight"), and Qahwah House
- * (19 Elm St), which was still "expected to open this fall" on 2026-10-04.
+ * Deliberately NOT fixed here: typos past the fuzzy tier's one edit from five
+ * letters ("binekie", "shwartz", "willobuys"), which the fuzzy tier still
+ * misses (see "allows one edit from five letters and two from eight") and a
+ * last reading now finds — see "misspellings past the fuzzy tier
+ * (2026-10-04)" — and Qahwah House (19 Elm St), which was still "expected to
+ * open this fall" on 2026-10-04.
  */
 describe("search-gap audit (2026-10-03)", () => {
   const live = TransitNetwork.build(LIVE_STOPS, []);
@@ -1029,5 +1031,122 @@ describe("search-gap audit (2026-10-03)", () => {
     it("leaves Chef Jiang first for 'jiang', across the street from Taste of Jiang Nan", () => {
       expect(labels("jiang").slice(0, 2)).toEqual(["Chef Jiang", "Taste of Jiang Nan"]);
     });
+  });
+});
+
+/**
+ * The 2026-10-04 search log: rider searches that found nothing although the
+ * app has the place, because the name was spelt past the fuzzy tier (by how
+ * it sounds, or with a vowel slip next to a word that matched) or was a
+ * building code nobody had entered. The typo reading runs only when nothing
+ * else matched, so it cannot move an answer the matcher already gives, and
+ * never for an address or a street, which the map providers answer.
+ */
+describe("misspellings past the fuzzy tier (2026-10-04)", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  const hits = (q: string) => geocode(live, q);
+  const labels = (q: string) => hits(q).map((h) => h.label);
+
+  it.each([
+    ["binekie", /^Beinecke Library$/],
+    ["biencke", /^Beinecke Library$/],
+    ["shwartz", /^Schwarzman Center$/],
+    ["willobuys", /^Willoughby's Coffee/],
+    ["will buys", /^Willoughby's Coffee/],
+    ["yale dovin", /^Divinity/],
+    ["divinity schi", /^Divinity School$/],
+    ["sterling low", /^Yale Law School$/],
+  ])("%o finds %s first", (q, want) => {
+    expect(labels(q)[0]).toMatch(want);
+  });
+
+  it("reads the words by how they sound", () => {
+    expect(soundKey("beinecke")).toBe("bnk");
+    expect(soundKey("binekie")).toBe("bnk");
+    expect(soundKey("willoughbys")).toBe("wlbs");
+    expect(soundKey("willobuys")).toBe("wlbs");
+    expect(soundKey("schwarzman").startsWith(soundKey("shwartz"))).toBe(true);
+  });
+
+  it("ranks a typo below every tier the matcher has", () => {
+    // Substring (0.25) is the lowest; a typo hit only ever stands alone.
+    for (const q of ["binekie", "shwartz", "willobuys", "sterling low"]) {
+      expect(hits(q)[0]!.score, q).toBeLessThan(0.25);
+    }
+  });
+
+  it("leaves a name the matcher already answers as it was", () => {
+    expect(labels("beinecke")[0]).toBe("Beinecke Library");
+    expect(hits("beinecke")[0]!.score).toBe(1);
+    expect(labels("sterling")[0]).toBe("Sterling Memorial Library");
+    expect(labels("watson")[0]).toBe("Watson Center");
+  });
+
+  it.each([
+    "orange ave", "avon ave", "starr st", "howe rd", "chapel ln", "legion st", "crown ct",
+    "divinity sq", "willow way",
+  ])("leaves a street to the map providers: %o", (q) => {
+    // Without the street word rule "orange ave" was Orange / Avon ("ave" one
+    // vowel from "avo") and "starr st" the Apple Store ("starr" sounds like
+    // "store"), and the map picks a curated place on Enter.
+    expect(labels(q)).toEqual([]);
+  });
+
+  it.each(["starr", "legion", "frame", "bianca"])(
+    "does not read a short word as a name that merely shares its consonants: %o",
+    (q) => {
+      // Sounding alike takes seven letters: "starr" and "store", "legion"
+      // and "legna", "frame" and "farm" are s-t-r, l-g-n and f-r-m alike.
+      expect(labels(q)).toEqual([]);
+    },
+  );
+
+  it.each(["dovin", "steer", "melon", "style"])(
+    "does not read a short word alone as the start of a name: %o",
+    (q) => {
+      // One slip from "divin(ity)", "ster(ling)", "malon(e)" and "stile(s)";
+      // "yale dovin" is Divinity, a word on its own is as often a word.
+      expect(labels(q)).toEqual([]);
+    },
+  );
+
+  it("drops a guess that fits three places or more", () => {
+    // "century" sounds like "center", which half the campus is called.
+    expect(labels("century")).toEqual([]);
+  });
+
+  it.each(["sterling lqw", "divinity schk", "lew", "anlyan to", "apizza my"])(
+    "allows a vowel slip only on a vowel, in three letters, beside a word that matched: %o",
+    (q) => {
+      // "sterling lew" is Yale Law School; "lew" alone is too little, and so
+      // are two letters ("anlyan ta(c)", "mo(dern) apizza").
+      expect(labels(q)).toEqual([]);
+    },
+  );
+
+  it.each(["durfees a", "ha ven", "adams usa", "college sci", "william art"])(
+    "reads words as one typed in pieces only when the rest adds to the sound: %o",
+    (q) => {
+      // "adamsusa" and "collegesci" sound like "adams" (Hendrie Hall's Adams
+      // Center) and "colleges" (the vowels are silent, the s's one), and
+      // "williamart" like "walmart", which "william" does not start.
+      expect(labels(q)).toEqual([]);
+    },
+  );
+});
+
+describe("building codes riders type (2026-10-04)", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  const labels = (q: string) => geocode(live, q).map((h) => h.label);
+
+  it.each([
+    ["wts", "Watson Center"],
+    ["WTS", "Watson Center"],
+    ["tac audi", "The Anlyan Center (TAC)"],
+    ["tac auditorium", "The Anlyan Center (TAC)"],
+    ["tac", "The Anlyan Center (TAC)"],
+    ["akw", "Arthur K. Watson Hall (AKW)"],
+  ])("%o finds %s first", (q, label) => {
+    expect(labels(q)[0]).toBe(label);
   });
 });

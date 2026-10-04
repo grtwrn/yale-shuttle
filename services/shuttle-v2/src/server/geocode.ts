@@ -64,8 +64,31 @@ export function geocode(
     const found = search(network, q, landmarks).filter((h) => h.score >= minScore);
     if (found.length > 0) return found;
   }
-  return [];
+  // Last, a misspelling past the fuzzy tier ({@link scoreTypo}), of a curated
+  // place only. Streets are the map providers' job, and a curated place or a
+  // stop (named for its streets) that merely sounds like the street would be
+  // picked on Enter instead: so never for a query with a number or a street
+  // word in it ("orange ave" is not Orange / Avon, "starr st" not the Apple
+  // Store), and never a stop ("whiten" is not Whitney Avenue). A guess that
+  // fits three places or more is a common word, not a name: "century" is a
+  // slip of every "center".
+  if (/\d/.test(rawQuery) || query.text.split(" ").some((w) => STREET_WORDS.has(w))) return [];
+  const guesses = search(network, query, landmarks, scoreTypo, false);
+  return guesses.length <= MAX_TYPO_PLACES ? guesses : [];
 }
+
+/**
+ * Two: Willoughby's has two cafes, and "binekie" also reaches Woolsey Hall
+ * through its "beinecke plaza" alias.
+ */
+const MAX_TYPO_PLACES = 2;
+
+/** Street types and their usual abbreviations and slips, for {@link geocode}. */
+const STREET_WORDS = new Set([
+  "st", "str", "street", "stret", "streat", "ave", "av", "aven", "avenu", "avenue", "rd", "road",
+  "dr", "drive", "ln", "lane", "ct", "court", "pl", "place", "sq", "square", "ter", "terrace",
+  "way", "blvd", "boulevard", "pkwy", "parkway", "hwy", "highway", "cir", "circle",
+]);
 
 /**
  * The least a hit from a guessed reading must score: the word-prefix tier
@@ -82,6 +105,8 @@ function search(
   network: TransitNetwork,
   query: Query,
   landmarks: readonly Landmark[],
+  scoreOf: (q: Query, c: Candidate) => number = scoreMatch,
+  withStops = true,
 ): GeocodeHit[] {
   const out: GeocodeHit[] = [];
   // A street address is an alias too ("85 howe", "1000 chapel"), but only
@@ -96,12 +121,12 @@ function search(
   for (const l of landmarks) {
     // A landmark answers to its label AND every alias, and the best of them
     // counts: "kbt" must rank Kline Tower exactly as "kline tower" does.
-    let score = scoreMatch(query, candidate(l.label));
+    let score = scoreOf(query, candidate(l.label));
     const labelScore = score;
     for (const name of l.aliases ?? []) {
       if (score === 1) break;
       if (!queryHasNumber && /^\d+ /.test(name)) continue;
-      score = Math.max(score, scoreMatch(query, candidate(name)));
+      score = Math.max(score, scoreOf(query, candidate(name)));
     }
     if (score > 0) {
       out.push({
@@ -111,8 +136,8 @@ function search(
       });
     }
   }
-  for (const stop of network.stops.values()) {
-    const score = scoreMatch(query, candidate(stop.name));
+  for (const stop of withStops ? network.stops.values() : []) {
+    const score = scoreOf(query, candidate(stop.name));
     if (score > 0) {
       out.push({
         label: stop.name,
@@ -448,6 +473,141 @@ export function fuzzyWordMatch(token: string, word: string): boolean {
   const maxEdits = token.length >= 8 ? 2 : 1;
   if (Math.abs(token.length - word.length) > maxEdits) return false;
   return damerauLevenshtein(token, word, maxEdits) <= maxEdits;
+}
+
+/**
+ * The score of a hit only a misspelling past {@link fuzzyWordMatch} reaches,
+ * less a hundredth per edit so the nearest spelling ranks first. Under every
+ * tier of {@link scoreForm}, although it never meets them: {@link geocode}
+ * asks for it only when nothing else matched.
+ */
+const TYPO_SCORE = 0.2;
+
+/**
+ * How a query that found nothing may still name a place (2026-10-04 search
+ * log: "binekie", "willobuys", "will buys", "shwartz", "yale dovin",
+ * "sterling low", "divinity schi" all found nothing, and the app has every
+ * one). Each query token is an exact prefix of a word of the name, as on the
+ * token-prefix tier, or:
+ *
+ *  - SOUNDS LIKE it: the same first letter and the same consonants
+ *    ({@link soundKey}), and from seven letters within two edits in five —
+ *    "binekie" is 3 edits from "beinecke" and "willobuys" 4 from
+ *    "willoughbys", far past the fuzzy tier, but they are b-n-k and w-l-b-s
+ *    alike, while "starr" and "store" are merely s-t-r — or the start of a
+ *    longer word still being typed, within one edit (two from seven
+ *    letters): "shwartz" is "schwarz(man)". Five or six letters one slip
+ *    from the start of a name are as often another word ("steer", "melon",
+ *    "style"), so those need another word beside them: "yale dovin" is
+ *    "divin(ity)", "dovin" alone is nothing;
+ *  - or, from three letters, differs from the start of a word in ONE VOWEL:
+ *    "low" is "law", "schi" "scho(ol)". A vowel slip is too little to go on
+ *    alone ("lew"), so only beside a word of four or more letters that
+ *    matched as typed ("sterling", "divinity"), and never on a consonant
+ *    ("sterling lqw") or in two letters: "anlyan to" is not "anlyan ta(c)",
+ *    nor "school of py" "school of pu(blic)" ("school of p" finds it).
+ *
+ * Two or three words of three or more letters are also read as one word
+ * typed in pieces, into a word the first piece starts: "will buys" is
+ * "willbuys", which sounds like "willoughbys". Only when the rest adds two
+ * consonants or more: "adams usa" sounds like "adams" (the vowels are silent
+ * and the s's one), "college sci" like "colleges". Initials ("t d colege")
+ * are left alone: their order rule ({@link tokensMatch}) is not worth
+ * loosening for a guess.
+ */
+function scoreTypo(q: Query, c: Candidate): number {
+  if (q.tokens.filter((t) => t.length === 1).length >= 2) return 0;
+  const besideAnother = q.text.includes(" ");
+  const readings = c.spaced ? [c.words, c.spaced.words] : [c.words];
+  const [first, ...rest] = q.tokens;
+  const joined = q.tokens.join("");
+  const split = rest.length > 0 && rest.length <= 2 && q.tokens.every((t) => t.length >= 3) &&
+    soundKey(joined).length >= soundKey(first!).length + 2;
+  let edits = Infinity;
+  for (const words of readings) {
+    edits = Math.min(edits, typoEdits(q.tokens, words, besideAnother));
+    // A word typed in two: only into a word the first piece starts.
+    const started = split ? words.filter((w) => w.startsWith(first!)) : [];
+    if (started.length > 0) edits = Math.min(edits, typoEdits([joined], started, besideAnother));
+  }
+  return edits === Infinity ? 0 : TYPO_SCORE - edits / 100;
+}
+
+/** The edits {@link scoreTypo} needs to read `tokens` as `words`. */
+function typoEdits(
+  tokens: readonly string[],
+  words: readonly string[],
+  besideAnother: boolean,
+): number {
+  let edits = 0;
+  let anchored = false;
+  const slips: string[] = [];
+  for (const t of tokens) {
+    if (words.some((w) => w.startsWith(t))) {
+      if (t.length >= 4) anchored = true;
+      continue;
+    }
+    const e = Math.min(...words.map((w) => soundsLike(t, w, besideAnother)));
+    if (e === Infinity) slips.push(t);
+    else edits += e;
+  }
+  if (slips.length > 0 && !anchored) return Infinity;
+  for (const t of slips) {
+    if (!words.some((w) => vowelSlip(t, w))) return Infinity;
+    edits += 1;
+  }
+  return edits === 0 ? Infinity : edits;
+}
+
+function soundsLike(token: string, word: string, besideAnother: boolean): number {
+  if (token.length < 5 || token[0] !== word[0]) return Infinity;
+  const key = soundKey(token);
+  if (key.length < 3) return Infinity;
+  const wordKey = soundKey(word);
+  if (wordKey === key && token.length >= 7) {
+    const limit = Math.floor((2 * Math.max(token.length, word.length)) / 5);
+    const e = damerauLevenshtein(token, word, limit);
+    if (e <= limit) return e;
+  }
+  if (word.length > token.length && wordKey.startsWith(key) &&
+      (token.length >= 7 || besideAnother)) {
+    // The start of the word typed so far, give or take a letter.
+    const limit = token.length >= 7 ? 2 : 1;
+    let e = Infinity;
+    for (let n = token.length - 1; n <= token.length + 1; n++) {
+      e = Math.min(e, damerauLevenshtein(token, word.slice(0, n), limit));
+    }
+    if (e <= limit) return e;
+  }
+  return Infinity;
+}
+
+function vowelSlip(token: string, word: string): boolean {
+  if (token.length < 3 || word.length < token.length || token[0] !== word[0]) return false;
+  const start = word.slice(0, token.length);
+  return damerauLevenshtein(token, start, 1) === 1 && soundKey(token) === soundKey(start);
+}
+
+/**
+ * A word as it sounds, roughly: its first letter, then its consonants with
+ * the common English spellings of one sound made one ("ck", "c" before e/i/y,
+ * "ph", "sch", "tz", "z") and a silent "gh" dropped, doubles collapsed.
+ * "beinecke" and "binekie" are both "bnk"; "willoughbys" and "willobuys"
+ * "wlbs".
+ */
+export function soundKey(word: string): string {
+  const s = word
+    .replace(/sch/g, "sh")
+    .replace(/ck/g, "k")
+    .replace(/ph/g, "f")
+    .replace(/gh/g, "")
+    .replace(/tz/g, "z")
+    .replace(/c(?=[eiy])/g, "s")
+    .replace(/[cq]/g, "k")
+    .replace(/z/g, "s")
+    .replace(/x/g, "ks");
+  if (s.length === 0) return "";
+  return (s[0] + s.slice(1).replace(/[aeiouy]/g, "")).replace(/(.)\1+/g, "$1");
 }
 
 /**
