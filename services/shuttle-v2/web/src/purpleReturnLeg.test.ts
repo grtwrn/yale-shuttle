@@ -292,7 +292,11 @@ describe('passes travelPass leaves to the lead', () => {
 describe('the trip card counts with tripApproach', () => {
   it('at all three of its counting sites, and nothing counts on the de-duplicated list in travel order', () => {
     const src = readFileSync(new URL('./TransitMap.tsx', import.meta.url), 'utf8');
-    expect(src.match(/\btripApproach\(/g)).toHaveLength(3);
+    // Through `rideApproach`, which is `tripApproach` counted to the pass of a
+    // twice-served pickup the countdown is pinned to (stopCountPass.test.ts).
+    expect(src.match(/\brideApproach\(/g)).toHaveLength(3);
+    expect(src.match(/\brideApproach\([^;]*o\.boardStopId, o\.busBoardHops,/g)).toHaveLength(3);
+    expect(src).not.toMatch(/\btripApproach\(/);
     expect(src).not.toMatch(/anchorIndexOnList\((?:[^()]|\(\))*\btrue,?\s*\)/);
     // The map traces that approach against the sequence it was counted on.
     expect(src).toMatch(/buildStopSequencePolyline\([^;]*upCoords, seqCoords\)/);
