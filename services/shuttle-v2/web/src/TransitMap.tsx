@@ -14,7 +14,7 @@ import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
 import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
 import { liveAnchorStore } from "./eta";
-import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach } from "./liveAnchor";
+import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach, rideStopsToExit } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import {
@@ -6088,7 +6088,6 @@ const OnBusBanner: FC<{
       )
     : undefined;
 
-  let stopsRemaining: number | null = null;
   let anchorIdx = -1;
   const boardIdx = allStops.indexOf(ride.boardStopId);
   const alightIdx = allStops.indexOf(ride.alightStopId);
@@ -6096,9 +6095,6 @@ const OnBusBanner: FC<{
     anchorIdx = anchorIndexOnList(
       bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
     );
-    if (anchorIdx >= 0 && alightIdx >= 0) {
-      stopsRemaining = (alightIdx - anchorIdx + allStops.length) % allStops.length;
-    }
   }
 
   // The bus has gone PAST the rider's exit and is looping back around — but
@@ -6124,16 +6120,26 @@ const OnBusBanner: FC<{
     : null;
 
   let etaSec: number | null = null;
+  let exitArrivals: UpcomingArrival[] = [];
   if (bus) {
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
     noteShown(arr, "ride");
-    const mine = arr.find(
+    exitArrivals = arr.filter(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
     );
+    const mine = exitArrivals[0];
     if (mine) etaSec = mine.eta;
   }
+
+  // Stops to the exit in travel order, to the pass the countdown above is for
+  // (liveAnchor.ts `rideStopsToExit`). Slot arithmetic on the de-duplicated
+  // list counted Green's Building 400 -> West Haven ride 2, 3, 1, 4, 5 and
+  // fired "Get off NEXT stop!" three stops early (ridebannercount20261004).
+  const stopsRemaining = bus && cfg && anchorIdx >= 0 && alightIdx >= 0
+    ? rideStopsToExit(bus, cfg, routeStops, stopCoords, ride.alightStopId, exitArrivals, Date.now(), liveAnchorStore)
+    : null;
 
   const arriving = stopsRemaining !== null && stopsRemaining <= 2;
 

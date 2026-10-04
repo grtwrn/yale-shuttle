@@ -384,6 +384,69 @@ export function rideApproach(
 }
 
 /**
+ * THE RIDE BANNER'S COUNT: stops left to the rider's exit, the number behind
+ * "N stops", "Get off in 2 stops!", "Get off NEXT stop!" and the get-off alert.
+ * `exitArrivals` are this bus's arrivals at the exit, soonest first, the first
+ * being the ride countdown's own.
+ *
+ * The banner used to subtract slots in its de-duplicated list, which keeps the
+ * order in which upstream first names each stop. Green's runs Building 900,
+ * 800, 600, 400, 750, West Haven Train Station, while the bus drives 400, 600,
+ * 750, 800, 900, the station. So a ride from Building 400 read 2, 3, 1, 4, 5
+ * stops as it went: "Get off in 2 stops!" at the pickup, "Get off NEXT stop!"
+ * at Building 750 with three stops to go, beside a countdown that was right
+ * (ridebannercount20261004, 8 of 8 recorded rides). Purple's return leg read
+ * "Get off at the next stop" at Building 400 for LEPH / 60 College, and Pink's
+ * return past Quigley Stadium rose to 6 two stops out, the same way.
+ *
+ * On a line that comes back the way it went (its list names a stop twice:
+ * Green and Purple) the count is the countdown's own: its hops to the exit,
+ * every call of the ring. Both passes of a West Campus stop are calls, and so
+ * is West Haven Train Station's second, which the repair adds (Green on the
+ * way out, Purple on the way back) and the trip card does not list. Counted
+ * the card's way, Purple's return read "Get off NEXT stop!" at Building 900
+ * for LEPH / 60 College with the station still to come; counted from the
+ * card's anchor, whose pass can run ahead, Green read "Get off in 2 stops!"
+ * standing at Building 600 for the station, four out. The countdown's hops
+ * were right on both. A bus the feed has standing at the exit while the
+ * countdown is still closing on it has arrived: "NEXT stop!" stayed up for a
+ * poll or two at Building 400 (rideApproach's `observedAtStop`, which every
+ * other line already gets).
+ *
+ * Every other line counts as the trip card does ({@link rideApproach}),
+ * which on a list that names each stop once is the old count in travel order.
+ *
+ * Null when there is nothing to answer from.
+ */
+export function rideStopsToExit(
+  bus: AnchorBus & { bus_name: string; at_stop_id?: number | null; stationary?: boolean },
+  cfg: RouteListConfig,
+  routeStops: Record<string, number[]>,
+  stopCoords: Record<number, LatLon>,
+  alightStopId: number,
+  exitArrivals: readonly { stopsAhead: number; stopId: number }[],
+  now: number,
+  store?: AnchorStore | undefined,
+): number | null {
+  const hops = exitArrivals.map((a): [number, number] => [a.stopsAhead, a.stopId]);
+  const seq = mergedRouteStops(cfg, routeStops);
+  const pinned = hops[0]?.[0];
+  if (new Set(seq).size !== seq.length && pinned !== undefined && Number.isInteger(pinned) && pinned >= 0) {
+    // One hop out, at the exit's kerb: the pass the countdown is for (a stop's
+    // two passes are never one hop apart).
+    if (pinned === 1 && observedAtStop(bus, alightStopId, stopCoords)) return 0;
+    // At an exit the list names once, the bus is there, as on the ride page
+    // (rideArrival.ts `isUnambiguousRideArrival`), even once the countdown has
+    // moved on to the next call there, a lap on.
+    const idx = anchorIndexOnList(bus, cfg, routeStops, stopCoords, seq, now, store);
+    if (idx >= 0 && seq[idx] === alightStopId && seq.indexOf(alightStopId) === seq.lastIndexOf(alightStopId)) return 0;
+    return pinned;
+  }
+  const approach = rideApproach(bus, cfg, routeStops, stopCoords, alightStopId, hops.length ? hops : undefined, now, store);
+  return approach ? approach.length : null;
+}
+
+/**
  * WHICH STOP IS THIS BUS STANDING AT, AND FOR HOW LONG — one answer, shared.
  *
  * The price has to decide this to bill the residual stand, and the SCREEN has
