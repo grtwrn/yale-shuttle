@@ -199,6 +199,10 @@ export const LEAD_SWITCH_MASS = 0.8;
 export const LEAD_FOLLOW_LEGS = 2;
 /** A lead held against a posterior behind it for this long is released (anchorGate.ts ANCHOR_MAX_HOLD_MS). */
 export const LEAD_MAX_HOLD_MS = 300_000;
+/** A lead disproven only by the stray model is priced for this long after its leg last carried mass (`leadOffItsLine`). */
+export const LEAD_OFF_LINE_MAX_MS = 180_000;
+/** ... and only while the bus has closed this far on the lead's next stop since then. */
+export const LEAD_OFF_LINE_CLOSING_M = 25;
 /** A bus is called standing on init when the server clock is at least this old. */
 const STANDING_MIN_S = 15;
 /** Shape of the gamma over cells advanced per poll (CV 0.58). */
@@ -261,6 +265,8 @@ export interface Belief {
    * checkpoint written before it existed, which keeps master's pricing.
    */
   leadMassAt: number;
+  /** The fix at `leadMassAt` (absent on an older checkpoint, like it). */
+  leadMassFix?: LatLon | null | undefined;
   /** True when this step saw a fresh fix. */
   fresh: boolean;
   /** Per cell: the anchor leg of standing mass (`anchorLeg(.., true)`), cached once per step. */
@@ -519,7 +525,7 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
     fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: since ?? now,
     rested: standing, restStop: -1, restApproach: false, restMask,
     leftStop: -1, leftSince: 0, leftAt: 0,
-    serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, leadMassAt: now, fresh: true,
+    serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, leadMassAt: now, leadMassFix: { lat: bus.lat, lon: bus.lon }, fresh: true,
     standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
   };
   applyLastStop(b, ring, bus, stops);
@@ -720,24 +726,44 @@ function lastStopReading(b: Belief, ring: Ring, best: number): "confirms" | "con
  *    to the terminal. The posterior saw that, and keeps the number;
  *  - and within the stray band the weight was derived for
  *    (`OFF_ROUTE_BAND_M` / 2). Beyond it the bus has left the route;
- *  - for no longer than the lead itself holds against a posterior behind it
- *    (`LEAD_MAX_HOLD_MS`) since its leg last carried mass. A far jump the
+ *  - the bus is driving the lead's way: since the lead's leg last carried
+ *    mass it has closed `LEAD_OFF_LINE_CLOSING_M` on the lead's next stop;
+ *  - for no longer than `LEAD_OFF_LINE_MAX_MS` since then. A far jump the
  *    feed contradicts is held with no timer, and a bus that went off duty
  *    with its feed frozen sat there for an hour.
  *
- * Measured on 7 archived days, every route (962,888 bus-polls): 19,327 have
- * the lead's leg under the floor. The next stop's row changes on 2,921 of
- * them. Against the recorded arrival, 2,393 get more than 30 s closer and 319
- * further away. Purple's College St pass is 1,484 closer and 65 further. The
- * misses that remain are wrong LEADS, which this rule cannot see: Green's spur
- * fold, a loop back to Purple's terminal, a bus leaving service with its feed
- * frozen. While the lead holds under 0.8 the band is still the full mixture,
+ * And the feed only counts where it can tell the legs apart (review of #361).
+ * On an out-and-back neither distance nor `last_stop_id` separates the
+ * branches. A stale lead on the inbound leg past a stop the feed names
+ * ("confirmed") quoted the stop the bus was reaching a lap away: Green #325
+ * at Building 750, 2026-09-29 15:04Z, and Purple #321 at Building 400,
+ * 2026-09-27 21:15Z. So:
+ *  - a top leg that ENDS at the feed's last stop is the bus reaching it, not
+ *    a contradiction (Green 23 -> 24, last stop 24);
+ *  - a stop served in both directions vouches for neither (Purple 23).
+ * The closing test stops the rest: Green's stale lead points at West Haven
+ * while the bus drives away from it, back into the spur.
+ *
+ * Measured on 7 archived days, every route (962,888 bus-polls). The rule
+ * changes 12,967 rows, every stop's row and not only the stops ahead of the
+ * lead. Against the recorded arrival, 11,405 are more than 30 s closer and
+ * 1,237 further away. Episodes where one side is within 2 min and the other
+ * more than 10 min off: 1,227 fixed and 130 introduced. Green: no row
+ * changes. 103 of the 130 are LEPH / 60 College on Purple's College St pass.
+ * The bus drives past that pole (stop_visits mostly "passed") on its way to
+ * 100 Church Street South, and the row keeps the lap master showed before and
+ * after the pass. Most of the rest also keep master's number from before the
+ * flip. While the lead holds under 0.8 the band is still the full mixture,
  * so the alternative stays inside "6-23".
  */
 function leadOffItsLine(b: Belief, ring: Ring, top: number): boolean {
-  if (top === b.lead || b.lastFix === null) return false;
-  if (!(b.seenAt - b.leadMassAt <= LEAD_MAX_HOLD_MS)) return false;
+  if (top === b.lead || b.lastFix === null || !b.leadMassFix) return false;
+  if (!(b.seenAt - b.leadMassAt <= LEAD_OFF_LINE_MAX_MS)) return false;
   if (lastStopReading(b, ring, b.lead) !== "confirms" || lastStopReading(b, ring, top) !== "contradicts") return false;
+  if (ring.stops[(top + 1) % ring.N] === b.lastStopId) return false;
+  if (ring.stops.filter(s => s === b.lastStopId).length > 1) return false;
+  const next = stopPoint(ring, (b.lead + 1) % ring.N);
+  if (!(haversineMeters(b.lastFix, next) < haversineMeters(b.leadMassFix, next) - LEAD_OFF_LINE_CLOSING_M)) return false;
   const d = distancesTo(ring, b.lastFix);
   let near = Infinity;
   for (let c = 0; c < ring.C; c++) if (ring.leg[c] === b.lead && d[c]! < near) near = d[c]!;
@@ -953,7 +979,7 @@ export function stepBelief(
     leftAt: moved && prev.restStop >= 0 && !prev.restApproach ? now : prev.leftAt,
     restMask: moved || closedIn ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
-    lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, leadMassAt: prev.leadMassAt, fresh,
+    lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, leadMassAt: prev.leadMassAt, leadMassFix: prev.leadMassFix, fresh,
     standLeg: moved || closedIn ? new Int32Array(C) : prev.standLeg,
     zoneKey: moved || closedIn ? new Int32Array(C) : prev.zoneKey,
   };
@@ -980,7 +1006,7 @@ export function stepBelief(
     cacheZones(b, ring);
   }
   b.lead = leadLeg(b, ring, prev.lead, now, b);
-  if (leadCarries(b, ring)) b.leadMassAt = now;
+  if (leadCarries(b, ring)) { b.leadMassAt = now; b.leadMassFix = b.lastFix; }
   return b;
 }
 

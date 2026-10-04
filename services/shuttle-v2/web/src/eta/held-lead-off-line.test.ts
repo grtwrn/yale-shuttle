@@ -20,6 +20,8 @@ import { anchorKeyFor } from '../liveAnchor';
 import type { BusData } from '../map-data';
 import { mergedRouteStops, ROUTE_LISTS } from '../routes';
 import fx from '../__fixtures__/purple-college-st-hold.json';
+import greenFold from '../__fixtures__/green-fold-stale-lead.json';
+import purpleFold from '../__fixtures__/purple-fold-stale-lead.json';
 import { ringForBus, type AnchorStore } from './index';
 import { situations, type Belief } from './filter';
 import { distancesTo } from './ring';
@@ -103,18 +105,76 @@ describe('purplehold20261003: #330 down College St, 300 George St -> 100 Church 
     expect(onLead({ ...b, lastStopId: 0 })).toBe(false);
     expect(onLead({ ...b, lastStopId: 72 })).toBe(false);
 
-    // No longer than the lead's own hold, and not on a belief restored from a
+    // A top leg that ends at the feed's last stop is the bus reaching it:
+    // the feed does not contradict the mass there (review of #361).
+    expect(ring.stops[(ring.stops.indexOf(72) + 1) % ring.N]).toBe(10);
+    expect(onLead({ ...b, lastStopId: 10 })).toBe(false);
+
+    // Only while the bus closes on the lead's next stop: a fix no nearer to
+    // 100 Church Street South than where the lead last had mass is not it.
+    expect(onLead({ ...b, leadMassFix: b.lastFix })).toBe(false);
+
+    // For at most LEAD_OFF_LINE_MAX_MS, and not on a belief restored from a
     // checkpoint that predates the clock.
-    expect(onLead({ ...b, leadMassAt: b.seenAt - 300_000 })).toBe(true);
-    expect(onLead({ ...b, leadMassAt: b.seenAt - 301_000 })).toBe(false);
+    expect(onLead({ ...b, leadMassAt: b.seenAt - 180_000 })).toBe(true);
+    expect(onLead({ ...b, leadMassAt: b.seenAt - 181_000 })).toBe(false);
     const restored: Partial<Belief> = { ...b };
     delete restored.leadMassAt;
     expect(onLead(restored as Belief)).toBe(false);
+    const older: Partial<Belief> = { ...b };
+    delete older.leadMassFix;
+    expect(onLead(older as Belief)).toBe(false);
   });
 
   it('a feed that cannot place the bus keeps the posterior\'s answer', () => {
     const { rows } = replay((bus, at) => at >= '2026-10-03T15:32:20' ? { ...bus, last_stop_id: 0 } : bus);
     const r = rows.find(x => x.at.startsWith('2026-10-03T15:33:43'))!;
     expect(r.eta).toBeGreaterThan(600);
+  });
+});
+
+/**
+ * THE FEED ONLY VOUCHES WHERE IT CAN TELL THE LEGS APART (review of #361).
+ *
+ * The West Campus out-and-back serves the same stops both ways, so neither
+ * distance nor last_stop_id separates the branches. In both cases a stale
+ * lead sat on the inbound leg just past the feed's last stop while the bus
+ * drove the outbound one. #361's first rule kept that lead and quoted the
+ * stop the bus was reaching a lap away (~56-60 min). Master's number was
+ * right, and stays. Both fixtures are the archive's raw_positions run through
+ * the server's detector, as the server serves them.
+ */
+describe('review of #361: a stale lead on the West Campus fold is not revived', () => {
+  type Fx = { static: unknown; arrivals: { stopId: number; at: string }[]; frames: { at: string; bus: unknown }[] };
+  function rowsAt(f: Fx, label: string, bus: string, stop: number) {
+    const st = f.static as unknown as typeof S;
+    registerRoutePaths(st.route_paths);
+    applyModelParams(st.model_params);
+    const store: AnchorStore = new Map();
+    const rows: { at: string; eta: number; stopsAhead: number }[] = [];
+    for (const fr of f.frames) {
+      const all = computeUpcomingArrivals([stop], [fr.bus as unknown as BusData], st.routes, st.stop_coords, st.segments, Date.parse(fr.at), st.dwells, store, true);
+      const r = all.filter(a => a.routeLabel === label && a.busName === bus && a.stopId === stop).sort((a, b) => a.eta - b.eta)[0];
+      if (r) rows.push({ at: fr.at, eta: r.eta, stopsAhead: r.stopsAhead });
+    }
+    return rows;
+  }
+  const arrival = (f: Fx, stop: number, after: string) => Date.parse(f.arrivals.find(a => a.stopId === stop && a.at >= after)!.at);
+
+  it('Green #325, 2026-09-29: Building 750 is the next stop, not a lap away', () => {
+    const at24 = arrival(greenFold, 24, '2026-09-29T15:04');
+    const run = rowsAt(greenFold, 'Green', '325', 24).filter(r => between(r, '2026-09-29T15:03:58', '2026-09-29T15:04:20'));
+    expect(run.length).toBeGreaterThanOrEqual(4);
+    for (const r of run) {
+      expect(r.stopsAhead).toBe(1);
+      expect(r.eta).toBeLessThanOrEqual((at24 - Date.parse(r.at)) / 1000 + 120);
+    }
+  });
+
+  it('Purple #321, 2026-09-27: Building 400 is the next stop, not a lap away', () => {
+    const at22 = arrival(purpleFold, 22, '2026-09-27T21:15');
+    const run = rowsAt(purpleFold, 'Purple', '321', 22).filter(r => between(r, '2026-09-27T21:15:38', '2026-09-27T21:15:46'));
+    expect(run.length).toBeGreaterThanOrEqual(2);
+    for (const r of run) expect(r.eta).toBeLessThanOrEqual((at22 - Date.parse(r.at)) / 1000 + 120);
   });
 });
