@@ -52,13 +52,36 @@ export function geocode(
     }));
   }
 
+  const hits = search(network, query, landmarks);
+  if (hits.length > 0) return hits;
+  // Nothing matched as typed: try the other readings of what the rider may
+  // have meant, most literal first, and answer with the first that finds
+  // anything. Only ever when the query found NOTHING, so no answer the
+  // matcher already gives can move.
+  for (const alt of fallbackQueries(rawQuery)) {
+    const q = parseQuery(alt);
+    if (q === null) continue;
+    const found = search(network, q, landmarks);
+    if (found.length > 0) return found;
+  }
+  return [];
+}
+
+function search(
+  network: TransitNetwork,
+  query: Query,
+  landmarks: readonly Landmark[],
+): GeocodeHit[] {
   const out: GeocodeHit[] = [];
   // A street address is an alias too ("85 howe", "1000 chapel"), but only
   // when the rider is typing an address: without a number in the query, the
   // street word alone would pull every cafe on Chapel Street into a search
   // for the Chapel stops (review finding, 2026-09-02).
   // A bare number is a stop ("800" is Building 800), not an address.
-  const queryHasNumber = /\d/.test(query.text) && query.tokens.length >= 2;
+  // Either reading may carry the address: "333cedar" is one token collapsed
+  // and "333 cedar" spaced.
+  const queryHasNumber = [query, query.spaced].some((r) =>
+    r !== undefined && /\d/.test(r.text) && r.tokens.length >= 2);
   for (const l of landmarks) {
     // A landmark answers to its label AND every alias, and the best of them
     // counts: "kbt" must rank Kline Tower exactly as "kline tower" does.
@@ -142,6 +165,31 @@ export function geocode(
   return deduped.slice(0, MAX_RESULTS);
 }
 
+/**
+ * The readings {@link geocode} tries when a query found nothing (2026-10-03
+ * search-gap audit: rider searches that returned nothing for places the app
+ * has):
+ *
+ *  - invisible characters as word breaks, which is how they were read before
+ *    they were deleted, so "union\u200bstation" (a zero-width space between the
+ *    words) still finds the station;
+ *  - a word typed in pieces put back together: "e l m", "union s ta", "old ca
+ *    m", "trader j o". Runs of one- and two-letter fragments are joined; a
+ *    fragment is never glued onto a whole word, because the fuzzy tier then
+ *    reads "td college" as "tdcollege", two edits from every "college";
+ *  - the street address inside a longer query: "corner grove 258 church st
+ *    new haven ct 06510" is the place at 258 Church St.
+ */
+function fallbackQueries(raw: string): string[] {
+  const typed = normalizeName(raw);
+  const out: string[] = [];
+  if (/\p{Cf}/u.test(raw)) out.push(raw.replace(/\p{Cf}/gu, " "));
+  out.push(typed.replace(/\b([a-z]{1,2}) (?=[a-z]{1,2}\b)/g, "$1"));
+  const address = /(?:^| )(\d{1,5} [a-z]+)(?: |$)/.exec(typed);
+  if (address) out.push(address[1]!);
+  return [...new Set(out)].filter((q) => normalizeName(q) !== typed);
+}
+
 // -- Normalisation ------------------------------------------------------------
 
 /**
@@ -158,9 +206,26 @@ export function normalizeName(s: string): string {
  * with dots need it — "t.d. college" is "t d college", whose tokens prefix
  * "Timothy Dwight College"; collapsed to "td college" it matched nothing, as
  * the "td" alias has no "college" (review of PR #341).
+ *
+ * It also parts a house number from the word it was typed against:
+ * "333cedar" is "333 cedar" ({@link splitGluedNumbers}).
  */
 function spacedName(s: string): string {
   return normalize(s, false);
+}
+
+/**
+ * A number glued to a word of three or more letters, either way round, gets
+ * its space back: "272elm", "elm272", "333cedar", "lot16" found nothing
+ * while "272 elm" and "333 cedar" worked (2026-10-03 search-gap audit).
+ * Three letters, so a name like "M2" and an ordinal like "4th" or "21st"
+ * stay whole; whole words only, so "one6three" does too. `v1compat.ts`
+ * sends the external providers the same reading.
+ */
+export function splitGluedNumbers(s: string): string {
+  return s
+    .replace(/\b(\d{1,5})([a-z]{3,})\b/gi, "$1 $2")
+    .replace(/\b([a-z]{3,})(\d{1,5})\b/gi, "$1 $2");
 }
 
 function normalize(s: string, collapse: boolean): string {
@@ -171,6 +236,12 @@ function normalize(s: string, collapse: boolean): string {
     // nothing (report #45), and the operator hit the same wall with
     // "elenas" on 2026-09-02.
     .replace(/['‘’]/g, "")
+    // So are invisible formatting characters (zero-width space and joiners,
+    // word joiner, BOM, soft hyphen): "u\u200bnion" found nothing while
+    // "union" found the station, because the space they became split the
+    // word in two (2026-10-03 search-gap audit). A rider cannot see them, so
+    // they cannot mean anything.
+    .replace(/\p{Cf}/gu, "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
   if (collapse) {
@@ -181,6 +252,8 @@ function normalize(s: string, collapse: boolean): string {
     // letters, so a spaced "Stop & Shop" and a long "Artist&Craftsman"
     // still read as "and" (2026-09-30 search-gap audit).
     t = t.replace(/(?<![a-z])([a-z]{1,3})[.&](?=[a-z]{1,3}(?![a-z]))/g, "$1");
+  } else {
+    t = splitGluedNumbers(t);
   }
   return (
     t
@@ -304,12 +377,37 @@ function scoreForm(q: Query, c: Candidate): number {
   if (forms.some((f) => c.text === f)) return 1;
   if (forms.some((f) => c.text.startsWith(f))) return 0.75;
   if (forms.some((f) => c.words.some((w) => w.startsWith(f)))) return 0.5;
-  if (q.tokens.every((t) => c.words.some((w) => w.startsWith(t)))) return 0.4;
-  if (q.tokens.every((t) => c.words.some((w) => w.startsWith(t) || fuzzyWordMatch(t, w)))) {
+  if (tokensMatch(q.tokens, c.words, (t, w) => w.startsWith(t))) return 0.4;
+  if (tokensMatch(q.tokens, c.words, (t, w) => w.startsWith(t) || fuzzyWordMatch(t, w))) {
     return 0.3;
   }
   if (c.text.includes(q.text)) return 0.25;
   return 0;
+}
+
+/**
+ * Every token matches some word, in any order ("museum peabody") — unless
+ * the query has a one-letter token. A lone letter is an initial, and
+ * initials come in the order of the words they stand for: "t d college" is
+ * Timothy Dwight College and "j e edwards" Jonathan Edwards, but "ha m d"
+ * is not "Dwight Hall & Memorial Chapel", whose words merely begin with
+ * those letters in another order (2026-10-03 search-gap audit).
+ */
+function tokensMatch(
+  tokens: readonly string[],
+  words: readonly string[],
+  match: (token: string, word: string) => boolean,
+): boolean {
+  if (!tokens.some((t) => /^[a-z]$/.test(t))) {
+    return tokens.every((t) => words.some((w) => match(t, w)));
+  }
+  let from = 0;
+  for (const t of tokens) {
+    const at = words.findIndex((w, i) => i >= from && match(t, w));
+    if (at === -1) return false;
+    from = at;
+  }
+  return true;
 }
 
 /**

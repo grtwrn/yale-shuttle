@@ -587,6 +587,43 @@ describe("geocodeV1 merge", () => {
     });
   });
 
+  /**
+   * 2026-10-03 search-gap audit: "272elm" and "elm272" found nothing while
+   * "272 elm" found the house — the providers only resolve the spaced form —
+   * and a zero-width space inside a word reached them as typed.
+   */
+  describe("the query the providers are asked", () => {
+    const liveNetwork = TransitNetwork.build(liveStops as Stop[], []);
+    // Photon's real answer to "272 elm", read off production on 2026-10-04.
+    const house: GeocodeV1Hit = {
+      display_name: "272 Elm Street, New Haven", lat: 41.310733, lon: -72.9308166, type: "house", class: "osm",
+    };
+    const recording = (hits: GeocodeV1Hit[]) => {
+      const asked: string[] = [];
+      return { asked, lookup: async (q: string) => { asked.push(q); return hits; } };
+    };
+
+    it.each([["272elm", "272 elm"], ["elm272", "elm 272"], ["272Elm St", "272 Elm St"]])(
+      "parts the house number in %o from its street", async (q, sent) => {
+        const ext = recording([house]);
+        const results = await geocodeV1(liveNetwork, q, ext);
+        expect(ext.asked).toEqual([sent]);
+        expect(results.map((r) => r.display_name)).toContain("272 Elm Street, New Haven");
+      });
+
+    it("drops invisible characters", async () => {
+      const ext = recording([]);
+      await geocodeV1(liveNetwork, "u\u200bnion st\u00adation", ext);
+      expect(ext.asked).toEqual(["union station"]);
+    });
+
+    it.each(["m2 lounge", "4th street", "one6three"])("leaves %o as typed", async (q) => {
+      const ext = recording([]);
+      await geocodeV1(liveNetwork, q, ext);
+      expect(ext.asked).toEqual([q]);
+    });
+  });
+
   it("skips the external lookup for queries under three characters", async () => {
     let asked = 0;
     await geocodeV1(network, "so", { lookup: async () => { asked++; return []; } });
