@@ -23,6 +23,13 @@
  *    Building 800 to Building 400 (`__fixtures__/green-building-800-outbound.json`).
  *    The countdown is for the return pass; the card read 1, then 0 all the
  *    way out, counted to the outbound pass the bus was driving through.
+ *  - Purple, Building 900, while #119 (2026-10-01) and #330 (2026-10-03) come
+ *    back up the spur from Building 400 (`__fixtures__/purple-building-900-passes.json`).
+ *    Its passes are half a lap apart, so the bus's arrivals at the pickup fit
+ *    two ring positions; with the estimator's origin a stop behind the anchor
+ *    the card counted to the other pass: "3 stops away" for Building 800
+ *    beside a 58 min countdown 12 stops out, "10" for downtown with the
+ *    return pass 4 out (stopcountb90020261004, from the review of #364).
  * Every other pickup, and every Pink pickup, reads exactly as before.
  */
 import { afterEach, describe, expect, it } from 'vitest';
@@ -37,6 +44,7 @@ import type { BusData } from './map-data';
 import { boardHops, rideBoardArrivals } from './planner';
 import { mergedRouteStops, ROUTE_LISTS, type RouteListConfig } from './routes';
 import purpleFx from './__fixtures__/purple-return-leg.json';
+import purple900Fx from './__fixtures__/purple-building-900-passes.json';
 import greenFx from './__fixtures__/green-building-800-outbound.json';
 import greenRoute from './__fixtures__/green-wrong-bus-board.json';
 import pinkFx from './__fixtures__/pink-twin-passes.json';
@@ -57,6 +65,7 @@ const coordsOf = (raw: Record<string, LatLon>) => {
 };
 const PF = purpleFx as unknown as Omit<Line, 'cfg' | 'stopCoords'> & { stopCoords: Record<string, LatLon> };
 const PURPLE: Line = { ...PF, cfg: ROUTE_LISTS.find(c => c.label === 'Purple')!, stopCoords: coordsOf(PF.stopCoords) };
+const PURPLE_900: Line = { ...PURPLE, polls: (purple900Fx as unknown as Pick<Line, 'polls'>).polls };
 const GR = greenRoute as unknown as Pick<Line, 'routeStops' | 'routePath' | 'segments' | 'dwells'> & { stopCoords: Record<string, LatLon> };
 const GF = greenFx as unknown as Pick<Line, 'model_params' | 'polls'>;
 const GREEN: Line = { ...GR, ...GF, cfg: ROUTE_LISTS.find(c => c.label === 'Green')!, stopCoords: coordsOf(GR.stopCoords) };
@@ -97,7 +106,7 @@ function replay(line: Line, rides: readonly (readonly [number, number])[], windo
       for (const [board, alight] of rides) {
         const pinned = rideBoardArrivals(visits, board, alight).filter(a => a.busName === name).sort((x, y) => x.eta - y.eta)[0];
         const was = observedAtStop(b, board, line.stopCoords) ? [] : tripApproach(b, line.cfg, line.routeStops, line.stopCoords, board, now, store);
-        const is = rideApproach(b, line.cfg, line.routeStops, line.stopCoords, board, pinned && boardHops(pinned, visits, board), now, store);
+        const is = rideApproach(b, line.cfg, line.routeStops, line.stopCoords, board, pinned && boardHops(pinned, visits, board, alight), now, store);
         out.push({ at: p.at, window: p.window, bus: b.bus_name, board, alight, pinned, before: was?.length ?? null, after: is?.length ?? null });
       }
     }
@@ -165,6 +174,46 @@ describe('Green, Building 800 to Orange / Pearl (N) (2026-10-03, #321)', () => {
     const tail = reads.filter(r => r.at > '2026-10-03T10:01:00Z');
     expect(tail.length).toBe(9);
     for (const r of tail) expect({ at: r.at, before: r.before, after: r.after }).toEqual({ at: r.at, before: 0, after: 5 });
+  });
+});
+
+describe('Purple, Building 900, back up the spur (2026-10-01 #119, 2026-10-03 #330)', () => {
+  // Building 900 is ring positions 5 and 13 of 16, so arrivals there h and
+  // h + 8 hops out fit origins 8 apart. The arrivals at the destination pick one.
+  const lap = (h: number) => h % 16 || (h ? 16 : 0);
+
+  it('#119: counted to the pass the countdown is for, both ways', () => {
+    const reads = ride(PURPLE_900, 26, 25, [0], '#119').filter(r => r.pinned);
+    expect(reads.length).toBe(41);
+    // The review's example: for Building 800 the countdown is for the
+    // outbound pass after the downtown loop, 58 min and 12 stops out; the
+    // card read "3 stops away", counted to the return pass just ahead.
+    const ex = reads.find(r => r.at === '2026-10-01T14:53:42.272Z')!;
+    expect({ pinned: ex.pinned!.stopsAhead, min: Math.round(ex.pinned!.eta / 60), after: ex.after })
+      .toEqual({ pinned: 12, min: 58, after: 10 });
+    expect(steps(reads.map(r => r.after))).toEqual([13, 12, 11, 10, 9]);
+    // Downtown, the same poll: the return pass 4 out, which the card counted
+    // a lap on ("10 stops away").
+    const down = ride(PURPLE_900, 26, 9, [0], '#119').find(r => r.at === ex.at)!;
+    expect({ pinned: down.pinned!.stopsAhead, after: down.after }).toEqual({ pinned: 4, after: 3 });
+  });
+
+  it('#330: for Building 800, never the return pass', () => {
+    const reads = ride(PURPLE_900, 26, 25, [1], '#330').filter(r => r.pinned);
+    expect(reads.length).toBe(65);
+    expect(steps(reads.map(r => r.after))).toEqual([14, 13, 12, 11, 10, 11]);
+  });
+
+  it('every Purple bus, every destination, both windows: on the countdown\'s pass', () => {
+    const others = [...new Set(mergedRouteStops(PURPLE.cfg, PURPLE.routeStops))].filter(s => s !== 26);
+    const reads = replay(PURPLE_900, others.map(d => [26, d] as const)).filter(r => r.pinned);
+    expect(reads.length).toBe(2530);
+    // Give or take the stop the anchor runs ahead of the estimator and the
+    // return call at the station, which the card does not list.
+    for (const r of reads) {
+      expect({ at: r.at, bus: r.bus, alight: r.alight, near: Math.abs(r.after! - lap(r.pinned!.stopsAhead)) <= 2 })
+        .toEqual({ at: r.at, bus: r.bus, alight: r.alight, near: true });
+    }
   });
 });
 

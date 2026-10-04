@@ -64,11 +64,11 @@ export type TripOption = {
   busHighSec?: number;
   /**
    * The same pinned arrival's hops from the bus (arrivals.ts `UpcomingArrival.
-   * stopsAhead`), then those of that bus's other arrivals at the board stop:
-   * which pass of a twice-served pickup the countdown is for, so the card's
-   * "N stops away" counts to that pass (liveAnchor.ts `rideApproach`).
+   * stopsAhead`) and stop, then those of that bus's other arrivals at the board
+   * and alight stops: which pass of a twice-served pickup the countdown is for,
+   * so the card's "N stops away" counts to that pass (liveAnchor.ts `rideApproach`).
    */
-  busBoardHops?: number[];
+  busBoardHops?: [hops: number, stopId: number][];
   computedAtMs?: number;
   /** Destination arrival for the catchable bus, including the final walk. */
   journeyArrival?: JourneyArrival;
@@ -325,13 +325,15 @@ export function rideBoardArrivals(arrivals: readonly UpcomingArrival[], boardSto
   return arrivals.filter(a => a.stopId === boardStopId && !boardingVisitConflict(a, arrivals, alightStopId));
 }
 
-/** The pinned arrival's hops from the bus, then those of every arrival that
- * bus has at the board stop: `TripOption.busBoardHops`, which pass of a
- * twice-served pickup the countdown is for (liveAnchor.ts `rideApproach`). */
-export function boardHops(pinned: UpcomingArrival, arrivals: readonly UpcomingArrival[], boardStopId: number): number[] {
-  return [pinned.stopsAhead, ...arrivals
-    .filter(a => a.stopId === boardStopId && a.busName === pinned.busName && a.routeLabel === pinned.routeLabel)
-    .map(a => a.stopsAhead)];
+/** The pinned arrival's hops from the bus and stop, then those of every
+ * arrival that bus has at the board and alight stops: `TripOption.busBoardHops`,
+ * which pass of a twice-served pickup the countdown is for (liveAnchor.ts
+ * `rideApproach`). The board stop's alone cannot tell Purple's two Building
+ * 900 passes apart (stopcountb90020261004). */
+export function boardHops(pinned: UpcomingArrival, arrivals: readonly UpcomingArrival[], boardStopId: number, alightStopId: number): [number, number][] {
+  return [[pinned.stopsAhead, pinned.stopId], ...arrivals
+    .filter(a => (a.stopId === boardStopId || a.stopId === alightStopId) && a.busName === pinned.busName && a.routeLabel === pinned.routeLabel)
+    .map((a): [number, number] => [a.stopsAhead, a.stopId])];
 }
 
 /** A raw at-stop flag cannot restore a pickup visit rejected above. No ETA
