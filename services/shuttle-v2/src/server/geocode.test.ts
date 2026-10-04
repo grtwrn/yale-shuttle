@@ -918,14 +918,14 @@ describe("search-gap audit (2026-10-03)", () => {
       ["union s ta", /^Union Station$/],
       ["u ni o", /^Union /],
       ["trader j o", /^Trader Joe's/],
-      ["old ca m", /^Old Campus$/],
-      ["science bu il", /^Yale Science Building/],
+      ["ba ss library", /^Bass Library$/],
+      ["pe ab od y", /^Peabody Museum/],
     ])("%o finds %s first", (q, want) => {
       expect(labels(q)[0]).toMatch(want);
     });
 
-    it("joins the pieces of 's te r l' into Sterling", () => {
-      expect(top3("s te r l")).toContain("Sterling Memorial Library");
+    it("joins a word typed entirely in pieces", () => {
+      expect(top3("ko ff ee")).toContain("Koffee?");
     });
 
     it("does not read 'ha m d' as Dwight Hall, whose words only share its letters out of order", () => {

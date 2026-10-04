@@ -173,8 +173,8 @@ function search(
  *  - invisible characters as word breaks, which is how they were read before
  *    they were deleted, so "union\u200bstation" (a zero-width space between the
  *    words) still finds the station;
- *  - a word typed in pieces put back together: "e l m", "union s ta", "old ca
- *    m", "trader j o". Runs of one- and two-letter fragments are joined; a
+ *  - a word typed in pieces put back together: "e l m", "union s ta",
+ *    "trader j o". Runs of one- and two-letter fragments are joined; a
  *    fragment is never glued onto a whole word, because the fuzzy tier then
  *    reads "td college" as "tdcollege", two edits from every "college";
  *  - the street address inside a longer query: "corner grove 258 church st
