@@ -46,6 +46,17 @@
  *    a different berth or in a shuffle, is unknown and counts neither way.
  *    150 m is the detector's own departure distance, which no parked bus
  *    reaches.
+ *  - STILL IN SERVICE (stopskipsdeadhead20261003). A bus leaving service by
+ *    driving back along its own line still anchors each stop it goes by, in
+ *    order: Green #325 on 09-10 went by four stops 171–609 m out and left the
+ *    feed 7 minutes later. So a skip stands once the same bus serves a later
+ *    stop of the line within {@link BACK_IN_SERVICE_MS}, and until then counts
+ *    only while the feed still has the bus. Waiting for that later stop
+ *    instead would hold back every skip at a detour, where the next stop is
+ *    skipped too; this way no real skip shows any later. Over the 30 days it
+ *    drops 11 of the 13 skips by buses leaving service, once they are gone.
+ *    The other two buses took a break after a real skip and served the line
+ *    again within the hour.
  *
  * Replayed over the same 30 days, with the rule judged 5 minutes before each
  * pass, the notice would have been up for 614 passes, and that bus really
@@ -72,6 +83,10 @@ export const SKIPPED_M = DEPART_FAR_M;
 export const LOOKBACK_MS = 120 * 60_000;
 /** The previous and next visit must be this close in time, or the pass is not one forward run along the line. */
 export const MAX_HOP_MS = 20 * 60_000;
+/** A skip stands once the same bus serves a later stop of the line within this long ... */
+export const BACK_IN_SERVICE_MS = 60 * 60_000;
+/** ... and until then only while the feed has a position of the bus this recent. */
+export const IN_FEED_MS = 120_000;
 /** A longer hole in the positions makes the pass unknown. */
 export const MAX_FIX_GAP_MS = 60_000;
 /** Positions this long after the next visit opened still count toward serving. */
@@ -123,13 +138,15 @@ export type StopSkipsWire = Record<string, Record<string, StopSkip>>;
 const mod = (a: number, n: number): number => ((a % n) + n) % n;
 
 /**
- * Judge every forward pass in `visits` (any order). `track` returns one bus's
- * raw positions in `[from, to]`, oldest first.
+ * Judge every forward pass in `visits` (any order) as of `nowMs` (by default
+ * with hindsight). `track` returns one bus's raw positions in `[from, to]`,
+ * oldest first.
  */
 export function classifyPasses(
   visits: readonly VisitRow[],
   net: TransitNetwork,
   track: (busId: number, from: number, to: number) => readonly Fix[],
+  nowMs = Infinity,
 ): StopPass[] {
   const byBus = new Map<string, VisitRow[]>();
   for (const v of visits) {
@@ -158,10 +175,28 @@ export function classifyPasses(
       if (!q) continue;
       const ahead = mod(q.stopIndex - v.stopIndex, n);
       if (ahead < 1 || ahead > 2 || q.anchoredAt - v.anchoredAt > MAX_HOP_MS) continue;
-      out.push({ routeId: v.routeId, stopId: v.stopId, at: v.anchoredAt, verdict: judge(v, p, q, stop, track) });
+      const verdict = judge(v, p, q, stop, track);
+      if (verdict === "skipped" && !stillInService(list, j, track, nowMs)) continue;
+      out.push({ routeId: v.routeId, stopId: v.stopId, at: v.anchoredAt, verdict });
     }
   }
   return out;
+}
+
+/**
+ * Whether the bus that skipped `list[j]` is still in service: it served a
+ * later stop of the line within {@link BACK_IN_SERVICE_MS}, or that time has
+ * not run out yet and the feed still has it.
+ */
+function stillInService(
+  list: readonly VisitRow[], j: number,
+  track: (busId: number, from: number, to: number) => readonly Fix[], nowMs: number,
+): boolean {
+  const v = list[j]!;
+  for (let k = j + 1; k < list.length && list[k]!.anchoredAt - v.anchoredAt <= BACK_IN_SERVICE_MS; k++) {
+    if (list[k]!.closestM <= SERVED_M) return true;
+  }
+  return nowMs - v.anchoredAt <= BACK_IN_SERVICE_MS && track(v.busId, nowMs - IN_FEED_MS, nowMs).length > 0;
 }
 
 function judge(
@@ -257,7 +292,7 @@ export function createStopSkips(db: Database.Database): (net: TransitNetwork, no
         WHERE bus_id = ? AND collected_at >= ? AND collected_at <= ? ORDER BY collected_at`);
       const visits = visitsStmt.all(nowMs - LOOKBACK_MS - MAX_HOP_MS, nowMs) as VisitRow[];
       const track = trackStmt;
-      const passes = classifyPasses(visits, net, (busId, from, to) => track.all(busId, from, to) as Fix[]);
+      const passes = classifyPasses(visits, net, (busId, from, to) => track.all(busId, from, to) as Fix[], nowMs);
       value = stopSkipsOf(passes, net, nowMs);
     } catch {
       value = null;
