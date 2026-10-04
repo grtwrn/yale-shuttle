@@ -1013,6 +1013,19 @@ describe("search-gap audit (2026-10-03)", () => {
       expect(labels(q)).toEqual([]);
     });
 
+    it.each([
+      "1 yale ave, new haven, ct",
+      "20 yale ave, new haven, ct 06515",
+      "100 church st, new haven, ct 06510",
+      "floor 2 of kline tower",
+    ])("doesn't send an address it only half matches somewhere else: %o", (q) => {
+      // Review of PR #362, round 2: "yale" is a stopword, so "1 yale" was
+      // read as "1" and prefixed 100 Church Street South; "100 church"
+      // prefixed that stop too, 730 m from 100 Church St. Both auto-picked
+      // on Enter instead of the providers' house.
+      expect(labels(q)).toEqual([]);
+    });
+
     it("leaves Chef Jiang first for 'jiang', across the street from Taste of Jiang Nan", () => {
       expect(labels("jiang").slice(0, 2)).toEqual(["Chef Jiang", "Taste of Jiang Nan"]);
     });

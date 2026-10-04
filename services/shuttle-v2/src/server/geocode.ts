@@ -189,7 +189,11 @@ function search(
  *    fragment is never glued onto a whole word, because the fuzzy tier then
  *    reads "td college" as "tdcollege", two edits from every "college";
  *  - the street address inside a longer query: "corner grove 258 church st
- *    new haven ct 06510" is the place at 258 Church St.
+ *    new haven ct 06510" is the place at 258 Church St. It answers only
+ *    with a place named exactly "<number> <street>": "100 church" merely
+ *    prefixes the stop 100 Church Street South, 730 m from 100 Church St,
+ *    and a stopword street ("1 yale ave") would leave a bare number that
+ *    prefixes anything starting with it (review of PR #362, round 2).
  *
  * The first is how master read the query, so any hit counts; the other two
  * are guesses and count only from {@link GUESS_MIN_SCORE} up.
@@ -202,8 +206,10 @@ function fallbackQueries(raw: string): { text: string; minScore: number }[] {
     text: typed.replace(/\b([a-z]{1,2}) (?=[a-z]{1,2}\b)/g, "$1"),
     minScore: GUESS_MIN_SCORE,
   });
-  const address = /(?:^| )(\d{1,5} [a-z]+)(?: |$)/.exec(typed);
-  if (address) out.push({ text: address[1]!, minScore: GUESS_MIN_SCORE });
+  const address = [...typed.matchAll(/(?:^| )(\d{1,5}) ([a-z]+)(?= |$)/g)]
+    .find((m) => !STOPWORDS.has(m[2]!));
+  // 0.99, not 1: one reading can tie-break an exact hit down to 0.99+.
+  if (address) out.push({ text: `${address[1]} ${address[2]}`, minScore: 0.99 });
   return out.filter(({ text }, i) =>
     normalizeName(text) !== typed && out.findIndex((o) => o.text === text) === i);
 }
