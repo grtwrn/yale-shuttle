@@ -1,9 +1,9 @@
-import { boardSelectedRide } from './boarding.mjs';
+import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {followedBusName,labeledStopId,observedAtStop,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
+import {cardBoardsBus,followedBusName,labeledStopId,observedAtStop,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -135,7 +135,8 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      // before boarding; never teleport across the city to catch a shuttle.
      if(!run.walkUntil || run.walkStopId!==run.boardStopId){run.walkStopId=run.boardStopId;run.walkUntil=now+metrics.haversineM(run.trip.origin,coord)/1.1*1000;run.walkStart=now;}
      const f=Math.min(1,(now-run.walkStart)/Math.max(1,run.walkUntil-run.walkStart));
-     await ctx.setGeolocation({latitude:run.trip.origin.lat+(coord.lat-run.trip.origin.lat)*f,longitude:run.trip.origin.lon+(coord.lon-run.trip.origin.lon)*f});
+     const at={lat:run.trip.origin.lat+(coord.lat-run.trip.origin.lat)*f,lon:run.trip.origin.lon+(coord.lon-run.trip.origin.lon)*f};
+     await ctx.setGeolocation({latitude:at.lat,longitude:at.lon});
      // Also board when the card marks the bus at the stop (BOARD🚌) and the
      // feed agrees: Red #119 stood at Division / Prospect 47 m from the pole
      // for one poll and was missed (run 1790956246494).
@@ -146,8 +147,14 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
       // waiting on only reaches the 45 min cap (wrongbusboard20261002: it
       // stored Green #331 while #122 pulled in). No ride stored: retry as
       // before; our bus stored late: it boarded.
-      try{await boardSelectedRide(page,name);}catch(e){
+      // The at-stop offer can go before its click lands; the card's "I'm on
+      // it" then stores our bus only while it is still the nearest within
+      // 100 m in the app's latest feed. Otherwise the bus left without us,
+      // and waiting on would time the next one (riderpromptmiss20261004:
+      // #317, boarded 15 min after #330 stood at the stop, ended "completed").
+      try{await boardSelectedRide(page,name,{cardBoards:async()=>cardBoardsBus(feed.buses,run.line.busRouteIds,at,name)});}catch(e){
        const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null')?.busName??null);
+       if(!stored&&e instanceof BoardingMissed){const left=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));run.excludeAccuracy=true;await event('boarding-missed',{bus:name,stop:boardLabel,observedDistanceM:distance,distanceNowM:left?metrics.haversineM(left,coord):null});await finish('boarding-missed-excluded');await status();return;}
        if(!stored)throw e;
        if(stored.replace(/^#/,'')!==name.replace(/^#/,'')){run.excludeAccuracy=true;await event('wrong-bus-boarded',{bus:name,stored,stop:boardLabel,observedDistanceM:distance});await finish('wrong-bus-boarded-excluded');await status();return;}
       }
