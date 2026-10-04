@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {attach} from './runner.mjs';
+import {haversineM} from '../canary-metrics.mjs';
 
 // Replays of recorded 2026-10-01 waiting runs through the real tick loop.
 const line={label:'Purple',busRouteIds:[10]};
@@ -24,7 +25,7 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
  const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:()=>({innerText:async()=>h.text}),
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
- const ctx={setGeolocation:async()=>{}};
+ const ctx={setGeolocation:async g=>{h.geo=g;}};
  h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,outputDir:dir});
  // The runner's own 10 s interval drives each poll; wait for it to settle.
  h.poll=async(text,buses)=>{h.text=text;
@@ -361,4 +362,88 @@ test('a bus that never comes still ends the wait at the quoted cap',async()=>{
  assert.equal(journey.waitCapMin,66);
  // The first poll past 66 min from the 11:14:10.850Z start.
  assert.ok(journey.finishedAt>'2026-10-03T12:20:10.850Z'&&journey.finishedAt<'2026-10-03T12:20:21Z',journey.finishedAt);
+});
+
+// riderpromptmiss20261004, Purple run 1791113952205: #330 stood at West Haven
+// Train Station 47 m from the pole (at_stop_id from 11:50:37Z), and the
+// 11:50:50Z poll showed "On Purple #330? Detected near your board stop". The
+// app's next feed poll had #330 leaving, the offer went with it, and "Yes, I'm
+// on it" detached under the click. Master waited out Playwright's 30 s default
+// (harness-error 11:51:20Z) and the run boarded #317 at 12:06Z as "completed".
+const promptMiss=JSON.parse(await fs.readFile(new URL('./__fixtures__/purple-330-offer-gone-2026-10-04.json',import.meta.url),'utf8'));
+const purpleFeedOf=buses=>({buses,routes:{10:promptMiss.route.stops},route_paths:{10:promptMiss.route.path},stop_names:promptMiss.route.stop_names,stop_coords:promptMiss.route.stop_coords});
+const purpleAt=rows=>rows.map(([bus_name,lat,lon,stationary,at_stop_id,last_stop_id])=>({bus_name,route_id:10,lat,lon,stationary,last_stop_id,...(at_stop_id==null?{}:{at_stop_id})}));
+const promptPoll=at=>promptMiss.polls.find(p=>p[0].startsWith(at));
+// The app polls every 5 s and the sampler every 10 s, so the app poll that
+// cleared the offer was not recorded. Modeled: #330 20 m along its recorded
+// path, pulling away 62 m from the pole; #317 as recorded at 11:50:50Z.
+const pullingAway=[['#330',41.271329,-72.964228,false,null,122],promptPoll('2026-10-04T11:50:50')[2][1]];
+// The card after #330 left, as recorded at 11:51:30Z: it follows #317.
+const cardAfter=promptMiss.cards[promptPoll('2026-10-04T11:51:30')[1]];
+async function offerGoneUnderClick(rowsAfter,{offerStays=false}={}){
+ const [first]=promptMiss.polls;
+ const fromWestHaven={...trip,origin:{label:'West Haven Train Station',...westHaven,stopId:127}};
+ const h=current=await harness(purpleFeedOf(purpleAt(first[2])),fromWestHaven,{feedOf:purpleFeedOf,text:promptMiss.cards[first[1]],at:promptMiss.startedAt});
+ const feed=buses=>h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>purpleFeedOf(buses)});
+ // The offer shows while the page text has it. Clicking it, the app's next
+ // poll arrives first and clears it. The card's unnamed "I'm on it" stores
+ // what the app's boardingBusName does: the line's bus within 100 m of the
+ // rider, the card's own if it is one of them, else the nearest; with none
+ // that close, the card's bus.
+ h.page.getByRole=(_,{name})=>({
+  isVisible:async()=>name==="🚌 I'm on it"||(/\nYes, I'm on it\n/.test(h.text)&&["Yes, I'm on it",'Not me'].includes(name)),
+  click:async(opts={})=>{
+   h.clicks.push([name,opts.timeout]);
+   if(name==="🚌 I'm on it"){
+    const card=h.text.match(/🚌\s*(#[\w-]+)\s*·/)?.[1];
+    const near=h.buses.map(b=>({name:b.bus_name,m:haversineM(b,{lat:h.geo.latitude,lon:h.geo.longitude})})).filter(b=>b.m<=100).sort((a,b)=>a.m-b.m);
+    h.stored=near.length&&!near.some(b=>b.name===card)?near[0].name:card;return;
+   }
+   if(!offerStays){h.buses=purpleAt(rowsAfter);await feed(h.buses);h.text=cardAfter;}
+   throw new Error(`locator.click: Timeout ${opts.timeout??30000}ms exceeded.\nCall log:\n  - element was detached from the DOM, retrying`);
+  }});
+ h.page.evaluate=async()=>h.stored??null;
+ h.page.waitForFunction=async(_,name)=>{if(h.stored?.replace(/^#/,'')!==name.replace(/^#/,''))throw new Error('page.waitForFunction: Timeout 5000ms exceeded.');};
+ for(const [at,card,rows] of promptMiss.polls.filter(([at])=>at<'2026-10-04T11:51')){
+  vi.setSystemTime(Date.parse(at)-10000);h.buses=purpleAt(rows);await h.poll(promptMiss.cards[card],h.buses);
+  if(h.watcher.status().run?.phase!=='waiting')break;
+ }
+ h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ return h;
+}
+test('replay: an offer gone under the click boards #330 through the card while it is within 100 m',async()=>{
+ const h=await offerGoneUnderClick(pullingAway);
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'riding');
+ assert.equal(run.busName,'#330');
+ assert.equal(run.boardedAt,'2026-10-04T11:50:50.451Z');
+ assert.equal(Math.round(run.lastBoardDistanceM),47);
+ // A short offer click, then the card; never the 30 s default.
+ assert.deepEqual(h.clicks,[["Yes, I'm on it",3000],["🚌 I'm on it",undefined]]);
+ assert.equal(run.harnessErrors,undefined);
+ assert.equal(run.excludeAccuracy,undefined);
+});
+test('replay: an offer gone with #330 already away ends the run as a missed boarding, not a wait for #317',async()=>{
+ const h=await offerGoneUnderClick(promptPoll('2026-10-04T11:51:30')[2]);
+ assert.equal(h.watcher.status().run,null);
+ const [journey]=await h.journeys();
+ assert.equal(journey?.result,'boarding-missed-excluded');
+ assert.equal(journey.excludeAccuracy,true);
+ assert.equal(journey.busName,'#330');
+ assert.equal(journey.boardedAt,undefined);
+ // The card's "I'm on it" would have stored #317 (480 m from #330's stop).
+ assert.deepEqual(h.clicks,[["Yes, I'm on it",3000]]);
+ assert.equal(h.stored,undefined);
+ const missed=(await h.events()).find(e=>e.kind==='boarding-missed');
+ assert.equal(missed.detail.bus,'#330');
+ assert.equal(Math.round(missed.detail.observedDistanceM),47);
+ assert.equal(Math.round(missed.detail.distanceNowM),480);
+});
+test('an offer click that fails with the offer still showing is retried as before',async()=>{
+ const h=await offerGoneUnderClick(pullingAway,{offerStays:true});
+ const run=h.watcher.status().run;
+ assert.equal(run.phase,'waiting');
+ assert.equal(run.harnessErrors,1);
+ assert.equal(run.excludeAccuracy,undefined);
+ assert.deepEqual(h.clicks,[["Yes, I'm on it",3000]]);
 });

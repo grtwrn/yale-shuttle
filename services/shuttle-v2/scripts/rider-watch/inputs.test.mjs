@@ -1,6 +1,6 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {labeledStopId,destinationMatches,selectDestination,followedBusName,quotedRideMin,quotedWaitMin,rideCapMin,riderConfig,waitCapMin} from './inputs.mjs';
+import {cardBoardsBus,labeledStopId,destinationMatches,selectDestination,followedBusName,quotedRideMin,quotedWaitMin,rideCapMin,riderConfig,waitCapMin} from './inputs.mjs';
 const names={145:'Science Park Garage',98:'Phelps Gate',48:'Division / Prospect'};
 test('recorded Brown boarding prompt resolves on the first poll',()=>{
  const text="BOARD🚌Science Park Garage⏸ 14:04\nWinchester/Sachem\nGET OFFPhelps Gate\n🚌 On Brown #309?";
@@ -56,6 +56,19 @@ test('recorded West Haven poll skips while the followed #321 is near, never swit
  // Once the followed bus has left the area, the app's own at-stop bus is it.
  const gone=at2134.map(b=>b.bus_name==='#321'?{...b,lat:41.30,lon:-72.93}:b);
  assert.equal(followedBusName(westHaven,127,gone,[10],'#321',coords),'#332');
+});
+// riderpromptmiss20261004: the card's "I'm on it" stores the nearest line bus
+// within 100 m of the rider (the app's boardingBusName), so it is a fallback
+// for #330 only while #330 is that bus.
+test('the card stores our bus only while it is the nearest line bus within 100 m',()=>{
+ const rider=coords[127],b330={bus_name:'#330',route_id:10,lat:41.271329,lon:-72.964228};
+ assert.equal(cardBoardsBus([b330],[10],rider,'#330'),true);
+ assert.equal(cardBoardsBus([b330],[10],rider,'330'),true);
+ assert.equal(cardBoardsBus([{...b330,lat:41.270104,lon:-72.969079}],[10],rider,'#330'),false);
+ assert.equal(cardBoardsBus([b330,at2134[2]],[10],rider,'#330'),false);
+ assert.equal(cardBoardsBus([b330,{...at2134[2],route_id:3}],[10],rider,'#330'),true);
+ assert.equal(cardBoardsBus([b330],[3],rider,'#330'),false);
+ assert.equal(cardBoardsBus([],[10],rider,'#330'),false);
 });
 const intended={display_name:'West Haven Train Station',lat:41.271172,lon:-72.963517};
 const resolved={toText:'West Haven Station',toLL:{lat:41.271153,lon:-72.963243}};

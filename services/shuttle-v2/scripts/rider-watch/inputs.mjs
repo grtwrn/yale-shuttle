@@ -17,6 +17,21 @@ export function observedAtStop(bus, stopId, stopCoords) {
   return bus.stationary === true && bus.at_stop_id === stopId && !!stop
     && haversineM(bus, stop) <= 75;
 }
+/** The app's unnamed "🚌 I'm on it" stores the line's bus within this of the
+ * rider, mirrored from `boardingBusName` and `BOARDING_BUS_M`
+ * (web/src/tripBusIdentity.ts): the card's own when it is one of them, else
+ * the nearest. */
+export const BOARDING_BUS_M = 100;
+/** Whether that button stores `name` for a rider at `at`: it is the nearest
+ * line bus within 100 m. A card following another bus that close can still
+ * store that one; the runner's wrong-bus check ends such a run. */
+export function cardBoardsBus(buses, routeIds, at, name) {
+  const bare = n => String(n).replace(/^#/, '');
+  const near = (buses ?? []).filter(b => routeIds.includes(b.route_id) && Number.isFinite(b.lat) && Number.isFinite(b.lon))
+    .map(b => ({name: bare(b.bus_name), m: haversineM(at, b)}))
+    .filter(b => b.m <= BOARDING_BUS_M).sort((a, b) => a.m - b.m);
+  return near.length > 0 && near[0].name === bare(name);
+}
 export const FOLLOWED_NEAR_STOP_M = 150;
 /** The bus the trip card follows. "🚌 #NN · N stops away" names it while it
  * approaches; once it is at the pickup the app drops that line and decorates
