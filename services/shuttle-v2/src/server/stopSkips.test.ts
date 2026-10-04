@@ -10,7 +10,7 @@ import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
 import { parseStopSkips, skipNotice } from "../../web/src/stopSkips.js";
 import {
-  classifyPasses, createStopSkips, LOOKBACK_MS, stopSkipsOf,
+  BACK_IN_SERVICE_MS, classifyPasses, createStopSkips, IN_FEED_MS, LOOKBACK_MS, stopSkipsOf,
   type Fix, type StopPass, type StopSkipsWire, type VisitRow,
 } from "./stopSkips.js";
 import { createBusesPayloadCache } from "./v1compat.js";
@@ -112,6 +112,84 @@ describe("Union Station (S), 2026-10-03 (unionskip20261003)", () => {
   });
 });
 
+// -- 2026-09-10, Green #325 leaving service ----------------------------------------
+//
+// Every Green row and position in the archive from 17:20 to 19:10 ET, a row
+// written when the bus left the stop. #325 served Building 400 at 18:34 ET,
+// then left service by driving back along its own line toward Orange Street.
+// The detector still wrote in-order passes at Building 600, 800, 900 and West
+// Haven Train Station, 171–609 m out, and the bus left the feed at 18:44:32
+// without serving another stop. On master those passes counted as skips: with
+// #331's real skips they named Building 900 until 18:51 and Building 800 at
+// 18:47–18:49, though the next buses served both.
+
+const gx = JSON.parse(gunzipSync(readFileSync(new URL("./__fixtures__/green-deadhead-2026-09-10.json.gz", import.meta.url))).toString()) as {
+  stops: Stop[]; route: Route; visits: [number, number, number, number, number, number][]; fixes: [number, number, number, number][];
+};
+const green = TransitNetwork.build(gx.stops, [gx.route]);
+const BUILDING_800 = 25, BUILDING_900 = 26, WEST_HAVEN = 127;
+const et = (hhmm: string) => Date.parse(`2026-09-10T${hhmm}-04:00`);
+
+function replayGreen(): Map<number, StopSkipsWire | null> {
+  const db = new Database(":memory:");
+  db.exec(SCHEMA);
+  const putVisit = db.prepare("INSERT INTO stop_visits VALUES (?,?,?,?,?,?)");
+  const putFix = db.prepare("INSERT INTO raw_positions VALUES (?,?,?,?)");
+  const visits = [...gx.visits].sort((a, b) => a[5] - b[5]);
+  const out = new Map<number, StopSkipsWire | null>();
+  let vi = 0, fi = 0;
+  for (let t = et("17:30:00"); t <= et("19:10:00"); t += 60_000) {
+    while (vi < visits.length && visits[vi]![5] <= t) {
+      const [busId, stopId, stopIndex, anchoredAt, closestM] = visits[vi++]!;
+      putVisit.run(busId, 9, stopId, stopIndex, anchoredAt, closestM);
+    }
+    while (fi < gx.fixes.length && gx.fixes[fi]![1] <= t) putFix.run(...gx.fixes[fi++]!);
+    out.set(t, createStopSkips(db)(green, t));
+  }
+  db.close();
+  return out;
+}
+const greenDay = replayGreen();
+const greenSkip = (hhmm: string, stopId: number) => greenDay.get(et(`${hhmm}:00`))?.["9"]?.[String(stopId)];
+
+describe("a bus leaving service along its own line, 2026-09-10 (stopskipsdeadhead20261003)", () => {
+  it("never counts its passes on the way out, with hindsight", () => {
+    const rows: VisitRow[] = gx.visits.map(([busId, stopId, stopIndex, anchoredAt, closestM]) =>
+      ({ busId, routeId: 9, stopId, stopIndex, anchoredAt, closestM }));
+    const track = (busId: number, from: number, to: number): Fix[] => gx.fixes
+      .filter(([b, at]) => b === busId && at >= from && at <= to).map(([, at, lat, lon]) => ({ at, lat, lon }));
+    // Only #325 anchored a stop between 18:37 and 18:39 ET.
+    const passes = classifyPasses(rows, green, track);
+    expect(passes.filter((p) => p.at >= et("18:37:00") && p.at <= et("18:39:00"))).toEqual([]);
+    // #331 drove by the same stops at 18:41 and served them on its way back at 18:47–18:52.
+    expect(passes.filter((p) => p.at >= et("18:41:00") && p.at <= et("18:42:00")).map((p) => p.verdict)).toEqual(["skipped", "skipped"]);
+  });
+
+  it("counts them live only while the feed still has the bus", () => {
+    // Building 900: #331's 18:41 skip plus #325's. The notice goes once #325
+    // has been gone from the feed for two minutes (master: until 18:51).
+    expect(greenSkip("18:46", BUILDING_900)).toMatchObject({ skipped: 2, of: 3 });
+    for (let t = et("18:47:00"); t <= et("19:10:00"); t += 60_000) {
+      expect(greenDay.get(t)?.["9"]?.[String(BUILDING_900)], new Date(t).toISOString()).toBeUndefined();
+    }
+    // Building 800: #331's 18:41 skip was confirmed only after #325 had gone.
+    for (const [t, wire] of greenDay) expect(wire?.["9"]?.[String(BUILDING_800)], new Date(t).toISOString()).toBeUndefined();
+  });
+
+  it("still names a stop at once on the skips of buses that stay in service", () => {
+    // West Haven Train Station: #331 drove by it about 630 m out at 17:44 and
+    // 18:36, staying in service; #332 served it at 18:07. That is 2 of the
+    // last 3 without #325 too, so the notice starts in the same minute as on
+    // master and only its latest skip changes once #325 has gone.
+    expect(greenSkip("18:42", WEST_HAVEN)).toBeUndefined();
+    expect(greenSkip("18:43", WEST_HAVEN)).toEqual({ skipped: 2, of: 3, last_at: et("18:38:32.150") });
+    for (const hhmm of ["18:47", "18:55"]) {
+      expect(greenSkip(hhmm, WEST_HAVEN), hhmm).toEqual({ skipped: 2, of: 3, last_at: et("18:36:17.229") });
+    }
+    expect(greenSkip("18:56", WEST_HAVEN)).toBeUndefined();
+  });
+});
+
 // -- The guards, one at a time ---------------------------------------------------
 //
 // A straight north–south line of five stops 400 m apart. Each test drives one
@@ -189,6 +267,24 @@ describe("judging one pass", () => {
     // Nor when its next visit is far down the line or much later.
     expect(verdict([...p.visits.slice(0, 2), visit(7, 0, T0 + 240_000)], p.fixes)).toEqual([]);
     expect(verdict([...p.visits.slice(0, 2), visit(7, 3, T0 + 120_000 + 21 * 60_000)], p.fixes)).toEqual([]);
+  });
+
+  it("a skip by a bus that serves no later stop counts only while the feed still has the bus", () => {
+    // #325 on 2026-09-10 in miniature: in-order passes, and no stop served after.
+    const p = pass(T0, 175);
+    const visits = [p.visits[0]!, p.visits[1]!, { ...p.visits[2]!, closestM: 300 }];
+    const live = (vs: VisitRow[], nowMs: number) =>
+      classifyPasses(vs, line, trackOf(p.fixes), nowMs).filter((x) => x.stopId === 3).map((x) => x.verdict);
+    const lastFix = p.fixes.at(-1)!.at;
+    expect(live(visits, lastFix + IN_FEED_MS)).toEqual(["skipped"]);
+    expect(live(visits, lastFix + IN_FEED_MS + 1)).toEqual([]);
+    expect(verdict(visits, p.fixes)).toEqual([]);
+    // Once it serves a later stop of the line within the hour, the skip stands.
+    const passAt = visits[1]!.anchoredAt;
+    const back = [...visits, visit(7, 4, passAt + BACK_IN_SERVICE_MS)];
+    expect(live(back, passAt + 2 * BACK_IN_SERVICE_MS)).toEqual(["skipped"]);
+    expect(verdict(back, p.fixes)).toEqual(["skipped"]);
+    expect(verdict([...visits, visit(7, 4, passAt + BACK_IN_SERVICE_MS + 1)], p.fixes)).toEqual([]);
   });
 
   it("a served pass counts before the bus reaches the next stop", () => {
