@@ -19,7 +19,7 @@ import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
 import { distanceMeters } from "../network/geo.js";
 import type { DwellStats, PaceStats, SegmentStats, TransitNetwork } from "../network/TransitNetwork.js";
-import { geocode, normalizeName, relevanceOf } from "./geocode.js";
+import { geocode, normalizeName, relevanceOf, splitGluedNumbers } from "./geocode.js";
 import type { ModelParamsSource } from "./modelParams.js";
 import type { EtaPayloadView, ServerEta } from "./serverEta.js";
 import type { StopSkipsWire } from "./stopSkips.js";
@@ -1009,7 +1009,11 @@ export async function geocodeV1(
     class: h.kind === "stop" ? "shuttle" : "yale",
   }));
 
-  const query = q.trim();
+  // The providers get the query as the local matcher reads it: without
+  // invisible characters, and with a house number parted from its street —
+  // they answer "272 elm" and "elm 272" with the address but "272elm" with
+  // nothing (2026-10-03 search-gap audit).
+  const query = splitGluedNumbers(q.replace(/\p{Cf}/gu, "")).trim();
   // Skip the external lookup for short queries.
   // Gate on what the matcher saw: "!!!" is three characters and no query.
   if (normalizeName(query).length < 3) return local;

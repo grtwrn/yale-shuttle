@@ -4,7 +4,7 @@ import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
 
-import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS, normalizeName, relevanceOf } from "./geocode.js";
+import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS, normalizeName, relevanceOf, splitGluedNumbers } from "./geocode.js";
 import type { Landmark } from "./landmarks.js";
 import liveStops from "./__fixtures__/stops.json";
 
@@ -870,5 +870,164 @@ describe("dotted initials and ampersand abbreviations keep their spaced reading"
     expect(labels("at&t")[0]).toBe("AT&T (Chapel St)");
     expect(labels("h&k")[0]).toBe("H&K");
     expect(labels("m&t")[0]).toBe("M&T Bank (Church St)");
+  });
+});
+
+/**
+ * The 2026-10-03 search-gap audit: rider searches that found nothing although
+ * the app has the place, because the words arrived in a shape the matcher did
+ * not read — broken by invisible characters or typed in pieces, a house
+ * number glued to its street — or by a name nobody had entered yet.
+ *
+ * Deliberately NOT fixed: typos past the fuzzy tier's one edit from five
+ * letters ("binekie", "shwartz", "willobuys"; "biencke" must stay a miss, see
+ * "allows one edit from five letters and two from eight"), and Qahwah House
+ * (19 Elm St), which was still "expected to open this fall" on 2026-10-04.
+ */
+describe("search-gap audit (2026-10-03)", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  const labels = (q: string) => geocode(live, q).map((h) => h.label);
+  const top3 = (q: string) => labels(q).slice(0, 3);
+
+  describe("invisible characters", () => {
+    it.each([
+      ["u\u200bnion", "union"],
+      ["e\u200bl\u200bm", "elm"],
+      ["bein\u00adecke", "beinecke"],
+      ["\ufeffsterling", "sterling"],
+      ["kline\u2060tower", "klinetower"],
+      ["union\u200c \u200dstation", "union station"],
+    ])("%o normalises to %o", (raw, want) => {
+      expect(normalizeName(raw)).toBe(want);
+    });
+
+    it("finds the place a word broken by a zero-width space names", () => {
+      expect(top3("u\u200bnion")).toContain("Union Station");
+      expect(labels("e\u200bl\u200bm")[0]).toMatch(/^Elm \//);
+      expect(labels("bein\u00adecke")[0]).toBe("Beinecke Library");
+    });
+
+    it("still reads one BETWEEN two words as a space when nothing else matches", () => {
+      expect(labels("union\u200bstation")[0]).toBe("Union Station");
+    });
+  });
+
+  describe("a word typed in pieces", () => {
+    it.each([
+      ["e l m", /^Elm \//],
+      ["union s ta", /^Union Station$/],
+      ["u ni o", /^Union /],
+      ["trader j o", /^Trader Joe's/],
+      ["ba ss library", /^Bass Library$/],
+      ["pe ab od y", /^Peabody Museum/],
+    ])("%o finds %s first", (q, want) => {
+      expect(labels(q)[0]).toMatch(want);
+    });
+
+    it("joins a word typed entirely in pieces", () => {
+      expect(top3("ko ff ee")).toContain("Koffee?");
+    });
+
+    it("does not read 'ha m d' as Dwight Hall, whose words only share its letters out of order", () => {
+      // "Dwight Hall & Memorial Chapel": ha → hall, m → memorial, d → dwight.
+      expect(labels("ha m d")).not.toContain("Dwight Hall");
+    });
+
+    it("keeps initials typed in order", () => {
+      expect(labels("t d college")[0]).toBe("Timothy Dwight College");
+      expect(labels("j e edwards")[0]).toBe("Jonathan Edwards College");
+      expect(top3("b and n")).toContain("Yale Bookstore");
+    });
+
+    it("never glues a fragment onto a whole word", () => {
+      // "tdcollege" is two edits from "college", which would answer with
+      // every stop on College Street.
+      expect(labels("td college").some((l) => l.startsWith("College /"))).toBe(false);
+    });
+
+    it("keeps h&k off the academic buildings its letters prefix", () => {
+      expect(top3("h&k")).toEqual(["H&K"]);
+    });
+
+    it.each([
+      ["bishop & orange n", "Orange / Bishop (N)"],
+      ["n orange bishop", "Orange / Bishop (N)"],
+      ["s orange bishop", "Orange / Bishop (S)"],
+    ])("reads one letter as a direction in any position: %o finds %s first", (q, label) => {
+      // Review of PR #362: requiring word order for a lone letter lost these.
+      expect(labels(q)[0]).toBe(label);
+    });
+  });
+
+  describe("a house number glued to its street", () => {
+    it.each([
+      ["272elm", "272 elm"],
+      ["elm272", "elm 272"],
+      ["333Cedar", "333 Cedar"],
+      ["lot16", "lot 16"],
+      ["corner of 100ashmun st", "corner of 100 ashmun st"],
+    ])("%o is read as %o", (raw, want) => {
+      expect(splitGluedNumbers(raw)).toBe(want);
+    });
+
+    it.each(["m2", "m2 cafe", "4th", "21st", "one6three", "i95"])("%o stays whole", (raw) => {
+      expect(splitGluedNumbers(raw)).toBe(raw);
+    });
+
+    it("finds the stop and the address alias", () => {
+      expect(labels("333cedar")[0]).toBe("333 Cedar");
+      expect(labels("100ashmun")[0]).toBe("M2 Mocha Cafe");
+    });
+  });
+
+  describe("names nobody had entered", () => {
+    it.each([
+      ["isps", "Institution for Social and Policy Studies (ISPS)"],
+      ["institution for social and policy studies", "Institution for Social and Policy Studies (ISPS)"],
+      ["77 prospect", "Institution for Social and Policy Studies (ISPS)"],
+      ["ysl", "Yale Law School"],
+      ["taste of jiang nan", "Taste of Jiang Nan"],
+      ["taste of jiangnan", "Taste of Jiang Nan"],
+      ["chacra", "Chacra"],
+      ["chacara", "Chacra"],
+      ["m2 lounge", "M2 Mocha Cafe"],
+      ["258 church st", "Willoughby's Coffee (Church St)"],
+    ])("%o finds %s first", (q, label) => {
+      expect(labels(q)[0]).toBe(label);
+    });
+
+    it("finds the place at a full address typed after a name", () => {
+      expect(labels("corner grove 258 church st new haven ct 06510")[0]).toBe("Willoughby's Coffee (Church St)");
+    });
+
+    it.each([
+      "2 prospect st, new haven, ct 06511",
+      "10 wall st, new haven, ct 06511",
+      "6 high st, new haven, ct 06511",
+      "3 hillhouse ave, new haven, ct 06511",
+      "1 church st floor 2",
+    ])("leaves a full address the list doesn't have to the map providers: %o", (q) => {
+      // Review of PR #362: read as "2 prospect", the house number only
+      // prefixed 225 Prospect (Chemistry), and the map picks a curated
+      // place on Enter, so the rider went there instead of to the house.
+      expect(labels(q)).toEqual([]);
+    });
+
+    it.each([
+      "1 yale ave, new haven, ct",
+      "20 yale ave, new haven, ct 06515",
+      "100 church st, new haven, ct 06510",
+      "floor 2 of kline tower",
+    ])("doesn't send an address it only half matches somewhere else: %o", (q) => {
+      // Review of PR #362, round 2: "yale" is a stopword, so "1 yale" was
+      // read as "1" and prefixed 100 Church Street South; "100 church"
+      // prefixed that stop too, 730 m from 100 Church St. Both auto-picked
+      // on Enter instead of the providers' house.
+      expect(labels(q)).toEqual([]);
+    });
+
+    it("leaves Chef Jiang first for 'jiang', across the street from Taste of Jiang Nan", () => {
+      expect(labels("jiang").slice(0, 2)).toEqual(["Chef Jiang", "Taste of Jiang Nan"]);
+    });
   });
 });
