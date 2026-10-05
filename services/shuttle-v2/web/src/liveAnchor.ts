@@ -29,7 +29,7 @@
  * what the replay harnesses and the pure tests depend on.
  */
 import { beliefFor, ringForBus, type AnchorStore } from "./eta";
-import { LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass, otherCallOfStand, standingSec, type Belief, type FilterBus } from "./eta/filter";
+import { lastStopReading, LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass, otherCallOfStand, pricedLeg, situations, standingSec, type Belief, type FilterBus } from "./eta/filter";
 import type { Ring } from "./eta/ring";
 import { haversineMeters, type LatLon } from "./geo";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
@@ -63,7 +63,8 @@ export function anchorKeyFor(routeLabel: string, busName: string): string {
 /**
  * Where this bus is on `stops`: the leg the countdown is priced on, with the
  * same hysteresis (`leadLeg` in eta/filter.ts), so "N stops away" and the
- * number beside it come from one posterior.
+ * number beside it come from one posterior. Where the countdown has left a
+ * held lead for a leg the feed confirms, that leg (`anchorLeg`).
  *
  * Returns -1 when there is nothing to answer from — an empty stop list, or a
  * stop with no coordinate, which is the one case the ring cannot be built.
@@ -85,7 +86,8 @@ export function resolveAnchorIndex(
   const ring = ringForBus(bus, stops, stopCoords);
   if (!ring) return -1;
   const belief = beliefFor(store, key, bus, ring, stops, now);
-  const lead = travel ? travelPass(belief, ring) : belief.lead;
+  const leg = anchorLeg(belief, ring);
+  const lead = travel ? travelPass(belief, ring, leg) : leg;
   // The belief runs on the RING's sequence, which on a route whose order was
   // repaired against its published line is not upstream's (#160,
   // src/network/alignStops.ts); every caller indexes upstream's list.
@@ -94,7 +96,56 @@ export function resolveAnchorIndex(
 }
 
 /**
- * The lead, on the pass of its stop the belief's mass is actually on.
+ * The leg the screen anchors on: the belief's lead, or the leg the countdown
+ * is priced from once that has left the lead and the feed's last stop puts
+ * the bus there.
+ *
+ * The countdown is priced from the lead while `situations` keeps one on its
+ * leg, and from the top situation once it has none (`pricedLeg`). The lead
+ * holds on longer (`leadLeg`): against a wrap behind for LEAD_MAX_HOLD_MS of
+ * disagreement, a clock that restarts whenever the top leg dips under
+ * LEAD_SWITCH_MASS, which it does at every stop a moving bus passes; against
+ * a far jump until one leg holds LEAD_SWITCH_MASS and the feed confirms it.
+ * So the card counted "N stops away" from one leg and the countdown beside it
+ * from another. Green #331 came into service at 06:15 ET on 2026-10-02 with
+ * its lead on Orange / Bradley (S) from a cold start and drove the Orange St
+ * loop with the lead still there: "1 stop away" from West Haven Train Station
+ * beside "~25 min", ten stops, which the bus then drove (#302, #321 and #303
+ * the same, early mornings). Purple #330 laid over at Building 400 with the
+ * lead a stop on, on Building 600's return leg: 4 stops to the station beside
+ * a countdown of 5 (2026-10-03 15:58Z, anchorfarorigin20261004).
+ *
+ * So the anchor goes with the countdown where the feed's last stop confirms
+ * the countdown's leg (`lastStopReading`, the arbiter `leadLeg` uses for a far
+ * jump), except onto the other call of the stand the lead is at or has just
+ * left, which `leadLeg` does not take on the feed's word either
+ * (`otherCallOfStand`). Where the feed contradicts it or names no stop, the
+ * lead holds as before: on the 2026-09-25 road race Red's buses ran down
+ * Temple St beside the Chapel St leg, the mass and the number went with the
+ * fix, and the feed's last stop was right (anchor-detour-lap.test.ts). So
+ * does a feed that is wrong itself: Purple #126 out at West Campus with 333
+ * Cedar stuck as its last stop for 13 minutes (2026-10-02 03:10Z). The
+ * countdown is unchanged: `priceRoute` reads the same `pricedLeg`.
+ *
+ * Replayed side by side with master over 14 archived days (09-20..10-03,
+ * every route, 1,959,550 bus polls): no countdown row changes, and the anchor
+ * moves on 18,372 polls. Against the collector's stop visits it is within a
+ * leg of the bus on 17,600 of the 17,698 that can be scored, where it was on
+ * 3,454; one side within a leg and the other three or more off, 11,597 fixed
+ * and 28 introduced (26 of them one Pink bus on the VA spur's twin curbs).
+ * On the served path over the rider watcher's polls (10-01..10-05, 14.8M trip
+ * cards) 71,882 cards change, 70,642 of them toward the countdown's own
+ * count, and none goes from within two stops of it to six off.
+ */
+export function anchorLeg(b: Belief, ring: Ring): number {
+  const priced = pricedLeg(b, situations(b, ring));
+  if (priced === b.lead) return b.lead;
+  return lastStopReading(b, ring, priced) === "confirms" && !otherCallOfStand(b, ring, b.lead, priced) ? priced : b.lead;
+}
+
+/**
+ * The lead (`lead`, `anchorLeg`'s answer), on the pass of its stop the
+ * belief's mass is actually on.
  *
  * Where the line passes a stop twice, the lead can name the wrong pass and
  * stay there. Green, running out past Building 800 toward Building 400:
@@ -128,8 +179,7 @@ export function resolveAnchorIndex(
  * mass runs along the return line for a poll or two, but the bus is on its
  * way out, and the lead says so (greenb800switch20261004).
  */
-export function travelPass(b: Belief, ring: Ring): number {
-  const lead = b.lead;
+export function travelPass(b: Belief, ring: Ring, lead = b.lead): number {
   const stop = ring.stops[lead];
   const N = ring.N;
   if (stop === undefined || ring.stops.length !== N) return lead;

@@ -34,10 +34,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { registerRoutePaths } from './anchor';
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from './arrivals';
 import { beliefFor, ringForBus, type AnchorStore } from './eta';
-import { LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass } from './eta/filter';
+import { LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass, pricedLeg, situations } from './eta/filter';
 import { applyModelParams } from './eta/params';
 import { buildStopSequencePolyline, haversineMeters, polylineMeters, type LatLon } from './geo';
-import { anchorIndexOnList, anchorKeyFor, observedAtStop, travelSlot, tripApproach } from './liveAnchor';
+import { anchorIndexOnList, anchorKeyFor, anchorLeg, observedAtStop, travelSlot, tripApproach } from './liveAnchor';
 import type { BusData } from './map-data';
 import { mergedRouteStops, ROUTE_LISTS, type RouteListConfig } from './routes';
 import purpleFx from './__fixtures__/purple-return-leg.json';
@@ -238,17 +238,19 @@ describe('Green running out past Building 800 to Building 400 (2026-10-03)', () 
 });
 
 /**
- * Every poll on a fresh store per window: the travel answer must be the lead's
- * own pass (`travelSlot` of the lead, the answer #358 gave). Returns how many
- * polls had the mass on ANOTHER pass of the lead's stop rather than the lead's,
- * which is what made the first draft of `travelPass` hop.
+ * Every poll on a fresh store per window: the travel answer must be the
+ * anchor's own pass (`travelSlot` of `anchorLeg`, the answer #358 gave for the
+ * lead). Returns how many polls had the mass on ANOTHER pass of the lead's stop
+ * rather than the lead's, which is what made the first draft of `travelPass`
+ * hop, and how many anchored off the lead, on the leg the countdown is priced
+ * from (anchorfarorigin20261004).
  */
 function leadPassKept(line: Omit<Line, 'stopNames' | 'rides' | 'polls'>, polls: { window: number; at: string; buses: BusData[] }[]) {
   registerRoutePaths(line.routePath);
   applyModelParams(line.model_params);
   const canonical = mergedRouteStops(line.cfg, line.routeStops);
   const stores = new Map<number, AnchorStore>();
-  let split = 0;
+  let split = 0, moved = 0;
   for (const p of polls) {
     const store = stores.get(p.window) ?? new Map();
     stores.set(p.window, store);
@@ -258,7 +260,12 @@ function leadPassKept(line: Omit<Line, 'stopNames' | 'rides' | 'polls'>, polls: 
       const ring = ringForBus(bus, canonical, line.stopCoords)!;
       const b = beliefFor(store, anchorKeyFor(line.cfg.label, bus.bus_name), bus, ring, canonical, now);
       const travel = anchorIndexOnList(bus, line.cfg, line.routeStops, line.stopCoords, canonical, now, store, true);
-      expect({ at: p.at, bus: bus.bus_name, travel }).toEqual({ at: p.at, bus: bus.bus_name, travel: travelSlot(ring.order, b.lead) });
+      const leg = anchorLeg(b, ring);
+      if (leg !== b.lead) {
+        moved++;
+        expect({ at: p.at, bus: bus.bus_name, leg }).toEqual({ at: p.at, bus: bus.bus_name, leg: pricedLeg(b, situations(b, ring)) });
+      }
+      expect({ at: p.at, bus: bus.bus_name, travel }).toEqual({ at: p.at, bus: bus.bus_name, travel: travelSlot(ring.order, leg) });
       const m = legMass(b, ring);
       const reach = (q: number) => {
         let sum = 0;
@@ -270,7 +277,7 @@ function leadPassKept(line: Omit<Line, 'stopNames' | 'rides' | 'polls'>, polls: 
       if (other >= 0 && reach(b.lead) <= 1 - LEAD_SWITCH_MASS) split++;
     }
   }
-  return split;
+  return { split, moved };
 }
 
 describe('passes travelPass leaves to the lead', () => {
@@ -286,14 +293,21 @@ describe('passes travelPass leaves to the lead', () => {
       stopCoords: coords, routePath: { '8': PR.path },
     };
     // #307 and #324 at 109 and its added twin, 2026-10-02.
-    expect(leadPassKept(PINK, PK.polls)).toBeGreaterThanOrEqual(20);
+    const { split, moved } = leadPassKept(PINK, PK.polls);
+    expect(split).toBeGreaterThanOrEqual(20);
+    expect(moved).toBe(0);
   });
 
   it('Purple\'s Building 600 either side of the turnaround: the lead following, counted as before', () => {
     // #330 laying over at Building 400 with the lead on Building 600's return pass (window 4).
     const polls = PURPLE.polls.filter(p => p.window === 4);
     expect(polls.length).toBeGreaterThan(50);
-    expect(leadPassKept(PURPLE, polls)).toBeGreaterThanOrEqual(20);
+    const { split, moved } = leadPassKept(PURPLE, polls);
+    expect(split).toBeGreaterThanOrEqual(20);
+    // The layover itself: the countdown is priced from Building 400, where the
+    // feed has the bus standing, and the anchor is there with it
+    // (anchorFarOrigin.test.ts).
+    expect(moved).toBe(29);
   });
 });
 

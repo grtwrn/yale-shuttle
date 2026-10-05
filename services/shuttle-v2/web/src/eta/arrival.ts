@@ -37,7 +37,7 @@
 import { quantile, residual, residualMedian, type Dist } from "./dist";
 import { releaseDist, releaseResidual, releaseModelEnabled, type ReleasePin } from './release';
 import { lapAt, lapFactor } from "./lap";
-import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
+import { clockOrigin, LEAD_SWITCH_MASS, pricedLeg, situations, standingSec, type Belief, type Situation } from "./filter";
 import { applyHorizonBias, applyRouteScale, routeScale, widenBand } from "./params";
 import type { Ring } from "./ring";
 import type { RouteTables } from "./tables";
@@ -681,7 +681,8 @@ export function priceRoute(
   // built again with it. `startChain` is scalar work, so the second pass costs
   // nothing measurable, and with no lap fit or no served ages the second pass
   // IS the first — `lapCorrection` returns null and every draw is unchanged.
-  const pick = (cs: Chain[]) => cs.find((c) => c.sit.leg === belief.lead) ?? cs[0]!;
+  const origin = pricedLeg(belief, sits);
+  const pick = (cs: Chain[]) => cs.find((c) => c.sit.leg === origin) ?? cs[0]!;
   const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null, false, currentRelease));
   const lead0 = pick(plain);
   const lap = lapAges && tables.stops.some((st) => st.lap)
