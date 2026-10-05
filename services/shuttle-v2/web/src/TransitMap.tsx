@@ -87,7 +87,7 @@ import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
-import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle } from "./rideAlert";
+import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle, rideBoarded } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -387,6 +387,16 @@ function rideEvidenceSeen(r: BoardedRide): RideEvidence {
 function noteRideEvidence(r: BoardedRide, e: RideEvidence): void {
   if (e === "none") return;
   try { localStorage.setItem(RIDE_WINDOW_LS_KEY, `${rideWindowKey(r)}#${e}`); } catch { /* best effort */ }
+}
+// Whether this ride's bus has been on the ride yet (rideAlert.ts
+// `rideBoarded`), which the get-off alert waits for. Kept beside the ride like
+// the evidence above, so a reload at the exit still says "Get off here".
+const RIDE_BOARDED_LS_KEY = "shuttle-ride-boarded";
+function rideBoardedSeen(r: BoardedRide): boolean {
+  try { return localStorage.getItem(RIDE_BOARDED_LS_KEY) === rideWindowKey(r); } catch { return false; }
+}
+function noteRideBoarded(r: BoardedRide): void {
+  try { localStorage.setItem(RIDE_BOARDED_LS_KEY, rideWindowKey(r)); } catch { /* best effort */ }
 }
 
 // Two retired features left keys behind in localStorage: the guided "Go"
@@ -6147,12 +6157,24 @@ const OnBusBanner: FC<{
 
   const arriving = stopsRemaining !== null && stopsRemaining <= 2;
 
+  // Whether the bus has been on the ride yet: at the pickup or a call before
+  // the exit, the row the ride page draws it on (rideAlert.ts `rideBoarded`).
+  // A ride started before its bus comes counts to the exit's first pass, which
+  // can come before the pickup (ridecountpreboard20261005).
+  const rideCallList = cfg ? rideCalls(cfg, routeStops, stopCoords, ride.boardStopId, ride.alightStopId) : [];
+  const busRow = bus && cfg
+    ? rideCallIndex(bus, cfg, routeStops, stopCoords, rideCallList, stopsRemaining, Date.now(), liveAnchorStore)
+    : -1;
+  const boarded = rideBoarded(rideBoardedSeen(ride), busRow, rideCallList.length);
+  useEffect(() => { if (boarded) noteRideBoarded(ride); }, [boarded, ride]);
+
   // One-shot buzz + notification + in-page popup when it's time to get
   // off (reports #13, #20) — riders look away from the screen mid-ride.
   // Fires at TWO stops out (report #20 asked for earlier warning), so
   // there's time to gather bags and ring the bell, once the countdown is
   // down to 5 min; "next stop" waits for it too, unless the bus is within
   // 1 km with the countdown stuck high (rideAlert.ts `getOffAlertDue`).
+  // Never before the bus has been on the ride (`boarded` above).
   // navigator.vibrate is a no-op on iOS Safari; there the popup/banner are
   // the primary cue.
   // Keyed per ride so re-renders (or a later ride to the same stop)
@@ -6175,6 +6197,7 @@ const OnBusBanner: FC<{
     };
   }, [getOffPopup]);
   useEffect(() => {
+    if (!boarded) return;
     if (!getOffAlertDue(stopsRemaining, etaSec, driveSec, exitMeters)) return;
     const key = `${ride.busName}-${ride.alightStopId}`;
     if (getOffAlertRef.current === key) return;
@@ -6189,7 +6212,7 @@ const OnBusBanner: FC<{
       } catch { /* blocked */ }
     }
     setGetOffPopup(title);
-  }, [stopsRemaining, etaSec, driveSec, exitMeters, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
+  }, [boarded, stopsRemaining, etaSec, driveSec, exitMeters, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
 
   const etaStr = etaSec !== null ? formatRideEta(etaSec) : null;
   const headline = rideHeadline({
