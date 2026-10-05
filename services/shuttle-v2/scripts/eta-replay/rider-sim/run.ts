@@ -69,6 +69,14 @@
  *      in src/server/v1compat.ts), so the client's signature is unchanged.
  *      `scripts/eta-replay/model-patch.ts` writes the file from a snapshot.
  *      A tree that ignores the fields is byte-identical with or without it.
+ *      PAYLOAD_SERIES=file.json — dwell fields that change WITHIN the day,
+ *      one table per step: `{"stepMs": 300000, "steps": {"<epoch ms>":
+ *      {"dwells": {"4": {"10": {"qh": [...], "qhn": 23}}}}}}`. Each poll gets
+ *      the latest step at or before it (none once a step is older than
+ *      `stepMs`), overlaid on the PAYLOAD_PATCH-merged tables. The time-of-day
+ *      stand tables (`qh`, src/calibrator/hourStand.ts) slide with the clock
+ *      in production, so one static patch cannot carry them;
+ *      `scripts/eta-replay/hour-stand-patch.ts` writes the file.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -357,7 +365,36 @@ function applyPatch<T extends PatchTable>(table: T, extra: PayloadPatch["segment
   patched.add(table);
   return table;
 }
-const dwellsAt = (t: number) => applyPatch(dwellsAt0(t), patch?.dwells);
+/** PAYLOAD_SERIES: per-step dwell fields (see header). */
+interface PayloadSeries { stepMs: number; steps: Record<string, { dwells?: PatchTable }> }
+const series: PayloadSeries | null = process.env.PAYLOAD_SERIES ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_SERIES, "utf8")) as PayloadSeries) : null;
+const seriesAt = series ? Object.keys(series.steps).map(Number).sort((a, b) => a - b) : [];
+const seriesCache = new Map<string, PatchTable>();
+if (series) log(`payload series ${process.env.PAYLOAD_SERIES}: ${seriesAt.length} steps of ${series.stepMs / 60_000} min, ${Object.values(series.steps).reduce((n, st) => n + Object.values(st.dwells ?? {}).reduce((m, r) => m + Object.keys(r).length, 0), 0)} cell-steps`);
+function dwellsAt(t: number) {
+  const base = applyPatch(dwellsAt0(t), patch?.dwells);
+  if (!series || seriesAt.length === 0) return base;
+  let lo = 0, hi = seriesAt.length - 1, k = -1;
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (seriesAt[mid]! <= t) { k = mid; lo = mid + 1; } else hi = mid - 1; }
+  if (k < 0 || t - seriesAt[k]! >= series.stepMs) return base;
+  const step = series.steps[String(seriesAt[k])]!;
+  if (!step.dwells || Object.keys(step.dwells).length === 0) return base;
+  const key = `${calibCache.bucketStart(t)}|${seriesAt[k]}`;
+  let out = seriesCache.get(key);
+  if (!out) {
+    // A shallow copy per step: the hour bucket's table stays untouched, and
+    // the client sees a new object exactly when production's would change.
+    out = { ...(base as PatchTable) };
+    for (const [rid, byKey] of Object.entries(step.dwells)) {
+      const r = { ...(out[rid] ?? {}) };
+      for (const [k2, fields] of Object.entries(byKey)) r[k2] = { ...(r[k2] ?? {}), ...fields };
+      out[rid] = r;
+    }
+    if (seriesCache.size > 64) seriesCache.clear();
+    seriesCache.set(key, out);
+  }
+  return out as typeof base;
+}
 if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, pace ${Object.keys(patch.pace ?? {}).length} routes`);
 {
   const segMax = (net.db.prepare("SELECT max(started_at) m FROM segments").get() as { m: number }).m;
@@ -841,7 +878,7 @@ for (const s of skipped) { const k = s.reason.split(":")[0]!; skippedReasons[k] 
 
 const out = {
   generatedAt: new Date().toISOString(),
-  config: { SERVER_ETA, captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, PAYLOAD_PATCH: process.env.PAYLOAD_PATCH ?? null, POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
+  config: { SERVER_ETA, captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, PAYLOAD_PATCH: process.env.PAYLOAD_PATCH ?? null, PAYLOAD_SERIES: process.env.PAYLOAD_SERIES ?? null, POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
   tree,
   data: { positions: rows.length, polls: polls.length, start: new Date(dataStart).toISOString(), end: new Date(dataEnd).toISOString() },
   population: { focus: [...FOCUS], holdout: [...HOLDOUT], chain: CHAIN ? { ...CHAIN, stops: chainStops } : null, riders: specs.length, bySource: { uniform: specs.filter((s) => s.source === "uniform").length, targeted: specs.filter((s) => s.source === "targeted").length, chain: specs.filter((s) => s.source === "chain").length, named: specs.filter((s) => s.source === "named").length }, skipped: skippedReasons },

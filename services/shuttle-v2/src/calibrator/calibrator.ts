@@ -12,6 +12,7 @@ import type {
 
 import { median, percentile, shrink } from "./shrinkage.js";
 import type { LapFit } from "./lapFit.js";
+import { attachHourStandTables, loadStandVisits } from "./hourStand.js";
 
 // Tuning ---------------------------------------------------------------------
 
@@ -68,7 +69,10 @@ const DWELL_LOW_MIN_SAMPLES = 5;
  * stopped visits on a good day and a (stop, hour) cell has a median of TWO
  * samples (3 of 1,371 cells reach five), so an hourly table has nothing to
  * stand on. The client conditions on how long THIS bus has stood, which is
- * where the within-day information actually is.
+ * where the within-day information actually is. The exception is a LAYOVER
+ * whose hold follows the clock (Blue Weekend at 333 Cedar: ~10 min at 07-09 h,
+ * ~1 min after 14 h): hourStand.ts serves a +-1 h table shrunk toward this one
+ * beside it, `qh`, only where a per-cell gate and a rider-sim ledger allow.
  *
  * Served as measured, with the true sample counts. The client gates on the
  * counts (`MIN_STAND_SAMPLES` / `MIN_DRIVE_SAMPLES` in `web/src/hopPricing.ts`)
@@ -114,6 +118,8 @@ export interface CalibrationStats {
   occurrenceStandCount: number;
   /** Cells carrying a lap fit (`lapB`). */
   lapFitCount: number;
+  /** Gated layover cells carrying this time of day's stand table (`qh`, hourStand.ts). */
+  hourStandCount: number;
   /** Stopped visits + one-hop legs behind them. */
   splitSampleCount: number;
   durationMs: number;
@@ -131,6 +137,12 @@ export function calibrate(
   /** The lap fits (src/calibrator/lapFit.ts), refreshed on their own slow cadence by the caller. */
   lapFits: ReadonlyMap<string, LapFit> = new Map(),
   releaseFits: ReadonlyMap<string, ReleaseFit> = new Map(),
+  /**
+   * The layover cells whose hour-of-day stand table is served
+   * (hourStand.ts: the cell gate and the route ledger, refreshed on their
+   * own slow cadence by the caller). Empty: no `qh` anywhere.
+   */
+  hourStandCells: ReadonlySet<string> = new Set(),
 ): CalibrationStats {
   const t0 = Date.now();
   const nowMs = now.getTime();
@@ -165,6 +177,10 @@ export function calibrate(
     const current = dwellStats.get(key);
     if (current) dwellStats.set(key, { ...current, release });
   }
+  // After the lap and release fits, which it steps aside for.
+  const hourStandCount = hourStandCells.size > 0
+    ? attachHourStandTables(dwellStats, network, loadStandVisits(db, SPLIT_WINDOW_DAYS, nowMs, { cells: hourStandCells }), nowMs)
+    : 0;
   const driveCount = attachDrives(segmentStats, driveGroups);
   const legQuantileCount = attachLegQuantiles(segmentStats, legGroups);
   const ownPace = computePace(legGroups, network);
@@ -190,6 +206,7 @@ export function calibrate(
     pooledPaceMedianSpm: pooledPace ? Math.round(pooledPace.spm[pooledPace.spm.length >> 1]! * 1e4) / 1e4 : null,
     occurrenceStandCount,
     lapFitCount,
+    hourStandCount,
     splitSampleCount: countSamples(standGroups) + countSamples(driveGroups),
     durationMs: Date.now() - t0,
   };

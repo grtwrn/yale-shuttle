@@ -70,6 +70,13 @@ export type DwellEntry = {
    */
   lapB?: number; lapM?: number; lapN?: number;
   release?: ReleaseFit;
+  /**
+   * The time-of-day stand table at a gated layover cell
+   * (src/calibrator/hourStand.ts), whole seconds, and the visits in its
+   * window. Both or neither; absent on every other cell, and a client that
+   * ignores them prices the stand from `q` exactly as before.
+   */
+  qh?: number[]; qhn?: number;
 };
 /**
  * `pace[route]`: seconds per ROAD metre (`legM`; chord where absent),
@@ -111,6 +118,12 @@ export function legMetersField(net: TransitNetwork, routeId: number, fromStopId:
 export function dwellLapFields(d: DwellStats): Pick<DwellEntry, "lapB" | "lapM" | "lapN"> {
   if (d.lapB === undefined || d.lapM === undefined || d.lapN === undefined) return {};
   return { lapB: d.lapB, lapM: d.lapM, lapN: d.lapN };
+}
+
+/** The time-of-day stand table, both fields or none, whole seconds like `q`. */
+export function dwellHourFields(d: DwellStats): Pick<DwellEntry, "qh" | "qhn"> {
+  if (d.qh === undefined || d.qhn === undefined) return {};
+  return { qh: d.qh.map((x) => Math.round(x)), qhn: d.qhn };
 }
 
 export function dwellSplitFields(d: DwellStats): Pick<DwellEntry, "q" | "qn" | "pstop"> {
@@ -325,6 +338,7 @@ export function buildBusesPayload(
         ...dwellSplitFields(d),
         ...dwellLapFields(d),
         ...(d.release ? { release: d.release } : {}),
+        ...dwellHourFields(d),
       };
     }
     // A stop the route lists more than once (the West Campus out-and-backs)

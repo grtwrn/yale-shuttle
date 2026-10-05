@@ -42,7 +42,7 @@ export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
  * arrival-to-arrival figures, which NOTHING here reads any more (see WHAT A
  * DWELL STATISTIC ACTUALLY MEASURES in eta/tables.ts).
  */
-export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number };
+export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number; qh?: number[]; qhn?: number };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
