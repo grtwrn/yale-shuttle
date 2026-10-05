@@ -87,7 +87,7 @@ import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
-import { getOffAlertTitle, getOffPromptTitle } from "./rideAlert";
+import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -6147,7 +6147,8 @@ const OnBusBanner: FC<{
   // One-shot buzz + notification + in-page popup when it's time to get
   // off (reports #13, #20) — riders look away from the screen mid-ride.
   // Fires at TWO stops out (report #20 asked for earlier warning), so
-  // there's time to gather bags and ring the bell. navigator.vibrate is
+  // there's time to gather bags and ring the bell, once the countdown is
+  // down to 5 min (rideAlert.ts `getOffAlertDue`). navigator.vibrate is
   // a no-op on iOS Safari; there the popup/banner are the primary cue.
   // Keyed per ride so re-renders (or a later ride to the same stop)
   // don't re-fire.
@@ -6169,7 +6170,7 @@ const OnBusBanner: FC<{
     };
   }, [getOffPopup]);
   useEffect(() => {
-    if (stopsRemaining === null || stopsRemaining > 2) return;
+    if (!getOffAlertDue(stopsRemaining, etaSec)) return;
     const key = `${ride.busName}-${ride.alightStopId}`;
     if (getOffAlertRef.current === key) return;
     getOffAlertRef.current = key;
@@ -6183,7 +6184,7 @@ const OnBusBanner: FC<{
       } catch { /* blocked */ }
     }
     setGetOffPopup(title);
-  }, [stopsRemaining, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
+  }, [stopsRemaining, etaSec, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
 
   const etaStr = etaSec !== null ? formatRideEta(etaSec) : null;
   const headline = rideHeadline({
