@@ -141,10 +141,11 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      // feed agrees: Red #119 stood at Division / Prospect 47 m from the pole
      // for one poll and was missed (run 1790956246494).
      const atStop=/(?:^|\n)BOARD\s*🚌/.test(text)&&observedAtStop(bus,run.boardStopId,feed.stop_coords);
-     // Within 45 m only while the bus is still coming in or stands there: the
+     // Within 45 m, but not a bus the feed has moving on past the pickup: the
      // card names a bus that just drove through as a lap away, and a rider
      // cannot board it (#317, 42 m past 100 Church Street South, run
-     // 1791158187158). One that stops further on is boarded at the stop.
+     // 1791158187158). One that stops is boarded once its fix holds still,
+     // or at the stop further on.
      const past=distance<=45&&pastPickup(bus,run.boardStopId,feed.stop_coords);
      if(past){run.pastStopSamples=(run.pastStopSamples??0)+1;if(!run.pastStopReported){run.pastStopReported=true;await event('waiting-bus-past-stop',{bus:name,stop:boardLabel,distanceM:distance,lastStopId:bus.last_stop_id});}}
      if(((distance<=45&&!past)||atStop)&&now>=run.walkUntil){

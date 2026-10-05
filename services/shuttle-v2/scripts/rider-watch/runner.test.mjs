@@ -372,7 +372,8 @@ test('a bus that never comes still ends the wait at the quoted cap',async()=>{
 // (harness-error 11:51:20Z) and the run boarded #317 at 12:06Z as "completed".
 const promptMiss=JSON.parse(await fs.readFile(new URL('./__fixtures__/purple-330-offer-gone-2026-10-04.json',import.meta.url),'utf8'));
 const purpleFeedOf=buses=>({buses,routes:{10:promptMiss.route.stops},route_paths:{10:promptMiss.route.path},stop_names:promptMiss.route.stop_names,stop_coords:promptMiss.route.stop_coords});
-const purpleAt=rows=>rows.map(([bus_name,lat,lon,stationary,at_stop_id,last_stop_id])=>({bus_name,route_id:10,lat,lon,stationary,last_stop_id,...(at_stop_id==null?{}:{at_stop_id})}));
+const busesAt=route_id=>rows=>rows.map(([bus_name,lat,lon,stationary,at_stop_id,last_stop_id,observed_at,last_moved_at])=>({bus_name,route_id,lat,lon,stationary,last_stop_id,...(at_stop_id==null?{}:{at_stop_id}),...(observed_at==null?{}:{observed_at}),...(last_moved_at==null?{}:{last_moved_at})}));
+const purpleAt=busesAt(10);
 const promptPoll=at=>promptMiss.polls.find(p=>p[0].startsWith(at));
 // The app polls every 5 s and the sampler every 10 s, so the app poll that
 // cleared the offer was not recorded. Modeled: #330 20 m along its recorded
@@ -494,5 +495,31 @@ test('replay: #330 rolling past the pole and standing 66 m on is boarded where i
  assert.equal(Math.round(run.lastBoardDistanceM),66);
  assert.deepEqual(h.clicks,["🚌 I'm on it"]);
  assert.equal(run.pastStopSamples,1);
+ assert.equal(run.excludeAccuracy,undefined);
+});
+// Blue Weekend #44, 2026-10-04 (recorded by the rider riding it): it stood 57 m
+// short of Broadway / York, then from 15:37:17Z 7 m past the pole with
+// last_stop_id already Broadway / York and at_stop_id Elm / York, held that
+// fix to 15:37:42Z and left. The app read BOARD🚌 with no bus line there; the
+// replay uses the fixture's named cards ("🚌 #44 · 1 stop away").
+const york44=JSON.parse(await fs.readFile(new URL('./__fixtures__/blue-weekend-44-broadway-york-2026-10-04.json',import.meta.url),'utf8'));
+const york44FeedOf=buses=>({buses,routes:{4:york44.route.stops},route_paths:{4:york44.route.path},stop_names:york44.route.stop_names,stop_coords:york44.route.stop_coords});
+test('replay: #44 standing 7 m past Broadway / York with the neighbouring stop is boarded once its fix holds still',async()=>{
+ const c=york44.route.stop_coords,blueWeekend={label:'Blue Weekend',busRouteIds:[4]};
+ const yorkTrip={kind:'random',origin:{label:'Broadway / York',...c[21],stopId:21},destination:{display_name:'Prospect / Edwards',...c[101],stopId:101}};
+ const [first,...rest]=york44.polls;
+ const h=current=await harness(york44FeedOf(busesAt(4)(first[3])),yorkTrip,{initialLine:blueWeekend,feedOf:york44FeedOf,text:york44.cards[first[2]],at:first[0]});
+ for(const [at,,named,rows] of rest){
+  vi.setSystemTime(Date.parse(at)-10000);await h.poll(york44.cards[named],busesAt(4)(rows));
+  if(h.watcher.status().run?.phase!=='waiting')break;
+ }
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'riding');
+ assert.equal(run.busName,'#44');
+ // 15:37:22Z: the fix had just changed, so it is skipped as moving past.
+ assert.equal(run.pastStopSamples,1);
+ assert.equal(run.boardedAt,'2026-10-04T15:37:32.842Z');
+ assert.equal(Math.round(run.lastBoardDistanceM),7);
+ assert.deepEqual(h.clicks,["🚌 I'm on it"]);
  assert.equal(run.excludeAccuracy,undefined);
 });
