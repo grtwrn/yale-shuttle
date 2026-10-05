@@ -507,10 +507,12 @@ const GEOCODE_BUDGET_MS = 2_500;
 // until the budget ran out left Nominatim no slot at all, so the rider got
 // nothing: on 2026-10-05 Photon took 2.3–4.4 s to answer "Havenly" while
 // Nominatim answered it in 0.38 s, and prod returned [] after 2.5 s for every
-// place that isn't curated. So Photon is given up on this long before the
-// deadline, or at Nominatim's next slot if that is later, whenever Nominatim
-// would still have its minimum below. A healthy Photon answers well inside the
-// 1.1–1.6 s that leaves it, and is unaffected.
+// place that isn't curated. So Nominatim is asked this long before the
+// deadline, or at its next slot if that is later, whenever it would still have
+// its minimum below. A healthy Photon answers well inside the 1.1–1.6 s that
+// leaves it, and is unaffected. A slow one is NOT dropped for Nominatim: the
+// first useful answer wins. #378 aborted it, and lost every place only Photon
+// can find — a typo, a half word, "elenas" — when Photon took 1.6–2.5 s.
 const GEOCODE_FALLBACK_RESERVE_MS = 900;
 // Less time than this and the fallback is not asked at all: Nominatim would be
 // aborted before it answers, and the slot it took is the one the rider's next
@@ -703,8 +705,9 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
    * the budget, aborted, network error, non-2xx). Only a real answer — even
    * an empty one — is cached; a failure must be retried next time.
    *
-   * The `first` provider is given up on in time for the fallback to be asked
-   * inside the budget; the `fallback` is only asked with time to answer.
+   * The `fallback` is only asked with time to answer. `onSlow` is called if
+   * the `first` provider has not answered by the time the fallback must be
+   * asked to fit inside the budget; the first provider is kept, not aborted.
    */
   const ask = async (
     provider: Provider,
@@ -713,6 +716,7 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
     signal: AbortSignal,
     run: ProviderFetch,
     role: "first" | "fallback",
+    onSlow?: () => void,
   ): Promise<GeocodeV1Hit[] | null> => {
     // "Union Station" and "union station" are one lookup, not two slots.
     const key = `${provider}:${query.trim().toLowerCase().replace(/\s+/g, " ")}`;
@@ -729,31 +733,25 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
     if (signal.aborted) return null;
 
     // No sooner than the fallback's own next slot, one interval after this
-    // one, and only if the fallback can still have a slot then with its
-    // minimum left. Otherwise — a lookup that queued long, or whose fallback
-    // slot another lookup has taken meanwhile — giving up would buy nothing,
-    // and this provider keeps the whole budget, as before.
-    const giveUpAt = Math.max(deadline - GEOCODE_FALLBACK_RESERVE_MS, slotAt + GEOCODE_MIN_INTERVAL_MS);
-    const own = new AbortController();
-    const abort = () => own.abort();
-    signal.addEventListener("abort", abort);
-    const timer = role === "first"
-      ? setTimeout(() => {
-        if (nextSlotAt <= deadline - GEOCODE_FALLBACK_MIN_MS) abort();
-      }, giveUpAt - now())
-      : undefined;
+    // one. Whether the fallback can still have a slot then, with its minimum
+    // left, is the fallback's own check when it is asked — against the clock
+    // as it is then, so a timer that fires late cannot cost this provider's
+    // answer. A lookup that queued long, or whose fallback slot another lookup
+    // has taken meanwhile, keeps waiting on this provider alone, as before.
+    const slowAt = Math.max(deadline - GEOCODE_FALLBACK_RESERVE_MS, slotAt + GEOCODE_MIN_INTERVAL_MS);
+    const timer = onSlow ? setTimeout(onSlow, slowAt - now()) : undefined;
     try {
-      const results = await run(query, own.signal);
-      // An answer we had already given up on is not one: cached as empty, it
-      // would hide this provider's real answer for a day.
-      if (results === null || own.signal.aborted) return null;
+      const results = await run(query, signal);
+      // An answer that came after the lookup was settled, or out of time, is
+      // not one: cached as empty, it would hide this provider's real answer
+      // for a day.
+      if (results === null || signal.aborted) return null;
       remember(key, results);
       return results;
     } catch {
       return null;
     } finally {
       clearTimeout(timer);
-      signal.removeEventListener("abort", abort);
     }
   };
 
@@ -804,7 +802,6 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), budgetMs);
       try {
-        const first = await ask("photon", providerQuery, deadline, ctrl.signal, photon, "first");
         // "Returned something" is not "returned something useful".
         //
         // Photon answers an address-shaped query with whatever shares the
@@ -823,18 +820,48 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
         // asked as well. Its address hits lead; Photon's places follow,
         // because a rider who typed a house number wants the house.
         const wantAddress = looksLikeStreetAddress(query);
-        if (first && first.length > 0 && !(wantAddress && !hasAddressHit(query, first))) {
-          return first;
-        }
-        const second = await ask("nominatim", providerQuery, deadline, ctrl.signal, nominatim, "fallback");
-        if (!second || second.length === 0) return first ?? [];
-        if (!first || first.length === 0) return second;
-        const addresses = second.filter((h) => h.type === "house");
-        return addresses.length > 0 ? [...addresses, ...first] : first;
+        const useful = (hits: GeocodeV1Hit[] | null | undefined): hits is GeocodeV1Hit[] =>
+          !!hits && hits.length > 0 && !(wantAddress && !hasAddressHit(query, hits));
+        const merge = (first: GeocodeV1Hit[] | null, second: GeocodeV1Hit[] | null) => {
+          if (!second || second.length === 0) return first ?? [];
+          if (!first || first.length === 0) return second;
+          const addresses = second.filter((h) => h.type === "house");
+          return addresses.length > 0 ? [...addresses, ...first] : first;
+        };
+        // Photon, then Nominatim when Photon has nothing useful — or, when
+        // Photon is slow, Nominatim at that moment with Photon kept waiting,
+        // and the first useful answer wins. Otherwise the two are merged once
+        // both have answered, or the budget has run out on them.
+        return await new Promise<GeocodeV1Hit[]>((resolve, reject) => {
+          let first: GeocodeV1Hit[] | null | undefined; // undefined: no answer yet
+          let second: GeocodeV1Hit[] | null | undefined;
+          let secondAsked = false;
+          const settle = () => {
+            if (useful(first)) return resolve(first);
+            if (first !== undefined) askSecond();
+            if (useful(second) || (first !== undefined && second !== undefined)) {
+              resolve(merge(first ?? null, second ?? null));
+            }
+          };
+          const askSecond = () => {
+            // Once per lookup: a Photon miss after Nominatim was asked for
+            // being slow waits for that answer rather than asking again.
+            if (secondAsked) return;
+            secondAsked = true;
+            ask("nominatim", providerQuery, deadline, ctrl.signal, nominatim, "fallback")
+              .then((r) => { second = r; settle(); })
+              .catch(reject);
+          };
+          ask("photon", providerQuery, deadline, ctrl.signal, photon, "first", askSecond)
+            .then((r) => { first = r; settle(); })
+            .catch(reject);
+        });
       } catch {
         return [];
       } finally {
         clearTimeout(timer);
+        // The provider that lost is let go, and its answer not remembered.
+        ctrl.abort();
       }
     })().finally(() => inFlight.delete(flightKey));
     inFlight.set(flightKey, req);

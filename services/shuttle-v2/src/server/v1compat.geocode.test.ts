@@ -302,28 +302,47 @@ describe("a slow Photon still leaves Nominatim its turn (2026-10-05)", () => {
     41.3047488,
   );
 
-  /** A response `ms` away that, like fetch, rejects the moment it is aborted. */
-  function arrivesAfter(ms: number, init: RequestInit, res: () => Response): Promise<Response> {
+  type Asked = { provider: string; at: number; aborted?: boolean };
+
+  /**
+   * A response `ms` away that, like fetch, rejects the moment it is aborted.
+   * `call` is marked aborted if that happened before it answered.
+   */
+  function arrivesAfter(ms: number, init: RequestInit, res: () => Response, call?: Asked): Promise<Response> {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => resolve(res()), ms);
+      let answered = false;
+      const timer = setTimeout(() => { answered = true; resolve(res()); }, ms);
       init.signal?.addEventListener("abort", () => {
+        if (answered) return;
+        if (call) call.aborted = true;
         clearTimeout(timer);
         reject(new DOMException("aborted", "AbortError"));
       });
     });
   }
 
-  /** Providers with set latencies; records when each was asked. */
-  function providers(photonMs: () => number, photonBody: () => unknown, nominatimMs: number) {
-    const asked: { provider: string; at: number }[] = [];
+  /**
+   * Providers with set latencies; records when each was asked. A body may be
+   * a whole Response, for an error. Nominatim has Havenly unless told otherwise.
+   */
+  function providers(
+    photonMs: () => number,
+    photonBody: () => unknown,
+    nominatimMs: number,
+    nominatimBody: () => unknown = () => [HAVENLY_ROW],
+  ) {
+    const asked: Asked[] = [];
+    const answer = (body: unknown) => (body instanceof Response ? body : json(body));
     const stub = stubFetch({
       photon: (_url, init) => {
-        asked.push({ provider: "photon", at: Date.now() });
-        return arrivesAfter(photonMs(), init, () => json(photonBody()));
+        const call: Asked = { provider: "photon", at: Date.now() };
+        asked.push(call);
+        return arrivesAfter(photonMs(), init, () => answer(photonBody()), call);
       },
       nominatim: (_url, init) => {
-        asked.push({ provider: "nominatim", at: Date.now() });
-        return arrivesAfter(nominatimMs, init, () => json([HAVENLY_ROW]));
+        const call: Asked = { provider: "nominatim", at: Date.now() };
+        asked.push(call);
+        return arrivesAfter(nominatimMs, init, () => answer(nominatimBody()), call);
       },
     });
     return { ...stub, asked };
@@ -439,6 +458,133 @@ describe("a slow Photon still leaves Nominatim its turn (2026-10-05)", () => {
     const again = await timedLookup(ext, "Havenly");
     expect(again?.hits.map((h) => h.class)).toEqual(["osm"]);
     expect(asked.map((a) => a.provider)).toEqual(["photon", "nominatim", "photon"]);
+  });
+
+  describe("and keeps Photon while it does: the first useful answer wins", () => {
+    // #378 aborted Photon at that moment to ask Nominatim instead. When Photon
+    // would have answered in the 1.6–2.5 s that cut off, and Nominatim has
+    // nothing — a typo, a half word, a fuzzy name: "elenas" — the rider got []
+    // where Photon had the place (the reviewer's probe: 3 of 3 tries found
+    // before #378, 0 of 3 after). Nominatim is still asked at the same moment
+    // and slot; Photon is no longer dropped for it.
+    const NOTHING = () => [];
+    const fake = () => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+
+    it.each([1_700, 2_000, 2_400])(
+      "finds 'elenas' through a Photon that takes %i ms when Nominatim has nothing",
+      async (photonMs) => {
+        fake();
+        const { fetchImpl, asked } = providers(() => photonMs, () => ({ features: [ELENAS] }), 380, NOTHING);
+        const ext = createExternalGeocoder({ fetchImpl });
+        const out = await timedLookup(ext, "elenas");
+        expect(out?.hits.map((h) => h.display_name.split(",")[0])).toEqual(["Elena's on Orange"]);
+        expect(out!.ms).toBe(photonMs);
+        // Nominatim was asked all the same, a slot after Photon: one queue,
+        // no request #378 did not make.
+        expect(asked.map((a) => a.provider)).toEqual(["photon", "nominatim"]);
+        expect(asked[1]!.at - asked[0]!.at).toBeGreaterThanOrEqual(1_100);
+        expect(asked[0]!.aborted).toBeUndefined();
+      },
+    );
+
+    it("finds it through Photon when Nominatim errors, or is slow as well", async () => {
+      for (const [nominatimMs, body] of [[380, json({}, 503)], [1_200, [HAVENLY_ROW]]] as const) {
+        fake();
+        const { fetchImpl, asked } = providers(() => 2_000, () => ({ features: [ELENAS] }), nominatimMs, () => body);
+        const out = await timedLookup(createExternalGeocoder({ fetchImpl }), "elenas");
+        expect(out?.hits.map((h) => h.display_name.split(",")[0])).toEqual(["Elena's on Orange"]);
+        expect(out!.ms).toBe(2_000);
+        expect(asked.map((a) => a.provider)).toEqual(["photon", "nominatim"]);
+        // The slow Nominatim lost the race and is let go, not waited for.
+        expect(asked[1]!.aborted).toBe(nominatimMs === 1_200 ? true : undefined);
+        vi.useRealTimers();
+      }
+    });
+
+    it("takes Nominatim's answer when it comes first, and lets go of Photon then", async () => {
+      fake();
+      const { fetchImpl, asked } = providers(() => 2_200, () => ({ features: [HAVENLY] }), 380);
+      const out = await timedLookup(createExternalGeocoder({ fetchImpl }), "Havenly");
+      expect(out?.hits.map((h) => h.class)).toEqual(["amenity"]); // Nominatim's row
+      expect(out!.ms).toBe(1_980);
+      expect(asked.map((a) => [a.provider, a.aborted ?? false])).toEqual([["photon", true], ["nominatim", false]]);
+    });
+
+    it("takes Nominatim's answer when Photon errors or finds nothing after Nominatim was asked", async () => {
+      for (const body of [json({}, 503), { features: [] }]) {
+        fake();
+        const { fetchImpl, asked } = providers(() => 1_800, () => body, 380);
+        const out = await timedLookup(createExternalGeocoder({ fetchImpl }), "Havenly");
+        expect(out?.hits.map((h) => h.class)).toEqual(["amenity"]);
+        expect(out!.ms).toBe(1_980);
+        // Photon's miss does not ask Nominatim a second time.
+        expect(asked.map((a) => a.provider)).toEqual(["photon", "nominatim"]);
+        vi.useRealTimers();
+      }
+    });
+
+    it("waits for Photon up to the budget when Nominatim has nothing, and no longer", async () => {
+      fake();
+      const slow = providers(() => 3_000, () => ({ features: [ELENAS] }), 380, NOTHING);
+      const late = await timedLookup(createExternalGeocoder({ fetchImpl: slow.fetchImpl }), "elenas");
+      expect(late).toEqual({ ms: 2_500, hits: [] });
+      expect(slow.asked.map((a) => [a.provider, a.aborted ?? false])).toEqual([["photon", true], ["nominatim", false]]);
+
+      // Neither has anything: answered as soon as both have said so.
+      const none = providers(() => 2_000, () => ({ features: [] }), 380, NOTHING);
+      expect(await timedLookup(createExternalGeocoder({ fetchImpl: none.fetchImpl }), "elenas"))
+        .toEqual({ ms: 2_000, hits: [] });
+    });
+
+    it("does not lose Photon to a give-up timer that fires late", async () => {
+      fake();
+      // The event loop stalls for 0.6 s just before the give-up timer is due,
+      // so it runs with 0.3 s of the budget left: too late for Nominatim. #378
+      // aborted Photon then all the same and skipped Nominatim, so the rider
+      // got [] while Photon was 0.1 s from answering.
+      const { fetchImpl, asked } = providers(() => 2_200, () => ({ features: [HAVENLY] }), 380);
+      const ext = createExternalGeocoder({ fetchImpl });
+      let out: GeocodeV1Hit[] | null = null;
+      void ext.lookup("Havenly").then((hits) => { out = hits; });
+      await vi.advanceTimersByTimeAsync(1_500);
+      vi.setSystemTime(Date.now() + 600); // the clock moves, no timer runs
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(out!.map((h) => h.class)).toEqual(["osm"]);
+      expect(asked.map((a) => [a.provider, a.aborted ?? false])).toEqual([["photon", false]]);
+    });
+
+    it("holds no slot for Nominatim before the one it would use, so a Photon that answers first costs the queue nothing", async () => {
+      fake();
+      // The second rider's Photon request queues 0.7 s for its slot and
+      // answers at 2.1 s: after its deadline − 0.9 s (2.0 s), before
+      // Nominatim's own next slot (2.2 s). Nominatim was not needed, so it
+      // took no slot, and a third rider at 2.15 s gets 2.2 s rather than 3.3 s.
+      const latency = [300, 1_000];
+      const { fetchImpl, asked } = providers(() => latency.shift() ?? 300, () => ({ features: [HAVENLY] }), 380);
+      const ext = createExternalGeocoder({ fetchImpl });
+      const t0 = Date.now();
+      void ext.lookup("Havenly");
+      await vi.advanceTimersByTimeAsync(400);
+      void ext.lookup("Havenly Bar");
+      await vi.advanceTimersByTimeAsync(1_750);
+      void ext.lookup("Oak Haven");
+      await vi.advanceTimersByTimeAsync(3_000);
+      expect(asked.map((a) => [a.provider, a.at - t0])).toEqual([["photon", 0], ["photon", 1_100], ["photon", 2_200]]);
+    });
+
+    it("keeps finding a typo on retries, without asking Nominatim again what it already answered", async () => {
+      fake();
+      // A rider retries "elenas" as Photon recovers from an outage: 3 s, then
+      // 2 s. Nominatim's [] from the first try is remembered, so the retry
+      // spends no slot on it and simply waits for Photon.
+      const latency = [3_000];
+      const { fetchImpl, asked } = providers(() => latency.shift() ?? 2_000, () => ({ features: [ELENAS] }), 380, NOTHING);
+      const ext = createExternalGeocoder({ fetchImpl });
+      const tries: number[] = [];
+      for (let i = 0; i < 3; i++) tries.push((await timedLookup(ext, "elenas"))!.hits.length);
+      expect(tries).toEqual([0, 1, 1]);
+      expect(asked.map((a) => a.provider)).toEqual(["photon", "nominatim", "photon"]);
+    });
   });
 });
 
