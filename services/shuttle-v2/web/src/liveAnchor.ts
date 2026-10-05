@@ -525,6 +525,92 @@ export function rideStopsToExit(
 }
 
 /**
+ * THE RIDE PAGE'S STOP LIST: the ride's calls in travel order, pickup first and
+ * exit last, the calls {@link rideStopsToExit} counts. So the bus is that many
+ * rows above the exit ({@link rideCallIndex}), and the list and the banner read
+ * one count.
+ *
+ * The list used to walk the de-duplicated list from the pickup's slot to the
+ * exit's, in the order upstream first names each stop. Green's keeps Building
+ * 900, 800, 600, 400, 750, West Haven Train Station, so every recorded Building
+ * 400 -> station ride listed "Building 400 · Building 750 · West Haven Train
+ * Station", without the 600, 800 and 900 the bus calls at on the way, and drew
+ * the bus at Building 750 while it stood at Building 800. Purple's Building 400
+ * -> LEPH / 60 College listed the two of them and nothing between
+ * (ridestoplist20261004).
+ *
+ * On a line that comes back the way it went (its list names a stop twice:
+ * Green and Purple) the calls are the ring's, every pass and the station's
+ * added call, in its repaired travel order. Of the pickup's passes, the one
+ * nearest before a pass of the exit: the ride the planner boards (planner.ts
+ * `rideBoardArrivals`). Every other line walks upstream's list, which is the
+ * order the banner counts in (Pink's twin curbs being one call a lap).
+ *
+ * Empty when the pickup or the exit is not on the line.
+ */
+export function rideCalls(
+  cfg: RouteListConfig,
+  routeStops: Record<string, number[]>,
+  stopCoords: Record<number, LatLon>,
+  boardStopId: number,
+  alightStopId: number,
+): number[] {
+  const seq = mergedRouteStops(cfg, routeStops);
+  const busRouteId = cfg.busRouteIds[0];
+  const ring = new Set(seq).size !== seq.length && busRouteId !== undefined
+    ? ringForBus({ route_id: busRouteId }, seq, stopCoords)
+    : null;
+  const calls = ring && ring.stops.length === ring.N ? ring.stops : seq;
+  if (!calls.includes(alightStopId)) return [];
+  if (boardStopId === alightStopId) return [boardStopId];
+  const N = calls.length;
+  let best: number[] = [];
+  for (let p = 0; p < N; p++) {
+    if (calls[p] !== boardStopId) continue;
+    let k = 1;
+    while (calls[(p + k) % N] !== alightStopId) k++;
+    if (best.length === 0 || k + 1 < best.length) {
+      best = [];
+      for (let j = 0; j <= k; j++) best.push(calls[(p + j) % N]!);
+    }
+  }
+  return best;
+}
+
+/**
+ * The bus's row in {@link rideCalls}: the call it is at or last cleared, read
+ * back from the exit by the banner's count ({@link rideStopsToExit}); -1 before
+ * the pickup or past the exit.
+ *
+ * Only while the shared anchor has the bus at one of the ride's calls (its stop
+ * or its travel slot's). A ride can be started before its bus comes
+ * (TripBoardingActions), and the countdown to an exit the ring passes twice is
+ * then for whichever pass comes first: a Green bus still on Whitney Avenue,
+ * coming to a rider at Building 400, counted 5, 4, 3, 2, 1 to West Haven Train
+ * Station's outbound call and would have been drawn down the list
+ * (ridestoplist20261004: 249 of 424 recorded polls before boarding on Green and
+ * Purple, none once riding).
+ */
+export function rideCallIndex(
+  bus: AnchorBus & { bus_name: string },
+  cfg: RouteListConfig,
+  routeStops: Record<string, number[]>,
+  stopCoords: Record<number, LatLon>,
+  calls: readonly number[],
+  stopsToExit: number | null,
+  now: number,
+  store?: AnchorStore | undefined,
+): number {
+  if (stopsToExit === null || !Number.isInteger(stopsToExit) || stopsToExit < 0 || stopsToExit >= calls.length) return -1;
+  const seq = mergedRouteStops(cfg, routeStops);
+  const onRide = [false, true].some((travel) => {
+    const stopId = seq[anchorIndexOnList(bus, cfg, routeStops, stopCoords, seq, now, store, travel)];
+    return stopId !== undefined && calls.includes(stopId);
+  });
+  return onRide ? calls.length - 1 - stopsToExit : -1;
+}
+
+/**
  * WHICH STOP IS THIS BUS STANDING AT, AND FOR HOW LONG — one answer, shared.
  *
  * The price has to decide this to bill the residual stand, and the SCREEN has
