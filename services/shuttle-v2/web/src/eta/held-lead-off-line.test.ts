@@ -111,8 +111,9 @@ describe('purplehold20261003: #330 down College St, 300 George St -> 100 Church 
     expect(onLead({ ...b, lastStopId: 10 })).toBe(false);
 
     // Only while the bus closes on the lead's next stop: a fix no nearer to
-    // 100 Church Street South than where the lead last had mass is not it.
-    expect(onLead({ ...b, leadMassFix: b.lastFix })).toBe(false);
+    // 100 Church Street South than where the lead last had mass, nor than
+    // where it was last the top leg (purpleholdflash20261004), is not it.
+    expect(onLead({ ...b, leadMassFix: b.lastFix, leadTopFix: b.lastFix })).toBe(false);
 
     // For at most LEAD_OFF_LINE_MAX_MS, and not on a belief restored from a
     // checkpoint that predates the clock.

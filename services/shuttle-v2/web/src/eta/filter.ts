@@ -267,6 +267,12 @@ export interface Belief {
   leadMassAt: number;
   /** The fix at `leadMassAt` (absent on an older checkpoint, like it). */
   leadMassFix?: LatLon | null | undefined;
+  /**
+   * The fix at the last step where the lead's leg was the posterior's top leg
+   * (see `leadOffItsLine`). Absent on an older checkpoint, which keeps the
+   * `leadMassFix` test alone.
+   */
+  leadTopFix?: LatLon | null | undefined;
   /** True when this step saw a fresh fix. */
   fresh: boolean;
   /** Per cell: the anchor leg of standing mass (`anchorLeg(.., true)`), cached once per step. */
@@ -525,7 +531,7 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
     fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: since ?? now,
     rested: standing, restStop: -1, restApproach: false, restMask,
     leftStop: -1, leftSince: 0, leftAt: 0,
-    serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, leadMassAt: now, leadMassFix: { lat: bus.lat, lon: bus.lon }, fresh: true,
+    serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, leadMassAt: now, leadMassFix: { lat: bus.lat, lon: bus.lon }, leadTopFix: { lat: bus.lat, lon: bus.lon }, fresh: true,
     standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
   };
   applyLastStop(b, ring, bus, stops);
@@ -775,7 +781,8 @@ function lastStopReading(b: Belief, ring: Ring, best: number): "confirms" | "con
  *  - and within the stray band the weight was derived for
  *    (`OFF_ROUTE_BAND_M` / 2). Beyond it the bus has left the route;
  *  - the bus is driving the lead's way: since the lead's leg last carried
- *    mass it has closed `LEAD_OFF_LINE_CLOSING_M` on the lead's next stop;
+ *    mass, or since it was last the posterior's top leg, it has closed
+ *    `LEAD_OFF_LINE_CLOSING_M` on the lead's next stop;
  *  - for no longer than `LEAD_OFF_LINE_MAX_MS` since then. A far jump the
  *    feed contradicts is held with no timer, and a bus that went off duty
  *    with its feed frozen sat there for an hour.
@@ -803,6 +810,30 @@ function lastStopReading(b: Belief, ring: Ring, best: number): "confirms" | "con
  * after the pass. Most of the rest also keep master's number from before the
  * flip. While the lead holds under 0.8 the band is still the full mixture,
  * so the alternative stays inside "6-23".
+ *
+ * Closing since the lead's leg last carried mass alone was one poll's
+ * closing (purpleholdflash20261004). On College St each fix takes the lead's
+ * remnant down by orders of magnitude, so its last poll above the floor is
+ * the one before the prune. Pulling out of 300 George St the bus heads
+ * south-west, not at 100 Church Street South, and closes 20-25 m on it in a
+ * 5 s poll. That poll priced the College St alternative, "~13 (6-22)",
+ * 4 stops, and the next was back to "~2": once on most Purple laps, and for
+ * as long as the bus stood at a light. Rider watcher, #330 at 09:36Z on
+ * 2026-10-04: "~1", "~12 (6-23)", "<1". From where the posterior last agreed
+ * with the lead, the same polls had closed a median 51 m. Either reference
+ * will do, so every case the mass reference passes still passes.
+ *
+ * Measured on 14 archived days (09-20..10-03), that flash at 100 Church
+ * Street South goes from 250 to 25. In 23 of the 25 left, the feed rules
+ * above do not vouch for the lead. On 7 days, every route and every stop's
+ * row (962,787 bus-polls), 7,258 rows change: 5,731 are more than 30 s
+ * closer to the recorded arrival and 1,328 further. Severe episodes are 832
+ * fixed and 116 introduced (Purple 632/105, Blue Night 193/11, Pink 7/0).
+ * Green, Red and Orange see no row change. 93 of Purple's 105 are the LEPH /
+ * 60 College pass above, one poll earlier. The other 23 keep master's own
+ * number from the polls before and after its flip, and the flip happened to
+ * match the arrival (on Purple, the bus then held 9-18 min at Union Station
+ * (S)).
  */
 function leadOffItsLine(b: Belief, ring: Ring, top: number): boolean {
   if (top === b.lead || b.lastFix === null || !b.leadMassFix) return false;
@@ -811,7 +842,10 @@ function leadOffItsLine(b: Belief, ring: Ring, top: number): boolean {
   if (ring.stops[(top + 1) % ring.N] === b.lastStopId) return false;
   if (ring.stops.filter(s => s === b.lastStopId).length > 1) return false;
   const next = stopPoint(ring, (b.lead + 1) % ring.N);
-  if (!(haversineMeters(b.lastFix, next) < haversineMeters(b.leadMassFix, next) - LEAD_OFF_LINE_CLOSING_M)) return false;
+  const fix = b.lastFix;
+  const closedFrom = (from: LatLon | null | undefined) =>
+    !!from && haversineMeters(fix, next) < haversineMeters(from, next) - LEAD_OFF_LINE_CLOSING_M;
+  if (!closedFrom(b.leadMassFix) && !closedFrom(b.leadTopFix)) return false;
   const d = distancesTo(ring, b.lastFix);
   let near = Infinity;
   for (let c = 0; c < ring.C; c++) if (ring.leg[c] === b.lead && d[c]! < near) near = d[c]!;
@@ -1031,7 +1065,7 @@ export function stepBelief(
     leftAt: moved && prev.restStop >= 0 && !prev.restApproach ? now : prev.leftAt,
     restMask: moved || closedIn ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
-    lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, leadMassAt: prev.leadMassAt, leadMassFix: prev.leadMassFix, fresh,
+    lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, leadMassAt: prev.leadMassAt, leadMassFix: prev.leadMassFix, leadTopFix: prev.leadTopFix, fresh,
     standLeg: moved || closedIn ? new Int32Array(C) : prev.standLeg,
     zoneKey: moved || closedIn ? new Int32Array(C) : prev.zoneKey,
   };
@@ -1059,7 +1093,16 @@ export function stepBelief(
   }
   b.lead = leadLeg(b, ring, prev.lead, now, b);
   if (leadCarries(b, ring)) { b.leadMassAt = now; b.leadMassFix = b.lastFix; }
+  if (leadIsTop(b, ring)) b.leadTopFix = b.lastFix;
   return b;
+}
+
+/** Is the lead's leg the posterior's top leg (the argmax `leadLeg` reads)? */
+function leadIsTop(b: Belief, ring: Ring): boolean {
+  const m = legMass(b, ring);
+  let best = 0;
+  for (let i = 1; i < ring.N; i++) if (m[i]! > m[best]!) best = i;
+  return best === b.lead;
 }
 
 /** Does the lead's leg hold a situation `situations` keeps at the propagation floor? */
