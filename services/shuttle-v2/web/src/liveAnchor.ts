@@ -133,6 +133,8 @@ export function resolveAnchorIndex(
  * leg of the bus on 17,600 of the 17,698 that can be scored, where it was on
  * 3,454; one side within a leg and the other three or more off, 11,597 fixed
  * and 28 introduced (26 of them one Pink bus on the VA spur's twin curbs).
+ * The Pink ones were the countdown's error: it keeps the lead there now
+ * (filter.ts `leadOffItsLine`, pinktwincurb20261005), and the anchor with it.
  * On the served path over the rider watcher's polls (10-01..10-05, 14.8M trip
  * cards) 71,882 cards change, 70,642 of them toward the countdown's own
  * count, and none goes from within two stops of it to six off.

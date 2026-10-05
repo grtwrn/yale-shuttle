@@ -918,22 +918,70 @@ function alongRing(ring: Ring, c: number, from: LatLon, to: LatLon): number {
  * number from the polls before and after its flip, and the flip happened to
  * match the arrival (on Purple, the bus then held 9-18 min at Union Station
  * (S)).
+ *
+ * Where the feed cannot vouch, a twin curb can (pinktwincurb20261005). Pink
+ * runs out from Congress / Howard to Front / Rt 1 (S) and comes back from
+ * Front / Rt 1 (N), the other curb of the same corner. Some laps drive out
+ * along the return leg's line, so the mass sits on the leg out of the (N)
+ * curb, a lap on: "~17 min, 6 stops" for a bus 2-3 min from the (S) curb.
+ * The feed's last stop does not help there. On 2026-09-29 it read 59, the
+ * (N) curb, from 18:52 to 19:20Z while #307 served 72, 43 and 44 and drove
+ * on round the VA spur; at 19:44Z it read 109, a stop the ring calls twice;
+ * on other laps it lagged three or four stops behind. A bus
+ * driving that leg's line BACK toward the curb, while it closes on the
+ * lead's next stop, is still on its way out; one on the return leg drives
+ * away from it. So when the top leg starts at the other curb of the lead's
+ * next stop (another stop within NEAR_STOP_M, not the other call of the same
+ * stop: the West Campus fold above), being driven backwards (`backAlong`)
+ * stands in for the feed.
+ *
+ * Measured on 15 archived days (09-20..10-04), every route and every stop's
+ * row (2,041,371 bus-polls). Only Pink changes: 1,236 rows, 1,201 more than
+ * 30 s closer to the recorded arrival and 19 further, where the collector
+ * booked the visit to the other curb (Front / Rt 1, VA Entrance) or the bus
+ * skipped VA Hospital. Mean error over them goes 1,182 -> 221 s, and severe
+ * episodes 95 fixed, 0 introduced. Either half alone did harm: the backwards
+ * test without the twin revived stale leads at Purple's 100 Church Street
+ * South, and the twin without it held Red's lead through the 09-25 road-race
+ * detour.
  */
 function leadOffItsLine(b: Belief, ring: Ring, top: number): boolean {
   if (top === b.lead || b.lastFix === null || !b.leadMassFix) return false;
   if (!(b.seenAt - b.leadMassAt <= LEAD_OFF_LINE_MAX_MS)) return false;
-  if (lastStopReading(b, ring, b.lead) !== "confirms" || lastStopReading(b, ring, top) !== "contradicts") return false;
-  if (ring.stops[(top + 1) % ring.N] === b.lastStopId) return false;
-  if (ring.stops.filter(s => s === b.lastStopId).length > 1) return false;
-  const next = stopPoint(ring, (b.lead + 1) % ring.N);
+  const feed = lastStopReading(b, ring, b.lead) === "confirms" && lastStopReading(b, ring, top) === "contradicts"
+    && ring.stops[(top + 1) % ring.N] !== b.lastStopId
+    && ring.stops.filter(s => s === b.lastStopId).length <= 1;
+  const nextIdx = (b.lead + 1) % ring.N;
+  const next = stopPoint(ring, nextIdx);
+  const twin = ring.stops[top] !== ring.stops[nextIdx] && haversineMeters(stopPoint(ring, top), next) <= NEAR_STOP_M;
+  if (!feed && !twin) return false;
   const fix = b.lastFix;
   const closedFrom = (from: LatLon | null | undefined) =>
-    !!from && haversineMeters(fix, next) < haversineMeters(from, next) - LEAD_OFF_LINE_CLOSING_M;
+    !!from && haversineMeters(fix, next) < haversineMeters(from, next) - LEAD_OFF_LINE_CLOSING_M
+    && (feed || backAlong(ring, top, from, fix));
   if (!closedFrom(b.leadMassFix) && !closedFrom(b.leadTopFix)) return false;
   const d = distancesTo(ring, b.lastFix);
   let near = Infinity;
   for (let c = 0; c < ring.C; c++) if (ring.leg[c] === b.lead && d[c]! < near) near = d[c]!;
   return near > offLineM(ring) && near <= OFF_ROUTE_BAND_M / 2;
+}
+
+/**
+ * Has the bus moved LEAD_OFF_LINE_CLOSING_M or more BACK along leg `leg`'s
+ * line, from `from` to `to`, with `to` on that line? Each point is read at its
+ * nearest cell of the leg, and cells run in the direction of travel.
+ */
+function backAlong(ring: Ring, leg: number, from: LatLon, to: LatLon): boolean {
+  const df = distancesTo(ring, from), dt = distancesTo(ring, to);
+  let a = -1, z = -1;
+  for (let c = 0; c < ring.C; c++) {
+    if (ring.leg[c] !== leg) continue;
+    if (a < 0 || df[c]! < df[a]!) a = c;
+    if (z < 0 || dt[c]! < dt[z]!) z = c;
+  }
+  if (a < 0 || !(dt[z]! <= offLineM(ring))) return false;
+  const back = ((a - z) % ring.C + ring.C) % ring.C;
+  return back < ring.C / 2 && back * (ring.loopM / ring.C) >= LEAD_OFF_LINE_CLOSING_M;
 }
 
 /**
