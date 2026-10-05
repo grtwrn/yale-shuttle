@@ -503,6 +503,19 @@ const GEOCODE_MIN_INTERVAL_MS = 1100;
 // landmarks alone. Degrading beats getting the egress IP banned, which breaks
 // search for good — and beats a cold request that waits 2.5 s twice.
 const GEOCODE_BUDGET_MS = 2_500;
+// The part of that budget kept back for the fallback. Waiting on a slow Photon
+// until the budget ran out left Nominatim no slot at all, so the rider got
+// nothing: on 2026-10-05 Photon took 2.3–4.4 s to answer "Havenly" while
+// Nominatim answered it in 0.38 s, and prod returned [] after 2.5 s for every
+// place that isn't curated. So Photon is given up on this long before the
+// deadline, or at Nominatim's next slot if that is later, whenever Nominatim
+// would still have its minimum below. A healthy Photon answers well inside the
+// 1.1–1.6 s that leaves it, and is unaffected.
+const GEOCODE_FALLBACK_RESERVE_MS = 900;
+// Less time than this and the fallback is not asked at all: Nominatim would be
+// aborted before it answers, and the slot it took is the one the rider's next
+// keystroke needed.
+const GEOCODE_FALLBACK_MIN_MS = 500;
 
 /**
  * Does this read like a street address the rider expects to land on a
@@ -689,6 +702,9 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
    * One provider's answer, or null when it could not be asked (no slot inside
    * the budget, aborted, network error, non-2xx). Only a real answer — even
    * an empty one — is cached; a failure must be retried next time.
+   *
+   * The `first` provider is given up on in time for the fallback to be asked
+   * inside the budget; the `fallback` is only asked with time to answer.
    */
   const ask = async (
     provider: Provider,
@@ -696,6 +712,7 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
     deadline: number,
     signal: AbortSignal,
     run: ProviderFetch,
+    role: "first" | "fallback",
   ): Promise<GeocodeV1Hit[] | null> => {
     // "Union Station" and "union station" are one lookup, not two slots.
     const key = `${provider}:${query.trim().toLowerCase().replace(/\s+/g, " ")}`;
@@ -706,18 +723,37 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
     // on this provider and let the caller degrade.
     const t = now();
     const slotAt = Math.max(t, nextSlotAt);
-    if (slotAt > deadline) return null;
+    if (slotAt > (role === "fallback" ? deadline - GEOCODE_FALLBACK_MIN_MS : deadline)) return null;
     nextSlotAt = slotAt + GEOCODE_MIN_INTERVAL_MS;
     if (slotAt > t) await sleep(slotAt - t);
     if (signal.aborted) return null;
 
+    // No sooner than the fallback's own next slot, one interval after this
+    // one, and only if the fallback can still have a slot then with its
+    // minimum left. Otherwise — a lookup that queued long, or whose fallback
+    // slot another lookup has taken meanwhile — giving up would buy nothing,
+    // and this provider keeps the whole budget, as before.
+    const giveUpAt = Math.max(deadline - GEOCODE_FALLBACK_RESERVE_MS, slotAt + GEOCODE_MIN_INTERVAL_MS);
+    const own = new AbortController();
+    const abort = () => own.abort();
+    signal.addEventListener("abort", abort);
+    const timer = role === "first"
+      ? setTimeout(() => {
+        if (nextSlotAt <= deadline - GEOCODE_FALLBACK_MIN_MS) abort();
+      }, giveUpAt - now())
+      : undefined;
     try {
-      const results = await run(query, signal);
-      if (results === null) return null;
+      const results = await run(query, own.signal);
+      // An answer we had already given up on is not one: cached as empty, it
+      // would hide this provider's real answer for a day.
+      if (results === null || own.signal.aborted) return null;
       remember(key, results);
       return results;
     } catch {
       return null;
+    } finally {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
     }
   };
 
@@ -768,7 +804,7 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), budgetMs);
       try {
-        const first = await ask("photon", providerQuery, deadline, ctrl.signal, photon);
+        const first = await ask("photon", providerQuery, deadline, ctrl.signal, photon, "first");
         // "Returned something" is not "returned something useful".
         //
         // Photon answers an address-shaped query with whatever shares the
@@ -790,7 +826,7 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
         if (first && first.length > 0 && !(wantAddress && !hasAddressHit(query, first))) {
           return first;
         }
-        const second = await ask("nominatim", providerQuery, deadline, ctrl.signal, nominatim);
+        const second = await ask("nominatim", providerQuery, deadline, ctrl.signal, nominatim, "fallback");
         if (!second || second.length === 0) return first ?? [];
         if (!first || first.length === 0) return second;
         const addresses = second.filter((h) => h.type === "house");
