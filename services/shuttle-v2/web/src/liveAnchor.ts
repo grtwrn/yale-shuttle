@@ -325,10 +325,21 @@ export function tripApproach(
  * it over for a later one. A bus that has just left the pinned pass, with the
  * countdown a lap on, is a whole lap away.
  *
- * Every other pickup, and every pickup on a line whose list names each stop
- * once, reads as before: empty at the stop, else `tripApproach`. That keeps
- * Pink out: its ring's twins are the opposite curbs of the VA spur, which the
- * feed reports once a lap each, in published order.
+ * A pickup the ring passes once, on any line, is the same: a bus that has
+ * just left it, with the countdown a lap on, is a whole lap away. Counted
+ * `tripApproach`'s way it was empty while the anchor was still on the pickup's
+ * leg, so the card read "0 stops away" with the bus drawn at BOARD and its
+ * name dropped, beside the next lap's countdown: Purple #317 through 100
+ * Church Street South without stopping, 50-60 s at ~65 min until the feed's
+ * last stop moved on (purpleatstop20261005); Green #321 off Building 750
+ * (stopcountzerodepart20261005). A bus the feed has standing there, or a
+ * countdown for this visit, still reads empty. `lapPastPickup` false keeps the
+ * old reading, for the ride banner's exit (`rideStopsToExit`).
+ *
+ * Apart from that, every other pickup, and every pickup on a line whose list
+ * names each stop once, reads as before: empty at the stop, else
+ * `tripApproach`. That keeps Pink out: its ring's twins are the opposite curbs
+ * of the VA spur, which the feed reports once a lap each, in published order.
  */
 export function rideApproach(
   bus: AnchorBus & { bus_name: string; at_stop_id?: number | null; stationary?: boolean },
@@ -339,18 +350,28 @@ export function rideApproach(
   boardHops: readonly (readonly [hops: number, stopId: number])[] | undefined,
   now: number,
   store?: AnchorStore | undefined,
+  lapPastPickup = true,
 ): number[] | null {
   const atStop = observedAtStop(bus, boardStopId, stopCoords);
   const before = () => atStop ? [] : tripApproach(bus, cfg, routeStops, stopCoords, boardStopId, now, store);
   if (!boardHops?.length || !boardHops.every(([h]) => Number.isInteger(h) && h >= 0)) return before();
   const pinned = boardHops[0]![0];
   const seq = mergedRouteStops(cfg, routeStops);
-  if (new Set(seq).size === seq.length) return before();
   const ring = ringForBus(bus, seq, stopCoords);
   const N = ring?.N ?? 0;
   if (!ring || ring.stops.length !== N) return before();
   const passes: number[] = [];
   for (let p = 0; p < N; p++) if (ring.stops[p] === boardStopId) passes.push(p);
+  if (passes.length === 1 && lapPastPickup) {
+    // Empty is the anchor on the pickup's leg: at the stop, or just past it.
+    // The pickup comes round once a lap, so a countdown more than half a lap
+    // out is for the next visit, and this one is over.
+    const approach = before();
+    if (atStop || approach?.length !== 0 || 2 * pinned < N) return approach;
+    const bi = seq.indexOf(boardStopId);
+    return [...seq.slice(bi), ...seq.slice(0, bi)];
+  }
+  if (new Set(seq).size === seq.length) return before();
   if (passes.length < 2) return before();
   // The countdown's bus is standing at the pickup: boarding now.
   if (pinned === 0) return [];
@@ -447,7 +468,9 @@ export function rideStopsToExit(
     if (idx >= 0 && seq[idx] === alightStopId && seq.indexOf(alightStopId) === seq.lastIndexOf(alightStopId)) return 0;
     return pinned;
   }
-  const approach = rideApproach(bus, cfg, routeStops, stopCoords, alightStopId, hops.length ? hops : undefined, now, store);
+  // At the exit the bus is there, as above, even with the countdown a lap on:
+  // not the trip card's lap past a pickup it has just left.
+  const approach = rideApproach(bus, cfg, routeStops, stopCoords, alightStopId, hops.length ? hops : undefined, now, store, false);
   return approach ? approach.length : null;
 }
 

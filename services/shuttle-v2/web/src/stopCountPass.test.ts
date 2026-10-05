@@ -30,7 +30,9 @@
  *    the card counted to the other pass: "3 stops away" for Building 800
  *    beside a 58 min countdown 12 stops out, "10" for downtown with the
  *    return pass 4 out (stopcountb90020261004, from the review of #364).
- * Every other pickup, and every Pink pickup, reads exactly as before.
+ * Every other pickup, and every Pink pickup, reads exactly as before, but for
+ * a bus that has just left a pickup passed once, with the countdown a lap on:
+ * a lap, not "0 stops away" (purpleatstop20261005).
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -79,7 +81,7 @@ const PINK: Line = {
 
 afterEach(() => { registerRoutePaths(null); applyModelParams(undefined); });
 
-interface Read { at: string; window: number; bus: string; board: number; alight: number; pinned: UpcomingArrival | undefined; before: number | null; after: number | null }
+interface Read { at: string; window: number; bus: string; board: number; alight: number; pinned: UpcomingArrival | undefined; before: number | null; after: number | null; atStop: boolean; first: number | undefined }
 
 /**
  * Every poll of `windows`, every ride in `rides` ([board, alight]) on every
@@ -105,9 +107,10 @@ function replay(line: Line, rides: readonly (readonly [number, number])[], windo
       const name = b.bus_name.replace(/^#/, '');
       for (const [board, alight] of rides) {
         const pinned = rideBoardArrivals(visits, board, alight).filter(a => a.busName === name).sort((x, y) => x.eta - y.eta)[0];
-        const was = observedAtStop(b, board, line.stopCoords) ? [] : tripApproach(b, line.cfg, line.routeStops, line.stopCoords, board, now, store);
+        const atStop = observedAtStop(b, board, line.stopCoords);
+        const was = atStop ? [] : tripApproach(b, line.cfg, line.routeStops, line.stopCoords, board, now, store);
         const is = rideApproach(b, line.cfg, line.routeStops, line.stopCoords, board, pinned && boardHops(pinned, visits, board, alight), now, store);
-        out.push({ at: p.at, window: p.window, bus: b.bus_name, board, alight, pinned, before: was?.length ?? null, after: is?.length ?? null });
+        out.push({ at: p.at, window: p.window, bus: b.bus_name, board, alight, pinned, before: was?.length ?? null, after: is?.length ?? null, atStop, first: is?.[0] });
       }
     }
   }
@@ -228,25 +231,35 @@ describe('reads as before', () => {
   const pairs = (boards: number[], alights: number[]) =>
     boards.flatMap(b => alights.filter(a => a !== b).map(a => [b, a] as const));
 
+  /**
+   * Every read as before but one kind, `n` of them: a bus that has just left a
+   * pickup the ring passes once, with the countdown a lap on, counted the whole
+   * lap from that pickup. Before, "0 stops away" beside the next lap's
+   * countdown (purpleatstop20261005, stopCountJustLeft.test.ts).
+   */
+  const asBefore = (line: Line, reads: Read[], n: number) => {
+    const lap = mergedRouteStops(line.cfg, line.routeStops).length;
+    const changed = reads.filter(r => r.after !== r.before);
+    for (const r of changed) {
+      expect({ at: r.at, bus: r.bus, board: r.board, alight: r.alight, read: [r.before, r.atStop, r.after, r.first, r.pinned!.stopsAhead >= lap - 1] })
+        .toEqual({ at: r.at, bus: r.bus, board: r.board, alight: r.alight, read: [0, false, lap, r.board, true] });
+    }
+    expect(changed.length).toBe(n);
+  };
+
   it('every Pink pickup, the repair\'s twins included, to every destination', () => {
     const reads = replay(PINK, pairs(stopsOf(PINK), stopsOf(PINK))).filter(r => r.pinned);
     expect(reads.length).toBeGreaterThan(5000);
-    for (const r of reads) {
-      expect({ at: r.at, board: r.board, alight: r.alight, after: r.after })
-        .toEqual({ at: r.at, board: r.board, alight: r.alight, after: r.before });
-    }
+    asBefore(PINK, reads, 352);
   });
 
   it('every Green and Purple pickup the line passes once, to every destination', () => {
-    for (const line of [GREEN, PURPLE]) {
+    for (const [line, n] of [[GREEN, 893], [PURPLE, 1280]] as const) {
       const seq = mergedRouteStops(line.cfg, line.routeStops);
       const once = stopsOf(line).filter(s => seq.indexOf(s) === seq.lastIndexOf(s) && s !== 127);
       const reads = replay(line, pairs(once, stopsOf(line))).filter(r => r.pinned);
       expect(reads.length).toBeGreaterThan(5000);
-      for (const r of reads) {
-        expect({ at: r.at, board: r.board, alight: r.alight, after: r.after })
-          .toEqual({ at: r.at, board: r.board, alight: r.alight, after: r.before });
-      }
+      asBefore(line, reads, n);
     }
   });
 
