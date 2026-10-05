@@ -637,7 +637,8 @@ export function legMass(b: Belief, ring: Ring): Float64Array {
  *    lead follows it one leg at a time once the mass has clearly crossed the
  *    stop (LEAD_SWITCH_MASS beyond it): a row for that stop flips to "next
  *    lap" on this switch, a 25-minute jump, so a bus a cell short of the
- *    marker must not trigger it;
+ *    marker must not trigger it, and neither must a bus still driving at the
+ *    stop from the far side (`shortOfNextStop`);
  *  - a candidate far ahead (a fold's other branch, a lap) must carry
  *    LEAD_SWITCH_MASS first — what stops the number racing across the gap as
  *    a branch weight passes 0.5 (#88) — and the feed's last stop must put
@@ -662,7 +663,7 @@ export function leadLeg(b: Belief, ring: Ring, prev: number, now: number, state?
   if (ahead >= 1 && ahead <= LEAD_FOLLOW_LEGS) {
     if (state) state.leadDisagreeSince = null;
     const next = (prev + 1) % N;
-    return 1 - m[prev]! >= LEAD_SWITCH_MASS ? next : prev;
+    return 1 - m[prev]! >= LEAD_SWITCH_MASS && !shortOfNextStop(b, ring, prev) ? next : prev;
   }
   let feed = ahead <= N / 2 && m[best]! >= LEAD_SWITCH_MASS ? lastStopReading(b, ring, best) : "confirms";
   if (feed === "confirms" && ahead <= N / 2 && m[best]! >= LEAD_SWITCH_MASS && otherCallOfStand(b, ring, prev, best)) feed = "unknown";
@@ -748,6 +749,89 @@ export function lastStopReading(b: Belief, ring: Ring, best: number): "confirms"
     if (((best - i) % ring.N + ring.N) % ring.N <= LEAD_FOLLOW_LEGS) return "confirms";
   }
   return known ? "contradicts" : "unknown";
+}
+
+/** Two directions within 45 degrees of each other (see `shortOfNextStop`). */
+export const SHORT_OF_STOP_HEADING = 0.7;
+
+/**
+ * Is the bus still driving at the lead's next stop, from the far side, so the
+ * mass that crossed it has crossed a stop the bus has not reached?
+ *
+ * The filter only drives forward. A bus that comes at a stop along the road
+ * the NEXT leg leaves on is, to the ring, a bus already past the stop, and
+ * once the mass has crossed it the lead follows (`leadLeg`) and the stop's
+ * row reads the next lap. Purple at Union Station (S), evenings: from 333
+ * Cedar the bus runs north-east, misses 300 George St and 100 Church Street
+ * South, and comes down to the station from the north-east, across the road
+ * the station's leg leaves on. #317 on 2026-10-05 01:56Z (unionlapearly20261005)
+ * read "~64" for 40 s while it closed from 473 m to 126 m; it stood at the
+ * stop at 01:57:05. #321 (09-27 00:49Z), #119 (09-29 01:56Z and 02:49Z),
+ * #325 (09-26 02:50Z) and #126 (10-03 02:55Z) the same.
+ *
+ * Every test below was needed on the archive; each is a way a bus that does
+ * come at a stop has NOT got it ahead:
+ *  - the feed still names the lead's own stop as the last one passed;
+ *  - the stop is one the ring calls once. Closing on a stop the ring calls
+ *    twice (the West Campus folds) cannot say which call;
+ *  - the bus is beyond the stop's zone, and is not standing at it;
+ *  - since the lead's leg was last the posterior's top, the bus has closed
+ *    LEAD_OFF_LINE_CLOSING_M on the stop, at no less than
+ *    SHORT_OF_STOP_HEADING of the distance it moved: it heads at the stop;
+ *  - the fix is nearer the next leg's line than the lead's (the far side);
+ *  - and it is not driving along the next leg's line, which is a bus that
+ *    took a short cut onto it and will skip the stop (Orange East #47 at
+ *    157, Purple short-turning before Building 400).
+ *
+ * Measured on 14 archived days (09-20..10-03, every route, 1,959,550
+ * bus-polls). Of the 2,261 lead switches made with the bus still beyond the
+ * stop's zone, these tests hold 7, and in each the bus then reached the stop.
+ * Paired against master, 869 rows change on Purple, Blue Night and Red only.
+ * Against the collector's arrivals, severe episodes (one side within 2 min,
+ * the other more than 10 off) go 6 fixed, 0 introduced: Purple at Union
+ * Station (S) 5, Blue Night 1. Mean error over the changed rows: Purple
+ * 723 -> 201 s, Blue Night 1,492 -> 1,469 s, Red 1,352 -> 1,274 s. Looser
+ * versions held a bus that then skipped the stop (Blue West #127 at 156,
+ * Brown #119 at 42) or lagged the West Campus folds. On the rider watcher's
+ * polls (10-02..10-05) the served rows change on 8 polls, #126 on 10-03 and
+ * #317 on 10-05, and all 352 trip cards that change move closer to the
+ * countdown.
+ */
+export function shortOfNextStop(b: Belief, ring: Ring, lead: number): boolean {
+  const N = ring.N;
+  if (lead < 0 || lead >= N || ring.stops.length !== N || !b.lastFix || !b.leadTopFix) return false;
+  if (ring.stops[lead] !== b.lastStopId) return false;
+  const s = (lead + 1) % N;
+  if (ring.stops.filter((id) => id === ring.stops[s]).length > 1) return false;
+  if (b.rested && b.restStop === s) return false;
+  const at = stopPoint(ring, s);
+  const d = haversineMeters(b.lastFix, at);
+  if (!(d > NEAR_STOP_M)) return false;
+  const closed = haversineMeters(b.leadTopFix, at) - d;
+  if (!(closed >= LEAD_OFF_LINE_CLOSING_M && closed >= SHORT_OF_STOP_HEADING * haversineMeters(b.lastFix, b.leadTopFix))) return false;
+  const dist = distancesTo(ring, b.lastFix);
+  let onNext = -1, onLead = -1;
+  for (let c = 0; c < ring.C; c++) {
+    if (ring.leg[c] === s && (onNext < 0 || dist[c]! < dist[onNext]!)) onNext = c;
+    if (ring.leg[c] === lead && (onLead < 0 || dist[c]! < dist[onLead]!)) onLead = c;
+  }
+  if (onNext < 0 || onLead < 0 || !(dist[onNext]! < dist[onLead]!)) return false;
+  return !(dist[onNext]! <= offLineM(ring) && alongRing(ring, onNext, b.leadTopFix, b.lastFix) >= SHORT_OF_STOP_HEADING);
+}
+
+/** Past this distance from a line, the line's Gaussian is below the stray weight (~100 m). */
+function offLineM(ring: Ring): number {
+  return SIGMA_M * Math.sqrt(2 * Math.log(1 / offRouteWeight(ring)));
+}
+
+/** The cosine between the ring's direction at cell `c` and the move `from` -> `to`. */
+function alongRing(ring: Ring, c: number, from: LatLon, to: LatLon): number {
+  const c1 = (c + 1) % ring.C;
+  const kx = Math.cos((ring.lat[c]! * Math.PI) / 180);
+  const ux = (ring.lon[c1]! - ring.lon[c]!) * kx, uy = ring.lat[c1]! - ring.lat[c]!;
+  const vx = (to.lon - from.lon) * kx, vy = to.lat - from.lat;
+  const n = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+  return n > 0 ? (ux * vx + uy * vy) / n : 0;
 }
 
 /**
@@ -849,8 +933,7 @@ function leadOffItsLine(b: Belief, ring: Ring, top: number): boolean {
   const d = distancesTo(ring, b.lastFix);
   let near = Infinity;
   for (let c = 0; c < ring.C; c++) if (ring.leg[c] === b.lead && d[c]! < near) near = d[c]!;
-  const offLine = SIGMA_M * Math.sqrt(2 * Math.log(1 / offRouteWeight(ring)));
-  return near > offLine && near <= OFF_ROUTE_BAND_M / 2;
+  return near > offLineM(ring) && near <= OFF_ROUTE_BAND_M / 2;
 }
 
 /**
@@ -1151,7 +1234,7 @@ function advance(q: Float64Array, ring: Ring, c: number, m: number, kern: Float6
  * Situations: the posterior collapsed to (anchor leg, mode) with the
  * mass-weighted mean position within the leg. Prune below `minMass`, except
  * the held lead may survive down to the filter's propagation floor — and
- * below it while `leadOffItsLine` holds.
+ * below it while `leadOffItsLine` or `shortOfNextStop` holds.
  */
 export interface Situation {
   leg: number;
@@ -1197,13 +1280,16 @@ export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
   // Pruning must not silently switch the priced branch while leadLeg still
   // holds it. Keep its meaningful mass, using the propagation floor to
   // exclude numerical remnants of a physically disproven branch — unless
-  // what disproved it was only the stray model (`leadOffItsLine`).
+  // what disproved it was only the stray model (`leadOffItsLine`), or the
+  // lead is held short of a stop the bus is still driving at
+  // (`shortOfNextStop`).
   let leadFloor = PROPAGATE_MIN;
   const lead = b.lead;
   if (lead >= 0 && lead < N && Math.max(mass[2 * lead]!, mass[2 * lead + 1]!) < PROPAGATE_MIN) {
     let top = 0;
     for (let i = 1; i < N; i++) if (mass[2 * i]! + mass[2 * i + 1]! > mass[2 * top]! + mass[2 * top + 1]!) top = i;
-    if (leadOffItsLine(b, ring, top)) leadFloor = 0;
+    const ahead = (top - lead + N) % N;
+    if (leadOffItsLine(b, ring, top) || (ahead >= 1 && ahead <= LEAD_FOLLOW_LEGS && shortOfNextStop(b, ring, lead))) leadFloor = 0;
   }
   for (let k = 0; k < 2 * N; k++) {
     const m = mass[k]!;
