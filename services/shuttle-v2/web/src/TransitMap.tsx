@@ -14,7 +14,7 @@ import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
 import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
 import { liveAnchorStore } from "./eta";
-import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach, rideStopsToExit } from "./liveAnchor";
+import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach, rideCallIndex, rideCalls, rideStopsToExit } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import {
@@ -5924,42 +5924,45 @@ const RideStopList: FC<{
   const n = allStops.length;
 
   let etaSec: number | null = null;
-  // Once this ride reaches its exit, the next arrival is another lap, not
-  // the time remaining for the passenger who is getting off here.
-  if (bus && isUnambiguousRideArrival(routeStops[String(bus.route_id)], ride.alightStopId, busIdx, alightIdx)) {
-    etaSec = 0;
-  } else if (bus) {
+  let exitArrivals: UpcomingArrival[] = [];
+  if (bus) {
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
-    // The ride page's countdown to the alight stop. Same estimator, different
-    // population — one stop the rider is already travelling to — so it says so.
-    noteShown(arr, "ride");
-    const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
-    if (mine) etaSec = mine.eta;
+    exitArrivals = arr.filter(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
+    // Once this ride reaches its exit, the next arrival is another lap, not
+    // the time remaining for the passenger who is getting off here.
+    if (isUnambiguousRideArrival(routeStops[String(bus.route_id)], ride.alightStopId, busIdx, alightIdx)) {
+      etaSec = 0;
+    } else {
+      // The ride page's countdown to the alight stop. Same estimator, different
+      // population — one stop the rider is already travelling to — so it says so.
+      noteShown(arr, "ride");
+      const mine = exitArrivals[0];
+      if (mine) etaSec = mine.eta;
+    }
   }
 
-  if (n === 0 || boardIdx < 0 || alightIdx < 0) {
+  // The ride's calls in travel order, and the bus's row in them from the
+  // banner's own count (liveAnchor.ts `rideCalls`, `rideCallIndex`). Walking
+  // the de-duplicated list listed Green's Building 400 -> West Haven ride as
+  // "Building 400 · Building 750 · West Haven Train Station", without the 600,
+  // 800 and 900 the bus calls at on the way (ridestoplist20261004).
+  const calls = cfg ? rideCalls(cfg, routeStops, stopCoords, ride.boardStopId, ride.alightStopId) : [];
+  const stopsToExit = bus && cfg && busIdx >= 0 && alightIdx >= 0
+    ? rideStopsToExit(bus, cfg, routeStops, stopCoords, ride.alightStopId, exitArrivals, Date.now(), liveAnchorStore)
+    : null;
+  const busRow = bus && cfg
+    ? rideCallIndex(bus, cfg, routeStops, stopCoords, calls, stopsToExit, Date.now(), liveAnchorStore)
+    : -1;
+
+  if (n === 0 || boardIdx < 0 || alightIdx < 0 || calls.length === 0) {
     return (
       <div style={{ padding: 24, textAlign: "center", color: "#78909c", fontSize: 14 }}>
         Loading route…
       </div>
     );
   }
-
-  // Build ordered stop list from board → alight (forward in circular route).
-  const displayStops: Array<{ idx: number; stopId: number }> = [];
-  {
-    let i = boardIdx;
-    let guard = 0;
-    while (guard++ <= n) {
-      displayStops.push({ idx: i, stopId: allStops[i] });
-      if (i === alightIdx) break;
-      i = (i + 1) % n;
-    }
-  }
-
-  const busStepsFromBoard = busIdx >= 0 ? (busIdx - boardIdx + n) % n : -1;
 
   // The same two states the banner carries — the lapped exit that used to
   // read as an ordinary countdown ("21 stops · 50 min", 2026-09-17 eval), and
@@ -5994,32 +5997,30 @@ const RideStopList: FC<{
         )}
       </div>
       <div style={{ padding: "4px 16px" }}>
-        {displayStops.map(({ idx, stopId }, pos) => {
+        {calls.map((stopId, pos) => {
           const name = (stopNames[stopId] ?? `Stop ${stopId}`).replace(/\s*\/\s*/g, "/");
-          const stepsFromBoard = (idx - boardIdx + n) % n;
           // Only cross out stops when the bus is actually WITHIN the
           // board→alight window. When it's still upstream of the boarding
-          // stop, busStepsFromBoard wraps to a huge count and every stop
-          // ahead got struck through (report #26).
-          const alightSteps = (alightIdx - boardIdx + n) % n;
-          const busInWindow = busStepsFromBoard >= 0 && busStepsFromBoard <= alightSteps;
-          const passed = busInWindow && stepsFromBoard > 0 && stepsFromBoard <= busStepsFromBoard;
-          const isBusCur = busIdx >= 0 && idx === busIdx;
-          const isAlight = idx === alightIdx;
-          const isBoard = idx === boardIdx;
+          // stop, nothing ahead is struck through (report #26): `busRow` is -1
+          // until the bus is on the ride.
+          const passed = busRow >= 0 && pos > 0 && pos <= busRow;
+          const isBusCur = pos === busRow;
+          const isAlight = pos === calls.length - 1;
+          const isBoard = pos === 0;
 
           const icon = isBusCur ? "🚌" : isAlight ? "🚏" : passed ? "✓" : "·";
           const dimmed = passed && !isBoard && !isAlight;
           const highlighted = isBusCur || isAlight;
 
           return (
-            <div key={stopId} style={{
+            // A ride can call at a stop twice (Building 600 on Green's way out and back).
+            <div key={pos} style={{
               display: "flex", alignItems: "center", gap: 12,
               padding: "9px 10px", borderRadius: 8, marginBottom: 2,
               background: highlighted ? (isAlight ? `${ride.color}18` : "#eef2ff") : "transparent",
               position: "relative",
             }}>
-              {pos < displayStops.length - 1 && (
+              {pos < calls.length - 1 && (
                 <div style={{
                   position: "absolute", left: 22, top: "50%", bottom: -11,
                   width: 2,
