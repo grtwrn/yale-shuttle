@@ -197,14 +197,21 @@ describe('Purple, Building 900, back up the spur (2026-10-01 #119, 2026-10-03 #3
     // The review's example: for Building 800 the countdown is for the
     // outbound pass after the downtown loop, 58 min and 12 stops out; the
     // card read "3 stops away", counted to the return pass just ahead.
+    // Counted from Building 400, where the countdown has the bus and the
+    // collector's visits put it (Building 400 at 14:49:50Z, Building 600 at
+    // 14:54:15Z), that is 11: the 12 hops less the station's return call,
+    // which the card does not list. The lead had gone on to Building 600's leg
+    // and was held there, so the card read 10 (anchorfarorigin20261004).
     const ex = reads.find(r => r.at === '2026-10-01T14:53:42.272Z')!;
     expect({ pinned: ex.pinned!.stopsAhead, min: Math.round(ex.pinned!.eta / 60), after: ex.after })
-      .toEqual({ pinned: 12, min: 58, after: 10 });
-    expect(steps(reads.map(r => r.after))).toEqual([13, 12, 11, 10, 9]);
+      .toEqual({ pinned: 12, min: 58, after: 11 });
+    // The countdown went back from 11 hops to 12 for five polls, and the card with it.
+    expect(steps(reads.map(r => r.after))).toEqual([13, 12, 11, 10, 11, 10, 9]);
+    for (const r of reads) expect({ at: r.at, after: r.after }).toEqual({ at: r.at, after: r.pinned!.stopsAhead - 1 });
     // Downtown, the same poll: the return pass 4 out, which the card counted
     // a lap on ("10 stops away").
     const down = ride(PURPLE_900, 26, 9, [0], '#119').find(r => r.at === ex.at)!;
-    expect({ pinned: down.pinned!.stopsAhead, after: down.after }).toEqual({ pinned: 4, after: 3 });
+    expect({ pinned: down.pinned!.stopsAhead, after: down.after }).toEqual({ pinned: 4, after: 4 });
   });
 
   it('#330: for Building 800, never the return pass', () => {

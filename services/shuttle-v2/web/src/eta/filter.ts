@@ -739,7 +739,7 @@ export function otherCallOfStand(b: Belief, ring: Ring, lead: number, best: numb
  * bus passes confirms the leg it is really on. A ring whose sequence the
  * belief does not index cannot be read, and keeps the jump as it was.
  */
-function lastStopReading(b: Belief, ring: Ring, best: number): "confirms" | "contradicts" | "unknown" {
+export function lastStopReading(b: Belief, ring: Ring, best: number): "confirms" | "contradicts" | "unknown" {
   if (ring.stops.length !== ring.N) return "confirms";
   let known = false;
   for (let i = 0; i < ring.N; i++) {
@@ -1228,4 +1228,15 @@ export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
   for (const s of out) s.mass /= total || 1;
   out.sort((x, y) => y.mass - x.mass);
   return out;
+}
+
+/**
+ * The leg the countdown is priced from (arrival.ts `priceRoute`): the lead's
+ * while `situations` keeps one on it, else the top situation's. The two part
+ * only once the lead's leg has no mass left while `leadLeg` still holds it,
+ * against a wrap behind or a far jump. Whether the screen's anchor goes with
+ * the number then is liveAnchor.ts `anchorLeg`'s call.
+ */
+export function pricedLeg(b: Belief, sits: readonly Situation[]): number {
+  return sits.length === 0 || sits.some((s) => s.leg === b.lead) ? b.lead : sits[0]!.leg;
 }

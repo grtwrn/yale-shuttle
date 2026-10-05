@@ -16,11 +16,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./arrivals";
-import type { AnchorStore } from "./eta";
+import { beliefFor, ringForBus, type AnchorStore } from "./eta";
 import type { LatLon } from "./geo";
-import { anchorIndexOnList, rideApproach, rideStopsToExit } from "./liveAnchor";
+import { anchorIndexOnList, anchorKeyFor, rideApproach, rideStopsToExit } from "./liveAnchor";
 import { getOffAlertTitle } from "./rideAlert";
-import { ROUTE_LISTS } from "./routes";
+import { mergedRouteStops, ROUTE_LISTS } from "./routes";
 import green from "./__fixtures__/green-published-order.json";
 import pink from "./__fixtures__/pink-published-order.json";
 import purple from "./__fixtures__/purple-published-order.json";
@@ -49,12 +49,17 @@ function printed(shown: string | null): number | null {
 
 /** Each recorded poll as the page runs it: one anchor store for the ride,
  * the ride countdown's arrivals at the exit, then the count. `master` is the
- * banner's old count on the same anchor; `card` is the trip card's own count
- * (`rideApproach`) to the exit, the reuse this fix considered. */
+ * banner's old count on the anchor the page printed from, the belief's lead
+ * (`anchorLeg` now reads the countdown's leg on four polls of Purple #126,
+ * 20:26:47-20:27:17Z, where the countdown went back to Building 400's leg and
+ * the bus stood at Building 600 from 20:27:37Z: anchorfarorigin20261004);
+ * `card` is the trip card's own count (`rideApproach`) to the exit, the reuse
+ * this fix considered. */
 function replay(r: Ride) {
   const cfg = ROUTE_LISTS.find((c) => c.label === r.routeLabel)!;
   const list = [...new Set(routeStops[String(r.routeId)]!)];
   const alight = list.indexOf(r.alightStopId);
+  const canonical = mergedRouteStops(cfg, routeStops);
   const store: AnchorStore = new Map();
   return r.positions.map((fix) => {
     const now = Date.parse(fix.at);
@@ -62,13 +67,16 @@ function replay(r: Ride) {
     const exit = computeUpcomingArrivals([r.alightStopId], [bus], routeStops, coords, {}, now, {}, store)
       .filter((a) => a.stopId === r.alightStopId && norm(a.busName) === norm(r.busName));
     const idx = isBusOnRoute(bus, list, coords) ? anchorIndexOnList(bus, cfg, routeStops, coords, list, now, store) : -1;
+    const ring = ringForBus(bus, canonical, coords)!;
+    const lead = beliefFor(store, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, canonical, now).lead;
+    const was = idx >= 0 ? list.indexOf(canonical[ring.repaired ? ring.order[lead]! : lead]!) : -1;
     const hops = exit.map((a): [number, number] => [a.stopsAhead, a.stopId]);
     return {
       at: fix.at,
       riding: fix.phase !== "waiting" && Date.parse(fix.at) <= Date.parse(r.arrivedAt),
       printed: printed(fix.shown),
       standing: fix.stationary && fix.at_stop_id != null ? fix.at_stop_id : null,
-      master: idx >= 0 && alight >= 0 ? (alight - idx + list.length) % list.length : null,
+      master: was >= 0 && alight >= 0 ? (alight - was + list.length) % list.length : null,
       count: idx >= 0 ? rideStopsToExit(bus, cfg, routeStops, coords, r.alightStopId, exit, now, store) : null,
       card: idx >= 0 ? rideApproach(bus, cfg, routeStops, coords, r.alightStopId, hops.length ? hops : undefined, now, store)?.length ?? null : null,
     };
