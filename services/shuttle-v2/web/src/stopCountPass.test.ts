@@ -165,15 +165,21 @@ describe('Green, Building 800 to Orange / Pearl (N) (2026-10-03, #321)', () => {
     expect(steps(head.map(r => r.after))).toEqual([6, 5]);
     // The countdown's hops, but standing at Building 800 on the way out, counted from there.
     for (const r of head) expect(r.after).toBe(r.pinned!.stopsAhead === 6 && r.before === 0 ? 5 : r.pinned!.stopsAhead);
-    // Two polls where the lead itself holds the return pass (purpleReturnLeg.test.ts):
-    // the countdown prices that pass a lap out, and the card counts the lap with it.
+    // Two polls where production's lead jumped to the return pass: the countdown
+    // priced it a lap out (24 hops) and the card counted the lap with it (23).
+    // The lead now stays on the way out (greenb800switch20261004), so the
+    // return pass is 5 stops on, as in the polls after.
     const held = reads.filter(r => r.at > '2026-10-03T10:00:40Z' && r.at < '2026-10-03T10:01:00Z');
-    expect(held.map(r => [r.pinned!.stopsAhead, r.before, r.after])).toEqual([[24, 18, 23], [24, 18, 23]]);
-    // Through Building 600 on the way out, with the anchor a stop behind on
-    // Building 800: five stops to the return pass, never "0 stops away".
+    expect(held.map(r => [r.pinned!.stopsAhead, r.before, r.after])).toEqual([[5, 0, 5], [5, 0, 5]]);
+    // Through Building 600 on the way out: the countdown's own hops to the
+    // return pass, 5 then 4, never "0 stops away". (With production's lead a
+    // stop behind on Building 800, the card read 5 at Building 600.) The old
+    // count, to the outbound call, is a lap once the bus is past it.
     const tail = reads.filter(r => r.at > '2026-10-03T10:01:00Z');
     expect(tail.length).toBe(9);
-    for (const r of tail) expect({ at: r.at, before: r.before, after: r.after }).toEqual({ at: r.at, before: 0, after: 5 });
+    for (const r of tail) expect({ at: r.at, after: r.after }).toEqual({ at: r.at, after: r.pinned!.stopsAhead });
+    expect(steps(tail.map(r => r.after))).toEqual([5, 4]);
+    expect(steps(tail.map(r => r.before))).toEqual([0, 22]);
   });
 });
 
