@@ -1,8 +1,9 @@
 import type Database from "better-sqlite3";
 
-import { calibrate } from "../calibrator/calibrator.js";
+import { calibrate, SPLIT_WINDOW_DAYS } from "../calibrator/calibrator.js";
 import { ReleaseFitCache } from "../calibrator/releaseFit.js";
 import { LapFitCache } from "../calibrator/lapFit.js";
+import { HourStandGateCache } from "../calibrator/hourStand.js";
 import type { DB, DbBundle } from "../db/client.js";
 import {
   arrivals,
@@ -1281,6 +1282,7 @@ export class Collector {
   private readonly lapClock = new Map<string, Map<number, number>>();
   private lapFitsCache: LapFitCache | null = null;
   private releaseFitsCache: ReleaseFitCache | null = null;
+  private hourStandGateCache: HourStandGateCache | null = null;
 
   /** Seconds since this bus last departed each stop it has a record for. */
   lapAges(busName: string, nowMs: number): Record<string, number> | undefined {
@@ -1391,8 +1393,17 @@ export class Collector {
     const releaseAt = Date.now();
     const releaseFits = this.releaseFitsCache.get();
     const releaseFitMs = Date.now() - releaseAt;
-    const stats = calibrate(this.db, network, new Date(), lapFits, releaseFits);
-    return { ...stats, lapFitMs, releaseFitMs, releaseFitCount: releaseFits.size, loopHeldMs: stats.durationMs + lapFitMs + releaseFitMs };
+    // The hour-of-day stand tables' cell gate (calibrator/hourStand.ts): six-hourly,
+    // ledger routes only, so ~0 on the five-minute cadence; timed like the fits.
+    if (!this.hourStandGateCache) this.hourStandGateCache = new HourStandGateCache(this.db, SPLIT_WINDOW_DAYS);
+    const hourGateAt = Date.now();
+    const hourStandCells = this.hourStandGateCache.get();
+    const hourGateMs = Date.now() - hourGateAt;
+    const stats = calibrate(this.db, network, new Date(), lapFits, releaseFits, hourStandCells);
+    return {
+      ...stats, lapFitMs, releaseFitMs, releaseFitCount: releaseFits.size, hourGateMs,
+      loopHeldMs: stats.durationMs + lapFitMs + releaseFitMs + hourGateMs,
+    };
   }
 
   private runCalibrate(): void {

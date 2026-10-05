@@ -81,8 +81,10 @@ describe("collector.calibrated names the lap fit's own cost", () => {
     // ...plus both history fits that `durationMs` structurally cannot see.
     expect(typeof m.lapFitMs).toBe("number");
     expect(typeof m.releaseFitMs).toBe("number");
+    expect(typeof m.hourGateMs).toBe("number");
     expect(typeof m.loopHeldMs).toBe("number");
-    expect(m.loopHeldMs).toBe((m.durationMs as number) + (m.lapFitMs as number) + (m.releaseFitMs as number));
+    expect(m.loopHeldMs).toBe((m.durationMs as number) + (m.lapFitMs as number) + (m.releaseFitMs as number) + (m.hourGateMs as number));
+    expect(m).toHaveProperty("hourStandCount");
     expect(m.loopHeldMs as number).toBeGreaterThanOrEqual(m.durationMs as number);
   });
 
@@ -106,6 +108,27 @@ describe("collector.calibrated names the lap fit's own cost", () => {
     expect(m[0]!.lapFitMs as number).toBeGreaterThanOrEqual(HOLD_MS - 5);
     expect(m[0]!.loopHeldMs as number).toBeGreaterThanOrEqual(HOLD_MS - 5);
     // The whole defect, pinned: the old line would have reported only this.
+    expect(m[0]!.durationMs as number).toBeLessThan(HOLD_MS);
+  });
+
+  it("shows a slow hour-stand gate refresh the same way", () => {
+    // The hour-of-day stand tables' cell gate (calibrator/hourStand.ts) is
+    // evaluated before `calibrate()` too, on its own six-hourly refresh.
+    const HOLD_MS = 120;
+    (collector as unknown as { hourStandGateCache: { get(): ReadonlySet<string> } }).hourStandGateCache = {
+      get() {
+        const until = Date.now() + HOLD_MS;
+        while (Date.now() < until) { /* busy-wait */ }
+        return new Set();
+      },
+    };
+    lines = [];
+    (collector as unknown as { runCalibrate(): void }).runCalibrate();
+
+    const m = calibrated();
+    expect(m).toHaveLength(1);
+    expect(m[0]!.hourGateMs as number).toBeGreaterThanOrEqual(HOLD_MS - 5);
+    expect(m[0]!.loopHeldMs as number).toBeGreaterThanOrEqual(HOLD_MS - 5);
     expect(m[0]!.durationMs as number).toBeLessThan(HOLD_MS);
   });
 

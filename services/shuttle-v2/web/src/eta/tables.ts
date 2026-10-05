@@ -152,6 +152,14 @@ export interface DwellLike {
   lapM?: number | undefined;
   /** Stands the lap fit was taken over. */
   lapN?: number | undefined;
+  /**
+   * The stand table for this time of day, served only at a gated layover cell
+   * (src/calibrator/hourStand.ts): `q`'s quantiles over the visits within an
+   * hour of now (ET), shrunk toward `q`. Prices the STAND; the class, the
+   * layover flag, the pools and P(stop) stay on `q`.
+   */
+  qh?: number[] | undefined;
+  qhn?: number | undefined;
 }
 
 export const PACE_KEY = "__pace";
@@ -213,12 +221,17 @@ export function stopModel(dwell: DwellLike | undefined, pools: ClassPools): Stop
   const emp = fromQuantiles(dwell.q);
   const ownClassIsLayover = n >= CLASS_MIN_N && quantile(emp, 0.5) >= LAYOVER_MIN_SEC;
   const prior = ownClassIsLayover ? (pools.layover ?? emp) : ordinaryPrior;
-  const stand = shrinkToward(emp, prior, n, STAND_SHRINK_K);
+  const pooled = shrinkToward(emp, prior, n, STAND_SHRINK_K);
+  // A gated layover cell's table for this time of day (hourStand.ts) prices
+  // the stand, under the same prior and weight. What the stop IS — its class,
+  // its layover flag, P(stop) — stays the pooled table's, so the ring's
+  // layover rules and every other cell's pools are untouched by the hour.
+  const stand = ascending(dwell.qh) ? shrinkToward(fromQuantiles(dwell.qh), prior, n, STAND_SHRINK_K) : pooled;
   const pStop = dwell.pstop !== undefined && Number.isFinite(dwell.pstop)
     ? Math.min(1, Math.max(0, dwell.pstop))
-    : 1 - cdf(stand, 0);
+    : 1 - cdf(pooled, 0);
   const release = releaseFitOf(dwell.release);
-  return { stand, layover: quantile(stand, 0.5) >= LAYOVER_MIN_SEC, pStop, measured: true, lap: lapFitOf(dwell), ...(release ? { release } : {}) };
+  return { stand, layover: quantile(pooled, 0.5) >= LAYOVER_MIN_SEC, pStop, measured: true, lap: lapFitOf(dwell), ...(release ? { release } : {}) };
 }
 
 export function hopModel(seg: SegmentLike | undefined, roadM: number, pace: readonly number[] | undefined): HopModel {

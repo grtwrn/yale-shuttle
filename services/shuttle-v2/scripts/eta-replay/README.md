@@ -209,6 +209,30 @@ TZ=America/New_York REPLAY_DB=./store/snap.db PAYLOAD_PATCH=./scripts/.eta-repla
   npx tsx scripts/eta-replay/rider-sim/run.ts ...
 ```
 
+**Tables that move within the day** cannot ride a static patch. The
+time-of-day stand table at a gated layover cell (`qh`,
+`src/calibrator/hourStand.ts`) slides with the clock in production, so
+`run.ts` also takes `PAYLOAD_SERIES`: one dwell overlay per five-minute step,
+each poll getting the latest step at or before it, on top of the patch.
+`hour-stand-patch.ts` writes it through the calibrator's own gate, attacher and
+wire emitter (causal: each step sees only visits in by then), and
+`hour-stand-gate.ts` prints the per-cell gate table behind it:
+
+```bash
+TZ=America/New_York REPLAY_DB=./store/replay-1004.db npx tsx scripts/eta-replay/hour-stand-gate.ts
+#   GATE_AT=ISO  GATE_OUT=gate.json   every layover cell: served or not, and why
+TZ=America/New_York REPLAY_DB=./store/replay-1004.db FROM=2026-10-04T04:00:00Z TO=2026-10-05T04:00:00Z \
+  SERIES_OUT=./scripts/.eta-replay/hour-series-1004.json npx tsx scripts/eta-replay/hour-stand-patch.ts
+#   ROUTES=1,2,10   measure routes not on the ledger yet (that is how one earns its place)
+TZ=America/New_York REPLAY_DB=./store/replay-1004.db CAPTURE=positions-20261004.jsonl \
+  PAYLOAD_PATCH=model-patch-1004.json PAYLOAD_SERIES=./scripts/.eta-replay/hour-series-1004.json \
+  ROUTES="Blue Weekend" CHAIN="Blue Weekend:10:6" SERVER_ETA=1 CLIENT_ROOT=... npx tsx scripts/eta-replay/rider-sim/run.ts
+```
+
+An archive day's `raw_positions.jsonl.gz` (gunzipped) is a valid `CAPTURE`,
+and `archive-db.ts` builds the matching `REPLAY_DB`. Give BOTH arms the same
+series: a tree that does not read `qh` ignores it.
+
 `pace[route]` is folded by `run.ts` into the reserved `segments[route]["__pace"]`
 carrier row (`PACE_KEY` / `paceCarrier` in `src/server/v1compat.ts`), exactly
 as the live payload carries it, so `computeUpcomingArrivals`'s signature — the

@@ -171,6 +171,16 @@ export interface DwellStats {
   lapM?: number;
   lapN?: number;
   release?: ReleaseFit;
+  /**
+   * The stand table for THIS time of day, at a gated layover cell only
+   * (src/calibrator/hourStand.ts): `q`'s ten quantiles over the visits within
+   * an hour of now (ET time of day), shrunk toward `q`. The client prices the
+   * stand from it and still takes the stop's class and P(stop) from `q`.
+   * `qhn` is the visits inside the window. Absent everywhere else, and then
+   * the client prices exactly as before.
+   */
+  qh?: number[];
+  qhn?: number;
 }
 
 export interface WalkTransfer {

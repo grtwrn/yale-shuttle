@@ -242,6 +242,9 @@ function mixInto(h: number, routeDwells: Record<string, DwellLike>): number {
       for (let i = 0; i < serialized.length; i++) mix(serialized.charCodeAt(i));
     }
     if (d.q) for (const x of d.q) mix(Math.round(x));
+    // The hour table moves every calibration while `q` may not; without it
+    // here a cached table would keep pricing the previous hour.
+    if (d.qh) { mix(-7); for (const x of d.qh) mix(Math.round(x)); }
   }
   return h;
 }
