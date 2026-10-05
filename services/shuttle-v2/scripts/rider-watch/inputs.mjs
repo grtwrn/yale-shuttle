@@ -17,6 +17,15 @@ export function observedAtStop(bus, stopId, stopCoords) {
   return bus.stationary === true && bus.at_stop_id === stopId && !!stop
     && haversineM(bus, stop) <= 75;
 }
+/** The feed has the bus past the pickup without standing at it: upstream's
+ * `last_stop_id` is the pickup, which it reaches only as the bus passes (a
+ * bus still coming in has the previous stop; one dwelling there mostly does
+ * too), and the app's at-stop rule does not hold. Purple #317 drove through
+ * 100 Church Street South and was 42 m past the pole, moving, on the next
+ * poll (riderboarddrivethrough20261005). */
+export function pastPickup(bus, stopId, stopCoords) {
+  return bus.last_stop_id === stopId && !observedAtStop(bus, stopId, stopCoords);
+}
 /** The app's unnamed "🚌 I'm on it" stores the line's bus within this of the
  * rider, mirrored from `boardingBusName` and `BOARDING_BUS_M`
  * (web/src/tripBusIdentity.ts): the card's own when it is one of them, else

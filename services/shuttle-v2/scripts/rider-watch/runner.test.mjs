@@ -447,3 +447,52 @@ test('an offer click that fails with the offer still showing is retried as befor
  assert.equal(run.excludeAccuracy,undefined);
  assert.deepEqual(h.clicks,[["Yes, I'm on it",3000]]);
 });
+
+// riderboarddrivethrough20261005, Purple run 1791158187158: #317 drove through
+// 100 Church Street South without stopping, 77 m before the pole at 00:39:24Z
+// and 42 m past it at 00:39:34Z (last_stop_id 1, moving), 195 m at 00:39:44Z.
+// Since #371 the card names it "15 stops away" there, and 42 m boarded it.
+const church=JSON.parse(await fs.readFile(new URL('./__fixtures__/purple-church-st-drive-through-2026-10-05.json',import.meta.url),'utf8'));
+async function waitAtChurch({cards,polls}){
+ const c=promptMiss.route.stop_coords;
+ const churchTrip={kind:'random',origin:{label:'100 Church Street South',...c[1],stopId:1},destination:{display_name:'Building 400',...c[22],stopId:22}};
+ const [first]=polls;
+ const h=current=await harness(purpleFeedOf(purpleAt(first[2])),churchTrip,{feedOf:purpleFeedOf,text:cards[first[1]],at:first[0]});
+ for(const [at,card,rows] of polls.slice(1)){
+  vi.setSystemTime(Date.parse(at)-10000);await h.poll(cards[card],purpleAt(rows));
+  if(h.watcher.status().run?.phase!=='waiting')break;
+ }
+ h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ return h;
+}
+test('replay: #317 driving through 100 Church Street South is not boarded 42 m past the pole',async()=>{
+ const h=await waitAtChurch(church.driveThrough);
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'waiting');
+ assert.equal(run.boardedAt,undefined);
+ assert.deepEqual(h.clicks,[]);
+ // The card follows #317 a lap on, 14 stops away by 00:40:34Z.
+ assert.equal(run.busName,'#317');
+ assert.equal(run.pastStopSamples,1);
+ assert.equal(run.excludeAccuracy,undefined);
+ const past=(await h.events()).filter(e=>e.kind==='waiting-bus-past-stop');
+ assert.equal(past.length,1);
+ assert.equal(past[0].at,'2026-10-05T00:39:34.194Z');
+ assert.equal(past[0].detail.bus,'#317');
+ assert.equal(Math.round(past[0].detail.distanceM),42);
+ assert.equal(past[0].detail.lastStopId,1);
+});
+// Purple run 1791106305230: #330 was 5 m from the same pole at 09:37:29Z with
+// last_stop_id already 1, then stood 66 m on (at_stop_id 1) from 09:37:39Z.
+// The card then marks it at BOARD (#371), so the rider boards it standing.
+test('replay: #330 rolling past the pole and standing 66 m on is boarded where it stands',async()=>{
+ const h=await waitAtChurch(church.standPastPole);
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'riding');
+ assert.equal(run.busName,'#330');
+ assert.equal(run.boardedAt,'2026-10-04T09:37:39.037Z');
+ assert.equal(Math.round(run.lastBoardDistanceM),66);
+ assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+ assert.equal(run.pastStopSamples,1);
+ assert.equal(run.excludeAccuracy,undefined);
+});
