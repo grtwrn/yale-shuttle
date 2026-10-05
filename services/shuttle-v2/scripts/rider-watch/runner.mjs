@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {cardBoardsBus,followedBusName,labeledStopId,observedAtStop,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
+import {BOARD_M,cardBoardsBus,followedBusName,labeledStopId,observedAtStop,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -146,9 +146,9 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      // cannot board it (#317, 42 m past 100 Church Street South, run
      // 1791158187158). One that stops is boarded once its fix holds still,
      // or at the stop further on.
-     const past=distance<=45&&pastPickup(bus,run.boardStopId,feed.stop_coords);
+     const past=distance<=BOARD_M&&pastPickup(bus,run.boardStopId,feed.stop_coords);
      if(past){run.pastStopSamples=(run.pastStopSamples??0)+1;if(!run.pastStopReported){run.pastStopReported=true;await event('waiting-bus-past-stop',{bus:name,stop:boardLabel,distanceM:distance,lastStopId:bus.last_stop_id});}}
-     if(((distance<=45&&!past)||atStop)&&now>=run.walkUntil){
+     if(((distance<=BOARD_M&&!past)||atStop)&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
       // A ride the app started on another bus replaces the trip card, so
       // waiting on only reaches the 45 min cap (wrongbusboard20261002: it

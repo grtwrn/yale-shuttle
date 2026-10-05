@@ -26,9 +26,26 @@ export const MOVING_MS = 9000;
  * `observed_at`). A payload without the clock says nothing, so false, as the
  * app's `stillSec` (web/src/eta/filter.ts) reads it. */
 export function movingNow(bus) {
+  const stillMs = stillForMs(bus);
+  return Number.isFinite(stillMs) && stillMs < MOVING_MS;
+}
+/** How long the fix had been unchanged at the poll, or NaN without the clock. */
+function stillForMs(bus) {
   const moved = bus.last_moved_at == null ? NaN : Date.parse(bus.last_moved_at + 'Z');
-  return Number.isFinite(bus.observed_at) && Number.isFinite(moved)
-    && bus.observed_at - moved < MOVING_MS;
+  return Number.isFinite(bus.observed_at) ? bus.observed_at - moved : NaN;
+}
+/** The runner boards a followed bus within this of the pickup's pole. */
+export const BOARD_M = 45;
+/** A bus standing at the pickup that the feed does not put there: its fix has
+ * held still for `MOVING_MS` within `BOARD_M` of the pole, whatever
+ * `at_stop_id` says. Upstream can name the neighbouring stop, or none (and
+ * v1compat's `stationary` is only `at_stop_id != null`): Blue Weekend #44 stood
+ * 7 m from Broadway / York with at_stop_id Elm / York (TYCO), 2026-10-04
+ * 15:37:17Z-15:37:42Z. The radius is the runner's own and inside the app's
+ * `STOOD_HERE_M` (55 m, web/src/eta/filter.ts). Without the clock, false. */
+export function standsAtPickup(bus, stopId, stopCoords) {
+  const stop = stopCoords?.[stopId];
+  return !!stop && stillForMs(bus) >= MOVING_MS && haversineM(bus, stop) <= BOARD_M;
 }
 /** The feed has the bus driving on past the pickup: upstream's `last_stop_id`
  * is already the pickup, the fix is still moving, and the app's at-stop rule
@@ -63,10 +80,14 @@ export const FOLLOWED_NEAR_STOP_M = 150;
  * approaches; once it is at the pickup the app drops that line and decorates
  * BOARD with 🚌/⏸ instead. That 🚌 is the bus the app follows, which it may
  * place at the stop from route belief, not only from the feed. So keep the
- * tracked bus when it is observed at the stop; while it is still near the
- * stop (≤150 m) but not observed there, skip the poll rather than switch.
- * Otherwise take the single line bus observed at the stop. Several unknown
- * buses at the stop fail closed. */
+ * tracked bus when it is observed at the stop, or when it is the only line
+ * bus standing at the pickup, observed there or `standsAtPickup` (the feed
+ * naming a neighbouring stop or none); while it is still near the stop
+ * (≤150 m) otherwise, skip the poll rather than switch. Otherwise take the
+ * single line bus observed at the stop. Several unknown buses at the stop
+ * fail closed. `standsAtPickup` alone never picks an untracked bus: a bus at
+ * the opposite curb stands as close (Green #302 at Orange / Bradley (S),
+ * 13-26 m from (N)'s pole, 2026-10-02 and 10-05). */
 export function followedBusName(text, boardStopId, buses, routeIds, previous, stopCoords) {
   const named = String(text).match(/🚌\s*(#[\w-]+)\s*·/)?.[1];
   if (named) return named;
@@ -75,6 +96,8 @@ export function followedBusName(text, boardStopId, buses, routeIds, previous, st
   const line = (buses ?? []).filter(b => routeIds.includes(b.route_id));
   const here = line.filter(b => observedAtStop(b, boardStopId, stopCoords));
   if (here.some(b => b.bus_name === previous)) return previous;
+  const standing = line.filter(b => here.includes(b) || standsAtPickup(b, boardStopId, stopCoords));
+  if (standing.length === 1 && standing[0].bus_name === previous) return previous;
   const tracked = line.find(b => b.bus_name === previous);
   if (tracked && haversineM(tracked, stop) <= FOLLOWED_NEAR_STOP_M) return null;
   return here.length === 1 ? here[0].bus_name : null;
