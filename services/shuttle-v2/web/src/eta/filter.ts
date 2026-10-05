@@ -636,7 +636,9 @@ export function legMass(b: Belief, ring: Ring): Float64Array {
  *    LEAD_SWITCH_MASS first — what stops the number racing across the gap as
  *    a branch weight passes 0.5 (#88) — and the feed's last stop must put
  *    the bus there (`lastStopReading`): a jump it contradicts is not taken,
- *    one it cannot judge is held like a wrap behind;
+ *    one it cannot judge is held like a wrap behind. A jump onto the other
+ *    call of the stop the bus stands at, or has just left, is one it cannot
+ *    judge (`otherCallOfStand`);
  *  - a candidate BEHIND is a wrap of N - k legs, which a bus cannot do
  *    (anchorGate.ts, THE RING), so the lead holds; released only after
  *    LEAD_MAX_HOLD_MS of sustained disagreement, the gate's own rule for a
@@ -656,7 +658,8 @@ export function leadLeg(b: Belief, ring: Ring, prev: number, now: number, state?
     const next = (prev + 1) % N;
     return 1 - m[prev]! >= LEAD_SWITCH_MASS ? next : prev;
   }
-  const feed = ahead <= N / 2 && m[best]! >= LEAD_SWITCH_MASS ? lastStopReading(b, ring, best) : "confirms";
+  let feed = ahead <= N / 2 && m[best]! >= LEAD_SWITCH_MASS ? lastStopReading(b, ring, best) : "confirms";
+  if (feed === "confirms" && ahead <= N / 2 && m[best]! >= LEAD_SWITCH_MASS && otherCallOfStand(b, ring, prev, best)) feed = "unknown";
   if (ahead <= N / 2 && feed !== "unknown") {
     if (state) state.leadDisagreeSince = null;
     return m[best]! >= LEAD_SWITCH_MASS && feed === "confirms" ? best : prev;
@@ -666,6 +669,51 @@ export function leadLeg(b: Belief, ring: Ring, prev: number, now: number, state?
   if (state.leadDisagreeSince === null) { state.leadDisagreeSince = now; return prev; }
   if (now - state.leadDisagreeSince >= LEAD_MAX_HOLD_MS) { state.leadDisagreeSince = null; return best; }
   return prev;
+}
+
+/**
+ * Is `best` the other call of the stop the lead stands at, or has just left?
+ *
+ * Green names Building 900, 800 and 600 twice: out to Building 400 and back
+ * (... 26, 25, 23, 22, 23, 24, 25, 127, 26 ...). Out of its outbound stand at
+ * Building 800 the bus pulls east along the road the RETURN line is drawn on
+ * (the published outbound line runs 99 m behind the kerb, #327), loops south
+ * 49 m past Building 750's kerb, and only then rejoins its own line. Standing
+ * mass on the return call's cells is the rest stop's stand by identity, but
+ * it departs along the return line, and the fixes follow it there. Once 0.8
+ * of the mass was on the return call, or on Building 750's leg into it,
+ * `last_stop_id` 25 or 23 "confirmed" the jump, since it names both calls. The
+ * number followed the lead a lap round. Rider watcher, 2026-10-04, three
+ * departures of three: #331 at 10:16Z and 12:23Z, #321 at 12:52Z. A rider at
+ * Building 400 saw the other bus's next lap ("~43", "~31", "~33") for 30-40 s
+ * while the bus was 2 stops out (greenb800switch20261004).
+ *
+ * The rest says which call the bus stood at, and the feed cannot say
+ * otherwise. So while the lead is the stop's own leg, with the stand holding
+ * or just ended there (`leftStop`), a jump onto the stop's other call or the
+ * leg into it is held like any jump the feed cannot judge. LEAD_MAX_HOLD_MS
+ * still releases a wrong lead. Once the lead drives on, or the mass reaches a
+ * leg past the other call, the usual rule applies.
+ *
+ * Green only, and only at a stop upstream's list names twice. On 7 archived
+ * days (09-27..10-03, every stop's row against the recorded arrivals), Green's
+ * mean error goes 453 -> 261 s and severe episodes (one side within 2 min,
+ * the other more than 10 min off) go 365 fixed / 8 introduced. All 8
+ * introduced were a bus already standing at the stop, quoted "now" against a
+ * scored arrival a lap later. Purple, whose spur is one road out and back, came
+ * out worse under the same rule (15 introduced, none fixed) and keeps
+ * master's. West Haven Train Station's outbound call is the ring repair's
+ * (#358), not upstream's, and a bus can turn back there. #122 did at 06:12 ET
+ * on 10-02, and holding the outbound call priced downtown a lap out for 45 s.
+ */
+export function otherCallOfStand(b: Belief, ring: Ring, lead: number, best: number): boolean {
+  if (!ring.key.startsWith("9|") || ring.stops.length !== ring.N) return false;
+  if ((b.rested ? b.restStop : b.leftStop) !== lead) return false;
+  const id = ring.stops[lead];
+  const calls = new Set<number>();
+  for (let i = 0; i < ring.N; i++) if (ring.stops[i] === id) calls.add(ring.order[i]!);
+  if (calls.size < 2) return false;
+  return ring.stops[best] === id || ring.stops[(best + 1) % ring.N] === id;
 }
 
 /**
@@ -805,8 +853,12 @@ export function stepBelief(
   if (foldedDeparture) {
     // On Purple, the next stop reading can uniquely follow the very pass the
     // warm belief has tracked. Resetting then discards direction evidence at
-    // the fold, where the return road lies closer to the same GPS fix.
-    const nextOnSamePass = ring.key.startsWith("10|") && prev.lead === prev.restStop
+    // the fold, where the return road lies closer to the same GPS fix. Green
+    // too: out of Building 800 the bus drives past Building 750's kerb toward
+    // Building 600, and a cold start there put it on the return leg into
+    // Building 800 (#331, 2026-10-04 12:24Z, greenb800switch20261004). Kept,
+    // the belief reads the new stop on the pass it tracked (`applyLastStop`).
+    const nextOnSamePass = (ring.key.startsWith("10|") || ring.key.startsWith("9|")) && prev.lead === prev.restStop
       && stops.filter((id, i) => id === bus.last_stop_id
         && (i - prev.lead + ring.N) % ring.N > 0
         && (i - prev.lead + ring.N) % ring.N <= 2).length === 1;

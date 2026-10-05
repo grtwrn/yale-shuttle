@@ -76,6 +76,14 @@ function replay(r: Ride) {
 }
 
 type Step = ReturnType<typeof replay>[number];
+
+/** Rides whose production lead held Building 800's RETURN call after #321 left
+ * it on the way out (greenb800switch20261004), until the time given: the page
+ * printed that call's count (4) while the replay's lead stays on the way out. */
+const heldReturnCall: Record<string, string> = {
+  "1791116282719": "2026-10-04T12:59:00Z", // released after LEAD_MAX_HOLD_MS
+  "1791021569319": "2026-10-03T10:05:20Z", // until the bus reached that call
+};
 const runs = (xs: (number | null)[]) => xs.filter((x): x is number => x !== null).filter((x, i, a) => i === 0 || a[i - 1] !== x);
 
 /** Stops left after the ride's call at `stopId` (the pickup counts the whole ride). */
@@ -102,8 +110,12 @@ describe.each(fixture.rides.map((r) => [`${r.routeLabel} ${r.busName} run ${r.ru
     const steps = () => replay(r).filter((s) => s.riding);
 
     it("the old count is what the page printed", () => {
-      const s = steps().filter((x) => x.printed !== null && x.master !== null);
+      const all = steps().filter((x) => x.printed !== null && x.master !== null);
+      const held = heldReturnCall[r.runId];
+      const s = held ? all.filter((x) => x.at > held) : all;
+      expect(s.length).toBeGreaterThan(20);
       expect(runs(s.map((x) => x.master))).toEqual(runs(s.map((x) => x.printed)));
+      if (held) expect(runs(all.filter((x) => x.at <= held).map((x) => x.printed))).toEqual([4]);
     });
 
     it("is never fewer than the stops left at a call the bus stands at", () => {
@@ -141,7 +153,10 @@ describe("the reported rides", () => {
   it("Green #321 run 1791116282719 read 4, 2, 3, 1, 4, 5 and now reads 5, 4, 3, 2, 1, 0", () => {
     const s = replay(ride("1791116282719")).filter((x) => x.riding);
     expect(runs(s.map((x) => x.printed))).toEqual([4, 2, 3, 1, 4, 5]);
-    expect(runs(s.map((x) => x.count))).toEqual([5, 4, 3, 2, 1, 0]);
+    // The first poll after boarding reads 6: the bus a poll into its stand at
+    // Building 400 and the lead a leg behind, the lag of a stand's first poll.
+    expect(s[0]!.count).toBe(6);
+    expect(runs(s.slice(1).map((x) => x.count))).toEqual([5, 4, 3, 2, 1, 0]);
   });
 
   it("the old count told riders to get off early on Green and Purple, and rose on Pink", () => {
@@ -163,9 +178,11 @@ describe("the reported rides", () => {
   // Why the out-and-back lines count the countdown's hops rather than the trip
   // card's approach: the card lists only upstream's slots, so Purple's return
   // call at West Haven Train Station is not a stop to it, and its anchor's pass
-  // can run ahead of the bus.
-  it("the trip card's count would still be early on Purple's return and on Green", () => {
+  // can run ahead of the bus. On Green that pass was the lead held on Building
+  // 800's return call (greenb800switch20261004), and the card's count is no
+  // longer early there.
+  it("the trip card's count would still be early on Purple's return", () => {
     expect(early(ride("1790971678692"), replay(ride("1790971678692")), "card").length).toBeGreaterThan(0);
-    expect(early(ride("1791021569319"), replay(ride("1791021569319")), "card").length).toBeGreaterThan(0);
+    expect(early(ride("1791021569319"), replay(ride("1791021569319")), "card")).toEqual([]);
   });
 });

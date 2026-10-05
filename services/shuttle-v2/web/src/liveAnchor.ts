@@ -29,7 +29,7 @@
  * what the replay harnesses and the pure tests depend on.
  */
 import { beliefFor, ringForBus, type AnchorStore } from "./eta";
-import { LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass, standingSec, type Belief, type FilterBus } from "./eta/filter";
+import { LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass, otherCallOfStand, standingSec, type Belief, type FilterBus } from "./eta/filter";
 import type { Ring } from "./eta/ring";
 import { haversineMeters, type LatLon } from "./geo";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
@@ -122,6 +122,11 @@ export function resolveAnchorIndex(
  * 1 - LEAD_SWITCH_MASS) and that pass holds LEAD_SWITCH_MASS, each counted
  * over the pass's leg and the LEAD_FOLLOW_LEGS after it, the reach `leadLeg`
  * gives a lead that is following.
+ *
+ * Not while the lead is held on the call its stand was at (filter.ts
+ * `otherCallOfStand`). Pulling out of the outbound stand at Building 800, the
+ * mass runs along the return line for a poll or two, but the bus is on its
+ * way out, and the lead says so (greenb800switch20261004).
  */
 export function travelPass(b: Belief, ring: Ring): number {
   const lead = b.lead;
@@ -142,7 +147,7 @@ export function travelPass(b: Belief, ring: Ring): number {
     return sum;
   };
   if (near(lead) > 1 - LEAD_SWITCH_MASS) return lead;
-  for (const q of passes) if (near(q) >= LEAD_SWITCH_MASS) return q;
+  for (const q of passes) if (near(q) >= LEAD_SWITCH_MASS && !otherCallOfStand(b, ring, lead, q)) return q;
   return lead;
 }
 

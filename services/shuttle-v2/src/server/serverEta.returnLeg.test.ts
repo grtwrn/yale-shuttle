@@ -86,10 +86,13 @@ describe('the trip card off the served wire (purplestopsjump20261003)', () => {
     expect([...climb]).toEqual([[6, 8], [7, 7], [8, 6], [9, 5]]);
   });
 
-  it('keeps Green\'s outbound run past Building 800 at 2 while the stop index names the return pass', () => {
+  it('keeps Green\'s outbound run past Building 800 on the way out, stop index and count alike', () => {
     const polls = serve(GREEN).filter(p => p.cardBus === '#321' && p.card === 2);
-    const held = polls.filter(p => p.stop === 17);
-    expect(held.length).toBeGreaterThanOrEqual(4);
-    for (const p of held) expect({ at: p.at, travel: p.travel, away: p.away }).toEqual({ at: p.at, travel: 12, away: 2 });
+    // Production's lead held Building 800's RETURN pass (slot 17) here, and the
+    // count read `travel` 12 to keep "2". The lead now stays on the way out
+    // (greenb800switch20261004): Building 800 (12), then Building 600 (13), 1 stop.
+    for (const p of polls) expect([12, 13]).toContain(p.stop);
+    for (const p of polls) expect({ at: p.at, travel: p.travel, away: p.away }).toEqual({ at: p.at, travel: p.stop, away: p.stop === 12 ? 2 : 1 });
+    expect(polls.filter(p => p.stop === 13).length).toBeGreaterThanOrEqual(4);
   });
 });

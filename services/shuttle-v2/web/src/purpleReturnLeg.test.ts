@@ -23,7 +23,9 @@
  * out to Building 400 (`__fixtures__/green-building-800-outbound.json`, and
  * production at 2026-10-03 21:00Z). So a count reads the pass the belief's mass
  * is on (liveAnchor.ts `travelPass`), and those rides read exactly what they
- * read before. Pink, whose ring adds twin passes of stops its list names once,
+ * read before. Since greenb800switch20261004 the lead itself stays on the way
+ * out (eta/filter.ts `otherCallOfStand`), and the replay reads Building 600
+ * where the card read Building 800. Pink, whose ring adds twin passes of stops its list names once,
  * reads exactly as before too (`__fixtures__/pink-twin-passes.json`).
  */
 import { readFileSync } from 'node:fs';
@@ -204,27 +206,33 @@ describe('Purple on the West Campus return leg (2026-10-03)', () => {
 });
 
 describe('Green running out past Building 800 to Building 400 (2026-10-03)', () => {
-  it('reads what the card read, though the lead names Building 800\'s return pass', () => {
+  it('reads what the card read, and Building 600 where production\'s lead held Building 800\'s return pass', () => {
     const polls = replay(GREEN).filter(p => p.after);
     const canonical = mergedRouteStops(GREEN.cfg, GREEN.routeStops);
     expect(polls.length).toBeGreaterThan(50);
-    // The replay is the ride: every poll reads what the card printed but one,
+    // The lead's pathology in production: it held the RETURN pass of Building
+    // 800 (slot 17) while #321 called at Building 600 on the way out, and the
+    // card printed "2 · Building 800" there. The lead now stays on the way out
+    // (greenb800switch20261004): Building 600 (slot 13), 1 stop from Building 400.
+    const atB600 = polls.filter(p => p.cardBus === '#321' && p.card === 2 && p.before!.first === 'Building 600');
+    expect(atB600.map(p => p.at)).toEqual([
+      '2026-10-03T10:01:36.893Z', '2026-10-03T10:01:46.895Z', '2026-10-03T10:01:56.896Z',
+      '2026-10-03T10:02:06.897Z', '2026-10-03T10:02:16.899Z', '2026-10-03T10:02:26.902Z',
+      '2026-10-03T10:51:47.435Z', '2026-10-03T10:51:57.436Z', '2026-10-03T10:52:07.439Z',
+      '2026-10-03T10:52:17.441Z', '2026-10-03T10:52:27.442Z',
+    ]);
+    const bi = canonical.indexOf(22);
+    for (const p of atB600) {
+      expect({ at: p.at, stop: p.stop, before: p.before!.away, after: p.after!.away }).toEqual({ at: p.at, stop: 13, before: 1, after: 1 });
+      expect((bi - p.stop + canonical.length) % canonical.length).toBe(1);
+    }
+    // Every other poll is the ride: it reads what the card printed but one,
     // where the replay reaches Building 800 a poll before the card did.
-    expect(polls.filter(p => p.before!.away !== p.card).map(p => p.at)).toEqual(['2026-10-03T10:00:26.880Z']);
+    expect(polls.filter(p => p.before!.away !== p.card && !atB600.includes(p)).map(p => p.at)).toEqual(['2026-10-03T10:00:26.880Z']);
     for (const p of polls) {
       // Unchanged, except the outbound call at West Haven Train Station: 18 on
       // 28d055b, 4 since #358 (westHavenOutboundPass.test.ts).
       expect({ at: p.at, after: p.after!.away }).toEqual({ at: p.at, after: p.before!.away === 18 ? 4 : p.before!.away });
-    }
-    // The lead's pathology, left as it is for "which stop is the bus at": it
-    // holds the RETURN pass of Building 800 (slot 17) while #321 calls at
-    // Building 600 on the way out. Counted from there it would be a lap.
-    const held = polls.filter(p => p.cardBus === '#321' && p.stop === 17 && p.bus!.at_stop_id === 23);
-    expect(held.length).toBeGreaterThanOrEqual(4);
-    const bi = canonical.indexOf(22);
-    for (const p of held) {
-      expect((bi - p.stop + canonical.length) % canonical.length).toBe(20);
-      expect(p.after!.away).toBe(2);
     }
   });
 });
