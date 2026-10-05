@@ -372,7 +372,8 @@ test('a bus that never comes still ends the wait at the quoted cap',async()=>{
 // (harness-error 11:51:20Z) and the run boarded #317 at 12:06Z as "completed".
 const promptMiss=JSON.parse(await fs.readFile(new URL('./__fixtures__/purple-330-offer-gone-2026-10-04.json',import.meta.url),'utf8'));
 const purpleFeedOf=buses=>({buses,routes:{10:promptMiss.route.stops},route_paths:{10:promptMiss.route.path},stop_names:promptMiss.route.stop_names,stop_coords:promptMiss.route.stop_coords});
-const purpleAt=rows=>rows.map(([bus_name,lat,lon,stationary,at_stop_id,last_stop_id])=>({bus_name,route_id:10,lat,lon,stationary,last_stop_id,...(at_stop_id==null?{}:{at_stop_id})}));
+const busesAt=route_id=>rows=>rows.map(([bus_name,lat,lon,stationary,at_stop_id,last_stop_id,observed_at,last_moved_at])=>({bus_name,route_id,lat,lon,stationary,last_stop_id,...(at_stop_id==null?{}:{at_stop_id}),...(observed_at==null?{}:{observed_at}),...(last_moved_at==null?{}:{last_moved_at})}));
+const purpleAt=busesAt(10);
 const promptPoll=at=>promptMiss.polls.find(p=>p[0].startsWith(at));
 // The app polls every 5 s and the sampler every 10 s, so the app poll that
 // cleared the offer was not recorded. Modeled: #330 20 m along its recorded
@@ -446,4 +447,79 @@ test('an offer click that fails with the offer still showing is retried as befor
  assert.equal(run.harnessErrors,1);
  assert.equal(run.excludeAccuracy,undefined);
  assert.deepEqual(h.clicks,[["Yes, I'm on it",3000]]);
+});
+
+// riderboarddrivethrough20261005, Purple run 1791158187158: #317 drove through
+// 100 Church Street South without stopping, 77 m before the pole at 00:39:24Z
+// and 42 m past it at 00:39:34Z (last_stop_id 1, moving), 195 m at 00:39:44Z.
+// Since #371 the card names it "15 stops away" there, and 42 m boarded it.
+const church=JSON.parse(await fs.readFile(new URL('./__fixtures__/purple-church-st-drive-through-2026-10-05.json',import.meta.url),'utf8'));
+async function waitAtChurch({cards,polls}){
+ const c=promptMiss.route.stop_coords;
+ const churchTrip={kind:'random',origin:{label:'100 Church Street South',...c[1],stopId:1},destination:{display_name:'Building 400',...c[22],stopId:22}};
+ const [first]=polls;
+ const h=current=await harness(purpleFeedOf(purpleAt(first[2])),churchTrip,{feedOf:purpleFeedOf,text:cards[first[1]],at:first[0]});
+ for(const [at,card,rows] of polls.slice(1)){
+  vi.setSystemTime(Date.parse(at)-10000);await h.poll(cards[card],purpleAt(rows));
+  if(h.watcher.status().run?.phase!=='waiting')break;
+ }
+ h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ return h;
+}
+test('replay: #317 driving through 100 Church Street South is not boarded 42 m past the pole',async()=>{
+ const h=await waitAtChurch(church.driveThrough);
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'waiting');
+ assert.equal(run.boardedAt,undefined);
+ assert.deepEqual(h.clicks,[]);
+ // The card follows #317 a lap on, 14 stops away by 00:40:34Z.
+ assert.equal(run.busName,'#317');
+ assert.equal(run.pastStopSamples,1);
+ assert.equal(run.excludeAccuracy,undefined);
+ const past=(await h.events()).filter(e=>e.kind==='waiting-bus-past-stop');
+ assert.equal(past.length,1);
+ assert.equal(past[0].at,'2026-10-05T00:39:34.194Z');
+ assert.equal(past[0].detail.bus,'#317');
+ assert.equal(Math.round(past[0].detail.distanceM),42);
+ assert.equal(past[0].detail.lastStopId,1);
+});
+// Purple run 1791106305230: #330 was 5 m from the same pole at 09:37:29Z with
+// last_stop_id already 1, then stood 66 m on (at_stop_id 1) from 09:37:39Z.
+// The card then marks it at BOARD (#371), so the rider boards it standing.
+test('replay: #330 rolling past the pole and standing 66 m on is boarded where it stands',async()=>{
+ const h=await waitAtChurch(church.standPastPole);
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'riding');
+ assert.equal(run.busName,'#330');
+ assert.equal(run.boardedAt,'2026-10-04T09:37:39.037Z');
+ assert.equal(Math.round(run.lastBoardDistanceM),66);
+ assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+ assert.equal(run.pastStopSamples,1);
+ assert.equal(run.excludeAccuracy,undefined);
+});
+// Blue Weekend #44, 2026-10-04 (recorded by the rider riding it): it stood 57 m
+// short of Broadway / York, then from 15:37:17Z 7 m past the pole with
+// last_stop_id already Broadway / York and at_stop_id Elm / York, held that
+// fix to 15:37:42Z and left. The app read BOARD🚌 with no bus line there; the
+// replay uses the fixture's named cards ("🚌 #44 · 1 stop away").
+const york44=JSON.parse(await fs.readFile(new URL('./__fixtures__/blue-weekend-44-broadway-york-2026-10-04.json',import.meta.url),'utf8'));
+const york44FeedOf=buses=>({buses,routes:{4:york44.route.stops},route_paths:{4:york44.route.path},stop_names:york44.route.stop_names,stop_coords:york44.route.stop_coords});
+test('replay: #44 standing 7 m past Broadway / York with the neighbouring stop is boarded once its fix holds still',async()=>{
+ const c=york44.route.stop_coords,blueWeekend={label:'Blue Weekend',busRouteIds:[4]};
+ const yorkTrip={kind:'random',origin:{label:'Broadway / York',...c[21],stopId:21},destination:{display_name:'Prospect / Edwards',...c[101],stopId:101}};
+ const [first,...rest]=york44.polls;
+ const h=current=await harness(york44FeedOf(busesAt(4)(first[3])),yorkTrip,{initialLine:blueWeekend,feedOf:york44FeedOf,text:york44.cards[first[2]],at:first[0]});
+ for(const [at,,named,rows] of rest){
+  vi.setSystemTime(Date.parse(at)-10000);await h.poll(york44.cards[named],busesAt(4)(rows));
+  if(h.watcher.status().run?.phase!=='waiting')break;
+ }
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'riding');
+ assert.equal(run.busName,'#44');
+ // 15:37:22Z: the fix had just changed, so it is skipped as moving past.
+ assert.equal(run.pastStopSamples,1);
+ assert.equal(run.boardedAt,'2026-10-04T15:37:32.842Z');
+ assert.equal(Math.round(run.lastBoardDistanceM),7);
+ assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+ assert.equal(run.excludeAccuracy,undefined);
 });

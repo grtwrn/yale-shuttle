@@ -1,6 +1,6 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {cardBoardsBus,labeledStopId,destinationMatches,selectDestination,followedBusName,quotedRideMin,quotedWaitMin,rideCapMin,riderConfig,waitCapMin} from './inputs.mjs';
+import {cardBoardsBus,labeledStopId,destinationMatches,selectDestination,followedBusName,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,riderConfig,waitCapMin} from './inputs.mjs';
 const names={145:'Science Park Garage',98:'Phelps Gate',48:'Division / Prospect'};
 test('recorded Brown boarding prompt resolves on the first poll',()=>{
  const text="BOARD🚌Science Park Garage⏸ 14:04\nWinchester/Sachem\nGET OFFPhelps Gate\n🚌 On Brown #309?";
@@ -69,6 +69,28 @@ test('the card stores our bus only while it is the nearest line bus within 100 m
  assert.equal(cardBoardsBus([b330,{...at2134[2],route_id:3}],[10],rider,'#330'),true);
  assert.equal(cardBoardsBus([b330],[3],rider,'#330'),false);
  assert.equal(cardBoardsBus([],[10],rider,'#330'),false);
+});
+// riderboarddrivethrough20261005: Purple #317 through 100 Church Street South
+// (1) at 00:39:24Z and 00:39:34Z; #330 standing 66 m past its pole at
+// 09:37:39Z; Blue Weekend #44 7 m from Broadway / York (21) with at_stop_id
+// Elm / York (53), its fix changed at 15:37:17Z and unchanged 9.9 s later.
+test('a bus is past the pickup once the feed has it last there, moving and not standing at it',()=>{
+ const church={1:{lat:41.299671,lon:-72.929425}};
+ const b317={bus_name:'#317',route_id:10,lat:41.300357,lon:-72.929531,last_stop_id:9,stationary:false,observed_at:1791160760915,last_moved_at:'2026-10-05T00:39:20.915'};
+ assert.equal(pastPickup(b317,1,church),false);
+ const passing={...b317,lat:41.299313,lon:-72.929271,last_stop_id:1,observed_at:1791160770893,last_moved_at:'2026-10-05T00:39:30.893'};
+ assert.equal(pastPickup(passing,1,church),true);
+ // A feed without the movement clock says nothing: not past.
+ assert.equal(pastPickup({...passing,last_moved_at:undefined},1,church),false);
+ const b330={bus_name:'#330',route_id:10,lat:41.299096,lon:-72.929247,last_stop_id:1,stationary:true,at_stop_id:1,observed_at:1791106654039,last_moved_at:'2026-10-04T09:37:29.203'};
+ assert.equal(pastPickup(b330,1,church),false);
+ assert.equal(pastPickup({...b330,stationary:false,at_stop_id:undefined},1,church),true);
+ assert.equal(pastPickup({...b330,at_stop_id:9},1,church),true);
+ assert.equal(pastPickup({...b330,last_stop_id:9,stationary:false,at_stop_id:undefined},1,church),false);
+ const york={21:{lat:41.311002,lon:-72.930344}};
+ const b44={bus_name:'#44',route_id:4,lat:41.311038,lon:-72.930406,stationary:true,at_stop_id:53,last_stop_id:21,observed_at:1791128237102,last_moved_at:'2026-10-04T15:37:17.102'};
+ assert.equal(pastPickup(b44,21,york),true);
+ assert.equal(pastPickup({...b44,observed_at:1791128246953},21,york),false);
 });
 const intended={display_name:'West Haven Train Station',lat:41.271172,lon:-72.963517};
 const resolved={toText:'West Haven Station',toLL:{lat:41.271153,lon:-72.963243}};

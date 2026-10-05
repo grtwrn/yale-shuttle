@@ -17,6 +17,32 @@ export function observedAtStop(bus, stopId, stopCoords) {
   return bus.stationary === true && bus.at_stop_id === stopId && !!stop
     && haversineM(bus, stop) <= 75;
 }
+/** A fix unchanged for this long is a bus standing still: the collector polls
+ * upstream every 5 s and a standing bus repeats its fix exactly (detector.ts
+ * `MOVED_M`), so this is two unchanged polls. */
+export const MOVING_MS = 9000;
+/** The feed's own clock says the bus is moving: its fix changed within
+ * `MOVING_MS` of the poll (v1compat `last_moved_at`, naive UTC, against
+ * `observed_at`). A payload without the clock says nothing, so false, as the
+ * app's `stillSec` (web/src/eta/filter.ts) reads it. */
+export function movingNow(bus) {
+  const moved = bus.last_moved_at == null ? NaN : Date.parse(bus.last_moved_at + 'Z');
+  return Number.isFinite(bus.observed_at) && Number.isFinite(moved)
+    && bus.observed_at - moved < MOVING_MS;
+}
+/** The feed has the bus driving on past the pickup: upstream's `last_stop_id`
+ * is already the pickup, the fix is still moving, and the app's at-stop rule
+ * does not hold. These are the two witnesses the app's `leavingLastStop`
+ * takes. `last_stop_id` alone is not enough: it can name a stop before the bus
+ * reaches the pole, and while the bus stands at it with `at_stop_id` naming a
+ * neighbouring stop (Blue Weekend #44 7 m from Broadway / York, at_stop_id
+ * Elm / York, 2026-10-04). Purple #317 drove through 100 Church Street South
+ * and was 42 m past the pole, moving, on the next poll
+ * (riderboarddrivethrough20261005). */
+export function pastPickup(bus, stopId, stopCoords) {
+  return bus.last_stop_id === stopId && movingNow(bus)
+    && !observedAtStop(bus, stopId, stopCoords);
+}
 /** The app's unnamed "🚌 I'm on it" stores the line's bus within this of the
  * rider, mirrored from `boardingBusName` and `BOARDING_BUS_M`
  * (web/src/tripBusIdentity.ts): the card's own when it is one of them, else
