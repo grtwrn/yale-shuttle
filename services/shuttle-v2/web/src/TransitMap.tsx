@@ -6121,6 +6121,7 @@ const OnBusBanner: FC<{
     : null;
 
   let etaSec: number | null = null;
+  let driveSec: number | null = null;
   let exitArrivals: UpcomingArrival[] = [];
   if (bus) {
     const arr = computeUpcomingArrivals(
@@ -6131,8 +6132,10 @@ const OnBusBanner: FC<{
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
     );
     const mine = exitArrivals[0];
-    if (mine) etaSec = mine.eta;
+    if (mine) { etaSec = mine.eta; driveSec = mine.departNow; }
   }
+  const exitCoord = stopCoords[ride.alightStopId];
+  const exitMeters = bus && exitCoord ? haversineMeters(bus, exitCoord) : null;
 
   // Stops to the exit in travel order, to the pass the countdown above is for
   // (liveAnchor.ts `rideStopsToExit`). Slot arithmetic on the de-duplicated
@@ -6148,8 +6151,10 @@ const OnBusBanner: FC<{
   // off (reports #13, #20) — riders look away from the screen mid-ride.
   // Fires at TWO stops out (report #20 asked for earlier warning), so
   // there's time to gather bags and ring the bell, once the countdown is
-  // down to 5 min (rideAlert.ts `getOffAlertDue`). navigator.vibrate is
-  // a no-op on iOS Safari; there the popup/banner are the primary cue.
+  // down to 5 min; "next stop" waits for it too, unless the bus is within
+  // 1 km with the countdown stuck high (rideAlert.ts `getOffAlertDue`).
+  // navigator.vibrate is a no-op on iOS Safari; there the popup/banner are
+  // the primary cue.
   // Keyed per ride so re-renders (or a later ride to the same stop)
   // don't re-fire.
   const getOffAlertRef = useRef<string | null>(null);
@@ -6170,7 +6175,7 @@ const OnBusBanner: FC<{
     };
   }, [getOffPopup]);
   useEffect(() => {
-    if (!getOffAlertDue(stopsRemaining, etaSec)) return;
+    if (!getOffAlertDue(stopsRemaining, etaSec, driveSec, exitMeters)) return;
     const key = `${ride.busName}-${ride.alightStopId}`;
     if (getOffAlertRef.current === key) return;
     getOffAlertRef.current = key;
@@ -6184,7 +6189,7 @@ const OnBusBanner: FC<{
       } catch { /* blocked */ }
     }
     setGetOffPopup(title);
-  }, [stopsRemaining, etaSec, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
+  }, [stopsRemaining, etaSec, driveSec, exitMeters, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
 
   const etaStr = etaSec !== null ? formatRideEta(etaSec) : null;
   const headline = rideHeadline({
