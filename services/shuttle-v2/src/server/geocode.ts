@@ -73,8 +73,26 @@ export function geocode(
   // fits three places or more is a common word, not a name: "century" is a
   // slip of every "center".
   if (/\d/.test(rawQuery) || query.text.split(" ").some((w) => STREET_WORDS.has(w))) return [];
-  const guesses = search(network, query, landmarks, scoreTypo, false);
+  const known = knownWords(network, landmarks);
+  const guesses = search(network, query, landmarks, (q, c) => scoreTypo(q, c, known), false);
   return guesses.length <= MAX_TYPO_PLACES ? guesses : [];
+}
+
+/**
+ * Every word the curated places, their aliases and the stops are named with.
+ * {@link scoreTypo} never reads one of them as a slip of another: "green
+ * hill" is a road, not Green Hall.
+ */
+function knownWords(network: TransitNetwork, landmarks: readonly Landmark[]): Set<string> {
+  const known = new Set<string>();
+  const names = [
+    ...landmarks.flatMap((l) => [l.label, ...(l.aliases ?? [])]),
+    ...[...network.stops.values()].map((s) => s.name),
+  ];
+  for (const name of names) {
+    for (const w of normalizeName(name).split(" ")) known.add(w);
+  }
+  return known;
 }
 
 /**
@@ -499,13 +517,17 @@ const TYPO_SCORE = 0.2;
  *    letters): "shwartz" is "schwarz(man)". Five or six letters one slip
  *    from the start of a name are as often another word ("steer", "melon",
  *    "style"), so those need another word beside them: "yale dovin" is
- *    "divin(ity)", "dovin" alone is nothing;
+ *    "divin(ity)", "dovin" alone is nothing, and so is "edgar new haven"
+ *    (a stopword is no context);
  *  - or, from three letters, differs from the start of a word in ONE VOWEL:
  *    "low" is "law", "schi" "scho(ol)". A vowel slip is too little to go on
  *    alone ("lew"), so only beside a word of four or more letters that
  *    matched as typed ("sterling", "divinity"), and never on a consonant
  *    ("sterling lqw") or in two letters: "anlyan to" is not "anlyan ta(c)",
  *    nor "school of py" "school of pu(blic)" ("school of p" finds it).
+ *
+ * A word some curated place or stop is named with (`known`) is never read
+ * as a slip of another: "green hill" is not Green Hall.
  *
  * Two or three words of three or more letters are also read as one word
  * typed in pieces, into a word the first piece starts: "will buys" is
@@ -515,9 +537,11 @@ const TYPO_SCORE = 0.2;
  * are left alone: their order rule ({@link tokensMatch}) is not worth
  * loosening for a guess.
  */
-function scoreTypo(q: Query, c: Candidate): number {
+function scoreTypo(q: Query, c: Candidate, known: ReadonlySet<string>): number {
   if (q.tokens.filter((t) => t.length === 1).length >= 2) return 0;
-  const besideAnother = q.text.includes(" ");
+  // Another real word, or "yale": "new haven", "the" and "in" are no context
+  // ("edgar new haven" is Edgar Street, not Edgerton Park).
+  const besideAnother = q.tokens.length >= 2 || q.text.split(" ").includes("yale");
   const readings = c.spaced ? [c.words, c.spaced.words] : [c.words];
   const [first, ...rest] = q.tokens;
   const joined = q.tokens.join("");
@@ -525,10 +549,10 @@ function scoreTypo(q: Query, c: Candidate): number {
     soundKey(joined).length >= soundKey(first!).length + 2;
   let edits = Infinity;
   for (const words of readings) {
-    edits = Math.min(edits, typoEdits(q.tokens, words, besideAnother));
+    edits = Math.min(edits, typoEdits(q.tokens, words, besideAnother, known));
     // A word typed in two: only into a word the first piece starts.
     const started = split ? words.filter((w) => w.startsWith(first!)) : [];
-    if (started.length > 0) edits = Math.min(edits, typoEdits([joined], started, besideAnother));
+    if (started.length > 0) edits = Math.min(edits, typoEdits([joined], started, besideAnother, known));
   }
   return edits === Infinity ? 0 : TYPO_SCORE - edits / 100;
 }
@@ -538,6 +562,7 @@ function typoEdits(
   tokens: readonly string[],
   words: readonly string[],
   besideAnother: boolean,
+  known: ReadonlySet<string>,
 ): number {
   let edits = 0;
   let anchored = false;
@@ -547,6 +572,8 @@ function typoEdits(
       if (t.length >= 4) anchored = true;
       continue;
     }
+    // A word the list itself uses ("hill") is that word, not a slip of another ("hall").
+    if (known.has(t)) return Infinity;
     const e = Math.min(...words.map((w) => soundsLike(t, w, besideAnother)));
     if (e === Infinity) slips.push(t);
     else edits += e;

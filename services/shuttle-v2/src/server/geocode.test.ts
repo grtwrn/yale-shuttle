@@ -1110,6 +1110,26 @@ describe("misspellings past the fuzzy tier (2026-10-04)", () => {
     },
   );
 
+  it.each(["edgar new haven", "burke new haven", "check in"])(
+    "does not count a stopword as the word beside a short guess: %o",
+    (q) => {
+      // Edgerton Park, Berkeley College and bb.q Chicken were one slip away,
+      // and "new haven" or "in" is no context: these are Edgar Street,
+      // Burke Street and a check-in. The map would pick the curated place
+      // on Enter over the provider's answer.
+      expect(labels(q)).toEqual([]);
+    },
+  );
+
+  it.each(["green hill", "rose hill", "mill hill"])(
+    "does not read a word the list uses as a slip of another: %o",
+    (q) => {
+      // "hill" is one vowel from "hall" (Green Hall, Rosenkranz Hall, Miller
+      // Hall), but Green Hill and Rose Hill are roads the providers answer.
+      expect(labels(q)).toEqual([]);
+    },
+  );
+
   it("drops a guess that fits three places or more", () => {
     // "century" sounds like "center", which half the campus is called.
     expect(labels("century")).toEqual([]);
