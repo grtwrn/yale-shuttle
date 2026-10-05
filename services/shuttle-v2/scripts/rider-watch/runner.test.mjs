@@ -500,19 +500,24 @@ test('replay: #330 rolling past the pole and standing 66 m on is boarded where i
 // Blue Weekend #44, 2026-10-04 (recorded by the rider riding it): it stood 57 m
 // short of Broadway / York, then from 15:37:17Z 7 m past the pole with
 // last_stop_id already Broadway / York and at_stop_id Elm / York, held that
-// fix to 15:37:42Z and left. The app read BOARD🚌 with no bus line there; the
-// replay uses the fixture's named cards ("🚌 #44 · 1 stop away").
+// fix to 15:37:42Z and left. The app read BOARD🚌 with no bus line there; this
+// replay uses the fixture's named cards ("🚌 #44 · 1 stop away"), the next one
+// the app's own.
 const york44=JSON.parse(await fs.readFile(new URL('./__fixtures__/blue-weekend-44-broadway-york-2026-10-04.json',import.meta.url),'utf8'));
 const york44FeedOf=buses=>({buses,routes:{4:york44.route.stops},route_paths:{4:york44.route.path},stop_names:york44.route.stop_names,stop_coords:york44.route.stop_coords});
-test('replay: #44 standing 7 m past Broadway / York with the neighbouring stop is boarded once its fix holds still',async()=>{
+async function waitAtYork(cardOf){
  const c=york44.route.stop_coords,blueWeekend={label:'Blue Weekend',busRouteIds:[4]};
  const yorkTrip={kind:'random',origin:{label:'Broadway / York',...c[21],stopId:21},destination:{display_name:'Prospect / Edwards',...c[101],stopId:101}};
  const [first,...rest]=york44.polls;
- const h=current=await harness(york44FeedOf(busesAt(4)(first[3])),yorkTrip,{initialLine:blueWeekend,feedOf:york44FeedOf,text:york44.cards[first[2]],at:first[0]});
- for(const [at,,named,rows] of rest){
-  vi.setSystemTime(Date.parse(at)-10000);await h.poll(york44.cards[named],busesAt(4)(rows));
+ const h=current=await harness(york44FeedOf(busesAt(4)(first[3])),yorkTrip,{initialLine:blueWeekend,feedOf:york44FeedOf,text:york44.cards[cardOf(first)],at:first[0]});
+ for(const poll of rest){
+  vi.setSystemTime(Date.parse(poll[0])-10000);await h.poll(york44.cards[cardOf(poll)],busesAt(4)(poll[3]));
   if(h.watcher.status().run?.phase!=='waiting')break;
  }
+ return h;
+}
+test('replay: #44 standing 7 m past Broadway / York with the neighbouring stop is boarded once its fix holds still',async()=>{
+ const h=await waitAtYork(([,,named])=>named);
  const run=h.watcher.status().run;
  assert.equal(run?.phase,'riding');
  assert.equal(run.busName,'#44');
@@ -521,5 +526,22 @@ test('replay: #44 standing 7 m past Broadway / York with the neighbouring stop i
  assert.equal(run.boardedAt,'2026-10-04T15:37:32.842Z');
  assert.equal(Math.round(run.lastBoardDistanceM),7);
  assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+ assert.equal(run.excludeAccuracy,undefined);
+});
+// riderneighbourstop20261005: the app's own cards for that wait read
+// BOARD🚌Broadway/York with no bus line from 15:37:02Z, while #44 stood 57 m
+// short, then 7 m from the pole with at_stop_id still Elm / York. A rider at
+// the stop gets on; the runner had no followed bus on any of those polls.
+test('replay: the app\'s BOARD🚌 card with no bus line boards #44 standing 7 m from Broadway / York',async()=>{
+ const h=await waitAtYork(([,app])=>app);
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'riding');
+ assert.equal(run.busName,'#44');
+ assert.equal(run.boardedAt,'2026-10-04T15:37:32.842Z');
+ assert.equal(Math.round(run.lastBoardDistanceM),7);
+ assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+ // 15:37:02Z and 15:37:12Z standing 57 m short, 15:37:22Z just moved there.
+ assert.equal(run.unnamedBusSamples,3);
+ assert.equal(run.pastStopSamples,undefined);
  assert.equal(run.excludeAccuracy,undefined);
 });

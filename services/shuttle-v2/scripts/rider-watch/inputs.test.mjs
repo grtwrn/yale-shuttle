@@ -92,6 +92,41 @@ test('a bus is past the pickup once the feed has it last there, moving and not s
  assert.equal(pastPickup(b44,21,york),true);
  assert.equal(pastPickup({...b44,observed_at:1791128246953},21,york),false);
 });
+// riderneighbourstop20261005: the app's card for a rider at Broadway / York at
+// 15:37:22Z, rendered from the recorded feed; #44 as recorded at 15:37:32Z.
+test('the followed bus standing at the pickup is kept when the feed names a neighbouring stop or none',()=>{
+ const york={21:{lat:41.311002,lon:-72.930344},53:{lat:41.31086,lon:-72.93054}};
+ const card="Blue Weekend\t\n<1\n\t11:47a – 12:09p\n\n🚌 19 min\nBOARD🚌Broadway/York⏸ 1:17\nStop & Shop\nElm/York (TYCO)\nGET OFFProspect/Edwards";
+ const b44={bus_name:'#44',route_id:4,lat:41.311038,lon:-72.930406,stationary:true,at_stop_id:53,last_stop_id:21,observed_at:1791128246953,last_moved_at:'2026-10-04T15:37:17.102'};
+ assert.equal(followedBusName(card,21,[b44],[4],'#44',york),'#44');
+ // No at_stop_id at all (v1compat: stationary is at_stop_id != null).
+ assert.equal(followedBusName(card,21,[{...b44,stationary:false,at_stop_id:undefined}],[4],'#44',york),'#44');
+ // Another line's bus there does not count.
+ assert.equal(followedBusName(card,21,[b44,{...b44,bus_name:'#45',route_id:3}],[4],'#44',york),'#44');
+});
+test('a bus near the pickup that is moving, too far or not alone there is not inferred',()=>{
+ const york={21:{lat:41.311002,lon:-72.930344}};
+ const card="🚌 19 min\nBOARD🚌Broadway/York⏸ 1:17\nStop & Shop\nGET OFFProspect/Edwards";
+ const b44={bus_name:'#44',route_id:4,lat:41.311038,lon:-72.930406,stationary:true,at_stop_id:53,last_stop_id:21,observed_at:1791128246953,last_moved_at:'2026-10-04T15:37:17.102'};
+ // 15:37:22Z: the fix changed with that poll, so it may be driving on.
+ assert.equal(followedBusName(card,21,[{...b44,observed_at:1791128237102}],[4],'#44',york),null);
+ // A feed without the movement clock does not say it is standing.
+ assert.equal(followedBusName(card,21,[{...b44,last_moved_at:undefined}],[4],'#44',york),null);
+ // 15:37:02Z: standing 57 m short of the pole, beyond the 45 m boarding radius.
+ const short={...b44,lat:41.31051,lon:-72.930152,last_stop_id:150,observed_at:1791128216985,last_moved_at:'2026-10-04T15:36:11.917'};
+ assert.equal(followedBusName(card,21,[short],[4],'#44',york),null);
+ // Another line bus standing there as well, or at the stop: fail closed.
+ const b45={...b44,bus_name:'#45',lat:41.31105,lon:-72.9303};
+ assert.equal(followedBusName(card,21,[b44,b45],[4],'#44',york),null);
+ assert.equal(followedBusName(card,21,[b44,{...b45,at_stop_id:21}],[4],'#44',york),null);
+ // A bus the card did not follow is never taken this way (it may stand at the
+ // opposite curb); the one observed at the stop still is, as before.
+ assert.equal(followedBusName(card,21,[b44],[4],undefined,york),null);
+ assert.equal(followedBusName(card,21,[b44],[4],'#40',york),null);
+ assert.equal(followedBusName(card,21,[b44,{...b45,at_stop_id:21}],[4],undefined,york),'#45');
+ // Without the card's BOARD🚌 nothing is inferred.
+ assert.equal(followedBusName(card.replace('BOARD🚌','BOARD'),21,[b44],[4],'#44',york),null);
+});
 const intended={display_name:'West Haven Train Station',lat:41.271172,lon:-72.963517};
 const resolved={toText:'West Haven Station',toLL:{lat:41.271153,lon:-72.963243}};
 test('actual West Haven alias matches geographically; unrelated/missing coordinates do not',()=>{
