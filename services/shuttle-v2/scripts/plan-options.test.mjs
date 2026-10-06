@@ -23,6 +23,22 @@ const row = (label, cell, arrive) => `${label}\t\n${cell}\n\t${arrive}\n\n🚌 1
 const table = (...rows) => `Route\tBoard in (min)\tArrive at\n${rows.join("\n")}Clear\n💬 Send feedback\n`;
 
 describe("planOptions", () => {
+  // Body innerText of the built SPA's table after #389 added "Next in" (390 px,
+  // synthetic two-bus Red wire at 14:00 ET). The old reader saw no rows at all.
+  const NEXT_IN = "Route\tBoard in (min)\tNext in\tArrive at\nRed\t\n~4 (2 – 9)\n\t~19 min\t2:21p – 2:28p\n\n🚌 18 min\n›\n\n"
+    + "Walk\t\n—\n\t—\t~2:45p\n\n🚶 46 min\n›\nClear\n💬 Send feedback\n";
+  it("reads the table with the Next in column, taking it as the following arrival", () => {
+    const opts = planOptions(NEXT_IN, AT);
+    expect(opts.map((o) => o.route)).toEqual(["Red", "Walk"]);
+    expect(opts.map((o) => o.waitSec)).toEqual([4 * 60, null]);
+    expect(opts.map((o) => o.nextSec)).toEqual([19 * 60, null]);
+    expect(opts.map((o) => o.arriveText)).toEqual(["2:21p – 2:28p", "~2:45p"]);
+  });
+  it("reads a sub-minute or missing Next in without inventing one", () => {
+    expect(planOptions(NEXT_IN.replace("~19 min", "<1 min"), AT)[0].nextSec).toBe(30);
+    expect(planOptions(NEXT_IN.replace("~19 min", "—"), AT)[0]).toMatchObject({ waitSec: 4 * 60, nextSec: null });
+  });
+
   it("reads every option of the live route table", () => {
     const opts = planOptions(LIVE, AT);
     expect(opts.map((o) => o.route)).toEqual(["Red", "Green", "Orange Day", "Walk", "Blue Day"]);

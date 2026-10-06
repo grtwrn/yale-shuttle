@@ -90,7 +90,7 @@ try {
     const row = table.locator('[data-route="Red"]');
     const destination = row.getByTestId('destination-arrival');
     await card.waitFor();
-    assert.deepEqual(await table.locator('thead th').allTextContents(), ['Route', 'Board in (min)', 'Arrive at']);
+    assert.deepEqual(await table.locator('thead th').allTextContents(), ['Route', 'Board in (min)', 'Next in', 'Arrive at']);
     await destination.locator('[style*="white-space"]').first().waitFor();
     async function capture(state) {
       assert.equal(await page.getByRole('button', { name: /^Arrive by/ }).count(), 0);
@@ -111,7 +111,8 @@ try {
       assert(await destination.locator('span[style*="white-space"]').evaluateAll(es => es.every(e => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects().length === 1; })), 'clock digits wrap');
       await fs.writeFile(`${out}${state}-${width}.txt`, text + '\n');
       await page.screenshot({ path: `${out}${state}-${width}.png`, fullPage: true });
-      run[state] = { text, card: await card.innerText(), destination: await destination.innerText(), parsed: parseOptions(text), recognizedCard: await card.getAttribute('aria-label') === 'View Red trip details' };
+      const next = row.getByTestId('route-next-arrival');
+      run[state] = { text, card: await card.innerText(), destination: await destination.innerText(), next: await next.count() ? await next.innerText() : null, parsed: parseOptions(text), recognizedCard: await card.getAttribute('aria-label') === 'View Red trip details' };
       assert(run[state].recognizedCard, 'watcher cannot recognize Red card');
       assert(hasArrivalClock(await destination.innerText()), 'watcher cannot recognize destination clock');
       assert.equal(await card.getByTestId('destination-arrival').count(), 0);
@@ -154,7 +155,10 @@ try {
       await page.getByRole('button', { name: 'Back', exact: true }).click();
     }
     const parsedPickup = run.live.parsed.find(o => o.routeLabel === 'Red').eta;
-    assert.equal(parsedPickup.second, null);
+    // The Next in column is read as the following arrival, exactly as shown.
+    const shownNext = run.live.next?.match(/^~(\d+) min$/);
+    assert(shownNext, 'Red row shows no following arrival');
+    assert.deepEqual(parsedPickup.second, [shownNext[1] * 60, shownNext[1] * 60 + 60]);
     assert.deepEqual(parsedPickup.first, [180, 540]);
     assert.deepEqual(parsedPickup.median, [300, 360]);
     // The pickup time, destination and journey legs are all part of the

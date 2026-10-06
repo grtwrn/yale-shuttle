@@ -535,7 +535,12 @@ const IS_ARRIVAL_CLOCK = ARRIVAL_CLOCK_RE;
 export function parseTimingTable(bodyText) {
   const rows = [];
   for (const match of String(bodyText).matchAll(/^([A-Za-z][A-Za-z ]{0,24})\t([^\t]*)\t([^\n]*)$/gm)) {
-    const [, label, cell, destination] = match;
+    const [, label, cell, rest] = match;
+    // Since #389 a "Next in" column ("~19 min", "<1 min" or "—") sits between
+    // Board in and Arrive at; without this split the whole row was dropped.
+    const tab = rest.lastIndexOf('\t');
+    const nextCell = tab >= 0 ? rest.slice(0, tab).trim() : null;
+    const destination = tab >= 0 ? rest.slice(tab + 1) : rest;
     const lines = cell.trim().split('\n').map(s => s.trim()).filter(Boolean);
     const first = lines[0];
     const point = first?.match(/^(~?<1|~?\d+)(?: \((~1|<1|\d+)(?:\s*[–-]\s*(\d+))?\))?$/);
@@ -543,7 +548,8 @@ export function parseTimingTable(bodyText) {
     if (!point && !atStop && !['—', 'Missed', 'Unavailable', 'Scheduled'].includes(first)) continue;
     const clock = destination.trim();
     if (clock !== '—' && !ARRIVAL_CLOCK_RE.test(clock)) continue;
-    const following = lines.find(s => /^Next ~?(<1|\d+)$/.test(s));
+    const nextIn = nextCell?.match(/^(~?<1|~?\d+) min$/);
+    const following = nextIn ? `Next ${nextIn[1]}` : lines.find(s => /^Next ~?(<1|\d+)$/.test(s));
     const summary = point ? `Arrives in ${point[1]} min${point[2] ? `, ${point[2]}${point[3] ? `–${point[3]}` : ''} min range` : ''}`
       : atStop ? 'At your stop' : null;
     const eta = summary ? parseBusEtaText(summary + (following ? `\n${following.replace('Next ', 'Next in ')} min` : '')) : null;
