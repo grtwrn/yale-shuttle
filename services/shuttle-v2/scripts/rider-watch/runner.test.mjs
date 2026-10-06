@@ -545,3 +545,29 @@ test('replay: the app\'s BOARD🚌 card with no bus line boards #44 standing 7 m
  assert.equal(run.pastStopSamples,undefined);
  assert.equal(run.excludeAccuracy,undefined);
 });
+
+// riderwrongcurb20261006: the selected College/Wall (S) occurrence is 15
+// route hops from (N), despite poles only 28 m apart. The actual card says
+// #47 is 16 stops away when the old proximity arm boards at (N), 39 m from
+// (S). Replay every recorded waiting poll, not a replacement gate.
+const wrongCurb47=JSON.parse(await fs.readFile(new URL('./__fixtures__/orange-47-opposite-curb-2026-10-06.json',import.meta.url),'utf8'));
+const wrongCurbFeed=buses=>({buses,routes:{14:wrongCurb47.route.stops},stop_names:wrongCurb47.route.stop_names,stop_coords:wrongCurb47.route.stop_coords});
+test('replay: a named bus standing at the opposite route occurrence is not proximity-boarded',async()=>{
+ const [first,...rest]=wrongCurb47.polls;
+ const h=current=await harness(wrongCurbFeed(first.buses),wrongCurb47.trip,{initialLine:wrongCurb47.line,feedOf:wrongCurbFeed,text:first.text,at:wrongCurb47.startedAt});
+ for(const p of rest){vi.setSystemTime(Date.parse(p.at)-10000);await h.poll(p.text,p.buses);}
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'waiting');
+ assert.equal(run.busName,'#47');
+ assert.equal(run.boardStopId,42);
+ assert.equal(run.boardedAt,undefined);
+ assert.deepEqual(h.clicks,[]);
+ assert.equal(run.harnessErrors,undefined);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ const rejected=events.filter(e=>e.kind==='waiting-bus-opposite-curb');
+ assert.equal(rejected.length,1);
+ assert.equal(rejected[0].at,'2026-10-06T03:20:05.730Z');
+ assert.equal(rejected[0].detail.atStopId,41);
+ // Missing the old false boarding is not a newly measured ride/arrival.
+ assert.deepEqual(await h.journeys(),[]);
+});
