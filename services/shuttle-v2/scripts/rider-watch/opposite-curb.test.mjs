@@ -13,6 +13,9 @@ test('opposite-curb veto uses the current named card, direct position and nonadj
   ['heading agrees with requested direction',{...bus,heading:180},poll.text,feed],
   ['perpendicular heading',{...bus,heading:90},poll.text,feed],
   ['missing heading',{...bus,heading:undefined},poll.text,feed],
+  ['ambiguous default or genuine north zero',{...bus,heading:0},poll.text,feed],
+  ['negative zero',{...bus,heading:-0},poll.text,feed],
+  ['nonfinite heading',{...bus,heading:Infinity},poll.text,feed],
   ['invalid heading',{...bus,heading:361},poll.text,feed],
   ['moving / lingering at_stop_id',{...bus,stationary:false},poll.text,feed],
   ['unknown curb',{...bus,at_stop_id:999},poll.text,feed],
@@ -46,10 +49,11 @@ test('recorded heading distinguishes misleading opposite pole ids from an ambigu
  for(const {bus,target,card,feed,source,expectedVeto} of headingControls){
   assert.equal(oppositePickupCurb(bus,target,card,feed),expectedVeto,source);
   // Changing ONLY heading from the other curb's direction to the requested
-  // direction switches this veto. A future GPS jump is not current service
-  // evidence; never treat these modelled cards as door truth.
+  // direction switches this veto. Use nonzero north (30): zero in this
+  // normalized feed cannot distinguish genuine north from a default. A
+  // future GPS jump is not current service evidence; never treat these modelled cards as door truth.
   const direction=feed.stop_names[bus.at_stop_id].match(/\(([NS])\)$/)[1];
-  assert.equal(oppositePickupCurb({...bus,heading:direction==='N'?0:180},target,card,feed),true);
-  assert.equal(oppositePickupCurb({...bus,heading:direction==='N'?180:0},target,card,feed),false);
+  assert.equal(oppositePickupCurb({...bus,heading:direction==='N'?30:180},target,card,feed),true);
+  assert.equal(oppositePickupCurb({...bus,heading:direction==='N'?180:30},target,card,feed),false);
  }
 });

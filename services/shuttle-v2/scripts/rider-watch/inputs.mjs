@@ -55,8 +55,11 @@ export function oppositePickupCurb(bus, stopId, text, feed) {
     || ({N:'S', S:'N', E:'W', W:'E'})[pickup.direction] !== other.direction) return false;
   // at_stop_id can linger on the wrong pole even on a correctly directed
   // approach (Pink Front/Rt 1, Green Orange/Humphrey). Corroborate with the
-  // raw heading; missing/perpendicular headings do not justify this veto.
-  if (!Number.isFinite(bus.heading) || bus.heading < 0 || bus.heading > 360) return false;
+  // feed heading, not raw provenance: upstream.ts defaults an omitted
+  // heading to 0 and collector.ts normalizes nonfinite headings to 0. The
+  // runner cannot distinguish those defaults from genuine north, so zero
+  // must fail open too; missing/perpendicular headings also justify no veto.
+  if (!Number.isFinite(bus.heading) || bus.heading <= 0 || bus.heading > 360) return false;
   const h = bus.heading % 360;
   const agrees = {N: h < 90 || h > 270, S: h > 90 && h < 270,
     E: h > 0 && h < 180, W: h > 180 && h < 360};
