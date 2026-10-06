@@ -31,9 +31,49 @@ describe('route option arrival times', () => {
     vi.spyOn(Date, 'now').mockReturnValue(now);
     const warning = '⚠️ 2 of the last 3 Red buses skipped Union Station (S). Try 100 Church Street South (4 min walk).';
     const html = renderToStaticMarkup(<MiniMapKey rows={[{ ...rows[0]!, warning }]} destination="Union Station" />);
-    expect(html).toContain('<td colSpan="3" style="padding:0 6px 6px"><span role="note" data-testid="stop-skip-warning"');
+    expect(html).toContain('<td colSpan="4" style="padding:0 6px 6px"><span role="note" data-testid="stop-skip-warning"');
     expect(html).toContain(`>${warning}</span>`);
     expect(renderToStaticMarkup(<MiniMapKey rows={rows} destination="Union Station" />)).not.toContain('stop-skip-warning');
+  });
+  it('gives the following arrival its own Next in column, measured from now rather than from the first bus', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const html = renderToStaticMarkup(<MiniMapKey rows={rows} destination="Union Station" />);
+    expect(html).toMatch(/<th scope="col"[^>]*>Next in<\/th>/);
+    expect(html).toContain('data-testid="route-next-arrival">~25 min</span>');
+    expect(html).not.toContain('~20 min');
+    expect(html).toContain('data-testid="pickup-range">~5 (3 – 9)</span>');
+    expect(html).toContain('colSpan="4"');
+  });
+  it('uses the already-live following ETA without aging it a second time', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(now + 120_000);
+    const row = { ...rows[0]!, pickup: { ...rows[0]!.pickup!, etaSec: 180, nextSec: 1380 } };
+    expect(renderToStaticMarkup(<MiniMapKey rows={[row]} destination="Union Station" />))
+      .toContain('data-testid="route-next-arrival">~23 min</span>');
+  });
+  it('keeps the following arrival when the current bus is at the pickup, including its next lap', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const row = { ...rows[0]!, pickup: { ...rows[0]!.pickup!, etaSec: 0, atPickup: true, nextSec: 300, nextBusName: '307' } };
+    const html = renderToStaticMarkup(<MiniMapKey rows={[row]} destination="Union Station" />);
+    expect(html).toContain('>At stop</span>');
+    expect(html).toContain('data-testid="route-next-arrival">~5 min</span>');
+  });
+  it('shows a sub-minute following arrival without false second precision', () => {
+    const row = { ...rows[0]!, pickup: { ...rows[0]!.pickup!, etaSec: 0, nextSec: 30 } };
+    expect(renderToStaticMarkup(<MiniMapKey rows={[row]} destination="Union Station" />))
+      .toContain('data-testid="route-next-arrival">&lt;1 min</span>');
+  });
+  it.each([undefined, null, NaN, Infinity, -1, 299])('does not invent a following arrival for missing, invalid or earlier nextSec %s', nextSec => {
+    const row = { ...rows[0]!, pickup: { ...rows[0]!.pickup!, nextSec } };
+    const html = renderToStaticMarkup(<MiniMapKey rows={[row]} destination="Union Station" />);
+    expect(html).toContain('aria-label="Following arrival unavailable">—</span>');
+    expect(html).not.toContain('data-testid="route-next-arrival"');
+  });
+  it.each(['walk', 'departed', 'unavailable', 'scheduled'])('leaves Next in unavailable for %s rows', state => {
+    const row: TimingRow = { ...rows[0]!, option: { ...option,
+      mode: state === 'walk' ? 'walk' : 'shuttle', departed: state === 'departed', etaUnavailable: state === 'unavailable' },
+      pickup: state === 'scheduled' ? undefined : rows[0]!.pickup };
+    expect(renderToStaticMarkup(<MiniMapKey rows={[row]} destination="Union Station" />))
+      .toContain('aria-label="Following arrival unavailable">—</span>');
   });
   it('selects the route when anywhere on the row, including the pickup time, is tapped', () => {
     const select = vi.fn();
