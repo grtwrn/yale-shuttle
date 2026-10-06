@@ -1,0 +1,801 @@
+{
+  "source": "PR379 independent ServerEta/render-order replay, opened at boarding; inputs preserved from review-d2b62cf/out/replay-d2b62cf.jsonl.gz. Recorded replay readings, not new physical arrival truth.",
+  "rides": [
+    {
+      "runId": "1790967844553",
+      "routeLabel": "Pink",
+      "boardStopId": 60,
+      "alightStopId": 124,
+      "callCount": 5,
+      "boardedAt": "2026-10-02T19:07:36.454Z",
+      "polls": [
+        {
+          "at": "2026-10-02T19:07:46.188Z",
+          "bus": true,
+          "row": -1,
+          "count": 5,
+          "eta": 334,
+          "departNow": 334,
+          "distM": 1307
+        },
+        {
+          "at": "2026-10-02T19:07:56.189Z",
+          "bus": true,
+          "row": -1,
+          "count": 5,
+          "eta": 334,
+          "departNow": 334,
+          "distM": 1307
+        },
+        {
+          "at": "2026-10-02T19:08:06.191Z",
+          "bus": true,
+          "row": -1,
+          "count": 5,
+          "eta": 330,
+          "departNow": 330,
+          "distM": 1291
+        },
+        {
+          "at": "2026-10-02T19:08:16.193Z",
+          "bus": true,
+          "row": 0,
+          "count": 4,
+          "eta": 286,
+          "departNow": 286,
+          "distM": 1165
+        },
+        {
+          "at": "2026-10-02T19:08:26.195Z",
+          "bus": true,
+          "row": 0,
+          "count": 4,
+          "eta": 276,
+          "departNow": 276,
+          "distM": 1076
+        },
+        {
+          "at": "2026-10-02T19:08:36.197Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 263,
+          "departNow": 255,
+          "distM": 1042
+        },
+        {
+          "at": "2026-10-02T19:08:46.197Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 253,
+          "departNow": 253,
+          "distM": 1013
+        },
+        {
+          "at": "2026-10-02T19:08:56.200Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 247,
+          "departNow": 247,
+          "distM": 985
+        },
+        {
+          "at": "2026-10-02T19:09:06.202Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 220,
+          "departNow": 220,
+          "distM": 884
+        },
+        {
+          "at": "2026-10-02T19:09:16.204Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 196,
+          "departNow": 196,
+          "distM": 771
+        },
+        {
+          "at": "2026-10-02T19:09:26.206Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 173,
+          "departNow": 173,
+          "distM": 682
+        },
+        {
+          "at": "2026-10-02T19:09:36.208Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 151,
+          "departNow": 151,
+          "distM": 628
+        },
+        {
+          "at": "2026-10-02T19:09:46.211Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 136,
+          "departNow": 136,
+          "distM": 614
+        },
+        {
+          "at": "2026-10-02T19:09:56.212Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 125,
+          "departNow": 125,
+          "distM": 637
+        },
+        {
+          "at": "2026-10-02T19:10:06.213Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 125,
+          "departNow": 125,
+          "distM": 637
+        },
+        {
+          "at": "2026-10-02T19:10:16.215Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 114,
+          "departNow": 114,
+          "distM": 583
+        },
+        {
+          "at": "2026-10-02T19:10:26.218Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 95,
+          "departNow": 95,
+          "distM": 452
+        },
+        {
+          "at": "2026-10-02T19:10:36.220Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 88,
+          "departNow": 88,
+          "distM": 420
+        },
+        {
+          "at": "2026-10-02T19:10:46.222Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 83,
+          "departNow": 83,
+          "distM": 391
+        },
+        {
+          "at": "2026-10-02T19:10:56.224Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 74,
+          "departNow": 74,
+          "distM": 327
+        },
+        {
+          "at": "2026-10-02T19:11:06.226Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 52,
+          "departNow": 52,
+          "distM": 198
+        },
+        {
+          "at": "2026-10-02T19:11:16.228Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 42,
+          "departNow": 42,
+          "distM": 165
+        },
+        {
+          "at": "2026-10-02T19:11:26.230Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 42,
+          "departNow": 42,
+          "distM": 165
+        },
+        {
+          "at": "2026-10-02T19:11:36.231Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 36,
+          "departNow": 36,
+          "distM": 155
+        },
+        {
+          "at": "2026-10-02T19:11:46.231Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:11:56.233Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:12:06.233Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:12:16.235Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:12:26.236Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:12:36.238Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:12:46.240Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:12:56.243Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:13:06.244Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:13:16.247Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:13:26.249Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 30,
+          "departNow": 30,
+          "distM": 152
+        },
+        {
+          "at": "2026-10-02T19:13:36.250Z",
+          "bus": true,
+          "row": 1,
+          "count": 3,
+          "eta": 21,
+          "departNow": 21,
+          "distM": 88
+        },
+        {
+          "at": "2026-10-02T19:13:46.253Z",
+          "bus": true,
+          "row": 4,
+          "count": 0,
+          "eta": 7,
+          "departNow": 7,
+          "distM": 18
+        }
+      ],
+      "busName": "#324"
+    },
+    {
+      "runId": "1790996393334",
+      "routeLabel": "Blue Night",
+      "boardStopId": 2,
+      "alightStopId": 106,
+      "callCount": 7,
+      "boardedAt": "2026-10-03T03:02:11.504Z",
+      "polls": [
+        {
+          "at": "2026-10-03T03:02:21.171Z",
+          "bus": true,
+          "row": -1,
+          "count": 7,
+          "eta": 616,
+          "departNow": 616,
+          "distM": 1282
+        },
+        {
+          "at": "2026-10-03T03:02:31.173Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 592,
+          "departNow": 592,
+          "distM": 1215
+        },
+        {
+          "at": "2026-10-03T03:02:41.176Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 575,
+          "departNow": 575,
+          "distM": 1145
+        },
+        {
+          "at": "2026-10-03T03:02:51.177Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 560,
+          "departNow": 560,
+          "distM": 1084
+        },
+        {
+          "at": "2026-10-03T03:03:01.179Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 560,
+          "departNow": 560,
+          "distM": 1084
+        },
+        {
+          "at": "2026-10-03T03:03:11.181Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 560,
+          "departNow": 560,
+          "distM": 1084
+        },
+        {
+          "at": "2026-10-03T03:03:21.183Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 551,
+          "departNow": 551,
+          "distM": 1055
+        },
+        {
+          "at": "2026-10-03T03:03:31.185Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 551,
+          "departNow": 551,
+          "distM": 1055
+        },
+        {
+          "at": "2026-10-03T03:03:41.188Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 551,
+          "departNow": 551,
+          "distM": 1055
+        },
+        {
+          "at": "2026-10-03T03:03:51.189Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 551,
+          "departNow": 551,
+          "distM": 1055
+        },
+        {
+          "at": "2026-10-03T03:04:01.192Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 551,
+          "departNow": 551,
+          "distM": 1055
+        },
+        {
+          "at": "2026-10-03T03:04:11.194Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 551,
+          "departNow": 551,
+          "distM": 1055
+        },
+        {
+          "at": "2026-10-03T03:04:21.196Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 551,
+          "departNow": 551,
+          "distM": 1055
+        },
+        {
+          "at": "2026-10-03T03:04:31.199Z",
+          "bus": true,
+          "row": 0,
+          "count": 6,
+          "eta": 548,
+          "departNow": 548,
+          "distM": 1023
+        },
+        {
+          "at": "2026-10-03T03:04:41.199Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 505,
+          "departNow": 505,
+          "distM": 992
+        },
+        {
+          "at": "2026-10-03T03:04:51.201Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 505,
+          "departNow": 505,
+          "distM": 992
+        },
+        {
+          "at": "2026-10-03T03:05:01.201Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 502,
+          "departNow": 502,
+          "distM": 961
+        },
+        {
+          "at": "2026-10-03T03:05:11.203Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 494,
+          "departNow": 494,
+          "distM": 896
+        },
+        {
+          "at": "2026-10-03T03:05:21.205Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 489,
+          "departNow": 489,
+          "distM": 865
+        },
+        {
+          "at": "2026-10-03T03:05:31.208Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 480,
+          "departNow": 480,
+          "distM": 801
+        },
+        {
+          "at": "2026-10-03T03:05:41.207Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 475,
+          "departNow": 475,
+          "distM": 769
+        },
+        {
+          "at": "2026-10-03T03:05:51.209Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 475,
+          "departNow": 475,
+          "distM": 769
+        },
+        {
+          "at": "2026-10-03T03:06:01.212Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 475,
+          "departNow": 475,
+          "distM": 769
+        },
+        {
+          "at": "2026-10-03T03:06:11.213Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 475,
+          "departNow": 475,
+          "distM": 769
+        },
+        {
+          "at": "2026-10-03T03:06:21.214Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 470,
+          "departNow": 470,
+          "distM": 738
+        },
+        {
+          "at": "2026-10-03T03:06:31.214Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 467,
+          "departNow": 467,
+          "distM": 725
+        },
+        {
+          "at": "2026-10-03T03:06:41.215Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 458,
+          "departNow": 458,
+          "distM": 720
+        },
+        {
+          "at": "2026-10-03T03:06:51.217Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 455,
+          "departNow": 455,
+          "distM": 720
+        },
+        {
+          "at": "2026-10-03T03:07:01.219Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 179,
+          "departNow": 179,
+          "distM": 726
+        },
+        {
+          "at": "2026-10-03T03:07:11.220Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 170,
+          "departNow": 170,
+          "distM": 732
+        },
+        {
+          "at": "2026-10-03T03:07:21.221Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 156,
+          "departNow": 156,
+          "distM": 672
+        },
+        {
+          "at": "2026-10-03T03:07:31.223Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 145,
+          "departNow": 145,
+          "distM": 609
+        },
+        {
+          "at": "2026-10-03T03:07:41.225Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 145,
+          "departNow": 145,
+          "distM": 609
+        },
+        {
+          "at": "2026-10-03T03:07:51.228Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 108,
+          "departNow": 108,
+          "distM": 577
+        },
+        {
+          "at": "2026-10-03T03:08:01.228Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 104,
+          "departNow": 104,
+          "distM": 544
+        },
+        {
+          "at": "2026-10-03T03:08:11.230Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 94,
+          "departNow": 94,
+          "distM": 486
+        },
+        {
+          "at": "2026-10-03T03:08:21.232Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 103,
+          "departNow": 103,
+          "distM": 486
+        },
+        {
+          "at": "2026-10-03T03:08:31.233Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 112,
+          "departNow": 110,
+          "distM": 486
+        },
+        {
+          "at": "2026-10-03T03:08:41.235Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 86,
+          "departNow": 86,
+          "distM": 450
+        },
+        {
+          "at": "2026-10-03T03:08:51.236Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 71,
+          "departNow": 71,
+          "distM": 385
+        },
+        {
+          "at": "2026-10-03T03:09:01.238Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 59,
+          "departNow": 59,
+          "distM": 318
+        },
+        {
+          "at": "2026-10-03T03:09:11.240Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 46,
+          "departNow": 46,
+          "distM": 249
+        },
+        {
+          "at": "2026-10-03T03:09:21.242Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 46,
+          "departNow": 46,
+          "distM": 249
+        },
+        {
+          "at": "2026-10-03T03:09:31.244Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 46,
+          "departNow": 46,
+          "distM": 249
+        },
+        {
+          "at": "2026-10-03T03:09:41.246Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 46,
+          "departNow": 46,
+          "distM": 249
+        },
+        {
+          "at": "2026-10-03T03:09:51.246Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 46,
+          "departNow": 46,
+          "distM": 249
+        },
+        {
+          "at": "2026-10-03T03:10:01.248Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 35,
+          "departNow": 35,
+          "distM": 185
+        },
+        {
+          "at": "2026-10-03T03:10:11.249Z",
+          "bus": true,
+          "row": 1,
+          "count": 5,
+          "eta": 23,
+          "departNow": 23,
+          "distM": 117
+        },
+        {
+          "at": "2026-10-03T03:10:21.251Z",
+          "bus": true,
+          "row": 6,
+          "count": 0,
+          "eta": 11,
+          "departNow": 11,
+          "distM": 52
+        }
+      ],
+      "busName": "#44"
+    }
+  ]
+}

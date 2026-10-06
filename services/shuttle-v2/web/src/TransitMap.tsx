@@ -392,11 +392,17 @@ function noteRideEvidence(r: BoardedRide, e: RideEvidence): void {
 // `rideBoarded`), which the get-off alert waits for. Kept beside the ride like
 // the evidence above, so a reload at the exit still says "Get off here".
 const RIDE_BOARDED_LS_KEY = "shuttle-ride-boarded";
+// Storage can throw in private/blocked-storage browsers. Still remember the
+// observed boarding for this page, or a first alert at the exit (row n-1)
+// loses the guard. One bounded ride key; no persistence across a blocked reload.
+let rideBoardedMemory: string | null = null;
 function rideBoardedSeen(r: BoardedRide): boolean {
+  if (rideBoardedMemory === rideWindowKey(r)) return true;
   try { return localStorage.getItem(RIDE_BOARDED_LS_KEY) === rideWindowKey(r); } catch { return false; }
 }
 function noteRideBoarded(r: BoardedRide): void {
-  try { localStorage.setItem(RIDE_BOARDED_LS_KEY, rideWindowKey(r)); } catch { /* best effort */ }
+  rideBoardedMemory = rideWindowKey(r);
+  try { localStorage.setItem(RIDE_BOARDED_LS_KEY, rideBoardedMemory); } catch { /* best effort */ }
 }
 
 // Two retired features left keys behind in localStorage: the guided "Go"
