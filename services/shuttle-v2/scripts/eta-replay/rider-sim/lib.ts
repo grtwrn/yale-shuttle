@@ -122,8 +122,10 @@ export const SERVED_AFTER_MS = 300_000;
  * (N)/(S) twins on College and Prospect; scored as arrivals they made the app
  * look as though it had counted down the wrong bus. So each curb visit must be
  * corroborated by the FEED's own statement that the stop was served —
- * `last_stop_id` becoming it — which is the operator's assertion and cannot be
- * fooled by the far side of a street.
+ * `last_stop_id` becoming it. This is a corroborating upstream signal, not independent
+ * proof of physical boarding. A long, continuously observed hold may be
+ * marked served only at departure; match that flip to the visit rather than
+ * rejecting its entry and inventing a late arrival from the fallback.
  *
  * The correction runs both ways. At Trumbull / Hillhouse and 130 Prospect
  * Street (N) the published coordinate sits ~100 m from where the bus actually
@@ -167,8 +169,24 @@ export function stopVisits(
       hasFeed = true;
       prev = p.l;
     }
-    const servedAt = (sid: number, at: number) =>
-      flips.some((f) => f.stop === sid && f.t >= at - SERVED_BEFORE_MS && f.t <= at + SERVED_AFTER_MS);
+    const corroborates = (sid: number, v: StopVisit, f: typeof flips[number]): boolean => {
+      if (f.stop !== sid || f.routeId !== v.routeId || f.t < v.enter - SERVED_BEFORE_MS) return false;
+      if (f.t <= v.enter + SERVED_AFTER_MS) return true;
+      // last_stop_id can advance only after a long hold ends. That still
+      // corroborates the SAME observed visit, not a new arrival at departure.
+      // Use the existing delay tolerance after the visit, but not across a
+      // feed hole, route change, or another served stop (a different occurrence).
+      const end = v.exit ?? track[track.length - 1]!.t;
+      // A short drive-by followed much later by a served flip is not a hold.
+      if (end - v.enter <= SERVED_AFTER_MS || f.t > end + SERVED_AFTER_MS) return false;
+      if (flips.some((other) => other.t > v.enter && other.t < f.t && other.stop !== sid)) return false;
+      for (let i = f.i; i >= 0 && track[i]!.t >= v.enter; i--) {
+        const p = track[i]!;
+        if (p.r !== v.routeId) return false;
+        if (i > 0 && p.t - track[i - 1]!.t > SERVED_BEFORE_MS) return false;
+      }
+      return true;
+    };
 
     // Geometry: every approach inside 45 m, re-arming past 120 m.
     const candidates: StopVisit[] = [];
@@ -200,7 +218,7 @@ export function stopVisits(
     for (const v of candidates) {
       const sid = stopOf.get(v)!;
       if (!hasFeed) { v.source = "curb-only"; kept.push(v); add(sid, v); continue; }
-      if (!servedAt(sid, v.enter)) continue; // a drive-by on the far side of the road
+      if (!flips.some((f) => corroborates(sid, v, f))) continue; // a drive-by on the far side of the road
       kept.push(v);
       add(sid, v);
     }
@@ -212,7 +230,7 @@ export function stopVisits(
       if (!stopsForRoute(f.routeId).includes(f.stop)) continue;
       const c = stopCoords[f.stop];
       if (!c) continue;
-      if (kept.some((v) => stopOf.get(v) === f.stop && v.enter >= f.t - SERVED_AFTER_MS && v.enter <= f.t + SERVED_BEFORE_MS)) continue;
+      if (kept.some((v) => stopOf.get(v) === f.stop && corroborates(f.stop, v, f))) continue;
       let bestT = f.t;
       let best = Infinity;
       for (let i = f.i; i >= 0 && track[i]!.t > f.t - SERVED_AFTER_MS; i--) {
