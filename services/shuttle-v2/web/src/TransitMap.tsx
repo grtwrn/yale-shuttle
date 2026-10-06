@@ -392,11 +392,30 @@ function noteRideEvidence(r: BoardedRide, e: RideEvidence): void {
 // `rideBoarded`), which the get-off alert waits for. Kept beside the ride like
 // the evidence above, so a reload at the exit still says "Get off here".
 const RIDE_BOARDED_LS_KEY = "shuttle-ride-boarded";
+// One bounded identity for this page, assigned before the best-effort write.
+// A blocked-storage reload still cannot restore unseen boarding evidence.
+let rideBoardedMemory: string | null = null;
+function rideBoardedKey(r: BoardedRide): string | null {
+  // The existing loader accepts legacy rides without busName. They must stay
+  // usable, but cannot supply a valid boarding identity (or overwrite one).
+  if (typeof r.busName !== "string" || !r.busName.replace(/^#/, "") ||
+      !Number.isFinite(r.startedAt) || !Number.isFinite(r.boardStopId) ||
+      !Number.isFinite(r.alightStopId)) return null;
+  return rideWindowKey(r);
+}
 function rideBoardedSeen(r: BoardedRide): boolean {
-  try { return localStorage.getItem(RIDE_BOARDED_LS_KEY) === rideWindowKey(r); } catch { return false; }
+  try {
+    const key = rideBoardedKey(r);
+    return key !== null && (rideBoardedMemory === key || localStorage.getItem(RIDE_BOARDED_LS_KEY) === key);
+  } catch { return false; }
 }
 function noteRideBoarded(r: BoardedRide): void {
-  try { localStorage.setItem(RIDE_BOARDED_LS_KEY, rideWindowKey(r)); } catch { /* best effort */ }
+  try {
+    const key = rideBoardedKey(r);
+    if (key === null) return;
+    rideBoardedMemory = key;
+    localStorage.setItem(RIDE_BOARDED_LS_KEY, key);
+  } catch { /* corrupt identity / blocked storage — best effort */ }
 }
 
 // Two retired features left keys behind in localStorage: the guided "Go"
