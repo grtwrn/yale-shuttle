@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {BOARD_M,cardBoardsBus,followedBusName,labeledStopId,observedAtStop,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
+import {BOARD_M,cardBoardsBus,followedBusName,labeledStopId,observedAtStop,oppositePickupCurb,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -148,7 +148,11 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      // or at the stop further on.
      const past=distance<=BOARD_M&&pastPickup(bus,run.boardStopId,feed.stop_coords);
      if(past){run.pastStopSamples=(run.pastStopSamples??0)+1;if(!run.pastStopReported){run.pastStopReported=true;await event('waiting-bus-past-stop',{bus:name,stop:boardLabel,distanceM:distance,lastStopId:bus.last_stop_id});}}
-     if(((distance<=BOARD_M&&!past)||atStop)&&now>=run.walkUntil){
+     // Opposite-direction poles can share the radius but be a lap apart.
+     // Do not turn a named, stops-away card into that wrong-occurrence ride.
+     const opposite=distance<=BOARD_M&&!past&&oppositePickupCurb(bus,run.boardStopId,text,feed);
+     if(opposite){run.oppositeCurbSamples=(run.oppositeCurbSamples??0)+1;if(!run.oppositeCurbReported){run.oppositeCurbReported=true;await event('waiting-bus-opposite-curb',{bus:name,stop:boardLabel,distanceM:distance,atStopId:bus.at_stop_id});}}
+     if(((distance<=BOARD_M&&!past&&!opposite)||atStop)&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
       // A ride the app started on another bus replaces the trip card, so
       // waiting on only reaches the 45 min cap (wrongbusboard20261002: it

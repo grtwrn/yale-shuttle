@@ -1,0 +1,121 @@
+[
+  {
+    "source": "Recorded heading122 agrees with opposite (S) curb at this poll; a later northward position jump makes a bracketing direction test ambiguous, NOT proof of correct (N) pickup. Named15 card is modelled from warm ServerEta, not recorded React rendering.",
+    "at": "2026-10-04T09:53:14.310Z",
+    "target": 87,
+    "bus": {
+      "observed_at": 1791107594310,
+      "bus_id": 67217,
+      "bus_name": "#331",
+      "route_id": 9,
+      "lat": 41.31618,
+      "lon": -72.916386,
+      "heading": 122,
+      "last_stop_id": 0,
+      "stationary": true,
+      "at_stop_id": 88,
+      "at_stop_since": "2026-10-04T09:52:54.120",
+      "stationary_since": "2026-10-04T09:52:54.120",
+      "last_moved_at": "2026-10-04T09:53:14.310"
+    },
+    "card": "\ud83d\ude8c #331 \u00b7 15 stops away",
+    "feed": {
+      "routes": {
+        "9": [
+          78,
+          84,
+          89,
+          77,
+          94,
+          143,
+          144,
+          133,
+          88,
+          92,
+          81,
+          26,
+          25,
+          23,
+          22,
+          23,
+          24,
+          25,
+          127,
+          26,
+          80,
+          91,
+          87
+        ]
+      },
+      "stop_names": {
+        "87": "Orange / Humphrey (N)",
+        "88": "Orange / Humphrey (S)"
+      },
+      "stop_coords": {
+        "87": {
+          "lat": 41.315906,
+          "lon": -72.916327
+        },
+        "88": {
+          "lat": 41.316338,
+          "lon": -72.916176
+        }
+      }
+    },
+    "expectedVeto": true
+  },
+  {
+    "source": "Recorded heading157 agrees with requested (S) approach despite opposite (N) at_stop_id. Modelled named16 card from warm ServerEta, not recorded React rendering; heading prevents a correlated ID/card-only false refusal.",
+    "at": "2026-10-01T19:49:26.950Z",
+    "target": 60,
+    "bus": {
+      "observed_at": 1790884166950,
+      "bus_id": 67118,
+      "bus_name": "#307",
+      "route_id": 8,
+      "lat": 41.29585,
+      "lon": -72.955741,
+      "heading": 157,
+      "last_stop_id": 125,
+      "stationary": true,
+      "at_stop_id": 59,
+      "at_stop_since": "2026-10-01T19:48:42.033",
+      "stationary_since": "2026-10-01T19:48:42.033",
+      "last_moved_at": "2026-10-01T19:49:26.950"
+    },
+    "card": "\ud83d\ude8c #307 \u00b7 16 stops away",
+    "feed": {
+      "routes": {
+        "8": [
+          149,
+          72,
+          43,
+          44,
+          60,
+          109,
+          123,
+          125,
+          124,
+          110,
+          59,
+          46
+        ]
+      },
+      "stop_names": {
+        "60": "Front / Rt 1 (S)",
+        "59": "Front / Rt 1 (N)"
+      },
+      "stop_coords": {
+        "60": {
+          "lat": 41.296071,
+          "lon": -72.955927
+        },
+        "59": {
+          "lat": 41.296105,
+          "lon": -72.955812
+        }
+      }
+    },
+    "expectedVeto": false
+  }
+]

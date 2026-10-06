@@ -36,6 +36,40 @@ function stillForMs(bus) {
 }
 /** The runner boards a followed bus within this of the pickup's pole. */
 export const BOARD_M = 45;
+/** The named card still puts this bus at least two stops from pickup, while
+ * its direct observation is closer to the same-name opposite compass curb
+ * and its GPS heading agrees with that other curb, not the pickup direction.
+ * Both poles must be unique, non-neighbouring occurrences on this bus's
+ * route: nearby sequential stops (e.g. Broadway/TYCO) are not a conflict.
+ * This vetoes a proximity boarding, not a curb-service/arrival assertion;
+ * an at-stop card and missing/ambiguous metadata keep the existing rules. */
+export function oppositePickupCurb(bus, stopId, text, feed) {
+  const quotes = [...String(text).matchAll(/🚌\s*(#[\w-]+)\s*·\s*(\d+) stops? away/g)];
+  if (quotes.length !== 1 || quotes[0][1] !== bus.bus_name || Number(quotes[0][2]) < 2) return false;
+  const curb = id => {
+    const m = String(feed.stop_names?.[id]).match(/^(.*)\(([NSEW])\)\s*$/);
+    return m ? {base: norm(m[1]), direction: m[2]} : null;
+  };
+  const pickup = curb(stopId), other = curb(bus.at_stop_id);
+  if (!pickup || !other || pickup.base !== other.base
+    || ({N:'S', S:'N', E:'W', W:'E'})[pickup.direction] !== other.direction) return false;
+  // at_stop_id can linger on the wrong pole even on a correctly directed
+  // approach (Pink Front/Rt 1, Green Orange/Humphrey). Corroborate with the
+  // raw heading; missing/perpendicular headings do not justify this veto.
+  if (!Number.isFinite(bus.heading) || bus.heading < 0 || bus.heading > 360) return false;
+  const h = bus.heading % 360;
+  const agrees = {N: h < 90 || h > 270, S: h > 90 && h < 270,
+    E: h > 0 && h < 180, W: h > 180 && h < 360};
+  if (!agrees[other.direction]) return false;
+  const seq = feed.routes?.[bus.route_id];
+  if (!Array.isArray(seq) || seq.filter(id => id === stopId).length !== 1
+    || seq.filter(id => id === bus.at_stop_id).length !== 1) return false;
+  const hops = Math.abs(seq.indexOf(stopId) - seq.indexOf(bus.at_stop_id));
+  if (Math.min(hops, seq.length - hops) < 2) return false;
+  const coord = feed.stop_coords?.[stopId];
+  return !!coord && observedAtStop(bus, bus.at_stop_id, feed.stop_coords)
+    && haversineM(bus, feed.stop_coords[bus.at_stop_id]) < haversineM(bus, coord);
+}
 /** A bus standing at the pickup that the feed does not put there: its fix has
  * held still for `MOVING_MS` within `BOARD_M` of the pole, whatever
  * `at_stop_id` says. Upstream can name the neighbouring stop, or none (and
