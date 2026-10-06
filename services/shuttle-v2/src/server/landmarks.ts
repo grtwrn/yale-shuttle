@@ -280,3 +280,18 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Yale Chaplain's Office (Bingham Hall)", lat: 41.3077098, lon: -72.928779, aliases: ["chaplain", "chaplains office", "yale chaplain", "chaplaincy", "bingham d", "300 college"], poi: "college", anchorStop: "Chapel / College" }, // OSM W139759942
   { label: "Yale Station Post Office", lat: 41.309901, lon: -72.928555, aliases: ["yale station", "yale post office", "campus post office"], poi: "civic", anchorStop: "Elm / High" }, // OSM N359283573
 ];
+
+/**
+ * Verified destinations that supplement, rather than outrank, the existing
+ * local/provider answers. The same name can identify distinct OSM places:
+ * Bubble & Squeak on Willow must not take Park's first result, and adding Day
+ * to the normal list would put it ahead of Dickerman's Deli & Grocery.
+ * geocodeV1 appends exact normalized names only, with the street visible, and
+ * deduplicates on BOTH name and proximity. These are not forced-first aliases
+ * and do not participate in the normal local matcher's typo/fallback tiers.
+ */
+export const SUPPLEMENTAL_LANDMARKS: readonly Landmark[] = [
+  { label: "Day Grocery & Deli, Day Street", lat: 41.3088507, lon: -72.9396376, aliases: ["Day Grocery & Deli", "Day Grocery & Deli, Day Street, New Haven"], poi: "convenience", anchorStop: "Chapel / Dwight" }, // OSM N7169618452 (2026-10-05 sweep)
+  { label: "Bubble And Squeak, Park Street", lat: 41.3075423, lon: -72.934739, aliases: ["Bubble And Squeak", "Bubble And Squeak, Park Street, New Haven"], poi: "laundry", anchorStop: "129 York" }, // OSM N2931934371 (2026-10-05 sweep); retain BOTH branches even if providers miss
+  { label: "Bubble & Squeak, Willow Street", lat: 41.3211922, lon: -72.9094181, aliases: ["Bubble & Squeak", "Bubble & Squeak, Willow Street, New Haven"], poi: "laundry", anchorStop: "Willow / Foster" }, // OSM N3099233998 (2026-10-05 sweep)
+];

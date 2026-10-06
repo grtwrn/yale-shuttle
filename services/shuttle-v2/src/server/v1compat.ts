@@ -20,6 +20,7 @@ import type { DbBundle } from "../db/client.js";
 import { distanceMeters } from "../network/geo.js";
 import type { DwellStats, PaceStats, SegmentStats, TransitNetwork } from "../network/TransitNetwork.js";
 import { geocode, normalizeName, relevanceOf, splitGluedNumbers } from "./geocode.js";
+import { SUPPLEMENTAL_LANDMARKS } from "./landmarks.js";
 import type { ModelParamsSource } from "./modelParams.js";
 import type { EtaPayloadView, ServerEta } from "./serverEta.js";
 import type { StopSkipsWire } from "./stopSkips.js";
@@ -1105,6 +1106,20 @@ export async function geocodeV1(
   for (const e of ranked) {
     if (local.some((m) => distanceMeters(m, e) < LOCAL_DEDUP_M)) continue;
     merged.push(e);
+  }
+  // Ambiguous verified names are options, not a reason to replace a
+  // provider's first destination. Appending preserves every existing rank.
+  // Exact normalized names only: a generic "deli" must not guess Day,
+  // nor a Park address guess Willow. Both known Bubble branches survive a
+  // provider miss; class:osm keeps the client from auto-picking the first
+  // as a high-confidence Yale landmark when the name is ambiguous.
+  for (const l of SUPPLEMENTAL_LANDMARKS) {
+    const names = [l.label, ...(l.aliases ?? [])];
+    if (!names.some((name) => normalizeName(query) === normalizeName(name))) continue;
+    const sameName = (name: string) => names.some((n) =>
+      normalizeName(n.split(",")[0]!) === normalizeName(name.split(",")[0]!));
+    if (merged.some((m) => sameName(m.display_name) && distanceMeters(m, l) < LOCAL_DEDUP_M)) continue;
+    merged.push({ display_name: l.label, lat: l.lat, lon: l.lon, type: l.poi ?? "landmark", class: "osm" });
   }
   // One last pass over everything, the local half included: stop names come
   // from the upstream feed, so "well-formed" is not ours to assume there
