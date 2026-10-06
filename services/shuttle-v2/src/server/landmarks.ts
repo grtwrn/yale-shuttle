@@ -116,6 +116,12 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "School of Art (Green Hall)", lat: 41.308301, lon: -72.933003, aliases: ["art school", "school of art", "green hall", "1156 chapel", "iseman theater", "iseman"], poi: "college", anchorStop: "York / Chapel" }, // OSM W224973110
   { label: "School of Management (SOM)", lat: 41.315171, lon: -72.920475, aliases: ["som", "evans hall", "business school", "yale som", "165 whitney"], poi: "college", anchorStop: "SOM" }, // OSM R3959340
   { label: "School of Medicine (YSM)", lat: 41.303186, lon: -72.933746, aliases: ["med school", "medical school", "ysm", "sterling hall of medicine", "shm", "333 cedar", "medicine"], poi: "college", anchorStop: "333 Cedar" }, // OSM W180193233
+  // Distinct OSM-mapped wings, not alternate names for the school's pin.
+  // Keep bare "shm"/"sterling hall of medicine" on YSM; the wing label selects
+  // the requested destination within the complex (2026-10-05 OSM sweep).
+  { label: "SHM I-Wing", lat: 41.3036267, lon: -72.9338244, poi: "college", anchorStop: "333 Cedar" }, // OSM W239527108
+  { label: "SHM L-Wing", lat: 41.3030137, lon: -72.933368, poi: "college", anchorStop: "333 Cedar" }, // OSM W239527109
+  { label: "SHM B-Wing", lat: 41.3036061, lon: -72.9332509, poi: "college", anchorStop: "333 Cedar" }, // OSM W238239207
   { label: "School of Nursing (West Campus)", lat: 41.255831, lon: -72.992846, aliases: ["nursing", "nursing school", "ysn", "400 west campus"], poi: "college", anchorStop: "Building 400" }, // OSM W336607422
   { label: "School of Public Health (YSPH)", lat: 41.303735, lon: -72.932155, aliases: ["laboratory of epidemiology and public health", "ysph", "public health", "leph", "60 college", "epidemiology"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W239527110
   { label: "Yale Law School", lat: 41.312032, lon: -72.927781, aliases: ["law school", "yls", "sterling law building", "law library", "lillian goldman law library", "127 wall", "law", "ysl"], poi: "college", anchorStop: "Wall / York" }, // OSM R2840491; "ysl" is riders' transposed YLS (searched, empty; confirmed by the operator 2026-10-03).
@@ -183,7 +189,12 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "AT&T (Chapel St)", lat: 41.306615, lon: -72.927436, poi: "shop", anchorStop: "Chapel / College" }, // OSM N2366454247 (shop=mobile_phone)
   { label: "Yale Bookstore", lat: 41.312017, lon: -72.931088, aliases: ["bookstore", "barnes and noble", "barnes & noble", "yale barnes and noble", "b&n"], poi: "books", anchorStop: "Broadway / Park" }, // OSM N2719820436
 
+  // This verified shop's "and" spelling only, not a matcher-wide rewrite.
+  // Use the existing generic shop icon for OSM shop=hairdresser.
+  { label: "Salon & Spa", lat: 41.3038565, lon: -72.9236838, aliases: ["salon and spa"], poi: "shop", anchorStop: "Chapel / State Elm City Market" }, // OSM N2441439313
+
   // -- Cafes, restaurants and bars -------------------------------------------
+  { label: "Jordan's Hot Dogs & Mac", lat: 41.3155244, lon: -72.9101408, aliases: ["jordans hot dogs and mac"], poi: "fast_food", anchorStop: "Nicoll / Edwards" }, // OSM N2970459335
   { label: "Archie Moore's", lat: 41.321407, lon: -72.910523, aliases: ["archie moores", "archies", "wings", "188 willow"], poi: "bar", anchorStop: "Willow / Foster" }, // OSM N299708928
   { label: "Wingstop (Whalley Ave)", lat: 41.3164796, lon: -72.9428924, aliases: ["wingstop", "292 whalley"], poi: "fast_food", anchorStop: "Stop & Shop" }, // OSM geocoded 292 Whalley Ave; Wingstop's published address
   { label: "Arethusa Farm Dairy", lat: 41.307405, lon: -72.929298, aliases: ["arethusa", "arethusa ice cream", "1020 chapel"], poi: "ice_cream", anchorStop: "Chapel / College" }, // OSM N2760039180
