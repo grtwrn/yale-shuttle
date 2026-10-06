@@ -195,6 +195,10 @@ describe("OnBusBanner", () => {
     expect(bannerSrc).toMatch(/useEffect\(\(\) => \{ if \(boarded\) noteRideBoarded\(ride\); \}, \[boarded, ride\]\);/);
     expect(bannerSrc).toMatch(/if \(!boarded\) return;\n\s*if \(!getOffAlertDue\(stopsRemaining, etaSec, driveSec, exitMeters\)\) return;/);
     expect(bannerSrc).toMatch(/\}, \[boarded, stopsRemaining, etaSec, driveSec, exitMeters,/);
-    expect(src).toMatch(/function rideBoardedSeen\(r: BoardedRide\): boolean \{\n\s*try \{ return localStorage\.getItem\(RIDE_BOARDED_LS_KEY\) === rideWindowKey\(r\); \}/);
+    // Pin both the bounded fallback and the original persisted identity check,
+    // with key computation inside the catch on reads AND writes (PR387).
+    expect(src).toContain("let rideBoardedMemory: string | null = null;");
+    expect(src).toContain("function rideBoardedSeen(r: BoardedRide): boolean {\n  try {\n    const key = rideBoardedKey(r);\n    return key !== null && (rideBoardedMemory === key || localStorage.getItem(RIDE_BOARDED_LS_KEY) === key);\n  } catch { return false; }\n}");
+    expect(src).toContain("function noteRideBoarded(r: BoardedRide): void {\n  try {\n    const key = rideBoardedKey(r);\n    if (key === null) return;\n    rideBoardedMemory = key;\n    localStorage.setItem(RIDE_BOARDED_LS_KEY, key);");
   });
 });
