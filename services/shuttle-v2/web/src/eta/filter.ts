@@ -783,19 +783,34 @@ export const SHORT_OF_STOP_HEADING = 0.7;
  *    took a short cut onto it and will skip the stop (Orange East #47 at
  *    157, Purple short-turning before Building 400).
  *
- * Measured on 14 archived days (09-20..10-03, every route, 1,959,550
- * bus-polls). Of the 2,261 lead switches made with the bus still beyond the
- * stop's zone, these tests hold 7, and in each the bus then reached the stop.
- * Paired against master, 869 rows change on Purple, Blue Night and Red only.
- * Against the collector's arrivals, severe episodes (one side within 2 min,
- * the other more than 10 off) go 6 fixed, 0 introduced: Purple at Union
- * Station (S) 5, Blue Night 1. Mean error over the changed rows: Purple
- * 723 -> 201 s, Blue Night 1,492 -> 1,469 s, Red 1,352 -> 1,274 s. Looser
- * versions held a bus that then skipped the stop (Blue West #127 at 156,
- * Brown #119 at 42) or lagged the West Campus folds. On the rider watcher's
- * polls (10-02..10-05) the served rows change on 8 polls, #126 on 10-03 and
- * #317 on 10-05, and all 352 trip cards that change move closer to the
- * countdown.
+ * The original #374 evaluation used 14 archived days (09-20..10-03, every
+ * route, 1,959,550 bus-polls) and reported 7 holds among 2,261 lead switches
+ * beyond the stop's zone. Its claim that each was a real approach was too
+ * strong. Later 20-day review found Blue Night #40 (09-23), Orange Day #53
+ * and Red #309 (09-25) far off both lines with stale last-stop readings and
+ * diffuse mass. Closing on a target did not establish an imminent arrival,
+ * much less service at its curb. Orange East #49's geographic station
+ * approach was also 285-320 m off the next line (archive day 09-17), so a
+ * blanket next-line distance cap would reject a useful positive control.
+ *
+ * A later local-posterior mass guard removed those holds but did not repair
+ * the ordinary forecast's origin: Red's ~90 s became ~61 min for a bus
+ * ~12 min from raw proximity to the station. Changed-row stop_visits MAE
+ * worsened from 1,058 to 1,116 s; this is not whole-network accuracy. That
+ * guard was rejected; behavior is unchanged here. See
+ * docs/eta-stale-feed-hold.md (unionholdstale20261005).
+ *
+ * The original comparison against pre-#374 master changed 869 rows on
+ * Purple, Blue Night and Red. Collector-arrival scoring reported 6 severe
+ * episodes fixed, 0 introduced (one arm within 2 min, the other >10 min
+ * off); changed-row mean errors were Purple 723 -> 201 s, Blue Night
+ * 1,492 -> 1,469 s, Red 1,352 -> 1,274 s. These are geographic proxies, not
+ * proof of curb service. Looser versions held buses that skipped the stop
+ * (Blue West #127 at 156, Brown #119 at 42) or lagged West Campus folds.
+ * The original served comparison changed 8 polls on 10-02..10-05, #126
+ * and #317. Its cross-arm card metric used the proposal arm's countdown
+ * for both arms; it did not establish each arm's own countdown consistency
+ * or arrival accuracy.
  */
 export function shortOfNextStop(b: Belief, ring: Ring, lead: number): boolean {
   const N = ring.N;
