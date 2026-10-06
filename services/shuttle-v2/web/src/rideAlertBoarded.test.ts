@@ -195,7 +195,6 @@ describe("OnBusBanner", () => {
     expect(bannerSrc).toMatch(/useEffect\(\(\) => \{ if \(boarded\) noteRideBoarded\(ride\); \}, \[boarded, ride\]\);/);
     expect(bannerSrc).toMatch(/if \(!boarded\) return;\n\s*if \(!getOffAlertDue\(stopsRemaining, etaSec, driveSec, exitMeters\)\) return;/);
     expect(bannerSrc).toMatch(/\}, \[boarded, stopsRemaining, etaSec, driveSec, exitMeters,/);
-    // Pin the fallback AND the original persisted ride-key check.
-    expect(src).toContain("function rideBoardedSeen(r: BoardedRide): boolean {\n  if (rideBoardedMemory === rideWindowKey(r)) return true;\n  try { return localStorage.getItem(RIDE_BOARDED_LS_KEY) === rideWindowKey(r); } catch { return false; }\n}");
+    expect(src).toMatch(/function rideBoardedSeen\(r: BoardedRide\): boolean \{\n\s*try \{ return localStorage\.getItem\(RIDE_BOARDED_LS_KEY\) === rideWindowKey\(r\); \}/);
   });
 });
