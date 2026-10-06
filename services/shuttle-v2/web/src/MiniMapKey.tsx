@@ -2,6 +2,7 @@ import { ArrivalDetails, type ArrivalDetailsProps } from './ArrivalDetails';
 import { DestinationArrival } from './DestinationArrival';
 import type { TripOption } from './planner';
 import { fmtMin, fmtWalk } from './format';
+import { estimatedGap } from './arrivalDetails';
 
 function RoutePill({ option }: { option: TripOption }) {
   return <span data-testid="route-pill" style={{ display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box',
@@ -27,10 +28,11 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
 }) {
   return <table aria-label="Route arrival times" data-testid="route-timing-table"
     style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 12, color: '#374151', textAlign: 'left' }}>
-    <colgroup><col style={{ width: '23%' }} /><col style={{ width: '37%' }} /><col style={{ width: '40%' }} /></colgroup>
+    <colgroup><col style={{ width: '22%' }} /><col style={{ width: '28%' }} /><col style={{ width: '21%' }} /><col style={{ width: '29%' }} /></colgroup>
     <thead><tr style={{ color: '#5f6368', fontSize: 11 }}>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Route</th>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Board in <span style={{ fontWeight: 400 }}>(min)</span></th>
+      <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Next in</th>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500, textAlign: 'right' }}>Arrive at</th>
     </tr></thead>
     {rows.map(({ option, pickup, status, note, warning }) => <tbody key={option.routeLabel} data-route={option.routeLabel}
@@ -48,16 +50,23 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
           {pickup ? <ArrivalDetails {...pickup} variant="table" /> : <span style={{ display: 'block', padding: '12px 0' }}>{status}</span>}
           {note && <span role="note" style={{ display: 'block', fontSize: 11, color: '#795000', paddingBottom: 6 }}>{note}</span>}
         </td>
+        <td style={{ padding: '6px' }}>
+          {/* nextSec is the already-live following arrival from now, not the gap after Board in. */}
+          {option.mode === 'shuttle' && !option.departed && !option.etaUnavailable && pickup
+            && estimatedGap(pickup.etaSec, pickup.nextSec) !== null && pickup.nextSec! >= 0
+            ? <span data-testid="route-next-arrival">{pickup.nextSec! < 60 ? '<1 min' : '~' + fmtMin(pickup.nextSec!)}</span>
+            : <span aria-label="Following arrival unavailable">—</span>}
+        </td>
         <td style={{ padding: '6px', textAlign: 'right' }}>
           {option.departed || option.etaUnavailable ? <span aria-label="Destination arrival unavailable">—</span>
             : <DestinationArrival compact option={option} destination={destination} departureMs={departureMs} />}
         </td>
       </tr>
-      {warning && <tr><td colSpan={3} style={{ padding: '0 6px 6px' }}>
+      {warning && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
         <span role="note" data-testid="stop-skip-warning" style={{ display: 'block', padding: '4px 6px', borderRadius: 6,
           background: '#fff8e1', color: '#795000', fontSize: 12, lineHeight: '16px' }}>{warning}</span>
       </td></tr>}
-      <tr><td colSpan={3} style={{ padding: '0 6px 10px' }}>
+      <tr><td colSpan={4} style={{ padding: '0 6px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span data-testid="journey-legs" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, flex: 1, minWidth: 0, fontSize: 12, color: '#5f6368' }}>
             {option.mode === 'walk' ? <span>🚶 {fmtWalk(option.totalSec)}</span> : <>

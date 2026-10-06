@@ -55,7 +55,9 @@ try {
       const key = await table.boundingBox();
       const map = await page.locator('.trip-map-canvas').boundingBox();
       assert(key.y >= map.y + map.height, 'key must sit below the map');
-      assert.doesNotMatch(await table.innerText(), /Next/);
+      // "Next in" is its own column now; the old stacked "Next ~N" line stays out of the key.
+      assert.deepEqual(await table.locator('thead th').allTextContents(), ['Route', 'Board in (min)', 'Next in', 'Arrive at']);
+      assert.doesNotMatch(await table.innerText(), /Next ~?(<1|\d)/);
       const pins = await page.locator('.trip-map-canvas .leaflet-marker-icon, .trip-map-canvas .bus-wait-label').evaluateAll(es => es.map(e => {
         const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height };
       }));
