@@ -6,7 +6,7 @@ import { estimatedGap } from './arrivalDetails';
 
 function RoutePill({ option }: { option: TripOption }) {
   return <span data-testid="route-pill" style={{ display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box',
-    padding: '3px 7px', borderRadius: 6, fontWeight: 600, lineHeight: '16px',
+    padding: '3px', borderRadius: 6, fontWeight: 600, lineHeight: '16px',
     background: option.mode === 'walk' ? 'transparent' : option.color,
     color: option.mode === 'walk' ? '#5f6368' : '#fff',
     border: option.mode === 'walk' ? '1px solid #dadce0' : undefined }}>{option.routeLabel}</span>;
@@ -28,7 +28,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
 }) {
   return <table aria-label="Route arrival times" data-testid="route-timing-table"
     style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 12, color: '#374151', textAlign: 'left' }}>
-    <colgroup><col style={{ width: '22%' }} /><col style={{ width: '28%' }} /><col style={{ width: '21%' }} /><col style={{ width: '29%' }} /></colgroup>
+    <colgroup><col style={{ width: '27%' }} /><col style={{ width: '26%' }} /><col style={{ width: '18%' }} /><col style={{ width: '29%' }} /></colgroup>
     <thead><tr style={{ color: '#5f6368', fontSize: 11 }}>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Route</th>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Board in <span style={{ fontWeight: 400 }}>(min)</span></th>
