@@ -142,11 +142,12 @@ export function stopVisits(
   stopsForRoute: (routeId: number) => readonly number[],
   stopCoords: Record<number, LatLon>,
 ): Map<number, StopVisit[]> {
-  // bus_id is reissued between service blocks; names keep those visits on
-  // one track. Only names claimed by two ids in the SAME poll are ambiguous.
-  // Decide over the whole capture so a collision cannot borrow pre/post-poll
-  // history. The same id also keeps its history when its display name changes.
+  // bus_id is reissued between service blocks; uncontended names keep those
+  // visits on one track, including a rename of the same id. Distinct ids
+  // observed in one upstream poll cannot share a track, even under different
+  // names. Decide over the whole capture so aliases cannot borrow history.
   const pollIds = new Map<string, Set<number>>();
+  const atIds = new Map<number, Set<number>>();
   const contended = new Set<string>();
   for (const r of rows) {
     const key = String(r.t) + "\x00" + r.b;
@@ -154,6 +155,9 @@ export function stopVisits(
     if (!ids) pollIds.set(key, (ids = new Set()));
     ids.add(r.i);
     if (ids.size > 1) contended.add(r.b);
+    let at = atIds.get(r.t);
+    if (!at) atIds.set(r.t, (at = new Set()));
+    at.add(r.i);
   }
   const parent = new Map<number, number>();
   const find = (id: number): number => {
@@ -173,11 +177,11 @@ export function stopVisits(
       if (a !== b) parent.set(a, b);
     }
   }
-  // A reused alias can indirectly reconnect ids known to collide under a
-  // different name. Such an ambiguous component must remain id-isolated;
+  // An alias or rename can indirectly join ids seen in the same collected_at
+  // under DIFFERENT names. Such an ambiguous component must stay id-isolated;
   // choosing a handoff within it would need evidence this capture lacks.
   const ambiguous = new Set<number>();
-  for (const ids of pollIds.values()) {
+  for (const ids of atIds.values()) {
     if (ids.size < 2) continue;
     // Any two DISTINCT ids in this poll prove a collision, even if neither
     // was first. Check every repeated final root, not just first-id pairs.
