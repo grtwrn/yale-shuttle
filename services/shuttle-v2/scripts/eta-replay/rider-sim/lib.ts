@@ -266,11 +266,49 @@ export function stopVisits(
         }
       }
     }
+    // Each kept curb occurrence needs its OWN served flip. A boolean some
+    // reused one flip after a leave-and-return (even across a long hold).
+    // Prefer feed-consistent visits before interval proximity: a lagging flip
+    // followed by other served stops must not prefer a later drive-by. Keep
+    // the existing tolerance edges (the feed can lag/burst), not a new veto
+    // that would create unsupported fallback arrivals. Then prefer a visit
+    // containing the flip, not blindly the latest. Augmenting paths preserve both visits
+    // when two distinct flips can support them, unlike nearest-only greed.
+    // This resolves measurement multiplicity, not physical boarding truth.
+    const intervalGap = (v: StopVisit, t: number): number =>
+      Math.max(v.enter - t, t - (v.exit ?? track[track.length - 1]!.t), 0);
+    const crossesService = (v: StopVisit, f: typeof flips[number]): boolean => {
+      const end = v.exit ?? track[track.length - 1]!.t;
+      const from = f.t < v.enter ? f.t : end;
+      const to = f.t < v.enter ? v.enter : f.t;
+      return flips.some((other) => other.t > from && other.t < to && other.stop !== f.stop);
+    };
+    const choices = new Map<typeof flips[number], StopVisit[]>();
+    for (const f of flips) {
+      choices.set(f, candidates.filter((v) => corroborates(stopOf.get(v)!, v, f))
+        .sort((a, b) => Number(crossesService(a, f)) - Number(crossesService(b, f)) ||
+          intervalGap(a, f.t) - intervalGap(b, f.t) ||
+          Math.abs(a.enter - f.t) - Math.abs(b.enter - f.t) || a.enter - b.enter));
+    }
+    const supported = new Map<StopVisit, typeof flips[number]>();
+    const assign = (f: typeof flips[number], seen: Set<StopVisit>): boolean => {
+      for (const v of choices.get(f)!) {
+        if (seen.has(v)) continue;
+        seen.add(v);
+        const previous = supported.get(v);
+        if (!previous || assign(previous, seen)) {
+          supported.set(v, f);
+          return true;
+        }
+      }
+      return false;
+    };
+    for (const f of flips) assign(f, new Set());
     const kept: StopVisit[] = [];
     for (const v of candidates) {
       const sid = stopOf.get(v)!;
       if (!hasFeed) { v.source = "curb-only"; kept.push(v); add(sid, v); continue; }
-      if (!flips.some((f) => corroborates(sid, v, f))) continue; // a drive-by on the far side of the road
+      if (!supported.has(v)) continue; // drive-by or shared, not independent support
       kept.push(v);
       add(sid, v);
     }
