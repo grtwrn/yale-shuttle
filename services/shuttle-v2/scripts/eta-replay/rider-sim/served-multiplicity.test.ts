@@ -38,10 +38,28 @@ describe('a served flip cannot independently corroborate several curb visits', (
     expect(visits(rs)).toHaveLength(1);
     expect(visits(rs)[0]).toMatchObject({ enter: 10000, source: 'curb' });
   });
-  it('preserves separate missed-radius served occurrences', () => {
-    const rs = [row(0, false, 2), row(10, false, 1), row(20, false, 2), row(30, false, 1)];
-    expect(visits(rs)).toHaveLength(2);
-    expect(visits(rs).every(v => v.source === 'feed')).toBe(true);
+  it.each([0.003, 0.085])('does not turn a stationary missed-radius bounce at %s degrees into another arrival', offset => {
+    // 333 m and 9.5 km away: a 1->2->1 burst at one GPS fix is not two services.
+    const rs = [row(0, false, 2), row(10, false, 1), row(20, false, 2), row(30, false, 1)]
+      .map(p => ({ ...p, lat: coords[1].lat + offset }));
+    expect(visits(rs)).toEqual([{ enter: 10000, exit: 20000, busName: '#1', routeId: 3, source: 'feed' }]);
+  });
+  it('preserves independently spaced missed-radius services without expanding fallback truth', () => {
+    const rs = [row(0, false, 2), { ...row(10, false, 2), lat: coords[1].lat + 0.0006 },
+      row(20, false, 1), row(40, false, 2),
+      { ...row(450, false, 2), lat: coords[1].lat + 0.0006 }, row(470, false, 1), row(480, false, 1)];
+    expect(visits(rs).map(v => [v.enter, v.source])).toEqual([[10000, 'feed'], [450000, 'feed']]);
+  });
+  it('uses served order before proximity for a lagging flip followed by a later drive-by (F1)', () => {
+    const rs = [row(0, false, 0), ...Array.from({ length: 12 }, (_, i) => row(10 + i * 10, true, 0)),
+      row(130, false, 0), row(210, false, 1), row(235, false, 2), row(240, false, 3),
+      row(285, true, 3), row(300, false, 3)];
+    expect(visits(rs)).toEqual([{ enter: 10000, exit: 130000, busName: '#1', routeId: 3, source: 'curb' }]);
+  });
+  it('uses served order before proximity when another stop follows an earlier drive-by', () => {
+    const rs = [row(0, false, 0), row(10, true, 0), row(25, false, 0),
+      row(50, false, 2), row(100, false, 1), row(180, true, 1), row(190, false, 1)];
+    expect(visits(rs)).toEqual([{ enter: 180000, exit: 190000, busName: '#1', routeId: 3, source: 'curb' }]);
   });
   it('preserves separate geometry visits when the feed has no stop opinion', () => {
     const rs = [row(0, false, null), row(10, true, null), row(20, false, null),
@@ -69,9 +87,10 @@ it('preserves both recorded Purple23 visits once the second distinct flip is obs
   expect(v.every(x => x.source === 'curb')).toBe(true);
 });
 
-it('does not re-date two distinct missed-radius flips to the same earlier approach', () => {
-  const almost = { ...row(10, false, 1), lat: coords[1].lat + 0.0006 }; // 67m, never curb
-  const rs = [row(0, false, 2), almost, row(20, false, 2), row(30, false, 1)];
-  expect(visits(rs).map(v => v.enter)).toEqual([10000, 30000]);
-  expect(visits(rs).every(v => v.source === 'feed')).toBe(true);
+it('keeps the closest pre-flip approach instead of dating a lagging burst far away (F3)', () => {
+  const rs = [row(0, false, 3), { ...row(20, false, 3), lat: coords[1].lat + 0.0006 }, row(60, false, 3),
+    { ...row(100, false, 3), lat: coords[1].lat + 0.0006 }, row(140, false, 3),
+    row(250, false, 1), row(255, false, 2), row(260, false, 1), row(300, false, 2)];
+  // Preserve master's conservative one fallback, not an unsupported arrival at 260 s.
+  expect(visits(rs)).toEqual([{ enter: 100000, exit: 250000, busName: '#1', routeId: 3, source: 'feed' }]);
 });
