@@ -142,12 +142,54 @@ export function stopVisits(
   stopsForRoute: (routeId: number) => readonly number[],
   stopCoords: Record<number, LatLon>,
 ): Map<number, StopVisit[]> {
-  // Published names can be shared by simultaneous buses. Geometry and served
-  // transitions must stay on one capture bus_id, as in dedupeAndSort above.
+  // bus_id is reissued between service blocks; names keep those visits on
+  // one track. Only names claimed by two ids in the SAME poll are ambiguous.
+  // Decide over the whole capture so a collision cannot borrow pre/post-poll
+  // history. The same id also keeps its history when its display name changes.
+  const pollIds = new Map<string, number>();
+  const contended = new Set<string>();
+  const collisions: Array<[number, number]> = [];
+  for (const r of rows) {
+    const key = String(r.t) + "\x00" + r.b;
+    const other = pollIds.get(key);
+    if (other !== undefined && other !== r.i) {
+      contended.add(r.b);
+      collisions.push([other, r.i]);
+    } else {
+      pollIds.set(key, r.i);
+    }
+  }
+  const parent = new Map<number, number>();
+  const find = (id: number): number => {
+    const p = parent.get(id);
+    if (p === undefined) return id;
+    const root = find(p);
+    parent.set(id, root);
+    return root;
+  };
+  const nameId = new Map<string, number>();
+  for (const r of rows) {
+    if (contended.has(r.b)) continue;
+    const other = nameId.get(r.b);
+    if (other === undefined) nameId.set(r.b, r.i);
+    else {
+      const a = find(r.i), b = find(other);
+      if (a !== b) parent.set(a, b);
+    }
+  }
+  // A reused alias can indirectly reconnect ids known to collide under a
+  // different name. Such an ambiguous component must remain id-isolated;
+  // choosing a handoff within it would need evidence this capture lacks.
+  const ambiguous = new Set<number>();
+  for (const [a, b] of collisions) {
+    if (find(a) === find(b)) ambiguous.add(find(a));
+  }
   const byBus = new Map<number, PosRow[]>();
   for (const r of rows) {
-    let l = byBus.get(r.i);
-    if (!l) byBus.set(r.i, (l = []));
+    const root = find(r.i);
+    const key = ambiguous.has(root) ? r.i : root;
+    let l = byBus.get(key);
+    if (!l) byBus.set(key, (l = []));
     l.push(r);
   }
   const out = new Map<number, StopVisit[]>();
