@@ -253,6 +253,11 @@ function fallbackQueries(raw: string): { text: string; minScore: number }[] {
     .find((m) => !STOPWORDS.has(m[2]!));
   // 0.99, not 1: one reading can tie-break an exact hit down to 0.99+.
   if (address) out.push({ text: `${address[1]} ${address[2]}`, minScore: 0.99 });
+  // A numbered "Hill House" address can name the known Hillhouse alias,
+  // but never a bare name or another street. Like the address reading above,
+  // require an exact hit: 5 Hill House must not prefix 55 Hillhouse.
+  const hillhouse = /^(\d{1,5}) hill house(?: (?:ave|avenue))?(?: new haven(?: ct)?(?: \d{5})?)?$/.exec(typed);
+  if (hillhouse) out.push({ text: hillhouse[1] + " hillhouse", minScore: 0.99 });
   return out.filter(({ text }, i) =>
     normalizeName(text) !== typed && out.findIndex((o) => o.text === text) === i);
 }
