@@ -20,6 +20,8 @@ import {
   THRESHOLDS,
 } from "../../canary-metrics.mjs";
 
+import { minCrossingMatching } from "./served-matching";
+
 // -- positions ----------------------------------------------------------------
 
 /** One capture row. Field names follow `raw_positions`, shortened. */
@@ -290,7 +292,7 @@ export function stopVisits(
           intervalGap(a, f.t) - intervalGap(b, f.t) ||
           Math.abs(a.enter - f.t) - Math.abs(b.enter - f.t) || a.enter - b.enter));
     }
-    const supported = new Map<StopVisit, typeof flips[number]>();
+    let supported = new Map<StopVisit, typeof flips[number]>();
     const assign = (f: typeof flips[number], seen: Set<StopVisit>): boolean => {
       for (const v of choices.get(f)!) {
         if (seen.has(v)) continue;
@@ -304,6 +306,10 @@ export function stopVisits(
       return false;
     };
     for (const f of flips) assign(f, new Set());
+    // Sorted Kuhn choices alone can reroute an earlier flip onto crossed
+    // service despite a free clean alternative. Minimize crossing globally
+    // without reducing cardinality or changing already-minimal/tied support.
+    supported = minCrossingMatching(choices, supported, crossesService);
     const kept: StopVisit[] = [];
     for (const v of candidates) {
       const sid = stopOf.get(v)!;
