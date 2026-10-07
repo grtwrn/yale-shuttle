@@ -146,18 +146,14 @@ export function stopVisits(
   // one track. Only names claimed by two ids in the SAME poll are ambiguous.
   // Decide over the whole capture so a collision cannot borrow pre/post-poll
   // history. The same id also keeps its history when its display name changes.
-  const pollIds = new Map<string, number>();
+  const pollIds = new Map<string, Set<number>>();
   const contended = new Set<string>();
-  const collisions: Array<[number, number]> = [];
   for (const r of rows) {
     const key = String(r.t) + "\x00" + r.b;
-    const other = pollIds.get(key);
-    if (other !== undefined && other !== r.i) {
-      contended.add(r.b);
-      collisions.push([other, r.i]);
-    } else {
-      pollIds.set(key, r.i);
-    }
+    let ids = pollIds.get(key);
+    if (!ids) pollIds.set(key, (ids = new Set()));
+    ids.add(r.i);
+    if (ids.size > 1) contended.add(r.b);
   }
   const parent = new Map<number, number>();
   const find = (id: number): number => {
@@ -181,8 +177,16 @@ export function stopVisits(
   // different name. Such an ambiguous component must remain id-isolated;
   // choosing a handoff within it would need evidence this capture lacks.
   const ambiguous = new Set<number>();
-  for (const [a, b] of collisions) {
-    if (find(a) === find(b)) ambiguous.add(find(a));
+  for (const ids of pollIds.values()) {
+    if (ids.size < 2) continue;
+    // Any two DISTINCT ids in this poll prove a collision, even if neither
+    // was first. Check every repeated final root, not just first-id pairs.
+    const roots = new Set<number>();
+    for (const id of ids) {
+      const root = find(id);
+      if (roots.has(root)) ambiguous.add(root);
+      roots.add(root);
+    }
   }
   const byBus = new Map<number, PosRow[]>();
   for (const r of rows) {
