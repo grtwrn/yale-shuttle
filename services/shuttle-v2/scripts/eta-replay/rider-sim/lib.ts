@@ -142,10 +142,12 @@ export function stopVisits(
   stopsForRoute: (routeId: number) => readonly number[],
   stopCoords: Record<number, LatLon>,
 ): Map<number, StopVisit[]> {
-  const byBus = new Map<string, PosRow[]>();
+  // Published names can be shared by simultaneous buses. Geometry and served
+  // transitions must stay on one capture bus_id, as in dedupeAndSort above.
+  const byBus = new Map<number, PosRow[]>();
   for (const r of rows) {
-    let l = byBus.get(r.b);
-    if (!l) byBus.set(r.b, (l = []));
+    let l = byBus.get(r.i);
+    if (!l) byBus.set(r.i, (l = []));
     l.push(r);
   }
   const out = new Map<number, StopVisit[]>();
@@ -154,7 +156,7 @@ export function stopVisits(
     if (!l) out.set(sid, (l = []));
     l.push(v);
   };
-  for (const [busName, track] of byBus) {
+  for (const track of byBus.values()) {
     // The feed's own service events: `last_stop_id` becoming a stop.
     const flips: Array<{ t: number; stop: number; routeId: number; i: number }> = [];
     let hasFeed = false;
@@ -204,7 +206,7 @@ export function stopVisits(
         const key = `${p.r}|${sid}`;
         const cur = open.get(key);
         if (!cur && d <= ARRIVAL_M) {
-          const v: StopVisit = { enter: p.t, exit: null, busName, routeId: p.r, source: "curb" };
+          const v: StopVisit = { enter: p.t, exit: null, busName: p.b, routeId: p.r, source: "curb" };
           open.set(key, v);
           candidates.push(v);
           stopOf.set(v, sid);
@@ -242,7 +244,7 @@ export function stopVisits(
         if (track[i]!.t <= bestT) continue;
         if (haversineM(track[i]!, c) > REARM_M) { exit = track[i]!.t; break; }
       }
-      const v: StopVisit = { enter: bestT, exit, busName, routeId: f.routeId, source: "feed" };
+      const v: StopVisit = { enter: bestT, exit, busName: track[f.i]!.b, routeId: f.routeId, source: "feed" };
       kept.push(v);
       stopOf.set(v, f.stop);
       add(f.stop, v);
