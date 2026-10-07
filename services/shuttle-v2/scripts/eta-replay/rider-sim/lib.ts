@@ -266,11 +266,39 @@ export function stopVisits(
         }
       }
     }
+    // Each kept curb occurrence needs its OWN served flip. A boolean some
+    // reused one flip after a leave-and-return (even across a long hold).
+    // Prefer a visit containing the flip, then the nearest observed interval;
+    // do not blindly keep the latest. Augmenting paths preserve both visits
+    // when two distinct flips can support them, unlike nearest-only greed.
+    // This resolves measurement multiplicity, not physical boarding truth.
+    const intervalGap = (v: StopVisit, t: number): number =>
+      Math.max(v.enter - t, t - (v.exit ?? track[track.length - 1]!.t), 0);
+    const choices = new Map<typeof flips[number], StopVisit[]>();
+    for (const f of flips) {
+      choices.set(f, candidates.filter((v) => corroborates(stopOf.get(v)!, v, f))
+        .sort((a, b) => intervalGap(a, f.t) - intervalGap(b, f.t) ||
+          Math.abs(a.enter - f.t) - Math.abs(b.enter - f.t) || a.enter - b.enter));
+    }
+    const supported = new Map<StopVisit, typeof flips[number]>();
+    const assign = (f: typeof flips[number], seen: Set<StopVisit>): boolean => {
+      for (const v of choices.get(f)!) {
+        if (seen.has(v)) continue;
+        seen.add(v);
+        const previous = supported.get(v);
+        if (!previous || assign(previous, seen)) {
+          supported.set(v, f);
+          return true;
+        }
+      }
+      return false;
+    };
+    for (const f of flips) assign(f, new Set());
     const kept: StopVisit[] = [];
     for (const v of candidates) {
       const sid = stopOf.get(v)!;
       if (!hasFeed) { v.source = "curb-only"; kept.push(v); add(sid, v); continue; }
-      if (!flips.some((f) => corroborates(sid, v, f))) continue; // a drive-by on the far side of the road
+      if (!supported.has(v)) continue; // drive-by or shared, not independent support
       kept.push(v);
       add(sid, v);
     }
@@ -278,14 +306,19 @@ export function stopVisits(
 
     // A served flip the radius never saw: the stop's published coordinate is
     // not where the bus stands. Date it at the closest approach before it.
+    const previousFlip = new Map<string, number>();
     for (const f of flips) {
+      const key = f.routeId + "|" + f.stop;
+      const after = previousFlip.get(key) ?? -Infinity;
+      previousFlip.set(key, f.t);
       if (!stopsForRoute(f.routeId).includes(f.stop)) continue;
       const c = stopCoords[f.stop];
       if (!c) continue;
       if (kept.some((v) => stopOf.get(v) === f.stop && corroborates(f.stop, v, f))) continue;
       let bestT = f.t;
       let best = Infinity;
-      for (let i = f.i; i >= 0 && track[i]!.t > f.t - SERVED_AFTER_MS; i--) {
+      // Distinct flips must not reuse an earlier occurrence's closest fix.
+      for (let i = f.i; i >= 0 && track[i]!.t > Math.max(f.t - SERVED_AFTER_MS, after); i--) {
         const d = haversineM(track[i]!, c);
         if (d < best) { best = d; bestT = track[i]!.t; }
       }
@@ -295,8 +328,10 @@ export function stopVisits(
         if (haversineM(track[i]!, c) > REARM_M) { exit = track[i]!.t; break; }
       }
       const v: StopVisit = { enter: bestT, exit, busName: track[f.i]!.b, routeId: f.routeId, source: "feed" };
-      kept.push(v);
-      stopOf.set(v, f.stop);
+      // A fallback is already one occurrence per distinct flip. It must not
+      // suppress a later flip merely because their entry windows overlap.
+      // Surplus flips during a kept continuous curb stay still share that
+      // stay through the curb-only kept check above (no invented visit).
       add(f.stop, v);
     }
   }
