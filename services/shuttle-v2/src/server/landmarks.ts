@@ -23,8 +23,9 @@
  * name ("the commons", "med school"), the former name ("Romeo & Cesare's"),
  * the street address. They exist because on 2026-09-02 the live geocoder
  * returned nothing for "kbt", "commons" and "medical school". An alias scores
- * exactly like the label (see `geocode.ts`). No misspellings: the matcher's
- * fuzzy tier handles those. Other names for the same destination are aliases.
+ * exactly like the label (see `geocode.ts`). Prefer the fuzzy tier for
+ * misspellings; an observed spelling it cannot read may be an explicit alias
+ * instead of loosening guessing for every place. Other names are aliases.
  * Distinct destinations may share a building (Divinity School and its library)
  * and its verified coordinate; keep their labels so riders can select the
  * place they asked for without inventing separate entrance coordinates.
@@ -45,6 +46,8 @@ export type Landmark = {
    * dropdown reads 🍕 and 🍦 faster than two identical building glyphs.
    */
   poi?: string;
+  /** Only explicit query names: do not strip a street direction or another city from a numbered address. */
+  exactQuery?: true;
   /** The live stop nearest the place — what pins the coordinate in the tests. */
   anchorStop: string;
 };
@@ -98,6 +101,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Luce Hall", lat: 41.314441, lon: -72.924354, aliases: ["luce", "macmillan center", "34 hillhouse"], poi: "college", anchorStop: "Prospect / Trumbull" }, // OSM W363329574
   { label: "Malone Engineering Center", lat: 41.313374, lon: -72.924818, aliases: ["malone", "biomedical engineering", "55 prospect"], poi: "college", anchorStop: "Prospect / Trumbull" }, // OSM W217301902
   { label: "Osborn Memorial Laboratories", lat: 41.316422, lon: -72.923921, aliases: ["osborn", "oml", "165 prospect"], poi: "college", anchorStop: "Prospect / Sachem (N)" }, // OSM W217341973
+  { label: "Rosenfeld Hall", lat: 41.3110976, lon: -72.9232544, aliases: ["ro senf ie l d"], poi: "college", anchorStop: "Temple / Grove" }, // OSM W114670911 (Nominatim, 2026-10-08); "rosenfield" uses the existing fuzzy tier, the observed split spelling needs an exact alias.
   { label: "Rosenkranz Hall", lat: 41.314701, lon: -72.924551, aliases: ["rosenkranz", "political science", "115 prospect"], poi: "college", anchorStop: "130 Prospect Street (S)" }, // OSM W363327921
   { label: "Rudolph Hall (Art & Architecture)", lat: 41.308769, lon: -72.931886, aliases: ["rudolph", "a&a", "a and a", "art and architecture", "school of architecture", "architecture school", "180 york", "haas", "haas library", "arts library", "haas family arts library"], poi: "college", anchorStop: "180 York (A&A)" }, // OSM W224889715
   { label: "Sage Hall", lat: 41.317143, lon: -72.923761, aliases: ["sage", "205 prospect"], poi: "college", anchorStop: "SCL" }, // OSM W228473355
@@ -153,9 +157,9 @@ export const LANDMARKS: readonly Landmark[] = [
   // -- Medical campus and hospitals ------------------------------------------
   { label: "Mary S. Harkness Auditorium", lat: 41.3034645, lon: -72.9338409, aliases: ["harkness auditorium", "harkness memorial auditorium", "mary s harkness memorial auditorium", "harkness auditorium (shm)", "shm auditorium", "med school auditorium"], poi: "theatre", anchorStop: "333 Cedar" }, // OSM N367139179
   { label: "100 College Street", lat: 41.304191, lon: -72.931689, aliases: ["100 college", "alexion", "100 college st"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W266150495
-  { label: "101 College Street", lat: 41.3035877, lon: -72.9305618, aliases: ["101 college", "101 college st"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM geocoded 101 College St; Yale Ventures
+  { label: "101 College Street", lat: 41.3035877, lon: -72.9305618, aliases: ["101 college", "101 college st", "biolabs", "bio labs", "biolabs new haven"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM geocoded 101 College St; Yale Ventures and BioLabs New Haven (biolabs.io/new-haven, bioct.org/member/biolabs-new-haven).
   { label: "Smilow Cancer Hospital", lat: 41.3051, lon: -72.93584, aliases: ["smilow", "cancer center", "yale cancer center", "35 park"], poi: "hospital", anchorStop: "Howard / Park" }, // OSM R5641557
-  { label: "The Anlyan Center (TAC)", lat: 41.30118, lon: -72.934072, aliases: ["tac", "anlyan", "300 cedar", "tac auditorium"], poi: "hospital", anchorStop: "Gilbert / Cedar" }, // OSM W232595709; the TAC Auditorium (N-107) is its lecture hall: "tac audi" found nothing (2026-10-04).
+  { label: "The Anlyan Center (TAC)", lat: 41.30118, lon: -72.934072, aliases: ["tac", "anlyan", "300 cedar", "tac auditorium", "anlaun"], poi: "hospital", anchorStop: "Gilbert / Cedar" }, // OSM W232595709; the TAC Auditorium (N-107) is its lecture hall: "tac audi" found nothing (2026-10-04); observed "anlaun" is beyond the fuzzy tier (2026-10-08).
   { label: "VA Hospital (West Haven)", lat: 41.283664, lon: -72.959832, aliases: ["va", "the va", "veterans hospital", "va medical center", "west haven va", "veterans affairs", "va ct", "va connecticut", "va connecticut healthcare", "va health center", "va healthcare"], poi: "hospital", anchorStop: "VA Entrance Inbound" }, // OSM W42735113
   { label: "Yale Health Center", lat: 41.315731, lon: -72.927521, aliases: ["yale health", "health center", "student health", "yuhs", "55 lock", "pharmacy", "acute care"], poi: "hospital", anchorStop: "Winchester / Sachem" }, // OSM W217340232
   { label: "Yale Human Resources", lat: 41.3168436, lon: -72.9197904, aliases: ["yale hr", "human resources", "hr office", "221 whitney"], poi: "college", anchorStop: "221 Whitney (N)" }, // OSM Yale HR POI at 221 Whitney Ave
@@ -272,9 +276,11 @@ export const LANDMARKS: readonly Landmark[] = [
 
   // -- Civic -----------------------------------------------------------------
   { label: "MakeHaven", lat: 41.3050228, lon: -72.92366, aliases: ["make haven", "770 chapel"], poi: "hackerspace", anchorStop: "Chapel / State Elm City Market" }, // OSM N8218430666, verified 2026-09-22; 770 Chapel St confirmed by https://www.makehaven.org/visit.
+  { label: "195 Church Street", lat: 41.307916, lon: -72.9242369, aliases: ["195 church", "195 church st"], poi: "bank", exactQuery: true, anchorStop: "Elm / Orange" }, // OSM W656618859 address pin (Nominatim, 2026-10-08), not the same-number West Haven address; building W39264081 is the former New Haven Savings Bank Tower.
   { label: "New Haven City Hall", lat: 41.307378, lon: -72.92433, aliases: ["city hall", "165 church"], poi: "civic", anchorStop: "Elm / Orange" }, // OSM W39267857
   { label: "New Haven Free Public Library", lat: 41.309007, lon: -72.924766, aliases: ["public library", "nhfpl", "ives library", "city library", "133 elm"], poi: "library", anchorStop: "Wall / Church" }, // OSM W141163194
   { label: "New Haven Superior Court", lat: 41.309527, lon: -72.922894, aliases: ["courthouse", "superior court", "235 church", "jury duty"], poi: "civic", anchorStop: "Church Wall" }, // OSM W141164127
+  { label: "Twenty Fair", lat: 41.3024326, lon: -72.9215411, aliases: ["twentyfair"], poi: "apartments", anchorStop: "Olive / Wooster" }, // spinrep.com/property/twenty-fair confirms 20 Fair St; OSM N9021779914 address pin (Nominatim, 2026-10-08).
   { label: "Ninth Square", lat: 41.305025, lon: -72.924922, aliases: ["9th square"], poi: "neighbourhood", anchorStop: "Chapel / Church" }, // OSM W777642209
   { label: "Yale Police (101 Ashmun)", lat: 41.315822, lon: -72.928726, aliases: ["yale police", "ypd", "rose center", "police", "yale police department"], poi: "civic", anchorStop: "Ashmun / Lock" }, // OSM N511976767
   { label: "Yale Chaplain's Office (Bingham Hall)", lat: 41.3077098, lon: -72.928779, aliases: ["chaplain", "chaplains office", "yale chaplain", "chaplaincy", "bingham d", "300 college"], poi: "college", anchorStop: "Chapel / College" }, // OSM W139759942
