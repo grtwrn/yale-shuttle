@@ -52,6 +52,12 @@ export function geocode(
     }));
   }
 
+  // A verified numbered place must not answer a different city/direction
+  // after fallbackQueries extracts its house number and street. Opt-in only:
+  // existing places keep every ranking; the public tower at 195 Church St
+  // must not override the same-number West Haven address.
+  landmarks = landmarks.filter((l) => !l.exactQuery ||
+    [l.label, ...(l.aliases ?? [])].some((name) => normalizeName(name) === normalizeName(rawQuery)));
   const hits = search(network, query, landmarks);
   if (hits.length > 0) return hits;
   // Nothing matched as typed: try the other readings of what the rider may
