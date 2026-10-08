@@ -637,12 +637,25 @@ function coordOrNull(v: unknown, limit: number): number | null {
   return Number.isFinite(n) && Math.abs(n) <= limit ? n : null;
 }
 
-/** An address-level hit: the building the rider actually typed. */
-function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
+/** An address-level hit: the building the rider actually typed.
+ *
+ * `sameSuffix` additionally demands the street ending the rider typed ("Cir"
+ * must meet "Circle", not "Street"). The result filter leaves it off so a
+ * rider's mistyped ending still reaches the house; the "do we need the other
+ * provider" test turns it on, so Photon's "71 Ivy Street" cannot stand in for
+ * the "71 Ivy Circle" that was typed (issue #397). */
+function isRequestedAddress(query: string, hit: GeocodeV1Hit, sameSuffix = false): boolean {
   if (hit.type !== "house") return false;
   const parts = /^(\d{1,6})\s+(.+)$/.exec(normalizeName(query));
   if (!parts) return false;
-  const suffixes = new Set(["st", "street", "ave", "avenue", "rd", "road", "dr", "drive", "ln", "lane", "blvd", "boulevard", "pl", "place", "ct", "court"]);
+  // Anything typed after the suffix is a town or state ("71 Ivy Cir, West
+  // Haven"), which a result's street line does not repeat — so it must not be
+  // read as part of the street name (issue #397).
+  const suffixes = new Set([
+    "st", "street", "ave", "avenue", "rd", "road", "dr", "drive", "ln", "lane", "blvd", "boulevard",
+    "pl", "place", "ct", "court", "cir", "circle", "way", "ter", "terrace", "pkwy", "parkway",
+    "hwy", "highway", "sq", "square", "trl", "trail", "tpke", "turnpike",
+  ]);
   const words = parts[2]!.split(" ");
   const suffixAt = words.findIndex((word, index) => index > 0 && suffixes.has(word));
   const street = suffixAt < 0 ? words : words.slice(0, suffixAt);
@@ -650,11 +663,23 @@ function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
   // Nominatim starts with "517, Prospect Street"; Photon usually starts
   // with "517 Prospect Street". Named buildings may put the address second.
   const candidate = new Set(normalizeName(hit.display_name.split(",").slice(0, 2).join(" ")).split(" "));
-  return candidate.has(parts[1]!) && street.every((word) => candidate.has(word));
+  if (!candidate.has(parts[1]!) || !street.every((word) => candidate.has(word))) return false;
+  if (!sameSuffix || suffixAt < 0) return true;
+  const typed = words[suffixAt]!;
+  const spelled = STREET_SUFFIX_SPELLINGS.find((forms) => forms.includes(typed)) ?? [typed];
+  return spelled.some((form) => candidate.has(form));
 }
 
+/** The abbreviation and the full word for each street ending, so "Cir" meets "Circle". */
+const STREET_SUFFIX_SPELLINGS: readonly (readonly string[])[] = [
+  ["st", "street"], ["ave", "avenue"], ["rd", "road"], ["dr", "drive"], ["ln", "lane"],
+  ["blvd", "boulevard"], ["pl", "place"], ["ct", "court"], ["cir", "circle"],
+  ["ter", "terrace"], ["pkwy", "parkway"], ["hwy", "highway"], ["sq", "square"],
+  ["trl", "trail"], ["tpke", "turnpike"],
+];
+
 function hasAddressHit(query: string, hits: readonly GeocodeV1Hit[]): boolean {
-  return hits.some((h) => isRequestedAddress(query, h));
+  return hits.some((h) => isRequestedAddress(query, h, true));
 }
 
 /**
