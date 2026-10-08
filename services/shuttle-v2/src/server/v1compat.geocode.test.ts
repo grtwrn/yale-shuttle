@@ -1095,6 +1095,51 @@ describe("a street address with a suffix (operator, 2026-09-03)", () => {
     expect(results.some((r) => r.display_name.includes("Beach"))).toBe(false);
   });
 
+  // Issue #397: "71 Ivy Cir, West Haven" returned nothing from /api/geocode
+  // while "71 Ivy Circle" found the house. Nominatim's real answer for all
+  // three spellings is the same row. `isRequestedAddress` read "cir" and the
+  // town as part of the street name, so the house failed its own match.
+  const nominatimIvy = () => json([
+    {
+      lat: "41.2757598",
+      lon: "-72.9578653",
+      display_name: "71, Ivy Circle, Savin Rock, West Haven, South Central Connecticut Planning Region, Connecticut, 06516, United States",
+      type: "house",
+      class: "place",
+    },
+  ]);
+  it.each([
+    "71 Ivy Circle",
+    "71 Ivy Cir",
+    "71 Ivy Cir, West Haven",
+    "71 Ivy Circle West Haven",
+  ])("keeps the house for %s", async (query) => {
+    const { geocoder } = geocoderFor(() => json({ features: [] }), nominatimIvy);
+    const hits = await geocoder.lookup(query);
+    expect(hits[0]?.display_name).toContain("71, Ivy Circle");
+    const results = await geocodeV1(network, query, geocoder);
+    expect(results.some((r) => r.display_name.includes("71, Ivy Circle"))).toBe(true);
+  });
+
+  it("does not let Photon's 71 Ivy Street stand in for the 71 Ivy Circle that was typed", async () => {
+    // Seen in the browser while checking this fix: Photon answered with a
+    // house on the wrong street ending, and the other provider was never asked.
+    const photonStreet = () => json({ features: [
+      photonFeature({ housenumber: "71", street: "Ivy Street", city: "West Haven", type: "house" }, -72.9656382, 41.2527014),
+    ] });
+    const { geocoder, calls } = geocoderFor(photonStreet, nominatimIvy);
+    const hits = await geocoder.lookup("71 Ivy Cir, West Haven");
+    expect(calls.some((u) => u.includes("nominatim"))).toBe(true);
+    expect(hits[0]!.display_name).toContain("Ivy Circle");
+  });
+
+  it("still refuses a different house on a differently named street", async () => {
+    const homestead = () => json([{ lat: "41.32", lon: "-72.92", display_name: "30, Homestead Avenue, Hamden, Connecticut", type: "house", class: "place" }]);
+    const { geocoder } = geocoderFor(() => json({ features: [] }), homestead);
+    const results = await geocodeV1(network, "30 Whitney Ave, New Haven", geocoder);
+    expect(results.some((r) => r.display_name.includes("Homestead"))).toBe(false);
+  });
+
   it("does NOT spend a second request when Photon already found the address", async () => {
     const photonWithHouse = () => json({
       features: [
