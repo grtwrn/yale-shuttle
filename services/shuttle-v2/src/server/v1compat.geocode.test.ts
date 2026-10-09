@@ -633,6 +633,53 @@ describe("rankExternal", () => {
     expect(rankExternal(network, [wrong, right], "30 Whitney Avenue")).toEqual([right]);
     expect(rankExternal(network, [wrong], "30 Whitney Avenue")).toEqual([]);
   });
+
+  // Issue #397 (2026-10-07): "71 Ivy Cir, West Haven" and "71 Ivy Circle, West
+  // Haven" returned "No matches found" while "71 Ivy Circle" found the house.
+  // The street was read to the end of the query, so the typed town had to
+  // appear in the hit's first two comma parts, and "cir" never equals "Circle".
+  describe("an address typed with a town or an abbreviated street type", () => {
+    const ivyCircle = {
+      ...hit("71, Ivy Circle, Savin Rock, West Haven, South Central Connecticut Planning Region, Connecticut, 06516, United States", 41.2757598, -72.9578653),
+      type: "house",
+    };
+    const ivyStreet = {
+      ...hit("71 Ivy Street, West Haven", 41.2527014, -72.9656382),
+      type: "house",
+    };
+
+    it.each([
+      "71 Ivy Circle",
+      "71 Ivy Cir",
+      "71 Ivy Circle, West Haven",
+      "71 Ivy Cir, West Haven",
+      "71 Ivy Cir., West Haven, CT",
+    ])("keeps the house for %j", (q) => {
+      expect(rankExternal(network, [ivyCircle], q)).toEqual([ivyCircle]);
+    });
+
+    it("still tells the street types apart", () => {
+      expect(rankExternal(network, [ivyStreet], "71 Ivy Circle, West Haven")).toEqual([]);
+      expect(rankExternal(network, [ivyStreet], "71 Ivy Cir")).toEqual([]);
+      expect(rankExternal(network, [ivyCircle], "71 Ivy St, West Haven")).toEqual([ivyCircle]);
+    });
+
+    it.each([
+      ["12 Overlook Ter, New Haven", "12, Overlook Terrace, New Haven"],
+      ["12 Overlook Terr, New Haven", "12, Overlook Terrace, New Haven"],
+      ["400 Whitney Pkwy, Hamden", "400, Whitney Parkway, Hamden"],
+      ["8 Shore Hwy, Branford", "8, Shore Highway, Branford"],
+      ["3 Hill Way, West Haven", "3, Hill Way, West Haven"],
+    ])("reads %j as the house it names", (q, name) => {
+      const h = { ...hit(name, 41.3, -72.93), type: "house" };
+      expect(rankExternal(network, [h], q)).toEqual([h]);
+    });
+
+    it("rejects a different house on the same street even with a town", () => {
+      const other = { ...hit("72, Ivy Circle, Savin Rock, West Haven", 41.2758, -72.9579), type: "house" };
+      expect(rankExternal(network, [other], "71 Ivy Circle, West Haven")).toEqual([]);
+    });
+  });
 });
 
 /**

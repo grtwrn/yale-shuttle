@@ -637,10 +637,24 @@ function coordOrNull(v: unknown, limit: number): number | null {
   return Number.isFinite(n) && Math.abs(n) <= limit ? n : null;
 }
 
+/**
+ * Street types riders abbreviate that the providers spell out, so "71 Ivy
+ * Cir" can meet "71, Ivy Circle". Kept apart from the `suffixes` below, which
+ * are DROPPED from the comparison: dropping "circle" would let "71 Ivy
+ * Street" answer "71 Ivy Circle", and both exist in West Haven (#397).
+ */
+const STREET_TYPE_LONG: Readonly<Record<string, string>> = {
+  cir: "circle", ter: "terrace", terr: "terrace", pkwy: "parkway", hwy: "highway", sq: "square", trl: "trail",
+};
+const longStreetWord = (word: string): string => STREET_TYPE_LONG[word] ?? word;
+
 /** An address-level hit: the building the rider actually typed. */
 function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
   if (hit.type !== "house") return false;
-  const parts = /^(\d{1,6})\s+(.+)$/.exec(normalizeName(query));
+  // The street ends at the first comma: what follows is the town ("71 Ivy
+  // Cir, West Haven"), which the hit's first two comma parts do not carry.
+  const typed = query.split(",")[0]!;
+  const parts = /^(\d{1,6})\s+(.+)$/.exec(normalizeName(typed));
   if (!parts) return false;
   const suffixes = new Set(["st", "street", "ave", "avenue", "rd", "road", "dr", "drive", "ln", "lane", "blvd", "boulevard", "pl", "place", "ct", "court"]);
   const words = parts[2]!.split(" ");
@@ -649,8 +663,8 @@ function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
   if (street.length === 0) return false;
   // Nominatim starts with "517, Prospect Street"; Photon usually starts
   // with "517 Prospect Street". Named buildings may put the address second.
-  const candidate = new Set(normalizeName(hit.display_name.split(",").slice(0, 2).join(" ")).split(" "));
-  return candidate.has(parts[1]!) && street.every((word) => candidate.has(word));
+  const candidate = new Set(normalizeName(hit.display_name.split(",").slice(0, 2).join(" ")).split(" ").map(longStreetWord));
+  return candidate.has(parts[1]!) && street.every((word) => candidate.has(longStreetWord(word)));
 }
 
 function hasAddressHit(query: string, hits: readonly GeocodeV1Hit[]): boolean {
