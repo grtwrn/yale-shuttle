@@ -13,6 +13,13 @@ The third-route visibility rule also uses planned travel duration, so wait/ETA j
 
 Both planners and the geographic fallback suppress routes unless they save at least two minutes of walking, scaled to 20% of the direct walk for trips shorter than ten minutes, and at least 10% for walks longer than twenty minutes. This is a rider preference, not a fitted prediction parameter. Within a route’s near-fastest boarding/alighting alternatives, minimize total walking, then riding.
 
+Overview visibility uses the least walking among a route's valid pickup/exit
+pairs. A bus passing the close pickup can make a farther catchable stop the
+fastest current plan; this no longer hides an otherwise useful route. The row
+still shows that selected pickup's actual walking and arrival estimates. Reports
+#140/#141 have a report-time feed regression and a 368-pixel browser check in
+`services/shuttle-v2/scripts/blue-overview-feedback-check.mjs`.
+
 Validation includes mixed/overlapping destination windows, an overlap chain that would break a naive comparator, one-poll reversals and sustained improvements, immediate unavailable-route demotion, walking alternatives, changing live rides with fixed planned rides, and walking-saving boundaries. Full tests/typechecks/build and recorded Division/Prospect → Rosenkranz phone flows passed. A synthetic six-phase Red ETA sequence over recorded geometry verifies that estimates update without changing route order; it measures UI stability, not forecast accuracy.
 
 The reported Red 1–19 minute model window is a separate unresolved issue. The no-running-minimum experiment reproduced delayed departure responses and larger reversals, so this change does not alter ETA-model coefficients, beliefs, or intervals.

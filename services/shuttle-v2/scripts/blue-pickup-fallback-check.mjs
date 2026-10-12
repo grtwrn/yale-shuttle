@@ -39,8 +39,7 @@ try {
       await page.goto('https://pickup.test');
       if (protectedRoute) await page.getByTitle('Walking directions to Whitney/Canner', {exact: true}).waitFor();
       else {
-        await page.getByRole('button', {name: /Show 1 more route/}).waitFor();
-        assert.equal(await page.getByRole('button', {name: 'View Blue Day trip details', exact: true}).count(), 0);
+        await page.getByRole('button', {name: 'View Blue Day trip details', exact: true}).waitFor();
       }
       feed.server_eta = later;
       await page.clock.runFor(5500);
@@ -56,4 +55,4 @@ try {
     } finally { await ctx.close(); }
   }
 } finally { await browser.close(); }
-console.log('Blue pickup fallback: unopened route recovers close pickup; watched route and opened fallback stay pinned.');
+console.log('Blue pickup fallback: route stays visible, unopened route recovers close pickup; watched route and opened fallback stay pinned.');

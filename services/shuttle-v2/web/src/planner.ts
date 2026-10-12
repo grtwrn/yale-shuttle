@@ -25,6 +25,9 @@ export type TripOption = {
   totalSec: number; busName: string;
   /** Route's ride duration at planning time, independent of live ETA differences. */
   plannedRideSec?: number;
+  /** Least total walking among this route's valid pickup/exit pairs. Used
+   * only for overview visibility; the recommended pickup keeps its own walk. */
+  routeWalkSec?: number;
   directWalkSec: number;
   // True when the pinned bus has already gone past the board stop and
   // isn't catchable anymore. Set only while the rider is watching the
@@ -557,7 +560,10 @@ export function planTrip(
   }
   const bestPerRoute = new Map<string, TripOption>();
   for (const [label, group] of byRoute) {
-    bestPerRoute.set(label, bestRoutePickup(group));
+    bestPerRoute.set(label, {
+      ...bestRoutePickup(group),
+      routeWalkSec: Math.min(...group.map(o => o.walkToSec + o.walkFromSec)),
+    });
   }
   // Sort the chosen options by total time for display.
   const dedup = [...bestPerRoute.values()]
@@ -945,7 +951,11 @@ export const THIRD_SHUTTLE_KEEP_SLACK_SEC = 8 * 60;
  * walk is a poor overview recommendation. Keep it in the full route list,
  * but show it initially only when it saves at least half the walking, regardless of ETA. */
 export function worthwhileOverviewOption(o: TripOption, directWalkSec = o.directWalkSec): boolean {
-  return o.mode !== 'shuttle' || o.walkToSec + o.walkFromSec <= directWalkSec / 2;
+  // Reports #140/#141: a bus passing the close stop can move a good route's
+  // fastest catchable pickup farther away. Judge the route's walking benefit
+  // across its valid pairs, rather than hiding it for that transient pickup.
+  const walking = Math.min(o.walkToSec + o.walkFromSec, o.routeWalkSec ?? Infinity);
+  return o.mode !== 'shuttle' || walking <= directWalkSec / 2;
 }
 
 export function topVisibleOptions(
