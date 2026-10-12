@@ -40,10 +40,10 @@ function refreshFrozen(o: TripOption, buses: BusData[]) {
 }
 
 describe('live pickup fallback: 517 Prospect to Rosenkranz (#134)', () => {
-  it('replaces a farther frozen pickup with catchable Prospect/Canner and restores overview eligibility', () => {
+  it('keeps the farther pickup visible and replaces it when Prospect/Canner becomes catchable', () => {
     const original = blue(plan(feed(true)));
     expect(original.boardStopId).toBe(129); // Whitney/Canner, 7-minute walk
-    expect(worthwhileOverviewOption(original)).toBe(false);
+    expect(worthwhileOverviewOption(original)).toBe(true);
     const buses = feed();
     const current = refreshFrozen(original, buses);
     const candidate = blue(plan(buses));
