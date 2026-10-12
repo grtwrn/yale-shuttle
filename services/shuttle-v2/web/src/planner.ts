@@ -30,7 +30,7 @@ export type TripOption = {
   routeWalkSec?: number;
   /** A second pickup on the same line with a meaningful walking/arrival tradeoff. */
   pickupAlternatives?: TripOption[];
-  pickupPreference?: 'less-walking' | 'arrive-sooner';
+  pickupPreference?: 'closest-stop' | 'arrive-sooner';
   directWalkSec: number;
   // True when the pinned bus has already gone past the board stop and
   // isn't catchable anymore. Set only while the rider is watching the
@@ -549,7 +549,7 @@ export function planTrip(
   // report #15: a 2-min ride wrapped in 29 min of walking totalled MORE
   // than the direct walk yet read like the top pick.
   const viable = options;
-  // Keep the least-walking trip, even when the next bus takes longer.
+  // Keep the closest pickup, even when the next bus takes longer.
   // A meaningfully earlier pickup remains a separate choice on the line.
   const byRoute = new Map<string, TripOption[]>();
   for (const o of viable) {
@@ -1021,20 +1021,23 @@ export function bestRoutePickup(group: readonly TripOption[]): TripOption {
   return nearBest[0]!;
 }
 
-/** Waiting for the next bus must not erase the trip with the least walking.
+/** Waiting for the next bus must not erase the closest pickup.
  * Retain an earlier-arriving pickup when it saves at least three minutes,
  * so a long wait at the close stop does not hide the faster alternative. */
 export function routePickupChoices(group: readonly TripOption[]): TripOption {
-  const leastWalking = [...group].sort((a, b) =>
-    (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
-    || a.walkToSec - b.walkToSec
-    || Number(!!a.departed) - Number(!!b.departed)
-    || a.totalSec - b.totalSec)[0]!;
+  const byStop = new Map<number, TripOption[]>();
+  for (const option of group) {
+    const choices = byStop.get(option.boardStopId) ?? [];
+    choices.push(option); byStop.set(option.boardStopId, choices);
+  }
+  // Retain the existing destination/ride tradeoff at each boarding stop.
+  // An extra lap to save a few steps at the exit is not a better pickup.
+  const closest = [...byStop.values()].map(bestRoutePickup).sort((a, b) =>
+    a.walkToSec - b.walkToSec || a.walkFromSec - b.walkFromSec || a.totalSec - b.totalSec)[0]!;
   const faster = bestRoutePickup(group);
-  const lessWalk = faster.walkToSec + faster.walkFromSec - leastWalking.walkToSec - leastWalking.walkFromSec;
-  if (faster.boardStopId === leastWalking.boardStopId || lessWalk < 60
-    || faster.departed || faster.etaUnavailable || faster.totalSec > leastWalking.totalSec - 180) return leastWalking;
-  return { ...leastWalking, pickupPreference: 'less-walking',
+  if (faster.boardStopId === closest.boardStopId
+    || faster.departed || faster.etaUnavailable || faster.totalSec > closest.totalSec - 180) return closest;
+  return { ...closest, pickupPreference: 'closest-stop',
     pickupAlternatives: [{ ...faster, pickupPreference: 'arrive-sooner' }] };
 }
 

@@ -56,7 +56,9 @@ try {
       sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({ fromText: 'Division / Prospect', fromLL,
         toText: 'Union Station', toLL, tripTime: '', expandedKey: null, savedAt: now,
         arriveBy: '2026-09-18T10:45', classBufferMin: 10 }));
-    }, { now, fromLL: { lat: feed.stop_coords[48].lat, lon: feed.stop_coords[48].lon - .0017 }, toLL: feed.stop_coords[121] });
+    // Keep Division/Prospect the closest pickup: the west-side point was
+    // closer to Division/Sheffield, while this fixture asserts stop 48 times.
+    }, { now, fromLL: { lat: feed.stop_coords[48].lat, lon: feed.stop_coords[48].lon + .0017 }, toLL: feed.stop_coords[121] });
     const page = await context.newPage();
     page.setDefaultTimeout(12000);
     page.on('pageerror', error => run.errors.push(error.message));

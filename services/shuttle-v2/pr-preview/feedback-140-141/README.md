@@ -6,12 +6,12 @@ catchable one, the planner selected Whitney/Canner; its combined walking time
 exceeded half the direct walk, so the overview excluded the whole route.
 
 Blue now offers two independently selectable pickups on the same line:
-**Prospect/Canner — Less walking** (about 2 minutes to the stop, next
+**Prospect/Canner — Closest stop** (about 2 minutes to the stop, next
 catchable bus about 21 minutes away in this feed) and **Whitney/Canner — Arrive
 sooner** (about 8 minutes to the stop, boarding about 7 minutes away).
-The least-walking trip is the default, even when it means waiting longer.
+The closest boarding stop is the default, even when it means waiting longer.
 A passing bus does not erase it. The earlier-arriving pickup remains a choice
-when it saves at least three minutes and costs at least one minute more walking.
+when it saves at least three minutes with a longer walk to the pickup.
 
 “Board in” uses the actual catchable visit, not the bus passing the close stop.
 Each choice refreshes its own forecast; opening either binds the map and walking
@@ -26,7 +26,7 @@ case on the same corridor and Rosenkranz Hall as the destination. These are
 controlled reproductions of the behavior, not exact replays of the rider's
 unrecorded location. Map tiles are blocked in the browser check.
 
-Validation: 3,737 tests passed; backend/frontend types and production build
+Validation: 3,738 tests passed; backend/frontend types and production build
 passed. Type checking used the same compiler on a case-sensitive APFS volume
 to match Linux import resolution. Mobile and desktop browser checks passed: both Blue choices with their own
 boarding times, keyboard selection and walking directions, protection across

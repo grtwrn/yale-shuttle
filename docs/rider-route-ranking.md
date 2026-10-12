@@ -11,10 +11,10 @@ Within the existing availability and walking-competitiveness tiers:
 
 The third-route visibility rule also uses planned travel duration, so wait/ETA jumps cannot flash it off screen. The separate class-time panel still checks full destination windows, catchability and feed freshness; unknown arrival windows cannot become an on-time recommendation.
 
-Both planners and the geographic fallback suppress routes unless they save at least two minutes of walking, scaled to 20% of the direct walk for trips shorter than ten minutes, and at least 10% for walks longer than twenty minutes. This is a rider preference, not a fitted prediction parameter. Each route keeps its least-walking pickup/exit pair, even when the next bus has a longer wait. A different pickup that saves at least three minutes of arrival time, at the cost of at least one extra minute of walking, is offered as a separate choice on the same line.
+Both planners and the geographic fallback suppress routes unless they save at least two minutes of walking, scaled to 20% of the direct walk for trips shorter than ten minutes, and at least 10% for walks longer than twenty minutes. This is a rider preference, not a fitted prediction parameter. Each route keeps its closest boarding stop, with the existing near-fastest walking/ride tradeoff for its exit, even when the next bus has a longer wait. A different pickup that saves at least three minutes of arrival time, with a longer walk to the pickup, is offered as a separate choice on the same line.
 
 Overview visibility uses the least walking among a route's valid pickup/exit
-pairs. The initial list shows both “Less walking” and “Arrive sooner” pickup
+pairs. The initial list shows both “Closest stop” and “Arrive sooner” pickup
 choices when they differ meaningfully, with stop names and independently
 refreshed boarding/destination times. “Board in” follows the bus the rider can
 catch; the detail countdown can still show an earlier passing bus. A rider's

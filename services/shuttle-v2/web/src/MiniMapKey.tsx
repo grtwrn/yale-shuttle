@@ -70,7 +70,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
       </tr>
       {pickupName && <tr><td colSpan={4} style={{ padding: '0 6px 4px', fontSize: 12 }}>
         <span id={`pickup-${option.routeLabel.replace(/\s/g, '-')}-${option.boardStopId}-${option.alightStopId}`} data-testid="pickup-choice-name" style={{ fontWeight: 600 }}>{pickupName}</span>
-        {option.pickupPreference && <span style={{ color: '#5f6368' }}> · {option.pickupPreference === 'less-walking' ? 'Less walking' : 'Arrive sooner'}</span>}
+        {option.pickupPreference && <span style={{ color: '#5f6368' }}> · {option.pickupPreference === 'closest-stop' ? 'Closest stop' : 'Arrive sooner'}</span>}
       </td></tr>}
       {warning && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
         <span role="note" data-testid="stop-skip-warning" style={{ display: 'block', padding: '4px 6px', borderRadius: 6,

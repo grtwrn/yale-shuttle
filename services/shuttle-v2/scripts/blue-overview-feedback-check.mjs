@@ -37,7 +37,7 @@ try{
  await blue.waitFor();await farther.waitFor();
  const nearRow=page.locator('tbody[data-route="Blue Day"][data-pickup="100"]');
  const farRow=page.locator('tbody[data-route="Blue Day"][data-pickup="129"]');
- assert.match(await nearRow.innerText(),/Less walking/);
+ assert.match(await nearRow.innerText(),/Closest stop/);
  assert.match(await nearRow.getByTestId('pickup-range').innerText(),/~21/);
  assert.match(await farRow.innerText(),/Arrive sooner/);
  assert.match(await farRow.getByTestId('pickup-range').innerText(),/~7/);
@@ -63,6 +63,6 @@ try{
  assert(await page.getByTitle('Walking directions to Whitney/Canner',{exact:true}).isVisible());
  await page.screenshot({path:out+'/blue-catchable-pickup.png',fullPage:true});
  assert.deepEqual(errors,[]);
- await fs.writeFile(out+'/browser-results.json',JSON.stringify({capturedAt:feed.capturedAt,viewport,visible:['Red','Walk','Blue Day'],pickupChoices:[{stop:100,name:'Prospect/Canner',preference:'Less walking',walkMin:2,nextBusMin:21},{stop:129,name:'Whitney/Canner',preference:'Arrive sooner',walkMin:8,nextBusMin:7}],directionsAndSelectionVerified:true,oldReminderCancelledOnPickupChange:true,pageErrors:errors,horizontalOverflow:false,originSource:feed.originSource},null,2));
+ await fs.writeFile(out+'/browser-results.json',JSON.stringify({capturedAt:feed.capturedAt,viewport,visible:['Red','Walk','Blue Day'],pickupChoices:[{stop:100,name:'Prospect/Canner',preference:'Closest stop',walkMin:2,nextBusMin:21},{stop:129,name:'Whitney/Canner',preference:'Arrive sooner',walkMin:8,nextBusMin:7}],directionsAndSelectionVerified:true,oldReminderCancelledOnPickupChange:true,pageErrors:errors,horizontalOverflow:false,originSource:feed.originSource},null,2));
 }finally{await ctx.close();await browser.close();}
 console.log('Reports #140/#141: closest Prospect/Canner and earlier Whitney/Canner pickups both visible, independently timed and selectable; directions stay pinned; changing pickup cancels its old reminder.');

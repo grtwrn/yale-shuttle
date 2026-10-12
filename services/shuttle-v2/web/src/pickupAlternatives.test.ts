@@ -37,4 +37,11 @@ describe('walking versus earlier-arriving pickups on one line', () => {
     expect(choice.boardStopId).toBe(100);
     expect(choice.pickupAlternatives).toBeUndefined();
   });
+  it('keeps the sensible exit at the close pickup instead of taking an extra lap to save a few steps', () => {
+    const extraLap = { ...close, alightStopId: 98, walkFromSec: 0, totalSec: close.totalSec + 900, rideSec: close.rideSec + 900 };
+    const choice = routePickupChoices([extraLap, farther, close]);
+    expect(choice.boardStopId).toBe(100);
+    expect(choice.alightStopId).toBe(97);
+    expect(choice.pickupAlternatives?.[0]?.boardStopId).toBe(129);
+  });
 });

@@ -85,14 +85,14 @@ describe('route option arrival times', () => {
   it('names two pickups on one line and selects the exact trip rather than just its route', () => {
     const select = vi.fn();
     const choices: TimingRow[] = [
-      { ...rows[0]!, option: { ...option, pickupPreference: 'less-walking' }, pickupName: 'Prospect/Canner' },
+      { ...rows[0]!, option: { ...option, pickupPreference: 'closest-stop' }, pickupName: 'Prospect/Canner' },
       { ...rows[0]!, option: { ...option, boardStopId: 129, pickupPreference: 'arrive-sooner' }, pickupName: 'Whitney/Canner' },
     ];
     const html = renderToStaticMarkup(<MiniMapKey rows={choices} destination="Union Station" onSelectOption={select} />);
     expect(html).toContain('aria-label="View Red trip details" aria-describedby="pickup-Red-48-121"');
     expect(html).toContain('id="pickup-Red-48-121"');
     expect(html).toContain('View Red trip details from Whitney/Canner');
-    expect(html).toContain('Less walking');
+    expect(html).toContain('Closest stop');
     expect(html).toContain('Arrive sooner');
     const body = elements(MiniMapKey({ rows: choices, destination: 'Union Station', onSelectOption: select }))
       .find(e => e.type === 'tbody' && e.props['data-pickup'] === 129)!;

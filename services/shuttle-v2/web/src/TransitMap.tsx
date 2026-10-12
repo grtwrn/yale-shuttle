@@ -4081,7 +4081,7 @@ const TripPlanner: FC<{
               });
             }
             const timingRows: TimingRow[] = _mapOpts.flatMap(o => detailOpen ? [o]
-              : [o, ...(o.pickupAlternatives ?? [])].sort((a, b) => a.walkToSec + a.walkFromSec - b.walkToSec - b.walkFromSec)).map(o => {
+              : [o, ...(o.pickupAlternatives ?? [])].sort((a, b) => a.walkToSec - b.walkToSec)).map(o => {
               const { shuttleCtx, boarding, boardingEtaLive, boardingNext, lastBus } = getTripTiming(o);
               return {
                 option: o,

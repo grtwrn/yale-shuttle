@@ -13,7 +13,7 @@
     {
       "stop": 100,
       "name": "Prospect/Canner",
-      "preference": "Less walking",
+      "preference": "Closest stop",
       "walkMin": 2,
       "nextBusMin": 21
     },
