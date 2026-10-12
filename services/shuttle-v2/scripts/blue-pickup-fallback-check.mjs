@@ -21,7 +21,7 @@ try {
       await seedTestId(ctx);
       await ctx.addInitScript(({from, to, now, protectedRoute}) => {
         localStorage.setItem('listView', 'trip');
-        sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({fromText: '517 Prospect Street', fromLL: from, toText: 'Rosenkranz Hall', toLL: to, tripTime: '', expandedKey: protectedRoute ? 'Blue Day' : null, savedAt: now}));
+        sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({fromText: '517 Prospect Street', fromLL: from, toText: 'Rosenkranz Hall', toLL: to, tripTime: '', expandedKey: null, savedAt: now}));
       }, {...snapshot, now, protectedRoute});
       const page = await ctx.newPage(); page.setDefaultTimeout(10_000);
       const errors = []; page.on('pageerror', e => errors.push(e.message));
@@ -37,9 +37,10 @@ try {
         catch { return route.fulfill({status: 404}); }
       });
       await page.goto('https://pickup.test');
-      if (protectedRoute) await page.getByTitle('Walking directions to Whitney/Canner', {exact: true}).waitFor();
-      else {
-        await page.getByRole('button', {name: 'View Blue Day trip details', exact: true}).waitFor();
+      await page.getByRole('button', {name: 'View Blue Day trip details', exact: true}).waitFor();
+      if (protectedRoute) {
+        await page.getByRole('button', {name: 'View Blue Day trip details from Whitney/Canner', exact: true}).click();
+        await page.getByTitle('Walking directions to Whitney/Canner', {exact: true}).waitFor();
       }
       feed.server_eta = later;
       await page.clock.runFor(5500);
@@ -55,4 +56,4 @@ try {
     } finally { await ctx.close(); }
   }
 } finally { await browser.close(); }
-console.log('Blue pickup fallback: route stays visible, unopened route recovers close pickup; watched route and opened fallback stay pinned.');
+console.log('Blue pickup choices: close pickup remains available across feed changes; explicitly selected farther pickup and opened close pickup stay pinned.');

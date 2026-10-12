@@ -28,6 +28,9 @@ export type TripOption = {
   /** Least total walking among this route's valid pickup/exit pairs. Used
    * only for overview visibility; the recommended pickup keeps its own walk. */
   routeWalkSec?: number;
+  /** A second pickup on the same line with a meaningful walking/arrival tradeoff. */
+  pickupAlternatives?: TripOption[];
+  pickupPreference?: 'less-walking' | 'arrive-sooner';
   directWalkSec: number;
   // True when the pinned bus has already gone past the board stop and
   // isn't catchable anymore. Set only while the rider is watching the
@@ -546,12 +549,8 @@ export function planTrip(
   // report #15: a 2-min ride wrapped in 29 min of walking totalled MORE
   // than the direct walk yet read like the top pick.
   const viable = options;
-  // Per-route pick: lowest total time, with one carve-out — among options
-  // whose totals are within ~3 min of the route's best, prefer the
-  // least total walking, then the shortest ride.
-  // The old pick minimized walk-to unconditionally, which ignored wait:
-  // report #3 saw a 43-min wait at the nearest stop chosen over boarding
-  // the same (resting) bus a 4-min walk away.
+  // Keep the least-walking trip, even when the next bus takes longer.
+  // A meaningfully earlier pickup remains a separate choice on the line.
   const byRoute = new Map<string, TripOption[]>();
   for (const o of viable) {
     const bucket = byRoute.get(o.routeLabel);
@@ -561,7 +560,7 @@ export function planTrip(
   const bestPerRoute = new Map<string, TripOption>();
   for (const [label, group] of byRoute) {
     bestPerRoute.set(label, {
-      ...bestRoutePickup(group),
+      ...routePickupChoices(group),
       routeWalkSec: Math.min(...group.map(o => o.walkToSec + o.walkFromSec)),
     });
   }
@@ -1020,4 +1019,26 @@ export function bestRoutePickup(group: readonly TripOption[]): TripOption {
   nearBest.sort((a, b) => (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
     || (a.plannedRideSec ?? a.rideSec) - (b.plannedRideSec ?? b.rideSec) || a.totalSec - b.totalSec);
   return nearBest[0]!;
+}
+
+/** Waiting for the next bus must not erase the trip with the least walking.
+ * Retain an earlier-arriving pickup when it saves at least three minutes,
+ * so a long wait at the close stop does not hide the faster alternative. */
+export function routePickupChoices(group: readonly TripOption[]): TripOption {
+  const leastWalking = [...group].sort((a, b) =>
+    (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
+    || a.walkToSec - b.walkToSec
+    || Number(!!a.departed) - Number(!!b.departed)
+    || a.totalSec - b.totalSec)[0]!;
+  const faster = bestRoutePickup(group);
+  const lessWalk = faster.walkToSec + faster.walkFromSec - leastWalking.walkToSec - leastWalking.walkFromSec;
+  if (faster.boardStopId === leastWalking.boardStopId || lessWalk < 60
+    || faster.departed || faster.etaUnavailable || faster.totalSec > leastWalking.totalSec - 180) return leastWalking;
+  return { ...leastWalking, pickupPreference: 'less-walking',
+    pickupAlternatives: [{ ...faster, pickupPreference: 'arrive-sooner' }] };
+}
+
+/** Option identity includes both ends of the ride, rather than just its line. */
+export function sameTripPickup(a: TripOption, b: TripOption): boolean {
+  return a.routeLabel === b.routeLabel && a.boardStopId === b.boardStopId && a.alightStopId === b.alightStopId;
 }

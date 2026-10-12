@@ -19,13 +19,17 @@ export interface TimingRow {
   note?: string;
   /** Full-width notice under the times, e.g. recent buses skipping the pickup (stopSkips.ts). */
   warning?: string;
+  pickupName?: string;
 }
 
 /** One route entry owns arrivals, journey legs, and navigation to its details. */
-export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
+export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSelectOption }: {
   rows: TimingRow[]; destination: string; departureMs?: number;
   onSelectRoute?: (routeLabel: string) => void;
+  onSelectOption?: (option: TripOption) => void;
 }) {
+  const canSelect = !!(onSelectOption || onSelectRoute);
+  const select = (option: TripOption) => onSelectOption ? onSelectOption(option) : onSelectRoute?.(option.routeLabel);
   return <table aria-label="Route arrival times" data-testid="route-timing-table"
     style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 12, color: '#374151', textAlign: 'left' }}>
     <colgroup><col style={{ width: '27%' }} /><col style={{ width: '26%' }} /><col style={{ width: '18%' }} /><col style={{ width: '29%' }} /></colgroup>
@@ -35,13 +39,15 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Next in</th>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500, textAlign: 'right' }}>Arrive at</th>
     </tr></thead>
-    {rows.map(({ option, pickup, status, note, warning }) => <tbody key={option.routeLabel} data-route={option.routeLabel}
-      onClick={onSelectRoute ? () => onSelectRoute(option.routeLabel) : undefined}
-      style={{ borderTop: '1px solid #eceff1', cursor: onSelectRoute ? 'pointer' : undefined }}>
+    {rows.map(({ option, pickup, status, note, warning, pickupName }) => <tbody
+      key={`${option.routeLabel}:${option.boardStopId}:${option.alightStopId}`} data-route={option.routeLabel} data-pickup={option.boardStopId}
+      onClick={canSelect ? () => select(option) : undefined}
+      style={{ borderTop: '1px solid #eceff1', cursor: canSelect ? 'pointer' : undefined }}>
       <tr>
         <th scope="row" style={{ padding: '0 6px', fontWeight: 650, color: option.mode === 'walk' ? '#5f6368' : option.color, overflowWrap: 'anywhere' }}>
-          {onSelectRoute ? <button type="button" aria-label={`View ${option.routeLabel} trip details`}
-            onClick={event => { event.stopPropagation(); onSelectRoute(option.routeLabel); }}
+          {canSelect ? <button type="button" aria-label={`View ${option.routeLabel} trip details${pickupName && option.pickupPreference === 'arrive-sooner' ? ` from ${pickupName}` : ''}`}
+            aria-describedby={pickupName ? `pickup-${option.routeLabel.replace(/\s/g, '-')}-${option.boardStopId}-${option.alightStopId}` : undefined}
+            onClick={event => { event.stopPropagation(); select(option); }}
             style={{ display: 'inline-block', width: '100%', minHeight: 44, padding: 0, border: 0, background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer', overflowWrap: 'anywhere' }}>
             <RoutePill option={option} />
           </button> : <RoutePill option={option} />}
@@ -62,6 +68,10 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
             : <DestinationArrival compact option={option} destination={destination} departureMs={departureMs} />}
         </td>
       </tr>
+      {pickupName && <tr><td colSpan={4} style={{ padding: '0 6px 4px', fontSize: 12 }}>
+        <span id={`pickup-${option.routeLabel.replace(/\s/g, '-')}-${option.boardStopId}-${option.alightStopId}`} data-testid="pickup-choice-name" style={{ fontWeight: 600 }}>{pickupName}</span>
+        {option.pickupPreference && <span style={{ color: '#5f6368' }}> · {option.pickupPreference === 'less-walking' ? 'Less walking' : 'Arrive sooner'}</span>}
+      </td></tr>}
       {warning && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
         <span role="note" data-testid="stop-skip-warning" style={{ display: 'block', padding: '4px 6px', borderRadius: 6,
           background: '#fff8e1', color: '#795000', fontSize: 12, lineHeight: '16px' }}>{warning}</span>
@@ -75,7 +85,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute }: {
               {option.walkFromSec > 0 && <><span aria-hidden="true">›</span><span style={{ whiteSpace: 'nowrap' }}>🚶 {fmtWalk(option.walkFromSec)}</span></>}
             </>}
           </span>
-          {onSelectRoute && <span aria-hidden="true" style={{ color: '#9aa0a6', fontSize: 16 }}>›</span>}
+          {canSelect && <span aria-hidden="true" style={{ color: '#9aa0a6', fontSize: 16 }}>›</span>}
         </div>
       </td></tr>
     </tbody>)}

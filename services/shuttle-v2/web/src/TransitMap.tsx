@@ -67,7 +67,7 @@ import {
   notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
-  boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
+  boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, sameTripPickup, type TripOption,
 } from "./planner";
 import { optionTier, stableTripOrder, type TripOrderState } from './tripRanking';
 import { anonIdHeader } from "./anonId";
@@ -2077,7 +2077,7 @@ const TripPlanner: FC<{
 
   // Choices are scoped to the initial plan. Once a fallback is selected it
   // remains the pickup when its card opens; opening cannot revert to the old stop.
-  const [pickupChoices, setPickupChoices] = useState<{ plan: TripOption[]; byRoute: Map<string, TripOption> } | null>(null);
+  const [pickupChoices, setPickupChoices] = useState<{ plan: TripOption[]; byRoute: Map<string, TripOption>; selectedByRider?: Set<string> } | null>(null);
 
   // Collapse the "show more" list whenever a new trip is planned.
   useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
@@ -2126,9 +2126,8 @@ const TripPlanner: FC<{
     // For future-mode (user picked a date >60s out) we can't refresh
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
-    if (isFutureMode) return stableOptions.map(o => ({ ...o, livePickupSelection: undefined }));
-    return stableOptions.map((initial) => {
-      const o = pickupChoices?.plan === stableOptions ? pickupChoices.byRoute.get(initial.routeLabel) ?? initial : initial;
+    const refreshOption = (o: TripOption): TripOption => {
+      if (isFutureMode) return { ...o, livePickupSelection: undefined };
       if (o.mode !== "shuttle") {
         // A live origin moves with the rider for both alternatives.
         const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
@@ -2243,6 +2242,13 @@ const TripPlanner: FC<{
         // range's low end cannot be built from a different bus's drive.
         busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, busBoardHops: boardHops(match, visits, o.boardStopId, o.alightStopId), computedAtMs: nowMs,
       };
+    };
+    return stableOptions.map(initial => {
+      const selected = pickupChoices?.plan === stableOptions ? pickupChoices.byRoute.get(initial.routeLabel) ?? initial : initial;
+      const alternatives = [initial, ...(initial.pickupAlternatives ?? [])]
+        .filter(o => !sameTripPickup(o, selected))
+        .map(o => refreshOption({ ...o, pickupAlternatives: undefined }));
+      return { ...refreshOption(selected), routeWalkSec: initial.routeWalkSec, pickupAlternatives: alternatives };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableOptions, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
@@ -2254,16 +2260,32 @@ const TripPlanner: FC<{
     const fresh = planTrip(from, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), liveAnchorStore);
     const replacements = options.flatMap(current => {
       const candidate = fresh.find(o => o.routeLabel === current.routeLabel);
-      const replacement = pickupFallback(current, candidate, expandedKey === current.routeLabel || reminder?.routeLabel === current.routeLabel);
+      const replacement = pickupFallback(current, candidate, expandedKey === current.routeLabel || reminder?.routeLabel === current.routeLabel
+        || (pickupChoices?.plan === stableOptions && !!pickupChoices.selectedByRider?.has(current.routeLabel)));
       return replacement ? [replacement] : [];
     });
     if (!replacements.length) return;
     setPickupChoices(prev => {
       const byRoute = new Map(prev?.plan === stableOptions ? prev.byRoute : []);
       for (const replacement of replacements) byRoute.set(replacement.routeLabel, replacement);
-      return { plan: stableOptions, byRoute };
+      return { plan: stableOptions, byRoute, selectedByRider: prev?.plan === stableOptions ? prev.selectedByRider : undefined };
     });
-  }, [options, stableOptions, etaFresh, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, effectiveFromLL, toLL, fromText, userLatLon, expandedKey, reminder]);
+  }, [options, stableOptions, etaFresh, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, effectiveFromLL, toLL, fromText, userLatLon, expandedKey, reminder, pickupChoices]);
+
+  const selectTripPickup = (o: TripOption) => {
+    if (!stableOptions) return;
+    setPickupChoices(prev => {
+      const byRoute = new Map(prev?.plan === stableOptions ? prev.byRoute : []);
+      const selectedByRider = new Set(prev?.plan === stableOptions ? prev.selectedByRider : []);
+      byRoute.set(o.routeLabel, o); selectedByRider.add(o.routeLabel);
+      return { plan: stableOptions, byRoute, selectedByRider };
+    });
+    if (reminder?.routeLabel === o.routeLabel
+      && (reminder.boardStopId !== o.boardStopId || reminder.alightStopId !== o.alightStopId)) {
+      setReminder(null); setReminderBanner(null);
+    }
+    setExpandedKey(o.routeLabel);
+  };
 
   // Origin and destination are the same place (report: setting one's own
   // location as the destination "gets confused"). Keyed on effectiveFromLL,
@@ -2711,7 +2733,19 @@ const TripPlanner: FC<{
           future: isFuture,
         })
       : null;
-    return { shuttleCtx, busEtaLive, nextArrLive, lastBus };
+    // "Board in" compares boarding opportunities. The detailed countdown
+    // can still follow an earlier bus the rider sees approaching the stop.
+    const selection = o.livePickupSelection;
+    const boarding = selection && selection.relation !== 'same-visit' && selection.boarding.source === 'forecast'
+      ? selection.boarding : undefined;
+    const boardingEtaLive = boarding && busEtaLive !== null
+      ? remainingSec(boarding.etaSec, selection!.selectedAtMs) : busEtaLive;
+    const boardingNext = boarding && boardingEtaLive !== null
+      ? nextArrivalAfterPinned(computeUpcomingArrivals([o.boardStopId], buses, routeStops, stopCoords,
+        segmentTimes, undefined, dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel),
+        boarding.busName, boardingEtaLive)
+      : nextArrLive;
+    return { shuttleCtx, busEtaLive, nextArrLive, lastBus, boarding, boardingEtaLive, boardingNext };
   };
   const timingCache = new Map<TripOption, ReturnType<typeof buildTripTiming>>();
   const getTripTiming = (o: TripOption) => {
@@ -4046,25 +4080,28 @@ const TripPlanner: FC<{
                   dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined),
               });
             }
-            const timingRows: TimingRow[] = _mapOpts.map(o => {
-              const { shuttleCtx, busEtaLive, nextArrLive, lastBus } = getTripTiming(o);
+            const timingRows: TimingRow[] = _mapOpts.flatMap(o => detailOpen ? [o]
+              : [o, ...(o.pickupAlternatives ?? [])].sort((a, b) => a.walkToSec + a.walkFromSec - b.walkToSec - b.walkFromSec)).map(o => {
+              const { shuttleCtx, boarding, boardingEtaLive, boardingNext, lastBus } = getTripTiming(o);
               return {
                 option: o,
-                pickup: busEtaLive !== null && !o.departed && !isFuture ? {
-                  routeLabel: o.routeLabel, busName: o.busName,
-                  etaSec: busEtaLive, lowSec: o.busLowSec, highSec: o.busHighSec,
-                  distributionSec: o.busDistribution, stopId: o.boardStopId,
-                  computedAtMs: o.computedAtMs, nextSec: nextArrLive?.eta,
-                  nextBusName: nextArrLive?.busName, stopsAway: shuttleCtx?.stopsAway,
+                pickupName: o.pickupPreference ? (stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`).replace(/\s*\/\s*/g, '/') : undefined,
+                pickup: boardingEtaLive !== null && !o.departed && !isFuture ? {
+                  routeLabel: o.routeLabel, busName: boarding?.busName ?? o.busName,
+                  etaSec: boardingEtaLive, lowSec: boarding?.lowSec ?? o.busLowSec, highSec: boarding?.highSec ?? o.busHighSec,
+                  distributionSec: boarding ? undefined : o.busDistribution, stopId: o.boardStopId,
+                  computedAtMs: boarding ? o.livePickupSelection?.selectedAtMs : o.computedAtMs, nextSec: boardingNext?.eta,
+                  nextBusName: boardingNext?.busName, stopsAway: boarding?.stopsAhead ?? shuttleCtx?.stopsAway,
                   // Standing at the pickup on the pass the countdown is pinned to,
                   // not at one it passed over for a later one (`rideApproach`).
-                  atPickup: !!shuttleCtx?.busMatch && shuttleCtx.stopsAway === 0
+                  atPickup: !boarding && !!shuttleCtx?.busMatch && shuttleCtx.stopsAway === 0
                     && observedAtStop(shuttleCtx.busMatch, o.boardStopId, stopCoords),
                   holdingAt: shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
                     ? stopNames[shuttleCtx.busMatch.at_stop_id] : undefined,
                 } : undefined,
                 status: o.mode === 'walk' ? '—' : o.departed ? 'Missed' : o.etaUnavailable ? 'Unavailable' : isFuture ? 'Scheduled' : 'Unavailable',
-                note: lastBus?.headline ?? (o.missedBus && !o.departed ? 'Showing next bus' : undefined),
+                note: lastBus?.headline ?? (boarding ? 'Next bus you can catch'
+                  : o.missedBus && !o.departed ? 'Showing next bus' : undefined),
                 // Live evidence about now, so never on a plan for later.
                 warning: o.mode === 'shuttle' && !isFuture && stopSkips
                   ? skipNotice(stopSkips, o.routeLabel, ROUTE_LISTS.find((c) => c.label === o.routeLabel)?.busRouteIds ?? [],
@@ -4074,7 +4111,7 @@ const TripPlanner: FC<{
             });
             const timingKey = <div data-testid="map-trip-panel">
               <MiniMapKey rows={timingRows} destination={toText}
-                onSelectRoute={detailOpen ? undefined : setExpandedKey}
+                onSelectOption={detailOpen ? undefined : selectTripPickup}
                 departureMs={isFuture ? targetDate?.getTime() : undefined} />
               {detailOpen && _mapOpts[0] && renderTripStops(_mapOpts[0])}
             </div>;
