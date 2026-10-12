@@ -11,13 +11,16 @@ Within the existing availability and walking-competitiveness tiers:
 
 The third-route visibility rule also uses planned travel duration, so wait/ETA jumps cannot flash it off screen. The separate class-time panel still checks full destination windows, catchability and feed freshness; unknown arrival windows cannot become an on-time recommendation.
 
-Both planners and the geographic fallback suppress routes unless they save at least two minutes of walking, scaled to 20% of the direct walk for trips shorter than ten minutes, and at least 10% for walks longer than twenty minutes. This is a rider preference, not a fitted prediction parameter. Within a route’s near-fastest boarding/alighting alternatives, minimize total walking, then riding.
+Both planners and the geographic fallback suppress routes unless they save at least two minutes of walking, scaled to 20% of the direct walk for trips shorter than ten minutes, and at least 10% for walks longer than twenty minutes. This is a rider preference, not a fitted prediction parameter. Each route keeps its closest boarding stop, with the existing near-fastest walking/ride tradeoff for its exit, even when the next bus has a longer wait. A different pickup that saves at least three minutes of arrival time, with a longer walk to the pickup, is offered as a separate choice on the same line.
 
 Overview visibility uses the least walking among a route's valid pickup/exit
-pairs. A bus passing the close pickup can make a farther catchable stop the
-fastest current plan; this no longer hides an otherwise useful route. The row
-still shows that selected pickup's actual walking and arrival estimates. Reports
-#140/#141 have a report-time feed regression and a 368-pixel browser check in
+pairs. The initial list shows both “Closest stop” and “Arrive sooner” pickup
+choices when they differ meaningfully, with stop names and independently
+refreshed boarding/destination times. “Board in” follows the bus the rider can
+catch; the detail countdown can still show an earlier passing bus. A rider's
+explicit pickup choice stays selected across live updates and returning to the
+list. Switching stops cancels a reminder armed for the old stop. Reports
+#140/#141 have a report-time feed regression and mobile/desktop browser checks in
 `services/shuttle-v2/scripts/blue-overview-feedback-check.mjs`.
 
 Validation includes mixed/overlapping destination windows, an overlap chain that would break a naive comparator, one-poll reversals and sustained improvements, immediate unavailable-route demotion, walking alternatives, changing live rides with fixed planned rides, and walking-saving boundaries. Full tests/typechecks/build and recorded Division/Prospect → Rosenkranz phone flows passed. A synthetic six-phase Red ETA sequence over recorded geometry verifies that estimates update without changing route order; it measures UI stability, not forecast accuracy.

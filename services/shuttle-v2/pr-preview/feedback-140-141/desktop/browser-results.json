@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-10-12T13:41:07.700Z",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "visible": [
+    "Red",
+    "Walk",
+    "Blue Day"
+  ],
+  "pickupChoices": [
+    {
+      "stop": 100,
+      "name": "Prospect/Canner",
+      "preference": "Closest stop",
+      "walkMin": 2,
+      "nextBusMin": 21
+    },
+    {
+      "stop": 129,
+      "name": "Whitney/Canner",
+      "preference": "Arrive sooner",
+      "walkMin": 8,
+      "nextBusMin": 7
+    }
+  ],
+  "directionsAndSelectionVerified": true,
+  "oldReminderCancelledOnPickupChange": true,
+  "pageErrors": [],
+  "horizontalOverflow": false,
+  "originSource": "517 Prospect coordinates from prior recorded corridor fixture; current reports do not record GPS origin"
+}

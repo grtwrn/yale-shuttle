@@ -339,8 +339,9 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
     // The key and expanded details use one shared timing calculation.
     expect(src.match(/const busEtaLive\b/g)?.length).toBe(1);
     expect(src.match(/= getTripTiming\(o\)/g)?.length).toBe(3);
-    // The tappable summary reads the same arrival, retaining the full bounds.
-    expect(src).toContain("etaSec: busEtaLive, lowSec: o.busLowSec, highSec: o.busHighSec");
+    // The comparison reads the boarding visit's point and full bounds;
+    // ordinary same-visit selections retain the countdown's own bounds.
+    expect(src).toContain("etaSec: boardingEtaLive, lowSec: boarding?.lowSec ?? o.busLowSec, highSec: boarding?.highSec ?? o.busHighSec");
     const key = readFileSync(new URL("./MiniMapKey.tsx", import.meta.url), "utf8");
     expect(key).toContain('<ArrivalDetails {...pickup} variant="table" />');
     // The BOARD row and Map tab countdown retain their shared formatter;

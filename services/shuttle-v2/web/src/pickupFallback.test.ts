@@ -41,7 +41,8 @@ function refreshFrozen(o: TripOption, buses: BusData[]) {
 
 describe('live pickup fallback: 517 Prospect to Rosenkranz (#134)', () => {
   it('keeps the farther pickup visible and replaces it when Prospect/Canner becomes catchable', () => {
-    const original = blue(plan(feed(true)));
+    const route = blue(plan(feed(true)));
+    const original = { ...route.pickupAlternatives![0]!, routeWalkSec: route.routeWalkSec };
     expect(original.boardStopId).toBe(129); // Whitney/Canner, 7-minute walk
     expect(worthwhileOverviewOption(original)).toBe(true);
     const buses = feed();
@@ -54,7 +55,7 @@ describe('live pickup fallback: 517 Prospect to Rosenkranz (#134)', () => {
   });
 
   it('preserves the pickup while the rider follows its card or reminder', () => {
-    const current = refreshFrozen(blue(plan(feed(true))), feed());
+    const current = refreshFrozen(blue(plan(feed(true))).pickupAlternatives![0]!, feed());
     const candidate = blue(plan(feed()));
     expect(pickupFallback(current, candidate, true)).toBeUndefined();
   });
@@ -66,7 +67,7 @@ describe('live pickup fallback: 517 Prospect to Rosenkranz (#134)', () => {
   });
 
   it('rejects an unreachable alternative and small ETA fluctuations', () => {
-    const current = refreshFrozen(blue(plan(feed(true))), feed());
+    const current = refreshFrozen(blue(plan(feed(true))).pickupAlternatives![0]!, feed());
     const candidate = blue(plan(feed()));
     expect(pickupFallback(current, { ...candidate, departed: true })).toBeUndefined();
     expect(pickupFallback(current, { ...candidate, totalSec: current.totalSec + 240 })).toBeUndefined();
