@@ -5,6 +5,15 @@ import path from 'node:path';
 import { loadCheckpoint, restoreCheckpoint, saveCheckpoint } from './checkpoint.mjs';
 let dir;
 afterEach(async () => { if (dir) await fs.rm(dir, { recursive: true, force: true }); dir = undefined; });
+test('a failed browser preserves the last valid state for the same journey', async () => {
+  dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shuttle-resume-'));
+  const run = { id: '123', phase: 'riding' }, state = { local: { 'shuttle-boarded-ride': 'saved' }, session: {} };
+  await saveCheckpoint(dir, { evaluate: async () => state }, run);
+  await saveCheckpoint(dir, { evaluate: async () => { throw Error('Browser disconnected'); } }, run);
+  expect((await loadCheckpoint(dir)).browserState).toEqual(state);
+  await saveCheckpoint(dir, { evaluate: async () => { throw Error('Browser disconnected'); } }, { id: 'next' });
+  expect((await loadCheckpoint(dir)).browserState).toBeUndefined();
+});
 test('checkpoint preserves the ride and restores browser state once, without resurrecting it on a new journey', async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shuttle-resume-'));
   const run = { id: '123', phase: 'riding', busName: '#48', line: { label: 'Blue Day', busRouteIds: [1] },

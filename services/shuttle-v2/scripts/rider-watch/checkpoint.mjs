@@ -10,8 +10,11 @@ export async function saveCheckpoint(root, page, run, lastPosition) {
       session: { 'shuttle-trip-draft': sessionStorage.getItem('shuttle-trip-draft') },
     }));
   } catch { /* The run can still be closed or restored if its browser failed. */ }
-  await atomicJson(path.join(root, 'resume.json'), { version: 1, savedAt: Date.now(), run, lastPosition,
-    browserState: browserState && typeof browserState === 'object' ? browserState : undefined });
+  if (!browserState?.local || !browserState?.session) {
+    const previous = await readJson(path.join(root, 'resume.json'), null);
+    browserState = run?.id && previous?.run?.id === run.id ? previous.browserState : undefined;
+  }
+  await atomicJson(path.join(root, 'resume.json'), { version: 1, savedAt: Date.now(), run, lastPosition, browserState });
 }
 export async function loadCheckpoint(root, now = Date.now()) {
   const saved = await readJson(path.join(root, 'resume.json'), null);
