@@ -1,0 +1,63 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { DAY, MiB, atomicJson, readJson } from './storage.mjs';
+
+const hour = ms => new Date(ms).toISOString().slice(0, 13).replace('T', '-');
+const feedHour = name => /^feed-(\d{4}-\d{2}-\d{2}-\d{2})-\d+\.jsonl\.gz$/.exec(name)?.[1];
+function midnight(day) {
+  for (const h of [4, 5]) {
+    const ms = Date.parse(`${day}T0${h}:00:00Z`);
+    if (new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms) === day) return ms;
+  }
+  throw Error('Invalid calibration date');
+}
+export async function maintainLearning(root, { now = Date.now(), dryRun = false,
+  closedMaxBytes = 256 * MiB, closedMaxAgeMs = 7 * DAY } = {}) {
+  const state = await readJson(path.join(root, 'state.json'), null);
+  if (!state || !/^cycle-\d+$/.test(state.id)) return { skipped: 'No valid current cycle; no evaluation evidence deleted' };
+  const retainedHours = new Set([hour(now), hour(now - 3600000)]);
+  for (const p of Object.values(state.pending ?? {})) if (!p.closed && Number.isFinite(p.at)) retainedHours.add(hour(p.at));
+  for (const v of Object.values(state.visits ?? {})) if (Number.isFinite(v.candidate?.receivedAt)) retainedHours.add(hour(v.candidate.receivedAt));
+  // Forecasts only exist from the first calibration date. Preserve the
+  // boundary hour too, plus candidate/pending receipts and the open writer.
+  const warmingCutoff = state.calibrationDays?.[0] ? midnight(state.calibrationDays[0]) - 47 * 60000 : null;
+  const closed = [], warming = [];
+  let activeBytes = 0;
+  for (const entry of await fs.readdir(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !/^cycle-\d+$/.test(entry.name)) continue;
+    const directory = path.join(root, entry.name);
+    const frozen = await readJson(path.join(directory, 'frozen-candidate.json'), null);
+    const championEvidence = frozen && state.champion?.version === `prospective-${frozen.startedAt}`;
+    for (const file of await fs.readdir(directory, { withFileTypes: true })) {
+      const h = feedHour(file.name); if (!file.isFile() || !h) continue;
+      const name = path.join(directory, file.name), stat = await fs.stat(name);
+      const item = { file: name, bytes: stat.size, cycle: entry.name, time: Number(entry.name.slice(6)), reason: 'superseded-cycle' };
+      if (entry.name !== state.id && !championEvidence) closed.push(item);
+      else {
+        activeBytes += stat.size;
+        const end = Date.parse(h.slice(0, 10) + 'T' + h.slice(11) + ':00:00Z') + 3600000;
+        if (entry.name === state.id && warmingCutoff !== null && end < warmingCutoff
+          && !retainedHours.has(h) && stat.mtimeMs < now - 60000) warming.push({ ...item, reason: 'unreferenced-warming-input' });
+      }
+    }
+  }
+  closed.sort((a, b) => a.time - b.time || a.file.localeCompare(b.file));
+  let closedBytes = closed.reduce((sum, item) => sum + item.bytes, 0);
+  const removed = [...warming];
+  for (const item of closed) {
+    if (item.time >= now - closedMaxAgeMs && closedBytes <= closedMaxBytes) continue;
+    removed.push(item); closedBytes -= item.bytes;
+  }
+  // Recheck the cycle before removing anything. A concurrent cycle transition
+  // cannot authorize deleting the new trial's input files.
+  const current = await readJson(path.join(root, 'state.json'), null);
+  if (current?.id !== state.id) return { skipped: 'Cycle changed during retention planning' };
+  if (!dryRun) for (const item of removed) await fs.unlink(item.file);
+  const result = { updatedAt: new Date(now).toISOString(), activeCycle: state.id, dryRun,
+    deletedFiles: removed.length, freedBytes: removed.reduce((sum, item) => sum + item.bytes, 0),
+    protectedInputBytes: activeBytes - warming.reduce((sum, item) => sum + item.bytes, 0),
+    retainedSupersededBytes: closedBytes,
+    removed: removed.map(item => ({ ...item, file: path.relative(root, item.file) })) };
+  if (!dryRun) await atomicJson(path.join(root, 'retention.json'), result);
+  return result;
+}

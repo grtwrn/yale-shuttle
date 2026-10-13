@@ -19,7 +19,7 @@ does not deploy changes or submit rider reports.
 
 For a detached run, use a process supervisor; redirect stdout/stderr to
 `scripts/watcher.log`. The watcher PID is saved in the artifact directory as
-`watcher.pid`. The browser restarts after a transport failure. On the team Mac
+`watcher.pid`. The browser restarts after a transport failure. Journey and tester browser state are checkpointed in `resume.json`; a recent checkpoint restores the journey as a diagnostic continuation excluded from accuracy scoring. On the team Mac
 it runs under the launchd agent `com.grtwrn.yale-shuttle-rider` (KeepAlive,
 starts at login); stop it with `launchctl bootout gui/$(id -u)/com.grtwrn.yale-shuttle-rider`
 rather than killing the PID, which launchd would restart.
@@ -65,6 +65,6 @@ September 11 fixes:
 - West Haven Train Station resolves as West Haven Station. Use the normal Enter action and verify saved destination coordinates within 80 m, rather than wait for an exact alias that is absent. A distant result fails the run instead of silently testing the wrong destination.
 - Invalid/ambiguous stop labels skip boarding and mark accuracy excluded; no stale previous stop ID is reused. A changed board stop restarts walking. Hot handovers are marked excluded, and listener cleanup removes old callbacks.
 
-Raw records remain unchanged. Output records identify `instrumentVersion: inputs-v2`, invalid stop samples and handovers. This is GPS-correlated simulation, not independent physical ground truth. Existing 200 MiB per-runner image caps remain; the two-role supervisor plus legacy gallery stays below the user's 2 GB limit.
+Raw records remain unchanged. Output records identify `instrumentVersion: inputs-v2`, invalid stop samples and handovers. This is GPS-correlated simulation, not independent physical ground truth. Screenshots now use rolling seven-day/256 MiB retention per rider, with current-journey and explicit evidence pins protected. Samples, event logs and journey summaries rotate by size and age. See [storage policy](../retention/README.md).
 
 Run `npm test -- scripts/rider-watch/inputs.test.mjs`. Live browser verification is recorded separately in the QA workspace. Local release copies only rewrite the two canary import paths for the companion watcher directory. No application bundle, estimator or service deployment is changed.
