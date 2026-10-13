@@ -119,11 +119,6 @@ export function saveImage(root, item, buffer, activeRunId, status) {
 async function rotateLog(root, kind, policy, incomingBytes, now, dryRun) {
   const file = path.join(root, `${kind}.jsonl`);
   const stat = await fs.stat(file).catch(e => { if (e.code === 'ENOENT') return null; throw e; });
-  if (stat?.size && stat.size + incomingBytes > policy.chunkBytes && !dryRun) {
-    let stamp = now;
-    while (await fs.stat(path.join(root, `${kind}-${stamp}.jsonl`)).then(() => true, e => { if (e.code === 'ENOENT') return false; throw e; })) stamp++;
-    await fs.rename(file, path.join(root, `${kind}-${stamp}.jsonl`));
-  }
   const archives = [];
   for (const entry of await fs.readdir(root, { withFileTypes: true })) {
     const match = new RegExp(`^${kind}-(\\d+)\\.jsonl$`).exec(entry.name);
@@ -131,6 +126,12 @@ async function rotateLog(root, kind, policy, incomingBytes, now, dryRun) {
       const info = await fs.stat(path.join(root, entry.name));
       archives.push({ name: entry.name, time: Number(match[1]), size: info.size });
     }
+  }
+  if (stat?.size && stat.size + incomingBytes > policy.chunkBytes && !dryRun) {
+    const stamp = Math.max(now, ...archives.map(item => item.time + 1));
+    const name = `${kind}-${stamp}.jsonl`;
+    await fs.rename(file, path.join(root, name));
+    archives.push({ name, time: stamp, size: stat.size });
   }
   archives.sort((a, b) => b.time - a.time);
   let freedBytes = 0, deletedFiles = 0;

@@ -10,6 +10,8 @@ export async function rotateOutput(file, { maxBytes = 10 * MiB, maxBackups = 3, 
   const stat = await fs.stat(file).catch(e => { if (e.code === 'ENOENT') return null; throw e; });
   if (!stat || stat.size <= maxBytes) return { file, freedBytes: 0 };
   if (dryRun) return { file, wouldRotateBytes: stat.size };
+  const dir = path.dirname(file), prefix = path.basename(file) + '.';
+  const archives = (await fs.readdir(dir)).filter(n => n.startsWith(prefix) && /^\d+\.gz$/.test(n.slice(prefix.length)));
   // launchd opens these logs with O_APPEND. Copy/truncate retains its open
   // descriptor; renaming would leave the service writing the retired inode.
   const handle = await fs.open(file, 'r+');
@@ -17,13 +19,13 @@ export async function rotateOutput(file, { maxBytes = 10 * MiB, maxBackups = 3, 
   try {
     const buffer = Buffer.alloc(Math.min(stat.size, maxBytes));
     await handle.read(buffer, 0, buffer.length, stat.size - buffer.length);
-    let stamp = Date.now();
-    while (await fs.stat(`${file}.${stamp}.gz`).then(() => true, e => { if (e.code === 'ENOENT') return false; throw e; })) stamp++;
-    await fs.writeFile(`${file}.${stamp}.gz`, zlib.gzipSync(buffer), { flag: 'wx' });
+    const stamp = Math.max(Date.now(), ...archives.map(name => Number(name.slice(prefix.length, -3)) + 1));
+    const name = `${path.basename(file)}.${stamp}.gz`;
+    await fs.writeFile(path.join(dir, name), zlib.gzipSync(buffer), { flag: 'wx' });
+    archives.push(name);
     await handle.truncate(0); keptBytes = buffer.length;
   } finally { await handle.close(); }
-  const dir = path.dirname(file), prefix = path.basename(file) + '.';
-  const archives = (await fs.readdir(dir)).filter(n => n.startsWith(prefix) && /\.\d+\.gz$/.test(n)).sort();
+  archives.sort((a, b) => Number(a.slice(prefix.length, -3)) - Number(b.slice(prefix.length, -3)));
   for (const name of archives.slice(0, Math.max(0, archives.length - maxBackups))) await fs.unlink(path.join(dir, name));
   return { file, freedBytes: stat.size, archivedTailBytes: keptBytes };
 }

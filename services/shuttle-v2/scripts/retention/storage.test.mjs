@@ -1,13 +1,14 @@
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { DAY, appendRolling, maintainImages, saveImage, atomicJson, withStorageLock } from './storage.mjs';
 import { maintainLearning } from './learning.mjs';
 import { rotateOutput } from './maintain.mjs';
 const roots = [];
 async function root() { const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shuttle-retention-')); roots.push(dir); return dir; }
-afterEach(async () => { for (const dir of roots.splice(0)) await fs.rm(dir, { recursive: true, force: true }); });
+afterEach(async () => { vi.useRealTimers(); for (const dir of roots.splice(0)) await fs.rm(dir, { recursive: true, force: true }); });
 async function image(dir, name, at, runId, bytes = 8) {
   await fs.mkdir(path.join(dir, 'images'), { recursive: true });
   await fs.writeFile(path.join(dir, 'images', name), Buffer.alloc(bytes));
@@ -48,6 +49,8 @@ test('metadata recovers an image left by an interrupted write and repeated names
   expect(await fs.readFile(path.join(dir, 'images/orphan-2.jpg'), 'utf8')).toBe('next');
 });
 test('JSON logs retain the configured number of chunks and keep complete rows', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-13T20:00:00Z'));
   const dir = await root(); await atomicJson(path.join(dir, 'storage-policy.json'), { samples: { chunkBytes: 20, maxFiles: 3 } });
   for (let i = 0; i < 12; i++) await appendRolling(dir, 'samples', { i, text: 'sample' });
   const files = (await fs.readdir(dir)).filter(n => /^samples(?:-\d+)?\.jsonl$/.test(n));
@@ -62,12 +65,16 @@ test('an interrupted lock creation does not permanently stop capture', async () 
   expect(await fs.stat(file).catch(e => e.code)).toBe('ENOENT');
 });
 test('output rotation keeps an append writer usable and bounds compressed backups', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-13T20:00:00Z'));
   const dir = await root(), file = path.join(dir, 'watcher.log');
   const writer = await fs.open(file, 'a');
   try {
-    for (let i = 0; i < 4; i++) { await writer.write('a'.repeat(64)); await rotateOutput(file, { maxBytes: 32, maxBackups: 2 }); }
+    for (let i = 0; i < 4; i++) { await writer.write(String(i).repeat(64)); await rotateOutput(file, { maxBytes: 32, maxBackups: 2 }); }
     await writer.write('live'); expect(await fs.readFile(file, 'utf8')).toBe('live');
-    expect((await fs.readdir(dir)).filter(n => n.endsWith('.gz'))).toHaveLength(2);
+    const backups = (await fs.readdir(dir)).filter(n => n.endsWith('.gz')).sort();
+    expect(backups).toHaveLength(2);
+    expect(await Promise.all(backups.map(async name => zlib.gunzipSync(await fs.readFile(path.join(dir, name))).toString()))).toEqual(['2'.repeat(32), '3'.repeat(32)]);
   } finally { await writer.close(); }
 });
 test('learning cleanup preserves active calibration, pending/candidate receipts and current champion evidence', async () => {
