@@ -17,7 +17,9 @@ export async function rotateOutput(file, { maxBytes = 10 * MiB, maxBackups = 3, 
   try {
     const buffer = Buffer.alloc(Math.min(stat.size, maxBytes));
     await handle.read(buffer, 0, buffer.length, stat.size - buffer.length);
-    await fs.writeFile(`${file}.${Date.now()}.gz`, zlib.gzipSync(buffer), { flag: 'wx' });
+    let stamp = Date.now();
+    while (await fs.stat(`${file}.${stamp}.gz`).then(() => true, e => { if (e.code === 'ENOENT') return false; throw e; })) stamp++;
+    await fs.writeFile(`${file}.${stamp}.gz`, zlib.gzipSync(buffer), { flag: 'wx' });
     await handle.truncate(0); keptBytes = buffer.length;
   } finally { await handle.close(); }
   const dir = path.dirname(file), prefix = path.basename(file) + '.';
