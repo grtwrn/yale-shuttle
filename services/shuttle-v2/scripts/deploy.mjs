@@ -225,6 +225,7 @@ run("stop-count notification browser regression", "node", ["scripts/stop-alert-c
 run("map pause wording browser regression", "node", ["scripts/map-pause-label-check.mjs"], { env: { ...process.env, OUT: path.join(stageDir, "map-pause-labels") } });
 run("Blue pickup transition browser regression", "node", ["scripts/blue-pickup-fallback-check.mjs"]);
 run("feedback attachment browser regression", "node", ["scripts/feedback-accessibility-check.mjs"]);
+run("individual bus reporting browser regression", "node", ["scripts/bus-reporting-check.mjs"], { env: { ...process.env, BOT_OUT: path.join(stageDir, "bus-reporting") } });
 killStaging();
 
 if (STAGE_ONLY) {

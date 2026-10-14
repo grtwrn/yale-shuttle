@@ -1,0 +1,46 @@
+.bus-reporting-alerts {
+  position: fixed;
+  bottom: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 12px;
+  right: 12px;
+  z-index: 3100;
+  max-width: 536px;
+  max-height: 40vh;
+  overflow-y: auto;
+  margin: 0 auto;
+  display: grid;
+  gap: 8px;
+}
+.bus-reporting-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 6px 10px 14px;
+  border: 1px solid #d6a849;
+  border-radius: 12px;
+  background: #fff4d6;
+  color: #634600;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.bus-reporting-notice.returned {
+  background: #e8f5e9;
+  color: #245529;
+  border-color: #81b88a;
+}
+.bus-reporting-notice > div { flex: 1; min-width: 0; }
+.bus-reporting-notice p { margin: 4px 0 0; }
+.bus-reporting-notice button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 24px;
+  cursor: pointer;
+  color: inherit;
+  border: none;
+  background: transparent;
+}
+.bus-reporting-notice button:focus-visible { outline: 2px solid currentColor; border-radius: 6px; }
+html[data-android-compact] .bus-reporting-notice button { min-width: 52px; min-height: 52px; }
