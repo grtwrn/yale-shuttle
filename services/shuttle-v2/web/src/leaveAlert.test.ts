@@ -130,7 +130,7 @@ describe('live reminder boarding identity and feed age', () => {
 
   it('uses the actual trip bus instead of spending its final ping on an uncatchable countdown bus', () => {
     const s = liveReminderInput([option()], 'Red', context())!;
-    expect(s).toMatchObject({ busName: '309', busEtaSec: 300, busLowSec: 280, busHighSec: 380, computedAtMs: NOW });
+    expect(s).toMatchObject({ busName: '309', busEtaSec: 300, busLowSec: 280, busHighSec: 380, stopsAhead: 4, computedAtMs: NOW });
     expect(secUntilLeave(s)).toBe(110);
     expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe('heads_up');
     expect(leaveAlertMessage('heads_up', 'Red', s)).toContain('Red #309 could arrive in 4–7 min');

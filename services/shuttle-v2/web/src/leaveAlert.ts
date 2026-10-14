@@ -39,6 +39,8 @@ export type LeaveAlertInput = {
   busName?: string;
   laterVisit?: boolean;
   atPickup?: boolean;
+  /** Stops to the same selected boarding visit, not the countdown bus. */
+  stopsAhead?: number;
   /** When busEtaSec was computed (ms epoch); undefined = treat as fresh. */
   computedAtMs?: number;
   /** Rider's walk to the board stop, seconds. */
@@ -58,7 +60,7 @@ export const NO_PINGS_FIRED: FiredPings = { headsUp: false, leaveNow: false };
  * A missing/invalid/expired window uses the point countdown. Never schedule a
  * reminder later than that point, even if inconsistent bounds reach the UI.
  */
-function reminderArrival(s: LeaveAlertInput): { sec: number; window: string | null } {
+export function reminderArrival(s: LeaveAlertInput): { sec: number; window: string | null } {
   const point = remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs);
   const window = predictionWindow(s.busLowSec, s.busHighSec, s.computedAtMs, s.nowMs);
   if (!window || window.lowSec > point) return { sec: point, window: null };
@@ -106,6 +108,14 @@ export function markFired(fired: FiredPings, ping: LeavePing): FiredPings {
 /** Prefix added to a ping when rain is likely — grab a jacket on the way out. */
 export const RAIN_PREFIX = "🌧 Rain likely — ";
 
+export function reminderArrivalDescription(routeLabel: string, s: LeaveAlertInput): string {
+  const arrival = reminderArrival(s);
+  const bus = s.busName ? `${routeLabel} #${s.busName.replace(/^#/, '')}` : routeLabel;
+  return s.atPickup ? `${bus} is at your stop`
+    : arrival.window ? `${bus} could ${s.laterVisit ? 'return' : 'arrive'} in ${arrival.window}`
+    : `${bus}${s.laterVisit ? ' returns' : ''} in ${fmtMin(arrival.sec)}`;
+}
+
 /**
  * The exact rider-facing strings ("min" spelling per project convention):
  *   heads_up:  "Blue Day in 8 min — leave in 5 min"
@@ -121,12 +131,8 @@ export function leaveAlertMessage(
   s: LeaveAlertInput,
   rainLikely = false,
 ): string {
-  const arrival = reminderArrival(s);
   const prefix = rainLikely ? RAIN_PREFIX : "";
-  const bus = s.busName ? `${routeLabel} #${s.busName.replace(/^#/, '')}` : routeLabel;
-  const description = s.atPickup ? `${bus} is at your stop`
-    : arrival.window ? `${bus} could ${s.laterVisit ? 'return' : 'arrive'} in ${arrival.window}`
-    : `${bus}${s.laterVisit ? ' returns' : ''} in ${fmtMin(arrival.sec)}`;
+  const description = reminderArrivalDescription(routeLabel, s);
   if (ping === "heads_up") {
     const until = Math.max(0, secUntilLeave(s));
     return `${prefix}${description} — leave in ${fmtMin(until)}`;
@@ -198,6 +204,7 @@ export function liveReminderInput(
     busHighSec: board.source === 'forecast' ? board.highSec : 0,
     busName: board.busName.replace(/^#/, ''), laterVisit: selected.relation === 'same-bus-later-visit',
     atPickup: board.source === 'raw-at-stop',
+    stopsAhead: board.source === 'forecast' ? board.stopsAhead : 0,
     computedAtMs: selected.selectedAtMs, walkToSec: o.walkToSec, nowMs };
 }
 
