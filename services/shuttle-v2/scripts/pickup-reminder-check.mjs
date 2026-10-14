@@ -12,9 +12,11 @@ await fs.mkdir(out, { recursive: true });
 const report = { base, scope: 'Actual SPA with intercepted fixture APIs and notification delivery; no production writes or ETA accuracy claim', runs: [], errors: [] };
 const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH ?? '/usr/bin/chromium', headless: true });
 try {
-  for (const width of [320, 390, 1280]) {
+  for (const width of [307, 320, 390, 1280]) {
     const feed = structuredClone(original), now = feed.server_eta.servedAt;
-    const ctx = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 600, hasTouch: width < 600, timezoneId: 'America/New_York', serviceWorkers: 'block' });
+    const ctx = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 600, hasTouch: width < 600,
+      ...(width === 307 ? { userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36' } : {}),
+      timezoneId: 'America/New_York', serviceWorkers: 'block' });
     try {
       await seedTestId(ctx);
       await ctx.addInitScript(({ feed, now }) => {
@@ -53,6 +55,7 @@ try {
       const mode = settings.getByLabel('Reminder timing', { exact: true });
       assert(await mode.evaluate(el => el === document.activeElement));
       const minutes = () => settings.getByLabel('Minutes before pickup', { exact: true });
+      assert.deepEqual(await minutes().locator('option').evaluateAll(es => es.map(e => e.value)), ['1', '3', '5', '10', '15']);
       await minutes().selectOption('1');
       assert.match(await settings.innerText(), /may be too late to walk/);
       await minutes().selectOption('10');
@@ -64,6 +67,7 @@ try {
       await page.keyboard.press('Escape'); assert.equal(await settings.count(), 0);
       assert(await trigger.evaluate(el => el === document.activeElement), 'Escape restores focus');
       await trigger.click(); await mode.selectOption('stops');
+      assert.deepEqual(await settings.getByLabel('Stops before pickup', { exact: true }).locator('option').evaluateAll(es => es.map(e => e.value)), ['1', '2', '3', '4', '5']);
       await settings.getByLabel('Stops before pickup', { exact: true }).selectOption('3');
       await settings.screenshot({ path: `${out}/stops-${width}.png` });
       await settings.getByRole('button', { name: 'Set reminder', exact: true }).click();
@@ -95,7 +99,7 @@ try {
       assert.equal(await armed.count(), 0, 'custom reminder completes after its one ping');
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await page.screenshot({ path: `${out}/fired-${width}.png`, fullPage: true });
-      report.runs.push({ width, settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false });
+      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false });
     } catch (error) {
       const page = ctx.pages()[0];
       report.failure = { width, message: error.message, body: await page.locator('body').ariaSnapshot().catch(() => null) };

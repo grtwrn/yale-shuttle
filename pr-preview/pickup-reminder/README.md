@@ -8,6 +8,6 @@ Custom reminders fire once from the selected boarding visit’s live ETA window 
 
 ![Stops before pickup on a small phone](stops-small-phone.png)
 
-The built-SPA check covers 320, 390 and 1280 px, keyboard focus, notification permission only on Set reminder, editing and cancelling, once-only delivery, and the earlier passing bus being ignored. Requests and notification delivery are intercepted; this establishes UI/timing behavior and makes no native push or ETA accuracy claim. Results: [browser-results.json](browser-results.json).
+The built-SPA check covers 307 px with compact Android layout, plus 320, 390 and 1280 px, keyboard focus, notification permission only on Set reminder, editing and cancelling, once-only delivery, and the earlier passing bus being ignored. Requests and notification delivery are intercepted; this establishes UI/timing behavior and makes no native push or ETA accuracy claim. Results: [browser-results.json](browser-results.json).
 
 Run from `services/shuttle-v2` after building: `BOT_CHROMIUM_PATH=/path/to/chromium node scripts/pickup-reminder-check.mjs`. Set `BOT_BASE_URL=https://yale-shuttle.fly.dev` to exercise production assets with the same intercepted fixture APIs.

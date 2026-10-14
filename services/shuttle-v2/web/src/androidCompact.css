@@ -9,7 +9,7 @@ html[data-android-compact] #root > div {
 
 /* 52 layout pixels retain a 44-pixel tap target at the smaller density. */
 html[data-android-compact] :is(
-  .trip-action-button, .trip-actions button, .trip-map-wrap button,
+  .trip-action-button, .trip-actions button, .trip-actions select, .trip-map-wrap button,
   #trip-from, #trip-to, input[type="datetime-local"]
 ) {
   min-height: 52px !important;
