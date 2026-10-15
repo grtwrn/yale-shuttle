@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { registerRoutePaths } from './anchor';
-import { attachServerEta, serverTrack, type ServerEtaWire } from './etaSource';
+import { attachServerEta, serverArrivals, serverTrack, type ServerEtaWire } from './etaSource';
 import { anchorIndexOnList } from './liveAnchor';
 import { ROUTE_LISTS, mergedRouteStops } from './routes';
 import fixture from './__fixtures__/folded-standing-display.json';
 import type { BusData } from './map-data';
+import { nextRouteStop } from './nextRouteStop';
 
 afterEach(() => registerRoutePaths(null));
 describe.each(fixture)('confirmed folded-line stand at $receivedAt', capture => {
@@ -31,6 +32,15 @@ describe.each(fixture)('confirmed folded-line stand at $receivedAt', capture => 
     expect(anchorIndexOnList(bus, cfg, feed.routes, feed.stop_coords, canonical, now)).toBe(oldIndex);
     expect(anchorIndexOnList(bus, cfg, feed.routes, feed.stop_coords, canonical, now, undefined, true)).toBe(track.travel);
     expect(serverTrack(bus, cfg.label, now)).toEqual(track);
+  });
+  it('marks the next actual call rather than the next de-duplicated row', () => {
+    const { feed, bus, cfg, display, canonical, now } = setup();
+    const arrivals = serverArrivals(feed.buses, display, now)!;
+    // Green is outbound from 800 to 600; Purple returns from 600 to 750.
+    const next = bus.route_id === 9 ? 23 : 24;
+    expect(nextRouteStop(arrivals, cfg.label, bus.bus_name, bus.at_stop_id!, canonical)).toBe(next);
+    expect(nextRouteStop(arrivals, cfg.label, '#other', bus.at_stop_id!, canonical)).toBeNull();
+    expect(nextRouteStop(arrivals, 'Other line', bus.bus_name, bus.at_stop_id!, canonical)).toBeNull();
   });
   it.each(['moving', 'distant', 'approach', 'expired'])('does not override an unconfirmed %s stand', reason => {
     const { feed, bus, cfg, canonical, display, now } = setup();

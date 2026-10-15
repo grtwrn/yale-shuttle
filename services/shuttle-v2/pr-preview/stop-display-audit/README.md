@@ -8,6 +8,11 @@ the earlier fix had deliberately preserved the outbound/return occurrence.
 The overview's list contains each physical stop once, so a confirmed stand can
 place its badge correctly without choosing the pass. Internal canonical/travel
 indices remain unchanged for their pass-specific pickup and get-off counts.
+The overview's NEXT badge also used that de-duplicated row order: Purple
+returning from Building 600 showed Building 400 as NEXT beside its next-lap
+forecast, although Building 750 was the next call. Folded lines now take NEXT
+from that bus's forecast call order, excluding the current physical stop;
+simple loops retain their published next stop.
 The two new recorded Green/Purple tests fail on the previous release and pass
 with this change. Their moving, distant, approach and expired cases preserve
 the old safeguards.
@@ -19,18 +24,20 @@ minute snapshots, 7,360 bus observations). Under the previous release's code,
 96 snapshot/bus combinations placed a confirmed stopped Green/Purple bus on a
 different physical row. After the change, all 2,984 eligible stand-position
 checks pass. All 60,431 pickup and 60,431 exit count checks on lines with no
-repeated calls also pass. Folded-line counts are explicitly excluded from this
+repeated calls also pass, along with 2,349 NEXT checks on those lines.
+Folded-line counts are explicitly excluded from this
 physical-only count oracle (635 stand observations); existing recorded
 Green/Purple pass-specific suites remain the direction checks.
 
 - [Previous-release replay](recorded-before.json)
 - [Fixed replay](recorded-after.json)
 - [Actual SPA results](results.json): Green/Purple, 307px Android, 390px phone,
-  1280px desktop; badge and pause chip on the confirmed stop, no horizontal overflow
+  1280px desktop; badge and pause chip on the confirmed stop, correct NEXT call,
+  no horizontal overflow
 - [Green, Building 800](green-390.png)
 - [Purple, Building 600](purple-390.png)
 
-Full local verification: 3,805 tests in 196 files, backend/web/auditor types,
+Full local verification: 3,807 tests in 196 files, backend/web/auditor types,
 production frontend build, the six Green/Purple browser cases, and the three
 existing Red Winchester browser cases. Recorded data are public bus feeds,
 with no reporter context, browser identifier or rider location. No ETA model,

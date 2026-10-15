@@ -10,6 +10,8 @@ For every fresh bus whose model and GPS agree it is standing at a stop, it
 checks the actual overview anchor against that physical stop. On lines without
 repeated calls, it independently counts forward through the published stop
 sequence and checks every available pickup and get-off count. Green/Purple's
+NEXT call uses their forecast sequence; simple loops' NEXT is also checked
+against their published order. Green/Purple's
 outbound/return counts are explicitly excluded from this physical-only oracle;
 their existing pass-specific recorded tests remain the directional checks.
 

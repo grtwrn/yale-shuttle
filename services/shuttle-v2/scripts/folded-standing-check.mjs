@@ -40,10 +40,13 @@ try {
       const text = await row.innerText();
       assert.match(text, new RegExp(`\\b${bus.bus_name.replace(/^#/, '')}\\b`), `${line} badge belongs at ${stop}`);
       assert.match(text, /⏸/);
+      const nextStop = feed.stop_names[bus.route_id === 9 ? 23 : 24];
+      const nextRow = page.getByRole('button', { name: `Alert me when ${line} reaches ${nextStop}`, exact: true }).locator('..');
+      assert.match(await nextRow.innerText(), /NEXT/, `${line} NEXT follows this bus's actual call sequence`);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'reflow');
       await row.scrollIntoViewIfNeeded();
       await page.screenshot({ path: `${out}/${line.toLowerCase()}-${width}.png`, fullPage: true });
-      results.push({ line, width, bus: bus.bus_name, stop, passed: true });
+      results.push({ line, width, bus: bus.bus_name, stop, nextStop, passed: true });
       console.log(`PASS ${line} ${width}px: ${bus.bus_name} badge and stand at ${stop}`);
     } finally { await ctx.close(); }
   }

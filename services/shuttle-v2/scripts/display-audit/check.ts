@@ -5,6 +5,7 @@ import { attachServerEta, serverArrivals, serverTrack } from '../../web/src/etaS
 import { anchorIndexOnList, observedAtStop, rideApproach, rideStopsToExit } from '../../web/src/liveAnchor';
 import type { BusData } from '../../web/src/map-data';
 import { mergedRouteStops, ROUTE_LISTS } from '../../web/src/routes';
+import { nextRouteStop } from '../../web/src/nextRouteStop';
 
 export interface AuditFeed {
   buses: BusData[];
@@ -14,13 +15,13 @@ export interface AuditFeed {
   server_eta?: unknown;
 }
 export interface Finding {
-  kind: 'standing-position' | 'pickup-count' | 'exit-count';
+  kind: 'standing-position' | 'pickup-count' | 'exit-count' | 'next-stop';
   line: string; bus: string; standingStop: number; targetStop: number;
   expected: number; actual: number | null;
 }
 export function auditDisplay(feed: AuditFeed, now: number) {
   const findings: Finding[] = [];
-  const coverage = { buses: feed.buses.length, confirmedStands: 0, positions: 0, pickupCounts: 0, exitCounts: 0, foldedCountsSkipped: 0 };
+  const coverage = { buses: feed.buses.length, confirmedStands: 0, positions: 0, pickupCounts: 0, exitCounts: 0, nextStops: 0, foldedCountsSkipped: 0 };
   registerRoutePaths(feed.route_paths ?? null);
   try {
     if (!attachServerEta(feed.buses, feed.server_eta, now)) throw new Error('Missing, invalid, or expired server ETA snapshot');
@@ -48,6 +49,12 @@ export function auditDisplay(feed: AuditFeed, now: number) {
         if (folded) { coverage.foldedCountsSkipped++; continue; }
         const arrivals = serverArrivals(feed.buses, seq, now)!.filter(a => a.routeLabel === cfg.label
           && a.busName.replace(/^#/, '') === bus.bus_name.replace(/^#/, ''));
+        const expectedNext = seq[(start + 1) % seq.length]!;
+        if (arrivals.some(a => a.stopId === expectedNext)) {
+          coverage.nextStops++;
+          const next = nextRouteStop(arrivals, cfg.label, bus.bus_name, standing.stopId, seq);
+          if (next !== expectedNext) findings.push({ ...base, kind: 'next-stop', targetStop: expectedNext, expected: expectedNext, actual: next });
+        }
         for (const target of seq) {
           const rows = arrivals.filter(a => a.stopId === target).sort((a, b) => a.eta - b.eta);
           if (!rows.length) continue;
