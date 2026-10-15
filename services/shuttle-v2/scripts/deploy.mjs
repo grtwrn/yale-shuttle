@@ -226,6 +226,7 @@ run("map pause wording browser regression", "node", ["scripts/map-pause-label-ch
 run("Blue pickup transition browser regression", "node", ["scripts/blue-pickup-fallback-check.mjs"]);
 run("feedback attachment browser regression", "node", ["scripts/feedback-accessibility-check.mjs"]);
 run("individual bus reporting browser regression", "node", ["scripts/bus-reporting-check.mjs"], { env: { ...process.env, BOT_OUT: path.join(stageDir, "bus-reporting") } });
+run("Winchester standing stop browser regression", "node", ["scripts/winchester-stand-check.mjs"], { env: { ...process.env, BOT_OUT: path.join(stageDir, "winchester-stand") } });
 killStaging();
 
 if (STAGE_ONLY) {
