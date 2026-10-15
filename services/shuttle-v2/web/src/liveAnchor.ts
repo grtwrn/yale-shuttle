@@ -290,13 +290,19 @@ export function anchorIndexOnList(
   if (idx < 0) return idx;
   // A fresh served stand plus a stationary fix at that curb settles a held
   // display lead (report 142: #317 at Winchester, lead still College/Wall).
-  // Lines without repeated calls have no pass ambiguity. Folded lines keep the server's
-  // travel/pass answer, and hypothetical estimator callers stay unchanged.
+  // Lines without repeated calls have no pass ambiguity. Folded lines keep
+  // their travel/pass answer for counting; their overview names a physical
+  // stop. Hypothetical estimator callers stay unchanged.
   const stand = served?.standing;
-  if (stand && !stand.approach && new Set(canonical).size === canonical.length
-    && observedAtStop(bus, stand.stopId, stopCoords)) {
+  if (stand && !stand.approach && observedAtStop(bus, stand.stopId, stopCoords)) {
     const at = canonical.indexOf(stand.stopId);
-    if (at >= 0) idx = at;
+    if (at >= 0 && new Set(canonical).size === canonical.length) idx = at;
+    // A folded line's de-duplicated overview can name the physical stop
+    // without choosing its outbound/return occurrence. Keep canonical and
+    // travel indices unchanged: rideApproach needs those served passes.
+    else if (at >= 0 && !travel && new Set(displayStops).size === displayStops.length) {
+      return displayStops.indexOf(stand.stopId);
+    }
   }
   const stopId = canonical[idx];
   if (stopId === undefined) return -1;

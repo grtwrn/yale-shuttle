@@ -38,6 +38,22 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
 let current;
 afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)await fs.rm(current.dir,{recursive:true,force:true});current=undefined;});
 
+test('the real rider loop raises one candidate for a sustained report-142 stop-count contradiction',async()=>{
+ const capture=JSON.parse(await fs.readFile(new URL('../../web/src/__fixtures__/red-winchester-report-142.json',import.meta.url),'utf8'));
+ const feedOf=buses=>({...capture.feed,buses:buses.map(b=>({...b,observed_at:Date.now()}))});
+ const trip={kind:'fixed',origin:{label:'Division / Prospect',...capture.feed.stop_coords[48],stopId:48},destination:{display_name:'130 Prospect Street (S)',...capture.feed.stop_coords[4],stopId:4}};
+ const screen='🚌 #317 · 11 stops away\nBOARDDivision/Prospect\nGET OFF130 Prospect Street (S)';
+ const h=current=await harness(capture.feed,trip,{initialLine:{label:'Red',busRouteIds:[3]},feedOf,text:screen,at:new Date(capture.receivedAt).toISOString()});
+ for(let i=0;i<3;i++)await h.poll(screen,capture.feed.buses);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ const alerts=events.filter(e=>e.kind==='candidate-stop-count');
+ assert.equal(alerts.length,1);
+ assert.equal(alerts[0].detail.expected,3);assert.equal(alerts[0].detail.actual,11);
+ assert.equal(h.watcher.status().run.phase,'waiting');
+ await h.poll(screen.replace('11 stops','3 stops'),capture.feed.buses);
+ assert.equal(h.watcher.status().run.countConflict,null);
+});
+
 test('Purple #126 dwelling 18 m from the stop is boarded, not an invalid sample',async()=>{
  const h=current=await harness(feedWith([near126]));
  assert.equal(h.watcher.status().run.phase,'waiting');
