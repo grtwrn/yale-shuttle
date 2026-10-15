@@ -1,0 +1,13 @@
+{
+  "scope": "Feed-correlated display consistency; confirmed curb stands only; folded counts excluded",
+  "snapshots": 412,
+  "coverage": {
+    "buses": 7360,
+    "confirmedStands": 2984,
+    "positions": 2984,
+    "pickupCounts": 60431,
+    "exitCounts": 60431,
+    "foldedCountsSkipped": 635
+  },
+  "groups": {}
+}

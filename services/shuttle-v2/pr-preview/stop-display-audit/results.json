@@ -1,0 +1,48 @@
+{
+  "scope": "Public recorded feed, actual SPA, intercepted APIs; display consistency only",
+  "results": [
+    {
+      "line": "Green",
+      "width": 307,
+      "bus": "#302",
+      "stop": "Building 800",
+      "passed": true
+    },
+    {
+      "line": "Green",
+      "width": 390,
+      "bus": "#302",
+      "stop": "Building 800",
+      "passed": true
+    },
+    {
+      "line": "Green",
+      "width": 1280,
+      "bus": "#302",
+      "stop": "Building 800",
+      "passed": true
+    },
+    {
+      "line": "Purple",
+      "width": 307,
+      "bus": "#325",
+      "stop": "Building 600",
+      "passed": true
+    },
+    {
+      "line": "Purple",
+      "width": 390,
+      "bus": "#325",
+      "stop": "Building 600",
+      "passed": true
+    },
+    {
+      "line": "Purple",
+      "width": 1280,
+      "bus": "#325",
+      "stop": "Building 600",
+      "passed": true
+    }
+  ],
+  "errors": []
+}
