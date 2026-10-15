@@ -284,10 +284,20 @@ export function anchorIndexOnList(
   const canonical = mergedRouteStops(cfg, routeStops);
   if (canonical.length === 0) return -1;
   const served = serverTrack(bus, cfg.label, now);
-  const idx = served !== undefined
+  let idx = served !== undefined
     ? (served ? (travel ? served.travel : served.index) : -1)
     : resolveAnchorIndex(bus, canonical, stopCoords, anchorKeyFor(cfg.label, bus.bus_name), now, store, travel);
   if (idx < 0) return idx;
+  // A fresh served stand plus a stationary fix at that curb settles a held
+  // display lead (report 142: #317 at Winchester, lead still College/Wall).
+  // Lines without repeated calls have no pass ambiguity. Folded lines keep the server's
+  // travel/pass answer, and hypothetical estimator callers stay unchanged.
+  const stand = served?.standing;
+  if (stand && !stand.approach && new Set(canonical).size === canonical.length
+    && observedAtStop(bus, stand.stopId, stopCoords)) {
+    const at = canonical.indexOf(stand.stopId);
+    if (at >= 0) idx = at;
+  }
   const stopId = canonical[idx];
   if (stopId === undefined) return -1;
   // Same length and the same stop in that slot: the caller's list IS the
