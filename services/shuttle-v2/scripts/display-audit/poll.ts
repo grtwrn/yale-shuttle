@@ -14,6 +14,21 @@ const readState = async (file: string): Promise<State | null> => {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
 };
+export async function rotateLog(file: string, limit = 1024 * 1024) {
+  let handle;
+  try {
+    handle = await fs.open(file, 'r+');
+    const { size } = await handle.stat();
+    if (size <= limit) return;
+    const tail = Buffer.alloc(limit);
+    await handle.read(tail, 0, limit, size - limit);
+    await fs.writeFile(file + '.1', tail, { mode: 0o600 });
+    // launchd may retain its stdout descriptor. Keep that inode and truncate
+    // it, so future writes cannot grow an unlinked/renamed file indefinitely.
+    await handle.truncate(0);
+  } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  finally { await handle?.close(); }
+}
 export function observe(previous: State | null, findings: Finding[], build: string, pollAt: number, now: number) {
   const state: State = { build, observations: {}, queue: previous?.queue ?? [] };
   const alerts: Finding[] = [];
@@ -88,9 +103,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const directory = path.resolve(process.env.DISPLAY_AUDIT_DIR ?? 'scripts/.bot-artifacts/display-audit');
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const logFile = path.join(directory, 'watcher.log');
-  try {
-    if ((await fs.stat(logFile)).size > 1024 * 1024) await fs.rename(logFile, logFile + '.1');
-  } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  await rotateLog(logFile);
   const notify = async (count: number) => {
     if (process.platform === 'darwin' && process.env.DISPLAY_AUDIT_NOTIFY !== '0') execFileSync('/usr/bin/osascript',
       ['-e', `display notification "${count ? `${count} shuttle display inconsistencies saved for review.` : 'Display checks unavailable for 3 polls. Check monitor status.'}" with title "Yale shuttle monitor"`], { timeout: 10_000 });

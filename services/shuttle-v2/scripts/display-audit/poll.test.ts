@@ -2,13 +2,24 @@ import { afterEach, describe, expect, it } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { observe, poll } from './poll';
+import { observe, poll, rotateLog } from './poll';
 import type { Finding } from './check';
 import fixture from '../../web/src/__fixtures__/red-winchester-report-142.json';
 const finding: Finding = { kind: 'pickup-count', line: 'Red', bus: '#317', standingStop: 11, targetStop: 48, expected: 3, actual: 11 };
 const directories: string[] = [];
 afterEach(async () => { for (const dir of directories.splice(0)) await fs.rm(dir, { force: true, recursive: true }); });
 describe('persistent display observer', () => {
+  it('bounds the log tail while preserving launchd’s open append descriptor', async () => {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ys-display-audit-')); directories.push(directory);
+    const file = path.join(directory, 'watcher.log'), output = await fs.open(file, 'a');
+    try {
+      await output.write('abcdefghijkl');
+      await rotateLog(file, 8);
+      await output.write('new');
+      expect(await fs.readFile(file, 'utf8')).toBe('new');
+      expect(await fs.readFile(file + '.1', 'utf8')).toBe('efghijkl');
+    } finally { await output.close(); }
+  });
   it('requires distinct polls, survives restart, deduplicates and re-arms after recovery', () => {
     const now = fixture.receivedAt;
     const first = observe(null, [finding], 'abcd1234', now, now);

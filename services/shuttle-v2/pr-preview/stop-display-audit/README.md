@@ -37,7 +37,7 @@ Green/Purple pass-specific suites remain the direction checks.
 - [Green, Building 800](green-390.png)
 - [Purple, Building 600](purple-390.png)
 
-Full local verification: 3,807 tests in 196 files, backend/web/auditor types,
+Full local verification: 3,808 tests in 196 files, backend/web/auditor types,
 production frontend build, the six Green/Purple browser cases, and the three
 existing Red Winchester browser cases. Recorded data are public bus feeds,
 with no reporter context, browser identifier or rider location. No ETA model,
