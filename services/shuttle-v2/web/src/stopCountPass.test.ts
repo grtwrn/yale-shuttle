@@ -261,7 +261,9 @@ describe('reads as before', () => {
   });
 
   it('every Green and Purple pickup the line passes once, to every destination', () => {
-    for (const [line, n] of [[GREEN, 893], [PURPLE, 1280]] as const) {
+    // Deterministic movement buckets move one Purple boundary poll onto the
+    // next lap for ten destinations; all per-read pass invariants still apply.
+    for (const [line, n] of [[GREEN, 893], [PURPLE, 1290]] as const) {
       const seq = mergedRouteStops(line.cfg, line.routeStops);
       const once = stopsOf(line).filter(s => seq.indexOf(s) === seq.lastIndexOf(s) && s !== 127);
       const reads = replay(line, pairs(once, stopsOf(line))).filter(r => r.pinned);
