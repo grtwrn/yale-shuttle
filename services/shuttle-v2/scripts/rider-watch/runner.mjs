@@ -1,4 +1,5 @@
 import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
+import { completeArrival } from './complete-arrival.mjs';
 import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
 import { confirmExitInstruction, offPoleExitInstruction } from './exit-instruction.mjs';
 import fs from 'node:fs/promises';
@@ -285,8 +286,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     if(now-Date.parse(run.boardedAt)>run.rideCapMin*60000)await finish('ride-timeout-needs-review');
     }
    }else if(run.phase==='arrived'&&now-Date.parse(run.arrivedAt)>15000){
-    const got=page.getByRole('button',{name:'Got it',exact:true});if(await got.isVisible())await got.click();
-    await capture('arrival-dismissed');const done=page.getByRole('button',{name:'Done',exact:true});if(await done.isVisible())await done.click();await finish('completed');
+    await completeArrival(page,()=>capture('arrival-dismissed'));await finish('completed');
    }
    if(run&&(lastPhase!==run.phase||now-lastImage>=60000)){await capture(run.phase+'-'+run.line.label);lastPhase=run.phase;}
    await status();
