@@ -101,6 +101,12 @@ Promotion requires at least three later test dates, every original route and
 every observed route/horizon cell to pass the existing support, coverage,
 tail, MAE, matching and proper-score gates, and at least 30 day/bus service
 blocks with a negative one-sided 95% bootstrap upper bound on paired WIS change.
+Uncertainty groups each service day by connected provider-ID and normalized
+bus-name aliases, across route changes. A tracking-ID reissue cannot create
+independent support. Alias evidence on missing-outcome rows also joins blocks;
+scored rows with missing identity refuse the uncertainty gate. This conservative
+grouping does not join forecast visits or fill missing outcomes. Per-route
+support and all other gates remain unchanged.
 Weekend-only routes may require additional test weeks. Poll counts do not stand
 in for visit support. The current champion is checked immediately before posting.
 Model, production build or producer-epoch changes invalidate the cycle after
