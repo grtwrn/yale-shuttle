@@ -31,11 +31,13 @@ export function verifyExactReceipts(state: any, rows: any[], records: Iterable<a
     if (!packet || packet.v !== 1 || packet.epoch !== seed.epoch || packet.build !== seed.build
       || !Number.isSafeInteger(packet.cursor) || !Number.isSafeInteger(packet.latest) || packet.latest < packet.cursor
       || packet.hasMore !== (packet.cursor < packet.latest) || !Array.isArray(packet.frames) || packet.frames.length > 16
+      || !Number.isSafeInteger(packet.responseAt) || packet.responseAt < at || packet.responseAt > input.receivedAt + 5000
       || (packet.hasMore ? packet.feed !== null : !packet.feed)) throw Error('Invalid retained exact source packet');
     let within = packet.cursor - packet.frames.length;
     for (const frame of packet.frames) {
       if (frame.seq !== ++within || frame.seq <= seed.cursor) throw Error('Invalid retained source sequence');
       validateExactFrame(frame, state.champion);
+      if(frame.at>packet.responseAt)throw Error('Retained source frame is newer than its response');
       const fingerprint = digest(JSON.stringify([frame.seq, frame.at, frame.observationVersion, frame.sha256, frame.contextSha256]));
       if (frame.seq <= cursor) {
         if (recent.get(frame.seq) !== fingerprint) throw Error('Conflicting or unretained duplicate source frame');

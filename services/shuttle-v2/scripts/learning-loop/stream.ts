@@ -95,6 +95,8 @@ export class ExactForecastStream {
   advance(packet: any): number {
     if (!packet || packet.v !== 1 || typeof packet.build !== 'string' || !packet.build.length
       || typeof packet.epoch !== 'string' || !packet.epoch.length) throw Error('Malformed exact source header');
+    if (!integer(packet.responseAt) || packet.responseAt < this.at || packet.responseAt > Date.now() + 5000)
+      throw Error('Invalid exact source response clock');
     if (packet?.build !== this.build) throw new SourceContextChanged('build', 'Production build changed');
     if (packet?.epoch !== this.epoch) throw new SourceContextChanged('epoch', 'Production observation epoch changed');
     if (packet.v !== 1 || !integer(packet.cursor) || !integer(packet.latest) || packet.cursor < this.cursor
@@ -103,7 +105,7 @@ export class ExactForecastStream {
       || (packet.hasMore ? packet.feed !== null || packet.frames.length === 0 : !packet.feed)) throw Error('Invalid exact source cursor/page');
     let at = this.at, cursor = this.cursor, version = this.observationVersion;
     const frames = packet.frames.map((frame: any) => {
-      if (frame.seq !== ++cursor || frame.at <= at || frame.at > Date.now() + 5000 || frame.observationVersion <= version)
+      if (frame.seq !== ++cursor || frame.at <= at || frame.at > packet.responseAt || frame.observationVersion <= version)
         throw Error('Missing/regressing exact source observation');
       at = frame.at; version = frame.observationVersion; return { frame, ...validateExactFrame(frame, this.champion) };
     });

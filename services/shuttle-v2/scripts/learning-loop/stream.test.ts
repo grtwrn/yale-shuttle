@@ -45,11 +45,12 @@ describe('exact source consumption and paired recovery', () => {
     const last = f.source.read(f.stream.epoch, f.stream.cursor); f.stream.advance(last);
     expect(f.stream.sample(last.feed, f.clock()).productionControl!.mismatched).toBe(0);
   });
-  it.each(['missing', 'payload-checksum', 'context-checksum'])('refuses %s without moving either arm or cursor', mode => {
+  it.each(['missing', 'payload-checksum', 'context-checksum','response-clock'])('refuses %s without moving either arm or cursor', mode => {
     const f = setup(); f.publish(5); f.publish(6); const packet = structuredClone(f.source.read(f.stream.epoch, f.stream.cursor));
     if (mode === 'missing') packet.frames.shift();
     if (mode === 'payload-checksum') (packet.frames[0] as any).json += ' ';
     if (mode === 'context-checksum') (packet.frames[0] as any).contextJson += ' ';
+    if (mode === 'response-clock') packet.responseAt=Date.now()+86400000;
     const before = f.stream.runtime(); expect(() => f.stream.advance(packet)).toThrow();
     expect(isDeepStrictEqual(decodedRuntime(f.stream.runtime()), decodedRuntime(before))).toBe(true);
   });
