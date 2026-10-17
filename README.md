@@ -73,6 +73,10 @@ Each of the eleven browser regression subprocesses has a two-minute deadline.
 A timeout fails deployment and stops the check's processes, including detached
 Chrome groups found under that check. Bus reporting regressions log their
 scenario, feed phase, and pending clock/response operation to locate stalls.
+After response headers arrive, the driver advances the paused browser clock
+in one-millisecond steps until the body finishes, with a five-second wall
+deadline that also bounds a stuck clock command. Loading errors still fail
+the check; all loss/recovery assertions and the two-minute stage limit remain.
 The route-readability check measures rendered Night-line label contrast and
 keeps arrival comparisons below the map on phone, desktop, fullscreen and
 unavailable-estimate views. The separate feed consistency watcher checks stop
