@@ -5,9 +5,9 @@
  */
 export async function completeArrival(page, captureDismissed) {
  const got=page.getByRole('alertdialog').getByRole('button',{name:'Got it',exact:true});
+ if(await got.isVisible())await got.click();
  await page.addLocatorHandler(got,async()=>got.click());
  try{
-  if(await got.isVisible())await got.click();
   await captureDismissed();
   const done=page.getByRole('button',{name:'Done',exact:true});
   if(await done.isVisible())await done.click();
