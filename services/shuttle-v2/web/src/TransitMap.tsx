@@ -30,6 +30,7 @@ import {
 // module scope — see shownLog.ts. Deliberately NOT a hook: it adds no state,
 // no effect and no dependency array to this component.
 import { noteShown } from "./shownLog";
+import { captureFeedbackScreen, type FeedbackScreen } from './feedbackScreen';
 // What a STANDING bus is allowed to promise — the chip's words and the
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
@@ -6627,6 +6628,7 @@ const TransitMap: FC = () => {
   // with source:"feedback" so debug queries can distinguish general
   // feedback from route-specific reports.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const feedbackScreenRef = useRef<FeedbackScreen | undefined>(undefined);
   // The composer sits at the foot of the page, so the beta banner up by the
   // tabs has to bring it into view as well as open it — expanding a form
   // several screens below the tap looks like nothing happened.
@@ -6635,6 +6637,7 @@ const TransitMap: FC = () => {
   const feedbackFileRef = useRef<HTMLInputElement | null>(null);
   const feedbackAttachRef = useRef<HTMLButtonElement | null>(null);
   const openFeedback = () => {
+    if (!feedbackOpen) feedbackScreenRef.current = captureFeedbackScreen(listView);
     setFeedbackStatus(null);
     setFeedbackError(null);
     setFeedbackOpen(true);
@@ -6651,6 +6654,7 @@ const TransitMap: FC = () => {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const closeFeedback = (ownedFocus = feedbackRef.current?.contains(document.activeElement)) => {
     setFeedbackOpen(false);
+    feedbackScreenRef.current = undefined;
     // Only replace focus lost with the composer; an async send must not take
     // it away from navigation or another control the rider has reached.
     if (ownedFocus) requestAnimationFrame(() => {
@@ -6760,6 +6764,7 @@ const TransitMap: FC = () => {
           images: feedbackImages.length ? feedbackImages : undefined,
           priority: feedbackPriority,
           source: "feedback",
+          screen: feedbackScreenRef.current,
           client: {
             userAgent: navigator.userAgent,
             viewport: { w: window.innerWidth, h: window.innerHeight },
@@ -8160,6 +8165,9 @@ const TransitMap: FC = () => {
             }}>
               Feedback
             </label>
+            {!!feedbackScreenRef.current?.rows.length && <span style={{fontSize: 12, color: '#5f6368'}}>
+              Includes the trip details shown when you opened feedback.
+            </span>}
             <textarea disabled={feedbackSending}
               id="feedback-message"
               value={feedbackText}
