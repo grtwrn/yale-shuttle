@@ -1,0 +1,224 @@
+{
+  "baseRevision": "b95ca75e2e72b68e0dbdd19e0825e1eba1c09be6",
+  "validation": {
+    "tests": 3818,
+    "files": 197,
+    "baselineRestartRegressions": 2,
+    "clippedHistoryGuardRegression": 1,
+    "exactCollectorParityRestartTimes": [
+      "2026-10-03T12:55:23.365Z",
+      "2026-10-03T12:55:48.321Z",
+      "2026-10-03T13:04:23.394Z"
+    ]
+  },
+  "days": {
+    "2026-10-03": {
+      "scope": "Actual collector and SQL recovery, compared with uninterrupted pre-poll reducers at sampled cold-start checkpoints. Public-feed consistency only; not ETA accuracy or physical boarding truth.",
+      "uniqueRows": 78928,
+      "polls": 13554,
+      "intervalSeconds": 60,
+      "inputs": {
+        "rawSha256": "c667e5d000f533efaf36d756d6a021514a9428ae33d98c3f52f604e701d91cbc",
+        "networkSha256": "b5e73ea920f172349e4a1d9d087f0d529a373292d354de96e1e62c0775f3edce"
+      },
+      "source": {
+        "src/collector/collector.ts": {
+          "candidate": "a6bf550b406a502ec7cf5d32be2c1f1a7fa618e8aad897d2a30cc592aae1b0ea",
+          "base": "9fdc38d6bdaf6b112d814faa1c292de9f434f7e189a2473ac06c7edc7e54affc"
+        },
+        "src/collector/visitRecovery.ts": {
+          "candidate": "6acbc67433696579b2ed523544885aa7de8d812f024a62547d982ebe4ba44879",
+          "base": "55dbf7c0aa483f924a483f8f4a001e2d546ae3e6b31c0e9fbe60fc5012a0d74a"
+        }
+      },
+      "counts": {
+        "checkpointPolls": 1090,
+        "candidateRestores": 4948,
+        "baseRestores": 2092,
+        "newlyRestored": 2856,
+        "outsidePin": 2383,
+        "beforeRest": 2415
+      },
+      "routes": {
+        "4": {
+          "restored": 531,
+          "newlyRestored": 256
+        },
+        "9": {
+          "restored": 815,
+          "newlyRestored": 470
+        },
+        "10": {
+          "restored": 1476,
+          "newlyRestored": 838
+        },
+        "13": {
+          "restored": 563,
+          "newlyRestored": 302
+        },
+        "14": {
+          "restored": 622,
+          "newlyRestored": 347
+        },
+        "16": {
+          "restored": 264,
+          "newlyRestored": 191
+        },
+        "17": {
+          "restored": 258,
+          "newlyRestored": 220
+        },
+        "18": {
+          "restored": 419,
+          "newlyRestored": 232
+        }
+      },
+      "mismatches": [],
+      "errors": []
+    },
+    "2026-10-04": {
+      "scope": "Actual collector and SQL recovery, compared with uninterrupted pre-poll reducers at sampled cold-start checkpoints. Public-feed consistency only; not ETA accuracy or physical boarding truth.",
+      "uniqueRows": 83319,
+      "polls": 13479,
+      "intervalSeconds": 60,
+      "inputs": {
+        "rawSha256": "4c1d251c454b4bc1d31946e3b24b983afd4e901c8dfc7895e84e5b036ea7c157",
+        "networkSha256": "b5e73ea920f172349e4a1d9d087f0d529a373292d354de96e1e62c0775f3edce"
+      },
+      "source": {
+        "src/collector/collector.ts": {
+          "candidate": "a6bf550b406a502ec7cf5d32be2c1f1a7fa618e8aad897d2a30cc592aae1b0ea",
+          "base": "9fdc38d6bdaf6b112d814faa1c292de9f434f7e189a2473ac06c7edc7e54affc"
+        },
+        "src/collector/visitRecovery.ts": {
+          "candidate": "6acbc67433696579b2ed523544885aa7de8d812f024a62547d982ebe4ba44879",
+          "base": "55dbf7c0aa483f924a483f8f4a001e2d546ae3e6b31c0e9fbe60fc5012a0d74a"
+        }
+      },
+      "counts": {
+        "checkpointPolls": 1087,
+        "candidateRestores": 5226,
+        "baseRestores": 2322,
+        "newlyRestored": 2904,
+        "outsidePin": 2384,
+        "beforeRest": 2462
+      },
+      "routes": {
+        "4": {
+          "restored": 539,
+          "newlyRestored": 257
+        },
+        "9": {
+          "restored": 1091,
+          "newlyRestored": 648
+        },
+        "10": {
+          "restored": 1427,
+          "newlyRestored": 848
+        },
+        "13": {
+          "restored": 585,
+          "newlyRestored": 300
+        },
+        "14": {
+          "restored": 604,
+          "newlyRestored": 295
+        },
+        "16": {
+          "restored": 284,
+          "newlyRestored": 134
+        },
+        "17": {
+          "restored": 263,
+          "newlyRestored": 208
+        },
+        "18": {
+          "restored": 433,
+          "newlyRestored": 214
+        }
+      },
+      "mismatches": [],
+      "errors": []
+    },
+    "2026-10-15": {
+      "scope": "Actual collector and SQL recovery, compared with uninterrupted pre-poll reducers at sampled cold-start checkpoints. Public-feed consistency only; not ETA accuracy or physical boarding truth.",
+      "uniqueRows": 181832,
+      "polls": 13381,
+      "intervalSeconds": 60,
+      "inputs": {
+        "rawSha256": "b0fdff7e9688bba9d05ba5e1b315c5e78cec0775857564987a6a5ca6ca8a4de0",
+        "networkSha256": "b5e73ea920f172349e4a1d9d087f0d529a373292d354de96e1e62c0775f3edce"
+      },
+      "source": {
+        "src/collector/collector.ts": {
+          "candidate": "a6bf550b406a502ec7cf5d32be2c1f1a7fa618e8aad897d2a30cc592aae1b0ea",
+          "base": "9fdc38d6bdaf6b112d814faa1c292de9f434f7e189a2473ac06c7edc7e54affc"
+        },
+        "src/collector/visitRecovery.ts": {
+          "candidate": "6acbc67433696579b2ed523544885aa7de8d812f024a62547d982ebe4ba44879",
+          "base": "55dbf7c0aa483f924a483f8f4a001e2d546ae3e6b31c0e9fbe60fc5012a0d74a"
+        }
+      },
+      "counts": {
+        "checkpointPolls": 1083,
+        "candidateRestores": 11904,
+        "baseRestores": 5495,
+        "newlyRestored": 6409,
+        "outsidePin": 5130,
+        "beforeRest": 4955
+      },
+      "routes": {
+        "1": {
+          "restored": 1656,
+          "newlyRestored": 674
+        },
+        "2": {
+          "restored": 1215,
+          "newlyRestored": 535
+        },
+        "3": {
+          "restored": 1725,
+          "newlyRestored": 755
+        },
+        "8": {
+          "restored": 1150,
+          "newlyRestored": 580
+        },
+        "9": {
+          "restored": 1526,
+          "newlyRestored": 927
+        },
+        "10": {
+          "restored": 1932,
+          "newlyRestored": 1357
+        },
+        "13": {
+          "restored": 562,
+          "newlyRestored": 289
+        },
+        "14": {
+          "restored": 602,
+          "newlyRestored": 365
+        },
+        "15": {
+          "restored": 441,
+          "newlyRestored": 266
+        },
+        "16": {
+          "restored": 266,
+          "newlyRestored": 239
+        },
+        "17": {
+          "restored": 246,
+          "newlyRestored": 198
+        },
+        "19": {
+          "restored": 583,
+          "newlyRestored": 224
+        }
+      },
+      "mismatches": [],
+      "errors": []
+    }
+  }
+}

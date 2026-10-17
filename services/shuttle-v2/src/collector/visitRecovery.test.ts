@@ -64,6 +64,17 @@ describe("recovering the complete visit on a fresh restart fix", () => {
     expect(recoverOpenVisit(network, current, gapped, fixture.arrivals)).toBeNull();
   });
 
+  it("refuses an approaching Purple visit when the retained window clips its inbound leg's departure", () => {
+    const clipped = JSON.parse(readFileSync(new URL("./__fixtures__/restart-truncated-purple-2026-10-03.json", import.meta.url), "utf8")) as {
+      current: BusObservation; history: BusObservation[]; stops: Stop[]; route: Route; arrivals: OpenArrival[];
+    };
+    const net = TransitNetwork.build(clipped.stops, [clipped.route]);
+    // The saved arrival matches the detector's anchor. The first history fix
+    // is already mid-departure from Union Station, though, so using its time
+    // would shorten the active inbound leg by 45 seconds.
+    expect(recoverOpenVisit(net, clipped.current, clipped.history, clipped.arrivals)).toBeNull();
+  });
+
   it("preserves a genuine departure immediately following a restart", () => {
     // Try every observed restart inside the stop after the audited restart.
     // This includes the fresh fixes that become the actual departure.
