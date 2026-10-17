@@ -55,3 +55,50 @@ it('retains the best available trip when a long direct walk was suppressed', () 
   expect(topVisibleOptions([only])).toEqual([only]);
   expect(topVisibleOptions([])).toEqual([]);
 });
+
+it('moves the slower-than-walking Brown third route under Show more when Red improves every leg (#137)', () => {
+  // Rounded legs from the screenshot, not a retained historical plan. Brown
+  // falls within the old third-slot allowance despite adding no walking or
+  // riding advantage over Red. The full list must still contain it.
+  const red=shuttle('Red',3,5,1,20),blue=shuttle('Blue Day',2,13,5,20),brown=shuttle('Brown',5,17,1,20);
+  const all=[red,blue,walk(20),brown],before=JSON.stringify(all);
+  for (const retained of [null,'Brown']) {
+    expect(topVisibleOptions(all,retained).map(o=>o.routeLabel)).toEqual(['Red','Blue Day','Walk']);
+  }
+  expect(JSON.stringify(all)).toBe(before);
+});
+
+it('retains a third route with less walking at either end, even when slower than walking', () => {
+  const red=shuttle('Red',3,5,1,20),blue=shuttle('Blue Day',2,13,5,20);
+  for (const third of [shuttle('Brown',2,18,1,20),shuttle('Brown',5,18,0,20)]) {
+    expect(topVisibleOptions([red,blue,walk(20),third]).map(o=>o.routeLabel)).toContain('Brown');
+  }
+});
+
+it('retains the closest Blue pickup when the selected farther choice has worse legs', () => {
+  const red=shuttle('Red',3,5,1,20),orange=shuttle('Orange Day',2,13,5,20);
+  const blue={...shuttle('Blue Day',5,17,1,20),pickupAlternatives:[shuttle('Blue Day',1,19,1,20)]};
+  expect(topVisibleOptions([red,orange,walk(20),blue]).map(o=>o.routeLabel)).toContain('Blue Day');
+});
+
+it('does not demote the third route on the strength of a departed or unavailable competitor', () => {
+  const red=shuttle('Red',3,5,1,20),blue=shuttle('Blue Day',2,13,5,20),brown=shuttle('Brown',5,17,1,20);
+  for (const unavailable of [{...red,departed:true},{...red,etaUnavailable:true}]) {
+    expect(topVisibleOptions([unavailable,blue,walk(20),brown]).map(o=>o.routeLabel)).toContain('Brown');
+  }
+});
+
+it('keeps the first two shuttles and a third that still beats walking', () => {
+  const red=shuttle('Red',3,5,1,30),blue=shuttle('Blue Day',2,13,5,30),brown=shuttle('Brown',5,17,1,30);
+  expect(topVisibleOptions([red,blue,walk(30),brown]).map(o=>o.routeLabel)).toContain('Brown');
+  expect(topVisibleOptions([red,{...brown,directWalkSec:20*60},walk(20)]).map(o=>o.routeLabel)).toContain('Brown');
+});
+
+it('judges redundant third routes by planned legs rather than live wait or ride fluctuations', () => {
+  const red=shuttle('Red',3,5,1,20),blue=shuttle('Blue Day',2,13,5,20),brown=shuttle('Brown',5,17,1,20);
+  for (const live of [0,60,3600]) {
+    const changed={...brown,waitSec:live,rideSec:live,totalSec:live*2+360};
+    expect(topVisibleOptions([red,blue,walk(20),changed],'Brown').map(o=>o.routeLabel))
+      .toEqual(['Red','Blue Day','Walk']);
+  }
+});

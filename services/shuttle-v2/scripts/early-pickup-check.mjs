@@ -26,6 +26,11 @@ try {
      const u=new URL(route.request().url());if(u.hostname!=='early.test')return route.abort();
      if(u.pathname==='/api/buses') {
       const feed=structuredClone(recorded),at=await page.evaluate(()=>Date.now());
+      // Controlled ranking case for #137: shorten Brown's calibrated ride by
+      // two minutes so it clears the old third-row slack, while still taking
+      // longer than walking and improving none of Red's moving legs. Live
+      // forecast rows, buses, stop choices and reminder evidence stay recorded.
+      if(origin.name==='corridor')feed.segments['19']['145-147'].avg-=120;
       feed.server_eta.at=phase==='stale'?at-46000:at;feed.server_eta.servedAt=at;
       for(const bus of feed.buses)bus.observed_at=at;
       if(phase==='gone')feed.buses=feed.buses.filter(b=>b.bus_name!=='#48');
@@ -58,6 +63,11 @@ try {
     assert.match(await notice.innerText(),/Approaching #48: <1 min/);
     assert.match(await row.getByTestId('route-pickup').innerText(),/~21/);
     assert(await page.getByRole('button',{name:'View Blue Day trip details',exact:true}).isVisible());
+    if(origin.name==='corridor') {
+     assert.equal(await page.locator('tbody[data-route="Brown"]').count(),0,'Redundant Brown third route belongs under Show more');
+     assert(await page.getByRole('button',{name:'View Red trip details',exact:true}).isVisible());
+     assert(await page.locator('tbody[data-route="Blue Day"][data-pickup="129"]').isVisible(),'Earlier farther pickup remains selectable alongside closest Blue');
+    }
     const parsed=parseOptions(await page.locator('body').innerText()).find(o=>o.routeLabel==='Blue Day');
     assert.deepEqual(parsed.eta.median,[1260,1320],'Telemetry must still read the selected boarding estimate');
     const overviewText=await row.innerText();
@@ -104,8 +114,19 @@ try {
      await page.getByTestId('bus-reporting-alerts').getByRole('status').filter({hasText:'#41'}).waitFor();
      await transition('fresh',fresh);
     }
+    let brownAfterMore;
+    if(origin.name==='corridor') {
+     assert.equal(await page.locator('tbody[data-route="Brown"]').count(),0,'Polling must not restore the redundant third row');
+     await page.getByRole('button',{name:/^Show \d+ more routes?$/}).click();
+     await page.locator('tbody[data-route="Brown"]').waitFor();
+     brownAfterMore=await page.locator('tbody[data-route="Brown"]').innerText();
+     await page.getByRole('button',{name:'View Brown trip details',exact:true}).click();
+     await page.getByTestId('trip-detail-panel').waitFor();
+     assert(await page.getByRole('button',{name:/Remind me for #310/}).isVisible());
+     await page.screenshot({path:`${out}/brown-after-more-${viewport.width}.png`,fullPage:true});
+    }
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-    assert.deepEqual(errors,[]);results.push({viewport,origin:origin.name,overviewText,selectedBoardingUnchanged:true,reminderStillUses44:true,approachingBusLossAndReturnAlerted:true,alternativeBusLossAndReturnAlerted:origin.name==='corridor',telemetryBoardingMedian:parsed.eta.median,phases,pageErrors:errors});
+    assert.deepEqual(errors,[]);results.push({viewport,origin:origin.name,overviewText,selectedBoardingUnchanged:true,reminderStillUses44:true,approachingBusLossAndReturnAlerted:true,alternativeBusLossAndReturnAlerted:origin.name==='corridor',telemetryBoardingMedian:parsed.eta.median,brownAfterMore,phases,pageErrors:errors});
    }catch(error){
     if(page){
      await page.screenshot({path:`${out}/failure-${origin.name}-${viewport.width}.png`,fullPage:true,timeout:5000}).catch(()=>{});
@@ -116,6 +137,6 @@ try {
    }finally{await ctx.close();}
   }
  }
- await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,feedCapturedAt:recorded.capturedAt,scope:'Recorded feed and controlled origins/availability phases; not an exact report104 replay or ETA accuracy evaluation',results},null,2)+'\n');
+ await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,feedCapturedAt:recorded.capturedAt,scope:'Recorded feed and controlled origins/availability phases; corridor Brown calibrated ride shortened two minutes to exercise third-row visibility. Not an exact report104/137 replay or ETA accuracy evaluation',results},null,2)+'\n');
 }finally{await browser.close();}
 console.log('Approaching shuttle times remain visible alongside later boarding choices; disappear with absent/stale/missing evidence; selection, reminders and telemetry retain the boarding bus.');
