@@ -1,5 +1,5 @@
 import { distanceMeters } from "../network/geo.js";
-import type { TransitNetwork } from "../network/TransitNetwork.js";
+import type { RouteAnchor, TransitNetwork } from "../network/TransitNetwork.js";
 import type { EpochMs, Stop } from "../schema/api.js";
 
 // Inputs ----------------------------------------------------------------------
@@ -720,6 +720,26 @@ export function reconcileTracks<T extends TrackedIdentity>(
 
 // Implementation --------------------------------------------------------------
 
+/** Nearby kerbs can be separated in route order by a long out-and-back.
+ * A change in which kerb is closer does not prove that intervening journey.
+ * Compare its straight-line lower bound (allowing the existing stop radius)
+ * with the existing continuity bounds. A gap long enough for the journey,
+ * missing geometry, or a discontinuous fix preserves normal re-anchoring. */
+function impossibleNearbySkip(network: TransitNetwork, prev: BusState, obs: BusObservation, next: RouteAnchor): boolean {
+  const route = network.routes.get(obs.routeId);
+  if (!route?.stops.length) return false;
+  const n = route.stops.length;
+  if ((next.index - prev.nearestIndex + n) % n !== 2) return false;
+  const from = network.stops.get(prev.nearestStopId);
+  const to = network.stops.get(next.stopId);
+  const via = network.stops.get(route.stops[(prev.nearestIndex + 1) % n]!);
+  if (!from || !to || !via || distanceMeters(from, to) > AT_STOP_PIN_M
+    || distanceMeters(prev, obs) > MAX_HANDOFF_JUMP_M) return false;
+  const minimumJourney = distanceMeters(prev, via) + distanceMeters(via, obs) - 2 * AT_STOP_PIN_M;
+  const elapsedSec = (obs.collectedAt - prev.lastObservedAt) / 1000;
+  return minimumJourney > Math.max(MAX_HANDOFF_JUMP_M, elapsedSec * MAX_HANDOFF_SPEED_MPS);
+}
+
 /**
  * Apply a new observation to per-bus state and emit any state-transition
  * events. Pure: same `(prevState, obs)` always yields the same result, which
@@ -799,12 +819,15 @@ export function step(
   let nearest = global;
   let continuous = false;
   if (prev && prev.routeId === obs.routeId) {
-    const ahead = network.nearestStopAheadOnRoute(
+    let ahead = network.nearestStopAheadOnRoute(
       obs.routeId,
       obs,
       prev.nearestIndex,
       ANCHOR_LOOKAHEAD,
     );
+    if (ahead && impossibleNearbySkip(network, prev, obs, ahead)) {
+      ahead = network.nearestStopAheadOnRoute(obs.routeId, obs, prev.nearestIndex, 1);
+    }
     if (ahead && ahead.meters <= global.meters + ANCHOR_SLACK_M) {
       nearest = ahead;
       continuous = true;
