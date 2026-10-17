@@ -1,4 +1,5 @@
 import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
+import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as metrics from '../canary-metrics.mjs';
@@ -91,13 +92,18 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
   try{
    if(!run){await select();return;}
    const now=Date.now(),text=await page.locator('body').innerText();
-   const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-feedAt,text,buses:feed.buses};
+   const wire=feed.server_eta;
+   const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-feedAt,text,buses:feed.buses,
+    ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{})};
    // Bound text records as well: 5 MB chunks, latest 12, at most about 60 MB.
    const log=path.join(ROOT,'samples.jsonl');let size=0;try{size=(await fs.stat(log)).size;}catch{}
    if(size>5*1024*1024){const archived='samples-'+now+'.jsonl';await fs.rename(log,path.join(ROOT,archived));const old=(await fs.readdir(ROOT)).filter(n=>/^samples-\d+\.jsonl$/.test(n)).sort();for(const n of old.slice(0,-11))await fs.unlink(path.join(ROOT,n));}
    await fs.appendFile(log,JSON.stringify(sample)+'\n');run.samples++;
    if(now-feedAt>30000){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
+    const checked=confirmConflict(run.countConflict,pickupCountConflict(text,feed,run.line.busRouteIds,now),now);
+    run.countConflict=checked.state;
+    if(checked.alert){await event('candidate-stop-count',{line:run.line.label,...checked.alert,text});await capture('candidate-stop-count');}
     // Wait as long as the card's first quote allows, as the ride cap does:
     // Grocery Ham quoted "About 44 min · Likely 33–60 min" and #42 pulled in
     // at 47.6 min, 2.6 min after a fixed 45 min cap ended the run (96f99a88).

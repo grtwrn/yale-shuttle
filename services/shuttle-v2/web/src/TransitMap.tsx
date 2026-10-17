@@ -93,6 +93,7 @@ import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
 import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle, rideBoarded } from "./rideAlert";
 import { formatRideEta } from "./format";
+import { nextRouteStop } from './nextRouteStop';
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner, DISCLAIMER_TEXT } from "./Banners";
@@ -5161,7 +5162,8 @@ const StopList: FC<{
         const i = anchorIndexOnList(bus, cfg, routeStops, stopCoords, stops, nowMs, liveAnchorStore);
         if (i < 0) continue;
         busLookups[idx]![stops[i]!] = bus;
-        nextLookups[idx]!.add(stops[(i + 1) % stops.length]!);
+        const next = nextRouteStop(live, cfg.label, bus.bus_name, stops[i]!, canonical);
+        if (next !== null) nextLookups[idx]!.add(next);
         // Same resolver, same store, same clock as the ETA just above.
         const rest = resolveStandingStop(bus, cfg, routeStops, stopCoords, nowMs, liveAnchorStore);
         if (rest) {
