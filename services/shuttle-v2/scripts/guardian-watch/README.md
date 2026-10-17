@@ -42,6 +42,11 @@ live writers' files remain protected and counted. A bundle is bounded to
 64 MiB of selected log rows and 32 MiB of stored payload; exceeding either
 limit reports a retryable capture failure and preserves the original sources.
 
+The scheduled output log keeps approximately 1 MiB live plus one compressed
+1 MiB tail. Copy/truncate preserves launchd's open append descriptors. This
+routine log can roll because incident records and evidence have separate
+retention; pending evidence is not deleted when output rotates.
+
 `evidence-status.json` exposes fresh status, capture/retention errors, retained
 and protected bytes, and historical sample gaps. The bridge also records the
 running Python source hashes in `bridge-state.json`. Exit 0 means the poll's

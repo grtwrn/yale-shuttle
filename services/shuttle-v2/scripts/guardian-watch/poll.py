@@ -6,7 +6,7 @@ queue, and raises incidents when production /healthz fails or the rider stalls.
 Repeats of the same kind/line within DEDUPE_S are appended to the open incident.
 Watcher data is only read, never modified.
 """
-import fcntl, hashlib, json, os, sys, time, urllib.request
+import fcntl, gzip, hashlib, json, os, sys, time, urllib.request
 from pathlib import Path
 from evidence import atomic_json, capture_bundle, maintain_bundles, verify_bundle
 from datetime import datetime, timezone
@@ -199,7 +199,37 @@ def check_rider(st, watch, line=None):
                        f"{os.path.basename(watch)} status.json not updated for {int((now()-t)/60)} min",
                        {"status": status}, {"watcherDir": watch, "log": f"{os.path.dirname(watch)}/watcher.log"})
 
+MONITOR_LOG_BYTES = 1024 * 1024
+
+
+def rotate_monitor_log():
+    # launchd keeps O_APPEND descriptors open: copy/truncate preserves their
+    # inode, unlike renaming the file and leaving the writer on the old one.
+    file = Path(STATE) / "monitor.log"
+    if not file.exists() or file.stat().st_size <= MONITOR_LOG_BYTES:
+        return
+    if file.is_symlink():
+        raise ValueError("Monitor output log must not be a symlink")
+    backup = file.with_name("monitor.log.previous.gz")
+    temporary = backup.with_name(backup.name + "." + str(os.getpid()) + ".partial")
+    try:
+        with open(file, "r+b") as handle:
+            handle.seek(-MONITOR_LOG_BYTES, os.SEEK_END)
+            tail = gzip.compress(handle.read(MONITOR_LOG_BYTES), mtime=0)
+            with open(temporary, "wb") as saved:
+                os.chmod(temporary, 0o600)
+                saved.write(tail)
+                saved.flush()
+                os.fsync(saved.fileno())
+            os.replace(temporary, backup)
+            handle.truncate(0)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
 def run_once():
+    rotate_monitor_log()
     CAPTURE_ERRORS.clear()
     os.makedirs(PENDING, exist_ok=True); os.makedirs(PROCESSED, exist_ok=True)
     st = load(BRIDGE, {})

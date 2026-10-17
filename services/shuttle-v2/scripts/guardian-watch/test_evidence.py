@@ -132,6 +132,25 @@ class IncidentEvidenceTests(unittest.TestCase):
         self.assertEqual(result["abandonedPartialBundlesRemoved"], 1)
         self.assertEqual(result["protectedBytes"], 6)
 
+    def test_monitor_log_rotation_keeps_launchd_append_descriptor_and_one_bounded_tail(self):
+        file = self.root / "monitor.log"
+        original = bytes(range(128))
+        file.write_bytes(original)
+        inode = file.stat().st_ino
+        with open(file, "ab") as writer, patch.multiple(poll, STATE=str(self.root), MONITOR_LOG_BYTES=64):
+            poll.rotate_monitor_log()
+            self.assertEqual(file.stat().st_ino, inode)
+            self.assertEqual(gzip.decompress((self.root / "monitor.log.previous.gz").read_bytes()), original[-64:])
+            writer.write(b"new poll")
+            writer.flush()
+            self.assertEqual(file.read_bytes(), b"new poll")
+            writer.write(b"x" * 128)
+            writer.flush()
+            poll.rotate_monitor_log()
+        self.assertEqual(gzip.decompress((self.root / "monitor.log.previous.gz").read_bytes()), b"x" * 64)
+        self.assertEqual(len(list(self.root.glob("monitor.log*.gz"))), 1)
+        self.assertFalse(list(self.root.glob("*.partial")))
+
     def bridge(self):
         patches = {"WATCH": str(self.watch), "WATCH_RED": str(self.root / "red"), "PENDING": str(self.pending), "EVIDENCE": str(self.store)}
         return patch.multiple(poll, **patches)
