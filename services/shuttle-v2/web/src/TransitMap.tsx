@@ -2255,7 +2255,7 @@ const TripPlanner: FC<{
       const alternatives = [initial, ...(initial.pickupAlternatives ?? [])]
         .filter(o => !sameTripPickup(o, selected))
         .map(o => refreshOption({ ...o, pickupAlternatives: undefined }));
-      return { ...refreshOption(selected), routeWalkSec: initial.routeWalkSec, pickupAlternatives: alternatives };
+      return { ...refreshOption(selected), pickupAlternatives: alternatives };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableOptions, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);

@@ -25,7 +25,7 @@ describe('Blue overview reports #140/#141',()=>{
   expect(faster.busName).toBe('48');
   expect(faster.totalSec).toBeLessThan(blue.totalSec-180);
   expect(faster.walkToSec+faster.walkFromSec).toBeGreaterThan(blue.directWalkSec/2);
-  expect(blue.routeWalkSec).toBeLessThan(blue.directWalkSec/2);
+  expect(blue.walkToSec+blue.walkFromSec).toBeLessThan(blue.directWalkSec/2);
   expect(worthwhileOverviewOption(blue)).toBe(true);
   expect(topVisibleOptions(options).map(o=>o.routeLabel)).toEqual(['Red','Walk','Blue Day']);
   // Routes that genuinely require most of the direct walk remain under More.
