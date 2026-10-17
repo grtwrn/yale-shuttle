@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { auditDisplay, type AuditFeed, type Finding } from './check';
+import { matchesProduction } from '../deployment-scope.mjs';
 
 type Observation = { firstAt: number; lastAt: number; firstPoll: number; reported: boolean; finding: Finding };
 interface State { build: string; observations: Record<string, Observation>; queue: { at: string; build: string; findings: Finding[] }[] }
@@ -46,9 +47,9 @@ export function observe(previous: State | null, findings: Finding[], build: stri
   return { state, alerts };
 }
 
-export async function poll({ directory, revision, sourceClean = true, base = 'https://yale-shuttle.fly.dev',
+export async function poll({ directory, revision, sourceClean = true, sourceMatches, base = 'https://yale-shuttle.fly.dev',
   fetchImpl = fetch, clock = Date.now, notify = async (_count: number) => {} }: {
-  directory: string; revision: string; sourceClean?: boolean; base?: string;
+  directory: string; revision: string; sourceClean?: boolean; sourceMatches?: (build: string) => boolean; base?: string;
   fetchImpl?: typeof fetch; clock?: () => number; notify?: (count: number) => Promise<void>;
 }) {
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
@@ -61,13 +62,14 @@ export async function poll({ directory, revision, sourceClean = true, base = 'ht
     ]);
     if (!healthResponse.ok || !feedResponse.ok) throw new Error(`HTTP health=${healthResponse.status}, feed=${feedResponse.status}`);
     const health = await healthResponse.json() as { ok: boolean; build: string };
-    if (!health.ok || !sourceClean || typeof health.build !== 'string' || health.build.length < 7 || !revision.startsWith(health.build)) {
+    if (!health?.ok || !sourceClean || typeof health.build !== 'string' || !/^[a-f0-9]{7,40}$/.test(health.build)
+      || !(sourceMatches ? sourceMatches(health.build) : revision.startsWith(health.build))) {
       throw new Error('Production build and clean local screen-calculator revision must match');
     }
     const feed = await feedResponse.json() as AuditFeed;
     const now = clock();
     const result = auditDisplay(feed, now);
-    const pollAt = (feed.server_eta as { at: number }).at;
+    const pollAt = result.activity === 'idle' ? now : (feed.server_eta as { at: number }).at;
     const { state, alerts } = observe(previous, result.findings, health.build, pollAt, now);
     await atomic(stateFile, state);
     // A bounded, durable operator review queue. Absence of a stand on a later
@@ -76,7 +78,7 @@ export async function poll({ directory, revision, sourceClean = true, base = 'ht
     if (alerts.length) await atomic(path.join(directory, 'last-failure.json'), { receivedAt: now, build: health.build, findings: alerts, feed });
     let notificationError: string | null = null;
     if (alerts.length) try { await notify(alerts.length); } catch { notificationError = 'Desktop notification failed; incident is saved'; }
-    const status = { checkedAt: new Date(now).toISOString(), ok: true, build: health.build, ...result,
+    const status = { checkedAt: new Date(now).toISOString(), ok: true, build: health.build, operatorRevision: revision, ...result,
       confirmed: Object.values(state.observations).filter(o => o.reported).length,
       queuedBatches: state.queue.length, newAlerts: alerts.length, notificationError };
     await atomic(path.join(directory, 'status.json'), status);
@@ -99,7 +101,7 @@ export async function poll({ directory, revision, sourceClean = true, base = 'ht
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-  const sourceClean = !execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--', 'web/src', 'scripts/display-audit'], { encoding: 'utf8' }).trim();
+  const sourceMatches = (build: string) => matchesProduction(build, { revision });
   const directory = path.resolve(process.env.DISPLAY_AUDIT_DIR ?? 'scripts/.bot-artifacts/display-audit');
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const logFile = path.join(directory, 'watcher.log');
@@ -108,6 +110,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (process.platform === 'darwin' && process.env.DISPLAY_AUDIT_NOTIFY !== '0') execFileSync('/usr/bin/osascript',
       ['-e', `display notification "${count ? `${count} shuttle display inconsistencies saved for review.` : 'Display checks unavailable for 3 polls. Check monitor status.'}" with title "Yale shuttle monitor"`], { timeout: 10_000 });
   };
-  try { console.log(JSON.stringify(await poll({ directory, revision, sourceClean, notify, base: process.env.BOT_BASE_URL ?? 'https://yale-shuttle.fly.dev' }))); }
+  try { console.log(JSON.stringify(await poll({ directory, revision, sourceMatches, notify, base: process.env.BOT_BASE_URL ?? 'https://yale-shuttle.fly.dev' }))); }
   catch (error) { console.error(new Date().toISOString(), (error as Error).message); process.exitCode = 1; }
 }

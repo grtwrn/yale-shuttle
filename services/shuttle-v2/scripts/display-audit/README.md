@@ -3,8 +3,16 @@
 The Mac checks `https://yale-shuttle.fly.dev` once a minute with
 `node node_modules/tsx/dist/cli.mjs scripts/display-audit/poll.ts`, supervised by
 `com.grtwrn.yale-shuttle-display-audit`. It reads only public health/feed data.
-The local Git revision and clean `web/src` must match the production build;
-otherwise the heartbeat fails rather than auditing unpublished calculators.
+The local application image inputs must match the production build. A newer
+operator-only Git revision is allowed when those inputs are identical; both
+revisions appear in the heartbeat. Dirty application or audit source, unknown
+builds, and a checkout changed during the HTTP poll fail the check.
+
+A valid empty fleet reports `activity: "idle"` and zero coverage without requiring
+an ETA snapshot. It clears unconfirmed observations, preserves queued incidents,
+and resets the monitor's failure streak. Idle is not an ETA accuracy result or a
+claim about scheduled service. Malformed feeds and nonempty fleets without a
+valid ETA snapshot still fail.
 
 For every fresh bus whose model and GPS agree it is standing at a stop, it
 checks the actual overview anchor against that physical stop. On lines without
