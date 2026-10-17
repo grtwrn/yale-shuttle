@@ -952,6 +952,20 @@ export function worthwhileOverviewOption(o: TripOption, directWalkSec = o.direct
     .some(choice => choice.walkToSec + choice.walkFromSec <= directWalkSec / 2);
 }
 
+/** #137: an optional third route that costs more time than walking and
+ * improves none of the moving legs over an already visible shuttle belongs
+ * in Show more. Compare planned legs so live waiting/ETA noise cannot toggle
+ * it. A shorter walk at either end (including an alternative pickup) remains
+ * a reason to keep the route, as do the first two shuttle choices. */
+function redundantOverviewThird(third: TripOption, visible: readonly TripOption[]): boolean {
+  return [third, ...(third.pickupAlternatives ?? [])].every(choice =>
+    slowerThanWalk(choice) && visible.some(o => !o.departed && !o.etaUnavailable &&
+      [o, ...(o.pickupAlternatives ?? [])].some(better => !better.departed && !better.etaUnavailable &&
+        better.walkToSec <= choice.walkToSec && better.walkFromSec <= choice.walkFromSec &&
+        (better.plannedRideSec ?? better.rideSec) <= (choice.plannedRideSec ?? choice.rideSec) &&
+        commuteSec(better) < commuteSec(choice))));
+}
+
 export function topVisibleOptions(
   sorted: readonly TripOption[],
   shownThird?: string | null,
@@ -969,7 +983,8 @@ export function topVisibleOptions(
     : THIRD_SHUTTLE_SLACK_SEC;
   const keepThird =
     second !== undefined && third !== undefined &&
-    commuteSec(third) <= commuteSec(second) + slack;
+    commuteSec(third) <= commuteSec(second) + slack &&
+    !redundantOverviewThird(third, shuttles.slice(0, 2));
   const promoted = directPromotion(eligible);
   let seen = 0;
   return eligible.filter((o) => {

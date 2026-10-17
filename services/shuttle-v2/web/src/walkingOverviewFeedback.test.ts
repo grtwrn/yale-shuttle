@@ -24,3 +24,23 @@ it('keeps the walking-heavy Brown trip to Payne Whitney behind Show more (#126)'
   expect(topVisibleOptions(optimistic,'Brown').some(o=>o.routeLabel==='Brown')).toBe(false);
   expect(JSON.stringify(options)).toBe(before); // Full list retains Brown.
 });
+
+it('keeps Brown under Show more when its planned ride clears the third-slot slack but Red improves every leg (#137)',()=>{
+  const s=JSON.parse(readFileSync(new URL('./__fixtures__/blue-hidden-feedback-2026-10-12.json',import.meta.url),'utf8'));
+  // Controlled near-boundary calibrated cost, not the missing September28
+  // report plan. Keep recorded live arrivals and both Blue pickup choices.
+  s.segments['19']['145-147'].avg-=120;
+  const now=s.server_eta.servedAt;
+  expect(attachServerEta(s.buses,s.server_eta,now)).toBe(true);
+  const all=preferredTripOrder(planTrip(s.from,s.to,s.buses,s.routes,s.stop_coords,s.segments,s.dwells,null,now));
+  const brown=all.find(o=>o.routeLabel==='Brown')!,blue=all.find(o=>o.routeLabel==='Blue Day')!;
+  expect(brown.walkToSec+brown.plannedRideSec!+brown.walkFromSec).toBeGreaterThan(brown.directWalkSec);
+  expect(brown.walkToSec+brown.plannedRideSec!+brown.walkFromSec)
+    .toBeLessThan(blue.walkToSec+blue.plannedRideSec!+blue.walkFromSec+300);
+  for(const retained of [null,'Brown'])expect(topVisibleOptions(all,retained).map(o=>o.routeLabel))
+    .toEqual(['Red','Walk','Blue Day']);
+  expect(blue.boardStopId).toBe(100);
+  expect(blue.pickupAlternatives?.[0]?.boardStopId).toBe(129);
+  expect(all).toContain(brown);
+  expect(brown.busName).toBe('310');
+});
