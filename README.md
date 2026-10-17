@@ -69,10 +69,14 @@ or unverifiable production falls back to a full deployment; manual workflow
 dispatch also runs a full deployment. This keeps monitoring maintenance from
 unnecessarily restarting a live evaluation cycle.
 
-Each of the ten browser regression subprocesses has a two-minute deadline.
+Each of the eleven browser regression subprocesses has a two-minute deadline.
 A timeout fails deployment and stops the check's processes, including detached
 Chrome groups found under that check. Bus reporting regressions log their
 scenario, feed phase, and pending clock/response operation to locate stalls.
+The route-readability check measures rendered Night-line label contrast and
+keeps arrival comparisons below the map on phone, desktop, fullscreen and
+unavailable-estimate views. The separate feed consistency watcher checks stop
+counts and anchors; it does not inspect browser CSS or label contrast.
 
 Only `services/shuttle-v2/fly.toml` is live. **Never deploy from the repo
 root.**

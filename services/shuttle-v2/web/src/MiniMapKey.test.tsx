@@ -3,6 +3,7 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MiniMapKey, type TimingRow } from './MiniMapKey';
 import type { TripOption } from './planner';
+import { ROUTE_LISTS } from './routes';
 
 const now = Date.parse('2026-09-30T20:00:00-04:00');
 const option: TripOption = { mode: 'shuttle', routeLabel: 'Red', color: '#c62828', busName: '307', boardStopId: 48,
@@ -19,6 +20,26 @@ function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {
 afterEach(() => vi.restoreAllMocks());
 
 describe('route option arrival times', () => {
+  // Expected foregrounds checked against the canonical palette's sRGB contrast.
+  // Keep this at the rendered component boundary: a helper test would miss a
+  // pill that still hard-codes white after the calculation changes.
+  it.each(ROUTE_LISTS)('keeps $label text legible on its identifying color', route => {
+    const darkText = ['Blue Weekend', 'Blue Night', 'Blue West', 'Orange Day', 'Orange Night', 'Orange East', 'Green', 'Gold'];
+    const html = renderToStaticMarkup(<MiniMapKey rows={[{
+      option: { ...option, routeLabel: route.label, color: route.color }, status: 'Live',
+    }]} destination="Union Station" />);
+    const pill = html.match(/<span data-testid="route-pill" style="([^"]*)"/)!;
+    expect(pill[1]).toContain(`background:${route.color}`);
+    expect(pill[1]).toContain(`color:${darkText.includes(route.label) ? '#000' : '#fff'}`);
+  });
+  it('keeps the walking label neutral rather than giving it a shuttle background', () => {
+    const html = renderToStaticMarkup(<MiniMapKey rows={[{
+      option: { ...option, mode: 'walk', routeLabel: 'Walk' }, status: 'Walk',
+    }]} destination="Union Station" />);
+    const pill = html.match(/<span data-testid="route-pill" style="([^"]*)"/)!;
+    expect(pill[1]).toContain('background:transparent');
+    expect(pill[1]).toContain('color:#5f6368');
+  });
   it('adds an approaching bus forecast without replacing the selected boarding time', () => {
     vi.spyOn(Date, 'now').mockReturnValue(now);
     const html = renderToStaticMarkup(<MiniMapKey rows={[{...rows[0]!,earlyPickup:{busName:'309',eta:14,low:7,high:25}}]} destination="Union Station" />);
