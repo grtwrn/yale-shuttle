@@ -34,6 +34,8 @@ on:
       - "services/shuttle-v2/src/calibrator/**"
       - "services/shuttle-v2/src/network/**"
       - "services/shuttle-v2/src/collector/detector.ts"
+      - "services/shuttle-v2/src/collector/collector.ts"
+      - "services/shuttle-v2/src/collector/visitRecovery.ts"
       - "services/shuttle-v2/src/server/v1compat.ts"
       - ".github/workflows/accuracy.yml"
   # A change can reach master another way (a hotfix, a merge); catch it there
@@ -51,6 +53,8 @@ on:
       - "services/shuttle-v2/web/src/anchor.ts"
       - "services/shuttle-v2/web/src/planner.ts"
       - "services/shuttle-v2/src/calibrator/**"
+      - "services/shuttle-v2/src/collector/collector.ts"
+      - "services/shuttle-v2/src/collector/visitRecovery.ts"
 
 jobs:
   replay:

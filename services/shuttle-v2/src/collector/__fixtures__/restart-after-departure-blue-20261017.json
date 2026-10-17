@@ -1,0 +1,2746 @@
+{
+  "provenance": {
+    "capture": "capture-20261017T180000026Z",
+    "date": "2026-10-17",
+    "bus": "#58",
+    "routeId": 4,
+    "rawPositionsAreOriginal": true,
+    "restartIsExplicitlyModeled": true,
+    "restartISO": "2026-10-17T17:50:32.985000+00:00",
+    "originalVisitId": 218978,
+    "originalLegId": 205609,
+    "scope": "Original observations and completed visit/leg; modeled restart just after visit closure. Not an original production outage timeline or independent physical arrival label.",
+    "inputSHA256": {
+      "raw_positions": "751659c55c01aa88f02988f68d6e7bb49a540572e8ce2379986105b990611f11",
+      "stop_visits": "101f776153c831b5855e6a2d9fef8787046657071cf58d198c01d27534d3869a",
+      "legs": "f10b07f7e280ca35ff4399bd7dc7639808bfc8b642c5b39427427450d0e81dfa",
+      "buses": "16b1cf2877591339b65ff4fd860bad51f02570e012a1237b5496409e7fc6841b"
+    }
+  },
+  "restartAt": 1792259432985,
+  "route": {
+    "id": 4,
+    "name": "Blue Weekend",
+    "shortName": "BW",
+    "color": "#1565C0",
+    "stops": [
+      100,
+      105,
+      129,
+      28,
+      82,
+      95,
+      83,
+      85,
+      88,
+      92,
+      93,
+      86,
+      63,
+      42,
+      98,
+      32,
+      122,
+      14,
+      13,
+      10,
+      2,
+      150,
+      21,
+      116,
+      53,
+      41,
+      20,
+      106,
+      34,
+      101,
+      47
+    ],
+    "path": [
+      [
+        41.325939,
+        -72.922666
+      ],
+      [
+        41.326927,
+        -72.922244
+      ],
+      [
+        41.327464,
+        -72.922094
+      ],
+      [
+        41.328005,
+        -72.922002
+      ],
+      [
+        41.328481,
+        -72.92195
+      ],
+      [
+        41.328934,
+        -72.921858
+      ],
+      [
+        41.329884,
+        -72.92162
+      ],
+      [
+        41.330388,
+        -72.921513
+      ],
+      [
+        41.330552,
+        -72.920926
+      ],
+      [
+        41.330464,
+        -72.920309
+      ],
+      [
+        41.33,
+        -72.917679
+      ],
+      [
+        41.329568,
+        -72.917332
+      ],
+      [
+        41.329071,
+        -72.917367
+      ],
+      [
+        41.328604,
+        -72.917459
+      ],
+      [
+        41.328141,
+        -72.917584
+      ],
+      [
+        41.325624,
+        -72.918453
+      ],
+      [
+        41.325163,
+        -72.918443
+      ],
+      [
+        41.324509,
+        -72.915967
+      ],
+      [
+        41.324008,
+        -72.914193
+      ],
+      [
+        41.32372,
+        -72.913038
+      ],
+      [
+        41.323229,
+        -72.911238
+      ],
+      [
+        41.322734,
+        -72.911268
+      ],
+      [
+        41.322317,
+        -72.911606
+      ],
+      [
+        41.32187,
+        -72.911917
+      ],
+      [
+        41.32015,
+        -72.913233
+      ],
+      [
+        41.316822,
+        -72.91574
+      ],
+      [
+        41.315063,
+        -72.917081
+      ],
+      [
+        41.314662,
+        -72.917405
+      ],
+      [
+        41.314235,
+        -72.917707
+      ],
+      [
+        41.309951,
+        -72.920932
+      ],
+      [
+        41.310053,
+        -72.921601
+      ],
+      [
+        41.310508,
+        -72.922725
+      ],
+      [
+        41.310993,
+        -72.92382
+      ],
+      [
+        41.311209,
+        -72.924396
+      ],
+      [
+        41.311673,
+        -72.925487
+      ],
+      [
+        41.310841,
+        -72.926084
+      ],
+      [
+        41.309543,
+        -72.927069
+      ],
+      [
+        41.309072,
+        -72.927392
+      ],
+      [
+        41.307387,
+        -72.928649
+      ],
+      [
+        41.307068,
+        -72.92822
+      ],
+      [
+        41.306378,
+        -72.926594
+      ],
+      [
+        41.306125,
+        -72.926041
+      ],
+      [
+        41.306406,
+        -72.925488
+      ],
+      [
+        41.30726,
+        -72.924893
+      ],
+      [
+        41.30811,
+        -72.92425
+      ],
+      [
+        41.307987,
+        -72.92364
+      ],
+      [
+        41.307046,
+        -72.92142
+      ],
+      [
+        41.306551,
+        -72.921581
+      ],
+      [
+        41.304448,
+        -72.923103
+      ],
+      [
+        41.303114,
+        -72.924046
+      ],
+      [
+        41.302727,
+        -72.924353
+      ],
+      [
+        41.30224,
+        -72.924577
+      ],
+      [
+        41.301301,
+        -72.924401
+      ],
+      [
+        41.300836,
+        -72.924411
+      ],
+      [
+        41.300355,
+        -72.924622
+      ],
+      [
+        41.299155,
+        -72.925758
+      ],
+      [
+        41.296622,
+        -72.928083
+      ],
+      [
+        41.296912,
+        -72.928578
+      ],
+      [
+        41.29795,
+        -72.928852
+      ],
+      [
+        41.299357,
+        -72.929176
+      ],
+      [
+        41.299872,
+        -72.929259
+      ],
+      [
+        41.300331,
+        -72.92939
+      ],
+      [
+        41.300579,
+        -72.929974
+      ],
+      [
+        41.300267,
+        -72.932484
+      ],
+      [
+        41.300646,
+        -72.932846
+      ],
+      [
+        41.301123,
+        -72.932588
+      ],
+      [
+        41.301497,
+        -72.932133
+      ],
+      [
+        41.301818,
+        -72.931697
+      ],
+      [
+        41.302535,
+        -72.930818
+      ],
+      [
+        41.302465,
+        -72.931507
+      ],
+      [
+        41.301977,
+        -72.933278
+      ],
+      [
+        41.30229,
+        -72.933787
+      ],
+      [
+        41.30321,
+        -72.934247
+      ],
+      [
+        41.303652,
+        -72.93451
+      ],
+      [
+        41.304037,
+        -72.934847
+      ],
+      [
+        41.304859,
+        -72.934249
+      ],
+      [
+        41.305293,
+        -72.93398
+      ],
+      [
+        41.306526,
+        -72.933061
+      ],
+      [
+        41.310382,
+        -72.930249
+      ],
+      [
+        41.31084,
+        -72.930217
+      ],
+      [
+        41.311614,
+        -72.931005
+      ],
+      [
+        41.312749,
+        -72.932088
+      ],
+      [
+        41.312898,
+        -72.932715
+      ],
+      [
+        41.313154,
+        -72.933329
+      ],
+      [
+        41.313402,
+        -72.933837
+      ],
+      [
+        41.313151,
+        -72.93442
+      ],
+      [
+        41.312742,
+        -72.934717
+      ],
+      [
+        41.312531,
+        -72.935298
+      ],
+      [
+        41.312767,
+        -72.935931
+      ],
+      [
+        41.312951,
+        -72.936514
+      ],
+      [
+        41.313965,
+        -72.939486
+      ],
+      [
+        41.314423,
+        -72.939749
+      ],
+      [
+        41.315363,
+        -72.939243
+      ],
+      [
+        41.315229,
+        -72.938649
+      ],
+      [
+        41.31424,
+        -72.935732
+      ],
+      [
+        41.31398,
+        -72.935162
+      ],
+      [
+        41.312946,
+        -72.933081
+      ],
+      [
+        41.31187,
+        -72.931747
+      ],
+      [
+        41.311506,
+        -72.931329
+      ],
+      [
+        41.311105,
+        -72.930902
+      ],
+      [
+        41.310826,
+        -72.930334
+      ],
+      [
+        41.31038,
+        -72.929228
+      ],
+      [
+        41.309673,
+        -72.927555
+      ],
+      [
+        41.309618,
+        -72.926944
+      ],
+      [
+        41.310455,
+        -72.926296
+      ],
+      [
+        41.310909,
+        -72.925985
+      ],
+      [
+        41.311322,
+        -72.925644
+      ],
+      [
+        41.312352,
+        -72.925428
+      ],
+      [
+        41.312818,
+        -72.925303
+      ],
+      [
+        41.314201,
+        -72.924895
+      ],
+      [
+        41.315151,
+        -72.924583
+      ],
+      [
+        41.317098,
+        -72.924089
+      ],
+      [
+        41.31949,
+        -72.923422
+      ],
+      [
+        41.319963,
+        -72.923328
+      ],
+      [
+        41.320425,
+        -72.923303
+      ],
+      [
+        41.321877,
+        -72.923361
+      ],
+      [
+        41.322397,
+        -72.923366
+      ],
+      [
+        41.323471,
+        -72.923329
+      ],
+      [
+        41.323922,
+        -72.923297
+      ],
+      [
+        41.3249,
+        -72.923118
+      ],
+      [
+        41.325939,
+        -72.922666
+      ]
+    ]
+  },
+  "stops": [
+    {
+      "id": 100,
+      "name": "Prospect / Canner",
+      "lat": 41.325351,
+      "lon": -72.922891
+    },
+    {
+      "id": 105,
+      "name": "Prospect / Huntington",
+      "lat": 41.330366,
+      "lon": -72.921482
+    },
+    {
+      "id": 129,
+      "name": "Whitney / Canner",
+      "lat": 41.324692,
+      "lon": -72.916817
+    },
+    {
+      "id": 28,
+      "name": "Canner / Livingston",
+      "lat": 41.323937,
+      "lon": -72.913996
+    },
+    {
+      "id": 82,
+      "name": "Orange / Canner",
+      "lat": 41.323303,
+      "lon": -72.910898
+    },
+    {
+      "id": 95,
+      "name": "Orange / Willow (S)",
+      "lat": 41.32224,
+      "lon": -72.911692
+    },
+    {
+      "id": 83,
+      "name": "Orange / Cottage",
+      "lat": 41.320062,
+      "lon": -72.913347
+    },
+    {
+      "id": 85,
+      "name": "Orange / Edwards (S)",
+      "lat": 41.318385,
+      "lon": -72.914615
+    },
+    {
+      "id": 88,
+      "name": "Orange / Humphrey (S)",
+      "lat": 41.316338,
+      "lon": -72.916176
+    },
+    {
+      "id": 92,
+      "name": "Orange / Pearl (S)",
+      "lat": 41.314826,
+      "lon": -72.917319
+    },
+    {
+      "id": 93,
+      "name": "Orange / Trumbull",
+      "lat": 41.312323,
+      "lon": -72.919177
+    },
+    {
+      "id": 86,
+      "name": "Orange / Grove",
+      "lat": 41.310003,
+      "lon": -72.920939
+    },
+    {
+      "id": 63,
+      "name": "Grove / Temple",
+      "lat": 41.311134,
+      "lon": -72.924022
+    },
+    {
+      "id": 42,
+      "name": "College / Wall (S)",
+      "lat": 41.310836,
+      "lon": -72.926148
+    },
+    {
+      "id": 98,
+      "name": "Phelps Gate",
+      "lat": 41.308356,
+      "lon": -72.927978
+    },
+    {
+      "id": 32,
+      "name": "Chapel / State Elm City Market",
+      "lat": 41.304876,
+      "lon": -72.923138
+    },
+    {
+      "id": 122,
+      "name": "Union Station (S)",
+      "lat": 41.297929,
+      "lon": -72.926912
+    },
+    {
+      "id": 14,
+      "name": "Amistad / Church St South",
+      "lat": 41.300531,
+      "lon": -72.929866
+    },
+    {
+      "id": 13,
+      "name": "Amistad / Cedar",
+      "lat": 41.300236,
+      "lon": -72.932021
+    },
+    {
+      "id": 10,
+      "name": "333 Cedar",
+      "lat": 41.303254,
+      "lon": -72.934247
+    },
+    {
+      "id": 2,
+      "name": "129 York",
+      "lat": 41.306539,
+      "lon": -72.933001
+    },
+    {
+      "id": 150,
+      "name": "York / Chapel",
+      "lat": 41.308511,
+      "lon": -72.931505
+    },
+    {
+      "id": 21,
+      "name": "Broadway / York",
+      "lat": 41.311002,
+      "lon": -72.930344
+    },
+    {
+      "id": 116,
+      "name": "Stop & Shop",
+      "lat": 41.315041,
+      "lon": -72.938202
+    },
+    {
+      "id": 53,
+      "name": "Elm / York (TYCO)",
+      "lat": 41.31086,
+      "lon": -72.93054
+    },
+    {
+      "id": 41,
+      "name": "College / Wall (N)",
+      "lat": 41.310583,
+      "lon": -72.926188
+    },
+    {
+      "id": 20,
+      "name": "Becton / 15 Prospect",
+      "lat": 41.312609,
+      "lon": -72.925331
+    },
+    {
+      "id": 106,
+      "name": "Prospect / Sachem (N)",
+      "lat": 41.315749,
+      "lon": -72.924393
+    },
+    {
+      "id": 34,
+      "name": "Chemistry / 225 Prospect",
+      "lat": 41.318492,
+      "lon": -72.923687
+    },
+    {
+      "id": 101,
+      "name": "Prospect / Edwards",
+      "lat": 41.320038,
+      "lon": -72.923299
+    },
+    {
+      "id": 47,
+      "name": "Divinity / 409 Prospect",
+      "lat": 41.323538,
+      "lon": -72.923285
+    }
+  ],
+  "observations": [
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.306525,
+      "lon": -72.93305,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258622018
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.306525,
+      "lon": -72.93305,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258626931
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.306778,
+      "lon": -72.932867,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258631885
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.306778,
+      "lon": -72.932867,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258636935
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.306778,
+      "lon": -72.932867,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258642033
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.306778,
+      "lon": -72.932867,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258646837
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.307028,
+      "lon": -72.932692,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258651792
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.307028,
+      "lon": -72.932692,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258656778
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.307313,
+      "lon": -72.932494,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258661759
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.307581,
+      "lon": -72.932296,
+      "heading": 29,
+      "lastStopId": 21,
+      "collectedAt": 1792258666778
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.307837,
+      "lon": -72.932115,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258671822
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308084,
+      "lon": -72.931934,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258676820
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308084,
+      "lon": -72.931934,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258681759
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308084,
+      "lon": -72.931934,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258686786
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308084,
+      "lon": -72.931934,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258691752
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308084,
+      "lon": -72.931934,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258696885
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308084,
+      "lon": -72.931934,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258701837
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308333,
+      "lon": -72.93174,
+      "heading": 30,
+      "lastStopId": 21,
+      "collectedAt": 1792258706777
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308585,
+      "lon": -72.931548,
+      "heading": 29,
+      "lastStopId": 21,
+      "collectedAt": 1792258711812
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308585,
+      "lon": -72.931548,
+      "heading": 29,
+      "lastStopId": 21,
+      "collectedAt": 1792258716777
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308585,
+      "lon": -72.931548,
+      "heading": 29,
+      "lastStopId": 21,
+      "collectedAt": 1792258721757
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308585,
+      "lon": -72.931548,
+      "heading": 29,
+      "lastStopId": 21,
+      "collectedAt": 1792258726757
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308585,
+      "lon": -72.931548,
+      "heading": 29,
+      "lastStopId": 21,
+      "collectedAt": 1792258731937
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308851,
+      "lon": -72.931365,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258736756
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.308851,
+      "lon": -72.931365,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258741849
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309095,
+      "lon": -72.931196,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258746800
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309095,
+      "lon": -72.931196,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258757562
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309339,
+      "lon": -72.931025,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258762465
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309339,
+      "lon": -72.931025,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258767321
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309605,
+      "lon": -72.930831,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258772378
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309846,
+      "lon": -72.930652,
+      "heading": 29,
+      "lastStopId": 21,
+      "collectedAt": 1792258777356
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310106,
+      "lon": -72.930463,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258782310
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310106,
+      "lon": -72.930463,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258787312
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310106,
+      "lon": -72.930463,
+      "heading": 28,
+      "lastStopId": 21,
+      "collectedAt": 1792258792307
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310377,
+      "lon": -72.930245,
+      "heading": 31,
+      "lastStopId": 21,
+      "collectedAt": 1792258797432
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310644,
+      "lon": -72.93006,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258802361
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310644,
+      "lon": -72.93006,
+      "heading": 27,
+      "lastStopId": 21,
+      "collectedAt": 1792258807313
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31088,
+      "lon": -72.930255,
+      "heading": 328,
+      "lastStopId": 21,
+      "collectedAt": 1792258812318
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31088,
+      "lon": -72.930255,
+      "heading": 328,
+      "lastStopId": 21,
+      "collectedAt": 1792258817313
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31088,
+      "lon": -72.930255,
+      "heading": 328,
+      "lastStopId": 21,
+      "collectedAt": 1792258822317
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31088,
+      "lon": -72.930255,
+      "heading": 328,
+      "lastStopId": 21,
+      "collectedAt": 1792258827315
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31088,
+      "lon": -72.930255,
+      "heading": 328,
+      "lastStopId": 21,
+      "collectedAt": 1792258832318
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31088,
+      "lon": -72.930255,
+      "heading": 328,
+      "lastStopId": 21,
+      "collectedAt": 1792258837387
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311111,
+      "lon": -72.93049,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258842374
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311111,
+      "lon": -72.93049,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258847407
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311331,
+      "lon": -72.930726,
+      "heading": 321,
+      "lastStopId": 21,
+      "collectedAt": 1792258852474
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311331,
+      "lon": -72.930726,
+      "heading": 321,
+      "lastStopId": 21,
+      "collectedAt": 1792258857330
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311564,
+      "lon": -72.930955,
+      "heading": 323,
+      "lastStopId": 21,
+      "collectedAt": 1792258862412
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311802,
+      "lon": -72.931187,
+      "heading": 323,
+      "lastStopId": 21,
+      "collectedAt": 1792258867523
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31205,
+      "lon": -72.931437,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258872320
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258877321
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258882374
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258887412
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258892369
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258897336
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258902394
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258907343
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258912360
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258917328
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258922365
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258927379
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258932367
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258937374
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258942334
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312271,
+      "lon": -72.93166,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258947342
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.3125,
+      "lon": -72.931896,
+      "heading": 322,
+      "lastStopId": 21,
+      "collectedAt": 1792258952356
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312733,
+      "lon": -72.932113,
+      "heading": 325,
+      "lastStopId": 21,
+      "collectedAt": 1792258957385
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312733,
+      "lon": -72.932113,
+      "heading": 325,
+      "lastStopId": 21,
+      "collectedAt": 1792258962513
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312884,
+      "lon": -72.932469,
+      "heading": 299,
+      "lastStopId": 21,
+      "collectedAt": 1792258967439
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312912,
+      "lon": -72.932916,
+      "heading": 274,
+      "lastStopId": 21,
+      "collectedAt": 1792258972476
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313262,
+      "lon": -72.93357,
+      "heading": 304,
+      "lastStopId": 21,
+      "collectedAt": 1792258977456
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313423,
+      "lon": -72.933909,
+      "heading": 302,
+      "lastStopId": 21,
+      "collectedAt": 1792258982413
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313423,
+      "lon": -72.933909,
+      "heading": 302,
+      "lastStopId": 21,
+      "collectedAt": 1792258987499
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313423,
+      "lon": -72.933909,
+      "heading": 302,
+      "lastStopId": 21,
+      "collectedAt": 1792258992375
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313365,
+      "lon": -72.934289,
+      "heading": 258,
+      "lastStopId": 21,
+      "collectedAt": 1792258997345
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313127,
+      "lon": -72.934459,
+      "heading": 208,
+      "lastStopId": 21,
+      "collectedAt": 1792259002339
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312831,
+      "lon": -72.934656,
+      "heading": 206,
+      "lastStopId": 21,
+      "collectedAt": 1792259007369
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312576,
+      "lon": -72.934838,
+      "heading": 208,
+      "lastStopId": 21,
+      "collectedAt": 1792259012348
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312492,
+      "lon": -72.93521,
+      "heading": 253,
+      "lastStopId": 21,
+      "collectedAt": 1792259017400
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312628,
+      "lon": -72.935556,
+      "heading": 297,
+      "lastStopId": 21,
+      "collectedAt": 1792259022379
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312769,
+      "lon": -72.935951,
+      "heading": 295,
+      "lastStopId": 21,
+      "collectedAt": 1792259027343
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313018,
+      "lon": -72.936688,
+      "heading": 294,
+      "lastStopId": 21,
+      "collectedAt": 1792259032392
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313133,
+      "lon": -72.937014,
+      "heading": 295,
+      "lastStopId": 21,
+      "collectedAt": 1792259037340
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313368,
+      "lon": -72.937693,
+      "heading": 294,
+      "lastStopId": 21,
+      "collectedAt": 1792259042384
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313598,
+      "lon": -72.938396,
+      "heading": 294,
+      "lastStopId": 21,
+      "collectedAt": 1792259047347
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313847,
+      "lon": -72.939081,
+      "heading": 297,
+      "lastStopId": 21,
+      "collectedAt": 1792259056905
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313969,
+      "lon": -72.939436,
+      "heading": 294,
+      "lastStopId": 21,
+      "collectedAt": 1792259087840
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313969,
+      "lon": -72.939436,
+      "heading": 294,
+      "lastStopId": 21,
+      "collectedAt": 1792259092759
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314079,
+      "lon": -72.939807,
+      "heading": 291,
+      "lastStopId": 21,
+      "collectedAt": 1792259097714
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314079,
+      "lon": -72.939807,
+      "heading": 291,
+      "lastStopId": 21,
+      "collectedAt": 1792259102672
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314376,
+      "lon": -72.939754,
+      "heading": 7,
+      "lastStopId": 21,
+      "collectedAt": 1792259107752
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314652,
+      "lon": -72.939594,
+      "heading": 23,
+      "lastStopId": 21,
+      "collectedAt": 1792259112726
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31495,
+      "lon": -72.939419,
+      "heading": 23,
+      "lastStopId": 21,
+      "collectedAt": 1792259117748
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315237,
+      "lon": -72.93928,
+      "heading": 19,
+      "lastStopId": 21,
+      "collectedAt": 1792259122779
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315237,
+      "lon": -72.93928,
+      "heading": 19,
+      "lastStopId": 21,
+      "collectedAt": 1792259127887
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315237,
+      "lon": -72.93928,
+      "heading": 19,
+      "lastStopId": 21,
+      "collectedAt": 1792259132703
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315237,
+      "lon": -72.93928,
+      "heading": 19,
+      "lastStopId": 21,
+      "collectedAt": 1792259137668
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315237,
+      "lon": -72.93928,
+      "heading": 19,
+      "lastStopId": 21,
+      "collectedAt": 1792259142673
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315237,
+      "lon": -72.93928,
+      "heading": 19,
+      "lastStopId": 21,
+      "collectedAt": 1792259147674
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315237,
+      "lon": -72.93928,
+      "heading": 19,
+      "lastStopId": 21,
+      "collectedAt": 1792259152731
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315378,
+      "lon": -72.938964,
+      "heading": 59,
+      "lastStopId": 21,
+      "collectedAt": 1792259157839
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315213,
+      "lon": -72.938568,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259162670
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259167673
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259172680
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259178016
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259182933
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259187835
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259192940
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259198041
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259202676
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259207678
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259212726
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259217774
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259222687
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259227686
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259232829
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259237776
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259242675
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259247773
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259252738
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259257820
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259262815
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259267878
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259272684
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259277868
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259282682
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259287814
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259292677
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259297765
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259302719
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259307718
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259312793
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259317686
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259322683
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259328064
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259332891
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259337870
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259342979
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259348005
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259353006
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259358146
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259362903
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259367869
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259372985
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259377952
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259383095
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259393068
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259397982
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259402990
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.315081,
+      "lon": -72.938252,
+      "heading": 119,
+      "lastStopId": 21,
+      "collectedAt": 1792259408073
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314965,
+      "lon": -72.937908,
+      "heading": 114,
+      "lastStopId": 21,
+      "collectedAt": 1792259413133
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314833,
+      "lon": -72.93753,
+      "heading": 114,
+      "lastStopId": 21,
+      "collectedAt": 1792259417997
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314687,
+      "lon": -72.937098,
+      "heading": 114,
+      "lastStopId": 21,
+      "collectedAt": 1792259423113
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314461,
+      "lon": -72.936419,
+      "heading": 114,
+      "lastStopId": 21,
+      "collectedAt": 1792259427985
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.314204,
+      "lon": -72.935723,
+      "heading": 116,
+      "lastStopId": 116,
+      "collectedAt": 1792259432985
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313903,
+      "lon": -72.93504,
+      "heading": 121,
+      "lastStopId": 116,
+      "collectedAt": 1792259438257
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313757,
+      "lon": -72.934734,
+      "heading": 122,
+      "lastStopId": 116,
+      "collectedAt": 1792259443161
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313453,
+      "lon": -72.934095,
+      "heading": 122,
+      "lastStopId": 116,
+      "collectedAt": 1792259447996
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.313302,
+      "lon": -72.933794,
+      "heading": 123,
+      "lastStopId": 116,
+      "collectedAt": 1792259453400
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312982,
+      "lon": -72.933184,
+      "heading": 125,
+      "lastStopId": 116,
+      "collectedAt": 1792259458178
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312768,
+      "lon": -72.932859,
+      "heading": 131,
+      "lastStopId": 116,
+      "collectedAt": 1792259463276
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31253,
+      "lon": -72.932582,
+      "heading": 138,
+      "lastStopId": 116,
+      "collectedAt": 1792259468170
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.312082,
+      "lon": -72.932014,
+      "heading": 133,
+      "lastStopId": 116,
+      "collectedAt": 1792259473167
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311822,
+      "lon": -72.931704,
+      "heading": 138,
+      "lastStopId": 116,
+      "collectedAt": 1792259478174
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311613,
+      "lon": -72.931463,
+      "heading": 139,
+      "lastStopId": 116,
+      "collectedAt": 1792259483394
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311372,
+      "lon": -72.931197,
+      "heading": 140,
+      "lastStopId": 116,
+      "collectedAt": 1792259488189
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311372,
+      "lon": -72.931197,
+      "heading": 140,
+      "lastStopId": 116,
+      "collectedAt": 1792259493342
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311372,
+      "lon": -72.931197,
+      "heading": 140,
+      "lastStopId": 116,
+      "collectedAt": 1792259498391
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311372,
+      "lon": -72.931197,
+      "heading": 140,
+      "lastStopId": 116,
+      "collectedAt": 1792259503391
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311372,
+      "lon": -72.931197,
+      "heading": 140,
+      "lastStopId": 116,
+      "collectedAt": 1792259508174
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311134,
+      "lon": -72.930947,
+      "heading": 141,
+      "lastStopId": 116,
+      "collectedAt": 1792259513311
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311134,
+      "lon": -72.930947,
+      "heading": 141,
+      "lastStopId": 116,
+      "collectedAt": 1792259518213
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311134,
+      "lon": -72.930947,
+      "heading": 141,
+      "lastStopId": 116,
+      "collectedAt": 1792259523172
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311134,
+      "lon": -72.930947,
+      "heading": 141,
+      "lastStopId": 116,
+      "collectedAt": 1792259528175
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.311134,
+      "lon": -72.930947,
+      "heading": 141,
+      "lastStopId": 116,
+      "collectedAt": 1792259533206
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310947,
+      "lon": -72.930668,
+      "heading": 131,
+      "lastStopId": 116,
+      "collectedAt": 1792259538176
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310947,
+      "lon": -72.930668,
+      "heading": 131,
+      "lastStopId": 116,
+      "collectedAt": 1792259543323
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310817,
+      "lon": -72.930331,
+      "heading": 117,
+      "lastStopId": 53,
+      "collectedAt": 1792259548174
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310683,
+      "lon": -72.930008,
+      "heading": 118,
+      "lastStopId": 53,
+      "collectedAt": 1792259553190
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310545,
+      "lon": -72.929664,
+      "heading": 118,
+      "lastStopId": 53,
+      "collectedAt": 1792259558175
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259563198
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259568173
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259573523
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259578329
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259583388
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259588435
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259593185
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259598437
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259603686
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310416,
+      "lon": -72.929295,
+      "heading": 114,
+      "lastStopId": 53,
+      "collectedAt": 1792259608384
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.310263,
+      "lon": -72.928973,
+      "heading": 122,
+      "lastStopId": 53,
+      "collectedAt": 1792259613384
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.31012,
+      "lon": -72.928642,
+      "heading": 119,
+      "lastStopId": 53,
+      "collectedAt": 1792259618215
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.30997,
+      "lon": -72.928277,
+      "heading": 118,
+      "lastStopId": 53,
+      "collectedAt": 1792259623186
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309836,
+      "lon": -72.927949,
+      "heading": 118,
+      "lastStopId": 53,
+      "collectedAt": 1792259628288
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309836,
+      "lon": -72.927949,
+      "heading": 118,
+      "lastStopId": 53,
+      "collectedAt": 1792259633326
+    },
+    {
+      "busId": 67825,
+      "busName": "#58",
+      "routeId": 4,
+      "lat": 41.309696,
+      "lon": -72.927619,
+      "heading": 119,
+      "lastStopId": 53,
+      "collectedAt": 1792259638182
+    }
+  ],
+  "recordedVisit": {
+    "id": 218978,
+    "bus_id": 67825,
+    "bus_name": "#58",
+    "anchor_bus_id": 67825,
+    "route_id": 4,
+    "stop_id": 116,
+    "stop_index": 23,
+    "anchored_at": 1792259027343,
+    "pinned_at": 1792259157839,
+    "arrived_at": 1792259167673,
+    "departed_at": 1792259408073,
+    "stand_sec": 240.4,
+    "inside_sec": 260.158,
+    "outcome": "stopped",
+    "how": "far",
+    "confidence": 1,
+    "first_step_m": 31.528097378720243,
+    "steps": 4,
+    "far_m": 162.4608196829946,
+    "confirm_sec": 14.852,
+    "rest_polls": 47,
+    "shuffles": 0,
+    "first_moved_at": 1792259413133,
+    "last_at_rest_at": 1792259408073,
+    "closest_m": 6.107748888611076,
+    "dow": 6,
+    "hour": 13
+  },
+  "recordedLeg": {
+    "id": 205609,
+    "bus_id": 67825,
+    "bus_name": "#58",
+    "route_id": 4,
+    "from_stop_id": 116,
+    "from_index": 23,
+    "to_stop_id": 53,
+    "to_index": 24,
+    "hops": 1,
+    "departed_at": 1792259408073,
+    "arrived_at": 1792259513311,
+    "to_pinned_at": 1792259513311,
+    "leg_sec": 105.238,
+    "hold_sec": 19.985,
+    "drive_sec": 85.253,
+    "holds": 1,
+    "reached": 1,
+    "dow": 6,
+    "hour": 13
+  }
+}

@@ -467,6 +467,7 @@ export class Collector {
   private readonly selectRouteSamplesStmt: Database.Statement;
   private readonly recentBusSamplesStmt: Database.Statement;
   private readonly recentBusArrivalsStmt: Database.Statement;
+  private readonly completedVisitStmt: Database.Statement;
 
   /**
    * Route geometry derived from observed GPS, best-so-far per route.
@@ -689,6 +690,16 @@ export class Collector {
         "WHERE bus_id = ? AND arrived_at >= ? AND arrived_at < ? " +
         "ORDER BY arrived_at DESC LIMIT ?",
     );
+    this.completedVisitStmt = this.sqlite.prepare(`
+      SELECT COUNT(*) AS total, SUM(CASE WHEN
+        pinned_at IS @pinnedAt AND arrived_at IS @arrivedAt AND departed_at IS @departedAt
+        AND stand_sec IS @standSec AND inside_sec IS @insideSec
+        AND outcome = @outcome AND how IS @how AND confidence IS @confidence
+        THEN 1 ELSE 0 END) AS matching
+      FROM stop_visits WHERE bus_id = @busId AND bus_name = @busName
+        AND anchor_bus_id = @anchorBusId AND route_id = @routeId
+        AND stop_id = @stopId AND stop_index = @stopIndex AND anchored_at = @anchoredAt
+    `);
     this.pathStore = new PathStore(this.sqlite);
     this.derivedPathsByRoute = this.pathStore.loadAll();
 
@@ -1136,7 +1147,16 @@ export class Collector {
           || !this.ref.get().stops.has(latest.stopId)) continue;
         const history = this.recentBusSamplesStmt.all(obs.busId,
           obs.collectedAt - STATIONARY_SEED_WINDOW_MS, obs.collectedAt, STATIONARY_SEED_MAX_ROWS) as BusObservation[];
-        const restored = recoverOpenVisit(this.ref.get(), obs, history.reverse(), rows);
+        const restored = recoverOpenVisit(this.ref.get(), obs, history.reverse(), rows, (event) => {
+          const evidence = this.completedVisitStmt.get({
+            busId: event.busId, busName: event.busName, anchorBusId: event.anchorBusId,
+            routeId: event.routeId, stopId: event.stopId, stopIndex: event.stopIndex, anchoredAt: event.anchoredAt,
+            pinnedAt: event.pinnedAt, arrivedAt: event.arrivedAt, departedAt: event.departedAt,
+            standSec: event.standSec, insideSec: event.insideSec, outcome: event.outcome,
+            how: event.how, confidence: event.confidence,
+          }) as { total: number; matching: number | null };
+          return evidence.total > 0 && evidence.matching === evidence.total;
+        });
         if (restored) {
           this.states.set(key, restored.detector);
           this.visitStates.set(key, restored.visit);
