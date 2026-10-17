@@ -9,11 +9,15 @@ export const OFFER_CLICK_MS = 3000;
  * longer store our bus: the bus was at the stop and left without us. */
 export class BoardingMissed extends Error {}
 /** Prefer the auto-detection confirmation only when it names our chosen bus.
- * If the offer goes first, board through the card's "🚌 I'm on it" only while
- * `cardBoards()` says it stores our bus. */
+ * Every fallback to the card's "🚌 I'm on it" needs a current `cardBoards()`
+ * check, including an offer already gone before this function starts. */
 export async function boardSelectedRide(page, busName, {cardBoards = async () => false} = {}) {
   const yes = page.getByRole('button', {name: "Yes, I'm on it", exact: true});
   const card = page.getByRole('button', {name: "🚌 I'm on it", exact: true});
+  const clickCard = async () => {
+    if (!await cardBoards()) throw new BoardingMissed(`The card cannot confirm boarding ${busName} in the current feed`);
+    await card.click();
+  };
   // False when the offer went away instead of taking the click.
   const clickOffer = async (button) => {
     try { await button.click({timeout: OFFER_CLICK_MS}); return true; }
@@ -23,15 +27,12 @@ export async function boardSelectedRide(page, busName, {cardBoards = async () =>
     const text = await page.locator('body').innerText();
     const detected = text.match(/On [^\n]*?#([\w-]+)\?/i)?.[1];
     if (detected === busName.replace(/^#/, '')) {
-      if (!await clickOffer(yes)) {
-        if (!await cardBoards()) throw new BoardingMissed(`The offer for ${busName} went before the click and "I'm on it" would not store it`);
-        await card.click();
-      }
+      if (!await clickOffer(yes)) await clickCard();
     } else {
       await clickOffer(page.getByRole('button', {name: 'Not me', exact: true}));
-      await card.click();
+      await clickCard();
     }
-  } else await card.click();
+  } else await clickCard();
   await page.waitForFunction((name) => {
     const ride = JSON.parse(localStorage.getItem('shuttle-boarded-ride') || 'null');
     return ride && ride.busName.replace(/^#/, '') === name.replace(/^#/, '');
