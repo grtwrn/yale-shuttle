@@ -17,8 +17,11 @@ The committed fixture contains 360 public fleet fixes for bus #44 on
 October 3, 12:40–13:10 UTC. Its later Elm/York resting plateau begins at
 13:04:03.483 UTC within the collector's 75 m zone; the separate 45 m curb
 criterion first fires at 13:04:13.449 UTC. These clocks are deliberately
-kept separate. The six regression/control tests fail twice against base
-`b3320691a3a06acffb611e232792d0f5fee811cd` and all pass with the fix.
+kept separate. The seven regression/control tests fail three times against
+base `b3320691a3a06acffb611e232792d0f5fee811cd` and all pass with the fix.
+The real Collector/database test removes the incorrect outbound `at_stop_id`
+on 13 recorded frames and recovers the genuine return's original 29.878 s
+stand across a process restart, with one persisted Elm/York arrival/visit.
 
 Full raw-position replays use identical published network geometry in both
 arms. Saved October 3 metadata and the October 16 live feed have identical
@@ -45,6 +48,10 @@ This is a consistency correction to recorded occurrences, not independent
 proof of boarding or an ETA accuracy improvement. The learning cycle must
 restart after deployment because its frozen observation code changes.
 Previously collected evidence remains retained.
+Existing historical rows and model tables are not backfilled by this change.
+The new continuity check requires a preceding observed anchor. A cold start
+inside an ambiguous nearby-stop zone without recoverable route history can
+still choose the global nearest stop; that remains a separate limitation.
 
 [checks.json](checks.json) contains input hashes, per-route event digests,
 visit counts, and regression/control results for all 525,221 observations.

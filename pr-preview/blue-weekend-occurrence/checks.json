@@ -548,10 +548,18 @@
     }
   },
   "validation": {
-    "tests": 3814,
+    "tests": 3815,
     "files": 197,
-    "baselineRegressionFailures": 2,
-    "negativeControlsPassBoth": 4
+    "baselineRegressionFailures": 3,
+    "negativeControlsPassBoth": 4,
+    "collectorReplay": {
+      "incorrectOutboundStopFramesBefore": 13,
+      "incorrectOutboundStopFramesAfter": 0,
+      "restartAt": "2026-10-03T13:04:23.394Z",
+      "genuineReturnStandSec": 29.878,
+      "persistedElmYorkArrivals": 1,
+      "persistedElmYorkVisits": 1
+    }
   },
   "networkSha256": "b5e73ea920f172349e4a1d9d087f0d529a373292d354de96e1e62c0775f3edce",
   "reproductionHarnessCrossCheck": "Committed replay harness matches October 3 baseline and candidate event digests exactly."

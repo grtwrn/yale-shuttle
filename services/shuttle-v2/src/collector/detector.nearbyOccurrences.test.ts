@@ -1,9 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { describe, expect, it, vi } from 'vitest';
 import { TransitNetwork } from '../network/TransitNetwork';
 import { step, type BusObservation } from './detector';
 import { stepManyWithVisits } from './departure';
 import { distanceMeters } from '../network/geo';
 import capture from './__fixtures__/blue-weekend-nearby-occurrences-2026-10-03.json';
+import { Collector } from './collector';
+import { UpstreamClient, type RawBus } from './upstream';
+import { openDb } from '../db/client';
 
 const stops = Object.entries(capture.stopCoords).map(([id, coord]) => ({ id: Number(id), name: capture.stopNames[id as keyof typeof capture.stopNames], ...coord }));
 const route = { id: capture.routeId, name: 'Blue Weekend', shortName: 'Blue Weekend', color: '#42A5F5', stops: capture.stops,
@@ -70,5 +77,49 @@ describe('nearby stops separated by a real route detour', () => {
     const previous = { ...step(net, null, first).state!, lat: 41.306, lon: -72.935 };
     const next = step(net, previous, { ...first, lat: 41.31086, lon: -72.93054, collectedAt: first.collectedAt + 5000 });
     expect(next.state!.nearestStopId).toBe(53);
+  });
+  it('persists the correct calls through the real collector and a restart during the genuine return', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'shuttle-nearby-occurrences-'));
+    const bundle = openDb(path.join(dir, 'test.db'));
+    migrate(bundle.db, { migrationsFolder: './drizzle' });
+    let latest = observations[0]!, collector: Collector | undefined;
+    class Stub extends UpstreamClient {
+      constructor() { super({ baseUrl: 'http://invalid.test' }); }
+      override async stops() { return stops; }
+      override async routes() { return [route]; }
+      override async buses(): Promise<RawBus[]> {
+        return [{ id: latest.busId, name: latest.busName, route: latest.routeId, lat: latest.lat,
+          lon: latest.lon, heading: latest.heading, lastStop: latest.lastStopId } as RawBus];
+      }
+    }
+    type Inner = { runPoll(): Promise<void>; refreshStaticIfNeeded(force: boolean): Promise<void> };
+    const restartAt = Date.parse('2026-10-03T13:04:23.394Z');
+    expect(observations.some(o => o.collectedAt === restartAt)).toBe(true);
+    const wrongOutboundStands: number[] = [];
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(latest.collectedAt);
+      collector = await Collector.create(bundle, { upstream: new Stub(), upstreamEta: false, etaSampler: false });
+      await (collector as unknown as Inner).refreshStaticIfNeeded(true);
+      for (const obs of observations) {
+        latest = obs; vi.setSystemTime(obs.collectedAt);
+        if (obs.collectedAt === restartAt) {
+          collector.stop();
+          collector = await Collector.create(bundle, { upstream: new Stub(), upstreamEta: false, etaSampler: false });
+        }
+        await (collector as unknown as Inner).runPoll();
+        if (obs.collectedAt < Date.parse('2026-10-03T13:00:00Z')
+          && collector.getLiveBuses().some(b => b.atStopId === 53)) wrongOutboundStands.push(obs.collectedAt);
+      }
+      expect(wrongOutboundStands).toEqual([]);
+      const calls = bundle.sqlite.prepare('SELECT stop_id, arrived_at, departed_at, stand_sec FROM stop_visits WHERE stop_id IN (116,53) ORDER BY anchored_at').all();
+      expect(calls).toEqual([
+        expect.objectContaining({ stop_id: 116 }),
+        expect.objectContaining({ stop_id: 53, arrived_at: Date.parse('2026-10-03T13:04:03.483Z'), stand_sec: 29.878 }),
+      ]);
+      expect(bundle.sqlite.prepare('SELECT COUNT(*) n FROM arrivals WHERE stop_id=53').get()).toEqual({ n: 1 });
+    } finally {
+      collector?.stop(); vi.useRealTimers(); bundle.sqlite.close(); rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
