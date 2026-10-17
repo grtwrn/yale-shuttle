@@ -2,6 +2,8 @@ import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
 import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { appendRolling, maintainImages, saveImage } from '../retention/storage.mjs';
+import { saveCheckpoint } from './checkpoint.mjs';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
 import {BOARD_M,cardBoardsBus,followedBusName,labeledStopId,observedAtStop,oppositePickupCurb,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
@@ -20,31 +22,26 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
  const ROOT=outputDir;
  await fs.mkdir(ROOT,{recursive:true});
  let feed=initialFeed,feedAt=Date.now(),busy=false,stopped=false,timer,run=null,lastImage=0,lastPhase='',cursor=metrics.CANARY_LINES.findIndex(l=>l.label===initialLine?.label),imageBytes=0;
- const images=[];
+ let lastPosition;
  // A line whose trip row is missing (e.g. a bus still in the feed after its
  // last loop) is skipped for a while, so a fixed-trip rider does not reload,
  // log and screenshot the same empty planner every 10 s.
  const unavailableUntil={};
- try { for(const line of (await fs.readFile(path.join(ROOT,'images.jsonl'),'utf8')).trim().split('\n')) if(line)images.push(JSON.parse(line)); } catch {}
  await fs.appendFile(path.join(ROOT,'journeys.jsonl'),'');
- await fs.mkdir(path.join(ROOT,'images'),{recursive:true});
- for(const name of await fs.readdir(path.join(ROOT,'images'))) imageBytes+=(await fs.stat(path.join(ROOT,'images',name))).size;
- const status=async(extra={})=>fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date().toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,...extra},null,2));
- const event=async(kind,detail)=>{const e={at:new Date().toISOString(),runId:run?.id,kind,detail};await fs.appendFile(path.join(ROOT,'events.jsonl'),JSON.stringify(e)+'\n');console.log(JSON.stringify(e));};
- const publish=async()=>{
-  await fs.writeFile(path.join(ROOT,'index.html'),'<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv="refresh" content="60"><title>Ongoing rider QA</title><style>body{font:16px system-ui;max-width:1000px;margin:24px auto;padding:16px}img{max-width:390px;width:100%}article{display:inline-block;vertical-align:top;margin:12px}p{max-width:850px}</style><h1>Ongoing simulated rider QA</h1><p>One tester browser, sequential live journeys. GPS-simulated positions follow the operator feed; arrival observations are not independent ground truth. Screenshots below are live production views. Candidate anomalies require review before being called defects.</p><p>Updated '+esc(new Date().toISOString())+' · '+esc(run?.line.label??'Selecting')+' · '+esc(run?.phase??'idle')+'</p><p><a href="status.json">Current status</a> · <a href="events.jsonl">Events</a> · <a href="journeys.jsonl">Completed journeys</a></p>'+images.slice(-100).reverse().map(i=>'<article><p>'+esc(i.at+' '+i.label)+'</p><a href="images/'+i.name+'"><img loading="lazy" src="images/'+i.name+'"></a></article>').join(''));
+ let retention=await maintainImages(ROOT,{activeRunId:initialRun?.id});imageBytes=retention.imageBytes;
+ const locate=async position=>{await ctx.setGeolocation(position);lastPosition=position;};
+ const status=async(extra={})=>{
+  await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date().toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,...extra},null,2));
+  await saveCheckpoint(ROOT,page,run,lastPosition);
  };
+ const event=async(kind,detail)=>{const e={at:new Date().toISOString(),runId:run?.id,kind,detail};await appendRolling(ROOT,'events',e);console.log(JSON.stringify(e));};
  const capture=async(label)=>{
-  // A conservative hard cap on this new run, leaving ample room under 2 GB
-  // even with the earlier reports. Stop capturing instead of deleting evidence.
-  if(imageBytes>=200*1024*1024)return;
   const at=new Date().toISOString(),name=at.replace(/[:.]/g,'-')+'-'+label.replace(/[^a-zA-Z0-9-]/g,'-')+'.jpg';
   const buffer=await page.screenshot({type:'jpeg',quality:72,timeout:12000});
-  if(imageBytes+buffer.length>200*1024*1024)return;
-  await fs.writeFile(path.join(ROOT,'images',name),buffer);imageBytes+=buffer.length;
-  const item={at,name,label,runId:run?.id};images.push(item);await fs.appendFile(path.join(ROOT,'images.jsonl'),JSON.stringify(item)+'\n');lastImage=Date.now();await publish();
+  retention=await saveImage(ROOT,{at,name,label,runId:run?.id},buffer,run?.id,{phase:run?.phase,line:run?.line.label});
+  imageBytes=retention.imageBytes;lastImage=Date.now();
  };
- const finish=async(reason)=>{run.finishedAt=new Date().toISOString();run.result=reason;await capture(reason);await fs.appendFile(path.join(ROOT,'journeys.jsonl'),JSON.stringify(run)+'\n');await event('journey-finished',reason);run=null;};
+ const finish=async(reason)=>{run.finishedAt=new Date().toISOString();run.result=reason;await capture(reason);await appendRolling(ROOT,'journeys',run);await event('journey-finished',reason);run=null;};
  const begin=async(trip,line)=>{run={instrumentVersion:'inputs-v2',id:Date.now().toString(),startedAt:new Date().toISOString(),phase:'waiting',line,trip,samples:0};await event('journey-started',{line:line.label,trip});await capture('waiting-'+line.label);await status();};
  const onResponse=async r=>{if(new URL(r.url()).pathname==='/api/buses'&&r.ok())try{feed=await r.json();feedAt=Date.now();}catch{}};
  page.on('response',onResponse);
@@ -73,7 +70,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    if(!picked)continue;
    cursor=idx;
    await page.evaluate(()=>{localStorage.removeItem('shuttle-boarded-ride');sessionStorage.clear();localStorage.setItem('listView','trip');});
-   await ctx.setGeolocation({latitude:picked.origin.lat,longitude:picked.origin.lon});
+   await locate({latitude:picked.origin.lat,longitude:picked.origin.lon});
    await page.reload({waitUntil:'domcontentloaded',timeout:30000});
    const clear=page.getByRole('button',{name:'Clear',exact:true});if(await clear.isVisible())await clear.click();
    await selectDestination(page,picked.destination);
@@ -95,10 +92,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    const wire=feed.server_eta;
    const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-feedAt,text,buses:feed.buses,
     ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{})};
-   // Bound text records as well: 5 MB chunks, latest 12, at most about 60 MB.
-   const log=path.join(ROOT,'samples.jsonl');let size=0;try{size=(await fs.stat(log)).size;}catch{}
-   if(size>5*1024*1024){const archived='samples-'+now+'.jsonl';await fs.rename(log,path.join(ROOT,archived));const old=(await fs.readdir(ROOT)).filter(n=>/^samples-\d+\.jsonl$/.test(n)).sort();for(const n of old.slice(0,-11))await fs.unlink(path.join(ROOT,n));}
-   await fs.appendFile(log,JSON.stringify(sample)+'\n');run.samples++;
+   await appendRolling(ROOT,'samples',sample);run.samples++;
    if(now-feedAt>30000){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
     const checked=confirmConflict(run.countConflict,pickupCountConflict(text,feed,run.line.busRouteIds,now),now);
@@ -142,7 +136,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      if(!run.walkUntil || run.walkStopId!==run.boardStopId){run.walkStopId=run.boardStopId;run.walkUntil=now+metrics.haversineM(run.trip.origin,coord)/1.1*1000;run.walkStart=now;}
      const f=Math.min(1,(now-run.walkStart)/Math.max(1,run.walkUntil-run.walkStart));
      const at={lat:run.trip.origin.lat+(coord.lat-run.trip.origin.lat)*f,lon:run.trip.origin.lon+(coord.lon-run.trip.origin.lon)*f};
-     await ctx.setGeolocation({latitude:at.lat,longitude:at.lon});
+     await locate({latitude:at.lat,longitude:at.lon});
      // Also board when the card marks the bus at the stop (BOARD🚌) and the
      // feed agrees: Red #119 stood at Division / Prospect 47 m from the pole
      // for one poll and was missed (run 1790956246494).
@@ -202,7 +196,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
       if(now-Date.parse(run.offRouteSince)>BUS_OFF_ROUTE_MS){run.excludeAccuracy=true;await event('bus-off-route',{bus:run.busName,offRouteSince:run.offRouteSince,from:run.offRouteFrom,at:{lat:bus.lat,lon:bus.lon},exitDistanceM:coord?metrics.haversineM(bus,coord):null});await finish('bus-off-route-excluded');await status();return;}
      }else{run.offRouteSince=undefined;run.offRouteFrom=undefined;}
     }
-    if(bus){await ctx.setGeolocation({latitude:bus.lat,longitude:bus.lon});run.lastExitDistanceM=coord?metrics.haversineM(bus,coord):null;
+    if(bus){await locate({latitude:bus.lat,longitude:bus.lon});run.lastExitDistanceM=coord?metrics.haversineM(bus,coord):null;
      if(coord&&(run.lastExitDistanceM<=45 || (run.lastExitDistanceM<=60 && bus.at_stop_id===run.exitStopId && bus.stationary===true))&&now-Date.parse(run.boardedAt)>30000){run.arrivalCriterion=run.lastExitDistanceM<=45?'GPS-within-45m':'stationary-at-target-within-60m';run.arrivedAt=new Date().toISOString();run.arrivalText=text;run.phase='arrived';await event('arrived',{bus:run.busName,stop:feed.stop_names[run.exitStopId],rideSeconds:(now-Date.parse(run.boardedAt))/1000});}
     }
     if(/Get off in 2 stops/.test(text)&&/Get off NEXT stop|Arriving at/.test(text)&&!run.popupMismatch){run.popupMismatch=true;await event('candidate-stale-alert',text);await capture('candidate-stale-alert');}
@@ -219,7 +213,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
   }catch(e){await event('harness-error',{message:e.message,stack:e.stack});if(run){run.harnessErrors=(run.harnessErrors??0)+1;if(run.harnessErrors>=3)await finish('harness-failed-excluded');}await status({error:e.message});}
   finally{busy=false;}
  };
- if(initialRun){run={...initialRun,instrumentVersion:'inputs-v2',instrumentHandoverAt:new Date().toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; sampling gap excluded from accuracy scoring');await status();}
+ if(initialRun){run={...initialRun,instrumentVersion:'inputs-v2',instrumentHandoverAt:new Date().toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; resumed journey excluded from accuracy scoring');await status();}
  else if(initialTrip)await begin(initialTrip,initialLine);
  timer=setInterval(()=>tick(),10000);await tick();
  return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt}),capture,stop:async()=>{stopped=true;clearInterval(timer);removeListeners();await status();},tick, detach:()=>{stopped=true;clearInterval(timer);removeListeners();return run;}};
