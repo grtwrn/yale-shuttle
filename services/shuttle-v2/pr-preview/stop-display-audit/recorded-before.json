@@ -1,0 +1,92 @@
+{
+  "scope": "Feed-correlated display consistency; confirmed curb stands only; folded counts excluded",
+  "snapshots": 412,
+  "coverage": {
+    "buses": 7360,
+    "confirmedStands": 2984,
+    "positions": 2984,
+    "pickupCounts": 60431,
+    "exitCounts": 60431,
+    "foldedCountsSkipped": 635
+  },
+  "groups": {
+    "Green|#302|standing-position": {
+      "snapshots": 13,
+      "example": {
+        "at": "2026-10-15T11:13:05.787Z",
+        "line": "Green",
+        "bus": "#302",
+        "standingStop": 25,
+        "kind": "standing-position",
+        "targetStop": 25,
+        "expected": 25,
+        "actual": 26
+      }
+    },
+    "Purple|#331|standing-position": {
+      "snapshots": 16,
+      "example": {
+        "at": "2026-10-15T11:15:05.863Z",
+        "line": "Purple",
+        "bus": "#331",
+        "standingStop": 9,
+        "kind": "standing-position",
+        "targetStop": 9,
+        "expected": 9,
+        "actual": 10
+      }
+    },
+    "Green|#332|standing-position": {
+      "snapshots": 14,
+      "example": {
+        "at": "2026-10-15T11:23:05.797Z",
+        "line": "Green",
+        "bus": "#332",
+        "standingStop": 80,
+        "kind": "standing-position",
+        "targetStop": 80,
+        "expected": 80,
+        "actual": 127
+      }
+    },
+    "Purple|#325|standing-position": {
+      "snapshots": 16,
+      "example": {
+        "at": "2026-10-15T11:33:05.881Z",
+        "line": "Purple",
+        "bus": "#325",
+        "standingStop": 9,
+        "kind": "standing-position",
+        "targetStop": 9,
+        "expected": 9,
+        "actual": 10
+      }
+    },
+    "Purple|#303|standing-position": {
+      "snapshots": 15,
+      "example": {
+        "at": "2026-10-15T11:47:05.995Z",
+        "line": "Purple",
+        "bus": "#303",
+        "standingStop": 72,
+        "kind": "standing-position",
+        "targetStop": 72,
+        "expected": 72,
+        "actual": 127
+      }
+    },
+    "Green|#301|standing-position": {
+      "snapshots": 22,
+      "example": {
+        "at": "2026-10-15T12:15:06.330Z",
+        "line": "Green",
+        "bus": "#301",
+        "standingStop": 143,
+        "kind": "standing-position",
+        "targetStop": 143,
+        "expected": 143,
+        "actual": 94
+      }
+    }
+  }
+}

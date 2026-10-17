@@ -1,0 +1,61 @@
+{
+  "base": "https://reporting.test",
+  "scope": "Recorded Red #317 positions/forecasts with simulated outages and recovery; actual SPA, intercepted APIs, no production writes",
+  "runs": [
+    {
+      "mode": "trip",
+      "width": 307,
+      "polls": 12,
+      "passed": true
+    },
+    {
+      "mode": "trip",
+      "width": 390,
+      "polls": 12,
+      "passed": true
+    },
+    {
+      "mode": "trip",
+      "width": 1280,
+      "polls": 12,
+      "passed": true
+    },
+    {
+      "mode": "map",
+      "width": 307,
+      "polls": 12,
+      "passed": true
+    },
+    {
+      "mode": "map",
+      "width": 390,
+      "polls": 12,
+      "passed": true
+    },
+    {
+      "mode": "map",
+      "width": 1280,
+      "polls": 12,
+      "passed": true
+    },
+    {
+      "mode": "ride",
+      "width": 307,
+      "polls": 12,
+      "passed": true
+    },
+    {
+      "mode": "ride",
+      "width": 390,
+      "polls": 12,
+      "passed": true
+    },
+    {
+      "mode": "ride",
+      "width": 1280,
+      "polls": 12,
+      "passed": true
+    }
+  ],
+  "errors": []
+}

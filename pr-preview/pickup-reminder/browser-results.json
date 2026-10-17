@@ -1,0 +1,68 @@
+{
+  "base": "https://pickup-reminder.test",
+  "scope": "Actual SPA with intercepted fixture APIs and notification delivery; no production writes or ETA accuracy claim",
+  "runs": [
+    {
+      "width": 307,
+      "androidCompact": true,
+      "settings": [
+        "1/3/5/10/15 min",
+        "1–5 stops",
+        "time to leave"
+      ],
+      "permissionAskedOnlyOnSet": true,
+      "keyboardFocus": true,
+      "wrongBusIgnored": true,
+      "stopAndMinuteDelivery": true,
+      "repeatedPing": false,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "androidCompact": false,
+      "settings": [
+        "1/3/5/10/15 min",
+        "1–5 stops",
+        "time to leave"
+      ],
+      "permissionAskedOnlyOnSet": true,
+      "keyboardFocus": true,
+      "wrongBusIgnored": true,
+      "stopAndMinuteDelivery": true,
+      "repeatedPing": false,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "androidCompact": false,
+      "settings": [
+        "1/3/5/10/15 min",
+        "1–5 stops",
+        "time to leave"
+      ],
+      "permissionAskedOnlyOnSet": true,
+      "keyboardFocus": true,
+      "wrongBusIgnored": true,
+      "stopAndMinuteDelivery": true,
+      "repeatedPing": false,
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "androidCompact": false,
+      "settings": [
+        "1/3/5/10/15 min",
+        "1–5 stops",
+        "time to leave"
+      ],
+      "permissionAskedOnlyOnSet": true,
+      "keyboardFocus": true,
+      "wrongBusIgnored": true,
+      "stopAndMinuteDelivery": true,
+      "repeatedPing": false,
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "completed": true
+}

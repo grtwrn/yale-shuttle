@@ -212,6 +212,9 @@ try {
     assert.equal(nav.searchParams.get('travelmode'), 'walking');
     const remind = actions.getByRole('button', { name: '🔔 Remind me for #307', exact: true });
     await remind.focus(); await page.keyboard.press('Space');
+    const reminderSettings = actions.getByRole('group', { name: 'Pickup reminder settings', exact: true });
+    await reminderSettings.getByLabel('Reminder timing', { exact: true }).selectOption('leave');
+    await reminderSettings.getByRole('button', { name: 'Set reminder', exact: true }).click();
     const armed = actions.getByRole('button', { name: '🔔 Reminding you for #307', exact: true });
     assert.equal(await armed.getAttribute('aria-pressed'), 'true');
     await page.keyboard.press('Space');

@@ -8,9 +8,11 @@
 #
 # Trigger: any push to master that touches the app. The Pi's local
 # `npm run deploy` still works as a hotfix path; day-to-day, deploying means
-# pushing a commit.
+# pushing a commit. Operator-only changes run every staging gate without
+# replacing the app image or invalidating a live evaluation cycle.
 name: deploy
 on:
+  workflow_dispatch:
   push:
     branches: [master]
     paths:
@@ -30,6 +32,8 @@ jobs:
         working-directory: services/shuttle-v2
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - uses: actions/setup-node@v4
         with:
@@ -41,6 +45,13 @@ jobs:
 
       - name: Install dependencies (backend + web)
         run: npm ci && npm ci --prefix web
+
+      - name: Classify production image inputs
+        id: scope
+        env:
+          DEPLOY_BEFORE: ${{ github.event.before }}
+          DEPLOY_AFTER: ${{ github.sha }}
+        run: node scripts/deployment-scope.mjs --before "$DEPLOY_BEFORE" --after "$DEPLOY_AFTER" --output "$GITHUB_OUTPUT"
 
       # Two ways of getting a browser have now failed here, both for the same
       # underlying reason — they reached for a package manager:
@@ -69,8 +80,14 @@ jobs:
           echo "browser: $(grep BOT_CHROMIUM_PATH "$GITHUB_ENV" | tail -1)"
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.scope.outputs.runtime_changed == 'true'
+
+      - name: Operator-only checks (gates -> staging -> smoke)
+        if: steps.scope.outputs.runtime_changed == 'false'
+        run: npm run deploy -- --stage-only
 
       - name: Staged deploy (gates -> staging -> smoke -> fly -> verify)
+        if: steps.scope.outputs.runtime_changed == 'true'
         run: npm run deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

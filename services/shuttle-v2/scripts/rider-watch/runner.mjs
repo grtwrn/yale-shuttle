@@ -1,4 +1,5 @@
 import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
+import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { appendRolling, maintainImages, saveImage } from '../retention/storage.mjs';
@@ -88,10 +89,15 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
   try{
    if(!run){await select();return;}
    const now=Date.now(),text=await page.locator('body').innerText();
-   const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-feedAt,text,buses:feed.buses};
+   const wire=feed.server_eta;
+   const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-feedAt,text,buses:feed.buses,
+    ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{})};
    await appendRolling(ROOT,'samples',sample);run.samples++;
    if(now-feedAt>30000){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
+    const checked=confirmConflict(run.countConflict,pickupCountConflict(text,feed,run.line.busRouteIds,now),now);
+    run.countConflict=checked.state;
+    if(checked.alert){await event('candidate-stop-count',{line:run.line.label,...checked.alert,text});await capture('candidate-stop-count');}
     // Wait as long as the card's first quote allows, as the ride cap does:
     // Grocery Ham quoted "About 44 min · Likely 33–60 min" and #42 pulled in
     // at 47.6 min, 2.6 min after a fixed 45 min cap ended the run (96f99a88).

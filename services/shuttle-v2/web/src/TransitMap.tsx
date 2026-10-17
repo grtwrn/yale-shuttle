@@ -62,10 +62,12 @@ import { PlaceList, type PlaceRow } from "./PlaceList";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
 import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
 import {
-  AT_STOP_WALK_SEC, computeLeaveAlert, deliverPing, ensureNotifyPermission,
-  liveReminderInput, leaveAlertMessage, markFired, NO_PINGS_FIRED,
+  deliverPing, ensureNotifyPermission,
+  liveReminderInput, markFired, NO_PINGS_FIRED,
   notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
+import { computePickupReminder, pickupReminderMessage, type ReminderTiming } from './pickupReminder';
+import { PickupReminderControls } from './PickupReminderControls';
 import { topVisibleOptions, keptThirdLabel,
   boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, sameTripPickup, type TripOption,
 } from "./planner";
@@ -82,6 +84,8 @@ import {
 } from "./stopAlerts";
 import { rideEndDecision, type RideEndReason } from "./rideEnd";
 import { liveUpdateMessage } from "./liveUpdates";
+import { BusReportingAlerts } from './BusReportingAlerts';
+import type { ReportingSnapshot, ReportingWatch } from './busReporting';
 import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
@@ -89,6 +93,7 @@ import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
 import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle, rideBoarded } from "./rideAlert";
 import { formatRideEta } from "./format";
+import { nextRouteStop } from './nextRouteStop';
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner, DISCLAIMER_TEXT } from "./Banners";
@@ -1622,6 +1627,8 @@ type LiveBusStatus = "loading" | "unavailable" | "ready";
 
 const TripPlanner: FC<{
   buses: BusData[];
+  reportingSnapshot: ReportingSnapshot | null;
+  reportingAvailable: boolean;
   busStatus: LiveBusStatus;
   lastBusUpdateAt: number | null;
   busUpdateFailed: boolean;
@@ -1666,7 +1673,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, reportingSnapshot, reportingAvailable, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [initialDraft] = useState(loadTripDraft);
   const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
   const [toText, setToText] = useState(initialDraft?.toText ?? "");
@@ -1717,7 +1724,7 @@ const TripPlanner: FC<{
   // engine effect below (after the options memo) feeds it live data.
   // Declared HERE, before any hook that references it — see the TDZ
   // warning at the top of this file's conventions.
-  const [reminder, setReminder] = useState<{ routeLabel: string; boardStopId: number; alightStopId: number } | null>(null);
+  const [reminder, setReminder] = useState<{ routeLabel: string; boardStopId: number; alightStopId: number; timing: ReminderTiming } | null>(null);
   // In-app fallback banner when a system notification can't be shown
   // (permission denied, or iOS Safari where the page-context
   // Notification API doesn't exist at all).
@@ -2305,7 +2312,7 @@ const TripPlanner: FC<{
   reminderContextRef.current = { buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null };
 
   // The reminder engine: once armed, check every second (piggybacking on
-  // selected boarding window, using the table's rounding and clock). computeLeaveAlert
+  // selected boarding window, using the table's rounding and clock). computePickupReminder
   // decides IF a ping fires; this effect only delivers it.
   useEffect(() => {
     if (!reminder) return;
@@ -2319,10 +2326,10 @@ const TripPlanner: FC<{
         setReminder(null);
         return;
       }
-      const ping = computeLeaveAlert(input, reminderFiredRef.current);
+      const ping = computePickupReminder(input, reminderFiredRef.current, reminder.timing);
       if (!ping) return;
       reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
-      const msg = leaveAlertMessage(ping, routeLabel, input, rainRef.current.likely);
+      const msg = pickupReminderMessage(ping, reminder.timing, routeLabel, input, rainRef.current.likely);
       // System notification when possible (SW registration first so it
       // works backgrounded on Android); otherwise the in-app banner +
       // vibration. deliverPing never throws.
@@ -2332,8 +2339,8 @@ const TripPlanner: FC<{
           vibrateAlert();
         }
       });
-      // leave_now is the final ping — the reminder has done its job.
-      if (ping === "leave_now") setReminder(null);
+      // Custom timing fires once; leave-time mode finishes on leave_now.
+      if (reminder.timing.mode !== 'leave' || ping === "leave_now") setReminder(null);
     };
     check(); // immediate: a late arm inside a window pings right away
     const id = setInterval(check, 1000);
@@ -3213,8 +3220,23 @@ const TripPlanner: FC<{
   const overviewShuttles = (showAllOptions ? orderedOptions ?? [] : visibleOptions ?? [])
     .filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
   const overviewRouteLabels = overviewShuttles.length ? overviewShuttles : potentialRoutes.map(p => p.label);
+  const reportingOptions = (expandedKey ? options?.filter(o => o.routeLabel === expandedKey)
+    : showAllOptions ? orderedOptions : visibleOptions) ?? [];
+  const watchedTripBuses: ReportingWatch[] = reportingOptions.filter(o => o.mode === 'shuttle' && !o.etaUnavailable && !o.departed)
+    .flatMap(o => {
+      const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
+      if (!cfg) return [];
+      const identity = tripBusIdentity(o);
+      return [...new Set([identity.pickup, identity.ride])].filter(Boolean)
+        .map(busName => ({ busName, routeLabel: o.routeLabel, routeIds: cfg.busRouteIds }));
+    });
+  const reportingScope = isFuture || alreadyThere ? [] : expandedKey ? [expandedKey]
+    : (stableOptions ?? []).filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
+      <BusReportingAlerts key={`trip:${tripKey}:${expandedKey ?? ''}`} snapshot={reportingSnapshot}
+        available={reportingAvailable} watched={watchedTripBuses} scope={reportingScope}
+        replacements={watchedTripBuses} />
       {/* In-app fallback for a leave-time ping when a system notification
           can't be shown (permission denied, or iOS Safari page context
           where the Notification API doesn't exist). Fixed so it's seen
@@ -4450,29 +4472,17 @@ const TripPlanner: FC<{
                             startedAt: Date.now(),
                             ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),
                           })} />
-                          {/* Only offer a leave reminder while there is a live,
-                              catchable pickup and a walk left to make. */}
-                          {o.walkToSec >= AT_STOP_WALK_SEC && leaveInput && (
-                            <button
-                              className="trip-action-button"
-                              aria-pressed={reminderActive}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (reminderActive) {
-                                  setReminder(null);
-                                  return;
-                                }
+                          {leaveInput && (
+                            <PickupReminderControls bus={reminderBus} stopName={boardName} walkToSec={o.walkToSec}
+                              activeTiming={reminderActive ? reminder!.timing : undefined}
+                              onCancel={() => setReminder(null)}
+                              onArm={timing => {
                                 reminderFiredRef.current = NO_PINGS_FIRED;
                                 setReminderBanner(null);
                                 void ensureNotifyPermission();
-                                setReminder({ routeLabel: o.routeLabel, boardStopId: o.boardStopId, alightStopId: o.alightStopId });
+                                setReminder({ routeLabel: o.routeLabel, boardStopId: o.boardStopId, alightStopId: o.alightStopId, timing });
                               }}
-                              title={reminderActive
-                                ? "Reminding you when it's time to leave — tap to cancel"
-                                : `Remind me before the pickup window for ${reminderBus}, allowing time to walk`}
-                            >
-                              {reminderActive ? `🔔 Reminding you for ${reminderBus}` : `🔔 Remind me for ${reminderBus}`}
-                            </button>
+                            />
                           )}
                           <button
                             className="trip-action-button"
@@ -5152,7 +5162,8 @@ const StopList: FC<{
         const i = anchorIndexOnList(bus, cfg, routeStops, stopCoords, stops, nowMs, liveAnchorStore);
         if (i < 0) continue;
         busLookups[idx]![stops[i]!] = bus;
-        nextLookups[idx]!.add(stops[(i + 1) % stops.length]!);
+        const next = nextRouteStop(live, cfg.label, bus.bus_name, stops[i]!, canonical);
+        if (next !== null) nextLookups[idx]!.add(next);
         // Same resolver, same store, same clock as the ETA just above.
         const rest = resolveStandingStop(bus, cfg, routeStops, stopCoords, nowMs, liveAnchorStore);
         if (rest) {
@@ -6396,6 +6407,9 @@ const TransitMap: FC = () => {
   // A valid position snapshot can arrive without usable ETA rows. Keep that
   // distinction for counts/empty-state copy; the existing ETA warning stays on.
   const [busSnapshotFailed, setBusSnapshotFailed] = useState(false);
+  // Raw positions precede timetable/map filtering: those presentation changes
+  // cannot establish that a vehicle actually stopped reporting upstream.
+  const [reportingSnapshot, setReportingSnapshot] = useState<ReportingSnapshot | null>(null);
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
@@ -7216,6 +7230,8 @@ const TransitMap: FC = () => {
         if (!data || !Array.isArray(data.buses)) throw new Error("Invalid bus update");
         latestApplied = mySeq;
         setLastBusUpdateAt(Date.now());
+        setReportingSnapshot({ buses: data.buses, at: Date.now(),
+          serverAt: Number.isFinite(data.server_eta?.servedAt) ? data.server_eta.servedAt : Date.now() });
         setBusUpdateFailed(false);
         setBusSnapshotFailed(false);
         // The estimator's learned parameters, before anything that prices a
@@ -7547,6 +7563,10 @@ const TransitMap: FC = () => {
           above; "Done" in the banner ends the ride and returns to the tabs. */}
       {boardedRide ? (
         <>
+          <BusReportingAlerts key={`ride:${boardedRide.startedAt}`} snapshot={reportingSnapshot}
+            available={busStatus === 'ready'} scope={[boardedRide.routeLabel]}
+            watched={[{ busName: boardedRide.busName, routeLabel: boardedRide.routeLabel,
+              routeIds: ROUTE_LISTS.find(c => c.label === boardedRide.routeLabel)?.busRouteIds ?? [] }]} />
           <RideRouteMap
             ride={boardedRide}
             buses={buses}
@@ -7569,6 +7589,14 @@ const TransitMap: FC = () => {
         </>
       ) : listView === "map" ? (
         <>
+          <BusReportingAlerts key={`map:${[...mapHidden].sort().join(',')}:${activeOnly}`} snapshot={reportingSnapshot}
+            available={busStatus === 'ready'}
+            scope={ROUTE_LISTS.filter(c => !c.busRouteIds.some(id => mapHidden.has(ROUTE_ID_TO_TOGGLE[id])))
+              .map(c => c.label)}
+            watched={buses.filter(b => !mapDrawnHidden.has(ROUTE_ID_TO_TOGGLE[b.route_id])).flatMap(b => {
+              const cfg = ROUTE_LISTS.find(c => c.busRouteIds.includes(b.route_id));
+              return cfg ? [{ busName: b.bus_name, routeLabel: cfg.label, routeIds: cfg.busRouteIds }] : [];
+            })} />
           {/* ARMED STOP ALERTS — the strip that makes the arm visible.
               A 🔔 tapped twenty stops down a card is invisible from anywhere
               else, so every armed alert is listed here with its own ✕. It sits
@@ -7785,6 +7813,7 @@ const TransitMap: FC = () => {
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
         <TripPlanner
+          reportingSnapshot={reportingSnapshot} reportingAvailable={busStatus === 'ready'}
           busStatus={busStatus}
           lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}

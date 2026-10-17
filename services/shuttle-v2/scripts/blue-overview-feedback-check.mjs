@@ -51,6 +51,7 @@ try{
  assert.match(await page.locator('body').innerText(),/BOARD\s*Prospect\/Canner/);
  await page.screenshot({path:out+'/blue-close-pickup.png',fullPage:true});
  await page.getByRole('button',{name:/^🔔 Remind me for /}).click();
+ await page.getByRole('group',{name:'Pickup reminder settings',exact:true}).getByRole('button',{name:'Set reminder',exact:true}).click();
  await page.getByRole('button',{name:/^🔔 Reminding you for /}).waitFor();
  await page.clock.runFor(5500);
  assert(await page.getByTitle('Walking directions to Prospect/Canner',{exact:true}).isVisible());
