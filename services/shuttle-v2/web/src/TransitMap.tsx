@@ -1204,7 +1204,7 @@ const CombinedTripMap: FC<{
     const updateWait = (marker: L.Marker, label: string, color: string, wait: OverviewOption['busWait']) => {
       const permanent = !!wait;
       const content = document.createElement('div');
-      content.title = wait ? `${label}. ${wait.elapsed}. ${wait.typical}. Typical total wait is historical context, not time remaining.` : label;
+      content.title = wait ? `${label}. ${wait.elapsed}. ${wait.departure}. ${wait.typical}.` : label;
       // Leaflet's div icon otherwise exposes only the bus emoji. Keep the
       // keyboard/touch marker named even when its hover tooltip is closed.
       const icon = marker.getElement();

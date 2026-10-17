@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from './mapLabels';
 import { displayBand, chipCountdownText } from './etaBand';
 import { arrivalSummary } from './arrivalDetails';
+import { standChipFor } from './standWait';
 
 describe('map route identity without color', () => {
   it.each([
@@ -83,15 +84,28 @@ describe('bus wait label', () => {
     expect(shift.y).toBeLessThanOrEqual(0);
   });
   const dwells = { 11: { med: 9999, sd: 0, n: 30, qn: 30, q: [60, 120, 180, 240, 300, 300, 360, 420, 480, 600] } };
-  it('shows elapsed and a stable typical total, including after that total is exceeded', () => {
+  it('distinguishes the departure remainder from the usual six-minute total (#138)', () => {
+    const tables = {11: {...dwells[11], q: dwells[11].q.map(n => n * 1.2)}};
+    const standing = {stopId: 11, standingSec: 412};
+    const label = mapWaitLabel(standing, tables, undefined)!;
+    const chip = standChipFor(standing, tables, undefined)!;
+    expect(label.compact).toBe(`Stopped ${chip.clock} · ${chip.text}`);
+    expect(label.compact).not.toMatch(/usual|typical|total/i);
+    expect(label.typical).toContain('6 min');
+  });
+  it('keeps elapsed and departure wording aligned with the stop list, including overdue waits', () => {
     const a = mapWaitLabel({ stopId: 11, standingSec: 201.9 }, dwells, undefined)!;
     const b = mapWaitLabel({ stopId: 11, standingSec: 601 }, dwells, undefined)!;
-    expect(a.elapsed).toBe('Waiting 3:21');
-    expect(a.compact).toBe('Stopped 3:21 · usual ~5m total');
-    expect(a.typical).toBe('Usually ~5 min total');
+    const chipA = standChipFor({stopId: 11, standingSec: 201.9}, dwells, undefined)!;
+    const chipB = standChipFor({stopId: 11, standingSec: 601}, dwells, undefined)!;
+    expect(a.elapsed).toBe('Waiting 3:22');
+    expect(a.compact).toBe(`Stopped ${chipA.clock} · ${chipA.text}`);
+    expect(a.departure).toBe(chipA.text);
+    expect(a.typical).toBe('Usual total stop duration: ~5 min');
     expect(b.typical).toBe(a.typical);
     expect(b.elapsed).toBe('Waiting 10:01');
-    expect(b.compact).toBe('Stopped 10:01 · usual ~5m total');
+    expect(b.compact).toBe(`Stopped ${chipB.clock} · ${chipB.text}`);
+    expect(b.departure).toBe(chipB.text);
     expect(b.overdue).toBe(true);
     expect(mapWaitLabel({ stopId: 11, standingSec: 201, approach: true }, dwells, undefined)?.elapsed).toBe('Waiting nearby 3:21');
   });

@@ -13,7 +13,7 @@ await fs.mkdir(out, { recursive: true });
 const baseline = process.argv.includes('--baseline'), prefix = baseline ? 'before' : 'after';
 const desktop = !!process.env.DESKTOP;
 const from = { lat: 41.321, lon: -72.927 }, to = { lat: 41.307, lon: -72.926 };
-const base = { label: 'Red', segCoords: [from, to], bus: { ...from, name: '307' }, passedBus: { lat: 41.3207, lon: -72.927, name: '309' }, boardEta: '2–19 min', arriveAt: '12:59–1:32 PM', busWait: { compact: 'Stopped 3:21 · usual ~5m total', elapsed: 'Waiting 3:21', typical: 'Usually ~5 min total', overdue: false } };
+const base = { label: 'Red', segCoords: [from, to], bus: { ...from, name: '307' }, passedBus: { lat: 41.3207, lon: -72.927, name: '309' }, boardEta: '2–19 min', arriveAt: '12:59–1:32 PM', busWait: { compact: 'Stopped 3:21 · leaves in 1-5 min', elapsed: 'Waiting 3:21', departure: 'leaves in 1-5 min', typical: 'Usual total stop duration: ~5 min', overdue: false } };
 const source = baseline ? process.env.BASELINE_SOURCE : service + '/web/src/TransitMap.tsx';
 if (!source)
     throw Error('Set BASELINE_SOURCE when using --baseline');
@@ -61,7 +61,11 @@ try {
         await page.waitForTimeout(100);
         const state = await capture('explicit-pause-' + width, width === 360);
         const label = state.labels.find(l => l.wait);
-        assert(label.text.includes('Stopped 3:21 · usual ~5m total'));
+        assert(label.text.includes('Stopped 3:21 · leaves in 1-5 min'));
+        assert(!/usual|typical|total/i.test(label.text));
+        const bus = state.buses.find(b => b.name?.includes('307'));
+        assert(bus?.name.includes('leaves in 1-5 min'));
+        assert(bus.name.includes('Usual total stop duration: ~5 min'));
         assert(label.left >= state.map.left && label.right <= state.map.right, 'pause label fits map');
         assert(!state.overflow, 'no phone overflow');
     }
