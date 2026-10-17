@@ -194,7 +194,7 @@ export function readStopDataCatalog(
       positionsFrom: edge("raw_positions", "collected_at", "ASC"), positionsTo: edge("raw_positions", "collected_at", "DESC"),
     },
     limits: STOP_DATA_LIMITS,
-    warnings: [EVIDENCE_NOTE, "Raw GPS is normally retained for about 6 hours; missing positions are not evidence that a bus was absent.",
+    warnings: [EVIDENCE_NOTE, "Raw GPS is normally retained for about 36 hours; missing positions are not evidence that a bus was absent.",
       ...(truncated ? [`Catalogue limited to ${CATALOG_OCCURRENCES} route/stop occurrences.`] : [])],
   };
 }
@@ -243,7 +243,7 @@ export function readStopDataVisit(sqlite: Database.Database, visitId: string, no
     schemaVersion: 1, source: "retained_database", visit, stop, positions,
     coverage: { requestedFrom, requestedTo, actualFrom, actualTo, missingBefore, missingAfter, maxGapSec, truncated, windowCapped, identityAmbiguous },
     warnings: [EVIDENCE_NOTE,
-      ...(positions.length === 0 ? ["No retained raw GPS for this visit. Normal GPS retention is about 6 hours."] : []),
+      ...(positions.length === 0 ? ["No retained raw GPS for this visit. Normal GPS retention is about 36 hours."] : []),
       ...(missingBefore || missingAfter ? ["GPS does not cover both edges of the requested window."] : []),
       ...(maxGapSec !== null && maxGapSec > GAP_WARNING_SEC ? ["GPS has gaps over 30 seconds; do not treat the connecting line as observed movement."] : []),
       ...(identityAmbiguous ? ["This bus name spans multiple bus ids, which may be id rotation or name reuse; do not join GPS tracks across id changes."] : []),

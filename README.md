@@ -105,7 +105,7 @@ calibration queries bucket on.
 
 SQLite at `/data/shuttle-v2.db` (`store/` locally), via Drizzle:
 
-- `raw_positions` — raw vehicle polls (6 h retention)
+- `raw_positions` — raw vehicle polls (36 h retention)
 - `arrivals` — derived stop arrivals, with dwell (90 d)
 - `segments` — derived stop-to-stop travel times (90 d)
 - `stops`, `routes` — topology mirrored from upstream
