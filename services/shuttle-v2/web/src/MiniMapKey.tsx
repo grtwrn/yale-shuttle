@@ -45,6 +45,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
       key={`${option.routeLabel}:${option.boardStopId}:${option.alightStopId}`} data-route={option.routeLabel} data-pickup={option.boardStopId}
       data-mode={option.mode} data-alight={option.alightStopId} data-pickup-choice={option.pickupPreference}
       data-board-bus={pickup?.busName} data-board-stops-ahead={pickup?.stopsAway}
+      data-countdown-bus={option.mode === 'shuttle' ? option.busName : undefined}
       onClick={canSelect ? () => select(option) : undefined}
       style={{ borderTop: '1px solid #eceff1', cursor: canSelect ? 'pointer' : undefined }}>
       <tr>

@@ -64,11 +64,12 @@ try {
    assert.equal(failed.screen.view,'trip');assert.equal(failed.screen.tripDetail,false);
    const selected=failed.screen.rows.find(r=>r.route==='Blue Day'&&r.boardStopId===100);
    assert(selected);assert.equal(selected.busName,'44');assert.equal(selected.pickupChoice,'closest-stop');
+   assert.equal(selected.countdownBusName,'48');
    assert.equal(selected.board,initialBoard);assert.equal(selected.next,initialNext);
    assert.match(selected.approaching,/Approaching #48: <1 min/);
    assert(failed.screen.rows.some(r=>r.route==='Blue Day'&&r.boardStopId===129&&r.pickupChoice==='arrive-sooner'));
    assert(!JSON.stringify(failed.screen).includes('Private diagnostic origin'));
-   const allowed=['mode','route','boardStopId','alightStopId','busName','stopsAhead','pickupChoice','board','next','arrive','legs','approaching'];
+   const allowed=['mode','route','boardStopId','alightStopId','busName','countdownBusName','stopsAhead','pickupChoice','board','next','arrive','legs','approaching'];
    for(const row of failed.screen.rows)assert(Object.keys(row).every(key=>allowed.includes(key)));
    assert.match(failed.screen.build,/^[A-Za-z0-9_-]{4,24}$/);assert.notEqual(failed.screen.build,'dev');
    await transition('fresh');responseStatus=200;
@@ -86,6 +87,7 @@ try {
    assert.equal(alternative.screen.rows.length,1);assert.equal(alternative.screen.rows[0].boardStopId,129);assert.equal(alternative.screen.rows[0].busName,'48');
    await transition('stale');await open();const unavailable=await send('Fixture: no fresh arrival available.');
    assert.equal(unavailable.screen.rows[0].board,'Unavailable');assert.equal(unavailable.screen.rows[0].next,'—');assert.equal(unavailable.screen.rows[0].busName,undefined);
+   assert.equal(unavailable.screen.rows[0].countdownBusName,'48');
    await transition('fresh');await open();await page.getByRole('button',{name:'Cancel',exact:true}).click();
    await page.getByRole('button',{name:'Clear',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('[data-testid="route-timing-table"]'));
    await open();const empty=await send('Fixture: general feedback after clearing the trip.');

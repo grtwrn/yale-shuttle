@@ -2,7 +2,7 @@ import {describe,expect,it} from 'vitest';
 import {captureFeedbackScreen,feedbackScreenFromRows,feedbackScreenRow,FEEDBACK_SCREEN_MAX_ROWS} from './feedbackScreen';
 
 const meta={capturedAt:1_700_000_000_000,build:'bundle-1234',view:'trip',tripDetail:false};
-const row={mode:'shuttle',route:'Blue Day',boardStopId:100,alightStopId:117,busName:'44',stopsAhead:11,
+const row={mode:'shuttle',route:'Blue Day',boardStopId:100,alightStopId:117,busName:'44',countdownBusName:'48',stopsAhead:11,
   pickupChoice:'closest-stop',board:'~21 (17 – 28)',next:'~33 min',arrive:'10:20a – 10:35a',legs:'🚶 4 min › 🚌 13 min › 🚶 5 min',approaching:'Approaching #48: <1 min'};
 
 describe('feedback screen evidence',()=>{
@@ -17,9 +17,10 @@ describe('feedback screen evidence',()=>{
     expect(s.rows.map(r=>[r.boardStopId,r.busName,r.pickupChoice])).toEqual([[100,'44','closest-stop'],[129,'41','arrive-sooner']]);
   });
   it('records unavailable evidence as displayed without inventing a bus or time',()=>{
-    const s=feedbackScreenRow({mode:'shuttle',route:'Red',boardStopId:48,alightStopId:4,board:'Unavailable',next:'—',arrive:'—'});
+    const s=feedbackScreenRow({mode:'shuttle',route:'Red',boardStopId:48,alightStopId:4,countdownBusName:'316',board:'Unavailable',next:'—',arrive:'—'});
     expect(s).toMatchObject({board:'Unavailable',next:'—',arrive:'—'});
     expect(s?.busName).toBeUndefined();expect(s?.stopsAhead).toBeUndefined();
+    expect(s?.countdownBusName).toBe('316');
   });
   it('does not turn walk-only sentinel IDs into shuttle stops',()=>{
     const s=feedbackScreenRow({...row,mode:'walk',boardStopId:0,alightStopId:0});

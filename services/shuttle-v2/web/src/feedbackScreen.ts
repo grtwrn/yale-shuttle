@@ -3,7 +3,7 @@ import {clientBuild} from './shownLog';
 export const FEEDBACK_SCREEN_MAX_ROWS = 32;
 export interface FeedbackScreenRow {
   mode: 'walk' | 'shuttle'; route: string;
-  boardStopId?: number; alightStopId?: number; busName?: string; stopsAhead?: number;
+  boardStopId?: number; alightStopId?: number; busName?: string; countdownBusName?: string; stopsAhead?: number;
   pickupChoice?: string;
   board: string; next: string; arrive: string; legs: string; approaching: string;
 }
@@ -25,7 +25,8 @@ export function feedbackScreenRow(input: Record<string, unknown>): FeedbackScree
     mode, route,
     ...(mode === 'shuttle' ? {
       boardStopId: integer(input.boardStopId, 1), alightStopId: integer(input.alightStopId, 1),
-      busName: text(input.busName, 24) || undefined, stopsAhead: integer(input.stopsAhead, 0),
+      busName: text(input.busName, 24) || undefined, countdownBusName: text(input.countdownBusName, 24) || undefined,
+      stopsAhead: integer(input.stopsAhead, 0),
       pickupChoice: input.pickupChoice === 'closest-stop' || input.pickupChoice === 'arrive-sooner'
         ? input.pickupChoice : undefined,
     } : {}),
@@ -57,6 +58,7 @@ export function captureFeedbackScreen(view: string,
           mode: row.getAttribute('data-mode'), route: row.getAttribute('data-route'),
           boardStopId: number('data-pickup'), alightStopId: number('data-alight'),
           busName: row.getAttribute('data-board-bus'), stopsAhead: number('data-board-stops-ahead'),
+          countdownBusName: row.getAttribute('data-countdown-bus'),
           pickupChoice: row.getAttribute('data-pickup-choice'),
           board: (cells[0] as HTMLElement)?.innerText, next: (cells[1] as HTMLElement)?.innerText,
           arrive: (cells[2] as HTMLElement)?.innerText,
