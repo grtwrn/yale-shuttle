@@ -1116,9 +1116,9 @@ export class Collector {
     }
   }
 
-  /** A fresh fix after a restart may be a shuffle within an existing stop.
-   * Restore the complete reducers before processing it; clocks alone cannot
-   * recover the preceding plateau or a departure candidate already in flight.
+  /** A fresh fix after a restart may be approaching a stop or shuffling at it.
+   * Restore reducers only when history matches the exact open database anchor;
+   * curb proximity alone cannot recover route order on a nearby out-and-back.
    */
   private recoverOpenVisits(observations: readonly BusObservation[], plan: TrackPlan): void {
     // A previously contended name can become unique on this poll. Recognize
@@ -1132,9 +1132,8 @@ export class Collector {
         const rows = this.recentBusArrivalsStmt.all(obs.busId,
           obs.collectedAt - STATIONARY_SEED_WINDOW_MS, obs.collectedAt, RESUME_ARRIVAL_MAX_ROWS) as OpenArrival[];
         const latest = rows[0];
-        const stop = latest && this.ref.get().stops.get(latest.stopId);
         if (!latest || latest.departedAt !== null || latest.routeId !== obs.routeId
-          || !stop || distanceMeters(obs, stop) > AT_STOP_PIN_M) continue;
+          || !this.ref.get().stops.has(latest.stopId)) continue;
         const history = this.recentBusSamplesStmt.all(obs.busId,
           obs.collectedAt - STATIONARY_SEED_WINDOW_MS, obs.collectedAt, STATIONARY_SEED_MAX_ROWS) as BusObservation[];
         const restored = recoverOpenVisit(this.ref.get(), obs, history.reverse(), rows);

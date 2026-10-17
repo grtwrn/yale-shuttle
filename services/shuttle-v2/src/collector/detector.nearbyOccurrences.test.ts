@@ -21,6 +21,50 @@ const observations: BusObservation[] = capture.samples.map(([collectedAt, lat, l
   collectedAt: collectedAt!, lat: lat!, lon: lon!, heading: heading!, lastStopId: lastStopId!,
 }));
 
+async function replayCollector(restartAt: number | null) {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'shuttle-nearby-occurrences-'));
+  const bundle = openDb(path.join(dir, 'test.db'));
+  migrate(bundle.db, { migrationsFolder: './drizzle' });
+  let latest = observations[0]!, collector: Collector | undefined;
+  class Stub extends UpstreamClient {
+    constructor() { super({ baseUrl: 'http://invalid.test' }); }
+    override async stops() { return stops; }
+    override async routes() { return [route]; }
+    override async buses(): Promise<RawBus[]> {
+      return [{ id: latest.busId, name: latest.busName, route: latest.routeId, lat: latest.lat,
+        lon: latest.lon, heading: latest.heading, lastStop: latest.lastStopId } as RawBus];
+    }
+  }
+  type Inner = { runPoll(): Promise<void>; refreshStaticIfNeeded(force: boolean): Promise<void> };
+  const positions: Array<{ at: number; buses: ReturnType<Collector['getLiveBuses']> }> = [];
+  const errors: unknown[] = [];
+  const options = { upstream: new Stub(), upstreamEta: false, etaSampler: false,
+    logger: { info() {}, warn() {}, error(message: string, meta?: unknown) { errors.push({ message, meta }); } } };
+  vi.useFakeTimers();
+  try {
+    vi.setSystemTime(latest.collectedAt);
+    collector = await Collector.create(bundle, options);
+    await (collector as unknown as Inner).refreshStaticIfNeeded(true);
+    for (const obs of observations) {
+      latest = obs; vi.setSystemTime(obs.collectedAt);
+      if (obs.collectedAt === restartAt) {
+        collector.stop();
+        collector = await Collector.create(bundle, options);
+      }
+      await (collector as unknown as Inner).runPoll();
+      positions.push({ at: obs.collectedAt, buses: collector.getLiveBuses() });
+    }
+    return { errors, positions,
+      arrivals: bundle.sqlite.prepare('SELECT * FROM arrivals ORDER BY id').all(),
+      segments: bundle.sqlite.prepare('SELECT * FROM segments ORDER BY id').all(),
+      visits: bundle.sqlite.prepare('SELECT * FROM stop_visits ORDER BY id').all() as Array<{ stop_id: number; arrived_at: number; stand_sec: number }>,
+      legs: bundle.sqlite.prepare('SELECT * FROM legs ORDER BY id').all(),
+    };
+  } finally {
+    collector?.stop(); vi.useRealTimers(); bundle.sqlite.close(); rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 describe('nearby stops separated by a real route detour', () => {
   it('records one Elm/York call after Stop & Shop, not another on the outbound near pass', () => {
     const net = network(), states = new Map(), visitStates = new Map();
@@ -78,48 +122,23 @@ describe('nearby stops separated by a real route detour', () => {
     const next = step(net, previous, { ...first, lat: 41.31086, lon: -72.93054, collectedAt: first.collectedAt + 5000 });
     expect(next.state!.nearestStopId).toBe(53);
   });
-  it('persists the correct calls through the real collector and a restart during the genuine return', async () => {
-    const dir = mkdtempSync(path.join(os.tmpdir(), 'shuttle-nearby-occurrences-'));
-    const bundle = openDb(path.join(dir, 'test.db'));
-    migrate(bundle.db, { migrationsFolder: './drizzle' });
-    let latest = observations[0]!, collector: Collector | undefined;
-    class Stub extends UpstreamClient {
-      constructor() { super({ baseUrl: 'http://invalid.test' }); }
-      override async stops() { return stops; }
-      override async routes() { return [route]; }
-      override async buses(): Promise<RawBus[]> {
-        return [{ id: latest.busId, name: latest.busName, route: latest.routeId, lat: latest.lat,
-          lon: latest.lon, heading: latest.heading, lastStop: latest.lastStopId } as RawBus];
-      }
-    }
-    type Inner = { runPoll(): Promise<void>; refreshStaticIfNeeded(force: boolean): Promise<void> };
-    const restartAt = Date.parse('2026-10-03T13:04:23.394Z');
+  it.each([
+    '2026-10-03T12:55:23.365Z', // outbound approach: outside the current stop's pin
+    '2026-10-03T12:55:48.321Z', // outbound stand: pin reached, approaching rest
+    '2026-10-03T13:04:23.394Z', // genuine later return: already standing
+  ])('persists the correct calls through the real collector and a restart at %s', async (restartTime) => {
+    const restartAt = Date.parse(restartTime);
     expect(observations.some(o => o.collectedAt === restartAt)).toBe(true);
-    const wrongOutboundStands: number[] = [];
-    vi.useFakeTimers();
-    try {
-      vi.setSystemTime(latest.collectedAt);
-      collector = await Collector.create(bundle, { upstream: new Stub(), upstreamEta: false, etaSampler: false });
-      await (collector as unknown as Inner).refreshStaticIfNeeded(true);
-      for (const obs of observations) {
-        latest = obs; vi.setSystemTime(obs.collectedAt);
-        if (obs.collectedAt === restartAt) {
-          collector.stop();
-          collector = await Collector.create(bundle, { upstream: new Stub(), upstreamEta: false, etaSampler: false });
-        }
-        await (collector as unknown as Inner).runPoll();
-        if (obs.collectedAt < Date.parse('2026-10-03T13:00:00Z')
-          && collector.getLiveBuses().some(b => b.atStopId === 53)) wrongOutboundStands.push(obs.collectedAt);
-      }
-      expect(wrongOutboundStands).toEqual([]);
-      const calls = bundle.sqlite.prepare('SELECT stop_id, arrived_at, departed_at, stand_sec FROM stop_visits WHERE stop_id IN (116,53) ORDER BY anchored_at').all();
-      expect(calls).toEqual([
-        expect.objectContaining({ stop_id: 116 }),
-        expect.objectContaining({ stop_id: 53, arrived_at: Date.parse('2026-10-03T13:04:03.483Z'), stand_sec: 29.878 }),
-      ]);
-      expect(bundle.sqlite.prepare('SELECT COUNT(*) n FROM arrivals WHERE stop_id=53').get()).toEqual({ n: 1 });
-    } finally {
-      collector?.stop(); vi.useRealTimers(); bundle.sqlite.close(); rmSync(dir, { recursive: true, force: true });
-    }
+    const reference = await replayCollector(null), restarted = await replayCollector(restartAt);
+    // Exact database rows and every live position/clock must survive, not just
+    // the final visit count. Historical reducer events must not be inserted again.
+    expect(restarted).toEqual(reference);
+    expect(restarted.errors).toEqual([]);
+    expect(restarted.positions.filter(p => p.at < Date.parse('2026-10-03T13:00:00Z')
+      && p.buses.some(b => b.atStopId === 53))).toEqual([]);
+    expect(restarted.visits.filter(v => [116, 53].includes(v.stop_id))).toEqual([
+      expect.objectContaining({ stop_id: 116 }),
+      expect.objectContaining({ stop_id: 53, arrived_at: Date.parse('2026-10-03T13:04:03.483Z'), stand_sec: 29.878 }),
+    ]);
   });
 });
