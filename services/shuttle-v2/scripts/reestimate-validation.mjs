@@ -106,11 +106,14 @@ export function cachedArtifact(file, identity, produce, validate) {
 
 /** Descriptive scores. Repeated poll rows are NOT independent test trips.
  * Promotion separately requires verified trip sampling and availability. */
-export function validationCells(pairs, conformal) {
+export function validationCells(pairs, conformal, { referenceHorizons = false } = {}) {
   const cells = new Map();
   for (const p of pairs) {
     if (![p.r, p.eta].every(Number.isFinite)) continue;
-    const h = horizonOf(p.eta, 1800);
+    // A prospective paired comparison assigns both arms to the champion's
+    // pre-outcome horizon. A challenger cannot improve by changing its cohort.
+    const h = referenceHorizons && ['0-2', '2-5', '5-10', '10-30'].includes(p.h)
+      ? p.h : horizonOf(p.eta, 1800);
     if (!h || p.eta < 0) continue;
     const keys = [`0|all`, `0|${h}`, `${p.r}|all`, `${p.r}|${h}`];
     const usable = [p.det, p.low, p.high].every(v => typeof v === 'number' && Number.isFinite(v))

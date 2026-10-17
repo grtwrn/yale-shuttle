@@ -4,7 +4,17 @@
 data … build the closed loop." And, the same day: "can the nightly learning be
 increased to hourly?"
 
-**Current status (2026-09-17): automatic parameter promotion is blocked pending
+**Current status (2026-10-11): prospective automatic learning is restored.**
+`scripts/learning-loop/start.ts` records a frozen champion and candidate against
+the live feed, with prospective visit identity, real evidence-receipt clocks,
+separate calibration and test dates, paired quality gates and clustered
+uncertainty. The team Mac supervises it as `com.grtwrn.yale-shuttle-learning`;
+`com.grtwrn.yale-shuttle-archive` restores daily exports at 03:40. Publication
+is conditional on passing those checks after enough new dates and route support;
+activation itself changes no served coefficients. See
+[the observer workflow](../services/shuttle-v2/scripts/learning-loop/README.md).
+
+**Historical replay status (2026-09-17): automatic parameter promotion is blocked pending
 independent validation provenance.** The live champion and ordinary live table
 refreshes continue. Re-estimation can produce diagnostics, but legacy replay
 pairs lack bus/target-visit identity, outcome-availability timestamps, and a
