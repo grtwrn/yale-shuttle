@@ -1,5 +1,6 @@
 import { arrivalSummary } from './arrivalDetails';
 import { shownStandSec, type DwellStat, type DwellTimes } from './arrivals';
+import { standChipFor } from './standWait';
 
 type Rect = { left: number; top: number; right: number; bottom: number };
 
@@ -49,7 +50,8 @@ export function compactMapArrival(label: ReturnType<typeof mapArrivalLabel>) {
   return label.point === 'At your stop' ? 'At stop' : label.point.replace(/^About /, '~');
 }
 
-/** Observed elapsed time and typical TOTAL stand, never typical minus elapsed.
+/** Name the current departure remainder, just like the stop list. A typical
+ * total belongs in explanatory detail, not beside the bus as an apparent ETA.
  * Only label wait stops (the same >=3-minute typical hold used in stop lists). */
 export function mapWaitLabel(standing: { stopId: number; standingSec: number; approach?: boolean } | null,
   routeDwells: Record<string, DwellStat>, dwells: DwellTimes | undefined) {
@@ -57,13 +59,15 @@ export function mapWaitLabel(standing: { stopId: number; standingSec: number; ap
   const stat = routeDwells[String(standing.stopId)];
   const typical = stat && stat.n >= 3 ? shownStandSec(stat, null, routeDwells, dwells)?.sec : undefined;
   if (typical === undefined || !Number.isFinite(typical) || typical < 180) return null;
-  const elapsed = Math.floor(standing.standingSec);
-  const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
+  const chip = standChipFor(standing, routeDwells, dwells);
+  if (!chip) return null;
+  const clock = chip.clock;
   const typicalMinutes = Math.round(typical / 60);
   return {
-    compact: `Stopped${standing.approach ? " nearby" : ""} ${clock} · usual ~${typicalMinutes}m total`,
+    compact: `Stopped${standing.approach ? " nearby" : ""} ${clock} · ${chip.text}`,
     elapsed: `Waiting${standing.approach ? ' nearby' : ''} ${clock}`,
-    typical: `Usually ~${typicalMinutes} min total`,
-    overdue: standing.standingSec >= typical,
+    departure: chip.text,
+    typical: `Usual total stop duration: ~${typicalMinutes} min`,
+    overdue: chip.overdue,
   };
 }
