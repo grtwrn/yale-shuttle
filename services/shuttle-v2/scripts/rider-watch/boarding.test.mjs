@@ -45,14 +45,28 @@ test('a failed offer click with the offer still showing is not a missed boarding
 test('an offer for another bus is declined, even when it goes under the click',async()=>{
  for(const goes of [false,true]){
   const p=page({offer:'🚌 On Purple #317?\nDetected near your board stop',goes});
-  await boardSelectedRide(p,'#330');
+  await boardSelectedRide(p,'#330',{cardBoards:async()=>true});
   assert.deepEqual(p.clicks,[['Not me',OFFER_CLICK_MS],["🚌 I'm on it",undefined]]);
   assert.equal(p.stored,'#330');
  }
 });
 test('without an offer the card is used and a wrong stored bus still fails the wait',async()=>{
  const p=page({offer:null});
- await boardSelectedRide(p,'#330');
+ await boardSelectedRide(p,'#330',{cardBoards:async()=>true});
  assert.deepEqual(p.clicks,[["🚌 I'm on it",undefined]]);
- await assert.rejects(boardSelectedRide(page({offer:null,stores:'#317'}),'#330'),/waitForFunction/);
+ await assert.rejects(boardSelectedRide(page({offer:null,stores:'#317'}),'#330',{cardBoards:async()=>true}),/waitForFunction/);
+});
+test('does not click a replacement card when the chosen offer is already gone',async()=>{
+ for(const opts of [{cardBoards:async()=>false},undefined]){
+  const p=page({offer:null,stores:'#332'});
+  await assert.rejects(boardSelectedRide(p,'#329',opts),BoardingMissed);
+  assert.deepEqual(p.clicks,[]);assert.equal(p.stored,null);
+ }
+});
+test('declining another bus does not permit an unchecked card fallback',async()=>{
+ for(const goes of [false,true]){
+  const p=page({offer:'🚌 On Purple #317?\nDetected near your board stop',goes,stores:'#332'});
+  await assert.rejects(boardSelectedRide(p,'#329',{cardBoards:async()=>false}),BoardingMissed);
+  assert.deepEqual(p.clicks,[['Not me',OFFER_CLICK_MS]]);assert.equal(p.stored,null);
+ }
 });
