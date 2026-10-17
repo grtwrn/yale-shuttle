@@ -15,6 +15,11 @@ try {
   for (const mode of ['trip', 'map', 'ride']) for (const width of [307, 390, 1280]) {
     const now = capture.receivedAt;
     let phase = 'live', servedNow = now, polls = 0;
+    const progress = operation => {
+      report.progress = { mode, width, phase, polls, operation };
+      console.log(`[bus-reporting] ${mode}/${width}px ${phase}, poll ${polls}: ${operation}`);
+    };
+    progress('creating browser context');
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 600, hasTouch: width < 600,
       ...(width === 307 ? { userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36' } : {}),
       timezoneId: 'America/New_York', serviceWorkers: 'block' });
@@ -65,11 +70,13 @@ try {
       const advance = async () => {
         const before = polls;
         const response = page.waitForResponse(r => new URL(r.url()).pathname === '/api/buses');
-        servedNow += 5500; await page.clock.runFor(5500); await (await response).finished();
+        servedNow += 5500; progress('advancing clock'); await page.clock.runFor(5500);
+        progress('waiting for response body'); await (await response).finished();
         await new Promise(resolve => setTimeout(resolve, 100));
         assert(polls > before, 'new feed poll');
       };
       const notices = page.getByTestId('bus-reporting-alerts');
+      progress('loading app');
       await page.goto(base, { waitUntil: 'domcontentloaded' });
       if (mode === 'trip') await page.getByTestId('route-timing-table').waitFor();
       else if (mode === 'map') await page.locator('[id="route-card-Red"]').waitFor();
