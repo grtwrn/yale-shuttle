@@ -50,7 +50,27 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
  };
  const finish=async(reason)=>{run.finishedAt=new Date().toISOString();run.result=reason;await capture(reason);await appendRolling(ROOT,'journeys',run);await event('journey-finished',reason);run=null;};
  const begin=async(trip,line)=>{run={instrumentVersion:'inputs-v2',id:Date.now().toString(),startedAt:new Date().toISOString(),phase:'waiting',line,trip,samples:0};await event('journey-started',{line:line.label,trip});await capture('waiting-'+line.label);await status();};
- const onResponse=async r=>{if(new URL(r.url()).pathname==='/api/buses'&&r.ok())try{const next=await r.json();if(Array.isArray(next?.buses)){feed=next;feedAt=Date.now();}}catch{}};
+ // Keep one original qualifying receipt, rather than losing a five-second
+ // position when the next response replaces it before the ten-second UI tick.
+ const rememberArrival=(next,receivedAt)=>{
+  const boardedAt=Date.parse(run?.boardedAt);
+  if(run?.phase!=='riding'||run.arrivalObservation||!Number.isFinite(receivedAt)||!Number.isFinite(boardedAt)
+   ||receivedAt-boardedAt<=30000)return;
+  const bus=next.buses.find(b=>b.bus_name===run.busName&&run.line.busRouteIds.includes(b.route_id));
+  const coord=next.stop_coords?.[run.exitStopId];
+  if(!bus||![bus.lat,bus.lon,coord?.lat,coord?.lon].every(Number.isFinite))return;
+  if(bus.observed_at!==undefined&&(!Number.isFinite(bus.observed_at)
+   ||bus.observed_at>receivedAt+5000||receivedAt-bus.observed_at>MAX_FEED_AGE_MS))return;
+  const distanceM=metrics.haversineM(bus,coord);
+  const criterion=distanceM<=45?'GPS-within-45m':distanceM<=60&&bus.at_stop_id===run.exitStopId&&bus.stationary===true?'stationary-at-target-within-60m':null;
+  if(criterion)run.arrivalObservation={receivedAt:new Date(receivedAt).toISOString(),
+   stopId:run.exitStopId,stopName:next.stop_names?.[run.exitStopId],stopCoords:structuredClone(coord),
+   bus:structuredClone(bus),distanceM,criterion};
+ };
+ const onResponse=async r=>{if(new URL(r.url()).pathname==='/api/buses'&&r.ok())try{
+  const receiving=run?.phase==='riding'?run:null,next=await r.json();
+  if(Array.isArray(next?.buses)){feed=next;feedAt=Date.now();if(receiving&&run===receiving)rememberArrival(next,feedAt);}
+ }catch{}};
  page.on('response',onResponse);
  const onPageError=e=>event('candidate-page-error',e.message).catch(()=>{});
  page.on('pageerror',onPageError);
@@ -123,7 +143,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      await select();return;
     }
    }
-   const now=Date.now(),text=await page.locator('body').innerText();
+   const text=await page.locator('body').innerText(),now=Date.now();
    const wire=feed.server_eta;
    const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-feedAt,text,buses:feed.buses,
     ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{})};
@@ -211,6 +231,15 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     }
     if(now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
    }else if(run.phase==='riding'){
+    rememberArrival(feed,feedAt);
+    const arrival=run.arrivalObservation;
+    if(arrival){
+     await locate({latitude:arrival.bus.lat,longitude:arrival.bus.lon});run.lastExitDistanceM=arrival.distanceM;
+     run.arrivalCriterion=arrival.criterion;run.arrivedAt=arrival.receivedAt;
+     run.arrivalProcessedAt=new Date().toISOString();run.arrivalText=text;run.phase='arrived';
+     await event('arrived',{bus:run.busName,stop:arrival.stopName,
+      rideSeconds:(Date.parse(run.arrivedAt)-Date.parse(run.boardedAt))/1000,observation:arrival});
+    }else{
     const bus=feed.buses.find(b=>b.bus_name===run.busName&&run.line.busRouteIds.includes(b.route_id));
     const coord=feed.stop_coords[run.exitStopId];
     // The boarded bus left a fresh feed (stale feeds return above): end the
@@ -231,14 +260,13 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
       if(now-Date.parse(run.offRouteSince)>BUS_OFF_ROUTE_MS){run.excludeAccuracy=true;await event('bus-off-route',{bus:run.busName,offRouteSince:run.offRouteSince,from:run.offRouteFrom,at:{lat:bus.lat,lon:bus.lon},exitDistanceM:coord?metrics.haversineM(bus,coord):null});await finish('bus-off-route-excluded');await status();return;}
      }else{run.offRouteSince=undefined;run.offRouteFrom=undefined;}
     }
-    if(bus){await locate({latitude:bus.lat,longitude:bus.lon});run.lastExitDistanceM=coord?metrics.haversineM(bus,coord):null;
-     if(coord&&(run.lastExitDistanceM<=45 || (run.lastExitDistanceM<=60 && bus.at_stop_id===run.exitStopId && bus.stationary===true))&&now-Date.parse(run.boardedAt)>30000){run.arrivalCriterion=run.lastExitDistanceM<=45?'GPS-within-45m':'stationary-at-target-within-60m';run.arrivedAt=new Date().toISOString();run.arrivalText=text;run.phase='arrived';await event('arrived',{bus:run.busName,stop:feed.stop_names[run.exitStopId],rideSeconds:(now-Date.parse(run.boardedAt))/1000});}
-    }
+    if(bus){await locate({latitude:bus.lat,longitude:bus.lon});run.lastExitDistanceM=coord?metrics.haversineM(bus,coord):null;}
     if(/Get off in 2 stops/.test(text)&&/Get off NEXT stop|Arriving at/.test(text)&&!run.popupMismatch){run.popupMismatch=true;await event('candidate-stale-alert',text);await capture('candidate-stale-alert');}
     // Ride at least as long as the card quoted at pickup (bounded); a fixed
     // 50 min gave up on a quoted 54 min ride before it could be scored.
     run.rideCapMin??=rideCapMin(quotedRideMin(run.pickupText));
     if(now-Date.parse(run.boardedAt)>run.rideCapMin*60000)await finish('ride-timeout-needs-review');
+    }
    }else if(run.phase==='arrived'&&now-Date.parse(run.arrivedAt)>15000){
     const got=page.getByRole('button',{name:'Got it',exact:true});if(await got.isVisible())await got.click();
     await capture('arrival-dismissed');const done=page.getByRole('button',{name:'Done',exact:true});if(await done.isVisible())await done.click();await finish('completed');

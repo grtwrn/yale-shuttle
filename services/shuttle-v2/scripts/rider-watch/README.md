@@ -17,6 +17,30 @@ Candidate issues require review; observations use the same GPS feed as the
 app and are not independent physical arrival measurements. This launcher
 does not deploy changes or submit rider reports.
 
+While aboard, the rider retains the first qualifying destination observation
+from each successfully decoded bus response, including responses between its
+ten-second UI ticks. Only one observation is held per journey. The criteria
+remain within 45 m, or stationary at the named target within 60 m, more than
+30 seconds after boarding. Invalid coordinates cannot qualify; a supplied
+`observed_at` must be no more than 30 seconds old or five seconds ahead of
+receipt. Unreceived positions and crossings between positions are not inferred.
+The next fresh tick consumes that receipt even if a later response has moved
+the bus away. It saves the original bus, target coordinates, receipt time,
+distance and criterion in `arrivalObservation`; `arrivalProcessedAt` records
+when that observation was processed. The UI text is the later tick’s sample;
+it does not attest the screen at the earlier receipt. Geolocation moves to the
+received position.
+The arrival event carries the same observation. Stale-feed pauses and resumed
+journey accuracy exclusions still apply.
+
+The October 16 Red #317 timeout has a recorded 15.84 m producer position
+between retained rider samples at 46.31 m and 59.98 m from LEPH / 60 College.
+Its regression models delivery of that intermediate response: original
+per-response browser receipts were not retained, so this does not prove it
+was delivered on that historical run. The old timeout and raw evidence stay
+unchanged. This correction prevents a received position from being overwritten
+before a UI tick; it does not establish a physical stop, boarding or ETA accuracy.
+
 `status.json` distinguishes the loop heartbeat from feed receipt:
 `feedReceivedAt`, `feedAgeMs`, `feedStale` and `cachedBuses` describe the last
 valid `/api/buses` response. Feed age measures time since receipt, not the age

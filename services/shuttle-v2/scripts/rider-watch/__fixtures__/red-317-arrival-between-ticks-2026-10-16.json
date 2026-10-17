@@ -1,0 +1,68 @@
+{
+  "scope": "Recorded Oct16 Red317 raw position and10-second rider samples; middle HTTP delivery and its receipt time modeled, because original per-response receipts were not retained. This is a sampling regression, not physical boarding/service or ETA accuracy proof.",
+  "runId": "1792179951117",
+  "boardedAt": "2026-10-16T19:47:29.307Z",
+  "stop": {
+    "id": 72,
+    "name": "LEPH / 60 College",
+    "lat": 41.303422,
+    "lon": -72.931698
+  },
+  "rawArchiveSha256": "65a939b1a85134c26adb6cee21c685187938c4d17519a6f6402109bff2416b29",
+  "before": {
+    "tickAt": "2026-10-16T19:58:39.259Z",
+    "receivedAt": 1792180714745,
+    "bus": {
+      "observed_at": 1792180712745,
+      "bus_id": 67807,
+      "bus_name": "#317",
+      "route_id": 3,
+      "lat": 41.303721,
+      "lon": -72.931312,
+      "heading": 207,
+      "last_stop_id": 115,
+      "stationary": false,
+      "stationary_since": "2026-10-16T19:58:32.745",
+      "last_moved_at": "2026-10-16T19:58:32.745",
+      "lap": {
+        "11": 747,
+        "121": 2287
+      }
+    }
+  },
+  "middle": {
+    "receivedAt": 1792180719787,
+    "bus": {
+      "bus_id": 67807,
+      "bus_name": "#317",
+      "route_id": 3,
+      "lat": 41.303462,
+      "lon": -72.931516,
+      "heading": 210,
+      "last_stop_id": 115,
+      "observed_at": 1792180717787,
+      "stationary": false
+    }
+  },
+  "after": {
+    "tickAt": "2026-10-16T19:58:49.259Z",
+    "receivedAt": 1792180724776,
+    "bus": {
+      "observed_at": 1792180722776,
+      "bus_id": 67807,
+      "bus_name": "#317",
+      "route_id": 3,
+      "lat": 41.302909,
+      "lon": -72.93192,
+      "heading": 206,
+      "last_stop_id": 115,
+      "stationary": false,
+      "stationary_since": "2026-10-16T19:58:32.745",
+      "last_moved_at": "2026-10-16T19:58:42.776",
+      "lap": {
+        "11": 757,
+        "121": 2297
+      }
+    }
+  }
+}
