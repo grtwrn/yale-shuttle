@@ -16,6 +16,7 @@ import { registerRoutePaths } from '../../web/src/anchor';
 import { fileIdentity, identityHash } from '../reestimate-validation.mjs';
 import { ExactForecastStream, digest } from './stream';
 import { etDay, nextDay } from './lib.mjs';
+import { learningSourceFiles } from './source-files.mjs';
 
 const service = fileURLToPath(new URL('../..', import.meta.url));
 const cap = JSON.parse(fs.readFileSync(new URL('../../src/server/__fixtures__/live-frames.json', import.meta.url), 'utf8'));
@@ -23,19 +24,9 @@ const temporary: string[] = [];
 afterEach(() => { for (const p of temporary.splice(0)) fs.rmSync(p, { recursive: true, force: true }); resetModelParams(); registerRoutePaths(null); });
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 const read = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
-function files() {
-  const all: string[] = [];
-  const walk = (directory: string) => { for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const file = path.join(directory, entry.name); if (entry.isDirectory()) walk(file);
-    else if (/\.(ts|tsx|mjs|json)$/.test(file) && !/(\.test\.|__fixtures__)/.test(file)) all.push(file);
-  } };
-  for (const folder of ['src', 'web/src', 'scripts/learning-loop']) walk(path.join(service, folder));
-  for (const file of ['scripts/reestimate-lib.mjs', 'scripts/reestimate-validation.mjs', 'scripts/archive-files.mjs', 'package-lock.json']) all.push(path.join(service, file));
-  return all;
-}
 async function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'exact-observer-cli-')); temporary.push(root);
-  const sourceFiles = files(), sourceKey = identityHash(fileIdentity(sourceFiles)), initial = Date.now() - 30000;
+  const sourceFiles = learningSourceFiles(service), sourceKey = identityHash(fileIdentity(sourceFiles)), initial = Date.now() - 30000;
   const champion = { version: 'fixture-champion', accepted: true, publishedAt: initial - 86400000, params: structuredClone(COMPILED_MODEL_PARAMS) };
   const params = structuredClone(champion.params); params.P_REPEAT_STAND = .75; params.CONFORMAL = { '0-2': 1, '2-5': 1, '5-10': 1, '10-30': 1 };
   const producer = new ServerEta({ routes: ROUTE_LISTS.map(r => r.label) }); producer.useK10Trial(() => new Map());

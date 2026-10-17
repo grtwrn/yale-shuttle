@@ -66,6 +66,15 @@ at this present training cutoff; no historical insertion time is invented.
 Existing route scales and horizon corrections remain fixed during this cycle.
 Code bytes, parameter sets, training receipts and live input snapshots are saved.
 
+`source-files.mjs` supplies the native source inventory, including the shared
+`canary-metrics.mjs` helper used to match curb outcomes. An independent test
+traverses the actual observer entry's literal relative imports to catch omitted
+dependencies. Source checks re-enumerate files as well as comparing their bytes,
+so changed, added or deleted executable files refuse the cycle. Older frozen
+snapshots retain their original declared-file scope; missing helper bytes are
+never retroactively attested. This inventory does not attest remote services,
+dynamic filesystem reads or installed dependency bytes.
+
 Sampling waits for each arm's first actual post-seed computation rather than
 an arbitrary cold-start delay. Calibration uses the next two full ET dates to fit
 candidate interval factors. A horizon needs 200 sampled visit forecasts and a

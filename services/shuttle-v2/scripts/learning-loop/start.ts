@@ -10,6 +10,7 @@ import { archiveTableFile, readArchiveTable } from '../archive-files.mjs';
 import { assembleCandidate, conformalFit, estimateEmissions, estimateVisitRates,
   sameParams, tracksByName, zoneTester } from '../reestimate-lib.mjs';
 import { fileHash, fileIdentity, identityHash } from '../reestimate-validation.mjs';
+import { assertLearningSourceUnchanged, learningSourceFiles } from './source-files.mjs';
 import { calibrationObservation, dayStart, etDay, evaluate, excludePending, keyOf, nextDay, observe,
   phaseAt, productionControlInputValid, productionControlValid, recordForecast, SETTLE_MS, UNIT } from './lib.mjs';
 
@@ -44,18 +45,7 @@ async function api(route:string,body?:unknown){
  if(!res.ok){const detail:any=await res.json().catch(()=>null);const error:any=new Error(`${route}: HTTP ${res.status}`);error.code=detail?.error;error.status=res.status;error.response=detail;throw error;}
  return res.json();
 }
-function sourceFiles(){
- const files:string[]=[];
- const walk=(dir:string)=>{for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
-  const file=path.join(dir,entry.name);
-  if(entry.isDirectory())walk(file);
-  else if(/\.(ts|tsx|mjs|json)$/.test(file)&&!/(\.test\.|__fixtures__)/.test(file))files.push(file);
- }};
- for(const folder of ['src','web/src','scripts/learning-loop'])walk(path.join(service,folder));
- for(const name of ['scripts/reestimate-lib.mjs','scripts/reestimate-validation.mjs','scripts/archive-files.mjs','package-lock.json'])files.push(path.join(service,name));
- return files;
-}
-const files=sourceFiles(), sourceKey=identityHash(fileIdentity(files));
+const files=learningSourceFiles(service), sourceKey=identityHash(fileIdentity(files));
 const candidateModel=()=>({version:state.id,publishedAt:state.startedAt,params:state.candidate.params});
 function checkpoint(){
  if(exact&&state?.forecastProtocol==='served-control-v2'&&state.source?.seedSha256===exact.seedSha256){
@@ -197,10 +187,10 @@ async function begin(feed:any,health:any){
  const seedRaw=Buffer.from(JSON.stringify(seed)),seedBytes=zlib.gzipSync(seedRaw);
  const seedFile={file:'source-seed.json.gz',sha256:digest(seedBytes),rawSha256:digest(seedRaw),bytes:seedBytes.length};
  fs.writeFileSync(path.join(directory,seedFile.file),seedBytes);
- if(identityHash(fileIdentity(files))!==sourceKey)throw Error('Estimator source changed; restart required to freeze a new cycle');
+ assertLearningSourceUnchanged(service,sourceKey);
  // Preserve the code bytes used by both arms, not only their git identifier.
  for(const file of files){const dest=path.join(directory,'source',path.relative(service,file));fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(file,dest);}
- if(identityHash(fileIdentity(files))!==sourceKey)throw Error('Estimator source changed; restart required to freeze a new cycle');
+ assertLearningSourceUnchanged(service,sourceKey);
  state={version:2,forecastProtocol:'served-control-v2',id,startedAt,sourceKey,productionBuild:health.build,champion:current,candidate,
   source:{epoch:next.epoch,seedSha256:next.seedSha256,seedFile,seedReceivedAt,seedAt:seed.at,seedCursor:seed.cursor,initialChain:next.chain},
   trainingDays:days.sort(),trainingInputs:inputs,requiredRoutes:[...new Set(positions.map(r=>r.route_id))].sort((a,b)=>a-b),
@@ -430,7 +420,7 @@ while(!stopping){
    state.lastInputKey=lastInputKey;state.lastInputAt=lastInputAt;
   }
   if(receivedAt-lastMaintenance>60000){
-   if(identityHash(fileIdentity(files))!==sourceKey)throw Error('Estimator source changed; restart required to freeze a new cycle');
+   assertLearningSourceUnchanged(service,sourceKey);
    try{verifyFrozen();}catch(error){holdSource(receivedAt,state.source.seedSha256,'Frozen evaluation evidence failed: '+String(error));throw error;}
    await maintain(receivedAt);lastMaintenance=receivedAt;
   }
