@@ -1,3 +1,4 @@
+import { distributionDiagnostics } from './distribution-diagnostics.mjs';
 import { horizonOf, widen } from '../reestimate-lib.mjs';
 import { conformalFactor } from '../../web/src/eta/conformal.mjs';
 import { identityHash, validationCells, validationDecision } from '../reestimate-validation.mjs';
@@ -192,5 +193,5 @@ export function evaluate(state, rows, closedDays) {
  for(const route of state.requiredRoutes)if(!decision.totals.challenger[`${route}|all`]?.scored)reasons.push(`Route ${route}: no untouched test support.`);
  const uncertainty=clusteredImprovement(test,state.candidate.params.CONFORMAL);
  if(!uncertainty.pass)reasons.push(uncertainty.reason??'Pooled WIS improvement is not supported by clustered uncertainty.');
- return {...decision,promote:decision.promote&&!reasons.length,reasons:[...new Set([...decision.reasons,...reasons])],uncertainty,evidenceKey:identityHash({cycle:state.id,closedDays,ids:[...ids]})};
+ return {...decision,distributionDiagnostic:distributionDiagnostics(test,productionControlValid),promote:decision.promote&&!reasons.length,reasons:[...new Set([...decision.reasons,...reasons])],uncertainty,evidenceKey:identityHash({cycle:state.id,closedDays,ids:[...ids]})};
 }
