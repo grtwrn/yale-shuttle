@@ -779,7 +779,7 @@ describe("stand tables and drives", () => {
     expect(attachDrives(segments, [
       { key: "10:2:3", n: 12, all: [30, 31], windowed: [] },
       { key: "8:2:3", n: 12, all: [30, 31], windowed: [] },
-    ])).toBe(2);
+    ], network)).toBe(2);
     expect(segments.get("10:2:3")!.drive).toBe(30.5);
     expect(segments.get("8:2:3")!.drive).toBe(30.5);
 
@@ -820,17 +820,27 @@ describe("stand tables and drives", () => {
   });
 
   it("attaches the median drive only where a calibrated segment exists", () => {
+    const network = TransitNetwork.build([
+      { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+      { id: 2, name: "B", lat: 41.311, lon: -72.931 },
+      { id: 3, name: "C", lat: 41.312, lon: -72.932 },
+    ], [{ id: 1, name: "Line", shortName: "L", color: "#000", stops: [1, 2, 3] }]);
     const segments = new Map<string, SegmentStats>([["1:1:2", { mean: 495, stddev: 5, n: 0, source: "route-segment" }]]);
     const n = attachDrives(segments, [
       { key: "1:1:2", n: 3, all: [15, 20, 90], windowed: [] },
       { key: "1:2:3", n: 5, all: [30, 30, 30, 30, 30], windowed: [] },
-    ]);
+    ], network);
     expect(n).toBe(1);
     expect(segments.get("1:1:2")).toEqual({ mean: 495, stddev: 5, n: 0, source: "route-segment", drive: 20, driveN: 3 });
     expect(segments.has("1:2:3")).toBe(false);
   });
 
   it("attaches the whole-hop quantiles under the same rules as the drive", () => {
+    const network = TransitNetwork.build([
+      { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+      { id: 2, name: "B", lat: 41.311, lon: -72.931 },
+      { id: 3, name: "C", lat: 41.312, lon: -72.932 },
+    ], [{ id: 1, name: "Line", shortName: "L", color: "#000", stops: [1, 2, 3] }]);
     const segments = new Map<string, SegmentStats>([
       ["1:1:2", { mean: 495, stddev: 5, n: 0, source: "route-segment", drive: 20, driveN: 3 }],
       ["9:1:2", { mean: 60, stddev: 5, n: 3, source: "specific" }],
@@ -840,7 +850,7 @@ describe("stand tables and drives", () => {
       { key: "1:2:3", n: 5, all: [30, 30, 30, 30, 30], windowed: [] }, // no calibrated segment
       { key: "9:1:2", n: 2, all: [30, 40], windowed: [] }, // withheld
       { key: "1:3:4", n: 0, all: [], windowed: [] },
-    ], new Set([9]));
+    ], network, new Set([9]));
     expect(n).toBe(1);
     expect(segments.get("1:1:2")).toEqual({
       mean: 495, stddev: 5, n: 0, source: "route-segment", drive: 20, driveN: 3,

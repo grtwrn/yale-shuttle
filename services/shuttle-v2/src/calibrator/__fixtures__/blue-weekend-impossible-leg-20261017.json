@@ -1,0 +1,63 @@
+{
+  "scope": "Original current-day archive records and capture-time public stop coordinates. Used to test calibration eligibility, not physical stop service or ETA accuracy.",
+  "receipts": {
+    "legs.jsonl.gz": "f10b07f7e280ca35ff4399bd7dc7639808bfc8b642c5b39427427450d0e81dfa",
+    "buses.json.gz": "16b1cf2877591339b65ff4fd860bad51f02570e012a1237b5496409e7fc6841b"
+  },
+  "stops": [
+    {
+      "id": 116,
+      "name": "Stop & Shop",
+      "lat": 41.315041,
+      "lon": -72.938202
+    },
+    {
+      "id": 53,
+      "name": "Elm / York (TYCO)",
+      "lat": 41.31086,
+      "lon": -72.93054
+    }
+  ],
+  "bad": {
+    "id": 205599,
+    "bus_id": 67825,
+    "bus_name": "#58",
+    "route_id": 4,
+    "from_stop_id": 116,
+    "from_index": 23,
+    "to_stop_id": 53,
+    "to_index": 24,
+    "hops": 1,
+    "departed_at": 1792258982413,
+    "arrived_at": 1792258987499,
+    "to_pinned_at": null,
+    "leg_sec": 5.086,
+    "hold_sec": 0,
+    "drive_sec": 5.086,
+    "holds": 0,
+    "reached": 0,
+    "dow": 6,
+    "hour": 13
+  },
+  "valid": {
+    "id": 205609,
+    "bus_id": 67825,
+    "bus_name": "#58",
+    "route_id": 4,
+    "from_stop_id": 116,
+    "from_index": 23,
+    "to_stop_id": 53,
+    "to_index": 24,
+    "hops": 1,
+    "departed_at": 1792259408073,
+    "arrived_at": 1792259513311,
+    "to_pinned_at": 1792259513311,
+    "leg_sec": 105.238,
+    "hold_sec": 19.985,
+    "drive_sec": 85.253,
+    "holds": 1,
+    "reached": 1,
+    "dow": 6,
+    "hour": 13
+  }
+}
