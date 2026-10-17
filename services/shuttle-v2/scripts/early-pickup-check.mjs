@@ -10,6 +10,62 @@ const production=process.env.EARLY_PICKUP_PRODUCTION_ASSETS==='1';
 const now=recorded.server_eta.servedAt,results=[];
 await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.BOT_CHROMIUM_PATH??'/usr/bin/chromium',headless:true});
+async function checkPickupHere(viewport) {
+ const from=recorded.stop_coords[47],to={lat:recorded.stop_coords[147].lat,lon:recorded.stop_coords[147].lon-.001};
+ const ctx=await browser.newContext({viewport,isMobile:viewport.width<500,hasTouch:viewport.width<500,timezoneId:'America/New_York',serviceWorkers:'block'});
+ let page,phase='fresh';const errors=[];
+ try {
+  await seedTestId(ctx);await ctx.addInitScript(({from,to,now})=>{
+   localStorage.setItem('listView','trip');
+   sessionStorage.setItem('shuttle-trip-draft',JSON.stringify({fromText:'Divinity/409 Prospect test stop',fromLL:from,toText:'Winchester/Sachem test destination',toLL:to,tripTime:'',expandedKey:null,savedAt:now}));
+  },{from,to,now});
+  page=await ctx.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
+  await page.clock.install({time:new Date(now)});
+  await page.route('**/*',async route=>{
+   const u=new URL(route.request().url());if(u.hostname!=='early.test')return route.abort();
+   if(u.pathname==='/api/buses') {
+    const feed=structuredClone(recorded),at=await page.evaluate(()=>Date.now());
+    feed.server_eta.at=phase==='stale'?at-46000:at;feed.server_eta.servedAt=at;
+    for(const bus of feed.buses)bus.observed_at=at;
+    return route.fulfill({json:feed});
+   }
+   if(u.pathname==='/api/weather')return route.fulfill({status:204});
+   if(u.pathname.startsWith('/api/'))return route.fulfill({json:{reports:[],results:[]}});
+   if(route.request().method()!=='GET')return route.abort();
+   if(production){const response=await route.fetch({url:'https://yale-shuttle.fly.dev'+u.pathname+u.search});return route.fulfill({response});}
+   const file=u.pathname==='/'?'/index.html':u.pathname;
+   try{return route.fulfill({body:await fs.readFile('web/dist'+file),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});}
+   catch{return route.fulfill({status:404});}
+  });
+  await page.goto('https://early.test',{waitUntil:'domcontentloaded'});
+  await page.getByRole('button',{name:'View Red trip details',exact:true}).waitFor();
+  const row=page.locator('tbody[data-route="Blue Day"][data-pickup="47"]');
+  assert.equal(await row.count(),1,'Blue from the current pickup must be in the initial list');
+  const legs=await row.getByTestId('journey-legs').innerText();
+  assert.match(legs,/14 min/);assert.match(legs,/8 min/);
+  const overview=await row.innerText();
+  await page.screenshot({path:`${out}/at-pickup-${viewport.width}.png`,fullPage:true});
+  for(const next of ['stale','fresh']) {
+   phase=next;const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/buses');
+   await page.clock.runFor(5000);await(await response).finished();
+   await page.waitForFunction(unavailable=>{
+    const r=document.querySelector('tbody[data-route="Blue Day"][data-pickup="47"]');
+    return !!r&&r.textContent.includes('Unavailable')===unavailable;
+   },next==='stale');
+   assert.equal(await row.count(),1,'Availability changes must keep the pickup option visible');
+  }
+  await page.getByRole('button',{name:'View Blue Day trip details',exact:true}).click();
+  const directions=page.getByTitle('Walking directions to Divinity/409 Prospect',{exact:true});await directions.waitFor();
+  assert.equal(new URL(await directions.getAttribute('href')).searchParams.get('destination'),`${from.lat},${from.lon}`);
+  assert(await page.getByRole('button',{name:'🔔 Remind me for #44',exact:true}).isVisible());
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);
+  results.push({viewport,origin:'at-pickup',overviewText:overview,pickup:47,initiallyVisible:true,staleOptionRemainsVisible:true,reminderStillUses44:true,pageErrors:errors});
+ }catch(error){
+  if(page){await page.screenshot({path:`${out}/failure-at-pickup-${viewport.width}.png`,fullPage:true,timeout:5000}).catch(()=>{});
+   await fs.writeFile(`${out}/failure-at-pickup-${viewport.width}.json`,JSON.stringify({phase,error:String(error),text:await page.locator('body').innerText({timeout:1000}).catch(()=>'')},null,2)).catch(()=>{});}
+  throw error;
+ }finally{await ctx.unrouteAll({behavior:'wait'});await ctx.close();}
+}
 try {
  for(const viewport of [{width:368,height:854},{width:1702,height:1164}]) {
   for(const origin of [{name:'corridor',from:recorded.from},{name:'west',from:{lat:41.3254,lon:-72.9258}}]) {
@@ -136,7 +192,8 @@ try {
     throw error;
    }finally{await ctx.close();}
   }
+  await checkPickupHere(viewport);
  }
- await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,feedCapturedAt:recorded.capturedAt,scope:'Recorded feed and controlled origins/availability phases; corridor Brown calibrated ride shortened two minutes to exercise third-row visibility. Not an exact report104/137 replay or ETA accuracy evaluation',results},null,2)+'\n');
+ await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,feedCapturedAt:recorded.capturedAt,scope:'Recorded feed and controlled origins/availability phases; corridor Brown calibrated ride shortened two minutes to exercise third-row visibility; at-pickup origin/destination are public-stop proxies for report129. Not an exact report104/129/137 replay or ETA accuracy evaluation',results},null,2)+'\n');
 }finally{await browser.close();}
 console.log('Approaching shuttle times remain visible alongside later boarding choices; disappear with absent/stale/missing evidence; selection, reminders and telemetry retain the boarding bus.');
