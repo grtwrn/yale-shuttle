@@ -195,8 +195,8 @@ const withheld = MODEL_ROUTES === "all" ? new Set<number>() : splitWithheldRoute
   const occCount = MODEL_ROUTES === "all"
     ? attachOccurrenceStandTables(dwTable, net.network, loadStandOccurrenceGroups(db, SPLIT_WINDOW_DAYS, NOW), loadStopOccurrenceShares(db, SPLIT_WINDOW_DAYS, NOW))
     : 0;
-  const driveCount = attachDrives(segTable, loadDriveGroups(db, SPLIT_WINDOW_DAYS, NOW), withheld);
-  const dqCount = attachLegQuantiles(segTable, legGroups, withheld);
+  const driveCount = attachDrives(segTable, loadDriveGroups(db, SPLIT_WINDOW_DAYS, NOW), net.network, withheld);
+  const dqCount = attachLegQuantiles(segTable, legGroups, net.network, withheld);
   const ownPace = computePace(legGroups, net.network, withheld);
   // The all-routes pooled pace fills every route without legs of its own,
   // exactly as `calibrate` serves it (withPooledPace), so a replay prices

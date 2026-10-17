@@ -2,6 +2,7 @@ import type { ReleaseFit } from "../../web/src/eta/release.js";
 import { sql } from "drizzle-orm";
 
 import type { DB } from "../db/client.js";
+import { AT_STOP_PIN_M } from "../collector/detector.js";
 import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type {
@@ -77,8 +78,9 @@ const DWELL_LOW_MIN_SAMPLES = 5;
  * Served as measured, with the true sample counts. The client gates on the
  * counts (`MIN_STAND_SAMPLES` / `MIN_DRIVE_SAMPLES` in `web/src/hopPricing.ts`)
  * and prices a thin hop exactly as it did before the split existed — so the
- * server must NOT pre-filter, or the two gates drift apart and a cell the
- * client would accept silently never arrives.
+ * server must not withhold a table for thin support, or the two gates drift
+ * apart and a cell the client would accept silently never arrives. Physical
+ * travel eligibility is checked first; support counts describe those samples.
  */
 export const SPLIT_WINDOW_DAYS = 30;
 
@@ -181,8 +183,8 @@ export function calibrate(
   const hourStandCount = hourStandCells.size > 0
     ? attachHourStandTables(dwellStats, network, loadStandVisits(db, SPLIT_WINDOW_DAYS, nowMs, { cells: hourStandCells }), nowMs)
     : 0;
-  const driveCount = attachDrives(segmentStats, driveGroups);
-  const legQuantileCount = attachLegQuantiles(segmentStats, legGroups);
+  const driveCount = attachDrives(segmentStats, driveGroups, network);
+  const legQuantileCount = attachLegQuantiles(segmentStats, legGroups, network);
   const ownPace = computePace(legGroups, network);
   // The network-wide pace fills every route that has no legs yet, so the
   // estimator prices every route from the same model (see computePooledPace).
@@ -207,7 +209,8 @@ export function calibrate(
     occurrenceStandCount,
     lapFitCount,
     hourStandCount,
-    splitSampleCount: countSamples(standGroups) + countSamples(driveGroups),
+    splitSampleCount: countSamples(standGroups)
+      + driveGroups.reduce((n, group) => n + eligibleTravelValues(group, network).length, 0),
     durationMs: Date.now() - t0,
   };
 }
@@ -773,19 +776,24 @@ function parseOccurrenceKey(key: string): { routeId: number; stopId: number; sto
  * distance prior, which has no place to carry a drive; it is also the thin
  * case the client would refuse). The median, not the mean: a drive includes
  * any hold at a light, and one long red on ten legs should not move the
- * number the way it moves an average. Returns the number of hops carrying one.
+ * number the way it moves an average. Known stop geometry applies the physical
+ * speed bound with the pin radius allowed at both endpoints. Returns the number
+ * of hops carrying one; driveN counts only eligible durations.
  */
 export function attachDrives(
   segments: Map<string, SegmentStats>,
   groups: readonly ValueGroup[],
+  network: TransitNetwork,
   withheld: ReadonlySet<number> = new Set(),
 ): number {
   let count = 0;
   for (const g of groups) {
-    if (g.all.length === 0 || withheld.has(routeOf(g.key))) continue;
+    if (withheld.has(routeOf(g.key))) continue;
+    const values = eligibleTravelValues(g, network);
+    if (values.length === 0) continue;
     const cur = segments.get(g.key);
     if (!cur) continue;
-    segments.set(g.key, { ...cur, drive: median(g.all), driveN: g.all.length });
+    segments.set(g.key, { ...cur, drive: median(values), driveN: values.length });
     count++;
   }
   return count;
@@ -796,19 +804,23 @@ export function attachDrives(
  * calibrated segment — the same two conditions as {@link attachDrives}, so a
  * hop carries `dq` exactly where it can carry a `drive` (the leg rows behind
  * them differ only in the clock at B; see {@link loadLegGroups}). Returns
- * the number of hops carrying one.
+ * the number of hops carrying one. The same geometry-aware eligibility as the
+ * drive is applied before either quantiles or support counts are calculated.
  */
 export function attachLegQuantiles(
   segments: Map<string, SegmentStats>,
   groups: readonly ValueGroup[],
+  network: TransitNetwork,
   withheld: ReadonlySet<number> = new Set(),
 ): number {
   let count = 0;
   for (const g of groups) {
-    if (g.all.length === 0 || withheld.has(routeOf(g.key))) continue;
+    if (withheld.has(routeOf(g.key))) continue;
+    const values = eligibleTravelValues(g, network);
+    if (values.length === 0) continue;
     const cur = segments.get(g.key);
     if (!cur) continue;
-    segments.set(g.key, { ...cur, dq: standQuantiles(g.all), dqn: g.all.length });
+    segments.set(g.key, { ...cur, dq: standQuantiles(values), dqn: values.length });
     count++;
   }
   return count;
@@ -826,6 +838,8 @@ export const PACE_MIN_CHORD_M = 30;
  * chord used to be the divisor everywhere, and it under-priced winding hops:
  * road/chord runs to a p90 of 1.9 on Red and 4.8 on Blue Night. The
  * too-short gate stays on the chord (it is about the stops, not the road).
+ * Impossible stop-zone travel times are excluded before route or pooled pace
+ * is calculated; the full road metres still determine seconds per metre.
  * Needs the network's stop geometry — a network without stops (the test sink)
  * yields no pace at all rather than a fabricated one. `withheld` is for the
  * replay's reconstruction of the old payload; production passes nothing.
@@ -855,7 +869,7 @@ function paceSamples(
     const meters = legMeters(network, g.key) ?? chord;
     let l = samples.get(rid);
     if (!l) samples.set(rid, (l = []));
-    for (const sec of g.all) {
+    for (const sec of eligibleTravelValues(g, network)) {
       const spm = sec / meters;
       if (Number.isFinite(spm) && spm > 0) l.push(spm);
     }
@@ -1015,7 +1029,21 @@ function legMeters(network: TransitNetwork, key: string): number | null {
 
 /** Samples whose implied straight-line speed is physically possible. */
 function plausible(values: readonly number[], meters: number): number[] {
-  return values.filter((sec) => sec > 0 && meters / sec <= MAX_PLAUSIBLE_M_S);
+  return values.filter((sec) => Number.isFinite(sec) && sec > 0 && meters / sec <= MAX_PLAUSIBLE_M_S);
+}
+
+/** Apply the physical speed policy to the split's stop-zone clocks.
+ * An unconfirmed anchor can create a positive but impossible leg: Blue #58's
+ * 116 -> 53 row on October 17 covered a 792 m chord in 5.086 s. Keep the raw
+ * record, but let neither its duration nor its support count enter a table.
+ * Departure/arrival may each be 75 m toward the other stop. Subtract the
+ * existing pin radius at both ends, preserving legitimate overlapping-zone
+ * short hops; the full chord remains the pace denominator (or its road trace).
+ * Unknown geometry follows computeSegmentStats' existing unfiltered path.
+ */
+function eligibleTravelValues(group: ValueGroup, network: TransitNetwork): readonly number[] {
+  const meters = segmentMeters(network, group.key);
+  return meters === null ? group.all : plausible(group.all, Math.max(0, meters - 2 * AT_STOP_PIN_M));
 }
 
 export function computeDwellStats(

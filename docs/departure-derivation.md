@@ -60,8 +60,15 @@ on a 112 m hop, so the bus is often pinned at Winchester / Division before it
 has cleared 344 Winchester; those legs are reported as 0, not dropped). Against
 a served 557 s, that is the whole cliff.
 
-Short drives are never floored or discarded: a leg is dropped only when it is
-≤ 0 s, over 45 min (`MAX_SEGMENT_SEC`), or more than 5 hops.
+The departure derivation retains short drives: its raw leg rules drop a leg
+only when it is ≤ 0 s, over 45 min (`MAX_SEGMENT_SEC`), or more than 5 hops.
+Calibration additionally applies the existing 22 m/s physical speed bound to
+split drives, whole-hop quantiles and route/pooled pace. These clocks can start
+and end within the 75 m pin zones, so the minimum travel distance is
+`max(0, stop chord − 2 × pin radius)`. Overlapping zones keep every positive
+finite duration; there is no fixed minimum drive time. Unknown geometry keeps
+the legacy unfiltered path. Rejected observations remain in the raw tables;
+calibrated support counts include only eligible observations.
 
 | bus | anchored | to | travel_sec | visit | approach | stand | drive | hold | how | rest polls | shuffles |
 |---|---|---|---|---|---|---|---|---|---|---|---|

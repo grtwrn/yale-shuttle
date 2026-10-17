@@ -127,7 +127,7 @@ for (const r of net.routes) {
 }
 const withheld = SPLIT_ROUTES === "all" ? new Set<number>() : splitWithheldRoutes(net.network);
 const standCount = attachStandTables(dwTable, loadStandGroups(SPLIT_WINDOW_DAYS, NOW), withheld);
-const driveCount = attachDrives(segTable, loadDriveGroups(SPLIT_WINDOW_DAYS, NOW), withheld);
+const driveCount = attachDrives(segTable, loadDriveGroups(SPLIT_WINDOW_DAYS, NOW), net.network, withheld);
 console.error(`SPLIT_ROUTES=${SPLIT_ROUTES}: withheld ${withheld.size} routes, ${standCount} stand tables, ${driveCount} drives (rows bounded to <= SPLIT_NOW)`);
 
 const patch: Patch = { segments: {}, dwells: {} };
