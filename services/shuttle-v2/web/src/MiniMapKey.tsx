@@ -5,11 +5,22 @@ import { fmtMin, fmtWalk } from './format';
 import { estimatedGap } from './arrivalDetails';
 import { EarlyPickupNotice, type EarlyPickupForecast } from './EarlyPickupNotice';
 
+/** Choose the stronger text contrast on the canonical six-digit route color. */
+function routePillTextColor(color: string): '#000' | '#fff' {
+  const rgb = parseInt(color.slice(1), 16);
+  const [r, g, b] = [16, 8, 0].map(shift => {
+    const channel = ((rgb >> shift) & 255) / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+  return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) ? '#000' : '#fff';
+}
+
 function RoutePill({ option }: { option: TripOption }) {
   return <span data-testid="route-pill" style={{ display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box',
     padding: '3px', borderRadius: 6, fontWeight: 600, lineHeight: '16px',
     background: option.mode === 'walk' ? 'transparent' : option.color,
-    color: option.mode === 'walk' ? '#5f6368' : '#fff',
+    color: option.mode === 'walk' ? '#5f6368' : routePillTextColor(option.color),
     border: option.mode === 'walk' ? '1px solid #dadce0' : undefined }}>{option.routeLabel}</span>;
 }
 
