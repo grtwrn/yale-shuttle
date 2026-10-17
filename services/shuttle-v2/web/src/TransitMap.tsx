@@ -2705,6 +2705,8 @@ const TripPlanner: FC<{
       : null;
     // Strictly follow the pinned arrival; a previous, uncatchable bus
     // must never masquerade as the next shuttle.
+    const selection = o.livePickupSelection;
+    const countdown = selection?.countdown;
     const nextArrLive = busEtaLive !== null && !o.departed
       ? nextArrivalAfterPinned(
           computeUpcomingArrivals(
@@ -2715,6 +2717,7 @@ const TripPlanner: FC<{
           ).filter((a) => a.routeLabel === o.routeLabel),
           o.busName,
           busEtaLive,
+          countdown?.source === 'forecast' ? countdown.stopsAhead : undefined,
         )
       : null;
 
@@ -2743,7 +2746,6 @@ const TripPlanner: FC<{
       : null;
     // "Board in" compares boarding opportunities. The detailed countdown
     // can still follow an earlier bus the rider sees approaching the stop.
-    const selection = o.livePickupSelection;
     const boarding = selection && selection.relation !== 'same-visit' && selection.boarding.source === 'forecast'
       ? selection.boarding : undefined;
     const boardingEtaLive = boarding && busEtaLive !== null
@@ -2751,7 +2753,7 @@ const TripPlanner: FC<{
     const boardingNext = boarding && boardingEtaLive !== null
       ? nextArrivalAfterPinned(computeUpcomingArrivals([o.boardStopId], buses, routeStops, stopCoords,
         segmentTimes, undefined, dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel),
-        boarding.busName, boardingEtaLive)
+        boarding.busName, boardingEtaLive, boarding.stopsAhead)
       : nextArrLive;
     const earlyPickup = o.mode === 'shuttle' && !isFuture && !o.etaUnavailable && etaFresh
       ? earlyPickupArrival(computeUpcomingArrivals([o.boardStopId], buses, routeStops,

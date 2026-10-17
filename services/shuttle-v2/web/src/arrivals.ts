@@ -329,18 +329,23 @@ export function computeUpcomingArrivals(
  * `arrivals` may hold two entries per vehicle (this lap and the next), which
  * is what makes a single-bus line answer "next in 54 min" correctly.
  */
-export function nextArrivalAfterPinned<A extends { eta: number; busName: string }>(
+export function nextArrivalAfterPinned<A extends { eta: number; busName: string; stopsAhead?: number }>(
   arrivals: readonly A[],
   pinnedBusName: string,
-  /** Used only when the pinned vehicle is not in `arrivals` at all. */
-  fallbackShownEta: number,
+  /** The estimate currently shown, already aged to this render. */
+  displayedEta: number,
+  /** Relative to this snapshot; identifies a return by the same vehicle. */
+  pinnedStopsAhead?: number,
 ): A | null {
   const norm = (s: string) => s.replace(/^#/, "");
   const sorted = [...arrivals].sort((a, b) => a.eta - b.eta);
   const shownIdx = pinnedBusName
-    ? sorted.findIndex((a) => norm(a.busName) === norm(pinnedBusName))
+    ? sorted.findIndex((a) => norm(a.busName) === norm(pinnedBusName)
+      && (pinnedStopsAhead === undefined || a.stopsAhead === pinnedStopsAhead))
     : -1;
   const shown = sorted[shownIdx];
-  const shownEta = shown ? shown.eta : fallbackShownEta;
+  // The first visit by this bus may precede the one used for boarding. Match
+  // the selected visit when known, and never put Next before the screen's ETA.
+  const shownEta = Math.max(displayedEta, shown?.eta ?? displayedEta);
   return sorted.find((a, i) => i !== shownIdx && a.eta > shownEta) ?? null;
 }
