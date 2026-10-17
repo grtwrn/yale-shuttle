@@ -43,3 +43,10 @@ once per browser context, so it cannot resurrect an old ride on the next trip.
 The separately supervised learner continues through rider restarts.
 
 Tests: `npm test -- scripts/retention scripts/rider-watch`.
+
+Guardian rider alerts now keep separate checksummed evidence bundles before
+routine logs or images expire. Pending incident bundles are protected; resolved
+bundles roll by seven days and a 256 MiB target. Capture errors, overage and
+historical gaps are visible in the bridge's evidence status. This does not
+change the rider or learning retention policies above. See the
+[guardian bridge](../guardian-watch/README.md).
