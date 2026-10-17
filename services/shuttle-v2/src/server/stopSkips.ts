@@ -138,6 +138,60 @@ export type StopSkipsWire = Record<string, Record<string, StopSkip>>;
 const mod = (a: number, n: number): number => ((a % n) + n) % n;
 
 /**
+ * A nearest-anchor excursion is not another forward pass. Blue #58 briefly
+ * anchored116/53 from400m, then actually reached116; using53 as116's previous
+ * visit both manufactured a skip and discarded the later near visit.
+ *
+ * Resolve only a continuous, observed return to a repeated anchor: the last
+ * near visit must be one/two route positions before the new near visit, all
+ * intervening anchors must remain outside75m, and their signed route
+ * steps must return to that same short approach rather than complete a lap.
+ * Raw fixes must reach the new pole within75m with no gap over60s. The caller's
+ * track contains only available observations. Raw visit rows stay unchanged.
+ * An intermediate forward pass is retained, using its closest original row.
+ */
+function resolveAnchorReturns(
+  list: readonly VisitRow[], net: TransitNetwork,
+  track: (busId: number, from: number, to: number) => readonly Fix[], nowMs: number,
+): VisitRow[] {
+  const out: VisitRow[] = [];
+  const near = (v: VisitRow) => Number.isFinite(v.closestM) && v.closestM <= SERVED_M;
+  const valid = (v: VisitRow) => net.routes.get(v.routeId)?.stops[v.stopIndex] === v.stopId;
+  for (let j = 0; j < list.length; j++) {
+    const v = list[j]!;
+    if (!near(v) || !valid(v)) { out.push(v); continue; }
+    let k = out.length - 1;
+    while (k >= 0 && !near(out[k]!) && valid(out[k]!) && Number.isFinite(out[k]!.closestM)
+      && v.anchoredAt - out[k]!.anchoredAt <= MAX_HOP_MS) k--;
+    const p = out[k], buffer = out.slice(k + 1), route = net.routes.get(v.routeId)!, n = route.stops.length;
+    if (!p || !near(p) || !valid(p) || v.anchoredAt - p.anchoredAt > MAX_HOP_MS
+      || !buffer.some(b => b.stopIndex === v.stopIndex)) { out.push(v); continue; }
+    const advance = mod(v.stopIndex - p.stopIndex, n), chain = [p, ...buffer, v];
+    const steps = chain.slice(1).map((x, i) => mod(x.stopIndex - chain[i]!.stopIndex, n));
+    if (advance < 1 || advance > 2 || steps.every(d => d >= 1 && d <= 2)
+      || steps.reduce((sum, d) => sum + (d > n / 2 ? d - n : d), 0) !== advance) { out.push(v); continue; }
+    const stop = net.stops.get(v.stopId);
+    if (!stop) { out.push(v); continue; }
+    const end = Math.min(nowMs, p.anchoredAt + MAX_HOP_MS, list[j + 1]?.anchoredAt ?? Infinity);
+    const fixes = track(v.busId, p.anchoredAt, end);
+    let previous = p.anchoredAt, count = 0, maxGap = 0, found = false;
+    for (const f of fixes) {
+      count++; maxGap = Math.max(maxGap, f.at - previous); previous = f.at;
+      if (f.at >= v.anchoredAt && distanceMeters(f, stop) <= SERVED_M) { found = true; break; }
+    }
+    if (!found || count < 2 || maxGap > MAX_FIX_GAP_MS) { out.push(v); continue; }
+    const keep: VisitRow[] = [];
+    for (let d = 1; d < advance; d++) {
+      const candidates = buffer.filter(b => mod(b.stopIndex - p.stopIndex, n) === d);
+      if (candidates.length) keep.push(candidates.reduce((a, b) => b.closestM < a.closestM ? b : a));
+    }
+    out.splice(k + 1, buffer.length, ...keep);
+    out.push(v);
+  }
+  return out;
+}
+
+/**
  * Judge every forward pass in `visits` (any order) as of `nowMs` (by default
  * with hindsight). `track` returns one bus's raw positions in `[from, to]`,
  * oldest first.
@@ -156,8 +210,9 @@ export function classifyPasses(
     else byBus.set(key, [v]);
   }
   const out: StopPass[] = [];
-  for (const list of byBus.values()) {
-    list.sort((a, b) => a.anchoredAt - b.anchoredAt);
+  for (const observed of byBus.values()) {
+    observed.sort((a, b) => a.anchoredAt - b.anchoredAt);
+    const list = resolveAnchorReturns(observed, net, track, nowMs);
     for (let j = 1; j < list.length; j++) {
       const p = list[j - 1]!, v = list[j]!, q = list[j + 1];
       const route = net.routes.get(v.routeId);
