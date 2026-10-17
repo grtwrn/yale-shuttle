@@ -61,6 +61,14 @@ cd web && npx vite build   # the frontend's type/syntax gate
 
 ## Deploy
 
+Pushes to `master` run the staged checks in `.github/workflows/deploy.yml`.
+Operator-only changes run all gates and the real-server/browser smoke without
+replacing production when the running application's Docker inputs already match.
+Changes to image inputs or Fly configuration deploy normally. Unknown history
+or unverifiable production falls back to a full deployment; manual workflow
+dispatch also runs a full deployment. This keeps monitoring maintenance from
+unnecessarily restarting a live evaluation cycle.
+
 Only `services/shuttle-v2/fly.toml` is live. **Never deploy from the repo
 root.**
 

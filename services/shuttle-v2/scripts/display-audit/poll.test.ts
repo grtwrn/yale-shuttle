@@ -72,4 +72,42 @@ describe('persistent display observer', () => {
     expect(notices).toEqual([0]);
     expect(JSON.parse(await fs.readFile(path.join(directory, 'health.json'), 'utf8')).failures).toBe(4);
   });
+  it('records a normal empty fleet as idle, clears pending confirmations, and preserves old incidents', async () => {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ys-display-idle-')); directories.push(directory);
+    const previous = observe(null, [finding], 'abcdef123456', fixture.receivedAt, fixture.receivedAt).state;
+    previous.queue.push({ at: 'earlier', build: 'abcdef123456', findings: [finding] });
+    await fs.writeFile(path.join(directory, 'state.json'), JSON.stringify(previous));
+    await fs.writeFile(path.join(directory, 'health.json'), JSON.stringify({ failures: 3, notified: true }));
+    const { server_eta, ...feed } = fixture.feed;
+    const notices: number[] = [];
+    const fetchImpl = (async (url: string | URL | Request) => Response.json(String(url).endsWith('/healthz')
+      ? { ok: true, build: 'abcdef123456' } : { ...feed, buses: [] })) as typeof fetch;
+    const status = await poll({ directory, revision: 'abcdef1234567890', fetchImpl, clock: () => fixture.receivedAt + 60_000,
+      notify: async n => { notices.push(n); } });
+    expect(status.ok).toBe(true); expect(status.activity).toBe('idle');
+    expect(status.coverage.buses).toBe(0); expect(status.queuedBatches).toBe(1);
+    expect(JSON.parse(await fs.readFile(path.join(directory, 'state.json'), 'utf8')).observations).toEqual({});
+    expect(JSON.parse(await fs.readFile(path.join(directory, 'queue.json'), 'utf8'))).toEqual(previous.queue);
+    expect(JSON.parse(await fs.readFile(path.join(directory, 'health.json'), 'utf8')).failures).toBe(0);
+    expect(notices).toEqual([]);
+    await expect(poll({ directory, revision: 'wrong', fetchImpl })).rejects.toThrow(/revision must match/);
+    await expect(poll({ directory, revision: 'abcdef1234567890', sourceClean: false, fetchImpl })).rejects.toThrow(/revision must match/);
+  });
+  it('allows a separately verified operator revision and still rejects a nonempty missing-ETA feed', async () => {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ys-display-source-')); directories.push(directory);
+    const builds: string[] = [];
+    const sourceMatches = (build: string) => { builds.push(build); return true; };
+    const fetchImpl = (async (url: string | URL | Request) => Response.json(String(url).endsWith('/healthz')
+      ? { ok: true, build: 'abcdef123456' } : fixture.feed)) as typeof fetch;
+    const status = await poll({ directory, revision: 'different-operator-revision', sourceMatches, fetchImpl, clock: () => fixture.receivedAt });
+    expect(status.ok).toBe(true); expect(status.operatorRevision).toBe('different-operator-revision');
+    expect(builds).toEqual(['abcdef123456']);
+    const { server_eta, ...nonempty } = fixture.feed;
+    const missing = (async (url: string | URL | Request) => Response.json(String(url).endsWith('/healthz')
+      ? { ok: true, build: 'abcdef123456' } : nonempty)) as typeof fetch;
+    const before = await fs.readFile(path.join(directory, 'state.json'), 'utf8');
+    await expect(poll({ directory, revision: 'different-operator-revision', sourceMatches, fetchImpl: missing,
+      clock: () => fixture.receivedAt })).rejects.toThrow(/ETA snapshot/);
+    expect(await fs.readFile(path.join(directory, 'state.json'), 'utf8')).toBe(before);
+  });
 });

@@ -4,6 +4,17 @@ import winchester from '../../web/src/__fixtures__/red-winchester-report-142.jso
 import folded from '../../web/src/__fixtures__/folded-standing-display.json';
 
 describe('all-line display audit', () => {
+  it('reports an idle, zero-coverage fleet without requiring an ETA snapshot', () => {
+    const { server_eta, ...feed } = structuredClone(winchester.feed);
+    const result = auditDisplay({ ...feed, buses: [] } as unknown as AuditFeed, winchester.receivedAt);
+    expect(result.activity).toBe('idle');
+    expect(Object.values(result.coverage).every(n => n === 0)).toBe(true);
+    expect(result.findings).toEqual([]);
+  });
+  it.each([null, { buses: null }, { buses: [], routes: null, stop_coords: {} }, { buses: [], routes: {}, stop_coords: [] }])(
+    'refuses a malformed feed instead of calling it idle', feed => {
+      expect(() => auditDisplay(feed as unknown as AuditFeed, winchester.receivedAt)).toThrow(/Invalid bus feed/);
+    });
   it('checks every eligible pickup and exit at the recorded Red stand', () => {
     const result = auditDisplay(structuredClone(winchester.feed) as unknown as AuditFeed, winchester.receivedAt);
     expect(result.findings).toEqual([]);
