@@ -148,19 +148,39 @@ export function phaseAt(state, at) {
 }
 
 /** Resample paired day/bus service blocks, rather than correlated stop rows.
+ * Tracking IDs can change and a bus can change routes within the same day.
+ * Conservatively join either shared provider IDs or normalized bus names,
+ * including transitive aliases seen on rows without a scored outcome. This
+ * groups uncertainty only: it never joins visits or manufactures outcomes.
  * Require a negative 95% upper confidence bound on pooled WIS difference. */
 export function clusteredImprovement(rows, conformal) {
- const clusters=new Map();
+ const parents=new Map(), identities=new Map();
+ const root=key=>{let found=key;while(parents.get(found)!==found)found=parents.get(found);
+  while(key!==found){const next=parents.get(key);parents.set(key,found);key=next;}return found;};
+ for(const p of rows){
+  const name=typeof p.busName==='string'?p.busName.trim().replace(/^#/,'').trim().toLowerCase():'';
+  if(typeof p.day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(p.day)
+    ||!Number.isSafeInteger(p.busId)||p.busId<0||!name)continue;
+  const id=JSON.stringify([p.day,'provider',p.busId]),label=JSON.stringify([p.day,'name',name]);
+  for(const key of [id,label])if(!parents.has(key))parents.set(key,key);
+  const a=root(id),b=root(label);if(a!==b)parents.set(a,b);
+  identities.set(p,id);
+ }
+ const clusters=new Map();let unverifiedIdentityRows=0;
  for(const p of rows){
   if(!Number.isFinite(p.det))continue;
   const common={r:p.r,h:p.h,det:p.det};
   const a=validationCells([{...common,...scoreEstimate(p.champion)}],UNIT,{referenceHorizons:true})['0|all'];
   const b=validationCells([{...common,...scoreEstimate(p.challenger,conformal)}],UNIT,{referenceHorizons:true})['0|all'];
   if(!a?.scored||!b?.scored)continue;
-  const key=`${p.day}|${p.r}|${p.busId}`;
+  const identity=identities.get(p);
+  if(!identity){unverifiedIdentityRows++;continue;}
+  const key=root(identity);
   const c=clusters.get(key)??{day:p.day,delta:0,n:0};c.delta+=b.wis-a.wis;c.n++;clusters.set(key,c);
  }
  const blocks=[...clusters.values()];
+ if(unverifiedIdentityRows)return {pass:false,clusters:blocks.length,unverifiedIdentityRows,
+  reason:'Need verified day/bus identities for every scored uncertainty row.'};
  if(blocks.length<30)return {pass:false,clusters:blocks.length,reason:'Need at least 30 day/bus service blocks for clustered uncertainty.'};
  let seed=1729;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  const days=[...new Set(blocks.map(c=>c.day))];

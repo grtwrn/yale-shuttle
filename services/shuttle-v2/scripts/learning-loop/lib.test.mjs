@@ -98,6 +98,52 @@ describe('chronological phases and paired quality gates',()=>{
   const worse=rows().map(r=>({...r,challenger:{eta:100,low:-100,high:300}}));
   expect(evaluate(frozen(),worse,days).promote).toBe(false);
  });
+ it('does not promote by counting tracking-ID reissues as different day/bus blocks',()=>{
+  const aliases=rows().map(p=>({...p,busName:'#329',champion:{...p.champion,
+   control:{...p.champion.control,busName:'#329'}}}));
+  const decision=evaluate(frozen(),aliases,days);
+  expect(decision.totals.challenger['13|all'].scored).toBe(120);
+  expect(decision.uncertainty.clusters).toBe(3);
+  expect(decision.promote).toBe(false);
+  expect(decision.reasons.join(' ')).toContain('30 day/bus');
+ });
+ it('groups the recorded Purple329 provider-ID transition and formatting aliases',()=>{
+  const sample=rows()[0];
+  const aliases=[{...sample,busId:67821,busName:'#329'},
+   {...sample,busId:67836,busName:' 329 '}];
+  expect(clusteredImprovement(aliases,UNIT).clusters).toBe(1);
+ });
+ it('keeps one bus together across route changes while retaining independent days',()=>{
+  const aliases=rows().map((p,i)=>({...p,r:i%2?10:13,busName:'#329'}));
+  expect(clusteredImprovement(aliases,UNIT).clusters).toBe(3);
+ });
+ it('uses transitive identity evidence from rows without a scored outcome',()=>{
+  const p=rows()[0];
+  const aliases=[{...p,busId:67821,busName:'#329'},
+   {...p,busId:67821,busName:'#old',det:null},
+   {...p,busId:67836,busName:'#old'}];
+  expect(clusteredImprovement(aliases,UNIT).clusters).toBe(1);
+ });
+ it('still requires thirty distinct day/bus blocks and preserves paired bootstrap scores',()=>{
+  const thirty=rows().filter(p=>p.busId<10);
+  const before=clusteredImprovement(thirty,UNIT);
+  expect(before).toMatchObject({pass:true,clusters:30});
+  expect(clusteredImprovement(thirty.map(p=>({...p,busId:p.busId+10000})),UNIT)).toEqual(before);
+  expect(clusteredImprovement(thirty.filter(p=>p.busId<9),UNIT)).toMatchObject({pass:false,clusters:27});
+  expect(clusteredImprovement(thirty.map(p=>({...p,challenger:{eta:100,low:-100,high:300}})),UNIT).pass).toBe(false);
+ });
+ it.each(['name-missing','name-empty','id-missing','id-noninteger','day-missing'])('refuses unverified scored identity: %s',mode=>{
+  const unknown=rows();
+  if(mode==='name-missing')delete unknown[0].busName;
+  if(mode==='name-empty')unknown[0].busName=' # ';
+  if(mode==='id-missing')delete unknown[0].busId;
+  if(mode==='id-noninteger')unknown[0].busId=1.5;
+  if(mode==='day-missing')delete unknown[0].day;
+  const result=clusteredImprovement(unknown,UNIT);
+  expect(result.pass).toBe(false);
+  expect(result.unverifiedIdentityRows).toBe(1);
+  expect(result.reason).toContain('verified day/bus');
+ });
 });
 
 describe('model-time calibration and served-control evidence',()=>{
