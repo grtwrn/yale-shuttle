@@ -697,3 +697,52 @@ test('replay: a named bus standing at the opposite route occurrence is not proxi
  // Missing the old false boarding is not a newly measured ride/arrival.
  assert.deepEqual(await h.journeys(),[]);
 });
+
+// The archived producer crossed within16m between the rider's46m/60m polls.
+// The intermediate HTTP delivery is modeled; original response receipts were
+// not stored. The regression must use only frames actually delivered here.
+const arrivalGap=JSON.parse(await fs.readFile(new URL('./__fixtures__/red-317-arrival-between-ticks-2026-10-16.json',import.meta.url),'utf8'));
+const arrivalFeed=buses=>({...red,buses,stop_coords:{...red.stop_coords,72:{lat:arrivalGap.stop.lat,lon:arrivalGap.stop.lon}}});
+async function arrivalRider(){
+ const from={kind:'fixed',origin:{label:'Division / Prospect',...red.stop_coords[48],stopId:48},destination:{display_name:arrivalGap.stop.name,lat:arrivalGap.stop.lat,lon:arrivalGap.stop.lon,stopId:72}};
+ const h=current=await harness(arrivalFeed([red317]),from,{initialLine:{label:'Red',busRouteIds:[3]},feedOf:arrivalFeed,text:'🚌 #317 · 1 stop away\nBOARDDivision/Prospect\nGET OFFLEPH/60 College',at:new Date(Date.parse(arrivalGap.boardedAt)-10000).toISOString()});
+ await h.poll('🚌 14 min\nBOARD🚌Division/Prospect⏸ 0:21\nGET OFFLEPH/60 College',[{...red317,...red.stop_coords[48],stationary:true,at_stop_id:48}]);
+ assert.equal(h.watcher.status().run.phase,'riding');
+ h.receive=async(frame,bus=frame.bus)=>{vi.setSystemTime(frame.receivedAt);await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>arrivalFeed([bus])});};
+ return h;
+}
+test('a qualifying arrival received between rider ticks survives a later moving feed',async()=>{
+ const h=await arrivalRider();await h.receive(arrivalGap.before);vi.setSystemTime(Date.parse(arrivalGap.before.tickAt));await h.watcher.tick();assert.equal(h.watcher.status().run.phase,'riding');
+ await h.receive(arrivalGap.middle);await h.receive(arrivalGap.after);vi.setSystemTime(Date.parse(arrivalGap.after.tickAt));await h.watcher.tick();
+ const run=h.watcher.status().run;assert.equal(run.phase,'arrived');assert.equal(run.arrivedAt,new Date(arrivalGap.middle.receivedAt).toISOString());
+ assert.equal(run.arrivalObservation.bus.observed_at,arrivalGap.middle.bus.observed_at);assert.equal(run.arrivalObservation.bus.bus_id,67807);assert.equal(run.arrivalObservation.stopId,72);assert(run.arrivalObservation.distanceM<16);assert.equal(run.arrivalCriterion,'GPS-within-45m');
+ assert.deepEqual(h.geo,{latitude:arrivalGap.middle.bus.lat,longitude:arrivalGap.middle.bus.lon});
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);const arrived=events.filter(e=>e.kind==='arrived');assert.equal(arrived.length,1);assert.deepEqual(arrived[0].detail.observation,run.arrivalObservation);
+});
+test.each(['not-delivered','other-bus','other-route','early','invalid','stale-observation','future-observation','invalid-board-clock'])('the receipt buffer does not infer arrival from %s',async mode=>{
+ const h=await arrivalRider();await h.receive(arrivalGap.before);
+ if(mode!=='not-delivered'){
+  const frame=structuredClone(arrivalGap.middle);
+  if(mode==='other-bus')frame.bus.bus_name='#310';if(mode==='other-route')frame.bus.route_id=10;
+  if(mode==='early')frame.receivedAt=Date.parse(arrivalGap.boardedAt)+30000;
+  if(mode==='invalid-board-clock')h.watcher.status().run.boardedAt='invalid';
+  if(mode==='invalid')frame.bus.lat=null;
+  if(mode==='stale-observation')frame.bus.observed_at=frame.receivedAt-30001;
+  if(mode==='future-observation')frame.bus.observed_at=frame.receivedAt+5001;
+  await h.receive(frame);
+ }
+ await h.receive(arrivalGap.after);vi.setSystemTime(Date.parse(arrivalGap.after.tickAt));await h.watcher.tick();assert.equal(h.watcher.status().run.phase,'riding');assert.equal(h.watcher.status().run.arrivalObservation,undefined);
+});
+
+test('the existing stationary-at-target60m rule can retain the first qualifying receipt',async()=>{
+ const h=await arrivalRider();const frame=structuredClone(arrivalGap.after);frame.bus.stationary=true;frame.bus.at_stop_id=72;
+ await h.receive(frame);await h.receive({...frame,receivedAt:frame.receivedAt+5000,bus:{...frame.bus,lat:arrivalGap.stop.lat,lon:arrivalGap.stop.lon}});
+ await h.watcher.tick();const run=h.watcher.status().run;assert.equal(run.phase,'arrived');assert.equal(run.arrivalCriterion,'stationary-at-target-within-60m');assert.equal(run.arrivedAt,new Date(frame.receivedAt).toISOString());assert(run.arrivalObservation.distanceM>59);
+});
+test('a destination receipt survives a busy UI read and keeps its processing clock causal',async()=>{
+ const h=await arrivalRider();await h.receive(arrivalGap.before);vi.setSystemTime(Date.parse(arrivalGap.before.tickAt));
+ let release;h.page.locator=()=>({innerText:()=>new Promise(resolve=>{release=resolve;})});const tick=h.watcher.tick();assert.equal(h.watcher.status().busy,true);
+ await h.receive(arrivalGap.middle);await h.receive(arrivalGap.after);release('Red #317 has moved on');await tick;
+ const run=h.watcher.status().run;assert.equal(run.phase,'arrived');assert.equal(run.arrivedAt,new Date(arrivalGap.middle.receivedAt).toISOString());assert(Date.parse(run.arrivalProcessedAt)>=Date.parse(run.arrivedAt));
+ const samples=(await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert(samples.at(-1).feedAgeMs>=0);
+});
