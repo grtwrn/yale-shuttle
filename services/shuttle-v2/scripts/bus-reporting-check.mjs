@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { seedTestId } from './testId.mjs';
+import { waitForResponseBody } from './browser-response.mjs';
 
 const capture = JSON.parse(await fs.readFile('web/src/__fixtures__/red-reporting-2026-10-14.json', 'utf8'));
 const out = process.env.BOT_OUT ?? 'pr-preview/bus-reporting';
@@ -71,7 +72,7 @@ try {
         const before = polls;
         const response = page.waitForResponse(r => new URL(r.url()).pathname === '/api/buses');
         servedNow += 5500; progress('advancing clock'); await page.clock.runFor(5500);
-        progress('waiting for response body'); await (await response).finished();
+        progress('waiting for response body'); await waitForResponseBody(page, await response);
         await new Promise(resolve => setTimeout(resolve, 100));
         assert(polls > before, 'new feed poll');
       };
