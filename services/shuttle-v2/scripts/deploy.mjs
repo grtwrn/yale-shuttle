@@ -21,6 +21,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { runBrowserCheck } from "./browser-stage.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FLYCTL = process.env.FLYCTL ?? path.join(os.homedir(), ".fly/bin/flyctl");
@@ -60,11 +61,18 @@ const cleanup = () => {
   try { fs.rmSync(stageDir, { recursive: true, force: true }); } catch { /* temp dir */ }
 };
 process.on("SIGINT", () => { cleanup(); process.exit(130); });
+process.on("SIGTERM", () => { cleanup(); process.exit(143); });
 
 function run(label, cmd, args, opts = {}) {
   log(label);
   const r = spawnSync(cmd, args, { cwd: ROOT, stdio: "inherit", ...opts });
   if (r.status !== 0) fail(`${label} failed (exit ${r.status})`);
+}
+
+async function browserRegression(label, script, opts = {}) {
+  log(`${label} (120 s deadline)`);
+  try { await runBrowserCheck(script, { cwd: ROOT, ...opts }); }
+  catch (error) { fail(`${label}: ${error.message}`); }
 }
 
 async function waitForHealthy(base, timeoutMs) {
@@ -221,13 +229,13 @@ await waitForHealthy(STAGE_URL, 90_000);
 log("  ✓ healthy (migrations applied to an empty DB, collector polling)");
 await apiSmoke(STAGE_URL);
 await browserSmoke(STAGE_URL, { markAsTest: false });
-run("stop-count notification browser regression", "node", ["scripts/stop-alert-controls-check.mjs"], { env: { ...process.env, OUT: path.join(stageDir, "stop-alert-controls") } });
-run("map pause wording browser regression", "node", ["scripts/map-pause-label-check.mjs"], { env: { ...process.env, OUT: path.join(stageDir, "map-pause-labels") } });
-run("Blue pickup transition browser regression", "node", ["scripts/blue-pickup-fallback-check.mjs"]);
-run("feedback attachment browser regression", "node", ["scripts/feedback-accessibility-check.mjs"]);
-run("individual bus reporting browser regression", "node", ["scripts/bus-reporting-check.mjs"], { env: { ...process.env, BOT_OUT: path.join(stageDir, "bus-reporting") } });
-run("Winchester standing stop browser regression", "node", ["scripts/winchester-stand-check.mjs"], { env: { ...process.env, BOT_OUT: path.join(stageDir, "winchester-stand") } });
-run("folded-line standing position browser regression", "node", ["scripts/folded-standing-check.mjs"], { env: { ...process.env, BOT_OUT: path.join(stageDir, "folded-standing") } });
+await browserRegression("stop-count notification browser regression", "scripts/stop-alert-controls-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "stop-alert-controls") } });
+await browserRegression("map pause wording browser regression", "scripts/map-pause-label-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "map-pause-labels") } });
+await browserRegression("Blue pickup transition browser regression", "scripts/blue-pickup-fallback-check.mjs");
+await browserRegression("feedback attachment browser regression", "scripts/feedback-accessibility-check.mjs");
+await browserRegression("individual bus reporting browser regression", "scripts/bus-reporting-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "bus-reporting") } });
+await browserRegression("Winchester standing stop browser regression", "scripts/winchester-stand-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "winchester-stand") } });
+await browserRegression("folded-line standing position browser regression", "scripts/folded-standing-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "folded-standing") } });
 killStaging();
 
 if (STAGE_ONLY) {
