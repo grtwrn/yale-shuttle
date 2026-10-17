@@ -75,16 +75,23 @@ describe('bounded browser stage', () => {
       await stopped(parent); await stopped(child);
     });
   it.skipIf(!process.env.BOT_CHROMIUM_PATH || process.platform === 'win32')(
-    'stops a real Playwright browser launched in its own process group', async () => {
+    'stops a ready Playwright browser when the supervising deploy process exits', async () => {
       const options = await fixture(`import { createRequire } from 'node:module';
         const { chromium } = createRequire(${JSON.stringify(import.meta.url)})('playwright-core');
         import fs from 'node:fs';
-        const browser = await chromium.launchServer({executablePath:process.env.BOT_CHROMIUM_PATH,
+        const browser = await chromium.launchServer({executablePath:process.env.BOT_CHROMIUM_PATH,headless:true,
           args:['--no-sandbox','--disable-gpu','--disable-dev-shm-usage']});
         fs.writeFileSync('ready.json',JSON.stringify({parent:process.pid,child:browser.process().pid}));
+        process.kill(process.ppid,'SIGTERM');
         setInterval(()=>{},100);`);
-      await expect(runBrowserCheck('check.mjs', { ...options, timeoutMs: 5000 })).rejects.toThrow(/timed out/);
+      await fs.writeFile(path.join(options.cwd, 'supervisor.mjs'), `
+        import { runBrowserCheck } from ${JSON.stringify(new URL('./browser-stage.mjs', import.meta.url).href)};
+        process.on('SIGTERM',()=>process.exit(143));
+        await runBrowserCheck('check.mjs',{timeoutMs:30_000});`);
+      // Browser startup gets a separate generous ceiling. The interruption
+      // happens only after readiness, without racing CPU load on the CI host.
+      await expect(runBrowserCheck('supervisor.mjs', { ...options, stdio: 'inherit', timeoutMs: 30_000 })).rejects.toThrow(/exit 143/);
       const { parent, child } = JSON.parse(await fs.readFile(path.join(options.cwd, 'ready.json'), 'utf8'));
       await stopped(parent); await stopped(child);
-    }, 15_000);
+    }, 35_000);
 });
