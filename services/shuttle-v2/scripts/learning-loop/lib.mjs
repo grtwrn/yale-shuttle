@@ -1,4 +1,5 @@
-import { horizonOf } from '../reestimate-lib.mjs';
+import { horizonOf, widen } from '../reestimate-lib.mjs';
+import { conformalFactor } from '../../web/src/eta/conformal.mjs';
 import { identityHash, validationCells, validationDecision } from '../reestimate-validation.mjs';
 import { haversineM } from '../canary-metrics.mjs';
 
@@ -12,6 +13,55 @@ export function dayStart(day) {
  throw Error('Invalid ET day');
 }
 export const keyOf = (bus,stop) => `${bus.route_id}|${bus.bus_id}|${bus.bus_name}|${stop}`;
+
+/** Widen at the original model horizon, then age/clip exactly as a browser.
+ * Aging first changes the blended runtime factor or loses a negative bound. */
+export function scoreEstimate(estimate, conformal = UNIT) {
+ const raw=estimate.raw??estimate,age=estimate.ageSec??0;
+ const eta=Math.max(0,raw.eta-age);
+ if(![raw.eta,raw.low,raw.high,age].every(Number.isFinite)||age<0||age>=45
+   ||raw.low>raw.eta||raw.high<raw.eta)return {...estimate,eta,low:null,high:null};
+ const [low,high]=widen(raw.eta,raw.low,raw.high,conformalFactor(raw.eta,conformal));
+ return {...estimate,eta,low:Math.max(0,low-age),high:Math.max(0,high-age)};
+}
+export function calibrationObservation(row) {
+ const estimate=row.challenger,raw=estimate.raw??estimate,age=estimate.ageSec??0;
+ return {r:row.r,...raw,det:Number.isFinite(row.det)&&row.det>=0&&Number.isFinite(age)&&age>=0&&age<45?row.det+age:null};
+}
+function controlMetadataValid(row) {
+ const estimate=row.champion,c=estimate?.control;
+ return Boolean(c&&[row.at,c.modelAt,c.servedAt,c.receivedAt,estimate.ageSec].every(Number.isFinite)
+  &&c.modelAt<=c.servedAt&&c.servedAt-c.modelAt<45000&&c.modelAt<=row.at+5000
+  &&c.receivedAt===row.at&&Math.abs(estimate.ageSec-(c.servedAt-c.modelAt)/1000)<1e-9
+  &&c.r===row.r&&c.busId===row.busId&&c.busName===row.busName&&c.stop===row.stop
+  &&[c.r,c.busId,c.stop].every(Number.isInteger)&&typeof c.busName==='string'
+  &&Number.isInteger(c.stopsAhead)&&typeof c.label==='string'
+  &&Array.isArray(c.reference)&&c.reference.length===3&&c.reference.every(Number.isFinite)
+  &&c.reference[1]<=c.reference[0]&&c.reference[0]<=c.reference[2]);
+}
+/** Missing, unserved or mismatched control is retained and fails the gate. */
+export function productionControlValid(row) {
+ if(!controlMetadataValid(row)||!row.champion.raw)return false;
+ const p=scoreEstimate(row.champion),c=row.champion.control,age=row.champion.ageSec;
+ return [p.eta,p.low,p.high].every(Number.isFinite)
+  &&Math.abs(row.champion.eta-p.eta)<1e-9
+  &&(!row.h||row.h===horizonOf(p.eta,1800))
+  &&[p.eta,p.low,p.high].every((v,i)=>Math.abs(v-Math.max(0,c.reference[i]-age))<=0.500001);
+}
+/** Bind the attestation to the retained original HTTP receipt, independently
+ * of whether the shadow forecast itself matched production. */
+export function productionControlInputValid(row, input) {
+ if(!controlMetadataValid(row))return false;
+ const c=row.champion.control,wire=input?.feed?.server_eta,norm=s=>String(s).replace(/^#/,'');
+ if(!wire||wire.v!==2||!Array.isArray(wire.rows)||!Array.isArray(wire.buses)||!Array.isArray(input.feed.buses)
+  ||input.receivedAt!==row.at||wire.at!==c.modelAt||wire.servedAt!==c.servedAt)return false;
+ if(!input.feed.buses.some(b=>b.route_id===row.r&&b.bus_id===row.busId&&b.bus_name===row.busName))return false;
+ return wire.rows.some(r=>{
+  const bus=wire.buses[r[0]];
+  return bus&&bus[1]===c.label&&norm(bus[0])===norm(row.busName)&&r[1]===row.stop&&r[5]===c.stopsAhead
+   &&r.slice(2,5).every((v,i)=>v===c.reference[i]);
+ });
+}
 
 /** One forecast per future bus/stop visit and reference horizon. Identity is
  * allocated before the outcome; repeat polls cannot create extra test trips. */
@@ -81,8 +131,8 @@ export function clusteredImprovement(rows, conformal) {
  for(const p of rows){
   if(!Number.isFinite(p.det))continue;
   const common={r:p.r,h:p.h,det:p.det};
-  const a=validationCells([{...common,...p.champion}],UNIT,{referenceHorizons:true})['0|all'];
-  const b=validationCells([{...common,...p.challenger}],conformal,{referenceHorizons:true})['0|all'];
+  const a=validationCells([{...common,...scoreEstimate(p.champion)}],UNIT,{referenceHorizons:true})['0|all'];
+  const b=validationCells([{...common,...scoreEstimate(p.challenger,conformal)}],UNIT,{referenceHorizons:true})['0|all'];
   if(!a?.scored||!b?.scored)continue;
   const key=`${p.day}|${p.r}|${p.busId}`;
   const c=clusters.get(key)??{day:p.day,delta:0,n:0};c.delta+=b.wis-a.wis;c.n++;clusters.set(key,c);
@@ -101,16 +151,18 @@ export function clusteredImprovement(rows, conformal) {
 export function evaluate(state, rows, closedDays) {
  const test=rows.filter(p=>p.phase==='test'&&closedDays.includes(p.day));
  const ids=new Set();const reasons=[];
+ if(state.protocolFailures?.count)reasons.push('Observed production-control protocol failures remain in this cycle.');
  for(const p of test){
   if(ids.has(p.id))reasons.push('Duplicate forecast visit/horizon identity.');ids.add(p.id);
   if(![p.at,p.availableAt].every(Number.isFinite)||p.at<state.calibratedAt||p.at<state.startedAt||p.availableAt<p.at||!p.inputHash)reasons.push('Invalid prospective evidence clocks or missing input receipt.');
+  if(!productionControlValid(p))reasons.push('Production-control parity is missing or mismatched.');
  }
  if(!(state.champion.publishedAt<state.startedAt))reasons.push('Champion vintage does not precede prospective collection.');
  if(!state.calibratedAt||state.calibratedAt>=Math.min(...test.map(p=>p.at)))reasons.push('Final candidate was not frozen before test predictions.');
  const perDay=closedDays.map(day=>{
   const daily=test.filter(p=>p.day===day);
-  const pairs=arm=>daily.map(p=>({r:p.r,h:p.h,det:p.det,...p[arm]}));
-  return {day,champion:validationCells(pairs('champion'),UNIT,{referenceHorizons:true}),challenger:validationCells(pairs('challenger'),state.candidate.params.CONFORMAL,{referenceHorizons:true})};
+  const pairs=(arm,factors)=>daily.map(p=>({r:p.r,h:p.h,det:p.det,...scoreEstimate(p[arm],factors)}));
+  return {day,champion:validationCells(pairs('champion',UNIT),UNIT,{referenceHorizons:true}),challenger:validationCells(pairs('challenger',state.candidate.params.CONFORMAL),UNIT,{referenceHorizons:true})};
  });
  const decision=validationDecision(perDay,{groupingVerified:!reasons.length,availabilityVerified:!reasons.length,baselineVintageVerified:!reasons.length});
  // Every route in the training population needs its own support, including

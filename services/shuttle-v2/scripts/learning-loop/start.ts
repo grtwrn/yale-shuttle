@@ -3,13 +3,13 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
-import { forecastArms } from './forecasts';
+import { createForecastStores, forecastArms, observationKey } from './forecasts';
 import { archiveTableFile, readArchiveTable } from '../archive-files.mjs';
 import { assembleCandidate, conformalFit, estimateEmissions, estimateVisitRates,
   sameParams, tracksByName, zoneTester } from '../reestimate-lib.mjs';
 import { fileHash, fileIdentity, identityHash } from '../reestimate-validation.mjs';
-import { dayStart, etDay, evaluate, excludePending, keyOf, nextDay, observe,
-  phaseAt, recordForecast, SETTLE_MS, UNIT } from './lib.mjs';
+import { calibrationObservation, dayStart, etDay, evaluate, excludePending, keyOf, nextDay, observe,
+  phaseAt, productionControlInputValid, productionControlValid, recordForecast, SETTLE_MS, UNIT } from './lib.mjs';
 
 const service=path.resolve(path.dirname(new URL(import.meta.url).pathname),'../..');
 const one=process.argv.includes('--once');
@@ -30,7 +30,8 @@ try{fs.writeFileSync(lock,String(process.pid),{flag:'wx'});}catch(e:any){
 }
 process.on('exit',()=>{try{if(fs.readFileSync(lock,'utf8')===String(process.pid))fs.unlinkSync(lock);}catch{}});
 let stopping=false, state:any, lastReceived=0, warmedUntil=Date.now()+120000;
-let stores={champion:new Map(),challenger:new Map()};
+let stores=createForecastStores(),lastInputKey:string|null=null,lastInputAt=0;
+let lastForecasts:any={champion:[],challenger:[],productionControl:null};
 const stateFile=path.join(root,'state.json');
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 function atomic(file:string,value:unknown){fs.writeFileSync(file+'.partial',JSON.stringify(value,null,2));fs.renameSync(file+'.partial',file);}
@@ -74,8 +75,10 @@ function readPairs(){
 }
 function verifyInputs(rows:any[]){
  const needed=new Set<string>();
+ const controls=new Map<string,any[]>();
  for(const p of rows){
   if(!p.inputHash)throw Error('Missing forecast input receipt');needed.add(p.inputHash);
+  const group=controls.get(p.inputHash)??[];group.push(p);controls.set(p.inputHash,group);
   if(p.det!==null){if(!p.arrivalInputHash||!p.outcomeInputHash)throw Error('Missing curb outcome receipts');needed.add(p.arrivalInputHash);needed.add(p.outcomeInputHash);}
  }
  for(const name of fs.readdirSync(path.join(root,state.id)).filter(n=>/^feed-.*\.jsonl.gz$/.test(n))){
@@ -84,11 +87,24 @@ function verifyInputs(rows:any[]){
   // after a process restart. A missing/corrupt journal cannot authorize a fit.
   const text=zlib.gunzipSync(fs.readFileSync(path.join(root,state.id,name)),{finishFlush:zlib.constants.Z_SYNC_FLUSH}).toString('utf8');
   const complete=text.endsWith('\n')?text:text.slice(0,text.lastIndexOf('\n')+1);
-  for(const line of complete.split('\n').filter(Boolean))needed.delete(createHash('sha256').update(line).digest('hex'));
+  for(const line of complete.split('\n').filter(Boolean)){
+   const hash=createHash('sha256').update(line).digest('hex');
+   if(controls.has(hash)){
+    const input=JSON.parse(line);
+    for(const row of controls.get(hash)!)if(!productionControlInputValid(row,input))throw Error('Production control is not bound to its original input receipt');
+    controls.delete(hash);
+   }
+   needed.delete(hash);
+  }
  }
  if(needed.size)throw Error(`Missing ${needed.size} retained forecast/outcome inputs`);
 }
 async function begin(feed:any,health:any){
+ if(state){
+  commit(excludePending(state,Date.now(),'cycle-invalidated'));
+  await sealInputs();
+  atomic(path.join(root,state.id,'closed-state.json'),state);
+ }
  const current=(await api('/api/stats/model-params')).current;
  if(!current?.accepted||!Number.isFinite(current.publishedAt)||current.publishedAt>=Date.now())throw Error('No verifiable current champion');
  const cutoff=Date.now(),positions:any[]=[],visits:any[]=[],inputs:any[]=[],days:string[]=[];
@@ -115,11 +131,12 @@ async function begin(feed:any,health:any){
  const directory=path.join(root,id);fs.mkdirSync(directory,{recursive:true});
  // Preserve the code bytes used by both arms, not only their git identifier.
  for(const file of files){const dest=path.join(directory,'source',path.relative(service,file));fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(file,dest);}
- state={version:1,id,startedAt,sourceKey,productionBuild:health.build,champion:current,candidate,
+ state={version:2,forecastProtocol:'served-control-v1',id,startedAt,sourceKey,productionBuild:health.build,champion:current,candidate,
   trainingDays:days.sort(),trainingInputs:inputs,requiredRoutes:[...new Set(positions.map(r=>r.route_id))].sort((a,b)=>a-b),
   calibrationDays:[first,nextDay(first)],pending:{},visits:{},outbox:[],archiveLastDay:days.at(-1),lastOutcomeAt:null};
  atomic(path.join(directory,'frozen-candidate.json'),state);
- stores={champion:new Map(),challenger:new Map()};warmedUntil=startedAt+120000;checkpoint();
+ stores=createForecastStores();lastInputKey=null;lastInputAt=0;
+ lastForecasts={champion:[],challenger:[],productionControl:null};warmedUntil=startedAt+120000;checkpoint();
  event('candidate-frozen',{id,trainingDays:state.trainingDays,championVersion:current.version,calibrationDays:state.calibrationDays,scalarChanges:Object.keys(fits).filter(k=>candidate.params[k]!==current.params[k]),issues:candidate.issues});
 }
 let inputStream:zlib.Gzip|undefined,inputSink:fs.WriteStream|undefined,inputFile='',lastMaintenance=0;
@@ -146,7 +163,11 @@ async function maintain(now:number){
  const cutoff=dayStart(nextDay(state.calibrationDays[1]))+SETTLE_MS;
  if(!state.calibratedAt&&now>=cutoff){
   const rows=readPairs().filter(p=>p.phase==='calibration');
-  const fit=conformalFit(rows.map(p=>({r:p.r,...p.challenger,det:p.det})));
+  if(state.protocolFailures?.count||rows.some(p=>!productionControlValid(p))){
+   state.calibrationRefusal={at:now,reason:'Production-control parity is missing or mismatched; retain the full cohort for review.'};
+   checkpoint();return;
+  }
+  const fit=conformalFit(rows.map(calibrationObservation));
   // Visit sampling has fewer observations than poll sampling. Require 200
   // distinct visit forecasts in EACH bucket before fitting; do not import
   // the legacy 500-correlated-poll floor as evidence of independent visits.
@@ -184,6 +205,13 @@ async function maintain(now:number){
  const result=await api('/api/model-params',submission);state.promotedAt=Date.now();state.publishedId=result.id;checkpoint();event('promoted',{version,id:result.id});
 }
 process.on('SIGTERM',()=>{stopping=true;});process.on('SIGINT',()=>{stopping=true;});
+function refuseProtocol(at:number,inputHash:string,reason:string){
+ if(!['calibration','test'].includes(phaseAt(state,at)))return;
+ const receipt={at,inputHash,reason},previous=state.protocolFailures;
+ state.protocolFailures={count:(previous?.count??0)+1,first:previous?.first??receipt,last:receipt};
+ if(!previous)event('production-control-refusal',receipt);
+ checkpoint();
+}
 try{state=JSON.parse(fs.readFileSync(stateFile,'utf8'));flushOutbox();commit(excludePending(state,Date.now(),'observer-restart'));}catch(e:any){if(e.code!=='ENOENT')throw e;}
 while(!stopping){
  const start=Date.now();
@@ -196,37 +224,47 @@ while(!stopping){
    event('cycle-invalidated','Champion changed during prospective collection');await begin(feed,await api('/healthz'));
   }
   if(lastReceived&&receivedAt-lastReceived>30000)commit(excludePending(state,receivedAt,'observation-gap'));
-  const inputHash=await captureInput(feed,receivedAt);
-  const resolved=observe(state,feed,receivedAt,inputHash);
-  if(resolved.length){state.lastOutcomeAt=receivedAt;event('outcomes',{n:resolved.length,matched:resolved.filter(p=>p.det!==null).length});}
-  commit(resolved);
-  const raw={...state.candidate.params,CONFORMAL:UNIT};
-  const forecasts=forecastArms(feed,receivedAt,state.champion,{version:state.id,publishedAt:state.startedAt,params:raw},stores);
-  const challenger=new Map(forecasts.challenger.map((p:any)=>[keyOf(p.bus,p.stop),p]));
-  const phase=phaseAt(state,receivedAt);
-  if(receivedAt>=warmedUntil)for(const p of forecasts.champion){
-   const b=challenger.get(keyOf(p.bus,p.stop));
-   // An absent challenger forecast stays in the paired population. Omitting
-   // it would reward a candidate for declining difficult predictions.
-   recordForecast(state,p.bus,p.stop,receivedAt,{eta:p.eta,low:p.low,high:p.high},
-     b?{eta:b.eta,low:b.low,high:b.high}:{eta:p.eta,low:null,high:null,missing:true},phase,inputHash);
-  }
   lastReceived=receivedAt;state.lastReceivedAt=receivedAt;
+  const signature=observationKey(feed);
+  const processed=signature!==lastInputKey||(!feed.server_eta&&receivedAt-lastInputAt>=10000);
+  if(processed){
+   const inputHash=await captureInput(feed,receivedAt);
+   const resolved=observe(state,feed,receivedAt,inputHash);
+   if(resolved.length){state.lastOutcomeAt=receivedAt;event('outcomes',{n:resolved.length,matched:resolved.filter(p=>p.det!==null).length});}
+   commit(resolved);
+   const raw={...state.candidate.params,CONFORMAL:UNIT};
+   let forecasts;
+   try{forecasts=forecastArms(feed,receivedAt,state.champion,{version:state.id,publishedAt:state.startedAt,params:raw},stores);}
+   catch(error){refuseProtocol(receivedAt,inputHash,String(error));throw error;}
+   if(forecasts.productionControl.mismatched||forecasts.productionControl.missing)
+    refuseProtocol(receivedAt,inputHash,'Shadow control differs from actual served forecasts');
+   const challenger=new Map(forecasts.challenger.map((p:any)=>[keyOf(p.bus,p.stop),p]));
+   const phase=phaseAt(state,receivedAt);
+   const estimate=(p:any)=>({eta:p.eta,low:p.low,high:p.high,raw:p.raw,ageSec:p.ageSec,...(p.control?{control:p.control}:{})});
+   if(receivedAt>=warmedUntil)for(const p of forecasts.champion){
+    const b=challenger.get(keyOf(p.bus,p.stop));
+    // Retain missing challengers and unmatched production controls in the
+    // original cohort. They cannot be discarded to improve the verdict.
+    recordForecast(state,p.bus,p.stop,receivedAt,estimate(p),
+      b?estimate(b):{eta:p.eta,low:null,high:null,missing:true},phase,inputHash);
+   }
+   lastForecasts=forecasts;lastInputKey=signature;lastInputAt=receivedAt;
+  }
   if(receivedAt-lastMaintenance>60000){
    if(identityHash(fileIdentity(files))!==sourceKey)throw Error('Estimator source changed; restart required to freeze a new cycle');
    const health=await api('/healthz');
    if(health.build!==state.productionBuild){event('cycle-invalidated','Production build changed');await begin(feed,health);}
    await maintain(receivedAt);lastMaintenance=receivedAt;
   }
-  checkpoint();
-  atomic(path.join(root,'status.json'),{updatedAt:new Date().toISOString(),running:!one,publicationEnabled:publish,phase:phaseAt(state,receivedAt),cycle:state.id,champion:state.champion.version,trainingDays:state.trainingDays,calibrationDays:state.calibrationDays,calibratedAt:state.calibratedAt??null,lastOutcomeAt:state.lastOutcomeAt,pending:Object.values(state.pending).filter((p:any)=>!p.closed).length,forecasts:{champion:forecasts.champion.length,challenger:forecasts.challenger.length},calibrationRefusal:state.calibrationRefusal??null,decision:state.decision?{promote:state.decision.promote,reasons:state.decision.reasons}:null});
+  if(processed)checkpoint();
+  atomic(path.join(root,'status.json'),{updatedAt:new Date().toISOString(),running:!one,publicationEnabled:publish,phase:phaseAt(state,receivedAt),cycle:state.id,champion:state.champion.version,trainingDays:state.trainingDays,calibrationDays:state.calibrationDays,calibratedAt:state.calibratedAt??null,lastOutcomeAt:state.lastOutcomeAt,pending:Object.values(state.pending).filter((p:any)=>!p.closed).length,forecasts:{champion:lastForecasts.champion.length,challenger:lastForecasts.challenger.length},productionControl:lastForecasts.productionControl,protocolFailures:state.protocolFailures??null,feedReceivedAt:new Date(receivedAt).toISOString(),lastInputAt:lastInputAt?new Date(lastInputAt).toISOString():null,calibrationRefusal:state.calibrationRefusal??null,decision:state.decision?{promote:state.decision.promote,reasons:state.decision.reasons}:null});
  }catch(e:any){
   if(state?.publishingVersion&&!state.promotedAt){state.evaluatedDays=null;checkpoint();lastMaintenance=Date.now();}
-  event('error',e.message);atomic(path.join(root,'status.json'),{updatedAt:new Date().toISOString(),running:true,error:e.message,publicationEnabled:publish});
+  event('error',e.message);atomic(path.join(root,'status.json'),{updatedAt:new Date().toISOString(),running:!one,error:e.message,publicationEnabled:publish});
   if(one||e.message.includes('restart required')){process.exitCode=1;break;}
  }
  if(one)break;
- await sleep(Math.max(1000,10000-(Date.now()-start)));
+ await sleep(Math.max(500,2000-(Date.now()-start)));
 }
 await sealInputs();
 if(state)checkpoint();
