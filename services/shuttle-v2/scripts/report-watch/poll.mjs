@@ -49,12 +49,22 @@ export function reconcileReports(prior, reports, now = Date.now(), complete = re
     recent: [...events, ...(prior?.recent ?? [])].slice(0, 100), events, saturated: !complete };
 }
 
+async function desktopNotification(message) {
+  if (process.platform !== 'darwin' || process.env.REPORT_WATCH_NOTIFY === '0') return;
+  await exec('/usr/bin/osascript', ['-e', 'on run argv\n display notification (item 1 of argv) with title "Yale Shuttle reports"\nend run',
+    message], { timeout: 10000 });
+}
 async function notify(events) {
-  if (!events.length || process.platform !== 'darwin' || process.env.REPORT_WATCH_NOTIFY === '0') return;
+  if (!events.length) return;
   const ids = events.slice(0, 5).map(e => `#${e.id}`).join(', ');
   // Only numeric report IDs enter the OS notification. No report prose is code.
-  await exec('/usr/bin/osascript', ['-e', 'on run argv\n display notification (item 1 of argv) with title "Yale Shuttle reports"\nend run',
-    `${events.length} new or updated report${events.length === 1 ? '' : 's'}: ${ids}`], { timeout: 10000 });
+  await desktopNotification(`${events.length} new or updated report${events.length === 1 ? '' : 's'}: ${ids}`);
+}
+async function notifyHealth(kind) {
+  // Fixed operator text only: endpoint errors and credentials never enter alerts.
+  await desktopNotification(kind === 'failed'
+    ? 'Report watcher failed three consecutive checks. The saved review queue is preserved; checks will retry.'
+    : 'Report watcher recovered and is checking submitted reports again.');
 }
 
 async function rotateLog(file) {
@@ -70,11 +80,16 @@ async function rotateLog(file) {
 export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.join(service, 'scripts/.bot-artifacts/report-watch'),
   base = process.env.REPORT_WATCH_BASE_URL ?? 'https://yale-shuttle.fly.dev',
   tokenFile = process.env.SHUTTLE_ADMIN_TOKEN_FILE ?? path.join(os.homedir(), '.config/yale-shuttle/admin-token'),
-  fetcher = fetch, notifier = notify, now = Date.now() } = {}) {
+  fetcher = fetch, notifier = notify, healthNotifier = notifyHealth, now = Date.now() } = {}) {
   await fs.mkdir(dir, { recursive: true, mode: 0o700 });
   await rotateLog(path.join(dir, 'watcher.log'));
-  const prior = await read(path.join(dir, 'state.json'), null);
+  const healthFile = path.join(dir, 'health.json');
+  // A damaged notification receipt can be rebuilt. The report state and queue
+  // are never discarded to make a failed check appear successful.
+  const health = await read(healthFile, {}).catch(() => ({}));
+  let prior = null;
   try {
+    prior = await read(path.join(dir, 'state.json'), null);
     const token = (await fs.readFile(tokenFile, 'utf8')).trim();
     const res = await fetcher(new URL('/api/reports?status=open&limit=200', base),
       { headers: { 'x-admin-token': token }, signal: AbortSignal.timeout(20000) });
@@ -87,14 +102,31 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
     await write(path.join(dir, 'queue.json'), { checkedAt: state.checkedAt, pending: state.pending });
     let notificationError = null;
     try { await notifier(state.events); } catch { notificationError = 'Local notification could not be delivered'; }
+    let failureNotified = health.failureNotified === true;
+    if (failureNotified) {
+      try { await healthNotifier('recovered'); failureNotified = false; }
+      catch { notificationError = 'Local notification could not be delivered'; }
+    }
+    await write(healthFile, { consecutiveFailures: 0, failureNotified,
+      lastSuccessAt: state.checkedAt, lastKnownPending: state.pending.length });
     const status = { checkedAt: state.checkedAt, ok: true, openReports: data.reports.length, pending: state.pending.length,
       latestReportId: Math.max(0, ...data.reports.map(r => r.id)), newOrUpdated: state.events.map(e => e.id),
-      saturated: state.saturated, notificationError };
+      saturated: state.saturated, consecutiveFailures: 0, notificationError };
     await write(path.join(dir, 'status.json'), status); return status;
   } catch (error) {
+    const consecutiveFailures = (Number.isSafeInteger(health.consecutiveFailures) ? health.consecutiveFailures : 0) + 1;
+    let failureNotified = health.failureNotified === true, notificationError = null;
+    if (consecutiveFailures >= 3 && !failureNotified) {
+      try { await healthNotifier('failed'); failureNotified = true; }
+      catch { notificationError = 'Local notification could not be delivered'; }
+    }
+    const pending = prior?.pending?.length ?? health.lastKnownPending ?? null;
+    await write(healthFile, { consecutiveFailures, failureNotified, lastFailureAt: new Date(now).toISOString(),
+      lastSuccessAt: health.lastSuccessAt ?? null, lastKnownPending: pending });
     // Do not print exception details: credentials and report contents stay local.
     await write(path.join(dir, 'status.json'), { checkedAt: new Date(now).toISOString(), ok: false,
-      pending: prior?.pending?.length ?? 0, error: 'Report check failed; retrying on the next scheduled poll' });
+      pending, consecutiveFailures, failureNotified, notificationError,
+      error: 'Report check failed; retrying on the next scheduled poll' });
     throw new Error('Report check failed; retrying on the next scheduled poll');
   }
 }

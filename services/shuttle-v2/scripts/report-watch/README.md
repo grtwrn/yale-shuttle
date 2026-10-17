@@ -20,6 +20,15 @@ API failures preserve the queue and produce an unhealthy status until a later
 poll succeeds. A full 200-report response sets `saturated` and cannot remove
 unseen queued reports on the assumption they were resolved.
 
+Three consecutive failed checks produce a local desktop health alert. The
+counter and delivery receipt persist in private `health.json`, so scheduled
+process restarts do not reset the streak or repeat a delivered alert. A later
+successful check sends a recovery notice. Failed local deliveries retry on
+subsequent polls. A damaged report state is reported as unhealthy and leaves
+the saved queue intact. Health alerts use fixed text without endpoint error
+details, credentials, or report contents. `status.json` exposes the failure
+count and notification errors even when desktop alerts cannot be delivered.
+
 Overrides: `REPORT_WATCH_DIR`, `REPORT_WATCH_BASE_URL`,
 `SHUTTLE_ADMIN_TOKEN_FILE`, and `REPORT_WATCH_NOTIFY=0`.
 Run `npm test -- scripts/report-watch` for restart/deduplication, follow-up,
