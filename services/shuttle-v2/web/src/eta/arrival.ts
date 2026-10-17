@@ -554,8 +554,11 @@ function sampleFutureLaps(
  * Weighted quantiles of several SORTED sample arrays, by a k-way merge: no
  * comparator sort, no index array — each part is a typed array sorted once.
  */
-function mixedQuantiles(parts: { s: Float64Array; w: number }[], ps: readonly number[]): number[] {
+export function mixedQuantiles(parts: { s: Float64Array; w: number }[], ps: readonly number[]): number[] {
+  if (parts.some(part => !Number.isFinite(part.w) || part.w < 0)) throw Error('Invalid mixture weight');
+  parts = parts.filter(part => part.w > 0 && part.s.length > 0);
   const P = parts.length;
+  if (!P) throw Error('Mixture has no positive sample weight');
   if (P === 1) {
     const s = parts[0]!.s;
     return ps.map((p) => s[Math.min(s.length - 1, Math.floor(p * s.length))]!);
@@ -563,12 +566,50 @@ function mixedQuantiles(parts: { s: Float64Array; w: number }[], ps: readonly nu
   const total = parts.reduce((a, p) => a + p.w, 0);
   const idx = new Int32Array(P);
   const out: number[] = [];
-  let acc = 0;
+  let acc = 0, steps = 0;
   let lastValue = 0;
+  // The hot path uses ordinary sums. At an ambiguous CDF boundary compare
+  // the exact binary values of the inputs, rather than adding a tolerance.
+  // This preserves a real one-ULP probability difference and makes an exact
+  // quarter (64 of each 256 samples) independent of accumulation roundoff.
+  const bits = new DataView(new ArrayBuffer(8));
+  const binary = (value: number) => {
+    bits.setFloat64(0, value);
+    const high = bits.getUint32(0), low = bits.getUint32(4), exponent = (high >>> 20) & 2047;
+    const fraction = (BigInt(high & 1048575) << 32n) | BigInt(low);
+    return { n: fraction | (exponent ? 1n << 52n : 0n), e: exponent ? exponent - 1075 : -1074 };
+  };
+  let exact: { weights: bigint[]; total: bigint; factors: bigint[]; denominator: bigint } | undefined;
+  const exactAtMost = (p: number) => {
+    if (!exact) {
+      const values = parts.map(part => binary(part.w)), exponent = Math.min(...values.map(v => v.e));
+      const weights = values.map(v => v.n << BigInt(v.e - exponent));
+      const gcd = (a: bigint, b: bigint): bigint => { while (b) { const r = a % b; a = b; b = r; } return a; };
+      let denominator = 1n;
+      for (const part of parts) { const length = BigInt(part.s.length); denominator = denominator / gcd(denominator, length) * length; }
+      exact = { weights, total: weights.reduce((a, b) => a + b, 0n), denominator,
+        factors: parts.map(part => denominator / BigInt(part.s.length)) };
+    }
+    let left = exact.weights.reduce((sum, w, i) => sum + w * BigInt(idx[i]!) * exact!.factors[i]!, 0n);
+    const probability = binary(p);
+    let right = exact.total * probability.n * exact.denominator;
+    if (probability.e < 0) left <<= BigInt(-probability.e); else right <<= BigInt(probability.e);
+    return left <= right;
+  };
   for (const p of ps) {
     const target = p * total;
-    while (acc < target) {
-      // The smallest head among the parts.
+    const atMost = () => {
+      // Conservative positive-sum/product error bound; it only selects the
+      // exact comparison, never treats a nearby probability as equal.
+      const operations = steps + P + 2;
+      const error = 4 * operations * Number.EPSILON * (Math.abs(acc) + Math.abs(target) + total) + operations * Number.MIN_VALUE;
+      if (acc < target - error) return true;
+      if (acc > target + error) return false;
+      return exactAtMost(p);
+    };
+    // Match floor(p * N) in the single-part branch: select the first sample
+    // whose CDF is strictly greater than p (the maximum at p = 1).
+    while (atMost()) {
       let best = -1, bestV = Infinity;
       for (let i = 0; i < P; i++) {
         const part = parts[i]!;
@@ -576,7 +617,7 @@ function mixedQuantiles(parts: { s: Float64Array; w: number }[], ps: readonly nu
       }
       if (best < 0) break;
       const part = parts[best]!;
-      acc += part.w / part.s.length;
+      acc += part.w / part.s.length; steps++;
       lastValue = bestV;
       idx[best] = idx[best]! + 1;
     }
