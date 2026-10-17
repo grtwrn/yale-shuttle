@@ -1,5 +1,6 @@
 import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
 import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
+import { confirmExitInstruction, offPoleExitInstruction } from './exit-instruction.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { appendRolling, maintainImages, saveImage } from '../retention/storage.mjs';
@@ -143,12 +144,17 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      await select();return;
     }
    }
+   const sampledFeed=feed,sampledFeedAt=feedAt;
    const text=await page.locator('body').innerText(),now=Date.now();
-   const wire=feed.server_eta;
-   const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-feedAt,text,buses:feed.buses,
+   const feedStable=feed===sampledFeed&&feedAt===sampledFeedAt;
+   const wire=sampledFeed.server_eta;
+   const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-sampledFeedAt,text,buses:sampledFeed.buses,
+    ...(run.phase==='riding'?{rideContext:{busName:run.busName,routeLabel:run.line.label,
+     exitStopId:run.exitStopId,exitStopName:sampledFeed.stop_names?.[run.exitStopId],
+     exitCoords:sampledFeed.stop_coords?.[run.exitStopId],feedStableDuringTextRead:feedStable}}:{}),
     ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{})};
    await appendRolling(ROOT,'samples',sample);run.samples++;
-   if(now-feedAt>MAX_FEED_AGE_MS){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
+   if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
     const checked=confirmConflict(run.countConflict,pickupCountConflict(text,feed,run.line.busRouteIds,now),now);
     run.countConflict=checked.state;
@@ -238,6 +244,10 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     }
     if(now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
    }else if(run.phase==='riding'){
+    const instruction=confirmExitInstruction(run.exitInstructionConflict,feedStable
+     ?offPoleExitInstruction(text,sampledFeed,run,now,now-sampledFeedAt):null,now);
+    run.exitInstructionConflict=instruction.state;
+    if(instruction.alert){await event('candidate-exit-instruction',{...instruction.alert,text});await capture('candidate-exit-instruction');}
     rememberArrival(feed,feedAt);
     const arrival=run.arrivalObservation;
     if(arrival){

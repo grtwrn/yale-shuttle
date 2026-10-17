@@ -17,6 +17,21 @@ Candidate issues require review; observations use the same GPS feed as the
 app and are not independent physical arrival measurements. This launcher
 does not deploy changes or submit rider reports.
 
+While aboard, the rider also reviews `Get off here` and an `Arriving at`
+banner against the tracked bus and exit. The stored boarded ride, screen
+caption, route, bus identity and target name must agree; fresh GPS must put
+the bus beyond 75 m from the exit. Two distinct observations at least five
+seconds apart, without a gap over 30 seconds, raise
+`candidate-exit-instruction` through the existing guardian bridge. Changing
+GPS distance does not reset confirmation. Recovery resets it; a persistent
+episode sends one event and screenshot. Unknown, ambiguous, stale or invalid
+inputs do not establish a contradiction. A feed replacement during text
+sampling resets confirmation. Samples retain exit coordinates and whether
+the feed stayed stable during the text read. Consecutive samples suppress
+short render/feed races, but do not prove the UI rendered that exact feed;
+every candidate needs review. The monitor changes no boarding, arrival,
+journey termination or accuracy rules.
+
 While aboard, the rider retains the first qualifying destination observation
 from each successfully decoded bus response, including responses between its
 ten-second UI ticks. Only one observation is held per journey. The criteria

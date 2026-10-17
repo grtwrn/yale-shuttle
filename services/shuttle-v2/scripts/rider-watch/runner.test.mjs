@@ -791,3 +791,48 @@ test('manual boarding fallback rechecks a changed pickup occurrence after captur
  assert.deepEqual(h.clicks,[]);
  assert.equal((await h.journeys())[0].result,'boarding-missed-excluded');
 });
+
+const blueExitFixture=JSON.parse(await fs.readFile(new URL('./__fixtures__/blue-exit-instruction-20261015.json',import.meta.url),'utf8'));
+async function blueExitHarness(){
+ const line={label:'Blue Day',busRouteIds:[1]},from={lat:41.323205,lon:-72.917287},to=blueExitFixture.stopCoords[39];
+ const feedOf=buses=>({buses:buses.map(b=>({...b,observed_at:Date.now()})),routes:{1:[140,39]},stop_names:{140:'Whitney / Linden',39:'College / George'},stop_coords:{140:from,39:to}});
+ const trip={kind:'fixed',origin:{label:'Whitney / Linden',...from,stopId:140},destination:{display_name:'College / George',...to,stopId:39}};
+ const at='2026-10-15T16:07:55.558Z',initial=feedOf([{bus_name:'#40',route_id:1,...from,stationary:true,at_stop_id:140}]);initial.buses[0].observed_at=Date.parse(at);
+ const h=current=await harness(initial,trip,{initialLine:line,feedOf,text:'BOARD🚌Whitney/Linden\nGET OFFCollege/George',at});
+ assert.equal(h.watcher.status().run.phase,'riding');h.watcher.status().run.boardedStorage=structuredClone(blueExitFixture.run.boardedStorage);
+ h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
+ h.samples=async()=>(await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
+ h.feedOf=feedOf;h.bad=async(i=0)=>h.poll(blueExitFixture.samples[i].text,blueExitFixture.samples[i].buses);
+ return h;
+}
+test('the real rider reports the sustained Blue exit instruction once and keeps the journey running',async()=>{
+ const h=await blueExitHarness();await h.bad(0);assert.equal((await h.events()).filter(e=>e.kind==='candidate-exit-instruction').length,0);
+ await h.bad(1);await h.bad(2);
+ const events=(await h.events()).filter(e=>e.kind==='candidate-exit-instruction');assert.equal(events.length,1);
+ assert.equal(events[0].detail.exitStopId,39);assert(events[0].detail.firstWitness.distanceM>135);assert(events[0].detail.distanceM>135);
+ assert.equal(h.watcher.status().run.phase,'riding');assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+ const samples=await h.samples();assert.deepEqual(samples.at(-1).rideContext.exitCoords,blueExitFixture.stopCoords[39]);assert.equal(samples.at(-1).rideContext.feedStableDuringTextRead,true);
+});
+test('a feed replaced during text sampling resets exit-instruction confirmation',async()=>{
+ const h=await blueExitHarness();await h.bad(0);
+ const locator=h.page.locator;h.page.locator=()=>({innerText:async()=>{
+  await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>h.feedOf(blueExitFixture.samples[1].buses)});return h.text;
+ }});
+ await h.bad(1);h.page.locator=locator;assert.equal(h.watcher.status().run.exitInstructionConflict,null);
+ assert.equal((await h.samples()).at(-1).rideContext.feedStableDuringTextRead,false);
+ assert.equal((await h.events()).filter(e=>e.kind==='candidate-exit-instruction').length,0);
+ await h.bad(1);assert.equal((await h.events()).filter(e=>e.kind==='candidate-exit-instruction').length,0);
+ await h.bad(2);assert.equal((await h.events()).filter(e=>e.kind==='candidate-exit-instruction').length,1);
+ assert.equal(h.watcher.status().run.harnessErrors,undefined);
+});
+test('a stale feed interrupts exit-instruction confirmation before a fresh recovery',async()=>{
+ const h=await blueExitHarness();await h.bad(0);vi.setSystemTime(Date.now()+21000);await h.watcher.tick();
+ assert.equal(h.watcher.status().run.exitInstructionConflict,null);
+ await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>h.feedOf(blueExitFixture.samples[1].buses)});
+ await h.watcher.tick();assert.equal((await h.events()).filter(e=>e.kind==='candidate-exit-instruction').length,0);
+ assert.equal(h.watcher.status().run.phase,'riding');assert.equal(h.watcher.status().run.harnessErrors,undefined);
+});
+test('the real rider accepts the fixed off-pole screen without an arrival-instruction candidate',async()=>{
+ const h=await blueExitHarness();for(const s of blueExitFixture.samples)await h.poll(s.text.replaceAll('Get off here','Watch for your stop').replaceAll('Arriving at College/George','Watch for College/George'),s.buses);
+ assert.equal((await h.events()).filter(e=>e.kind==='candidate-exit-instruction').length,0);assert.equal(h.watcher.status().run.phase,'riding');
+});

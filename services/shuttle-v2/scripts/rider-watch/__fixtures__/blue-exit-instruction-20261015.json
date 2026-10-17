@@ -1,0 +1,98 @@
+{
+  "scope": "Original Oct15 Blue40 rider UI/GPS samples, with stop39 coordinates from the original selected destination, which match the Oct17 public metadata. These are not independent physical arrival measurements.",
+  "sourceManifestSha256": "7b70c6488f49d7c7b932108f392da881b0ef8b3b3d2d8c082137ebf5197b698a",
+  "run": {
+    "id": "1792079489765",
+    "phase": "riding",
+    "line": {
+      "label": "Blue Day",
+      "busRouteIds": [
+        1
+      ]
+    },
+    "busName": "#40",
+    "exitStopId": 39,
+    "boardStopId": 140,
+    "boardedStorage": {
+      "shuttle-ride-boarded": "1792077865177:324:43:123",
+      "shuttle-boarded-ride": "{\"routeLabel\":\"Blue Day\",\"color\":\"#1565C0\",\"busName\":\"40\",\"boardStopId\":140,\"alightStopId\":39,\"startedAt\":1792079525481,\"toLat\":41.305293,\"toLon\":-72.930255,\"toText\":\"College / George\"}"
+    }
+  },
+  "stopNames": {
+    "39": "College / George"
+  },
+  "stopCoords": {
+    "39": {
+      "lat": 41.305293,
+      "lon": -72.930255
+    }
+  },
+  "samples": [
+    {
+      "at": "2026-10-15T16:08:55.558Z",
+      "runId": "1792079489765",
+      "phase": "riding",
+      "feedAgeMs": 4693,
+      "text": "\ud83d\udd14\nGet off here\nBlue Day #40 \u2192 College/George\nGot it\nArriving at College/George\n\ud83d\ude8c Blue Day #40 \u2192 College/George\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n\u21bb\n\ud83d\ude8f\n41\n40\n44\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\ud83d\udccd\nBlue Day \u00b7 Bus #40\u00b7 <1 min to your stop\n\u00b7\nWhitney/Lindenboarded\n\u2713\nWhitney/Cottage (S)\n\u2713\nWhitney/Edwards (S)\n\u2713\nWhitney/Humphrey (S)\n\u2713\nPeabody Museum/Whitney/Sachem\n\u2713\nTemple/Grove\n\u2713\nCollege/Wall (S)\n\u2713\nPhelps Gate\n\u2713\nCollege/Crown\n\ud83d\ude8c\nCollege/George\n\ud83d\udcac Send feedback\nContribute\nAbout",
+      "buses": [
+        {
+          "observed_at": 1792080529010,
+          "bus_id": 67731,
+          "bus_name": "#40",
+          "route_id": 1,
+          "lat": 41.305844,
+          "lon": -72.927539,
+          "heading": 209,
+          "last_stop_id": 98,
+          "stationary": false,
+          "stationary_since": "2026-10-15T16:07:29.007",
+          "last_moved_at": "2026-10-15T16:08:33.957"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-15T16:09:05.560Z",
+      "runId": "1792079489765",
+      "phase": "riding",
+      "feedAgeMs": 4696,
+      "text": "\ud83d\udd14\nGet off here\nBlue Day #40 \u2192 College/George\nGot it\nArriving at College/George\n\ud83d\ude8c Blue Day #40 \u2192 College/George\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n\u21bb\n\ud83d\ude8f\n41\n40\n44\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\ud83d\udccd\nBlue Day \u00b7 Bus #40\u00b7 <1 min to your stop\n\u00b7\nWhitney/Lindenboarded\n\u2713\nWhitney/Cottage (S)\n\u2713\nWhitney/Edwards (S)\n\u2713\nWhitney/Humphrey (S)\n\u2713\nPeabody Museum/Whitney/Sachem\n\u2713\nTemple/Grove\n\u2713\nCollege/Wall (S)\n\u2713\nPhelps Gate\n\u2713\nCollege/Crown\n\ud83d\ude8c\nCollege/George\n\ud83d\udcac Send feedback\nContribute\nAbout",
+      "buses": [
+        {
+          "observed_at": 1792080538941,
+          "bus_id": 67731,
+          "bus_name": "#40",
+          "route_id": 1,
+          "lat": 41.305605,
+          "lon": -72.927708,
+          "heading": 207,
+          "last_stop_id": 38,
+          "stationary": false,
+          "stationary_since": "2026-10-15T16:07:29.007",
+          "last_moved_at": "2026-10-15T16:08:58.941"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-15T16:09:15.562Z",
+      "runId": "1792079489765",
+      "phase": "riding",
+      "feedAgeMs": 4698,
+      "text": "\ud83d\udd14\nGet off here\nBlue Day #40 \u2192 College/George\nGot it\nArriving at College/George\n\ud83d\ude8c Blue Day #40 \u2192 College/George\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n\u21bb\n\ud83d\ude8f\n41\n40\n44\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\ud83d\udccd\nBlue Day \u00b7 Bus #40\u00b7 <1 min to your stop\n\u00b7\nWhitney/Lindenboarded\n\u2713\nWhitney/Cottage (S)\n\u2713\nWhitney/Edwards (S)\n\u2713\nWhitney/Humphrey (S)\n\u2713\nPeabody Museum/Whitney/Sachem\n\u2713\nTemple/Grove\n\u2713\nCollege/Wall (S)\n\u2713\nPhelps Gate\n\u2713\nCollege/Crown\n\ud83d\ude8c\nCollege/George\n\ud83d\udcac Send feedback\nContribute\nAbout",
+      "buses": [
+        {
+          "observed_at": 1792080549078,
+          "bus_id": 67731,
+          "bus_name": "#40",
+          "route_id": 1,
+          "lat": 41.305605,
+          "lon": -72.927708,
+          "heading": 207,
+          "last_stop_id": 38,
+          "stationary": false,
+          "stationary_since": "2026-10-15T16:07:29.007",
+          "last_moved_at": "2026-10-15T16:08:58.941"
+        }
+      ]
+    }
+  ]
+}
