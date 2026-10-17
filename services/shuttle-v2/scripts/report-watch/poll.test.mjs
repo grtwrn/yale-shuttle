@@ -73,6 +73,8 @@ describe('persistent submitted-report watcher', () => {
   it('retries a failed local health notification without exposing endpoint errors or credentials', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shuttle-report-notify-')); dirs.push(dir);
     const tokenFile = path.join(dir, 'token'); await fs.writeFile(tokenFile, 'test-only-token');
+    // A malformed health receipt must not disable failure tracking itself.
+    await fs.writeFile(path.join(dir, 'health.json'), 'null');
     let notifyFails = true, available = false; const attempts = [];
     const options = { dir, tokenFile, fetcher: async () => {
       if (!available) throw Error('private endpoint details test-only-token');

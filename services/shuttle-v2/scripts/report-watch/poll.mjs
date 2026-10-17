@@ -86,7 +86,8 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
   const healthFile = path.join(dir, 'health.json');
   // A damaged notification receipt can be rebuilt. The report state and queue
   // are never discarded to make a failed check appear successful.
-  const health = await read(healthFile, {}).catch(() => ({}));
+  const savedHealth = await read(healthFile, {}).catch(() => ({}));
+  const health = savedHealth && typeof savedHealth === 'object' && !Array.isArray(savedHealth) ? savedHealth : {};
   let prior = null;
   try {
     prior = await read(path.join(dir, 'state.json'), null);
@@ -114,7 +115,8 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
       saturated: state.saturated, consecutiveFailures: 0, notificationError };
     await write(path.join(dir, 'status.json'), status); return status;
   } catch (error) {
-    const consecutiveFailures = (Number.isSafeInteger(health.consecutiveFailures) ? health.consecutiveFailures : 0) + 1;
+    const consecutiveFailures = Math.min(1000,
+      (Number.isSafeInteger(health.consecutiveFailures) && health.consecutiveFailures >= 0 ? health.consecutiveFailures : 0) + 1);
     let failureNotified = health.failureNotified === true, notificationError = null;
     if (consecutiveFailures >= 3 && !failureNotified) {
       try { await healthNotifier('failed'); failureNotified = true; }
