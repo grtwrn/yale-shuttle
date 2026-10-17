@@ -19,6 +19,13 @@ function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {
 afterEach(() => vi.restoreAllMocks());
 
 describe('route option arrival times', () => {
+  it('adds an approaching bus forecast without replacing the selected boarding time', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const html = renderToStaticMarkup(<MiniMapKey rows={[{...rows[0]!,earlyPickup:{busName:'309',eta:14,low:7,high:25}}]} destination="Union Station" />);
+    expect(html).toContain('data-testid="pickup-range">~5 (3 – 9)</span>');
+    expect(html).toContain('Approaching #309: &lt;1 min');
+    expect(html).toContain('data-testid="route-next-arrival">~25 min</span>');
+  });
   it('shows the pickup time as text, with no arrival chart dialog or second control', () => {
     vi.spyOn(Date, 'now').mockReturnValue(now);
     const html = renderToStaticMarkup(<MiniMapKey rows={rows} destination="Union Station" onSelectRoute={() => {}} />);

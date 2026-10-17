@@ -3,6 +3,7 @@ import { DestinationArrival } from './DestinationArrival';
 import type { TripOption } from './planner';
 import { fmtMin, fmtWalk } from './format';
 import { estimatedGap } from './arrivalDetails';
+import { EarlyPickupNotice, type EarlyPickupForecast } from './EarlyPickupNotice';
 
 function RoutePill({ option }: { option: TripOption }) {
   return <span data-testid="route-pill" style={{ display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box',
@@ -20,6 +21,7 @@ export interface TimingRow {
   /** Full-width notice under the times, e.g. recent buses skipping the pickup (stopSkips.ts). */
   warning?: string;
   pickupName?: string;
+  earlyPickup?: EarlyPickupForecast;
 }
 
 /** One route entry owns arrivals, journey legs, and navigation to its details. */
@@ -39,7 +41,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500 }}>Next in</th>
       <th scope="col" style={{ padding: '8px 6px 4px', fontWeight: 500, textAlign: 'right' }}>Arrive at</th>
     </tr></thead>
-    {rows.map(({ option, pickup, status, note, warning, pickupName }) => <tbody
+    {rows.map(({ option, pickup, status, note, warning, pickupName, earlyPickup }) => <tbody
       key={`${option.routeLabel}:${option.boardStopId}:${option.alightStopId}`} data-route={option.routeLabel} data-pickup={option.boardStopId}
       onClick={canSelect ? () => select(option) : undefined}
       style={{ borderTop: '1px solid #eceff1', cursor: canSelect ? 'pointer' : undefined }}>
@@ -71,6 +73,9 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
       {pickupName && <tr><td colSpan={4} style={{ padding: '0 6px 4px', fontSize: 12 }}>
         <span id={`pickup-${option.routeLabel.replace(/\s/g, '-')}-${option.boardStopId}-${option.alightStopId}`} data-testid="pickup-choice-name" style={{ fontWeight: 600 }}>{pickupName}</span>
         {option.pickupPreference && <span style={{ color: '#5f6368' }}> · {option.pickupPreference === 'closest-stop' ? 'Closest stop' : 'Arrive sooner'}</span>}
+      </td></tr>}
+      {earlyPickup && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
+        <EarlyPickupNotice arrival={earlyPickup} walkSec={option.walkToSec} />
       </td></tr>}
       {warning && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
         <span role="note" data-testid="stop-skip-warning" style={{ display: 'block', padding: '4px 6px', borderRadius: 6,

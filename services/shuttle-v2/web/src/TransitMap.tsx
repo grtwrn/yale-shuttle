@@ -39,6 +39,7 @@ import { useMapFullscreen } from "./useMapFullscreen";
 import { rideHoldText, standChipFor } from "./standWait";
 import "./TripActions.css";
 import { MiniMapKey, type TimingRow } from "./MiniMapKey";
+import { earlyPickupArrival } from './earlyPickup';
 import { parseStopSkips, skipNotice, type StopSkips } from "./stopSkips";
 import { isMilfordGroceryPlace, isMilfordGrocerySearch } from "./grocerySearch";
 import { TripServiceNotices } from "./TripServiceNotices";
@@ -2752,7 +2753,12 @@ const TripPlanner: FC<{
         segmentTimes, undefined, dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel),
         boarding.busName, boardingEtaLive)
       : nextArrLive;
-    return { shuttleCtx, busEtaLive, nextArrLive, lastBus, boarding, boardingEtaLive, boardingNext };
+    const earlyPickup = o.mode === 'shuttle' && !isFuture && !o.etaUnavailable && etaFresh
+      ? earlyPickupArrival(computeUpcomingArrivals([o.boardStopId], buses, routeStops,
+          stopCoords, segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a=>a.routeLabel===o.routeLabel),
+          o.boardStopId,o.walkToSec,o.departed?null:boardingEtaLive)
+      : undefined;
+    return { shuttleCtx, busEtaLive, nextArrLive, lastBus, boarding, boardingEtaLive, boardingNext, earlyPickup };
   };
   const timingCache = new Map<TripOption, ReturnType<typeof buildTripTiming>>();
   const getTripTiming = (o: TripOption) => {
@@ -3222,12 +3228,16 @@ const TripPlanner: FC<{
   const overviewRouteLabels = overviewShuttles.length ? overviewShuttles : potentialRoutes.map(p => p.label);
   const reportingOptions = (expandedKey ? options?.filter(o => o.routeLabel === expandedKey)
     : showAllOptions ? orderedOptions : visibleOptions) ?? [];
-  const watchedTripBuses: ReportingWatch[] = reportingOptions.filter(o => o.mode === 'shuttle' && !o.etaUnavailable && !o.departed)
+  const watchedTripBuses: ReportingWatch[] = reportingOptions
+    .flatMap(o => expandedKey ? [o] : [o, ...(o.pickupAlternatives ?? [])])
+    .filter(o => o.mode === 'shuttle' && !o.etaUnavailable)
     .flatMap(o => {
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) return [];
+      const early = getTripTiming(o).earlyPickup?.busName ?? '';
+      if (o.departed && !early) return [];
       const identity = tripBusIdentity(o);
-      return [...new Set([identity.pickup, identity.ride])].filter(Boolean)
+      return [...new Set([o.departed ? '' : identity.pickup, o.departed ? '' : identity.ride, early])].filter(Boolean)
         .map(busName => ({ busName, routeLabel: o.routeLabel, routeIds: cfg.busRouteIds }));
     });
   const reportingScope = isFuture || alreadyThere ? [] : expandedKey ? [expandedKey]
@@ -4104,9 +4114,10 @@ const TripPlanner: FC<{
             }
             const timingRows: TimingRow[] = _mapOpts.flatMap(o => detailOpen ? [o]
               : [o, ...(o.pickupAlternatives ?? [])].sort((a, b) => a.walkToSec - b.walkToSec)).map(o => {
-              const { shuttleCtx, boarding, boardingEtaLive, boardingNext, lastBus } = getTripTiming(o);
+              const { shuttleCtx, boarding, boardingEtaLive, boardingNext, lastBus, earlyPickup } = getTripTiming(o);
               return {
                 option: o,
+                earlyPickup,
                 pickupName: o.pickupPreference ? (stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`).replace(/\s*\/\s*/g, '/') : undefined,
                 pickup: boardingEtaLive !== null && !o.departed && !isFuture ? {
                   routeLabel: o.routeLabel, busName: boarding?.busName ?? o.busName,
