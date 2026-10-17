@@ -404,10 +404,12 @@ const kernelCache = new Map<number, Float64Array>();
  * with the given mean in cells, K = its far tail. Cached per 0.1 cell of mean.
  */
 export function moveKernel(meanCells: number): Float64Array {
-  const mean = Math.max(0.5, Math.min(40, meanCells));
-  const key = Math.round(mean * 10);
+  const key = Math.round(Math.max(0.5, Math.min(40, meanCells)) * 10);
   const hit = kernelCache.get(key);
   if (hit) return hit;
+  // Calculate from the bucket itself. Using its first caller's unrounded
+  // mean made forecasts depend on which bus/process populated the cache.
+  const mean = key / 10;
   const K = Math.min(60, Math.ceil(mean * 3 + 3));
   const scale = mean / KERNEL_SHAPE;
   const k = new Float64Array(K + 1);
