@@ -240,6 +240,7 @@ await browserRegression("feedback screen evidence browser regression", "scripts/
 await browserRegression("individual bus reporting browser regression", "scripts/bus-reporting-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "bus-reporting") } });
 await browserRegression("Winchester standing stop browser regression", "scripts/winchester-stand-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "winchester-stand") } });
 await browserRegression("folded-line standing position browser regression", "scripts/folded-standing-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "folded-standing") } });
+await browserRegression("ride arrival and recovery browser regression", "scripts/ride-recovery-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "ride-recovery") } });
 killStaging();
 
 if (STAGE_ONLY) {

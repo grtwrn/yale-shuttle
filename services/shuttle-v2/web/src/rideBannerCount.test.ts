@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./arrivals";
 import { beliefFor, ringForBus, type AnchorStore } from "./eta";
-import type { LatLon } from "./geo";
+import { haversineMeters, type LatLon } from "./geo";
 import { anchorIndexOnList, anchorKeyFor, rideApproach, rideStopsToExit } from "./liveAnchor";
 import { getOffAlertTitle } from "./rideAlert";
 import { mergedRouteStops, ROUTE_LISTS } from "./routes";
@@ -73,6 +73,7 @@ function replay(r: Ride) {
     const hops = exit.map((a): [number, number] => [a.stopsAhead, a.stopId]);
     return {
       at: fix.at,
+      exitMeters: haversineMeters(bus, coords[r.alightStopId]!),
       riding: fix.phase !== "waiting" && Date.parse(fix.at) <= Date.parse(r.arrivedAt),
       printed: printed(fix.shown),
       standing: fix.stationary && fix.at_stop_id != null ? fix.at_stop_id : null,
@@ -152,7 +153,7 @@ describe.each(fixture.rides.map((r) => [`${r.routeLabel} ${r.busName} run ${r.ru
       const beforeExit = r.rideStops[r.rideStops.length - 2]!;
       expect(s.slice(0, next + 1).some((x) => x.standing === beforeExit)).toBe(true);
       // The rider's arrival poll: the bus at the exit's kerb.
-      expect(getOffAlertTitle(s[s.length - 1]!.count)).toBe("Get off here");
+      expect(getOffAlertTitle(s[s.length - 1]!.count, s[s.length - 1]!.exitMeters)).toBe("Get off here");
     });
   },
 );

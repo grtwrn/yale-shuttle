@@ -155,7 +155,13 @@ describe("rideEvidence — carried, then at the exit, in that order", () => {
 describe("rideHeadline — the on-bus banner", () => {
   const h = (o: Partial<Parameters<typeof rideHeadline>[0]>) => rideHeadline({
     busFound: true, stopsRemaining: 5, alightName: "Rosenkranz Hall", etaStr: "7 min",
-    holdText: null, alightPassed: false, ...o,
+    holdText: null, alightPassed: false, exitMeters: 0, ...o,
+  });
+  it("labels a zero-count approach without claiming arrival at a distant marker", () => {
+    for (const exitMeters of [185.4276196, 135.7331690, null, undefined, NaN]) {
+      expect(h({ stopsRemaining: 0, exitMeters })).toBe("Watch for Rosenkranz Hall");
+    }
+    expect(h({ stopsRemaining: 0, exitMeters: 12 })).toBe("Arriving at Rosenkranz Hall");
   });
   it("keeps the countdown while the bus moves", () => {
     expect(h({})).toBe("5 stops · 7 min");

@@ -1,6 +1,7 @@
 // Bounded built-SPA checks. Run from services/shuttle-v2 under heavy.lock.
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { advanceUntilResponse, waitForResponseBody } from './browser-response.mjs';
 import { createRequire } from 'node:module';
 const service = process.cwd(), out = process.env.OUT, probe = process.env.PROBE === '1';
 if (!out) throw new Error('Set OUT to a fresh evidence directory');
@@ -13,16 +14,16 @@ feed.stop_names = Object.fromEntries(JSON.parse(await fs.readFile(service + '/sr
 const seq = feed.routes['3'], exit = seq.indexOf(121);
 const ride = { routeLabel: 'Red', color: '#e53935', busName: '307', boardStopId: 48, alightStopId: 121, startedAt: now,
   toText: 'Destination east of Union Station with a long building name', toLat: feed.stop_coords[121].lat, toLon: feed.stop_coords[121].lon + .0017 };
-let mode = 'fresh', remaining = 5, requests = 0;
+let mode = 'fresh', remaining = 5, requests = 0, exitOffset = 0, servedNow = now;
 function payload() {
   const index = (exit - remaining + seq.length) % seq.length;
-  const buses = mode === 'empty' ? [] : [{ bus_name: '307', bus_id: 1, route_id: 3, ...feed.stop_coords[seq[index]], last_stop_id: seq[index], heading: 180, observed_at: now }];
+  const buses = mode === 'empty' ? [] : [{ bus_name: '307', bus_id: 1, route_id: 3, ...feed.stop_coords[seq[index]], lat: feed.stop_coords[seq[index]].lat + exitOffset, last_stop_id: seq[index], heading: 180, observed_at: servedNow }];
   const rows = [];
   for (let h = 1; h <= seq.length * 2; h++) rows.push([0, seq[(index + h) % seq.length], h * 90, h * 90 - 30, h * 90 + 90, h, 0, h * 90 - 30, h * 90 - 30]);
-  return { ...feed, buses, server_eta: mode === 'missing' ? undefined : { v: 2, at: now, servedAt: now + (mode === 'stale' ? 60000 : 0), buses: [['307', 'Red', index, null]], rows } };
+  return { ...feed, buses, server_eta: mode === 'missing' ? undefined : { v: 2, at: servedNow, servedAt: servedNow + (mode === 'stale' ? 60000 : 0), buses: [['307', 'Red', index, null]], rows } };
 }
 const report = { scope: 'Actual built SPA, persisted physical ride and synthetic wire on the checked-in route network', probe, states: [], checks: [], errors: [] };
-const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
+const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
 let context, page;
 try {
   context = await browser.newContext({ viewport: { width: process.env.DESKTOP ? 1280 : 390, height: 844 }, isMobile: !process.env.DESKTOP, hasTouch: !process.env.DESKTOP, timezoneId: 'America/New_York', serviceWorkers: 'block' });
@@ -51,7 +52,14 @@ try {
   });
   const dialog = () => page.getByRole('alertdialog');
   const done = () => page.getByRole('button', { name: 'Done', exact: true });
-  async function poll() { await page.clock.runFor(5500); await page.waitForTimeout(100); }
+  async function poll() {
+    servedNow = await page.evaluate(() => Date.now());
+    const before = requests;
+    const response = page.waitForResponse(r => new URL(r.url()).pathname === '/api/buses');
+    await advanceUntilResponse(page, before, () => requests, ms => { servedNow += ms; });
+    await waitForResponseBody(page, await response);
+    await page.clock.runFor(100);
+  }
   async function state(name) {
     const result = { name, dialog: await dialog().count() ? await dialog().innerText() : null, focus: await page.evaluate(() => ({ tag: document.activeElement.tagName, text: document.activeElement.textContent?.slice(0, 100) })), body: await page.locator('body').innerText(), notifications: await page.evaluate(() => window.testNotifications) };
     report.states.push(result); return result;
@@ -63,9 +71,26 @@ try {
   assert(await page.getByRole('button', { name: 'Got it', exact: true }).evaluate(e => e === document.activeElement));
   for (const key of ['Tab', 'Shift+Tab']) { await page.keyboard.press(key); assert(await page.getByRole('button', { name: 'Got it', exact: true }).evaluate(e => e === document.activeElement)); }
   remaining = 1; await poll(); assert.match(await dialog().innerText(), /Get off at the next stop/);
-  remaining = 0; await poll(); assert.match(await dialog().innerText(), /Get off here/);
-  report.checks.push('Approach updates through two/one/zero stops; focus enters prompt and Tab stays inside');
+  remaining = 0; exitOffset = .0017; await poll();
+  assert.match(await dialog().innerText(), /Watch for your stop/);
+  assert.match(await page.locator('body').innerText(), /Watch for Union Station/);
+  assert(!/Get off here|Arriving at Union Station/.test(await page.locator('body').innerText()));
+  await state('off-pole-approach');
+  await page.screenshot({ path: out + '/off-pole-approach.png' });
+  exitOffset = 0; await poll(); assert.match(await dialog().innerText(), /Get off here/);
+  exitOffset = .0017; await poll(); assert.match(await dialog().innerText(), /Watch for your stop/);
+  exitOffset = 0; await poll(); assert.match(await dialog().innerText(), /Get off here/);
+  report.checks.push('Two/one/zero stops retain early warning; off-pole zero asks the rider to watch for the stop, near exit says here, and an open prompt follows both directions without another notification; focus stays inside');
   await state('here');
+  // Restoring an already-boarded ride at the off-pole anchor must also use
+  // the cautious wording in the initial system notification, not only the
+  // updated in-page prompt. Arrival updates the prompt without another buzz.
+  exitOffset = .0017; await page.reload(); await dialog().waitFor();
+  assert.match(await dialog().innerText(), /Watch for your stop/);
+  assert.deepEqual(await page.evaluate(() => window.testNotifications), ['Watch for your stop']);
+  exitOffset = 0; await poll(); assert.match(await dialog().innerText(), /Get off here/);
+  assert.equal((await page.evaluate(() => window.testNotifications)).length, 1);
+  report.checks.push('Restored off-pole ride sends a cautious system notification; actual near-stop arrival updates the prompt without a second notification');
   mode = 'stale'; await poll(); const stale = await state('stale');
   await page.screenshot({ path: out + '/stale-prompt.png', fullPage: false });
   if (!probe) { assert.match(stale.dialog, /Live stop position unavailable/); assert(!/Get off here/.test(stale.dialog)); assert.match(stale.dialog, /Check the stop signs/); }
@@ -121,7 +146,11 @@ try {
   await finish.getByRole('button', { name: 'Find another shuttle', exact: true }).focus(); await page.keyboard.press('Enter');
   if (!probe) assert(await page.getByRole('button', { name: /^trip$/i }).evaluate(e => e === document.activeElement), 'Find another shuttle returns focus to Trip');
   assert.equal(await finish.count(), 0);
-  assert.match(await page.locator('body').innerText(), /Destination east of Union Station/);
+  // Replanning commits asynchronously after the Trip tab receives focus.
+  // The chosen destination is a compact button until the rider edits it.
+  const destination = page.getByRole('button', { name: /^To 🏁 Destination east of Union Station/ });
+  await destination.waitFor();
+  assert((await destination.innerText()).includes(ride.toText));
   // Automatic ride endings must preserve a surviving control's focus.
   await restoreRide(2 * 3600000 - 15000); await refresh.focus(); await page.clock.runFor(20000); await page.waitForTimeout(100); await finish.waitFor();
   assert.match(await finish.innerText(), /Tracking stopped after 2 hours/);

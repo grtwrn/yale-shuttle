@@ -93,7 +93,7 @@ import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
-import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle, rideBoarded } from "./rideAlert";
+import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle, rideBoarded, rideExitNearby } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { nextRouteStop } from './nextRouteStop';
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
@@ -6283,7 +6283,7 @@ const OnBusBanner: FC<{
     const key = `${ride.busName}-${ride.alightStopId}`;
     if (getOffAlertRef.current === key) return;
     getOffAlertRef.current = key;
-    const title = getOffAlertTitle(stopsRemaining)!;
+    const title = getOffAlertTitle(stopsRemaining, exitMeters)!;
     try { navigator.vibrate?.([200, 100, 200]); } catch { /* unsupported */ }
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       try {
@@ -6297,7 +6297,7 @@ const OnBusBanner: FC<{
 
   const etaStr = etaSec !== null ? formatRideEta(etaSec) : null;
   const headline = rideHeadline({
-    busFound: bus !== undefined, stopsRemaining, alightName, etaStr, holdText, alightPassed,
+    busFound: bus !== undefined, stopsRemaining, alightName, etaStr, holdText, alightPassed, exitMeters,
   });
 
   return (
@@ -6336,10 +6336,11 @@ const OnBusBanner: FC<{
         }}>
           <div style={{ fontSize: 36, lineHeight: 1 }}>🔔</div>
           <div id="get-off-prompt-title" aria-live="polite" aria-atomic="true" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
-            {getOffPromptTitle(stopsRemaining)}
+            {getOffPromptTitle(stopsRemaining, exitMeters)}
           </div>
           <div id="get-off-prompt-description" style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
             {ride.routeLabel}{ride.busName ? ` #${normBus(ride.busName)}` : ""} → {alightName}
+            {stopsRemaining === 0 && !rideExitNearby(exitMeters) && <p style={{ margin: "8px 0 0" }}>Check the stop signs before getting off.</p>}
             {stopsRemaining === null && <p style={{ margin: "8px 0 0" }}>Check the stop signs for your exit while live updates recover.</p>}
           </div>
           <button

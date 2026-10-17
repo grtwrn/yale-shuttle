@@ -69,7 +69,7 @@ or unverifiable production falls back to a full deployment; manual workflow
 dispatch also runs a full deployment. This keeps monitoring maintenance from
 unnecessarily restarting a live evaluation cycle.
 
-Each of the eleven browser regression subprocesses has a two-minute deadline.
+Each of the twelve browser regression subprocesses has a two-minute deadline.
 A timeout fails deployment and stops the check's processes, including detached
 Chrome groups found under that check. Bus reporting regressions log their
 scenario, feed phase, and pending clock/response operation to locate stalls.
