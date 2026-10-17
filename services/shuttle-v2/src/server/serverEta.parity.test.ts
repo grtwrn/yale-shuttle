@@ -227,3 +227,15 @@ describe("the server's belief and the client's give the same answer", () => {
     expect(serverRows(c)).not.toEqual(serverRows(a));
   });
 });
+
+it('exposes unrounded base rows to a shadow observer without changing any served field',()=>{
+  let raw: readonly UpcomingArrival[] = [],calls=0;
+  const normal=new ServerEta({routes:ALL_ROUTES});
+  const observed=new ServerEta({routes:ALL_ROUTES,onBaseForecasts:rows=>{raw=rows;calls++;}});
+  registerRoutePaths(CAP.static.route_paths);
+  for(const [i,frame]of CAP.frames.slice(0,10).entries()){
+    expect(observed.contribute(payloadFor(frame),i,frame.t)).toEqual(normal.contribute(payloadFor(frame),i,frame.t));
+  }
+  expect(calls).toBe(10);expect(raw.length).toBeGreaterThan(0);
+  expect(raw.some(r=>r.eta!==Math.round(r.eta))).toBe(true);
+});

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clusteredImprovement, dayStart, evaluate, excludePending, nextDay,
-  observe, phaseAt, recordForecast, SETTLE_MS, UNIT } from './lib.mjs';
+  observe, phaseAt, recordForecast, scoreEstimate, calibrationObservation, productionControlValid, productionControlInputValid, SETTLE_MS, UNIT } from './lib.mjs';
 import { validationCells } from '../reestimate-validation.mjs';
 
 const at=Date.parse('2026-10-14T12:00:00Z');
@@ -71,12 +71,20 @@ describe('chronological phases and paired quality gates',()=>{
   expect(validationCells([p],UNIT)['13|5-10'].scored).toBe(1);
  });
  const days=['2026-10-14','2026-10-15','2026-10-16'];
- const rows=()=>days.flatMap((day,d)=>Array.from({length:40},(_,i)=>({id:`${day}-${i}`,day,phase:'test',at:at+d*86400000,availableAt:at+d*86400000+100000,inputHash:'hash',r:13,h:'0-2',busId:i,busName:'#'+i,det:100,champion:{eta:100,low:0,high:200},challenger:{eta:100,low:50,high:150}})));
+ const rows=()=>days.flatMap((day,d)=>Array.from({length:40},(_,i)=>({id:`${day}-${i}`,day,phase:'test',at:at+d*86400000,availableAt:at+d*86400000+100000,inputHash:'hash',r:13,h:'0-2',busId:i,busName:'#'+i,det:100,stop:1,champion:{eta:100,low:0,high:200,raw:{eta:100,low:0,high:200},ageSec:0,control:{modelAt:at+d*86400000,servedAt:at+d*86400000,receivedAt:at+d*86400000,r:13,busId:i,busName:'#'+i,label:'Blue Night',stop:1,stopsAhead:1,reference:[100,0,200]}},challenger:{eta:100,low:50,high:150}})));
  const frozen=()=>({id:'cycle',startedAt:at-3*86400000,calibratedAt:at-10000,champion:{publishedAt:at-4*86400000},candidate:{params:{CONFORMAL:UNIT}},requiredRoutes:[13]});
- it('permits promotion when real evidence and paired route/tail/proper-score gates pass',()=>{
+ it('permits promotion for a complete synthetic cohort with verified controls and passing paired gates',()=>{
   const decision=evaluate(frozen(),rows(),days);
   expect(decision.promote).toBe(true);expect(decision.reasons).toEqual([]);
   expect(decision.uncertainty.clusters).toBe(120);
+ });
+ it('refuses unverified controls and a cycle with an observed protocol failure without dropping rows',()=>{
+  const bad=rows();delete bad[0].champion.control;
+  const noReceipt=evaluate(frozen(),bad,days);expect(noReceipt.promote).toBe(false);
+  expect(noReceipt.reasons.join(' ')).toContain('Production-control parity');
+  expect(noReceipt.totals.challenger['13|all'].n).toBe(120);
+  const broken=frozen();broken.protocolFailures={count:1};
+  expect(evaluate(broken,rows(),days).promote).toBe(false);
  });
  it('fails on missing routes, duplicate identities, future vintages and clocks',()=>{
   const s=frozen();s.requiredRoutes.push(14);expect(evaluate(s,rows(),days).promote).toBe(false);
@@ -89,5 +97,48 @@ describe('chronological phases and paired quality gates',()=>{
   expect(clusteredImprovement(correlated,UNIT).pass).toBe(false);
   const worse=rows().map(r=>({...r,challenger:{eta:100,low:-100,high:300}}));
   expect(evaluate(frozen(),worse,days).promote).toBe(false);
+ });
+});
+
+describe('model-time calibration and served-control evidence',()=>{
+ const controlled=()=>({at,r:13,busId:100,busName:'#41',stop:1,h:'0-2',champion:{eta:100,low:50,high:150,raw:{eta:100,low:50,high:150},ageSec:0,control:{modelAt:at,servedAt:at,receivedAt:at,r:13,busId:100,busName:'#41',label:'Blue Night',stop:1,stopsAhead:1,reference:[100,50,150]}}});
+ const input=()=>({receivedAt:at,feed:{buses:[bus],server_eta:{v:2,at,servedAt:at,buses:[['41','Blue Night',0,null]],rows:[[0,1,100,50,150,1,0,100,50]]}}});
+ it('chooses the runtime factor before aging across a horizon boundary',()=>{
+  const p={eta:118,low:108,high:128,raw:{eta:122,low:112,high:132},ageSec:4};
+  const result=scoreEstimate(p,{'0-2':1,'2-5':2,'5-10':1,'10-30':1});
+  // The runtime blends120s over90–150s: factor122s = 1 + 32/60.
+  expect(result.eta).toBe(118);expect(result.low).toBeCloseTo(308/3,10);expect(result.high).toBeCloseTo(400/3,10);
+ });
+ it('widens before clipping an arrival whose cached point is already zero',()=>{
+  const p={eta:0,low:-5,high:3,raw:{eta:2,low:0,high:8},ageSec:5};
+  expect(scoreEstimate(p,{'0-2':2,'2-5':1,'5-10':1,'10-30':1})).toMatchObject({eta:0,low:0,high:9});
+ });
+ it('fits against model-time truth and retains unavailable/pre-receipt outcomes as missing',()=>{
+  const challenger={eta:118,low:108,high:128,raw:{eta:122,low:112,high:132},ageSec:4};
+  expect(calibrationObservation({r:13,challenger,det:100})).toEqual({r:13,eta:122,low:112,high:132,det:104});
+  expect(calibrationObservation({r:13,challenger,det:null}).det).toBeNull();
+  expect(calibrationObservation({r:13,challenger,det:-1}).det).toBeNull();
+  expect(calibrationObservation({r:13,challenger:{...challenger,ageSec:Infinity},det:100}).det).toBeNull();
+  expect(scoreEstimate({eta:100,low:null,high:null}).low).toBeNull();
+ });
+ it('accepts recorded control evidence and verifies its actual retained feed row',()=>{
+  expect(productionControlValid(controlled())).toBe(true);
+  expect(productionControlInputValid(controlled(),input())).toBe(true);
+ });
+ it.each(['missing','clock','identity','reference','point','horizon'])('rejects %s provenance instead of defaulting a legacy row to valid',mode=>{
+  const p=controlled();
+  if(mode==='missing')delete p.champion.control;
+  if(mode==='clock')p.champion.control.modelAt=at+1;
+  if(mode==='identity')p.champion.control.busId=101;
+  if(mode==='reference')p.champion.control.reference[0]=110;
+  if(mode==='point')p.champion.eta=99;
+  if(mode==='horizon')p.h='2-5';
+  expect(productionControlValid(p)).toBe(false);
+ });
+ it('binds the original reference row, not just self-consistent asserted control numbers',()=>{
+  const p=controlled(),tampered=input();tampered.feed.server_eta.rows[0][2]=101;
+  expect(productionControlInputValid(p,tampered)).toBe(false);
+  const missing=input();missing.feed.server_eta.rows=[];
+  expect(productionControlInputValid(p,missing)).toBe(false);
  });
 });

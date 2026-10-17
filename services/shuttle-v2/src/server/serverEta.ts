@@ -5,7 +5,7 @@
  */
 
 import { anchorKeyFor, anchorIndexOnList, resolveStandingStop } from "../../web/src/liveAnchor.js";
-import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals.js";
+import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes, type UpcomingArrival } from "../../web/src/arrivals.js";
 import { registerRoutePaths } from "../../web/src/anchor.js";
 import { BELIEF_STALE_MS } from "../../web/src/eta/filter.js";
 import { applyModelParams } from "../../web/src/eta/params.js";
@@ -107,10 +107,12 @@ export class ServerEta {
   private readonly observed = new Map<string, BusData>();
   private routeStops: Record<string, number[]> = {};
   private currentBuses: readonly BusData[] = [];
+  private readonly onBaseForecasts: ((rows: readonly UpcomingArrival[]) => void) | undefined;
 
-  constructor(opts: { routes: readonly string[]; log?: Log }) {
+  constructor(opts: { routes: readonly string[]; log?: Log; onBaseForecasts?: (rows: readonly UpcomingArrival[]) => void }) {
     this.served = new Set(opts.routes);
     this.log = opts.log ?? (() => {});
+    this.onBaseForecasts = opts.onBaseForecasts;
   }
 
   /** Versioned local checkpoint preserves the posterior and display history
@@ -266,6 +268,9 @@ export class ServerEta {
       targets, tracked, payload.routes, payload.stop_coords,
       payload.segments, now, payload.dwells, this.store, true,
     );
+    // Shadow evaluation needs the same caller semantics without rounding the
+    // quantiles before interval fitting. Production has no observer installed.
+    this.onBaseForecasts?.(arrivals);
 
     this.markSeen(current, now);
     this.evict(now);
