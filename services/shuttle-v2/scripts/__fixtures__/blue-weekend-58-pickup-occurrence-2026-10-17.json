@@ -1,0 +1,985 @@
+{
+  "source": "Derived regression: original rider screen/bus/model-anchor receipts, plus separately captured same-day route/name/coordinate metadata. This is not a complete original HTTP response and does not assert physical boarding or doors.",
+  "originalRun": "1792251274806",
+  "metadataCapture": "capture-20261017T160014808Z",
+  "trip": {
+    "kind": "random",
+    "origin": {
+      "label": "Elm / York (TYCO)",
+      "lat": 41.31086,
+      "lon": -72.93054,
+      "stopId": 53
+    },
+    "destination": {
+      "display_name": "Prospect / Edwards",
+      "lat": 41.320038,
+      "lon": -72.923299,
+      "type": "bus_stop",
+      "class": "shuttle",
+      "stopId": 101
+    },
+    "approaching": {
+      "busName": "#58",
+      "stopsAway": 4
+    },
+    "estimate": {
+      "hops": 5,
+      "rideSec": 474,
+      "waitSec": 851,
+      "walkSec": 1078,
+      "rideM": 1445
+    }
+  },
+  "line": {
+    "label": "Blue Weekend",
+    "busRouteIds": [
+      4
+    ]
+  },
+  "feedMetadata": {
+    "routes": {
+      "4": [
+        100,
+        105,
+        129,
+        28,
+        82,
+        95,
+        83,
+        85,
+        88,
+        92,
+        93,
+        86,
+        63,
+        42,
+        98,
+        32,
+        122,
+        14,
+        13,
+        10,
+        2,
+        150,
+        21,
+        116,
+        53,
+        41,
+        20,
+        106,
+        34,
+        101,
+        47
+      ]
+    },
+    "stop_names": {
+      "100": "Prospect / Canner",
+      "105": "Prospect / Huntington",
+      "129": "Whitney / Canner",
+      "28": "Canner / Livingston",
+      "82": "Orange / Canner",
+      "95": "Orange / Willow (S)",
+      "83": "Orange / Cottage",
+      "85": "Orange / Edwards (S)",
+      "88": "Orange / Humphrey (S)",
+      "92": "Orange / Pearl (S)",
+      "93": "Orange / Trumbull",
+      "86": "Orange / Grove",
+      "63": "Grove / Temple",
+      "42": "College / Wall (S)",
+      "98": "Phelps Gate",
+      "32": "Chapel / State Elm City Market",
+      "122": "Union Station (S)",
+      "14": "Amistad / Church St South",
+      "13": "Amistad / Cedar",
+      "10": "333 Cedar",
+      "2": "129 York",
+      "150": "York / Chapel",
+      "21": "Broadway / York",
+      "116": "Stop & Shop",
+      "53": "Elm / York (TYCO)",
+      "41": "College / Wall (N)",
+      "20": "Becton / 15 Prospect",
+      "106": "Prospect / Sachem (N)",
+      "34": "Chemistry / 225 Prospect",
+      "101": "Prospect / Edwards",
+      "47": "Divinity / 409 Prospect"
+    },
+    "stop_coords": {
+      "100": {
+        "lat": 41.325351,
+        "lon": -72.922891
+      },
+      "105": {
+        "lat": 41.330366,
+        "lon": -72.921482
+      },
+      "129": {
+        "lat": 41.324692,
+        "lon": -72.916817
+      },
+      "28": {
+        "lat": 41.323937,
+        "lon": -72.913996
+      },
+      "82": {
+        "lat": 41.323303,
+        "lon": -72.910898
+      },
+      "95": {
+        "lat": 41.32224,
+        "lon": -72.911692
+      },
+      "83": {
+        "lat": 41.320062,
+        "lon": -72.913347
+      },
+      "85": {
+        "lat": 41.318385,
+        "lon": -72.914615
+      },
+      "88": {
+        "lat": 41.316338,
+        "lon": -72.916176
+      },
+      "92": {
+        "lat": 41.314826,
+        "lon": -72.917319
+      },
+      "93": {
+        "lat": 41.312323,
+        "lon": -72.919177
+      },
+      "86": {
+        "lat": 41.310003,
+        "lon": -72.920939
+      },
+      "63": {
+        "lat": 41.311134,
+        "lon": -72.924022
+      },
+      "42": {
+        "lat": 41.310836,
+        "lon": -72.926148
+      },
+      "98": {
+        "lat": 41.308356,
+        "lon": -72.927978
+      },
+      "32": {
+        "lat": 41.304876,
+        "lon": -72.923138
+      },
+      "122": {
+        "lat": 41.297929,
+        "lon": -72.926912
+      },
+      "14": {
+        "lat": 41.300531,
+        "lon": -72.929866
+      },
+      "13": {
+        "lat": 41.300236,
+        "lon": -72.932021
+      },
+      "10": {
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "2": {
+        "lat": 41.306539,
+        "lon": -72.933001
+      },
+      "150": {
+        "lat": 41.308511,
+        "lon": -72.931505
+      },
+      "21": {
+        "lat": 41.311002,
+        "lon": -72.930344
+      },
+      "116": {
+        "lat": 41.315041,
+        "lon": -72.938202
+      },
+      "53": {
+        "lat": 41.31086,
+        "lon": -72.93054
+      },
+      "41": {
+        "lat": 41.310583,
+        "lon": -72.926188
+      },
+      "20": {
+        "lat": 41.312609,
+        "lon": -72.925331
+      },
+      "106": {
+        "lat": 41.315749,
+        "lon": -72.924393
+      },
+      "34": {
+        "lat": 41.318492,
+        "lon": -72.923687
+      },
+      "101": {
+        "lat": 41.320038,
+        "lon": -72.923299
+      },
+      "47": {
+        "lat": 41.323538,
+        "lon": -72.923285
+      }
+    }
+  },
+  "samples": [
+    {
+      "at": "2026-10-17T15:34:42.406Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 23)\n\t~74 min\t11:46a \u2013 12:05p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 3 stops away\n\ud83d\ude8cYork/Chapel\nBroadway/York\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201323 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251275468,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.309466,
+        "lon": -72.930928,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": false,
+        "stationary_since": "2026-10-17T15:33:50.597",
+        "last_moved_at": "2026-10-17T15:34:35.468"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251275471,
+        "servedAt": 1792251277261,
+        "buses": [
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 820.11,
+              "approach": false
+            }
+          ],
+          [
+            "58",
+            "Blue Weekend",
+            21,
+            {
+              "stopId": 21,
+              "standingSec": 44.874,
+              "approach": true
+            }
+          ],
+          [
+            "330",
+            "Green",
+            5,
+            {
+              "stopId": 143,
+              "standingSec": 19.999,
+              "approach": true
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "332",
+            "Purple",
+            0,
+            null
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:34:52.406Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 23)\n\t~74 min\t11:46a \u2013 12:05p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 3 stops away\n\ud83d\ude8cYork/Chapel\nBroadway/York\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201323 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251285476,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310043,
+        "lon": -72.930507,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": false,
+        "stationary_since": "2026-10-17T15:34:40.449",
+        "last_moved_at": "2026-10-17T15:34:45.476"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251285478,
+        "servedAt": 1792251287209,
+        "buses": [
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 830.117,
+              "approach": false
+            }
+          ],
+          [
+            "330",
+            "Green",
+            5,
+            {
+              "stopId": 144,
+              "standingSec": 30.006,
+              "approach": true
+            }
+          ],
+          [
+            "58",
+            "Blue Weekend",
+            21,
+            {
+              "stopId": 21,
+              "standingSec": 54.881,
+              "approach": true
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "332",
+            "Purple",
+            0,
+            null
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:35:02.406Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 23)\n\t~74 min\t11:46a \u2013 12:05p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 3 stops away\n\ud83d\ude8cYork/Chapel\nBroadway/York\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201323 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251295473,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310555,
+        "lon": -72.930119,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": true,
+        "at_stop_id": 21,
+        "at_stop_since": "2026-10-17T15:34:55.473",
+        "stationary_since": "2026-10-17T15:34:55.473",
+        "last_moved_at": "2026-10-17T15:34:55.473"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251295474,
+        "servedAt": 1792251297255,
+        "buses": [
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 840.113,
+              "approach": false
+            }
+          ],
+          [
+            "330",
+            "Green",
+            5,
+            {
+              "stopId": 144,
+              "standingSec": 40.002,
+              "approach": false
+            }
+          ],
+          [
+            "58",
+            "Blue Weekend",
+            21,
+            null
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "332",
+            "Purple",
+            0,
+            null
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:35:12.407Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 23)\n\t~74 min\t11:46a \u2013 12:05p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 2 stops away\n\ud83d\ude8cBroadway/York\u23f8 0:16\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201323 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251305524,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310555,
+        "lon": -72.930119,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": true,
+        "at_stop_id": 21,
+        "at_stop_since": "2026-10-17T15:34:55.473",
+        "stationary_since": "2026-10-17T15:34:55.473",
+        "last_moved_at": "2026-10-17T15:34:55.473"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251305525,
+        "servedAt": 1792251307282,
+        "buses": [
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 850.164,
+              "approach": false
+            }
+          ],
+          [
+            "330",
+            "Green",
+            5,
+            {
+              "stopId": 144,
+              "standingSec": 50.053,
+              "approach": false
+            }
+          ],
+          [
+            "58",
+            "Blue Weekend",
+            21,
+            {
+              "stopId": 21,
+              "standingSec": 10.052,
+              "approach": false
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "332",
+            "Purple",
+            0,
+            null
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:35:22.424Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 23)\n\t~74 min\t11:46a \u2013 12:05p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 2 stops away\n\ud83d\ude8cBroadway/York\u23f8 0:26\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201323 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251315499,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310555,
+        "lon": -72.930119,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": true,
+        "at_stop_id": 21,
+        "at_stop_since": "2026-10-17T15:34:55.473",
+        "stationary_since": "2026-10-17T15:34:55.473",
+        "last_moved_at": "2026-10-17T15:34:55.473"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251315500,
+        "servedAt": 1792251317285,
+        "buses": [
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 860.139,
+              "approach": false
+            }
+          ],
+          [
+            "58",
+            "Blue Weekend",
+            21,
+            {
+              "stopId": 21,
+              "standingSec": 20.027,
+              "approach": false
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "332",
+            "Purple",
+            0,
+            {
+              "stopId": 9,
+              "standingSec": 15.051,
+              "approach": false
+            }
+          ],
+          [
+            "330",
+            "Green",
+            6,
+            {
+              "stopId": 144,
+              "standingSec": 60.028,
+              "approach": false
+            }
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:35:32.424Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 22)\n\t~74 min\t11:46a \u2013 12:05p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 2 stops away\n\ud83d\ude8cBroadway/York\u23f8 0:36\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201322 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251325569,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310555,
+        "lon": -72.930119,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": true,
+        "at_stop_id": 21,
+        "at_stop_since": "2026-10-17T15:34:55.473",
+        "stationary_since": "2026-10-17T15:34:55.473",
+        "last_moved_at": "2026-10-17T15:34:55.473"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251325571,
+        "servedAt": 1792251327263,
+        "buses": [
+          [
+            "58",
+            "Blue Weekend",
+            22,
+            {
+              "stopId": 21,
+              "standingSec": 30.098,
+              "approach": false
+            }
+          ],
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 870.21,
+              "approach": false
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "332",
+            "Purple",
+            0,
+            {
+              "stopId": 9,
+              "standingSec": 25.122,
+              "approach": false
+            }
+          ],
+          [
+            "330",
+            "Green",
+            6,
+            {
+              "stopId": 144,
+              "standingSec": 70.099,
+              "approach": false
+            }
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:35:42.424Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 22)\n\t~74 min\t11:46a \u2013 12:05p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 2 stops away\n\ud83d\ude8cBroadway/York\u23f8 0:46\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201322 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251335517,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310555,
+        "lon": -72.930119,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": true,
+        "at_stop_id": 21,
+        "at_stop_since": "2026-10-17T15:34:55.473",
+        "stationary_since": "2026-10-17T15:34:55.473",
+        "last_moved_at": "2026-10-17T15:34:55.473"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251335518,
+        "servedAt": 1792251337249,
+        "buses": [
+          [
+            "58",
+            "Blue Weekend",
+            22,
+            {
+              "stopId": 21,
+              "standingSec": 40.045,
+              "approach": false
+            }
+          ],
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 880.157,
+              "approach": false
+            }
+          ],
+          [
+            "332",
+            "Purple",
+            0,
+            {
+              "stopId": 9,
+              "standingSec": 35.069,
+              "approach": false
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "330",
+            "Green",
+            6,
+            {
+              "stopId": 144,
+              "standingSec": 80.046,
+              "approach": false
+            }
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:35:52.426Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 22)\n\t~74 min\t11:46a \u2013 12:06p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 2 stops away\n\ud83d\ude8cBroadway/York\u23f8 0:56\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201322 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251345445,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310555,
+        "lon": -72.930119,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": true,
+        "at_stop_id": 21,
+        "at_stop_since": "2026-10-17T15:34:55.473",
+        "stationary_since": "2026-10-17T15:34:55.473",
+        "last_moved_at": "2026-10-17T15:34:55.473"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251345446,
+        "servedAt": 1792251347279,
+        "buses": [
+          [
+            "58",
+            "Blue Weekend",
+            22,
+            {
+              "stopId": 21,
+              "standingSec": 49.973,
+              "approach": false
+            }
+          ],
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 890.085,
+              "approach": false
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "330",
+            "Green",
+            6,
+            {
+              "stopId": 144,
+              "standingSec": 89.974,
+              "approach": false
+            }
+          ],
+          [
+            "332",
+            "Purple",
+            1,
+            {
+              "stopId": 9,
+              "standingSec": 34.917,
+              "approach": false
+            }
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:36:02.430Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (4 \u2013 22)\n\t~74 min\t11:47a \u2013 12:06p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 2 stops away\n\ud83d\ude8cBroadway/York\u23f8 1:06\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 4\u201322 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251355565,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310555,
+        "lon": -72.930119,
+        "heading": 28,
+        "last_stop_id": 2,
+        "stationary": true,
+        "at_stop_id": 21,
+        "at_stop_since": "2026-10-17T15:34:55.473",
+        "stationary_since": "2026-10-17T15:34:55.473",
+        "last_moved_at": "2026-10-17T15:34:55.473"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251355568,
+        "servedAt": 1792251357261,
+        "buses": [
+          [
+            "58",
+            "Blue Weekend",
+            22,
+            {
+              "stopId": 21,
+              "standingSec": 60.095,
+              "approach": false
+            }
+          ],
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            {
+              "stopId": 170,
+              "standingSec": 900.207,
+              "approach": false
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "330",
+            "Green",
+            6,
+            {
+              "stopId": 144,
+              "standingSec": 100.096,
+              "approach": false
+            }
+          ],
+          [
+            "332",
+            "Purple",
+            1,
+            null
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    },
+    {
+      "at": "2026-10-17T15:36:12.428Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n\u21bb\n\u2190 All routes\nBLUE WEEKEND ROUTE \u00b7 Runs Sa/Su 7a\u20136p\n\u25b4\n\ud83d\ude8c\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\u26f6\nRoute\tBoard in (min)\tNext in\tArrive at\nBlue Weekend\t\n~13 (3 \u2013 23)\n\t~73 min\t11:47a \u2013 12:06p\n\n\ud83d\ude8c 6 min\n\ud83d\ude8c #58 \u00b7 2 stops away\n\ud83d\ude8cBroadway/York\u23f8 1:16\nStop & Shop\u23f8 ~8 min\nBOARDElm/York (TYCO)\nArrival: About 13 min \u00b7 Likely 3\u201323 min\nCollege/Wall (N)\nBecton/15 Prospect\nProspect/Sachem (N)\nChemistry/225 Prospect\nGET OFFProspect/Edwards\n\ud83e\udded Directions to stop\n\ud83d\ude8c I'm on it\n\ud83d\udd14 Remind me for #58\n\ud83d\udea9 Report\n\ud83d\udcf1 Yale tracker\n\u25be\nClear\n\ud83d\udcac Send feedback\nContribute\n\ud83e\uddea\nIn beta \u2014 please report any issues\n\u203a\nAbout",
+      "bus": {
+        "observed_at": 1792251365444,
+        "bus_id": 67825,
+        "bus_name": "#58",
+        "route_id": 4,
+        "lat": 41.310819,
+        "lon": -72.930198,
+        "heading": 347,
+        "last_stop_id": 2,
+        "stationary": true,
+        "at_stop_id": 21,
+        "at_stop_since": "2026-10-17T15:34:55.473",
+        "stationary_since": "2026-10-17T15:34:55.473",
+        "last_moved_at": "2026-10-17T15:36:00.454"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792251365452,
+        "servedAt": 1792251367243,
+        "buses": [
+          [
+            "329",
+            "Purple",
+            4,
+            null
+          ],
+          [
+            "330",
+            "Green",
+            6,
+            {
+              "stopId": 144,
+              "standingSec": 75.004,
+              "approach": false
+            }
+          ],
+          [
+            "332",
+            "Purple",
+            1,
+            {
+              "stopId": 72,
+              "standingSec": 9.887,
+              "approach": true
+            }
+          ],
+          [
+            "38",
+            "Grocery Ham",
+            4,
+            null
+          ],
+          [
+            "58",
+            "Blue Weekend",
+            22,
+            {
+              "stopId": 21,
+              "standingSec": 69.979,
+              "approach": false
+            }
+          ],
+          [
+            "331",
+            "Green",
+            18,
+            null
+          ]
+        ]
+      }
+    }
+  ]
+}
