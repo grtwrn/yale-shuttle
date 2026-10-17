@@ -17,6 +17,24 @@ Candidate issues require review; observations use the same GPS feed as the
 app and are not independent physical arrival measurements. This launcher
 does not deploy changes or submit rider reports.
 
+`status.json` distinguishes the loop heartbeat from feed receipt:
+`feedReceivedAt`, `feedAgeMs`, `feedStale` and `cachedBuses` describe the last
+valid `/api/buses` response. Feed age measures time since receipt, not the age
+of upstream GPS observations. A fresh empty feed is normal idle service and
+adds no journey or accuracy result. HTTP failures, invalid JSON and responses
+without a buses array do not reset that clock. The launcher preserves the
+initial receipt time across page loading and checkpoint restoration.
+
+After more than 30 seconds without a valid response, an idle rider waits
+instead of selecting a trip from cached buses. Selection checks freshness
+again after destination lookup and before starting the journey, including
+that the chosen line still has a running bus. Seeded new trips wait for fresh
+service too. One
+`candidate-stale-feed` event and screenshot per idle outage reach the existing
+incident bridge; fresh responses recover naturally with a `feed-recovered`
+event. The process remains running. Active journeys keep their existing
+stale-feed pause behavior, and resumed journeys remain excluded from accuracy.
+
 For a detached run, use a process supervisor; redirect stdout/stderr to
 `scripts/watcher.log`. The watcher PID is saved in the artifact directory as
 `watcher.pid`. The browser restarts after a transport failure. Journey and tester browser state are checkpointed in `resume.json`; a recent checkpoint restores the journey as a diagnostic continuation excluded from accuracy scoring. On the team Mac
@@ -67,4 +85,5 @@ September 11 fixes:
 
 Raw records remain unchanged. Output records identify `instrumentVersion: inputs-v2`, invalid stop samples and handovers. This is GPS-correlated simulation, not independent physical ground truth. Screenshots now use rolling seven-day/256 MiB retention per rider, with current-journey and explicit evidence pins protected. Samples, event logs and journey summaries rotate by size and age. See [storage policy](../retention/README.md).
 
-Run `npm test -- scripts/rider-watch/inputs.test.mjs`. Live browser verification is recorded separately in the QA workspace. Local release copies only rewrite the two canary import paths for the companion watcher directory. No application bundle, estimator or service deployment is changed.
+Run `npm test -- scripts/rider-watch/runner.test.mjs scripts/rider-watch/checkpoint.test.mjs scripts/rider-watch/inputs.test.mjs`.
+Live browser verification is recorded separately in the QA workspace. Local release copies only rewrite the two canary import paths for the companion watcher directory. No application bundle, estimator or service deployment is changed.

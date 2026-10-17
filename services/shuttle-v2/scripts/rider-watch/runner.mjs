@@ -16,12 +16,15 @@ export const SELECTION_BACKOFF_MS=2*60000;
 export const BUS_GONE_MS=10*60000;
 // As long for a boarded bus the feed and the app both put off its route.
 export const BUS_OFF_ROUTE_MS=10*60000;
+const MAX_FEED_AGE_MS=30000;
 const LOOKING_FOR_BUS=/(?:^|\n)Looking for your bus…(?:\n|$)/;
-export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
+export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialFeedAt=Date.now(),initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
+ if (!Array.isArray(initialFeed?.buses) || !Number.isFinite(initialFeedAt)) throw new Error('A valid initial feed and receipt time are required');
  const ROOT=outputDir;
  await fs.mkdir(ROOT,{recursive:true});
- let feed=initialFeed,feedAt=Date.now(),busy=false,stopped=false,timer,run=null,lastImage=0,lastPhase='',cursor=metrics.CANARY_LINES.findIndex(l=>l.label===initialLine?.label),imageBytes=0;
+ let feed=initialFeed,feedAt=initialFeedAt,busy=false,stopped=false,timer,run=null,lastImage=0,lastPhase='',cursor=metrics.CANARY_LINES.findIndex(l=>l.label===initialLine?.label),imageBytes=0;
+ let idleStale=false,pendingInitialTrip=initialRun?null:initialTrip;
  let lastPosition;
  // A line whose trip row is missing (e.g. a bus still in the feed after its
  // last loop) is skipped for a while, so a fixed-trip rider does not reload,
@@ -30,8 +33,12 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
  await fs.appendFile(path.join(ROOT,'journeys.jsonl'),'');
  let retention=await maintainImages(ROOT,{activeRunId:initialRun?.id});imageBytes=retention.imageBytes;
  const locate=async position=>{await ctx.setGeolocation(position);lastPosition=position;};
+ const feedStatus=()=>{
+  const feedAgeMs=Math.max(0,Date.now()-feedAt);
+  return {feedReceivedAt:new Date(feedAt).toISOString(),feedAgeMs,feedStale:feedAgeMs>MAX_FEED_AGE_MS,cachedBuses:feed.buses.length};
+ };
  const status=async(extra={})=>{
-  await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date().toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,...extra},null,2));
+  await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date().toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,...feedStatus(),...extra},null,2));
   await saveCheckpoint(ROOT,page,run,lastPosition);
  };
  const event=async(kind,detail)=>{const e={at:new Date().toISOString(),runId:run?.id,kind,detail};await appendRolling(ROOT,'events',e);console.log(JSON.stringify(e));};
@@ -43,13 +50,30 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
  };
  const finish=async(reason)=>{run.finishedAt=new Date().toISOString();run.result=reason;await capture(reason);await appendRolling(ROOT,'journeys',run);await event('journey-finished',reason);run=null;};
  const begin=async(trip,line)=>{run={instrumentVersion:'inputs-v2',id:Date.now().toString(),startedAt:new Date().toISOString(),phase:'waiting',line,trip,samples:0};await event('journey-started',{line:line.label,trip});await capture('waiting-'+line.label);await status();};
- const onResponse=async r=>{if(new URL(r.url()).pathname==='/api/buses'&&r.ok())try{feed=await r.json();feedAt=Date.now();}catch{}};
+ const onResponse=async r=>{if(new URL(r.url()).pathname==='/api/buses'&&r.ok())try{const next=await r.json();if(Array.isArray(next?.buses)){feed=next;feedAt=Date.now();}}catch{}};
  page.on('response',onResponse);
  const onPageError=e=>event('candidate-page-error',e.message).catch(()=>{});
  page.on('pageerror',onPageError);
  const onRequest=r=>{if(/\/api\/(buses|geocode|my-reports)/.test(r.url())&&r.headers()['x-anon-id']!==TEST){stopped=true;clearInterval(timer);event('tester-id-missing',r.url()).catch(()=>{});status().catch(()=>{});}};
  page.on('request',onRequest);
  const removeListeners=()=>{page.off('response',onResponse);page.off('pageerror',onPageError);page.off('request',onRequest);};
+ const idleFeedReady=async()=>{
+  const info=feedStatus();
+  if(info.feedStale&&!idleStale){
+   idleStale=true;
+   await event('candidate-stale-feed',{phase:'selecting',ageMs:info.feedAgeMs,cachedBuses:info.cachedBuses,text:await page.locator('body').innerText()});
+   await capture('idle-stale-feed');
+  }
+  // A response may arrive while the diagnostic screenshot is captured.
+  if(feedStatus().feedStale){await status({note:'Waiting for a fresh shuttle feed'});return false;}
+  if(idleStale){idleStale=false;await event('feed-recovered',{phase:'selecting',ageMs:feedStatus().feedAgeMs});}
+  return true;
+ };
+ const selectionReady=async line=>{
+  if(!await idleFeedReady())return false;
+  if(!metrics.liveBusesOf(feed,line).length){await status({note:'No suitable live trip currently available'});return false;}
+  return true;
+ };
  const select=async()=>{
   // One page, one journey at a time. Normal UI interactions test lookup too.
   const order=metrics.CANARY_LINES.map((_,i)=>(cursor+i+1)%metrics.CANARY_LINES.length);
@@ -75,25 +99,36 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    const clear=page.getByRole('button',{name:'Clear',exact:true});if(await clear.isVisible())await clear.click();
    await selectDestination(page,picked.destination);
    await sleep(1500);
+   if(!await selectionReady(line))return;
    const more=page.getByRole('button',{name:/Show \d+ more route/});if(await more.isVisible())await more.click();
    const row=page.getByRole('button',{name:'View '+line.label+' trip details',exact:true});
    if(!await row.isVisible()){unavailableUntil[line.label]=Date.now()+SELECTION_BACKOFF_MS;await event('selection-unavailable',{line:line.label,trip:picked,text:await page.locator('body').innerText()});await capture('selection-unavailable');return;}
    // A centre click can hit the nested arrival disclosure. Activate the
    // focused trip card itself; its keyboard handler opens the trip view.
-   await row.focus();await page.keyboard.press('Enter');await begin(picked,line);return;
+   await row.focus();await page.keyboard.press('Enter');
+   if(!await selectionReady(line))return;
+   await begin(picked,line);return;
   }
   await status({note:'No suitable live trip currently available'});
  };
  const tick=async()=>{
   if(busy||stopped)return;busy=true;
   try{
-   if(!run){await select();return;}
+   if(!run){
+    if(pendingInitialTrip){
+     if(!await selectionReady(initialLine))return;
+     const trip=pendingInitialTrip;pendingInitialTrip=null;await begin(trip,initialLine);
+    }else{
+     if(!await idleFeedReady())return;
+     await select();return;
+    }
+   }
    const now=Date.now(),text=await page.locator('body').innerText();
    const wire=feed.server_eta;
    const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-feedAt,text,buses:feed.buses,
     ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{})};
    await appendRolling(ROOT,'samples',sample);run.samples++;
-   if(now-feedAt>30000){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
+   if(now-feedAt>MAX_FEED_AGE_MS){if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
     const checked=confirmConflict(run.countConflict,pickupCountConflict(text,feed,run.line.busRouteIds,now),now);
     run.countConflict=checked.state;
@@ -214,7 +249,6 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
   finally{busy=false;}
  };
  if(initialRun){run={...initialRun,instrumentVersion:'inputs-v2',instrumentHandoverAt:new Date().toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; resumed journey excluded from accuracy scoring');await status();}
- else if(initialTrip)await begin(initialTrip,initialLine);
  timer=setInterval(()=>tick(),10000);await tick();
  return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt}),capture,stop:async()=>{stopped=true;clearInterval(timer);removeListeners();await status();},tick, detach:()=>{stopped=true;clearInterval(timer);removeListeners();return run;}};
 }

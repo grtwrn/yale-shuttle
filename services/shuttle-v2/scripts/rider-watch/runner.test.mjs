@@ -16,7 +16,7 @@ const dwelling="🚌 20 min\nBOARD🚌Union Station (S)⏸ 0:29\nWest Haven Trai
 const at126={bus_name:'#126',route_id:10,lat:41.297912,lon:-72.926694,at_stop_id:122,stationary:true};
 const near126={bus_name:'#126',route_id:10,lat:41.296923,lon:-72.927685,stationary:false};
 
-async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z'}={}){
+async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0}={}){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});
  vi.setSystemTime(Date.parse(at));
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
@@ -26,7 +26,7 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
  const ctx={setGeolocation:async g=>{h.geo=g;}};
- h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,outputDir:dir});
+ h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,initialFeedAt:Date.now()-initialFeedAgeMs,outputDir:dir});
  // The runner's own 10 s interval drives each poll; wait for it to settle.
  h.poll=async(text,buses)=>{h.text=text;
   await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedOf(buses)});
@@ -101,7 +101,9 @@ test('our bus stored after the boarding wait is still a boarding',async()=>{
 });
 
 test('an unpredicted poll is skipped without excluding the run',async()=>{
- const h=current=await harness(feedWith([{...near126,lat:41.30,lon:-72.94}]));
+ // Start a real live trip; the following unavailable poll is the behavior
+ // under test. A new selection now waits for an on-route bus.
+ const h=current=await harness(feedWith([near126]));
  await h.poll("Purple\t\nUnavailable\n\t—\nBOARDUnion Station (S)\nGET OFFBuilding 400",[{...near126,lat:41.30,lon:-72.94}]);
  const run=h.watcher.status().run;
  assert.equal(run.phase,'waiting');
@@ -264,7 +266,7 @@ const fixedTrip={kind:'fixed',origin:{label:'Division / Prospect',lat:41.324769,
 const red={routes:{3:[11,48,72],10:[122,127]},stop_names:{11:'344 Winchester',48:'Division / Prospect',72:'LEPH / 60 College',122:'Union Station (S)',127:'West Haven Train Station'},
  stop_coords:{11:{lat:41.3271,lon:-72.9298},48:fixedTrip.origin,72:{lat:41.30378,lon:-72.93261},122:union,127:westHaven}};
 const red317={bus_name:'#317',route_id:3,lat:41.3271,lon:-72.9298,at_stop_id:11,stationary:true};
-async function fixedRed(initialFeed){
+async function fixedRed(initialFeed,initialFeedAgeMs=0){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});
  vi.setSystemTime(Date.parse('2026-10-01T15:00:00Z'));
  const h={dir:await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-')),geo:[],opened:[],handlers:{},rowShown:true};
@@ -273,11 +275,117 @@ async function fixedRed(initialFeed){
   evaluate:async()=>({toLL:{lat:ysph.lat,lon:ysph.lon}}),
   getByPlaceholder:()=>({fill:async()=>{},press:async()=>{}}),
   getByRole:(_,{name})=>({isVisible:async()=>h.rowShown&&name==='View Red trip details',click:async()=>{},focus:async()=>h.opened.push(name)})};
- h.watcher=await attach({page,ctx:{setGeolocation:async g=>h.geo.push(g)},initialFeed,outputDir:h.dir,allowedLabels:['Red'],fixedTrip});
+ h.watcher=await attach({page,ctx:{setGeolocation:async g=>h.geo.push(g)},initialFeed,initialFeedAt:Date.now()-initialFeedAgeMs,outputDir:h.dir,allowedLabels:['Red'],fixedTrip});
  h.feed=buses=>h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>({...red,buses})});
  h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8').catch(()=>'')).trim().split('\n').filter(Boolean).map(JSON.parse);
+ h.storedStatus=async()=>JSON.parse(await fs.readFile(path.join(h.dir,'status.json'),'utf8'));
+ h.page=page;
  return h;
 }
+
+test('fresh empty service publishes feed freshness without inventing a journey',async()=>{
+ const h=current=await fixedRed({...red,buses:[]});
+ const status=await h.storedStatus();
+ assert.equal(status.feedReceivedAt,'2026-10-01T15:00:00.000Z');
+ assert.equal(status.feedAgeMs,0);assert.equal(status.feedStale,false);assert.equal(status.cachedBuses,0);
+ assert.equal(status.running,true);assert.equal(status.phase,'selecting');
+ assert.deepEqual(await h.events(),[]);assert.deepEqual(h.geo,[]);
+ assert.equal((await fs.readFile(path.join(h.dir,'journeys.jsonl'),'utf8')).trim(),'');
+});
+
+test('an aged startup feed cannot start a trip and raises only one idle stale diagnostic',async()=>{
+ const h=current=await fixedRed({...red,buses:[red317]},31000);
+ for(let i=0;i<3;i++)await h.watcher.tick();
+ assert.equal(h.watcher.status().run,null);assert.deepEqual(h.geo,[]);assert.deepEqual(h.opened,[]);
+ const status=await h.storedStatus();
+ assert.equal(status.feedAgeMs,31000);assert.equal(status.feedStale,true);assert.equal(status.cachedBuses,1);
+ assert.match(status.note,/fresh shuttle feed/);
+ const events=await h.events();assert.equal(events.filter(e=>e.kind==='candidate-stale-feed').length,1);
+ assert.equal(events[0].detail.phase,'selecting');assert.equal(events[0].runId,undefined);
+ assert.equal(status.retention.imageCount,1);assert.equal(h.watcher.status().running,true);
+});
+
+test('failed or unusable responses do not rejuvenate an idle feed; a valid empty feed recovers',async()=>{
+ const h=current=await fixedRed({...red,buses:[]});
+ vi.setSystemTime(Date.now()+31000);await h.watcher.tick();
+ const received=(await h.storedStatus()).feedReceivedAt;
+ for(const response of [
+  {ok:()=>false,json:async()=>{throw Error('HTTP failure body must not be read');}},
+  {ok:()=>true,json:async()=>{throw Error('invalid JSON');}},
+  {ok:()=>true,json:async()=>({})},
+ ]){
+  await h.handlers.response({url:()=>'https://example.test/api/buses',...response});await h.watcher.tick();
+  const status=await h.storedStatus();assert.equal(status.feedReceivedAt,received);assert.equal(status.feedStale,true);
+ }
+ await h.feed([]);await h.watcher.tick();
+ const status=await h.storedStatus();assert.equal(status.feedAgeMs,0);assert.equal(status.feedStale,false);
+ assert.equal(status.cachedBuses,0);assert.equal(status.running,true);assert.equal(h.watcher.status().run,null);
+ const events=await h.events();assert.equal(events.filter(e=>e.kind==='candidate-stale-feed').length,1);
+ assert.equal(events.filter(e=>e.kind==='feed-recovered').length,1);
+ assert.deepEqual(h.geo,[]);assert.equal((await fs.readFile(path.join(h.dir,'journeys.jsonl'),'utf8')).trim(),'');
+});
+
+test('an idle cached bus is ignored after feed loss and can be selected after a fresh response',async()=>{
+ const h=current=await fixedRed({...red,buses:[]});await h.feed([red317]);
+ vi.setSystemTime(Date.now()+31000);await h.watcher.tick();
+ assert.equal(h.watcher.status().run,null);assert.deepEqual(h.opened,[]);
+ await h.feed([red317]);await h.watcher.tick();
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+ assert.deepEqual(h.opened,['View Red trip details','Enter']);
+ assert.equal((await h.events()).filter(e=>e.kind==='journey-started').length,1);
+ assert.equal((await h.storedStatus()).feedStale,false);
+});
+
+test('idle freshness uses the same strict thirty-second boundary as active journeys',async()=>{
+ const h=current=await fixedRed({...red,buses:[]});const started=Date.now();
+ vi.setSystemTime(started+30000);await h.watcher.tick();assert.equal((await h.storedStatus()).feedStale,false);
+ vi.setSystemTime(started+30001);await h.watcher.tick();assert.equal((await h.storedStatus()).feedStale,true);
+});
+
+test('a slow destination lookup cannot open a new trip from a feed that expired during selection',async()=>{
+ const h=current=await fixedRed({...red,buses:[]});await h.feed([red317]);
+ h.page.reload=async()=>vi.setSystemTime(Date.now()+31000);
+ await h.watcher.tick();
+ assert.equal(h.watcher.status().run,null);assert.deepEqual(h.opened,[]);
+ assert.equal((await h.storedStatus()).feedStale,true);
+ assert.equal((await h.events()).filter(e=>e.kind==='candidate-stale-feed').length,1);
+});
+
+test('service disappearing during destination lookup leaves the rider idle without a stale alert',async()=>{
+ const h=current=await fixedRed({...red,buses:[]});await h.feed([red317]);
+ h.page.reload=async()=>h.feed([]);
+ await h.watcher.tick();
+ assert.equal(h.watcher.status().run,null);assert.deepEqual(h.opened,[]);
+ assert.equal((await h.storedStatus()).feedStale,false);assert.equal((await h.storedStatus()).cachedBuses,0);
+ assert.deepEqual(await h.events(),[]);
+});
+
+test('an active journey still pauses on feed loss and continues on a fresh feed without an outcome',async()=>{
+ const h=current=await harness(feedWith([near126]));
+ vi.setSystemTime(Date.now()+31000);await h.watcher.tick();
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.equal(h.watcher.status().run.stale,true);
+ let status=JSON.parse(await fs.readFile(path.join(h.dir,'status.json'),'utf8'));assert.equal(status.feedStale,true);
+ await h.poll(approaching,[near126]);
+ assert.equal(h.watcher.status().run.stale,false);assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+ status=JSON.parse(await fs.readFile(path.join(h.dir,'status.json'),'utf8'));assert.equal(status.feedStale,false);
+ assert.deepEqual(await h.journeys(),[]);
+});
+
+test('a seeded new trip waits for a fresh initial feed, then starts without a handover exclusion',async()=>{
+ const h=current=await harness(feedWith([near126]),trip,{initialFeedAgeMs:31000});
+ assert.equal(h.watcher.status().run,null);
+ await h.poll(approaching,[near126]);
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+ assert.deepEqual(await h.journeys(),[]);
+});
+
+test('a seeded trip with empty service waits until its line has a bus',async()=>{
+ const h=current=await harness(feedWith([]));
+ assert.equal(h.watcher.status().run,null);
+ assert.deepEqual(await h.journeys(),[]);
+ await h.poll(approaching,[near126]);
+ assert.equal(h.watcher.status().run.phase,'waiting');
+});
 test('a fixed Red trip waits for Red service and then starts from Division / Prospect',async()=>{
  const h=current=await fixedRed({...red,buses:[near126]});
  // Purple is live, Red is not: nothing is selected, not even an attempt.
@@ -298,10 +406,12 @@ test('a missing Red trip row backs off instead of reloading every 10 s',async()=
  g.rowShown=false;await g.feed([red317]);
  await g.watcher.tick();
  assert.equal(g.geo.length,1);
- for(let i=0;i<11;i++){vi.setSystemTime(Date.now()+10000);await g.watcher.tick();}
+ // Keep receiving live data: this case tests the missing-row backoff,
+ // independently of the no-response freshness guard.
+ for(let i=0;i<11;i++){vi.setSystemTime(Date.now()+10000);await g.feed([red317]);await g.watcher.tick();}
  assert.equal(g.geo.length,1);
  assert.deepEqual((await g.events()).map(e=>e.kind),['selection-unavailable']);
- vi.setSystemTime(Date.now()+10000);g.rowShown=true;await g.watcher.tick();
+ vi.setSystemTime(Date.now()+10000);await g.feed([red317]);g.rowShown=true;await g.watcher.tick();
  assert.equal(g.geo.length,2);
  assert.equal(g.watcher.status().run.line.label,'Red');
 },30000); // master reloads every poll (1.5 s each), so fail on the assertion, not the timeout

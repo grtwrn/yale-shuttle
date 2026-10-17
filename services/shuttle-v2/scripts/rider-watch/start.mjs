@@ -36,12 +36,13 @@ while (!stopping) {
     const response = await ctx.request.get(`${base}/api/buses`, { timeout: 30000 });
     if (!response.ok()) throw new Error(`Feed HTTP ${response.status()}`);
     const initialFeed = await response.json();
+    const initialFeedAt = Date.now();
     const config = riderConfig(process.env, initialFeed);
     const saved = await loadCheckpoint(outputDir);
     const resume = saved && (!config.allowedLabels || config.allowedLabels.includes(saved.run.line.label)) ? saved : null;
     if (resume) await restoreCheckpoint(ctx, resume, initialFeed);
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    watcher = await attach({ page, ctx, initialFeed, outputDir, ...config, initialRun: resume?.run });
+    watcher = await attach({ page, ctx, initialFeed, initialFeedAt, outputDir, ...config, initialRun: resume?.run });
     const trip = config.fixedTrip && `${config.fixedTrip.origin.label} → ${config.fixedTrip.destination.display_name}`;
     console.log(`Watcher started: ${base}; artifacts: ${outputDir}; lines: ${config.allowedLabels ?? 'random'}${trip ? `; trip: ${trip}` : ''}`);
     while (!stopping && browser.isConnected() && !page.isClosed() && watcher.status().running)
