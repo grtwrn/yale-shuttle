@@ -739,10 +739,12 @@ export class Collector {
   }
 
   async start(): Promise<void> {
+    const initialStaticGeneration = this.staticGeneration;
     await this.refreshStaticIfNeeded(true);
-    // Warm calibration from existing samples before the first poll, so
-    // day-zero predictions aren't pure distance-based priors.
-    this.runCalibrate();
+    // A successful refresh publishes a fully calibrated network. Only warm
+    // the cached network here when that refresh did not publish one; repeating
+    // the full calibration otherwise holds the first live poll for seconds.
+    if (this.staticGeneration === initialStaticGeneration) this.runCalibrate();
     // ...and warm the lap clock from history, for the same reason. It has to
     // come AFTER the first calibration, because the fitted cells are what say
     // which stops are worth seeding.
