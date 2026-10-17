@@ -102,3 +102,45 @@ it('judges redundant third routes by planned legs rather than live wait or ride 
       .toEqual(['Red','Blue Day','Walk']);
   }
 });
+
+it('keeps Blue in the initial list when the rider is at its pickup but the exit walk exceeds half the direct walk (#129)', () => {
+  // Screenshot legs: Blue has no pickup walk, 14 min riding and 8 min final
+  // walking, versus a 15 min direct walk. Brown and Red have shorter total
+  // commutes, but the rider still wants to see the bus from their stop.
+  const red=shuttle('Red',2,5,4,15),brown=shuttle('Brown',0,15,1,15),blue=shuttle('Blue Day',0,14,8,15);
+  const all=[walk(15),red,brown,blue],before=JSON.stringify(all);
+  expect(topVisibleOptions(all).map(o=>o.routeLabel)).toEqual(['Walk','Red','Brown','Blue Day']);
+  expect(JSON.stringify(all)).toBe(before);
+});
+
+it('keeps a no-pickup-walk choice explicit even when a farther pickup on that line is selected', () => {
+  const red=shuttle('Red',2,5,4,15),brown=shuttle('Brown',0,15,1,15);
+  const blue={...shuttle('Blue Day',5,8,8,15),pickupAlternatives:[shuttle('Blue Day',0,14,8,15)]};
+  expect(topVisibleOptions([walk(15),red,brown,blue]).map(o=>o.routeLabel)).toContain('Blue Day');
+});
+
+it('keeps that pickup choice visible as its bus becomes missed or unavailable', () => {
+  const red=shuttle('Red',2,5,4,15),brown=shuttle('Brown',0,15,1,15),blue=shuttle('Blue Day',0,14,8,15);
+  for(const status of [{departed:true},{etaUnavailable:true}]){
+    expect(topVisibleOptions([walk(15),red,brown,{...blue,...status}]).map(o=>o.routeLabel)).toContain('Blue Day');
+  }
+});
+
+it('requires meaningful walking saved even with no walk to pickup', () => {
+  const red=shuttle('Red',2,5,4,15),brown=shuttle('Brown',0,15,1,15);
+  const unhelpful=shuttle('Blue Day',0,14,14,15);
+  expect(topVisibleOptions([walk(15),red,brown,unhelpful]).map(o=>o.routeLabel)).not.toContain('Blue Day');
+});
+
+it('keeps the same pickup benefit when the exit walk falls below half or belongs to another line', () => {
+  const red=shuttle('Red',2,5,4,15),brown=shuttle('Brown',1,15,1,15);
+  for(const label of ['Blue Day','Green'])for(const exit of [6,8]){
+    const fromHere=shuttle(label,0,25,exit,15);
+    expect(topVisibleOptions([walk(15),red,brown,fromHere]).map(o=>o.routeLabel)).toContain(label);
+  }
+});
+
+it('does not promote a slower-than-walking pickup when another bus from that stop improves its ride and exit walk', () => {
+  const red=shuttle('Red',0,5,1,15),brown=shuttle('Brown',1,15,1,15),blue=shuttle('Blue Day',0,25,8,15);
+  expect(topVisibleOptions([walk(15),red,brown,blue]).map(o=>o.routeLabel)).not.toContain('Blue Day');
+});

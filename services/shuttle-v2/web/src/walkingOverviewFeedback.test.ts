@@ -25,6 +25,25 @@ it('keeps the walking-heavy Brown trip to Payne Whitney behind Show more (#126)'
   expect(JSON.stringify(options)).toBe(before); // Full list retains Brown.
 });
 
+it('keeps Blue from a public pickup-stop proxy even when its final walk is over half the direct walk (#129)',()=>{
+  // The September23 report saved rounded legs and a screenshot, not GPS.
+  // This October12 feed and controlled public-stop trip reproduce the same
+  // no-pickup-walk / longer-final-walk choice without claiming original ETAs.
+  const s=JSON.parse(readFileSync(new URL('./__fixtures__/blue-hidden-feedback-2026-10-12.json',import.meta.url),'utf8'));
+  const now=s.server_eta.servedAt;
+  expect(attachServerEta(s.buses,s.server_eta,now)).toBe(true);
+  const destination={lat:s.stop_coords[147].lat,lon:s.stop_coords[147].lon-.001};
+  const all=preferredTripOrder(planTrip(s.stop_coords[47],destination,s.buses,s.routes,s.stop_coords,s.segments,s.dwells,null,now));
+  const blue=all.find(o=>o.routeLabel==='Blue Day')!;
+  expect(blue.boardStopId).toBe(47);
+  expect(blue.walkToSec).toBe(0);
+  expect(blue.walkFromSec).toBeGreaterThan(blue.directWalkSec/2);
+  expect(blue.walkFromSec).toBeLessThan(blue.directWalkSec-120);
+  expect(worthwhileOverviewOption(blue)).toBe(true);
+  expect(topVisibleOptions(all).map(o=>o.routeLabel)).toEqual(['Red','Walk','Brown','Blue Day']);
+  expect(blue.busName).toBe('44');
+});
+
 it('keeps Brown under Show more when its planned ride clears the third-slot slack but Red improves every leg (#137)',()=>{
   const s=JSON.parse(readFileSync(new URL('./__fixtures__/blue-hidden-feedback-2026-10-12.json',import.meta.url),'utf8'));
   // Controlled near-boundary calibrated cost, not the missing September28

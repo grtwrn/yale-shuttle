@@ -719,17 +719,18 @@ describe("routeHoursCaption (report #57: hours atop the route details page)", ()
 });
 
 describe("topVisibleOptions", () => {
-  // Legs default to "the whole total is riding", so every option's commute
-  // orders the same way as its total and the direct-route promotion below
-  // never fires unless a test asks for it. `directWalkSec` is deliberately
+  // Default legs sum to the total, with a two-minute pickup walk, so these
+  // cases exercise commute slack independently of the already-at-pickup
+  // policy (#129). Direct-route promotion never fires unless a test asks
+  // for it. `directWalkSec` is deliberately
   // over an hour: walking is not a real alternative in these fixtures.
   const opt = (
     mode: "shuttle" | "walk", label: string, totalSec: number,
     legs?: { walkToSec?: number; rideSec?: number; walkFromSec?: number },
   ) => ({
     mode, routeLabel: label, totalSec,
-    walkToSec: legs?.walkToSec ?? 0,
-    rideSec: legs?.rideSec ?? totalSec,
+    walkToSec: legs?.walkToSec ?? (legs ? 0 : 120),
+    rideSec: legs?.rideSec ?? (legs ? totalSec : totalSec - 120),
     walkFromSec: legs?.walkFromSec ?? 0,
     directWalkSec: 99_999,
   } as unknown as import("./planner").TripOption);

@@ -941,15 +941,27 @@ export const THIRD_SHUTTLE_KEEP_SLACK_SEC = 8 * 60;
  *   not earned it and must clear the normal bar.
  */
 /** Reports #125/#126/#127: a short ride surrounded by most of the direct
- * walk is a poor overview recommendation. Keep it in the full route list,
- * but show it initially only when it saves at least half the walking, regardless of ETA. */
+ * walk is a poor overview recommendation. Save at least half the walking,
+ * or meaningful walking when already at a pickup (#129), regardless of ETA. */
 export function worthwhileOverviewOption(o: TripOption, directWalkSec = o.directWalkSec): boolean {
   // Judge the choices the rider can actually select. An unused pickup/exit
   // pair must not promote a walking-heavy trip (#126). Keep a line when its
   // closest-stop choice saves walking, including when another pickup is
   // selected and the closest one remains an explicit alternative (#140/#141).
-  return o.mode !== 'shuttle' || [o, ...(o.pickupAlternatives ?? [])]
-    .some(choice => choice.walkToSec + choice.walkFromSec <= directWalkSec / 2);
+  return o.mode !== 'shuttle' || pickupHereSavesWalking(o, directWalkSec)
+    || [o, ...(o.pickupAlternatives ?? [])]
+      .some(choice => choice.walkToSec + choice.walkFromSec <= directWalkSec / 2);
+}
+
+/** #129: when walking is an alternative and the rider has no walk to a
+ * pickup, keep that bus choice explicit if it saves meaningful walking.
+ * A last walk just over half the direct walk must not hide a bus from their
+ * stop. Zero pickup walking uses the planner's existing AT_PLACE_M policy;
+ * live ETAs and bus availability do not change the walking benefit. */
+function pickupHereSavesWalking(o: TripOption, directWalkSec: number): boolean {
+  return o.mode === 'shuttle' && directWalkSec <= WALK_ONLY_MAX_SEC
+    && [o, ...(o.pickupAlternatives ?? [])]
+      .some(choice => choice.walkToSec === 0 && savesWalking(choice.walkFromSec, directWalkSec));
 }
 
 /** #137: an optional third route that costs more time than walking and
@@ -991,6 +1003,8 @@ export function topVisibleOptions(
     if (o.mode !== "shuttle") return true;
     seen++;
     if (seen <= 2 || (seen === 3 && keepThird)) return true;
+    if (pickupHereSavesWalking(o, directWalkSec ?? o.directWalkSec)
+      && !redundantOverviewThird(o, shuttles.slice(0, 2))) return true;
     return promoted !== undefined && o.routeLabel === promoted.routeLabel;
   });
 }
