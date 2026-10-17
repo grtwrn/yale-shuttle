@@ -73,6 +73,19 @@ describe("recovering the complete visit on a fresh restart fix", () => {
     // is already mid-departure from Union Station, though, so using its time
     // would shorten the active inbound leg by 45 seconds.
     expect(recoverOpenVisit(net, clipped.current, clipped.history, clipped.arrivals)).toBeNull();
+    // If the window begins exactly at the saved anchor, replay loses the
+    // inbound leg entirely. A null transit is then unknown, not complete.
+    const atAnchor = clipped.history.filter(o => o.collectedAt >= clipped.arrivals[0]!.arrivedAt);
+    expect(recoverOpenVisit(net, clipped.current, atAnchor, clipped.arrivals)).toBeNull();
+  });
+
+  it("refuses a newly reissued id whose retained history cannot establish the inherited movement clock", () => {
+    const inherited = JSON.parse(readFileSync(new URL("./__fixtures__/restart-inherited-clock-2026-10-15.json", import.meta.url), "utf8")) as {
+      current: BusObservation; history: BusObservation[]; stops: Stop[]; route: Route; arrivals: OpenArrival[]; uninterruptedLastMovedAt: number;
+    };
+    expect(inherited.history[0]!.collectedAt).toBeGreaterThan(inherited.uninterruptedLastMovedAt);
+    expect(recoverOpenVisit(TransitNetwork.build(inherited.stops, [inherited.route]),
+      inherited.current, inherited.history, inherited.arrivals)).toBeNull();
   });
 
   it("preserves a genuine departure immediately following a restart", () => {

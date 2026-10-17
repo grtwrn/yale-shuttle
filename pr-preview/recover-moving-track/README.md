@@ -8,7 +8,8 @@ rest. That discarded the very route history needed to distinguish nearby
 poles on different parts of the loop.
 
 Recovery now accepts an approaching open visit when replay matches its exact
-saved arrival timestamp, stop, route, and identity. The current observation
+saved arrival timestamp, stop, route, and identity, and the retained history
+establishes both its current anchor and its last movement. The current observation
 then runs through the ordinary reducers. The curb/standing/boarding radii,
 freshness bound, history cap, and closed/mismatched-episode refusals remain
 the same. Historical replay events are discarded rather than inserted again.
@@ -17,7 +18,10 @@ An active inbound leg also needs its origin pass to start inside the retained
 unbroken history. Otherwise a clipped departure or earlier holds would be
 invented from the first available fix. The new recorded Purple control
 demonstrates this: its 30-minute window clips the Union Station departure by
-45 seconds. Recovery refuses that incomplete leg.
+45 seconds. Recovery refuses that incomplete leg. It also refuses a window starting
+exactly at the saved anchor (which hides the inbound leg entirely), and the
+recorded post-reissue Blue Night case whose inherited movement predates the
+first available same-id fix.
 
 ## Recorded checks
 
@@ -39,15 +43,14 @@ and 14 observed routes, including Green and Purple's repeated-stop calls.
 
 | Date (ET) | Raw observations | Checkpoint polls | Accepted restores | Newly accepted | State mismatches |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| October 3 | 78,928 | 1,090 | 4,948 | 2,856 | 0 |
-| October 4 | 83,319 | 1,087 | 5,226 | 2,904 | 0 |
-| October 15 | 181,832 | 1,083 | 11,904 | 6,409 | 0 |
+| October 3 | 78,928 | 1,090 | 4,890 | 2,827 | 0 |
+| October 4 | 83,319 | 1,087 | 5,153 | 2,884 | 0 |
+| October 15 | 181,832 | 1,083 | 11,758 | 6,315 | 0 |
 
-All 22,078 accepted restores match uninterrupted state exactly, including
-12,169 that the earlier curb-only recovery discarded. The study reports zero
-collector errors. The completeness guard refuses 127 initially considered
-restores; the broader unguarded candidate had 33 state mismatches, all in the
-inbound leg. Input/source hashes and per-route counts are in
+All 21,801 accepted restores match uninterrupted state exactly, including
+12,026 that the earlier curb-only recovery discarded. The study reports zero
+collector errors. The completeness rules refuse unproven clocks and legs rather than guessing
+from the first available fix. Input/source hashes and per-route counts are in
 [checks.json](checks.json).
 
 These are public-feed consistency checks, not independent physical boarding

@@ -56,6 +56,9 @@ export function recoverOpenVisit(
   const visit = visits.get(current.busName);
   if (!detector || !visit?.pass || detector.nearestStopId !== latest.stopId
     || visit.pass.stopId !== latest.stopId || visit.pass.anchoredAt !== detector.enteredAt) return null;
+  // The first fix's anchor and movement clock are cold-start guesses. If
+  // either still survives, an earlier leg or pre-reissue movement is missing.
+  if (detector.enteredAt <= segmentStart || detector.lastMovedAt <= segmentStart) return null;
   if (visit.transit && !completeTransit) return null;
   // Consecutive open duplicates may come from older restart behavior. A
   // closed visit or another stop ends this episode; no time-based guessing.

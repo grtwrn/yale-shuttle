@@ -30,7 +30,7 @@ const parsed = (values.raw.endsWith('.gz') ? gunzipSync(rawBytes) : rawBytes).to
 if (parsed.some((r: any) => !r)) throw Error('Invalid raw row');
 const rows = dedupeAndSort(parsed), polls = groupPolls(rows);
 const seconds = Number(values.seconds);
-if (!(seconds >= 5 && Number.isFinite(seconds))) throw Error('--seconds must be at least 5');
+if (!(seconds >= 0 && Number.isFinite(seconds))) throw Error('--seconds must be nonnegative (0 checks every poll)');
 let current: any[] = [], at = rows[0].t, lastCheck = -Infinity;
 const errors: unknown[] = [], mismatches: unknown[] = [];
 const counts = { checkpointPolls: 0, candidateRestores: 0, baseRestores: 0, newlyRestored: 0, outsidePin: 0, beforeRest: 0 };
