@@ -1,0 +1,566 @@
+{
+  "baseRevision": "b3320691a3a06acffb611e232792d0f5fee811cd",
+  "scope": "Detector consistency; public GPS/feed corroboration, not independent boarding truth or an ETA accuracy evaluation",
+  "days": {
+    "2026-10-03": {
+      "uniquePositionRows": 78928,
+      "rawSha256": "c667e5d000f533efaf36d756d6a021514a9428ae33d98c3f52f604e701d91cbc",
+      "before": {
+        "4": {
+          "count": 1404,
+          "sha256": "09992327096de95f9b1844c6618453ce0f8b8599907eb74c12aa6c0cfe144665"
+        },
+        "9": {
+          "count": 2354,
+          "sha256": "52b242130fe6128454e61143378c4904d8c6c89f55912db5edb642deff730e84"
+        },
+        "10": {
+          "count": 2590,
+          "sha256": "cbd6f67ba71f18e86605799a9a237145706eb42f3fc478ded89d7dbbf95eb7cc"
+        },
+        "13": {
+          "count": 1232,
+          "sha256": "0e76803f35153df129e3611b15bddfb8c5f5582c4af2b860835fb7b517b709fa"
+        },
+        "14": {
+          "count": 2090,
+          "sha256": "d8c31f49b9b12c65f3f803cd4ea6346165cbd7bb32aafff9ea9be50bf458ae74"
+        },
+        "16": {
+          "count": 536,
+          "sha256": "032672248719a7a9feefaeb409c7c5020e378558e26585c2a2bb2048307a669c"
+        },
+        "17": {
+          "count": 587,
+          "sha256": "fae887afb9fb4f7ff0f602cc6d8ad2b6e5259ad20c709f2bc1eda8a97b8da8f1"
+        },
+        "18": {
+          "count": 359,
+          "sha256": "6e10d6cad3fec5a82a08b8fb63b67acb0f1d3b9033497f986350ab8dccae6109"
+        }
+      },
+      "after": {
+        "4": {
+          "count": 1404,
+          "sha256": "18abd18298c965c952349a00725363c7ba09d70889b55553795a2c5b531b5e3b"
+        },
+        "9": {
+          "count": 2354,
+          "sha256": "52b242130fe6128454e61143378c4904d8c6c89f55912db5edb642deff730e84"
+        },
+        "10": {
+          "count": 2590,
+          "sha256": "cbd6f67ba71f18e86605799a9a237145706eb42f3fc478ded89d7dbbf95eb7cc"
+        },
+        "13": {
+          "count": 1232,
+          "sha256": "0e76803f35153df129e3611b15bddfb8c5f5582c4af2b860835fb7b517b709fa"
+        },
+        "14": {
+          "count": 2090,
+          "sha256": "d8c31f49b9b12c65f3f803cd4ea6346165cbd7bb32aafff9ea9be50bf458ae74"
+        },
+        "16": {
+          "count": 536,
+          "sha256": "032672248719a7a9feefaeb409c7c5020e378558e26585c2a2bb2048307a669c"
+        },
+        "17": {
+          "count": 587,
+          "sha256": "fae887afb9fb4f7ff0f602cc6d8ad2b6e5259ad20c709f2bc1eda8a97b8da8f1"
+        },
+        "18": {
+          "count": 359,
+          "sha256": "6e10d6cad3fec5a82a08b8fb63b67acb0f1d3b9033497f986350ab8dccae6109"
+        }
+      },
+      "changedRoutes": [
+        "4"
+      ],
+      "nearbyVisitCountsBefore": {
+        "21": {
+          "reducer": 9,
+          "curbFeed": 9
+        },
+        "41": {
+          "reducer": 9,
+          "curbFeed": 9
+        },
+        "53": {
+          "reducer": 18,
+          "curbFeed": 9
+        },
+        "116": {
+          "reducer": 9,
+          "curbFeed": 9
+        },
+        "150": {
+          "reducer": 9,
+          "curbFeed": 9
+        }
+      },
+      "nearbyVisitCountsAfter": {
+        "21": {
+          "reducer": 9,
+          "curbFeed": 9
+        },
+        "41": {
+          "reducer": 9,
+          "curbFeed": 9
+        },
+        "53": {
+          "reducer": 9,
+          "curbFeed": 9
+        },
+        "116": {
+          "reducer": 9,
+          "curbFeed": 9
+        },
+        "150": {
+          "reducer": 9,
+          "curbFeed": 9
+        }
+      },
+      "genuineElmYorkVisitsRetained": 9,
+      "genuineElmYorkClocksPreserved": true
+    },
+    "2026-10-04": {
+      "uniquePositionRows": 83319,
+      "rawSha256": "4c1d251c454b4bc1d31946e3b24b983afd4e901c8dfc7895e84e5b036ea7c157",
+      "before": {
+        "4": {
+          "count": 1702,
+          "sha256": "0426cdee6b3756ac9dcb0fa1bd54f041d7425f0e5ef280778194379f51c1064b"
+        },
+        "9": {
+          "count": 3245,
+          "sha256": "79bc3c4e476768ea35d97d2195a9dee26c9c5218a0b9b5f68bbdeac52af8cdc7"
+        },
+        "10": {
+          "count": 2547,
+          "sha256": "d970d8d1aad6dc29323ebd43f66547ed3be7f8650b0228af22dc42d39d44ac90"
+        },
+        "13": {
+          "count": 1227,
+          "sha256": "a1a8755c6807b12ae951259f10083aec9e1fff4cc85f0e39fc31278185060d09"
+        },
+        "14": {
+          "count": 2010,
+          "sha256": "bb7864b87f1487e3d5731fb513d910fa0a7538c87f71991d40d5b8e68a44e03d"
+        },
+        "16": {
+          "count": 541,
+          "sha256": "c53659a8051abc6ec065c353a1ae31b2fd6e45fbf33a72b454e374be4d2d0f90"
+        },
+        "17": {
+          "count": 587,
+          "sha256": "d2c65ebab6a326457aa5ed4f4f09f76e2da9a2d85204f150c72488c0c15c76e3"
+        },
+        "18": {
+          "count": 367,
+          "sha256": "0a5e40c59ab0ed2d2c247ba805d67aa9112f3b02df70c38accab4c1128862ff6"
+        }
+      },
+      "after": {
+        "4": {
+          "count": 1702,
+          "sha256": "caf18453729fcb3cd3c555da66e304732bb1510c1e9826dac786a7e03e67bcc1"
+        },
+        "9": {
+          "count": 3245,
+          "sha256": "79bc3c4e476768ea35d97d2195a9dee26c9c5218a0b9b5f68bbdeac52af8cdc7"
+        },
+        "10": {
+          "count": 2547,
+          "sha256": "d970d8d1aad6dc29323ebd43f66547ed3be7f8650b0228af22dc42d39d44ac90"
+        },
+        "13": {
+          "count": 1227,
+          "sha256": "a1a8755c6807b12ae951259f10083aec9e1fff4cc85f0e39fc31278185060d09"
+        },
+        "14": {
+          "count": 2010,
+          "sha256": "bb7864b87f1487e3d5731fb513d910fa0a7538c87f71991d40d5b8e68a44e03d"
+        },
+        "16": {
+          "count": 541,
+          "sha256": "c53659a8051abc6ec065c353a1ae31b2fd6e45fbf33a72b454e374be4d2d0f90"
+        },
+        "17": {
+          "count": 587,
+          "sha256": "d2c65ebab6a326457aa5ed4f4f09f76e2da9a2d85204f150c72488c0c15c76e3"
+        },
+        "18": {
+          "count": 367,
+          "sha256": "0a5e40c59ab0ed2d2c247ba805d67aa9112f3b02df70c38accab4c1128862ff6"
+        }
+      },
+      "changedRoutes": [
+        "4"
+      ],
+      "nearbyVisitCountsBefore": {
+        "21": {
+          "reducer": 11,
+          "curbFeed": 10
+        },
+        "41": {
+          "reducer": 11,
+          "curbFeed": 11
+        },
+        "53": {
+          "reducer": 22,
+          "curbFeed": 11
+        },
+        "116": {
+          "reducer": 11,
+          "curbFeed": 11
+        },
+        "150": {
+          "reducer": 11,
+          "curbFeed": 10
+        }
+      },
+      "nearbyVisitCountsAfter": {
+        "21": {
+          "reducer": 11,
+          "curbFeed": 10
+        },
+        "41": {
+          "reducer": 11,
+          "curbFeed": 11
+        },
+        "53": {
+          "reducer": 11,
+          "curbFeed": 11
+        },
+        "116": {
+          "reducer": 11,
+          "curbFeed": 11
+        },
+        "150": {
+          "reducer": 11,
+          "curbFeed": 10
+        }
+      },
+      "genuineElmYorkVisitsRetained": 11,
+      "genuineElmYorkClocksPreserved": true
+    },
+    "2026-10-14": {
+      "uniquePositionRows": 181142,
+      "rawSha256": "37b85c39dcd2e5c8c12ee52f675a51675c290a34fc5cefc7761721ff28b158af",
+      "before": {
+        "1": {
+          "count": 5479,
+          "sha256": "1955a26b723d4f8be08d877019a70fe930cf4142b5e9fdcbdb8173c9ab61282b"
+        },
+        "2": {
+          "count": 3926,
+          "sha256": "07159c86fad666aac11c0081ec33e8d3180c6c22c13201189ccbeeca876ac7a6"
+        },
+        "3": {
+          "count": 4690,
+          "sha256": "3924f7d757ef3d30c23b9a049b212cada1bd028f2a43a4e2aaf5c25a529b5f7d"
+        },
+        "8": {
+          "count": 3030,
+          "sha256": "d3fa180f2e67487a833d707dd2d2298b7f7dafa7c29217680986c0f46180a5c2"
+        },
+        "9": {
+          "count": 4811,
+          "sha256": "0867810db6e7a409c46423ad517f43d1425e01bf9e2baabd6a81ea9c04c61cd4"
+        },
+        "10": {
+          "count": 3732,
+          "sha256": "b7853774d4d4e9036650408a9561c990305d277f772acb343f3e9797c428bf34"
+        },
+        "13": {
+          "count": 1287,
+          "sha256": "626b109204ec5531f36128ab42c8db3241ca2b958858d0613fcda558cf85851a"
+        },
+        "14": {
+          "count": 1811,
+          "sha256": "85ff7eb6d2b7b98efc18241433e355d10d03082bb8ed4a44ef76d967d4f145a0"
+        },
+        "15": {
+          "count": 835,
+          "sha256": "9bd84ca299612c1378ff3a0d9a37de3a0f80ef71ca55290281a5b92e88dc9f6a"
+        },
+        "16": {
+          "count": 556,
+          "sha256": "15d25842b0ad3487354185f41488e898990f357155a31b2892d3b9b88c5f13c0"
+        },
+        "17": {
+          "count": 513,
+          "sha256": "389043eddf7af0f853f798744affdac9af347c0c8f6684b253fcb74eefeba8e9"
+        },
+        "19": {
+          "count": 602,
+          "sha256": "3de59266a274e575ba201b3638b1b09b4b9163f7e8e8baf9214dc07ef395252f"
+        }
+      },
+      "after": {
+        "1": {
+          "count": 5479,
+          "sha256": "1955a26b723d4f8be08d877019a70fe930cf4142b5e9fdcbdb8173c9ab61282b"
+        },
+        "2": {
+          "count": 3926,
+          "sha256": "07159c86fad666aac11c0081ec33e8d3180c6c22c13201189ccbeeca876ac7a6"
+        },
+        "3": {
+          "count": 4690,
+          "sha256": "3924f7d757ef3d30c23b9a049b212cada1bd028f2a43a4e2aaf5c25a529b5f7d"
+        },
+        "8": {
+          "count": 3030,
+          "sha256": "d3fa180f2e67487a833d707dd2d2298b7f7dafa7c29217680986c0f46180a5c2"
+        },
+        "9": {
+          "count": 4811,
+          "sha256": "0867810db6e7a409c46423ad517f43d1425e01bf9e2baabd6a81ea9c04c61cd4"
+        },
+        "10": {
+          "count": 3732,
+          "sha256": "b7853774d4d4e9036650408a9561c990305d277f772acb343f3e9797c428bf34"
+        },
+        "13": {
+          "count": 1287,
+          "sha256": "626b109204ec5531f36128ab42c8db3241ca2b958858d0613fcda558cf85851a"
+        },
+        "14": {
+          "count": 1811,
+          "sha256": "85ff7eb6d2b7b98efc18241433e355d10d03082bb8ed4a44ef76d967d4f145a0"
+        },
+        "15": {
+          "count": 835,
+          "sha256": "9bd84ca299612c1378ff3a0d9a37de3a0f80ef71ca55290281a5b92e88dc9f6a"
+        },
+        "16": {
+          "count": 556,
+          "sha256": "15d25842b0ad3487354185f41488e898990f357155a31b2892d3b9b88c5f13c0"
+        },
+        "17": {
+          "count": 513,
+          "sha256": "389043eddf7af0f853f798744affdac9af347c0c8f6684b253fcb74eefeba8e9"
+        },
+        "19": {
+          "count": 602,
+          "sha256": "3de59266a274e575ba201b3638b1b09b4b9163f7e8e8baf9214dc07ef395252f"
+        }
+      },
+      "changedRoutes": [],
+      "nearbyVisitCountsBefore": {
+        "21": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "41": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "53": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "116": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "150": {
+          "reducer": 0,
+          "curbFeed": 0
+        }
+      },
+      "nearbyVisitCountsAfter": {
+        "21": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "41": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "53": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "116": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "150": {
+          "reducer": 0,
+          "curbFeed": 0
+        }
+      },
+      "genuineElmYorkVisitsRetained": 0,
+      "genuineElmYorkClocksPreserved": true
+    },
+    "2026-10-15": {
+      "uniquePositionRows": 181832,
+      "rawSha256": "b0fdff7e9688bba9d05ba5e1b315c5e78cec0775857564987a6a5ca6ca8a4de0",
+      "before": {
+        "1": {
+          "count": 5652,
+          "sha256": "91c75f673f6cd547be7160a91bc3b7c0a8b497f82bfbc01712f25c81dd0b11cf"
+        },
+        "2": {
+          "count": 4023,
+          "sha256": "7ceaeba6f61cb94ed1d7cc642cd71547fd2806a3ed711012b2341179cfe3ffd0"
+        },
+        "3": {
+          "count": 4740,
+          "sha256": "6fd3711ef2e74cc10d09a5d5fd83b19400f8bb76e03b1d19ff1b1b6233958a50"
+        },
+        "8": {
+          "count": 2699,
+          "sha256": "3a1d24a315b978a077164eb43340f5f7a972687a160562afc53c3b89c506cced"
+        },
+        "9": {
+          "count": 4512,
+          "sha256": "fd6c1d32424b317d16e94eafaf1f2e701b68ea81b41ccf350d7a9545cee19d15"
+        },
+        "10": {
+          "count": 3610,
+          "sha256": "39bfeb2393b6be22c187c6b21db4cb963ae8be452f88e41e9e657f396466926f"
+        },
+        "13": {
+          "count": 1199,
+          "sha256": "4f1c1ad18efb886997f34c4e220f4e679ac5090de137d0554d4690c9802533b0"
+        },
+        "14": {
+          "count": 1994,
+          "sha256": "84d379d86b5a17fe37075ce7dca4cbe047c592a05bbda33bebe5c581cde8bf90"
+        },
+        "15": {
+          "count": 772,
+          "sha256": "c482627bbff6562a4d0ff4591a21b0ec04d4adfedcad3ce277c4af3b904fcef8"
+        },
+        "16": {
+          "count": 501,
+          "sha256": "0ae31b3511d00b7c2f24f934821fae34f01d635b20f0d6d7ba283e23dbb21101"
+        },
+        "17": {
+          "count": 559,
+          "sha256": "e6f10204f8961b27ab6478d35eed00b3f1765059ed7392cfabae805e4cb317fc"
+        },
+        "19": {
+          "count": 594,
+          "sha256": "5b0fd756b2e790f8d5602b0bb541a21f5b58a5efec5bc519f1a2f048266d3790"
+        }
+      },
+      "after": {
+        "1": {
+          "count": 5652,
+          "sha256": "91c75f673f6cd547be7160a91bc3b7c0a8b497f82bfbc01712f25c81dd0b11cf"
+        },
+        "2": {
+          "count": 4023,
+          "sha256": "7ceaeba6f61cb94ed1d7cc642cd71547fd2806a3ed711012b2341179cfe3ffd0"
+        },
+        "3": {
+          "count": 4740,
+          "sha256": "6fd3711ef2e74cc10d09a5d5fd83b19400f8bb76e03b1d19ff1b1b6233958a50"
+        },
+        "8": {
+          "count": 2699,
+          "sha256": "3a1d24a315b978a077164eb43340f5f7a972687a160562afc53c3b89c506cced"
+        },
+        "9": {
+          "count": 4512,
+          "sha256": "fd6c1d32424b317d16e94eafaf1f2e701b68ea81b41ccf350d7a9545cee19d15"
+        },
+        "10": {
+          "count": 3610,
+          "sha256": "39bfeb2393b6be22c187c6b21db4cb963ae8be452f88e41e9e657f396466926f"
+        },
+        "13": {
+          "count": 1199,
+          "sha256": "4f1c1ad18efb886997f34c4e220f4e679ac5090de137d0554d4690c9802533b0"
+        },
+        "14": {
+          "count": 1994,
+          "sha256": "84d379d86b5a17fe37075ce7dca4cbe047c592a05bbda33bebe5c581cde8bf90"
+        },
+        "15": {
+          "count": 772,
+          "sha256": "c482627bbff6562a4d0ff4591a21b0ec04d4adfedcad3ce277c4af3b904fcef8"
+        },
+        "16": {
+          "count": 501,
+          "sha256": "0ae31b3511d00b7c2f24f934821fae34f01d635b20f0d6d7ba283e23dbb21101"
+        },
+        "17": {
+          "count": 559,
+          "sha256": "e6f10204f8961b27ab6478d35eed00b3f1765059ed7392cfabae805e4cb317fc"
+        },
+        "19": {
+          "count": 594,
+          "sha256": "5b0fd756b2e790f8d5602b0bb541a21f5b58a5efec5bc519f1a2f048266d3790"
+        }
+      },
+      "changedRoutes": [],
+      "nearbyVisitCountsBefore": {
+        "21": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "41": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "53": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "116": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "150": {
+          "reducer": 0,
+          "curbFeed": 0
+        }
+      },
+      "nearbyVisitCountsAfter": {
+        "21": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "41": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "53": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "116": {
+          "reducer": 0,
+          "curbFeed": 0
+        },
+        "150": {
+          "reducer": 0,
+          "curbFeed": 0
+        }
+      },
+      "genuineElmYorkVisitsRetained": 0,
+      "genuineElmYorkClocksPreserved": true
+    }
+  },
+  "validation": {
+    "tests": 3815,
+    "files": 197,
+    "baselineRegressionFailures": 3,
+    "negativeControlsPassBoth": 4,
+    "collectorReplay": {
+      "incorrectOutboundStopFramesBefore": 13,
+      "incorrectOutboundStopFramesAfter": 0,
+      "restartAt": "2026-10-03T13:04:23.394Z",
+      "genuineReturnStandSec": 29.878,
+      "persistedElmYorkArrivals": 1,
+      "persistedElmYorkVisits": 1
+    }
+  },
+  "networkSha256": "b5e73ea920f172349e4a1d9d087f0d529a373292d354de96e1e62c0775f3edce",
+  "reproductionHarnessCrossCheck": "Committed replay harness matches October 3 baseline and candidate event digests exactly."
+}
