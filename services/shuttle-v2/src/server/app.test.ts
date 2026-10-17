@@ -17,6 +17,7 @@ import { buildApp } from "./app.js";
 import { PACE_KEY } from "./v1compat.js";
 import { resetRateLimits } from "./reports.js";
 import { ServerEta, type ServerEtaWire } from './serverEta.js';
+import type { EvaluationSource } from './evaluationSource.js';
 
 // A fake upstream that returns a fixed snapshot. The collector contract
 // is just "give me these three methods" so we don't need network access.
@@ -56,6 +57,40 @@ const routes: Route[] = [
 // Injected rather than read from $SHUTTLE_ADMIN_TOKEN so the suite doesn't
 // depend on (or leak into) the ambient environment.
 const TEST_ADMIN_TOKEN = "test-admin-token";
+
+describe('evaluation source authentication and protocol', () => {
+  it('requires the admin header and never caches source history', async () => {
+    for (const endpoint of ['/api/evaluation/seed', '/api/evaluation/inputs']) {
+      for (const headers of [{}, { 'x-admin-token': 'wrong' }]) {
+        const response = await app.request(endpoint, { headers });
+        expect(response.status).toBe(401); expect(response.headers.get('cache-control')).toBe('no-store');
+        expect(await response.json()).toEqual({ error: 'unauthorized' });
+      }
+    }
+  });
+  it('exports an empty-service seed without inventing a bus forecast', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(1_700_000_000_000);
+    try {
+      const response = await app.request('/api/evaluation/seed', { headers: { 'x-admin-token': TEST_ADMIN_TOKEN } });
+      expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('no-store');
+      const seed = await response.json() as ReturnType<EvaluationSource['seed']>; expect(seed.v).toBe(1); expect(seed.feed.buses).toEqual([]);
+      const bytes = Buffer.from(seed.history.data, 'base64'); expect(seed.history.bytes).toBe(bytes.length);
+      expect(seed.history.sha256).toBe(crypto.createHash('sha256').update(bytes).digest('hex'));
+      const batch = await app.request('/api/evaluation/inputs?epoch=' + seed.epoch + '&after=' + seed.cursor,
+        { headers: { 'x-admin-token': TEST_ADMIN_TOKEN } });
+      expect(batch.status).toBe(200); const data = await batch.json() as ReturnType<EvaluationSource['read']>; expect(data.frames).toEqual([]); expect(data.feed.buses).toEqual([]);
+    } finally { vi.useRealTimers(); }
+  });
+  it('returns fixed cursor and epoch errors without source bytes', async () => {
+    const headers = { 'x-admin-token': TEST_ADMIN_TOKEN };
+    for (const query of ['epoch=x&after=-1', 'epoch=x&after=0&limit=17', 'epoch=x&after=9007199254740992']) {
+      const response = await app.request('/api/evaluation/inputs?' + query, { headers });
+      expect(response.status).toBe(400); expect(await response.json()).toEqual({ error: 'evaluation_cursor' });
+    }
+    const epoch = await app.request('/api/evaluation/inputs?epoch=other&after=0', { headers });
+    expect(epoch.status).toBe(409); expect(await epoch.json()).toEqual({ error: 'evaluation_epoch' });
+  });
+});
 
 let tmpDir: string;
 let bundle: DbBundle;

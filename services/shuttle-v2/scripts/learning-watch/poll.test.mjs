@@ -47,6 +47,25 @@ describe('operational evidence rather than an accuracy verdict', () => {
     expect(codes(x)).toEqual(['publication-disabled', 'cycle-protocol', 'frozen-evidence']);
     delete x.state.champion; expect(() => codes(x)).not.toThrow();
   });
+  it('recognizes a coherent exact-source cycle and reports a changed seed/cursor identity', () => {
+    const x = healthy(), seedSha256 = 'b'.repeat(64);
+    x.state.forecastProtocol = 'served-control-v2'; x.state.source = { epoch: 'epoch', seedSha256, seedCursor: 10 };
+    x.frozen = structuredClone(x.state);
+    x.status.source = { epoch: 'epoch', seedSha256, cursor: 11, chain: 'c'.repeat(64),
+      sourceKey: x.state.sourceKey, build: x.state.productionBuild };
+    expect(codes(x)).toEqual([]);
+    x.status.source.cursor = 9; expect(codes(x)).toEqual(['source-protocol']);
+  });
+  it('allows verified empty service without inventing a control and still reports a refused cycle', () => {
+    const x = healthy(), seedSha256 = 'b'.repeat(64);
+    x.state.forecastProtocol = 'served-control-v2'; x.state.source = { epoch: 'epoch', seedSha256, seedCursor: 10 };
+    x.frozen = structuredClone(x.state); x.status.phase = 'calibration'; x.status.productionControl = null;
+    x.status.idleService = true; x.status.forecasts = { champion: 0, challenger: 0 };
+    x.status.source = { epoch: 'epoch', seedSha256, cursor: 10, chain: 'c'.repeat(64),
+      sourceKey: x.state.sourceKey, build: x.state.productionBuild };
+    expect(codes(x)).toEqual([]);
+    x.state.sourceRefusal = { reason: 'Missing required frame' }; expect(codes(x)).toEqual(['production-control']);
+  });
 });
 
 describe('spaced persistence and recovery', () => {

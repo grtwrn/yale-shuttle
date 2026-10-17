@@ -50,6 +50,8 @@ import { createArrivalHistory } from './arrivalHistory.js';
 import { createJourneyHistory } from './journeyHistory.js';
 import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
+import { EvaluationInputError, EvaluationInputs } from './evaluationInputs.js';
+import { EvaluationSource } from './evaluationSource.js';
 import { buildLiveSnapshot } from "./snapshot.js";
 import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
 import { createStopSkips } from "./stopSkips.js";
@@ -301,7 +303,13 @@ export function buildApp(opts: AppOptions): Hono {
   if (serverEta && process.env.SHUTTLE_K10_TRIAL !== '0') serverEta.useK10Trial(at => opts.collector.k10Evidence(at));
   // Stops the buses are skipping right now, from the collector's own visits
   // (unionskip20261003). Re-read once a minute; absent while there are none.
-  const busesJson = createBusesPayloadCache(opts.collector, modelParams, serverEta, createStopSkips(opts.bundle.sqlite));
+  const evaluationInputs = new EvaluationInputs();
+  const busesJson = createBusesPayloadCache(opts.collector, modelParams, serverEta, createStopSkips(opts.bundle.sqlite),
+    (version, at, json, context) => {
+      try { if (at === null || context === null) evaluationInputs.fail('Production model observation/context failed'); else evaluationInputs.append(version, at, json, context); }
+      catch { evaluationInputs.fail('Production observation capture failed'); }
+    });
+  const evaluationSource = new EvaluationSource(serverEta, () => busesJson(true), evaluationInputs, resolveEstimatorVersion, now);
   if (serverEta) {
     // Priming the cache on the collector's own poll is what steps the belief:
     // it must advance on every observation, not only when a rider happens to
@@ -822,6 +830,26 @@ export function buildApp(opts: AppOptions): Hono {
     }
     await next();
   };
+
+  app.use('/api/evaluation/*', async (c, next) => { c.header('Cache-Control', 'no-store'); await next(); });
+  app.get('/api/evaluation/seed', requireAdmin, c => {
+    try { return c.json(evaluationSource.seed()); }
+    catch { return c.json({ error: 'evaluation_unavailable' }, 503); }
+  });
+  app.get('/api/evaluation/inputs', requireAdmin, c => {
+    const epoch = c.req.query('epoch'), after = c.req.query('after'), limit = c.req.query('limit');
+    try {
+      if (epoch === undefined && after === undefined && limit === undefined) return c.json(evaluationSource.head());
+      if (!epoch || !after || !/^\d+$/.test(after) || !Number.isSafeInteger(Number(after))
+        || (limit !== undefined && (!/^\d+$/.test(limit) || !Number.isSafeInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 16)))
+        return c.json({ error: 'evaluation_cursor' }, 400);
+      return c.json(evaluationSource.read(epoch, Number(after), limit === undefined ? 16 : Number(limit)));
+    } catch (error) {
+      if (error instanceof EvaluationInputError && error.code !== 'unavailable')
+        return c.json({ error: 'evaluation_' + error.code }, error.code === 'cursor' ? 400 : 409);
+      return c.json({ error: 'evaluation_unavailable' }, 503);
+    }
+  });
 
   /**
    * Mint a stats-session cookie value. The signature covers the expiry stamp,

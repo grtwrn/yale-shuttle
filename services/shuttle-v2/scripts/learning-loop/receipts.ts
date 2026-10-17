@@ -1,0 +1,62 @@
+import { digest, initialSourceChain, modelKey, nextSourceChain, validateExactFrame } from './stream';
+import { productionControlInputValid, UNIT } from './lib.mjs';
+
+/** Rebuild the full seed -> input chain from retained HTTP receipts, not from
+ * row annotations. Only small digests and requested sample cursors are kept. */
+export function verifyExactReceipts(state: any, rows: any[], records: Iterable<any>, seed: any) {
+  const seedSha256 = digest(JSON.stringify(seed));
+  if (seedSha256 !== state.source?.seedSha256 || seed.build !== state.productionBuild || seed.epoch !== state.source.epoch
+    || seed.cursor !== state.source.seedCursor || seed.at !== state.source.seedAt || state.source.seedReceivedAt > state.startedAt
+    || modelKey(seed.modelParams) !== modelKey(state.champion)) throw Error('Original source seed identity is missing or changed');
+  let cursor = seed.cursor, at = seed.at, version = seed.observationVersion, chain = initialSourceChain(seed, seedSha256, state.sourceKey);
+  if (chain !== state.source.initialChain) throw Error('Original source chain changed');
+  const needed = new Set(rows.map(r => r.champion?.control?.source?.cursor)), chains = new Map<number, any>();
+  const recent = new Map<number, string>(), controls = new Map<string, any[]>(), inputs = new Set<string>();
+  for (const row of rows) {
+    if (!row.inputHash) throw Error('Missing exact forecast input receipt');
+    const group = controls.get(row.inputHash) ?? []; group.push(row); controls.set(row.inputHash, group); inputs.add(row.inputHash);
+    if (row.det !== null) {
+      if (!row.arrivalInputHash || !row.outcomeInputHash) throw Error('Missing exact curb outcome receipts');
+      inputs.add(row.arrivalInputHash); inputs.add(row.outcomeInputHash);
+    }
+  }
+  for (const { raw, input } of records) {
+    const hash = digest(raw);
+    if (controls.has(hash)) {
+      for (const row of controls.get(hash)!) if (!productionControlInputValid(row, input)) throw Error('Exact control differs from its retained HTTP input');
+      controls.delete(hash);
+    }
+    inputs.delete(hash);
+    const packet = input.source;
+    if (!packet || packet.v !== 1 || packet.epoch !== seed.epoch || packet.build !== seed.build
+      || !Number.isSafeInteger(packet.cursor) || !Number.isSafeInteger(packet.latest) || packet.latest < packet.cursor
+      || packet.hasMore !== (packet.cursor < packet.latest) || !Array.isArray(packet.frames) || packet.frames.length > 16
+      || (packet.hasMore ? packet.feed !== null : !packet.feed)) throw Error('Invalid retained exact source packet');
+    let within = packet.cursor - packet.frames.length;
+    for (const frame of packet.frames) {
+      if (frame.seq !== ++within || frame.seq <= seed.cursor) throw Error('Invalid retained source sequence');
+      validateExactFrame(frame, state.champion);
+      const fingerprint = digest(JSON.stringify([frame.seq, frame.at, frame.observationVersion, frame.sha256, frame.contextSha256]));
+      if (frame.seq <= cursor) {
+        if (recent.get(frame.seq) !== fingerprint) throw Error('Conflicting or unretained duplicate source frame');
+        continue;
+      }
+      if (frame.seq !== cursor + 1 || frame.at <= at || frame.observationVersion <= version) throw Error('A required exact source observation is missing');
+      cursor = frame.seq; at = frame.at; version = frame.observationVersion; chain = nextSourceChain(chain, frame); recent.set(cursor, fingerprint);
+      while (recent.size > 256) recent.delete(recent.keys().next().value!);
+      if (needed.has(cursor)) chains.set(cursor, { at, chain, sha256: frame.sha256, contextSha256: frame.contextSha256, observationVersion: frame.observationVersion });
+    }
+    if (packet.cursor > cursor) throw Error('HTTP cursor advanced without retained model input');
+  }
+  if (inputs.size || controls.size) throw Error('Required exact forecast/outcome HTTP inputs are missing');
+  for (const row of rows) {
+    const s = row.champion?.control?.source, recorded = s && chains.get(s.cursor);
+    const candidate = { version: state.id, params: { ...state.candidate.params, CONFORMAL: row.phase === 'calibration' ? UNIT : state.candidate.params.CONFORMAL } };
+    if (!recorded || s.seedSha256 !== seedSha256 || s.epoch !== seed.epoch || s.build !== seed.build || s.sourceKey !== state.sourceKey
+      || Object.entries(recorded).some(([key, value]) => s[key] !== value)
+      || s.championModel !== modelKey(state.champion) || s.challengerModel !== modelKey(candidate)
+      || row.champion.runtimeIntervals !== true || (!row.challenger?.missing && row.challenger?.runtimeIntervals !== true))
+      throw Error('Sample is not bound to the frozen seed, complete source chain and actual runtime models');
+  }
+  return { framesVerified: cursor - seed.cursor, lastCursor: cursor, sampledCursorsVerified: chains.size };
+}

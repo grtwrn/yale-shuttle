@@ -444,6 +444,8 @@ export function createBusesPayloadCache(
    * and with nothing to report the bytes are unchanged.
    */
   stopSkips?: ((net: TransitNetwork, nowMs: number) => StopSkipsWire | null) | null,
+  recordObservation?: ((version: number, at: number | null, json: string,
+    context: import('./etaEvaluationContext.js').EtaEvaluationContext | null) => void) | null,
 ): (trial?: boolean) => string {
   let cachedVersion = -1;
   let cachedParamsVersion = -1;
@@ -477,6 +479,12 @@ export function createBusesPayloadCache(
     cachedJson = JSON.stringify(payload);
     const trialWire = serverEta?.contribute(payload as unknown as EtaPayloadView, collector.observationVersion(), nowMs, true);
     cachedTrialJson = trialWire ? JSON.stringify({ ...payload, server_eta: trialWire }) : cachedJson;
+    // First immutable model-time payload, not a later cache-age rebuild.
+    // Diagnostic capture failure must never break the public bus response.
+    if (recordObservation && serverEta) {
+      const at = serverEta.evaluationClock();
+      try { recordObservation(collector.observationVersion(), at, cachedTrialJson, serverEta.evaluationContext()); } catch { /* source owns its refusal */ }
+    }
     cachedAt = nowMs;
     return trial ? cachedTrialJson : cachedJson;
   };

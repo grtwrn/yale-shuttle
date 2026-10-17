@@ -54,6 +54,8 @@ export const DISTRIBUTION_QUANTILES = Array.from({ length: 50 }, (_, i) => (i + 
 export interface StopArrival {
   /** Equal-mass quantile dots from the priced mixture, with display corrections. */
   distribution?: number[] | undefined;
+  /** Diagnostic provenance for interval fitting; omitted by ordinary callers. */
+  intervalConformal?: { low: boolean; high: boolean } | undefined;
   stopId: number;
   /** 0 = the next time the bus reaches the stop, 1 = the time after. */
   occurrence: number;
@@ -731,7 +733,7 @@ export function priceRoute(
     const sid = stops[lead.standingAt]!;
     occ.set(lead.standingAt, 1);
     if (targetStopIds.has(sid)) {
-      out.push({ ...(includeDistribution ? { distribution: DISTRIBUTION_QUANTILES.map(() => 0) } : {}), stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
+      out.push({ ...(includeDistribution ? { distribution: DISTRIBUTION_QUANTILES.map(() => 0), intervalConformal: { low: false, high: false } } : {}), stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
     }
   }
   for (let h = 1; h <= 2 * N; h++) {
@@ -927,6 +929,7 @@ export function priceRoute(
     });
     out.push({
       ...(distribution ? { distribution } : {}),
+      ...(includeDistribution ? { intervalConformal: { low: !rawLower, high: !rawUpper } } : {}),
       stopId: sid,
       occurrence: o,
       stopsAhead: h,

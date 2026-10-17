@@ -27,15 +27,26 @@ export function inspect({ state, status, frozen, observer }, now = Date.now()) {
   if (!fresh(stamp(status?.lastInputAt), now, 60000)) add('distinct-input', 'The learning observer has not consumed a distinct input recently.');
   if (status?.error) add('observer-error', 'The learning observer reports an error; inspect its retained status and event journal.');
   if (status?.publicationEnabled !== true) add('publication-disabled', 'Publication is disabled on the supervised live learning observer.');
-  if (cycleId(state) === 'unknown' || state?.version !== 2 || state?.forecastProtocol !== 'served-control-v1'
+  if (cycleId(state) === 'unknown' || state?.version !== 2 || !['served-control-v1','served-control-v2'].includes(state?.forecastProtocol)
     || !/^[a-f0-9]{64}$/.test(state?.sourceKey ?? '') || status?.cycle !== state?.id
     || status?.champion !== state?.champion?.version) add('cycle-protocol', 'The live cycle and status do not identify the supported frozen evaluation protocol.');
   if (!frozen || frozen.id !== state?.id || frozen.sourceKey !== state?.sourceKey
     || frozen.productionBuild !== state?.productionBuild || frozen.startedAt !== state?.startedAt
     || identityHash(frozen.champion ?? null) !== identityHash(state?.champion ?? null)) add('frozen-evidence', 'The active cycle does not match its retained frozen champion/source identity.');
+  if (state?.forecastProtocol === 'served-control-v2') {
+    const source = state.source, live = status?.source, hash = v => /^[a-f0-9]{64}$/.test(v ?? '');
+    if (!source || !hash(source.seedSha256) || frozen?.source?.seedSha256 !== source.seedSha256
+      || !live || live.epoch !== source.epoch || live.seedSha256 !== source.seedSha256
+      || live.build !== state.productionBuild || live.sourceKey !== state.sourceKey
+      || !Number.isSafeInteger(live.cursor) || live.cursor < source.seedCursor || !hash(live.chain))
+      add('source-protocol', 'The exact input cursor and frozen seed identity are missing or inconsistent.');
+  }
+  const idle = state?.forecastProtocol === 'served-control-v2' && status?.idleService === true
+    && status?.forecasts?.champion === 0 && status?.forecasts?.challenger === 0;
   if (state?.protocolFailures?.count > 0 || status?.protocolFailures?.count > 0
+    || state?.sourceRefusal || status?.sourceRefusal
     || (['calibration', 'test'].includes(status?.phase)
-      && (!status?.productionControl || status.productionControl.missing > 0 || status.productionControl.mismatched > 0)))
+      && ((!idle && !status?.productionControl) || status?.productionControl?.missing > 0 || status?.productionControl?.mismatched > 0)))
     add('production-control', 'The prospective cycle has an observed production-control failure and cannot certify publication.');
   return issues;
 }

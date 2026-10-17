@@ -19,6 +19,12 @@ import { applyK10Trial } from './k10Trial.js';
 import { applyBlueK10Trial } from './blueK10Trial.js';
 import { applyRouteK10Trial } from './routeK10Trial.js';
 import type { K10Evidence } from '../collector/k10Clock.js';
+import { validEvaluationContext, type EtaEvaluationContext } from './etaEvaluationContext.js';
+
+export interface EvaluationForecast extends UpcomingArrival {
+  forecastSource: 'base' | 'fixed-k10';
+  conformalBounds: { low: boolean; high: boolean };
+}
 
 export const RECOVERY_MAX_AGE_MS = 120_000;
 export interface EtaCheckpointStore { load(): Uint8Array | null; save(value: Uint8Array): void }
@@ -108,11 +114,111 @@ export class ServerEta {
   private routeStops: Record<string, number[]> = {};
   private currentBuses: readonly BusData[] = [];
   private readonly onBaseForecasts: ((rows: readonly UpcomingArrival[]) => void) | undefined;
+  private computedAt: number | null = null;
+  private stepReady = false;
+  private lastModelParams: unknown = null;
+  private context: EtaEvaluationContext | null = null;
+  private replayContext: EtaEvaluationContext | null = null;
+  private evaluationRows: EvaluationForecast[] | null = null;
+  private readonly onServedForecasts: ((rows: readonly EvaluationForecast[]) => void) | undefined;
 
-  constructor(opts: { routes: readonly string[]; log?: Log; onBaseForecasts?: (rows: readonly UpcomingArrival[]) => void }) {
+  constructor(opts: { routes: readonly string[]; log?: Log; onBaseForecasts?: (rows: readonly UpcomingArrival[]) => void;
+    onServedForecasts?: (rows: readonly EvaluationForecast[]) => void }) {
     this.served = new Set(opts.routes);
     this.log = opts.log ?? (() => {});
     this.onBaseForecasts = opts.onBaseForecasts;
+    this.onServedForecasts = opts.onServedForecasts;
+  }
+
+  evaluationClock(): number | null { return this.stepReady ? this.computedAt : null; }
+  evaluationContext(): EtaEvaluationContext | null { return this.context ? structuredClone(this.context) : null; }
+  evaluationForecasts(): readonly EvaluationForecast[] { return this.evaluationRows ?? []; }
+  evaluationWire(buses: readonly BusData[], now: number): ServerEtaWire | null {
+    const wire = this.filterToLive(this.trialWire, buses, now);
+    return wire ? { ...wire, servedAt: now } : null;
+  }
+
+  /** Replay configuration belongs to this engine, never to process.env or
+   * another arm. The next observation must use this context's exact clock. */
+  useEvaluationContext(context: EtaEvaluationContext): boolean {
+    if (!validEvaluationContext(context, context?.at)) return false;
+    this.replayContext = structuredClone(context); return true;
+  }
+
+  /** Read-only history for a new fork, or this engine's own complete cache for
+   * restart recovery. One serialization preserves lastObs/observed identity. */
+  captureEvaluation(kind: 'history' | 'runtime' = 'history'):
+    { at: number; modelParams: unknown; bytes: Uint8Array } | null {
+    if (!this.stepReady || this.computedAt === null || !validEvaluationContext(this.context, this.computedAt)) return null;
+    try {
+      const bytes = serialize({ v: 1, kind, at: this.computedAt, modelParams: this.lastModelParams,
+        served: [...this.served], store: this.store, seen: this.seenAt, observed: this.observed, context: this.context,
+        ...(kind === 'runtime' ? { cache: { lastVersion: this.lastVersion, wire: this.wire, trialWire: this.trialWire,
+          routeStops: this.routeStops, currentBuses: this.currentBuses, steps: this.steps, failures: this.failures,
+          evaluationRows: this.evaluationRows } } : {}) });
+      if (bytes.byteLength > 4 * 1024 * 1024) return null;
+      return { at: this.computedAt, modelParams: structuredClone(this.lastModelParams), bytes };
+    } catch { return null; }
+  }
+
+  /** A fork inherits only information available before its first forecast.
+   * Resume restores that arm's own forecasts, never the other arm's output. */
+  restoreEvaluation(bytes: Uint8Array, kind: 'history' | 'runtime', now = Date.now(),
+    maxAgeMs = kind === 'history' ? RECOVERY_MAX_AGE_MS : 600000): boolean {
+    try {
+      if (!bytes.byteLength || bytes.byteLength > 4 * 1024 * 1024 || !Number.isFinite(now)
+        || !Number.isFinite(maxAgeMs) || maxAgeMs < 0) return false;
+      const saved = deserialize(Buffer.from(bytes));
+      if (saved.v !== 1 || saved.kind !== kind || !Number.isFinite(saved.at) || saved.at > now + 5000
+        || now - saved.at > maxAgeMs || !(saved.store instanceof Map) || saved.store.size > 200
+        || !(saved.seen instanceof Map) || saved.seen.size > 400
+        || !(saved.observed instanceof Map) || saved.observed.size > 200
+        || !validEvaluationContext(saved.context, saved.at)
+        || !Array.isArray(saved.served) || JSON.stringify([...saved.served].sort()) !== JSON.stringify([...this.served].sort())) return false;
+      for (const [key, entry] of saved.store) {
+        const b = entry?.belief;
+        if (typeof key !== 'string' || !b || typeof b.ringKey !== 'string'
+          || !(b.p instanceof Float64Array) || !(b.restMask instanceof Uint8Array)
+          || !(b.standLeg instanceof Int32Array) || !(b.zoneKey instanceof Int32Array)
+          || !Number.isFinite(b.seenAt) || !Number.isFinite(saved.seen.get(key))) return false;
+      }
+      for (const [key, bus] of saved.observed) if (typeof key !== 'string' || !bus || typeof bus.bus_name !== 'string'
+        || !Number.isFinite(bus.route_id) || !Number.isFinite(bus.lat) || !Number.isFinite(bus.lon)
+        || (bus.observed_at !== undefined && !Number.isFinite(bus.observed_at))) return false;
+      const wireValid = (w: any) => w === null || Boolean(w && w.v === 2 && Number.isFinite(w.at) && Number.isFinite(w.servedAt)
+        && Array.isArray(w.buses) && w.buses.length <= 200 && Array.isArray(w.rows) && w.rows.length <= 30000
+        && w.rows.every((r: any) => Array.isArray(r) && r.length === 9 && r.every(Number.isFinite)));
+      const cache = saved.cache;
+      const evaluationRowsValid = (rows: any) => rows === null || (Array.isArray(rows) && rows.length <= 30000
+        && rows.every(r => r && typeof r.busName === 'string' && typeof r.routeLabel === 'string'
+          && [r.stopId, r.stopsAhead].every(Number.isSafeInteger) && [r.eta, r.low, r.high].every(Number.isFinite)
+          && typeof r.conformalBounds?.low === 'boolean' && typeof r.conformalBounds?.high === 'boolean'
+          && (r.forecastSource === 'base' || (r.forecastSource === 'fixed-k10' && !r.conformalBounds.low && !r.conformalBounds.high))));
+      if (kind === 'runtime' && (!cache || !Number.isFinite(cache.lastVersion) || !wireValid(cache.wire) || !wireValid(cache.trialWire)
+        || !cache.routeStops || typeof cache.routeStops !== 'object' || !Array.isArray(cache.currentBuses)
+        || !Number.isSafeInteger(cache.steps) || cache.steps < 0 || !Number.isSafeInteger(cache.failures) || cache.failures < 0
+        || !evaluationRowsValid(cache.evaluationRows))) return false;
+      // Validate the entire snapshot before replacing any live memory.
+      this.store.clear(); this.seenAt.clear(); this.observed.clear();
+      for (const [key, entry] of saved.store) this.store.set(key, entry);
+      for (const [key, at] of saved.seen) this.seenAt.set(key, at);
+      for (const [key, bus] of saved.observed) this.observed.set(key, bus);
+      this.computedAt = saved.at; this.lastModelParams = saved.modelParams; this.stepReady = true;
+      this.context = saved.context; this.replayContext = null;
+      this.restored = saved.store.size;
+      if (kind === 'runtime') {
+        this.lastVersion = cache.lastVersion; this.wire = cache.wire; this.trialWire = cache.trialWire;
+        this.routeStops = cache.routeStops; this.currentBuses = cache.currentBuses;
+        this.steps = cache.steps; this.failures = cache.failures;
+        this.evaluationRows = cache.evaluationRows;
+      } else {
+        // The local replay uses model timestamps as its observation version.
+        this.lastVersion = saved.at; this.wire = null; this.trialWire = null;
+        this.routeStops = {}; this.currentBuses = [];
+        this.evaluationRows = null;
+      }
+      return true;
+    } catch { return false; }
   }
 
   /** Versioned local checkpoint preserves the posterior and display history
@@ -161,19 +267,41 @@ export class ServerEta {
     try {
       if (version !== this.lastVersion) {
         this.lastVersion = version;
+        this.stepReady = false;
         this.wire = this.recompute(payload, now);
+        this.computedAt = now;
+        this.lastModelParams = structuredClone(payload.model_params ?? null);
         this.trialWire = this.wire;
-        if (this.wire && this.trialEvidence) {
+        if (this.replayContext && this.replayContext.at !== now) throw Error('Replay context clock differs from model observation');
+        const policy = this.replayContext?.trial;
+        const source = policy ? (policy.enabled ? () => new Map(policy.evidence) : undefined) : this.trialEvidence;
+        const route = policy?.route ?? (process.env.SHUTTLE_ROUTE_K10 !== '0');
+        const blue = policy?.blue ?? (process.env.SHUTTLE_BLUE_K10 !== '0');
+        this.context = { v: 1, at: now, trial: { enabled: Boolean(source), route, blue, evidence: [] } };
+        if (this.wire && source) {
           try {
-            const evidence = this.trialEvidence(now);
-            this.trialWire = applyK10Trial(this.wire, evidence, payload.routes['3']);
-            if (process.env.SHUTTLE_ROUTE_K10 !== '0')
-              this.trialWire = applyRouteK10Trial(this.trialWire, evidence, payload.routes, process.env.SHUTTLE_BLUE_K10 !== '0');
-            else if (process.env.SHUTTLE_BLUE_K10 !== '0')
-              this.trialWire = applyBlueK10Trial(this.trialWire, evidence, payload.routes);
+            const evidence = source(now);
+            try {
+              this.context.trial.evidence = structuredClone([...evidence]);
+              if (!validEvaluationContext(this.context, now)) this.context = null;
+            } catch { this.context = null; }
+            const forecastKey = (label: string, name: string, stop: number, hops: number) => `${label}|${name.replace(/^#/, '')}|${stop}|${hops}`;
+            const raw = this.evaluationRows && new Map(this.evaluationRows.map(r => [forecastKey(r.routeLabel, r.busName, r.stopId, r.stopsAhead), r]));
+            const onReplace = raw ? (row: ServerEtaRow, p: { eta: number; low: number; high: number; distribution: number[] }) => {
+              const bus = this.wire!.buses[row[0]]!;
+              const target = raw.get(forecastKey(bus[1], bus[0], row[1], row[5]));
+              if (!target) throw Error('Missing raw row for served route adjustment');
+              Object.assign(target, p, { conformalBounds: { low: false, high: false },
+                intervalConformal: { low: false, high: false }, forecastSource: 'fixed-k10' });
+            } : undefined;
+            this.trialWire = applyK10Trial(this.wire, evidence, payload.routes['3'], undefined, onReplace);
+            if (route) this.trialWire = applyRouteK10Trial(this.trialWire, evidence, payload.routes, blue, onReplace);
+            else if (blue) this.trialWire = applyBlueK10Trial(this.trialWire, evidence, payload.routes, undefined, onReplace);
           }
-          catch (err) { this.log('server_eta.k10_failed', { error: String(err) }); }
+          catch (err) { this.context = null; this.log('server_eta.k10_failed', { error: String(err) }); }
         }
+        this.onServedForecasts?.(this.evaluationRows ?? []);
+        this.stepReady = true;
         this.saveCheckpoint(now);
       }
       const wire = this.filterToLive(trial ? this.trialWire : this.wire, payload.buses, now);
@@ -271,6 +399,8 @@ export class ServerEta {
     // Shadow evaluation needs the same caller semantics without rounding the
     // quantiles before interval fitting. Production has no observer installed.
     this.onBaseForecasts?.(arrivals);
+    this.evaluationRows = this.onServedForecasts
+      ? arrivals.map(row => ({ ...row, conformalBounds: row.intervalConformal ?? { low: true, high: true }, forecastSource: 'base' })) : null;
 
     this.markSeen(current, now);
     this.evict(now);

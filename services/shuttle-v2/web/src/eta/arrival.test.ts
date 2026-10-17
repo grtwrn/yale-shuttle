@@ -632,7 +632,8 @@ it('exports a non-Gaussian mixture without changing the priced forecasts or thei
   b.p[ring.C + ring.stopCell[2]! + 5] = 0.5;
   const without = priceRoute(b, ring, tables, STOPS, new Set([2]), 5000, 0.5);
   const withDots = priceRoute(b, ring, tables, STOPS, new Set([2]), 5000, 0.5, undefined, undefined, true);
-  expect(withDots.map(({ distribution: _, ...row }) => row)).toEqual(without);
+  expect(withDots.map(({ distribution: _, intervalConformal: _policy, ...row }) => row)).toEqual(without);
+  expect(withDots.every(r => r.intervalConformal?.low && r.intervalConformal?.high)).toBe(true);
   const dots = withDots[0]!.distribution!;
   expect(dots).toHaveLength(50);
   expect(dots.every((v, i) => Number.isFinite(v) && v >= 0 && (!i || v >= dots[i - 1]!))).toBe(true);
