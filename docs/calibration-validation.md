@@ -1,5 +1,18 @@
 # Calibration research and promotion gates
 
+Updated 2026-10-11: automatic learning now has a prospective path in
+`scripts/learning-loop/`. It freezes the currently published champion and a
+candidate fitted from already captured archives, records both forecasts on the
+live production input before outcomes, and assigns bus/stop visit identity
+before arrival. Two full ET calibration dates precede interval freezing and at
+least three untouched later test dates. Promotion checks paired route/horizon
+coverage, tails, error, matching and WIS, plus hierarchical day/bus bootstrap
+uncertainty. Every training route needs test support, including weekend lines.
+Read [the observer workflow](../services/shuttle-v2/scripts/learning-loop/README.md)
+for supervision, receipts and the exact feed-based truth definition. The legacy
+historical replay described below still refuses automatic publication because
+its original provenance limitations have not been retroactively solved.
+
 Updated 2026-09-17 after the statistical review. The existing served model stays
 active. No coefficients were fitted or published by this change. Ordinary live
 calibration-table refreshes and warm bus tracking remain active.
