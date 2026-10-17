@@ -39,6 +39,17 @@ computes the new forecasts.
 The complete served output is checked after every exact input and at live
 sampling. Sampled raw quantiles also attest the same vehicle, stop and future
 traversal within the existing half-second wire-rounding tolerance.
+Sampled records also keep all 50 internal model quantiles and their exact
+probability grid, copied separately for each arm at model time. A secondary
+mean pinball-loss diagnostic ages and clips those stored quantiles once and
+compares paired observations by route and reference horizon. It reports the
+whole cohort, including missing legacy distributions, malformed arrays,
+unknown outcomes and unverified controls. The existing median/central-80%
+WIS, support, coverage, route, tail, day/bus uncertainty and publication gates
+remain unchanged. The diagnostic cannot authorize promotion. These are
+retained internal model outputs associated with the source/model receipt;
+interpreting a discrepancy still requires replay and outcome review.
+
 Reference rows, raw quantiles, cache age and clocks accompany every sampled
 control and are bound to the original retained HTTP input, frozen seed, full
 source hash chain and runtime model identities. The chain is reconstructed

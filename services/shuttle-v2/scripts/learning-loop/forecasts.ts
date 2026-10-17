@@ -4,6 +4,7 @@ import { applyModelParams } from '../../web/src/eta/params';
 import { ETA_MAX_AGE_MS } from '../../web/src/etaSource';
 import { ROUTE_LISTS } from '../../web/src/routes';
 import { isBusInService } from '../../web/src/schedule';
+import { DISTRIBUTION_QUANTILES } from '../../web/src/eta/arrival';
 
 interface ArmState { engine: ServerEta; rows: () => readonly EvaluationForecast[]; lastAt: number }
 export interface ForecastStores { champion: ArmState; challenger: ArmState }
@@ -87,7 +88,8 @@ export function forecastArms(feed: any, now: number, champion: any, challenger: 
       const cfg = ROUTE_LISTS.find(c => c.label === row.routeLabel)!;
       const bus = feed.buses.find((b: any) => norm(b.bus_name) === norm(row.busName) && cfg.busRouteIds.includes(b.route_id));
       if (!bus || !isBusInService(bus, now)) continue;
-      const raw = { eta: row.eta, low: row.low, high: row.high };
+      const raw = { eta: row.eta, low: row.low, high: row.high,
+        ...(row.distribution ? { distribution: [...row.distribution], distributionProbabilities: [...DISTRIBUTION_QUANTILES] } : {}) };
       const forecast = { bus, stop: row.stopId, stopsAhead: row.stopsAhead, label: row.routeLabel, raw, ageSec,
         ...(exact ? { forecastSource: row.forecastSource, conformalBounds: row.conformalBounds, runtimeIntervals: true } : {}),
         eta: Math.max(0, raw.eta - ageSec), low: raw.low - ageSec, high: Math.max(0, raw.high - ageSec) };

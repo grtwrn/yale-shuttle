@@ -5,6 +5,7 @@ import { ServerEta } from '../../src/server/serverEta';
 import { ROUTE_LISTS } from '../../web/src/routes';
 import { productionControlValid, productionControlInputValid } from './lib.mjs';
 import { resetModelParams } from '../../web/src/eta/params';
+import { DISTRIBUTION_QUANTILES } from '../../web/src/eta/arrival';
 import { registerRoutePaths } from '../../web/src/anchor';
 afterEach(()=>{resetModelParams();registerRoutePaths(null);});
 function framed(at:number, producer=new ServerEta({routes:ROUTE_LISTS.map(r=>r.label)})) {
@@ -122,4 +123,32 @@ it('retains unserved controls and notices visibility changes without adding sens
  expect(after.productionControl.missing).toBe(before.champion.length);
  expect(after.champion.every(p=>!productionControlValid(record(p,now+1000)))).toBe(true);
  expect(stores.champion.engine.stats().steps).toBe(1);
+});
+
+
+describe('retained model distributions',()=>{
+ it('retains each sampled engine distribution and its exact probability grid in both arms',()=>{
+  const stores=createForecastStores(),now=feed.buses[0]!.observed_at,current=framed(now);
+  const sampled=forecastArms(current,now,feed.model_params,feed.model_params,stores);
+  expect(sampled.champion.length).toBeGreaterThan(5);
+  for(const [name,rows]of [['champion',sampled.champion],['challenger',sampled.challenger]]as const)for(const p of rows){
+   const own=stores[name].engine.evaluationForecasts().find(r=>r.routeLabel===p.label&&r.busName.replace(/^#/,'')===p.bus.bus_name.replace(/^#/,'')&&r.stopId===p.stop&&r.stopsAhead===p.stopsAhead)!;
+   expect(p.raw.distribution).toEqual(own.distribution);
+   expect(p.raw.distributionProbabilities).toEqual(DISTRIBUTION_QUANTILES);
+   expect(p.raw.distribution).not.toBe(own.distribution);
+   expect(p.raw.distributionProbabilities).not.toBe(DISTRIBUTION_QUANTILES);
+  }
+ });
+ it('keeps raw quantiles at model time and separates the two retained arms from engine memory',()=>{
+  const stores=createForecastStores(),now=feed.buses[0]!.observed_at,current=framed(now);
+  const initial=forecastArms(current,now,feed.model_params,feed.model_params,stores);
+  const before=structuredClone(initial.champion);current.server_eta!.servedAt=now+10_000;
+  const aged=forecastArms(current,now+10_000,feed.model_params,feed.model_params,stores);
+  expect(aged.champion.length).toBe(before.length);
+  for(let i=0;i<aged.champion.length;i++){expect(aged.champion[i]!.ageSec).toBe(10);expect(aged.champion[i]!.raw.distribution).toEqual(before[i]!.raw.distribution);}
+  const p=aged.champion[0]!,other=aged.challenger.find(r=>r.bus.bus_id===p.bus.bus_id&&r.stop===p.stop)!;
+  const own=stores.champion.engine.evaluationForecasts().find(r=>r.routeLabel===p.label&&r.busName.replace(/^#/,'')===p.bus.bus_name.replace(/^#/,'')&&r.stopId===p.stop&&r.stopsAhead===p.stopsAhead)!;
+  const original=own.distribution![0];p.raw.distribution![0]=-999;
+  expect(own.distribution![0]).toBe(original);expect(other.raw.distribution![0]).toBe(original);
+ });
 });
