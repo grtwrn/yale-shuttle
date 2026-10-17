@@ -230,6 +230,7 @@ log("  ✓ healthy (migrations applied to an empty DB, collector polling)");
 await apiSmoke(STAGE_URL);
 await browserSmoke(STAGE_URL, { markAsTest: false });
 await browserRegression("stop-count notification browser regression", "scripts/stop-alert-controls-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "stop-alert-controls") } });
+await browserRegression("pickup reminder timing browser regression", "scripts/pickup-reminder-check.mjs", { env: { ...process.env, BOT_BASE_URL: STAGE_URL, BOT_OUT: path.join(stageDir, "pickup-reminder") } });
 await browserRegression("map pause wording browser regression", "scripts/map-pause-label-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "map-pause-labels") } });
 await browserRegression("route label readability browser regression", "scripts/route-readability-check.mjs", { env: { ...process.env, ROUTE_READABILITY_OUT: path.join(stageDir, "route-readability"), ROUTE_READABILITY_PRODUCTION_ASSETS: "0" } });
 await browserRegression("Blue pickup transition browser regression", "scripts/blue-pickup-fallback-check.mjs");
