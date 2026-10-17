@@ -62,6 +62,16 @@ BOT_WATCH_CYCLES=0 npm run mapbot:visual          # fast visual smoke (no watch 
 
 ---
 
+## Prospective learner health
+
+`node scripts/learning-watch/poll.mjs` checks the actual observer process,
+heartbeat, feed/distinct-input freshness, frozen cycle identity and publication
+refusals. The Mac runs it every minute as
+`com.grtwrn.yale-shuttle-learning-watch`. Three spaced failures queue a durable
+guardian incident; normal warmup mismatches and insufficient visit support do
+not. It changes no learner evidence, model or process. See
+[`learning-watch/README.md`](learning-watch/README.md) for limits and artifacts.
+
 ## Frozen Red component follow-up
 
 Run `red-research-watch.py` with the research venv's Python (numpy and scipy).
