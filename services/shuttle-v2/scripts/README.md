@@ -62,6 +62,44 @@ BOT_WATCH_CYCLES=0 npm run mapbot:visual          # fast visual smoke (no watch 
 
 ---
 
+## Frozen Red component follow-up
+
+Run `red-research-watch.py` with the research venv's Python (numpy and scipy).
+The Mac's `com.grtwrn.yale-shuttle-red-research` job runs at 04:10 ET, after
+the 03:40 archive, and once when installed. It executes the unchanged frozen
+October 1 component screen. Its results are diagnostic; it does not publish a
+model or replace the main prospective evaluation in `learning-loop/`.
+
+The older research runner's last result was October 9. A backfill on October 17
+added five service dates through October 16 and reproduced the original frozen
+test verdict exactly. The extension has 254 supported holds, 30 bus-day blocks
+and 932 correlated checkpoints across eleven dates. Its demand-proxy gain did
+not persist; the predeclared interaction and regularized arms warrant complete
+estimator replay. These dates have also appeared in other diagnostics and
+training. Extension results do not change the original frozen verdict or prove
+an accuracy gain in the current app. Weather-dependent arms use retained
+retrospective inputs, which need separate availability checks for live use.
+
+The check refuses frozen-source or weather drift, missing weather hours, a
+changed original test headline, and concurrent writers. It has a ten-minute
+screen deadline and preserves the last good snapshot on failure. It excludes
+the legacy rider extractor, which does not honor resumed-run accuracy exclusions
+and produced no matched scored samples in the isolated backfill.
+
+Private status and results live in
+`~/.openclaw/yale-shuttle-team/red-experiments/component-watch/`:
+`status.json`, two complete successful slots (`current`, `previous`), and one
+failed attempt. Each successful slot has a 256 MiB limit and retains the full
+screen, frozen source, weather bytes and selected manifests. Logs rotate at
+1 MiB with one previous tail. Preserve report and model-decision evidence in a
+separate audit directory before later checks rotate the successful slots.
+
+`RED_RESEARCH_DIR`, `RED_RESEARCH_SOURCE`, `RED_EXP_ARCHIVE`, `RED_EXP_WEATHER`
+and `RED_EXP_PY` override output, source and inputs. The default subprocess
+Python is the interpreter running the wrapper. Check the actual launchd exit
+status and `status.json` freshness; an old result alone does not prove a
+scheduled check is running. No research-frozen files are edited.
+
 # `id-churn-replay.ts` — detector replay for the vehicle-identity fix
 
 Offline, no browser, no server. Replays recorded `raw_positions` through the
