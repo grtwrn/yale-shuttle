@@ -20,10 +20,18 @@ export interface Finding {
   expected: number; actual: number | null;
 }
 export function auditDisplay(feed: AuditFeed, now: number) {
+  if (!feed || !Array.isArray(feed.buses)
+    || !feed.routes || typeof feed.routes !== 'object' || Array.isArray(feed.routes)
+    || !feed.stop_coords || typeof feed.stop_coords !== 'object' || Array.isArray(feed.stop_coords)) {
+    throw new Error('Invalid bus feed');
+  }
   const findings: Finding[] = [];
   const coverage = { buses: feed.buses.length, confirmedStands: 0, positions: 0, pickupCounts: 0, exitCounts: 0, nextStops: 0, foldedCountsSkipped: 0 };
   registerRoutePaths(feed.route_paths ?? null);
   try {
+    // A valid empty fleet has no displays or arrival estimates to compare.
+    // Report zero coverage explicitly; this is not evidence of ETA accuracy.
+    if (!feed.buses.length) return { activity: 'idle' as const, coverage, findings };
     if (!attachServerEta(feed.buses, feed.server_eta, now)) throw new Error('Missing, invalid, or expired server ETA snapshot');
     for (const cfg of ROUTE_LISTS) {
       const seq = mergedRouteStops(cfg, feed.routes);
@@ -68,6 +76,6 @@ export function auditDisplay(feed: AuditFeed, now: number) {
         }
       }
     }
-    return { coverage, findings };
+    return { activity: 'checking' as const, coverage, findings };
   } finally { registerRoutePaths(null); }
 }
