@@ -1,3 +1,5 @@
+import { rideExitNearby } from "./rideAlert";
+
 /** An index in the display list cannot distinguish repeated outbound/inbound stops. */
 export function isUnambiguousRideArrival(
   rawRoute: readonly number[] | undefined,
@@ -100,11 +102,13 @@ export function rideHeadline(s: {
   etaStr: string | null;
   holdText: string | null;
   alightPassed: boolean;
+  exitMeters?: number | null;
 }): string {
   if (!s.busFound) return "Looking for your bus…";
   if (s.stopsRemaining === null) return "Tracking your ride";
   if (s.alightPassed) return `May have passed ${s.alightName}${s.etaStr ? ` · back in ${s.etaStr}` : ""}`;
-  if (s.stopsRemaining <= 0) return `Arriving at ${s.alightName}`;
+  if (s.stopsRemaining <= 0) return rideExitNearby(s.exitMeters)
+    ? `Arriving at ${s.alightName}` : `Watch for ${s.alightName}`;
   const trail = s.holdText ?? s.etaStr;
   if (s.stopsRemaining === 1) return `Get off NEXT stop!${trail ? ` · ${trail}` : ""}`;
   if (s.stopsRemaining === 2) return `Get off in 2 stops!${trail ? ` · ${trail}` : ""}`;

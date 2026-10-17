@@ -1,7 +1,14 @@
-/** Keep an open get-off prompt current without sending another notification. */
-export function getOffAlertTitle(stopsRemaining: number | null): string | null {
+/** Match the 75 m proximity check used for observed stop presence. A route
+ * anchor can advance to the exit while the bus is still on its approach. */
+export function rideExitNearby(exitMeters: number | null | undefined): boolean {
+  return exitMeters != null && Number.isFinite(exitMeters) && exitMeters >= 0 && exitMeters <= 75;
+}
+
+/** Keep an open get-off prompt current without sending another notification.
+ * The route count alone cannot establish that the bus is at the stop. */
+export function getOffAlertTitle(stopsRemaining: number | null, exitMeters: number | null = null): string | null {
   if (stopsRemaining === null || stopsRemaining > 2) return null;
-  if (stopsRemaining <= 0) return "Get off here";
+  if (stopsRemaining <= 0) return rideExitNearby(exitMeters) ? "Get off here" : "Watch for your stop";
   return stopsRemaining === 1 ? "Get off at the next stop" : "Get off in 2 stops";
 }
 
@@ -76,8 +83,8 @@ export function rideBoarded(seen: boolean, row: number, callCount: number): bool
 }
 
 /** An already-open prompt must follow current evidence, including its loss. */
-export function getOffPromptTitle(stopsRemaining: number | null): string {
-  return getOffAlertTitle(stopsRemaining)
+export function getOffPromptTitle(stopsRemaining: number | null, exitMeters: number | null = null): string {
+  return getOffAlertTitle(stopsRemaining, exitMeters)
     ?? (stopsRemaining === null
       ? "Live stop position unavailable"
       : `Your stop is ${stopsRemaining} stops away`);
