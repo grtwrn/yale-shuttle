@@ -637,6 +637,20 @@ describe("getLiveBuses staleness", () => {
 });
 
 describe("reports", () => {
+  it('retains footer feedback screen evidence in the authenticated report context', async () => {
+    const screen = {v: 1, capturedAt: 123456, build: 'fixture-build', view: 'trip', tripDetail: true,
+      rows: [{mode: 'shuttle', route: 'Blue Day', boardStopId: 100, alightStopId: 117,
+        busName: '44', board: '~21 (17 – 28)', next: '~33 min', arrive: '10:20a – 10:35a',
+        legs: '🚶 4 min › 🚌 13 min', approaching: 'Approaching #48: <1 min'}], truncated: false};
+    const response = await app.request('/api/report', {method: 'POST', headers: {'content-type': 'application/json'},
+      body: JSON.stringify({note: 'The closer stop disappeared', source: 'feedback', screen})});
+    expect(response.status).toBe(200);
+    const {id} = await response.json() as {id: number};
+    const listed = await (await app.request('/api/reports', {headers: {'x-admin-token': TEST_ADMIN_TOKEN}})).json() as {reports: {id: number; context: string}[]};
+    expect(JSON.parse(listed.reports.find(r => r.id === id)!.context).screen).toEqual(screen);
+    expect((await app.request('/api/reports')).status).toBe(401);
+  });
+
   it("submits, lists, and updates a report", async () => {
     const admin = { "x-admin-token": TEST_ADMIN_TOKEN };
     const submit = await app.request("/api/report", {
