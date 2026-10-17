@@ -41,6 +41,25 @@ was delivered on that historical run. The old timeout and raw evidence stay
 unchanged. This correction prevents a received position from being overwritten
 before a UI tick; it does not establish a physical stop, boarding or ETA accuracy.
 
+A bus passing close to pickup can still be serving an earlier occurrence on
+its loop. Within the 45 m boarding radius, the runner waits when the named
+card says at least two stops away, fresh direct GPS observes a stand at
+another stop, and the served model confirms that same stand and route index.
+The card count must equal the unambiguous forward route count to pickup;
+counts include wrapping around the loop. Ambiguous repeated stops, missing or
+stale evidence, model approaches and contradictory counts cannot establish
+this veto. Ordinary one-stop approaches and at-pickup boarding keep their
+existing rules. One `waiting-bus-other-occurrence` event records the reason
+per journey; waiting does not exclude a later legitimate pickup. The manual
+boarding-button fallback rechecks against its latest feed and screen too.
+
+October 17 Blue #58 run 1792251274806 boarded 29 m from Elm/York while its
+screen and model still put it at Broadway/York, two stops away via Stop & Shop.
+Its original completed run remains retained, with a separate audit recording
+that its pickup was invalid. The regression preserves the original screen, bus and model-anchor
+receipts with separately captured same-day stop metadata; its later legitimate
+pickup is a modelled control, not a historical screen or physical boarding claim.
+
 `status.json` distinguishes the loop heartbeat from feed receipt:
 `feedReceivedAt`, `feedAgeMs`, `feedStale` and `cachedBuses` describe the last
 valid `/api/buses` response. Feed age measures time since receipt, not the age

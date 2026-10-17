@@ -6,7 +6,7 @@ import { appendRolling, maintainImages, saveImage } from '../retention/storage.m
 import { saveCheckpoint } from './checkpoint.mjs';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
-import {BOARD_M,cardBoardsBus,followedBusName,labeledStopId,observedAtStop,oppositePickupCurb,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
+import {BOARD_M,cardBoardsBus,followedBusName,labeledStopId,observedAtStop,oppositePickupCurb,otherPickupOccurrence,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
 const TEST='00000000-0000-4000-8000-000000000000';
 const norm=s=>String(s).replace(/\s/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -207,7 +207,9 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      // Do not turn a named, stops-away card into that wrong-occurrence ride.
      const opposite=distance<=BOARD_M&&!past&&oppositePickupCurb(bus,run.boardStopId,text,feed);
      if(opposite){run.oppositeCurbSamples=(run.oppositeCurbSamples??0)+1;if(!run.oppositeCurbReported){run.oppositeCurbReported=true;await event('waiting-bus-opposite-curb',{bus:name,stop:boardLabel,distanceM:distance,atStopId:bus.at_stop_id});}}
-     if(((distance<=BOARD_M&&!past&&!opposite)||atStop)&&now>=run.walkUntil){
+     const other=distance<=BOARD_M&&otherPickupOccurrence(bus,run.boardStopId,text,feed,now);
+     if(other){run.otherOccurrenceSamples=(run.otherOccurrenceSamples??0)+1;if(!run.otherOccurrenceReported){run.otherOccurrenceReported=true;await event('waiting-bus-other-occurrence',{...other,distanceM:distance});}}
+     if(((distance<=BOARD_M&&!past&&!opposite&&!other)||atStop)&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
       // A ride the app started on another bus replaces the trip card, so
       // waiting on only reaches the 45 min cap (wrongbusboard20261002: it
@@ -218,7 +220,12 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
       // 100 m in the app's latest feed. Otherwise the bus left without us,
       // and waiting on would time the next one (riderpromptmiss20261004:
       // #317, boarded 15 min after #330 stood at the stop, ended "completed").
-      try{await boardSelectedRide(page,name,{cardBoards:async()=>cardBoardsBus(feed.buses,run.line.busRouteIds,at,name)});}catch(e){
+      try{await boardSelectedRide(page,name,{cardBoards:async()=>{
+       const currentText=await page.locator('body').innerText(),latest=feed;
+       const current=latest.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+       return !!current&&cardBoardsBus(latest.buses,run.line.busRouteIds,at,name)
+        &&!otherPickupOccurrence(current,run.boardStopId,currentText,latest,Date.now());
+      }});}catch(e){
        const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null')?.busName??null);
        if(!stored&&e instanceof BoardingMissed){const left=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));run.excludeAccuracy=true;await event('boarding-missed',{bus:name,stop:boardLabel,observedDistanceM:distance,distanceNowM:left?metrics.haversineM(left,coord):null});await finish('boarding-missed-excluded');await status();return;}
        if(!stored)throw e;

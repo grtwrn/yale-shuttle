@@ -746,3 +746,48 @@ test('a destination receipt survives a busy UI read and keeps its processing clo
  const run=h.watcher.status().run;assert.equal(run.phase,'arrived');assert.equal(run.arrivedAt,new Date(arrivalGap.middle.receivedAt).toISOString());assert(Date.parse(run.arrivalProcessedAt)>=Date.parse(run.arrivedAt));
  const samples=(await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert(samples.at(-1).feedAgeMs>=0);
 });
+
+
+test('Blue58 waits through the earlier nearby route occurrence, then boards the real pickup',async()=>{
+ const capture=JSON.parse(await fs.readFile(new URL('../__fixtures__/blue-weekend-58-pickup-occurrence-2026-10-17.json',import.meta.url),'utf8'));
+ let sample=capture.samples[0];
+ const feedOf=buses=>({...capture.feedMetadata,buses,server_eta:sample.server_eta});
+ const h=current=await harness(feedOf([sample.bus]),capture.trip,{initialLine:capture.line,feedOf,text:sample.text,at:sample.at});
+ for(const next of capture.samples.slice(1)){
+  sample=next;vi.setSystemTime(Date.parse(sample.at)-10000);await h.poll(sample.text,[sample.bus]);
+  assert.equal(h.watcher.status().run.phase,'waiting',sample.at);
+ }
+ assert.deepEqual(h.clicks,[]);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal(events.filter(e=>e.kind==='waiting-bus-other-occurrence').length,1);
+ assert(h.watcher.status().run.otherOccurrenceSamples>0);
+ assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+ // Model a later legitimate return to53. It is a control, not a historical screen receipt.
+ const now=Date.parse(sample.at)+15*60000;
+ vi.setSystemTime(now-10000);
+ sample={...sample,server_eta:{v:2,at:now,servedAt:now,buses:[['58','Blue Weekend',24,{stopId:53,standingSec:15,approach:false}]]}};
+ const bus={...sample.bus,...capture.feedMetadata.stop_coords[53],at_stop_id:53,stationary:true,observed_at:now};
+ await h.poll('🚌 6 min\nBOARD🚌Elm / York (TYCO)⏸ 0:15\nGET OFFProspect / Edwards',[bus]);
+ assert.equal(h.watcher.status().run.phase,'riding');
+ assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+});
+
+
+test('manual boarding fallback rechecks a changed pickup occurrence after capture',async()=>{
+ const capture=JSON.parse(await fs.readFile(new URL('../__fixtures__/blue-weekend-58-pickup-occurrence-2026-10-17.json',import.meta.url),'utf8'));
+ let sample=capture.samples.at(-1);
+ const feedOf=buses=>({...capture.feedMetadata,buses,server_eta:sample.server_eta});
+ const h=current=await harness(feedOf([sample.bus]),capture.trip,{initialLine:capture.line,feedOf,text:sample.text,at:sample.at});
+ h.page.evaluate=async()=>null;
+ let changed=false;
+ h.page.screenshot=async()=>{
+  if(!changed){changed=true;h.text=sample.text;await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedOf([sample.bus])});}
+  return Buffer.from('jpg');
+ };
+ const at=Date.now();
+ const bus={...sample.bus,...capture.feedMetadata.stop_coords[53],at_stop_id:53,stationary:true,observed_at:at};
+ await h.poll('🚌 6 min\nBOARD🚌Elm / York (TYCO)⏸ 0:15\nGET OFFProspect / Edwards',[bus]);
+ assert.equal(h.watcher.status().run,null);
+ assert.deepEqual(h.clicks,[]);
+ assert.equal((await h.journeys())[0].result,'boarding-missed-excluded');
+});

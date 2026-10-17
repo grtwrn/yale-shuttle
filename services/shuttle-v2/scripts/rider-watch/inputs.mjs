@@ -36,6 +36,32 @@ function stillForMs(bus) {
 }
 /** The runner boards a followed bus within this of the pickup's pole. */
 export const BOARD_M = 45;
+/** A nearby bus can be serving an earlier occurrence on a loop. Require the
+ * named card, fresh direct stand and served model to agree before vetoing
+ * proximity: Blue58 passed within29m of Elm/York while at Broadway/York,
+ * still two stops away via Stop&Shop (2026-10-17). Missing evidence is not a
+ * confirmed conflict. This does not assert physical boarding or doors. */
+export function otherPickupOccurrence(bus, stopId, text, feed, now) {
+  const bare = name => String(name).replace(/^#/, '');
+  const quotes = [...String(text).matchAll(/🚌\s*(#[\w-]+)\s*·\s*(\d+) stops? away/g)];
+  if (quotes.length !== 1 || bare(quotes[0][1]) !== bare(bus.bus_name)) return null;
+  const actual = Number(quotes[0][2]), seq = feed.routes?.[bus.route_id], wire = feed.server_eta;
+  if (actual < 2 || !Array.isArray(seq) || seq.filter(id => id === stopId).length !== 1
+    || seq.filter(id => id === bus.at_stop_id).length !== 1 || stopId === bus.at_stop_id
+    || !Number.isFinite(now) || !Number.isFinite(bus.observed_at)
+    || now - bus.observed_at >= 30000 || bus.observed_at > now + 5000
+    || wire?.v !== 2 || !Number.isFinite(wire.at) || !Number.isFinite(wire.servedAt)
+    || wire.servedAt < wire.at || now - wire.at >= 30000 || wire.servedAt > now + 5000) return null;
+  const matches = (wire.buses ?? []).filter(b => bare(b[0]) === bare(bus.bus_name));
+  const track = matches.length === 1 ? matches[0] : null, standing = track?.[3];
+  const from = seq.indexOf(bus.at_stop_id), expected = (seq.indexOf(stopId) - from + seq.length) % seq.length;
+  // One stop ahead keeps the existing approach rules. Forward counts also
+  // handle a pickup reached after wrapping around the end of the route.
+  if (expected !== actual || track?.[2] !== from || !standing || standing.approach !== false
+    || standing.stopId !== bus.at_stop_id || !observedAtStop(bus, bus.at_stop_id, feed.stop_coords)) return null;
+  return {bus: bus.bus_name, pickupStop: stopId, standingStop: bus.at_stop_id,
+    stopsAway: expected, observedAt: bus.observed_at, modelAt: wire.at};
+}
 /** The named card still puts this bus at least two stops from pickup, while
  * its direct observation is closer to the same-name opposite compass curb
  * and its GPS heading agrees with that other curb, not the pickup direction.
