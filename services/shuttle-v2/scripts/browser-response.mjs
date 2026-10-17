@@ -23,3 +23,16 @@ export async function waitForResponseBody(page, response, timeoutMs = 5000) {
   }
   if (failure) throw failure;
 }
+
+/** Stop advancing once the next request is observed. Crossing two polling
+ * intervals in one jump lets the app abort the first request before its body
+ * can finish, leaving the test attached to an obsolete response. */
+export async function advanceUntilResponse(page, before, responseCount, advanceModelClock) {
+  for (let elapsed = 0; elapsed < 5500; elapsed += 500) {
+    advanceModelClock(500);
+    await page.clock.runFor(500);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    if (responseCount() > before) return;
+  }
+  throw new Error('No new feed request within 5500 ms of browser time');
+}

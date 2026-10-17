@@ -73,6 +73,9 @@ Each of the eleven browser regression subprocesses has a two-minute deadline.
 A timeout fails deployment and stops the check's processes, including detached
 Chrome groups found under that check. Bus reporting regressions log their
 scenario, feed phase, and pending clock/response operation to locate stalls.
+The driver advances toward the next poll in small steps and stops once its
+request is observed. This prevents a jump across two polling intervals from
+letting the app abort the response the check is awaiting.
 After response headers arrive, the driver advances the paused browser clock
 in one-millisecond steps until the body finishes, with a five-second wall
 deadline that also bounds a stuck clock command. Loading errors still fail
