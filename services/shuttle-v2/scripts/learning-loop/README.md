@@ -10,21 +10,41 @@ override production, training inputs, and the output directory.
 
 This replaces the historical automatic-promotion path whose evidence was
 unverifiable. The historical replay remains diagnostic and keeps its refusals.
-The prospective observer uses an independent production ETA engine for each
-arm. This shares the real server's 45-second GPS expiry, cached-observation
-interning, belief eviction and snapshot handling. Polling every two seconds
-captures distinct collector snapshots; duplicate responses do not advance
-belief or add samples. Both arms compute at the recorded server forecast time,
-then account for the cache age at receipt. Neither arm takes its predictions
-from the champion-only served field. An optional diagnostic callback exposes
-unrounded base quantiles; the normal production engine has no callback.
+`served-control-v2` uses an independent production ETA engine for each arm.
+After training, an authenticated `/api/evaluation/seed` read captures the
+producer's complete past belief/observation graph, before the cycle starts.
+Both arms inherit that same past once and independently compute subsequent
+forecasts. Neither takes its predictions from the champion's served answer.
 
-The actual served field attests the control for the same vehicle, stop and
-future traversal within the existing half-second wire-rounding tolerance.
+`/api/evaluation/inputs` supplies immutable, checksummed inputs for every
+production model observation, with an epoch and contiguous cursor. It includes
+collector checkpoint evidence and the route-adjustment configuration that
+ordinary `/api/buses` omits. GPS expiry, observation interning, eviction and
+route adjustments run through the real production code. Polling every two
+seconds drains this journal; it does not assume every public snapshot was seen.
+The source buffer is bounded by 120 frames, 16 MiB including context, and ten
+minutes, whichever is reached first. Expired required history is an explicit
+refusal, never a jump to the latest payload.
+
+Catchup advances estimator history only. A fresh caught-up HTTP response is
+required for live samples and curb observations; historical frames never
+become retrospective promises or retrospectively observed arrivals. Empty
+service preserves the last actual model clock. An idle history fork may be
+older than two minutes only when the current fleet is empty; no clock or
+forecast is manufactured to keep an idle process looking active.
+If a model is published while idle, the current model and the model that last
+produced the historical state are recorded separately; the next real observation
+computes the new forecasts.
+
+The complete served output is checked after every exact input and at live
+sampling. Sampled raw quantiles also attest the same vehicle, stop and future
+traversal within the existing half-second wire-rounding tolerance.
 Reference rows, raw quantiles, cache age and clocks accompany every sampled
-control and are bound to the original retained input receipt. Warmup does not
-prove parity. Any observed protocol failure or unmatched control during
-calibration/test refuses that cycle; all rows remain available for review.
+control and are bound to the original retained HTTP input, frozen seed, full
+source hash chain and runtime model identities. The chain is reconstructed
+from retained bytes before fitting or validation. Any observed v2 protocol
+failure refuses that cycle, including during calendar warmup; original packets,
+pending predictions and refusals remain available for review.
 Legacy evidence without this provenance cannot certify a new publication.
 
 At cycle start, the observer verifies checksums and capture times of up to
@@ -35,16 +55,24 @@ at this present training cutoff; no historical insertion time is invented.
 Existing route scales and horizon corrections remain fixed during this cycle.
 Code bytes, parameter sets, training receipts and live input snapshots are saved.
 
-Collection warms for two minutes, then uses the next two full ET dates to fit
+Sampling waits for each arm's first actual post-seed computation rather than
+an arbitrary cold-start delay. Calibration uses the next two full ET dates to fit
 candidate interval factors. A horizon needs 200 sampled visit forecasts and a
 factor inside the existing 0.5–4 bounds. Insufficient calibration extends the
 calibration phase; test data is never used to tune intervals. After interval
 freezing, only later observations enter the untouched test phase.
 
 Interval fitting uses model-time quantiles and converts the observed outcome
-to that same origin. Scoring selects the runtime interval factor at the raw
-model horizon, widens, then ages and clips the result as the app does. Aging
-first can change the blended factor or lose information at zero. Missing or
+to that same origin. Only calibration intervals whose two bounds are affected
+by the base widening parameter fit that parameter. Fixed route adjustments and
+conditional release bounds stay in the full original cohorts and all scoring
+gates. Fit scope and support are recorded explicitly.
+
+After interval freezing the candidate engine runs its actual final parameters.
+Scoring ages and clips that produced interval without widening it again.
+This preserves route adjustments, per-bound exemptions and stateful interval
+smoothing. A new source computation is required after a parameter freeze;
+cached predictions cannot be relabeled as the final model. Missing or
 pre-receipt outcomes remain missing. Comparison cells still use the common
 champion horizon; the original route, support, tail and proper-score gates stay.
 
@@ -64,13 +92,20 @@ tail, MAE, matching and proper-score gates, and at least 30 day/bus service
 blocks with a negative one-sided 95% bootstrap upper bound on paired WIS change.
 Weekend-only routes may require additional test weeks. Poll counts do not stand
 in for visit support. The current champion is checked immediately before posting.
-Model or production build changes invalidate the cycle; source changes cause a
+Model, production build or producer-epoch changes invalidate the cycle after
+confirmation against the current source head. Source changes cause a
 supervised restart and a new cycle. Successful promotion starts a fresh cycle.
 
 Artifacts default to `scripts/.learning-loop/`: `status.json`, `state.json`,
 `events.jsonl`, cycle-local forecasts, compressed hourly input journals, source
-copies and validation/submission receipts. JSON checkpoint and outbox writes
-are recoverable. Closing a cycle resolves pending samples as missing and saves
+copies, the immutable seed, and validation/submission receipts. Each paired
+runtime checkpoint contains each arm's own posterior and raw served forecasts,
+with gzip/content hashes. Runtime bytes are durable before the atomic state
+pointer changes; current and previous generations are retained. Restarts
+restore that pair rather than reseeding the candidate from the champion.
+Corrupt/missing recovery state refuses the cycle. JSON outbox writes remain
+recoverable. The calibrated candidate is frozen before the state points to it.
+Closing a cycle resolves pending samples as missing and saves
 its complete `closed-state.json` before replacing the active state. Input
 receipts and any protocol refusals remain with the original cycle. Identical
 journal receipts are deduplicated; conflicting ones

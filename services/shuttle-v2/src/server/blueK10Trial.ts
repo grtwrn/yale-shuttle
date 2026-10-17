@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import type { K10Evidence } from '../collector/k10Clock.js';
 import { forwardStops } from '../collector/k10Scopes.js';
 import type { ServerEtaWire, ServerEtaRow } from '../../web/src/etaSource.js';
-import type { K10Model } from './k10Trial.js';
+import type { K10Model, K10ReplacementObserver } from './k10Trial.js';
 
 export interface BlueK10Model extends K10Model {
   routeId: number;
@@ -69,7 +69,7 @@ export function blueK10GroupPredictions(model: BlueK10Model, departed: number, n
 }
 
 export function applyBlueK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<string,K10Evidence>,
-  routes: Readonly<Record<string,readonly number[]>>, models = BLUE_K10_MODELS): ServerEtaWire {
+  routes: Readonly<Record<string,readonly number[]>>, models = BLUE_K10_MODELS, onReplace?: K10ReplacementObserver): ServerEtaWire {
   const byLabel = new Map(models.map(m=>[m.label,m]));
   const groups = new Map<string,ReturnType<typeof blueK10GroupPredictions>>();
   const changedByRoute: Record<string,number> = { ...(wire.trial?.byRoute ?? { Red:wire.trial?.changedRows ?? 0 }) };
@@ -90,6 +90,7 @@ export function applyBlueK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<str
     if (!groups.has(bus[0])) groups.set(bus[0],blueK10GroupPredictions(model,e.origin.departed,wire.at));
     const p=groups.get(bus[0])?.get(r[1]);
     if (!p) return old;
+    onReplace?.(r, p);
     changed++; changedByRoute[model.label]=(changedByRoute[model.label]??0)+1;
     return {row:[r[0],r[1],Math.round(p.eta),Math.round(p.low),Math.round(p.high),r[5],r[6],r[7],r[8]],
       distribution:p.distribution.map(Math.round)};

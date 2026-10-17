@@ -113,6 +113,28 @@ describe('model-time calibration and served-control evidence',()=>{
   const p={eta:0,low:-5,high:3,raw:{eta:2,low:0,high:8},ageSec:5};
   expect(scoreEstimate(p,{'0-2':2,'2-5':1,'5-10':1,'10-30':1})).toMatchObject({eta:0,low:0,high:9});
  });
+ it('scores a fixed route adjustment without applying a base-model interval factor',()=>{
+  const p={eta:118,low:108,high:128,raw:{eta:122,low:112,high:132},ageSec:4,
+   forecastSource:'fixed-k10',conformalBounds:{low:false,high:false}};
+  expect(scoreEstimate(p,{'0-2':3,'2-5':3,'5-10':3,'10-30':3})).toMatchObject({eta:118,low:108,high:128});
+  expect(calibrationObservation({r:3,challenger:p,det:140})).toBeNull();
+  expect(p.raw).toEqual({eta:122,low:112,high:132});
+ });
+ it('retains fixed route adjustments in evaluation cells and rejects contradictory path metadata',()=>{
+  const fixed={eta:100,low:50,high:150,raw:{eta:100,low:50,high:150},ageSec:0,
+   forecastSource:'fixed-k10',conformalBounds:{low:false,high:false}};
+  const scored=scoreEstimate(fixed,{'0-2':4,'2-5':4,'5-10':4,'10-30':4});
+  const cells=validationCells([{r:3,h:'0-2',det:140,...scored}],UNIT,{referenceHorizons:true});
+  expect(cells['0|all'].scored).toBe(1);
+  expect(scoreEstimate({...fixed,conformalBounds:{low:true,high:false}}).low).toBeNull();
+  expect(calibrationObservation({r:3,challenger:{...fixed,conformalBounds:{low:true,high:false}},det:140})).toBeNull();
+ });
+ it('scores the actual runtime interval without repeating a fitted transform after smoothing',()=>{
+  const p={raw:{eta:122,low:95,high:150},ageSec:4,forecastSource:'base',
+   conformalBounds:{low:true,high:false},runtimeIntervals:true};
+  expect(scoreEstimate(p,{'0-2':4,'2-5':4,'5-10':4,'10-30':4})).toMatchObject({eta:118,low:91,high:146});
+  expect(calibrationObservation({r:3,challenger:p,det:140})).toBeNull();
+ });
  it('fits against model-time truth and retains unavailable/pre-receipt outcomes as missing',()=>{
   const challenger={eta:118,low:108,high:128,raw:{eta:122,low:112,high:132},ageSec:4};
   expect(calibrationObservation({r:13,challenger,det:100})).toEqual({r:13,eta:122,low:112,high:132,det:104});

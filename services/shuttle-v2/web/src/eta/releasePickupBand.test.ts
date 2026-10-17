@@ -65,12 +65,16 @@ describe('supported Winchester hold to the next Division pickup', () => {
     const pickup = widened.find(r => r.stopId === 48 && r.occurrence === 0)!;
     expect(pickup).toEqual(raw.find(r => r.stopId === 48 && r.occurrence === 0));
     expect(pickup.low).toBeGreaterThan(0);
+    expect(pickup.intervalConformal).toEqual({low:false,high:false});
     for (const row of widened) {
       const original = raw.find(r => r.stopId === row.stopId && r.occurrence === row.occurrence)!;
       expect(row.eta).toBe(original.eta);
       expect(row.high).toBe(original.high);
       expect(row.distribution).toEqual([...row.distribution!].sort((a, b) => a - b));
-      if (row.stopsAhead > 0 && row !== pickup) expect(row.low).toBeLessThan(original.low);
+      if (row.stopsAhead > 0 && row !== pickup) {
+        expect(row.low).toBeLessThan(original.low);
+        expect(row.intervalConformal).toEqual({low:true,high:false});
+      }
     }
     expect(widened.find(r => r.stopId === 11 && r.occurrence === 0)?.low).toBe(0);
     expect(belief).toEqual(before);
@@ -87,6 +91,7 @@ describe('supported Winchester hold to the next Division pickup', () => {
     expect(after.low).toBeLessThan(before.low);
     expect(after.high).toBeGreaterThan(before.high);
     expect(after.eta).toBe(before.eta);
+    expect(after.intervalConformal).toEqual({low:true,high:true});
   });
 
   it('keeps the legacy margin when the leading position has already passed Division', () => {

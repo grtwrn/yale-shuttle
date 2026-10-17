@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import type { K10Evidence } from '../collector/k10Clock.js';
 import type { ServerEtaWire } from '../../web/src/etaSource.js';
+import type { K10ReplacementObserver } from './k10Trial.js';
 import { BLUE_K10_MODELS, applyBlueK10Trial, type BlueK10Model } from './blueK10Trial.js';
 
 /** All-route qualification adds Orange Night K10 and Gold K8. Unsupported or
@@ -10,6 +11,6 @@ export const ADDITIONAL_K10_MODELS: BlueK10Model[] = JSON.parse(fs.readFileSync(
 export const ROUTE_K10_MODELS = [...BLUE_K10_MODELS, ...ADDITIONAL_K10_MODELS];
 
 export function applyRouteK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<string, K10Evidence>,
-  routes: Readonly<Record<string, readonly number[]>>, includeBlue = true): ServerEtaWire {
-  return applyBlueK10Trial(wire, evidence, routes, includeBlue ? ROUTE_K10_MODELS : ADDITIONAL_K10_MODELS);
+  routes: Readonly<Record<string, readonly number[]>>, includeBlue = true, onReplace?: K10ReplacementObserver): ServerEtaWire {
+  return applyBlueK10Trial(wire, evidence, routes, includeBlue ? ROUTE_K10_MODELS : ADDITIONAL_K10_MODELS, onReplace);
 }

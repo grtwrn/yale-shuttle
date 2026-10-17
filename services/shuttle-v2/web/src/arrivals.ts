@@ -172,6 +172,7 @@ export function shownStandSec(
 
 export type UpcomingArrival = {
   distribution?: number[] | undefined;
+  intervalConformal?: { low: boolean; high: boolean } | undefined;
   eta: number; low: number; high: number;
   /**
    * The DRIVE FLOOR (eta/arrival.ts `departNow`): this same arrival with the
@@ -286,6 +287,7 @@ export function computeUpcomingArrivals(
       for (const row of rows) {
         result.push({
           ...(row.distribution ? { distribution: row.distribution } : {}),
+          ...(row.intervalConformal ? { intervalConformal: row.intervalConformal } : {}),
           eta: row.eta, low: row.low, high: row.high, departNow: row.departNow, lowFloor: row.lowFloor,
           routeLabel: cfg.label, color: cfg.color,
           busName: bus.bus_name.replace("#", ""),

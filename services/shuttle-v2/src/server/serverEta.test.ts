@@ -5,7 +5,7 @@
  * The parity test (`serverEta.parity.test.ts`) is the deliverable; this file is
  * the safety net around it.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import fs from "node:fs";
 import os from "node:os";
@@ -28,6 +28,7 @@ import {
 import { buildBusesPayload, createBusesPayloadCache } from "./v1compat.js";
 import { BLUE_K10_MODELS, blueK10GroupPredictions } from './blueK10Trial.js';
 import { ADDITIONAL_K10_MODELS } from './routeK10Trial.js';
+import { EvaluationInputs } from './evaluationInputs.js';
 import type { K10Evidence } from '../collector/k10Clock.js';
 
 // Read rather than `import ... from`: `resolveJsonModule` would have tsc infer
@@ -318,6 +319,42 @@ describe("/api/buses with the flag off", () => {
     collector.stop();
     bundle.sqlite.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('keeps the exact first model payload across cached HTTP rebuilds', async () => {
+    const at = Date.now(), clock = vi.spyOn(Date, 'now').mockReturnValue(at);
+    try {
+      await (collector as unknown as { runPoll: () => Promise<void> }).runPoll();
+      const inputs = new EvaluationInputs({ epoch: 'fixture' }), eta = new ServerEta({ routes: ALL_ROUTES });
+      const get = createBusesPayloadCache(collector, null, eta, null, (version, modelAt, json) => {
+        if (modelAt === null) inputs.fail('Model failed'); else inputs.append(version, modelAt, json);
+      });
+      const first = get(true); clock.mockReturnValue(at + 1200); get(true);
+      expect(inputs.read('fixture', 0, { now: at + 1200 }).frames.map(f => f.json)).toEqual([first]);
+      expect(eta.stats().steps).toBe(1);
+      clock.mockReturnValue(at + 5000); await (collector as unknown as { runPoll: () => Promise<void> }).runPoll();
+      get(true); const next = inputs.read('fixture', 1, { now: at + 5000 });
+      expect(next.frames).toHaveLength(1); expect(next.frames[0]!.at).toBe(at + 5000); expect(eta.stats().steps).toBe(2);
+    } finally { clock.mockRestore(); }
+  });
+  it('contains a throwing diagnostic callback without changing public bytes', async () => {
+    const at = Date.now(), clock = vi.spyOn(Date, 'now').mockReturnValue(at);
+    try {
+      await (collector as unknown as { runPoll: () => Promise<void> }).runPoll();
+      const expected = createBusesPayloadCache(collector, null, new ServerEta({ routes: ALL_ROUTES }));
+      const failing = createBusesPayloadCache(collector, null, new ServerEta({ routes: ALL_ROUTES }), null, () => { throw Error('Diagnostic failure'); });
+      expect(failing(true)).toBe(expected(true));
+    } finally { clock.mockRestore(); }
+  });
+  it('records a failed model observation as an unavailable source while preserving bus data', async () => {
+    await (collector as unknown as { runPoll: () => Promise<void> }).runPoll();
+    const inputs = new EvaluationInputs({ epoch: 'fixture' });
+    const eta = new ServerEta({ routes: ALL_ROUTES, onBaseForecasts: () => { throw Error('Model fixture failure'); } });
+    const get = createBusesPayloadCache(collector, null, eta, null, (version, at, json) => {
+      if (at === null) inputs.fail('Model failed'); else inputs.append(version, at, json);
+    });
+    expect(JSON.parse(get(true)).buses).toHaveLength(1); expect(inputs.stats().failed).toBe(true);
+    expect(() => inputs.read('fixture', 0)).toThrow('Model failed');
   });
 
   it("survives a throwing poll observer", async () => {

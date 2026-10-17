@@ -20,13 +20,28 @@ export function scoreEstimate(estimate, conformal = UNIT) {
  const raw=estimate.raw??estimate,age=estimate.ageSec??0;
  const eta=Math.max(0,raw.eta-age);
  if(![raw.eta,raw.low,raw.high,age].every(Number.isFinite)||age<0||age>=45
-   ||raw.low>raw.eta||raw.high<raw.eta)return {...estimate,eta,low:null,high:null};
- const [low,high]=widen(raw.eta,raw.low,raw.high,conformalFactor(raw.eta,conformal));
+   ||raw.low>raw.eta||raw.high<raw.eta||!forecastPipelineValid(estimate))return {...estimate,eta,low:null,high:null};
+ // New protocol forecasts already contain the real runtime interval, including
+ // smoothing and per-bound exemptions. Never widen it again after prediction.
+ const bounds=estimate.conformalBounds??{low:true,high:true};
+ const widened=widen(raw.eta,raw.low,raw.high,estimate.runtimeIntervals===true?1:conformalFactor(raw.eta,conformal));
+ const low=bounds.low?widened[0]:raw.low,high=bounds.high?widened[1]:raw.high;
  return {...estimate,eta,low:Math.max(0,low-age),high:Math.max(0,high-age)};
+}
+function forecastPipelineValid(estimate) {
+ const b=estimate.conformalBounds;
+ return (estimate.forecastSource===undefined&&b===undefined)
+  ||(b&&typeof b.low==='boolean'&&typeof b.high==='boolean'
+   &&(estimate.forecastSource==='base'||(estimate.forecastSource==='fixed-k10'&&!b.low&&!b.high)));
 }
 export function calibrationObservation(row) {
  const estimate=row.challenger,raw=estimate.raw??estimate,age=estimate.ageSec??0;
- return {r:row.r,...raw,det:Number.isFinite(row.det)&&row.det>=0&&Number.isFinite(age)&&age>=0&&age<45?row.det+age:null};
+ // These fixed post-processing intervals replace the base conformal output.
+ // Keep their original samples in scoring; fitting a parameter that runtime
+ // never applies to them would invent an improvement.
+ if((estimate.conformalBounds&&(!estimate.conformalBounds.low||!estimate.conformalBounds.high))||!forecastPipelineValid(estimate))return null;
+ const valid=[raw.eta,raw.low,raw.high].every(Number.isFinite)&&raw.low<=raw.eta&&raw.high>=raw.eta;
+ return {r:row.r,...raw,det:valid&&Number.isFinite(row.det)&&row.det>=0&&Number.isFinite(age)&&age>=0&&age<45?row.det+age:null};
 }
 function controlMetadataValid(row) {
  const estimate=row.champion,c=estimate?.control;
@@ -52,10 +67,17 @@ export function productionControlValid(row) {
  * of whether the shadow forecast itself matched production. */
 export function productionControlInputValid(row, input) {
  if(!controlMetadataValid(row))return false;
- const c=row.champion.control,wire=input?.feed?.server_eta,norm=s=>String(s).replace(/^#/,'');
- if(!wire||wire.v!==2||!Array.isArray(wire.rows)||!Array.isArray(wire.buses)||!Array.isArray(input.feed.buses)
+ const c=row.champion.control,packet=input?.source,feed=c.source?packet?.feed:input?.feed,wire=feed?.server_eta,norm=s=>String(s).replace(/^#/,'');
+ if(c.source){
+  const s=c.source,hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
+  if(s.v!==1||typeof s.epoch!=='string'||!Number.isSafeInteger(s.cursor)||s.cursor<1||s.at!==c.modelAt
+   ||!['chain','seedSha256','sha256','contextSha256','sourceKey','championModel','challengerModel'].every(k=>hash(s[k]))
+   ||packet?.v!==1||packet.build!==s.build||packet.epoch!==s.epoch||packet.cursor!==s.cursor||packet.latest!==s.cursor||packet.hasMore!==false
+   ||row.champion.runtimeIntervals!==true||!forecastPipelineValid(row.champion))return false;
+ }
+ if(!wire||wire.v!==2||!Array.isArray(wire.rows)||!Array.isArray(wire.buses)||!Array.isArray(feed.buses)
   ||input.receivedAt!==row.at||wire.at!==c.modelAt||wire.servedAt!==c.servedAt)return false;
- if(!input.feed.buses.some(b=>b.route_id===row.r&&b.bus_id===row.busId&&b.bus_name===row.busName))return false;
+ if(!feed.buses.some(b=>b.route_id===row.r&&b.bus_id===row.busId&&b.bus_name===row.busName))return false;
  return wire.rows.some(r=>{
   const bus=wire.buses[r[0]];
   return bus&&bus[1]===c.label&&norm(bus[0])===norm(row.busName)&&r[1]===row.stop&&r[5]===c.stopsAhead

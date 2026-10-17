@@ -11,6 +11,8 @@ export interface K10Model {
   paths: Record<string, [string, number, number][]>;
 }
 export const K10_MODEL: K10Model = JSON.parse(fs.readFileSync(new URL('./data/k10-model.json', import.meta.url), 'utf8'));
+export type K10ReplacementObserver = (row: ServerEtaRow,
+  forecast: { eta: number; low: number; high: number; distribution: number[] }) => void;
 const et = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York',
   hourCycle: 'h23', hour: 'numeric', minute: 'numeric', second: 'numeric' });
 function minute(at: number) {
@@ -59,7 +61,7 @@ export function k10GroupPredictions(model: K10Model, departed: number, now: numb
 /** Overlay only this lap's validated downstream pickups. Full live rows and
  * distributions survive every fallback and the observed-departure handoff. */
 export function applyK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<string, K10Evidence>,
-  sequence: readonly number[] | undefined, model = K10_MODEL): ServerEtaWire {
+  sequence: readonly number[] | undefined, model = K10_MODEL, onReplace?: K10ReplacementObserver): ServerEtaWire {
   const enabled = sequence?.join(',') === model.sequence.join(',') && wire.at < model.validUntil;
   let changed = 0;
   const byBus = new Map<string, ReturnType<typeof k10GroupPredictions>>();
@@ -76,6 +78,7 @@ export function applyK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<string,
     if (!byBus.has(b[0])) byBus.set(b[0], k10GroupPredictions(model, e.origin.departed, wire.at));
     const p = byBus.get(b[0])?.get(r[1]);
     if (!p) return r;
+    onReplace?.(r, p);
     changed++;
     distributions[i] = p.distribution.map(Math.round);
     return [r[0], r[1], Math.round(p.eta), Math.round(p.low), Math.round(p.high), r[5], r[6], r[7], r[8]];
