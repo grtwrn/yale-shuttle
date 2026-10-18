@@ -720,12 +720,12 @@ export function reconcileTracks<T extends TrackedIdentity>(
 
 // Implementation --------------------------------------------------------------
 
-/** Nearby kerbs can be separated in route order by a long out-and-back.
+/** A later anchor can be nearby before a long intervening route detour.
  * A change in which kerb is closer does not prove that intervening journey.
  * Compare its straight-line lower bound (allowing the existing stop radius)
  * with the existing continuity bounds. A gap long enough for the journey,
  * missing geometry, or a discontinuous fix preserves normal re-anchoring. */
-function impossibleNearbySkip(network: TransitNetwork, prev: BusState, obs: BusObservation, next: RouteAnchor): boolean {
+function impossibleDetourSkip(network: TransitNetwork, prev: BusState, obs: BusObservation, next: RouteAnchor): boolean {
   const route = network.routes.get(obs.routeId);
   if (!route?.stops.length) return false;
   const n = route.stops.length;
@@ -733,8 +733,7 @@ function impossibleNearbySkip(network: TransitNetwork, prev: BusState, obs: BusO
   const from = network.stops.get(prev.nearestStopId);
   const to = network.stops.get(next.stopId);
   const via = network.stops.get(route.stops[(prev.nearestIndex + 1) % n]!);
-  if (!from || !to || !via || distanceMeters(from, to) > AT_STOP_PIN_M
-    || distanceMeters(prev, obs) > MAX_HANDOFF_JUMP_M) return false;
+  if (!from || !to || !via || distanceMeters(prev, obs) > MAX_HANDOFF_JUMP_M) return false;
   const minimumJourney = distanceMeters(prev, via) + distanceMeters(via, obs) - 2 * AT_STOP_PIN_M;
   const elapsedSec = (obs.collectedAt - prev.lastObservedAt) / 1000;
   return minimumJourney > Math.max(MAX_HANDOFF_JUMP_M, elapsedSec * MAX_HANDOFF_SPEED_MPS);
@@ -826,7 +825,7 @@ export function step(
       prev.nearestIndex,
       ANCHOR_LOOKAHEAD,
     );
-    if (ahead && impossibleNearbySkip(network, prev, obs, ahead)) {
+    if (ahead && impossibleDetourSkip(network, prev, obs, ahead)) {
       ahead = network.nearestStopAheadOnRoute(obs.routeId, obs, prev.nearestIndex, 1);
     }
     // Advancing the window can expose a closer later stop even though the
