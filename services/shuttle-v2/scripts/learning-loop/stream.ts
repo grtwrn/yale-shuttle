@@ -136,6 +136,11 @@ export class ExactForecastStream {
     const reference = feed.server_eta ?? null;
     const control = this.stores.champion.engine.evaluationWire(feed.buses, reference?.servedAt ?? responseAt);
     if (JSON.stringify(control) !== JSON.stringify(reference)) throw Error('Current served control differs after exact catchup');
+    // The complete caught-up control can legitimately withhold every forecast
+    // while an unmodeled/off-route bus still has fresh GPS. Preserve this null
+    // answer on its actual model clock; GPS freshness alone cannot require ETA.
+    if (control === null) return { champion: [], challenger: [], productionControl:
+      { modelAt: this.at, compared: 0, matched: 0, missing: 0, mismatched: 0, maxAbsSec: 0 } };
     return forecastArms(feed, receivedAt, this.champion, this.challenger, this.stores,
       { at: this.at, source: this.receipt(), responseAt });
   }

@@ -41,7 +41,11 @@ async function fixture() {
     inputs.append(version, at, JSON.stringify({ ...payload, ...(wire ? { server_eta: wire } : {}) }), producer.evaluationContext()!);
   };
   const source = new EvaluationSource(producer, () => {
-    const current=mode==='idle'?{...payload,buses:[]}:payload;
+    const current=mode==='idle'?{...payload,buses:[]}:mode==='expired-fleet'?structuredClone(payload):payload;
+    if (mode === 'expired-fleet') current.buses = [
+      ...current.buses.map((b: any) => ({ ...b, observed_at: serverNow() - 60000 })),
+      { ...current.buses[0], bus_name: '#unmodeled', bus_id: -1, observed_at: serverNow() },
+    ];
     const wire = producer.evaluationWire(current.buses, serverNow()); return JSON.stringify({ ...current, ...(wire ? { server_eta: wire } : {}) });
   }, inputs, () => 'fixture-build', serverNow);
   for (let i = 0; i < 5; i++) publish(initial + i * 5000);
@@ -194,6 +198,26 @@ describe('actual exact-source observer command', () => {
       expect(f.requests.some(r=>r.method==='POST'||r.path==='/api/evaluation/seed')).toBe(false);
     }finally{await f.close();}
   },30000);
+  it('continues real CLI polling through expired modeled GPS and resumes on the next observation', async () => {
+    const f = await fixture();
+    try {
+      const before = read(path.join(f.root, 'state.json')).source.runtime;
+      f.tomorrow(); f.mode('expired-fleet');
+      const waiting = f.launch(); expect(await waiting.exit, waiting.log()).toBe(0);
+      const idle = read(path.join(f.root, 'status.json'));
+      expect(idle).toMatchObject({phase: 'calibration', idleService: false,
+        forecasts: {champion: 0, challenger: 0}, protocolFailures: null,
+        productionControl: {modelAt: before.at, compared: 0, matched: 0, missing: 0, mismatched: 0}});
+      expect(idle.error).toBeUndefined();
+      expect(read(path.join(f.root, 'state.json')).source.runtime.cursor).toBe(before.cursor);
+      f.mode('advance'); const returning = f.launch(); expect(await returning.exit, returning.log()).toBe(0);
+      const resumed = read(path.join(f.root, 'status.json'));
+      expect(resumed.productionControl.compared).toBeGreaterThan(0);
+      expect(resumed.sourceRefusal).toBeNull(); expect(resumed.protocolFailures).toBeNull();
+      expect(resumed.cycle).toBe(f.id);
+      expect(f.requests.some(r => r.method === 'POST' || r.path === '/api/evaluation/seed')).toBe(false);
+    } finally { await f.close(); }
+  }, 30000);
   it('retains predictions as missing after a mid-run source failure during calibration', async () => {
     const f = await fixture(); let run: ReturnType<typeof f.launch> | undefined;
     try {

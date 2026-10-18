@@ -29,7 +29,12 @@ refusal, never a jump to the latest payload.
 Catchup advances estimator history only. A fresh caught-up HTTP response is
 required for live samples and curb observations; historical frames never
 become retrospective promises or retrospectively observed arrivals. Empty
-service preserves the last actual model clock. An idle history fork may be
+service preserves the last actual model clock. A current null served forecast
+also produces no samples when the complete caught-up control independently
+agrees, even if a fresh unmodeled or off-route bus remains in the fleet.
+This does not advance either engine, create a promise, or clear a refusal;
+missing served output still refuses when the control has visible forecasts.
+An idle history fork may be
 older than two minutes only when the current fleet is empty; no clock or
 forecast is manufactured to keep an idle process looking active.
 If a model is published while idle, the current model and the model that last
