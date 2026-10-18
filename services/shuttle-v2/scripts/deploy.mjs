@@ -243,6 +243,7 @@ await browserRegression("Blue pickup transition browser regression", "scripts/bl
 await browserRegression("missing pickup evidence browser regression", "scripts/pickup-evidence-check.mjs", { env: { ...process.env, PICKUP_EVIDENCE_OUT: path.join(stageDir, "pickup-evidence") } });
 await browserRegression("approaching pickup time browser regression", "scripts/early-pickup-check.mjs", { env: { ...process.env, EARLY_PICKUP_OUT: path.join(stageDir, "early-pickup"), EARLY_PICKUP_PRODUCTION_ASSETS: "0" } });
 await browserRegression("following pickup visit browser regression", "scripts/following-pickup-check.mjs", { env: { ...process.env, FOLLOWING_PICKUP_OUT: path.join(stageDir, "following-pickup"), FOLLOWING_PICKUP_PRODUCTION_ASSETS: "0" } });
+await browserRegression("alighting comparison browser regression", "scripts/alighting-comparison-check.mjs", { env: { ...process.env, ALIGHTING_OUT: path.join(stageDir, "alighting-comparison"), ALIGHTING_PRODUCTION_ASSETS: "0" } });
 await browserRegression("feedback attachment browser regression", "scripts/feedback-accessibility-check.mjs");
 await browserRegression("feedback screen evidence browser regression", "scripts/feedback-screen-check.mjs", { env: { ...process.env, FEEDBACK_SCREEN_OUT: path.join(stageDir, "feedback-screen"), FEEDBACK_SCREEN_PRODUCTION_ASSETS: "0" } });
 await browserRegression("individual bus reporting browser regression", "scripts/bus-reporting-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "bus-reporting") } });

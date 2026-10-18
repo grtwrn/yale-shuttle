@@ -2,7 +2,7 @@
 // for the walk model, which now matches the server (see walk.ts).
 
 import { computeUpcomingArrivals } from "./liveArrivals";
-import { liveEtaAvailable, liveBusAvailable, liveRouteTracked } from './etaSource';
+import { ETA_MAX_AGE_MS, liveEtaAvailable, liveBusAvailable, liveRouteTracked } from './etaSource';
 import type { AnchorStore } from "./eta";
 import type { DwellTimes, SegmentTimes, UpcomingArrival } from "./arrivals";
 import { haversineMeters } from "./geo";
@@ -82,6 +82,49 @@ export type TripOption = {
 
 /** Don't keep looping past a boarding point. */
 export const MAX_RIDE_SEC = 25 * 60;
+
+/** Explain a longer final walk using the same live boarding opportunity.
+ * Never infer a driver hold from an arrival-to-arrival dwell statistic. This
+ * comparison only describes forecasts; it does not select or re-price a trip. */
+export function alightComparison(
+  option: TripOption, visits: readonly UpcomingArrival[], routeStopIds: readonly number[],
+  stopCoords: Record<number, LatLon>, destination: LatLon, now: number,
+): { stopId: number; walkFromSec: number; arrivalGainSec: number } | undefined {
+  const selection = option.livePickupSelection;
+  const boarding = selection?.boarding;
+  if (option.mode !== 'shuttle' || option.departed || option.etaUnavailable || !option.journeyArrival
+    || !selection || boarding?.source !== 'forecast' || !Number.isFinite(now) || !Number.isFinite(selection.selectedAtMs)
+    || now < selection.selectedAtMs || now - selection.selectedAtMs >= ETA_MAX_AGE_MS) return undefined;
+  const norm = (s: string) => s.replace(/^#/, '');
+  if (boarding.stopId !== option.boardStopId
+    || norm(boarding.busName) !== norm(option.journeyArrival.busName)) return undefined;
+  const own = visits.filter(a => a.routeLabel === option.routeLabel
+    && norm(a.busName) === norm(boarding.busName));
+  const board = own.find(a => a.stopId === boarding.stopId && a.stopsAhead === boarding.stopsAhead);
+  const shown = journeyArrival(board, own, option.alightStopId, option.walkToSec, option.walkFromSec, now);
+  // The displayed journey and the comparison must belong to this snapshot.
+  if (!shown || (['pointMs', 'lowMs', 'highMs'] as const)
+    .some(key => !Number.isFinite(option.journeyArrival![key])
+      || Math.abs(shown[key] - option.journeyArrival![key]) > 1)) return undefined;
+  let closest = { stopId: option.alightStopId, walkFromSec: option.walkFromSec, arrival: shown };
+  for (const stopId of new Set(routeStopIds)) {
+    if (stopId === option.boardStopId || stopId === option.alightStopId) continue;
+    const coords = stopCoords[stopId];
+    if (!coords) continue;
+    const meters = haversineMeters(coords, destination);
+    if (!Number.isFinite(meters) || meters > MAX_WALK_M) continue;
+    const walkFromSec = walkSecFromMeters(meters);
+    if (walkFromSec >= closest.walkFromSec) continue;
+    // journeyArrival requires a forward visit before this bus's next pickup:
+    // the same curb on a later lap cannot explain this alighting decision.
+    const arrival = journeyArrival(board, own, stopId, option.walkToSec, walkFromSec, now);
+    if (arrival) closest = { stopId, walkFromSec, arrival };
+  }
+  const arrivalGainSec = (closest.arrival.pointMs - shown.pointMs) / 1000;
+  // Avoid explaining a few seconds of rounding as a meaningful tradeoff.
+  if (option.walkFromSec - closest.walkFromSec < 120 || arrivalGainSec < 180) return undefined;
+  return { stopId: closest.stopId, walkFromSec: closest.walkFromSec, arrivalGainSec };
+}
 
 /**
  * How long a rider still has to board a bus that's dwelling at a stop RIGHT
