@@ -33,6 +33,7 @@ import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } fro
 import { visitRowsOf } from "./visitRows.js";
 import { recoverOpenVisit, type OpenArrival } from "./visitRecovery.js";
 import { K10Tracker, K10_HISTORY_MS, K10_HISTORY_LIMIT, type K10RecoveryStats } from './k10Tracker.js';
+import { RecentSpeedTracker } from './recentSpeed.js';
 import type {
   BusObservation,
   BusState,
@@ -466,6 +467,7 @@ export class Collector {
    */
   private readonly states = new Map<string, BusState>();
   private readonly livePositions = new Map<string, BusPosition>();
+  private readonly recentSpeeds = new RecentSpeedTracker();
   /**
    * The visit reducer's state, keyed and reconciled exactly like `states`, so
    * a departure derived here joins the arrival the detector wrote under the
@@ -884,6 +886,7 @@ export class Collector {
         this.pruneStale(now);
 
         if (observations.length === 0) {
+          this.updateRecentSpeeds(observations, planTracks(observations), buses, now);
           this.witnessCapture.complete(now, this.observationVersion(), { states: this.states, visits: this.visitStates });
           return;
         }
@@ -929,6 +932,7 @@ export class Collector {
           obs.collectedAt - K10_HISTORY_MS, obs.collectedAt, obs.busName, K10_HISTORY_LIMIT,
         ).reverse() as BusObservation[]);
         this.updateLivePositions(observations, plan);
+        this.updateRecentSpeeds(observations, plan, buses, now);
         this.witnessCapture.complete(now, this.observationVersion(), { states: this.states, visits: this.visitStates });
         this.notifyPollObserver();
       } catch (err) {
@@ -1101,12 +1105,27 @@ export class Collector {
     // Filter at read time (not just at poll time): during an upstream outage
     // runPoll bails before updating positions, so the only thing keeping
     // ghosts out of the response is this freshness check against the clock.
-    const cutoff = Date.now() - LIVE_BUS_TTL_MS;
+    const now = Date.now();
+    const cutoff = now - LIVE_BUS_TTL_MS;
     const out: BusPosition[] = [];
-    for (const b of this.livePositions.values()) {
-      if (b.collectedAt >= cutoff) out.push(b);
+    for (const [key, b] of this.livePositions) {
+      if (b.collectedAt >= cutoff) {
+        const speed = this.recentSpeeds.get(key, now);
+        out.push({ ...b, ...(speed?.at === b.collectedAt ? { recentSpeed: speed } : {}) });
+      }
     }
     return out;
+  }
+
+  /** Cosmetic GPS history must never interrupt collection or the ETA observer. */
+  private updateRecentSpeeds(observations: readonly BusObservation[], plan: TrackPlan,
+    raw: readonly RawBus[], now: number): void {
+    try {
+      this.recentSpeeds.update(observations, plan, new Map(raw.map(b => [b.id, b.lastUpdate])), now);
+    } catch (error) {
+      this.recentSpeeds.clear();
+      this.logger.warn('collector.recent_speed_failed', { error: String(error) });
+    }
   }
 
   /**

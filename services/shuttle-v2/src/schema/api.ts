@@ -86,6 +86,13 @@ export const BusPositionSchema = z.object({
    * now. A client seeing its first frame has no history to infer it from.
    */
   lastMovedAt: EpochMsSchema.nullable().optional(),
+  /** Approximate recent GPS motion for display; not an arrival-time input. */
+  recentSpeed: z.object({
+    mph: z.number().finite().nonnegative(),
+    at: EpochMsSchema,
+    windowSec: z.number().min(25).max(30),
+    expiresAt: EpochMsSchema,
+  }).optional(),
   collectedAt: EpochMsSchema,
 });
 export type BusPosition = z.infer<typeof BusPositionSchema>;

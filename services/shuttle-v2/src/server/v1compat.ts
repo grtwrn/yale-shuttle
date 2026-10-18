@@ -217,6 +217,12 @@ export function buildBusesPayload(
 
   const buses = live.map((b) => ({
     observed_at: b.collectedAt,
+    recent_speed: b.recentSpeed ? {
+      mph: Math.round(b.recentSpeed.mph / 5) * 5,
+      at: b.recentSpeed.at,
+      window_sec: b.recentSpeed.windowSec,
+      expires_at: b.recentSpeed.expiresAt,
+    } : null,
     bus_id: b.busId,
     bus_name: b.busName,
     route_id: b.routeId,

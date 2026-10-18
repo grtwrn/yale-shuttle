@@ -3,6 +3,7 @@ import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGES_MAX_DATA_URL_LENGTH } from "./rep
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
 import L from "leaflet";
 import { cancelMapTouchZoom } from "./mapLifecycle";
+import { recentSpeedStatus } from "./recentSpeed";
 import "leaflet/dist/leaflet.css";
 import {
   stations, routes, stopToStation, routeNameMap,
@@ -1351,6 +1352,8 @@ const routeColorFor = (routeId: number): string =>
 // mount; bus markers update in place each poll so the map doesn't rebuild.
 const AllRoutesMap: FC<{
   buses: BusData[];
+  now: number;
+  speedAvailable: boolean;
   routePaths: Record<string, [number, number][]>;
   stopCoords: Record<number, LatLon>;
   stopNames: Record<number, string>;
@@ -1367,7 +1370,7 @@ const AllRoutesMap: FC<{
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
 }> = ({
-  buses, routePaths, stopCoords, stopNames, routeStops, height, hiddenRoutes,
+  buses, now, speedAvailable, routePaths, stopCoords, stopNames, routeStops, height, hiddenRoutes,
   userLatLon, onRequestLocate,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -1380,6 +1383,9 @@ const AllRoutesMap: FC<{
   // Set when "locate me" is tapped before a GPS fix exists — the
   // userLatLon effect below consumes it to pan once the fix lands.
   const [awaitingPan, setAwaitingPan] = useState(false);
+
+  // The parent clock keeps an open map from retaining an expired speed.
+  const speedKey = buses.map(b => recentSpeedStatus(b, now, speedAvailable)?.label ?? "").join("|");
 
   // Faithful port of the original v2 LiveMap bus marker: a route-colored disc
   // with the bus number inside, a direction arrow orbiting the disc by
@@ -1519,19 +1525,20 @@ const AllRoutesMap: FC<{
       const label = b.bus_name.replace(/^#/, "");
       const dwelling = b.at_stop_id != null;
       const cfg = ROUTE_LISTS.find((c) => c.busRouteIds.includes(b.route_id));
+      const speed = recentSpeedStatus(b, now, speedAvailable);
+      let tip = `${b.bus_name} · ${cfg?.label ?? `Route ${b.route_id}`}`;
+      if (b.at_stop_id != null && b.at_stop_since) {
+        const minAt = Math.round(Math.max(0, (now - new Date(b.at_stop_since + "Z").getTime()) / 60000));
+        if (minAt > 0) tip += ` · at stop ${minAt} min`;
+      }
+      if (speed) tip += ` · ${speed.label} · ${speed.detail}`;
+      const tooltip = document.createElement("span");
+      tooltip.textContent = tip;
+      tooltip.style.cssText = "display:block;width:180px;max-width:60vw;white-space:normal";
       L.marker([b.lat, b.lon], {
         icon: busIcon(color, b.heading ?? 0, label, dwelling),
-        keyboard: false, zIndexOffset: 1000,
-      })
-        .bindTooltip(() => {
-          let tip = `${b.bus_name} · ${cfg?.label ?? `Route ${b.route_id}`}`;
-          if (b.at_stop_id != null && b.at_stop_since) {
-            const minAt = Math.round(Math.max(0, (Date.now() - new Date(b.at_stop_since + "Z").getTime()) / 60000));
-            if (minAt > 0) tip += ` · at stop ${minAt} min`;
-          }
-          return tip;
-        }, { direction: "top", offset: [0, -16] })
-        .addTo(grp);
+        keyboard: true, title: tip, zIndexOffset: 1000,
+      }).bindTooltip(tooltip, { direction: "auto", offset: [0, -16] }).addTo(grp);
     }
     // One-shot: if the map mounted before the first bus poll, tighten the
     // view onto the fleet as soon as it exists.
@@ -1544,7 +1551,7 @@ const AllRoutesMap: FC<{
   // Same stable key the map effect uses: a Set is a new object every render,
   // so depending on it directly would redraw the fleet on every poll for
   // nothing.
-  }, [buses, [...hiddenRoutes].sort().join("|")]);
+  }, [buses, [...hiddenRoutes].sort().join("|"), speedKey, speedAvailable]);
 
   // "You are here" — same pulsing blue dot as the trip mini-map. Created
   // lazily on the first fix, then moved in place per watchPosition update
@@ -2951,6 +2958,7 @@ const TripPlanner: FC<{
       if (!stat || stat.n < 3) return null;
       return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
     };
+    const recentSpeed = busMatch ? recentSpeedStatus(busMatch, Date.now(), busStatus === "ready") : null;
     return (
       <div data-testid="trip-stop-list" role="region" aria-label={`${o.routeLabel} stops`}
         style={{ padding: "10px 12px", borderTop: "1px solid #eceff1" }} onClick={(e) => e.stopPropagation()}>
@@ -2962,6 +2970,12 @@ const TripPlanner: FC<{
           // or they were simply watching a different shuttle.
           <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>
             🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} away
+          </div>
+        )}
+        {recentSpeed && busMatch && (
+          <div data-testid="trip-recent-speed" style={{ fontSize: 12, color: "#546e7a", margin: "4px 0 8px" }}>
+            #{String(busMatch.bus_name).replace(/^#/, "")} · {recentSpeed.label}
+            <span style={{ display: "block", fontSize: 11 }}>{recentSpeed.detail}</span>
           </div>
         )}
         {approachStops.length > 0 && (
@@ -5728,6 +5742,7 @@ const StopList: FC<{
                 <AllRoutesMap
                   key={primaryRouteId}
                   height="min(38vh, 320px)"
+                  now={Date.now()} speedAvailable={busStatus === "ready"}
                   // The rider asked for exactly this route; the Map tab's
                   // line filter has no say here.
                   hiddenRoutes={EMPTY_HIDDEN}
@@ -5814,6 +5829,8 @@ const StopList: FC<{
 const RideRouteMap: FC<{
   ride: BoardedRide;
   buses: BusData[];
+  now: number;
+  speedAvailable: boolean;
   routePaths: Record<string, [number, number][]>;
   stopCoords: Record<number, LatLon>;
   stopNames: Record<number, string>;
@@ -5823,7 +5840,7 @@ const RideRouteMap: FC<{
   // The rider's actual destination (from the plan they boarded), distinct from
   // the alight stop — 🚏 marks where you get off, 🏁 marks where you're going.
   dest: { lat: number; lon: number; text: string } | null;
-}> = ({ ride, buses, routePaths, stopCoords, stopNames, routeStops, userLatLon, onRequestLocate, dest }) => {
+}> = ({ ride, buses, now, speedAvailable, routePaths, stopCoords, stopNames, routeStops, userLatLon, onRequestLocate, dest }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busLayerRef = useRef<L.LayerGroup | null>(null);
@@ -5833,6 +5850,10 @@ const RideRouteMap: FC<{
   const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
   const routeIds = cfg ? cfg.routeIds : [];
   const normBus = (s: string) => s.replace(/^#/, "");
+
+  const speedKey = buses.map(b => recentSpeedStatus(b, now, speedAvailable)?.label ?? "").join("|");
+  const ownBus = buses.find(b => cfg?.busRouteIds.includes(b.route_id) && normBus(b.bus_name) === normBus(ride.busName));
+  const ownSpeed = ownBus ? recentSpeedStatus(ownBus, now, speedAvailable) : null;
 
   // Same bus disc as AllRoutesMap (route-colored, number inside, heading arrow,
   // pulse when dwelling).
@@ -5964,13 +5985,19 @@ const RideRouteMap: FC<{
     for (const b of buses) {
       if (!cfg.busRouteIds.includes(b.route_id)) continue;
       const isMine = normBus(b.bus_name) === normBus(ride.busName);
+      const speed = recentSpeedStatus(b, now, speedAvailable);
+      let tip = isMine ? `${b.bus_name} · your bus` : b.bus_name;
+      if (speed) tip += ` · ${speed.label} · ${speed.detail}`;
+      const tooltip = document.createElement("span");
+      tooltip.textContent = tip;
+      tooltip.style.cssText = "display:block;width:180px;max-width:60vw;white-space:normal";
       L.marker([b.lat, b.lon], {
         icon: busIcon(ride.color, b.heading ?? 0, b.bus_name.replace(/^#/, ""), b.at_stop_id != null),
-        keyboard: false, zIndexOffset: isMine ? 1100 : 1000, opacity: isMine ? 1 : 0.5,
-      }).bindTooltip(isMine ? `${b.bus_name} · your bus` : b.bus_name, { direction: "top", offset: [0, -16] }).addTo(grp);
+        keyboard: true, title: tip, zIndexOffset: isMine ? 1100 : 1000, opacity: isMine ? 1 : 0.5,
+      }).bindTooltip(tooltip, { direction: "auto", offset: [0, -16] }).addTo(grp);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buses, ride.busName, ride.routeLabel]);
+  }, [buses, ride.busName, ride.routeLabel, speedKey, speedAvailable]);
 
   // "You are here" — same pulsing blue dot used elsewhere; moved in place per fix.
   useEffect(() => {
@@ -5990,6 +6017,9 @@ const RideRouteMap: FC<{
 
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 8px 4px", boxSizing: "border-box" }}>
+      {ownSpeed && <div data-testid="ride-recent-speed" style={{ padding: "0 4px 8px", fontSize: 12, color: "#546e7a" }}>
+        #{normBus(ride.busName)} · {ownSpeed.label} · {ownSpeed.detail}
+      </div>}
       <style>{`@keyframes shuttlePulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }`}</style>
       {/* Own stacking context: Leaflet's panes/controls (up to 1000) and the 📍
           button would otherwise outrank the sticky OnBusBanner (500) and paint
@@ -7620,7 +7650,7 @@ const TransitMap: FC = () => {
               routeIds: ROUTE_LISTS.find(c => c.label === boardedRide.routeLabel)?.busRouteIds ?? [] }]} />
           <RideRouteMap
             ride={boardedRide}
-            buses={buses}
+            buses={buses} now={Date.now()} speedAvailable={busStatus === "ready"}
             routePaths={routePaths}
             stopCoords={stopCoords}
             stopNames={stopNames}
@@ -7752,6 +7782,7 @@ const TransitMap: FC = () => {
             // Shorter here than it was as a whole page: the route cards sit
             // below it now and must be reachable without a long scroll.
             height="min(48vh, 430px)"
+            now={Date.now()} speedAvailable={busStatus === "ready"}
             buses={buses} routePaths={routePaths}
             stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
             // The page's one filter: the chips, plus every idle line while

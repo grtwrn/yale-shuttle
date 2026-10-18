@@ -37,6 +37,8 @@ export interface Route {
 export interface BusData {
   /** Server timestamp of this vehicle's latest actual observation (UTC ms). */
   observed_at?: number;
+  /** Display-only recent GPS path average; never an input to arrival predictions. */
+  recent_speed?: { mph: number; at: number; window_sec: number; expires_at: number } | null;
   bus_id: number;
   bus_name: string;
   route_id: number;
