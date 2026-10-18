@@ -214,6 +214,9 @@ export type UpcomingArrival = {
    * fine and our 8-stop ones are not" and one undifferentiated median.
    */
   stopsAhead: number;
+  /** Repeat of the same canonical call, not another visit to a folded stop ID.
+   * Older/hypothetical producers may omit this diagnostic. */
+  occurrence?: number;
   /**
    * TRUE when no served table backed any hop of the chain — every drive came
    * from the pace prior (the route's own, or the network's pooled one on a
@@ -292,6 +295,7 @@ export function computeUpcomingArrivals(
           routeLabel: cfg.label, color: cfg.color,
           busName: bus.bus_name.replace("#", ""),
           stopId: row.stopId, stopsAhead: row.stopsAhead, estimated: row.estimated,
+          occurrence: row.occurrence,
         });
       }
     }

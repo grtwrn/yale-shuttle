@@ -58,7 +58,7 @@ export interface EtaPayloadView {
  * `[busIndex, stopId, etaSec, lowSec, highSec, stopsAhead, estimated, departNow, lowFloor]`
  */
 export type { ServerEtaRow, ServerEtaWire } from "../../web/src/etaSource.js";
-import type { ServerEtaRow, ServerEtaWire, ServerEtaBus } from "../../web/src/etaSource.js";
+import type { ServerEtaRow, ServerEtaWire, ServerEtaBus, ServerEtaRepeatVisit } from "../../web/src/etaSource.js";
 
 export interface ServerEtaStats {
   restored: number;
@@ -412,6 +412,7 @@ export class ServerEta {
     const travel: number[] = [];
     const rows: ServerEtaRow[] = [];
     const distributions: number[][] = [];
+    const repeatVisits: ServerEtaRepeatVisit[] = [];
     for (const a of arrivals) {
       if (!this.served.has(a.routeLabel)) continue;
       const k = `${a.routeLabel}|${a.busName}`;
@@ -430,9 +431,10 @@ export class ServerEta {
       }
       distributions.push((a.distribution ?? []).map(Math.round));
       rows.push([i, a.stopId, Math.round(a.eta), Math.round(a.low), Math.round(a.high), a.stopsAhead, a.estimated ? 1 : 0, Math.round(a.departNow), Math.round(a.lowFloor)]);
+      if (a.occurrence === 1) repeatVisits.push([i, a.stopId, a.stopsAhead]);
     }
     if (rows.length === 0) return null;
-    return { v: 2, at: now, servedAt: now, buses, rows, distributions, travel };
+    return { v: 2, at: now, servedAt: now, buses, rows, distributions, travel, repeatVisits };
   }
 
   /**
@@ -468,7 +470,10 @@ export class ServerEta {
       .map((r) => [remap.get(r[0])!, ...r.slice(1)] as unknown as ServerEtaRow);
     const distributions = wire.distributions?.filter((_, i) => remap.has(wire.rows[i]![0]));
     const travel = wire.travel?.filter((_, i) => remap.has(i));
-    return { ...wire, buses, rows, ...(distributions ? { distributions } : {}), ...(travel ? { travel } : {}) };
+    const repeatVisits = wire.repeatVisits?.filter(r => remap.has(r[0]))
+      .map(r => [remap.get(r[0])!, r[1], r[2]] as ServerEtaRepeatVisit);
+    return { ...wire, buses, rows, ...(distributions ? { distributions } : {}), ...(travel ? { travel } : {}),
+      ...(repeatVisits ? { repeatVisits } : {}) };
   }
 
   /**
