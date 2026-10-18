@@ -3,7 +3,8 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { witnessJSON, witnessSHA } from '../../src/collector/witnessCodec.ts';
-import { validatePage, validHead, initialChain, derivedLegLeads } from './protocol.mjs';
+import { decodeWitness, validatePage, validHead, initialChain, derivedLegLeads } from './protocol.mjs';
+import { anchorProgressLeads } from './progress.mjs';
 
 const MiB = 1024 * 1024, DAY = 86400000;
 // Vite 5 predates this Node builtin; load it with Node's native resolver.
@@ -132,6 +133,7 @@ export class WitnessStore {
         if (active) this.db.prepare('INSERT OR IGNORE INTO incident_chunks VALUES (?,?)').run(id, active);
       }
       this.put('capture-run', null);
+      this.put('anchor-progress', null);
       this.put('checkpoint', cp);
     });
     return cp;
@@ -169,7 +171,24 @@ export class WitnessStore {
     if (revisit && (!saved.lastFrame || page.frames?.length !== 1 || !same(header(page.frames[0]), saved.lastFrame))) throw Error('Invalid last-frame revisit');
     const verified = validatePage(page, before, this.knownTopologies());
     if (!verified.frames.length) throw Error('Cannot commit an empty witness page');
-    const leads = derivedLegLeads(verified.frames), value = { ...facts(page), transport: { ...transport,
+    const progress = revisit ? { context: this.get('anchor-progress'), leads: [] }
+      : anchorProgressLeads(verified.frames, this.get('anchor-progress'), page.epoch);
+    const keepChunks = new Set();
+    // Retain the actual earlier observation, even under rolling pressure.
+    // If it was already retired, report unknown coverage rather than a lead.
+    const progressLeads = progress.leads.filter(lead => {
+      const prior = lead.previousFrame;
+      if (verified.frames.some(r => r.frame.seq === prior.seq && r.frame.sha256 === prior.frameSHA256)) return true;
+      const chunks = this.db.prepare(`SELECT c.chunk,f.header FROM chunk_frames c JOIN frames f
+        ON f.epoch=c.epoch AND f.seq=c.seq WHERE c.epoch=? AND c.seq=?`).all(page.epoch, prior.seq)
+        .filter(r => decodeWitness(r.header).sha256 === prior.frameSHA256);
+      for (const row of chunks) keepChunks.add(row.chunk);
+      if (chunks.length) return true;
+      progress.context.lastUnknown = { seq: lead.seq, reason: 'prior-frame-not-retained' };
+      const events = progress.context.coverage.withholdEvents;
+      events['prior-frame-not-retained'] = (events['prior-frame-not-retained'] ?? 0) + 1; return false;
+    });
+    const leads = [...derivedLegLeads(verified.frames), ...progressLeads], value = { ...facts(page), transport: { ...transport,
       retained: 'Exact embedded frame JSON and topology bytes; outer HTTP body hash only.' } }, raw = JSON.stringify(value);
     if (Buffer.byteLength(raw) > 20 * MiB) throw Error('Durable witness page exceeds bound');
     const payload = gzipSync(raw);
@@ -177,8 +196,9 @@ export class WitnessStore {
     // Include the full dictionary in the reservation: rolling cleanup below
     // can remove a previously known topology before this transaction starts.
     const compressedTopologies = suppliedTopologies.map(t => ({ ...t, payload: gzipSync(t.json) }));
-    const reserve = 131072 + 3 * (payload.length + compressedTopologies.reduce((s, t) => s + t.payload.length, 0));
-    this.maintain({ now, reserveBytes: reserve }); this.assertRoom(reserve);
+    const reserve = 131072 + 3 * (payload.length + compressedTopologies.reduce((s, t) => s + t.payload.length, 0)
+      + Buffer.byteLength(JSON.stringify(leads)));
+    this.maintain({ now, reserveBytes: reserve, keepChunks }); this.assertRoom(reserve);
     const newTopologies = compressedTopologies.filter(t => !this.db.prepare('SELECT 1 FROM topologies WHERE sha=?').get(t.sha256));
     const cp = { ...verified.checkpoint, lastFrame: header(page.frames.at(-1)), evaluationEpoch: seenHead.evaluationEpoch, evaluationCursor: seenHead.evaluationCursor };
     this.transaction(() => {
@@ -199,7 +219,7 @@ export class WitnessStore {
           .run(e.epoch, e.cursor, e.sha256, r.collectorEpoch, r.collectorSeq, r.collectorSHA256, e.at, key);
       }
       for (const lead of leads) {
-        const id = witnessSHA(witnessJSON([page.epoch, lead.kind, lead.seq, lead.rowSHA256]));
+        const id = witnessSHA(witnessJSON([page.epoch, lead.kind, lead.seq, lead.evidenceSHA256 ?? lead.rowSHA256]));
         this.db.prepare('INSERT OR IGNORE INTO incidents VALUES (?,?)').run(id, JSON.stringify({ ...lead, epoch: page.epoch }));
         this.db.prepare('INSERT OR IGNORE INTO incident_chunks VALUES (?,?)').run(id, key);
       }
@@ -227,6 +247,7 @@ export class WitnessStore {
       // minutes of a lead. Delivery/processing never silently releases pins.
       this.db.exec(`INSERT OR IGNORE INTO incident_chunks SELECT i.id,c.key FROM incidents i JOIN chunks c
         ON c.start_at<=json_extract(i.json,'$.at')+300000 AND c.end_at>=json_extract(i.json,'$.at')-1800000`);
+      if (!revisit) this.put('anchor-progress', progress.context);
       this.put('activeChunk', key); this.put('checkpoint', cp); this.refreshProtections();
     });
     return { key, duplicate: false, checkpoint: cp, leads };
@@ -260,11 +281,12 @@ export class WitnessStore {
     }
     this.put('reportProtection', { findings });
   }
-  maintain({ now = Date.now(), reserveBytes = 0 } = {}) {
+  maintain({ now = Date.now(), reserveBytes = 0, keepChunks = new Set() } = {}) {
     const uncertain = this.disk().unknown || this.get('reportsUncertain', true) || now - this.get('reportsAt', 0) > 300000;
     let deleted = 0;
     if (!uncertain) for (const c of this.db.prepare(`SELECT key,epoch,first,last,end_at FROM chunks WHERE key<>?
       AND key NOT IN (SELECT chunk FROM report_chunks) AND key NOT IN (SELECT chunk FROM incident_chunks) ORDER BY end_at,key`).all(this.get('activeChunk', ''))) {
+      if (keepChunks.has(c.key)) continue;
       if (now - c.end_at <= this.policy.maxAgeMs && this.usedBytes() + reserveBytes <= this.databaseLimit) continue;
       this.transaction(() => {
         this.db.prepare('DELETE FROM chunks WHERE key=?').run(c.key);
