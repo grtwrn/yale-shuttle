@@ -10,7 +10,7 @@ import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
 import {
-  fmtSchedule, fmtWindows, groceryServiceNotice, HEADWAY_MIN, isRouteScheduledAt, routeDiscontinuedAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt,
+  fmtSchedule, fmtWindows, groceryServiceNotice, HEADWAY_MIN, isRouteScheduledAt, isWindowActiveAt, routeDiscontinuedAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt,
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
@@ -427,6 +427,7 @@ export function planTrip(
   targetDate?: Date | null,
   now = Date.now(),
   anchorStore?: AnchorStore,
+  publishedHours?: Record<string, PublishedWindow>,
 ): TripOption[] {
   // Future-plan mode: the user picked a date/time >60s away. We can't
   // rely on live buses, so we filter by published operating hours and
@@ -445,12 +446,9 @@ export function planTrip(
   const options: TripOption[] = [];
 
   for (const cfg of ROUTE_LISTS) {
-    // Skip routes that won't be running at the target time. In live mode
-    // we still let computeUpcomingArrivals gate (bus presence filters
-    // naturally).
-    // The calendar question, alternation included: a plan for next Saturday
-    // must not ride the grocery line that runs the OTHER weekends.
-    if (futureMode && !isRouteScheduledAt(cfg.label, targetDate!)) continue;
+    // Future pickups are checked after walking and the typical wait below,
+    // including calendar rules. A bus may start running while the rider walks.
+    // Live mode continues to use the served forecasts and reporting buses.
     const tracked = !futureMode && liveRouteTracked(buses, cfg.label, now);
     if (!futureMode && !liveEtaAvailable(buses, now, cfg.label) && !tracked) continue;
     const stops = mergedRouteStops(cfg, routeStops);
@@ -521,6 +519,8 @@ export function planTrip(
         let destination: JourneyArrival | undefined;
         if (futureMode) {
           waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
+          const pickupAt = new Date(targetDate!.getTime() + (walkToSec + waitSec) * 1000);
+          if (!scheduledForTrip(cfg, pickupAt, publishedHours)) continue;
           busName = "";
         } else {
           // A bus physically dwelling AT this board stop is boardable NOW if
@@ -741,6 +741,18 @@ export function publishedWindowFor(
     if (w) return w;
   }
   return undefined;
+}
+
+/** Future pickup availability uses the same published window the rider reads.
+ * The existing wider window remains the fallback when no description parsed;
+ * the separate live-bus visibility gate is unchanged. */
+export function scheduledForTrip(
+  cfg: { routeIds: readonly string[]; busRouteIds: readonly number[]; label: string },
+  at: Date,
+  publishedHours?: Record<string, PublishedWindow>,
+): boolean {
+  const window = publishedWindowFor(cfg, publishedHours);
+  return window ? isWindowActiveAt([window], at, ROUTE_CALENDAR[cfg.label]) : isRouteScheduledAt(cfg.label, at);
 }
 
 /** Upstream's `active` flag for a ROUTE_LISTS entry, looked up like `publishedWindowFor`. */

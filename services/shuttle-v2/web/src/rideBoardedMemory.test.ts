@@ -4,7 +4,9 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { loadBoardedRide } from "./boardedRide";
+afterEach(() => vi.unstubAllGlobals());
 import { getOffAlertDue, rideBoarded } from "./rideAlert";
 import fixture from "./__fixtures__/ride-boarded-memory-2026-10-05.json";
 
@@ -104,17 +106,11 @@ describe("the two independent-review recorded here-first alert losses", () => {
 // PR387 moved this malformed-key access outside the protective catch.
 // Do not tighten the loader: these recent legacy records used to restore.
 describe("accepted legacy rides and invalid boarding identities", () => {
-  const loaderStart = source.indexOf('const BOARDED_LS_KEY =');
-  const loaderEnd = source.indexOf('// What this ride', loaderStart);
-  const loaderJs = ts.transpileModule(source.slice(loaderStart, loaderEnd), {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
-  }).outputText;
   for (const busName of [undefined, null, 308, {}, "", "#"]) {
     it("does not throw or remember invalid busName " + JSON.stringify(busName), () => {
       const restored = { ...ride, routeLabel: "Legacy Unknown", color: "#e53935", startedAt: Date.now(), busName };
-      const loaded = runInNewContext(loaderJs + "\nloadBoardedRide()", {
-        localStorage: { getItem: () => JSON.stringify(restored) },
-      }) as Ride;
+      vi.stubGlobal('localStorage', { getItem: () => JSON.stringify(restored) });
+      const loaded = loadBoardedRide() as Ride;
       expect(loaded).not.toBeNull();
       for (const mode of ["normal", "blocked", "write-blocked", "access-blocked"] as const) {
         const values = new Map<string, string>();
