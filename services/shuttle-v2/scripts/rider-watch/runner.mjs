@@ -3,6 +3,7 @@ import { auditPauseMaps, confirmPauseMaps, pauseReadDelay, readPauseMaps } from 
 import { completeArrival } from './complete-arrival.mjs';
 import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
 import { confirmExitInstruction, offPoleExitInstruction } from './exit-instruction.mjs';
+import { boardedTransferMatches, completedLegRecord, nextTransferStage, readTransferSections, riderLineAllowed, sameTransferLeg, selectTransferTrip, transferLegTrip, transferWaitingContext } from './transfer-journey.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { appendRolling, maintainImages, saveImage } from '../retention/storage.mjs';
@@ -21,13 +22,14 @@ export const BUS_GONE_MS=10*60000;
 export const BUS_OFF_ROUTE_MS=10*60000;
 const MAX_FEED_AGE_MS=30000;
 const LOOKING_FOR_BUS=/(?:^|\n)Looking for your bus…(?:\n|$)/;
-export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initialFeedAt=Date.now(),initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
+export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,initialTrip,initialLine,initialTransfer,initialFeed,initialFeedAt=clockNow(),initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
  if (!Array.isArray(initialFeed?.buses) || !Number.isFinite(initialFeedAt)) throw new Error('A valid initial feed and receipt time are required');
  const ROOT=outputDir;
  await fs.mkdir(ROOT,{recursive:true});
  let feed=initialFeed,feedAt=initialFeedAt,busy=false,stopped=false,timer,run=null,lastImage=0,lastPhase='',cursor=metrics.CANARY_LINES.findIndex(l=>l.label===initialLine?.label),imageBytes=0;
  let idleStale=false,pendingInitialTrip=initialRun?null:initialTrip;
+ let journeySelections=0;
  let lastPosition;
  // A line whose trip row is missing (e.g. a bus still in the feed after its
  // last loop) is skipped for a while, so a fixed-trip rider does not reload,
@@ -37,22 +39,27 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
  let retention=await maintainImages(ROOT,{activeRunId:initialRun?.id});imageBytes=retention.imageBytes;
  const locate=async position=>{await ctx.setGeolocation(position);lastPosition=position;};
  const feedStatus=()=>{
-  const feedAgeMs=Math.max(0,Date.now()-feedAt);
+  const feedAgeMs=Math.max(0,clockNow()-feedAt);
   return {feedReceivedAt:new Date(feedAt).toISOString(),feedAgeMs,feedStale:feedAgeMs>MAX_FEED_AGE_MS,cachedBuses:feed.buses.length};
  };
  const status=async(extra={})=>{
-  await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date().toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,mapPauseAudit:run?.phase==='waiting'?run.mapPauseAudit:null,...feedStatus(),...extra},null,2));
-  await saveCheckpoint(ROOT,page,run,lastPosition);
+  await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date(clockNow()).toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,mapPauseAudit:run?.phase==='waiting'?run.mapPauseAudit:null,
+   ...(run?.transfer?{transfer:{stage:run.transfer.stage+1,lines:run.transfer.legs.map(l=>l.routeLabel),completedLegs:run.transfer.completedLegs.length,startedAt:run.transfer.startedAt,finalDestination:run.transfer.originalTrip.destination}}:{}),...feedStatus(),...extra},null,2));
+  await saveCheckpoint(ROOT,page,run,lastPosition,clockNow());
  };
- const event=async(kind,detail)=>{const e={at:new Date().toISOString(),runId:run?.id,kind,detail};await appendRolling(ROOT,'events',e);console.log(JSON.stringify(e));};
+ const event=async(kind,detail)=>{const e={at:new Date(clockNow()).toISOString(),runId:run?.id,line:run?.line.label,kind,detail};await appendRolling(ROOT,'events',e);console.log(JSON.stringify(e));};
  const capture=async(label)=>{
-  const at=new Date().toISOString(),name=at.replace(/[:.]/g,'-')+'-'+label.replace(/[^a-zA-Z0-9-]/g,'-')+'.jpg';
+  const at=new Date(clockNow()).toISOString(),name=at.replace(/[:.]/g,'-')+'-'+label.replace(/[^a-zA-Z0-9-]/g,'-')+'.jpg';
   const buffer=await page.screenshot({type:'jpeg',quality:72,timeout:12000});
   retention=await saveImage(ROOT,{at,name,label,runId:run?.id},buffer,run?.id,{phase:run?.phase,line:run?.line.label});
-  imageBytes=retention.imageBytes;lastImage=Date.now();
+  imageBytes=retention.imageBytes;lastImage=clockNow();
  };
- const finish=async(reason)=>{run.finishedAt=new Date().toISOString();run.result=reason;await capture(reason);await appendRolling(ROOT,'journeys',run);await event('journey-finished',reason);run=null;};
- const begin=async(trip,line)=>{run={instrumentVersion:'inputs-v2',id:Date.now().toString(),startedAt:new Date().toISOString(),phase:'waiting',line,trip,samples:0};await event('journey-started',{line:line.label,trip});await capture('waiting-'+line.label);await status();};
+ const finish=async(reason)=>{run.finishedAt=new Date(clockNow()).toISOString();run.result=reason;
+  if(run.transfer){run.transfer.completedLegs.push(completedLegRecord(run,reason));run.transfer.finishedAt=run.finishedAt;if(reason==='completed')run.transfer.busLegsFinishedAt=run.arrivedAt;}
+  await capture(reason);await appendRolling(ROOT,'journeys',run);await event('journey-finished',reason);run=null;};
+ const begin=async(trip,line,transfer)=>{run={instrumentVersion:transfer?'transfer-v1':'inputs-v2',id:clockNow().toString(),startedAt:new Date(clockNow()).toISOString(),phase:'waiting',line,trip,samples:0};
+  if(transfer){run.transfer={...transfer,originalTrip:structuredClone(trip),stage:0,completedLegs:[],startedAt:run.startedAt,allowedLabels};run.trip=transferLegTrip(trip,transfer.legs[0],feed);run.excludeAccuracy=true;run.excludeAccuracyReason='Two-leg diagnostic; separate from one-seat accuracy aggregates';}
+  journeySelections++;await event('journey-started',{line:line.label,trip,...(transfer?{transfer:run.transfer}: {})});await capture('waiting-'+line.label);await status();};
  // Keep one original qualifying receipt, rather than losing a five-second
  // position when the next response replaces it before the ten-second UI tick.
  const rememberArrival=(next,receivedAt)=>{
@@ -72,7 +79,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
  };
  const onResponse=async r=>{if(new URL(r.url()).pathname==='/api/buses'&&r.ok())try{
   const receiving=run?.phase==='riding'?run:null,next=await r.json();
-  if(Array.isArray(next?.buses)){feed=next;feedAt=Date.now();if(receiving&&run===receiving)rememberArrival(next,feedAt);}
+  if(Array.isArray(next?.buses)){feed=next;feedAt=clockNow();if(receiving&&run===receiving)rememberArrival(next,feedAt);}
  }catch{}};
  page.on('response',onResponse);
  const onPageError=e=>event('candidate-page-error',e.message).catch(()=>{});
@@ -103,9 +110,9 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
   if(randomLines)for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
   for(const idx of order){
    const line=metrics.CANARY_LINES[idx];
-   if(allowedLabels && !allowedLabels.includes(line.label))continue;
+   if(!riderLineAllowed(line.label,allowedLabels,randomLines))continue;
    if(!metrics.liveBusesOf(feed,line).length)continue;
-   if((unavailableUntil[line.label]??0)>Date.now())continue;
+   if((unavailableUntil[line.label]??0)>clockNow())continue;
    let picked=fixedTrip ?? null;
    for(let attempt=0;!picked && attempt<12;attempt++){
     const candidate=rotation.randomTripForLine(feed,line).trip;if(!candidate)break;
@@ -116,16 +123,27 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    }
    if(!picked)continue;
    cursor=idx;
-   await page.evaluate(()=>{localStorage.removeItem('shuttle-boarded-ride');sessionStorage.clear();localStorage.setItem('listView','trip');});
+   await page.evaluate(()=>{localStorage.removeItem('shuttle-boarded-ride');localStorage.removeItem('shuttle-transfer-handoff');sessionStorage.clear();localStorage.setItem('listView','trip');});
    await locate({latitude:picked.origin.lat,longitude:picked.origin.lon});
    await page.reload({waitUntil:'domcontentloaded',timeout:30000});
    const clear=page.getByRole('button',{name:'Clear',exact:true});if(await clear.isVisible())await clear.click();
    await selectDestination(page,picked.destination);
    await sleep(1500);
    if(!await selectionReady(line))return;
+   // Reuse the general rider's browser: try a transfer every third selection,
+   // beginning with the first, and retain the ordinary trip when none fits.
+   if(randomLines&&!fixedTrip&&journeySelections%3===0){
+    let transfer;
+    try{transfer=await selectTransferTrip(page,feed,line,allowedLabels,randomLines);}
+    catch(error){unavailableUntil[line.label]=clockNow()+SELECTION_BACKOFF_MS;await event('selection-transfer-unavailable',{line:line.label,trip:picked,message:error.message,text:await page.locator('body').innerText()});await capture('selection-transfer-unavailable');await status();return;}
+    if(transfer){
+     if(!await selectionReady(line)||!metrics.liveBusesOf(feed,metrics.CANARY_LINES.find(l=>l.label===transfer.legs[1].routeLabel)).length)return;
+     await begin(picked,line,transfer);return;
+    }
+   }
    const more=page.getByRole('button',{name:/Show \d+ more route/});if(await more.isVisible())await more.click();
    const row=page.getByRole('button',{name:'View '+line.label+' trip details',exact:true});
-   if(!await row.isVisible()){unavailableUntil[line.label]=Date.now()+SELECTION_BACKOFF_MS;await event('selection-unavailable',{line:line.label,trip:picked,text:await page.locator('body').innerText()});await capture('selection-unavailable');return;}
+   if(!await row.isVisible()){unavailableUntil[line.label]=clockNow()+SELECTION_BACKOFF_MS;await event('selection-unavailable',{line:line.label,trip:picked,text:await page.locator('body').innerText()});await capture('selection-unavailable');return;}
    // A centre click can hit the nested arrival disclosure. Activate the
    // focused trip card itself; its keyboard handler opens the trip view.
    await row.focus();await page.keyboard.press('Enter');
@@ -140,14 +158,14 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    if(!run){
     if(pendingInitialTrip){
      if(!await selectionReady(initialLine))return;
-     const trip=pendingInitialTrip;pendingInitialTrip=null;await begin(trip,initialLine);
+     const trip=pendingInitialTrip;pendingInitialTrip=null;await begin(trip,initialLine,initialTransfer);
     }else{
      if(!await idleFeedReady())return;
      await select();return;
     }
    }
    let sampledFeed=feed,sampledFeedAt=feedAt;
-   const renderWaitMs=run.phase==='waiting'?pauseReadDelay(sampledFeed,sampledFeedAt,Date.now(),run.line.label):0;
+   const renderWaitMs=run.phase==='waiting'?pauseReadDelay(sampledFeed,sampledFeedAt,clockNow(),run.line.label):0;
    if(renderWaitMs){
     await sleep(renderWaitMs);if(stopped)return;
     // Refresh both receipt and payload before reading text/DOM or deciding to board.
@@ -155,7 +173,8 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    }
    const text=await page.locator('body').innerText();
    const maps=run.phase==='waiting'?await readPauseMaps(page):[];
-   const now=Date.now();
+   const transferRead=run.transfer&&run.phase==='waiting'?transferWaitingContext(await readTransferSections(page),run.transfer.legs[run.transfer.stage],sampledFeed):null;
+   const now=clockNow();
    const feedStable=feed===sampledFeed&&feedAt===sampledFeedAt;
    const wire=sampledFeed.server_eta;
    const mapPause=run.phase==='waiting'?auditPauseMaps(maps,sampledFeed,sampledFeedAt,now,feedStable):null;
@@ -163,6 +182,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    run.mapPauseConflicts=pauses.state;
    run.mapPauseAudit=mapPause?{checked:mapPause.checked,skipped:mapPause.skipped,reason:mapPause.reason,renderWaitMs,sampledAt:new Date(now).toISOString()}:null;
    const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-sampledFeedAt,text,buses:sampledFeed.buses,
+    ...(run.transfer?{transfer:{stage:run.transfer.stage+1,leg:run.transfer.legs[run.transfer.stage],ui:transferRead,oneSeatAccuracyExcluded:true}}:{}),
     ...(mapPause?{mapPauseAudit:{...mapPause,maps,renderWaitMs,feedStableDuringRead:feedStable}}:{}),
     ...(run.phase==='riding'?{rideContext:{busName:run.busName,routeLabel:run.line.label,
      exitStopId:run.exitStopId,exitStopName:sampledFeed.stop_names?.[run.exitStopId],
@@ -172,22 +192,31 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    for(const alert of pauses.alerts){await event('candidate-map-pause',alert);await capture('candidate-map-pause');}
    if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
-    const checked=confirmConflict(run.countConflict,pickupCountConflict(text,feed,run.line.busRouteIds,now),now);
+    // The direct-card count check reads literal direct-card text. Transfer
+    // metadata is used only for boarding identity/occurrence checks below.
+    const checked=confirmConflict(run.countConflict,run.transfer?null:pickupCountConflict(text,feed,run.line.busRouteIds,now),now);
     run.countConflict=checked.state;
     if(checked.alert){await event('candidate-stop-count',{line:run.line.label,...checked.alert,text});await capture('candidate-stop-count');}
     // Wait as long as the card's first quote allows, as the ride cap does:
     // Grocery Ham quoted "About 44 min · Likely 33–60 min" and #42 pulled in
     // at 47.6 min, 2.6 min after a fixed 45 min cap ended the run (96f99a88).
-    if(run.waitCapMin==null){const quoted=quotedWaitMin(text);if(quoted!==null)run.waitCapMin=waitCapMin(quoted);}
+    if(run.waitCapMin==null){const quoted=quotedWaitMin(transferRead?.controlText??text);if(quoted!==null)run.waitCapMin=waitCapMin(quoted);}
     const waitCapMs=(run.waitCapMin??WAIT_CAP_MIN)*60000;
     // The line left service (e.g. Orange Night after its last loop): nothing
     // to board, so stop instead of waiting out the cap.
     if(metrics.liveBusesOf(feed,run.line).length){run.noServiceSince=undefined;}
     else{run.noServiceSince??=now;if(now-run.noServiceSince>5*60000){run.excludeAccuracy=true;await finish('no-service-excluded');await status();return;}}
-    const boardLabel=text.match(/(?:^|\n)BOARD([^\n]+)/)?.[1],exitLabel=text.match(/(?:^|\n)GET OFF([^\n]+)/)?.[1];
-    const board=labeledStopId(text,'BOARD',feed.stop_names);
-    const exit=labeledStopId(text,'GET OFF',feed.stop_names);
-    const name=followedBusName(text,board,feed.buses,run.line.busRouteIds,run.busName,feed.stop_coords);
+    if(run.transfer&&(!feedStable||!transferRead)){
+     if(!transferRead&&feedStable){run.transfer.screenMissingSince??=now;if(now-run.transfer.screenMissingSince>=30000&&!run.transfer.screenMissingReported){run.transfer.screenMissingReported=true;await event('candidate-transfer-screen',{stage:run.transfer.stage+1,expected:run.transfer.legs[run.transfer.stage],text});await capture('candidate-transfer-screen');}}
+     if(now-Date.parse(run.startedAt)>waitCapMs)await finish('transfer-screen-timeout-needs-review');
+     await status({note:'Waiting for a stable current transfer pickup'});return;
+    }
+    if(run.transfer){delete run.transfer.screenMissingSince;delete run.transfer.screenMissingReported;}
+    const assessmentText=transferRead?.assessmentText??text;
+    const boardLabel=transferRead?feed.stop_names[transferRead.boardStopId]:text.match(/(?:^|\n)BOARD([^\n]+)/)?.[1],exitLabel=transferRead?feed.stop_names[transferRead.exitStopId]:text.match(/(?:^|\n)GET OFF([^\n]+)/)?.[1];
+    const board=transferRead?.boardStopId??labeledStopId(text,'BOARD',feed.stop_names);
+    const exit=transferRead?.exitStopId??labeledStopId(text,'GET OFF',feed.stop_names);
+    const name=transferRead?transferRead.busName:followedBusName(text,board,feed.buses,run.line.busRouteIds,run.busName,feed.stop_coords);
     // Do not reuse yesterday's/last poll's stop identity after a parse failure.
     if(board===null || exit===null){
      run.invalidStopSamples=(run.invalidStopSamples??0)+1;run.excludeAccuracy=true;
@@ -217,7 +246,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      // Also board when the card marks the bus at the stop (BOARD🚌) and the
      // feed agrees: Red #119 stood at Division / Prospect 47 m from the pole
      // for one poll and was missed (run 1790956246494).
-     const atStop=/(?:^|\n)BOARD\s*🚌/.test(text)&&observedAtStop(bus,run.boardStopId,feed.stop_coords);
+     const atStop=/(?:^|\n)BOARD\s*🚌/.test(assessmentText)&&observedAtStop(bus,run.boardStopId,feed.stop_coords);
      // Within 45 m, but not a bus the feed has moving on past the pickup: the
      // card names a bus that just drove through as a lap away, and a rider
      // cannot board it (#317, 42 m past 100 Church Street South, run
@@ -227,9 +256,9 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      if(past){run.pastStopSamples=(run.pastStopSamples??0)+1;if(!run.pastStopReported){run.pastStopReported=true;await event('waiting-bus-past-stop',{bus:name,stop:boardLabel,distanceM:distance,lastStopId:bus.last_stop_id});}}
      // Opposite-direction poles can share the radius but be a lap apart.
      // Do not turn a named, stops-away card into that wrong-occurrence ride.
-     const opposite=distance<=BOARD_M&&!past&&oppositePickupCurb(bus,run.boardStopId,text,feed);
+     const opposite=distance<=BOARD_M&&!past&&oppositePickupCurb(bus,run.boardStopId,assessmentText,feed);
      if(opposite){run.oppositeCurbSamples=(run.oppositeCurbSamples??0)+1;if(!run.oppositeCurbReported){run.oppositeCurbReported=true;await event('waiting-bus-opposite-curb',{bus:name,stop:boardLabel,distanceM:distance,atStopId:bus.at_stop_id});}}
-     const other=distance<=BOARD_M&&otherPickupOccurrence(bus,run.boardStopId,text,feed,now);
+     const other=distance<=BOARD_M&&otherPickupOccurrence(bus,run.boardStopId,assessmentText,feed,now);
      if(other){run.otherOccurrenceSamples=(run.otherOccurrenceSamples??0)+1;if(!run.otherOccurrenceReported){run.otherOccurrenceReported=true;await event('waiting-bus-other-occurrence',{...other,distanceM:distance});}}
      if(((distance<=BOARD_M&&!past&&!opposite)||atStop)&&!other&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
@@ -242,19 +271,28 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
       // 100 m in the app's latest feed. Otherwise the bus left without us,
       // and waiting on would time the next one (riderpromptmiss20261004:
       // #317, boarded 15 min after #330 stood at the stop, ended "completed").
-      try{await boardSelectedRide(page,name,{cardBoards:async()=>{
+      try{await boardSelectedRide(page,name,{
+       ...(transferRead?.buttonName?{cardButton:page.getByTestId('transfer-pickup-controls').getByRole('button',{name:transferRead.buttonName,exact:true})}:{}),
+       cardBoards:async()=>{
+       if(run.transfer){
+        const currentFeed=feed,currentAt=feedAt,currentRead=transferWaitingContext(await readTransferSections(page),run.transfer.legs[run.transfer.stage],currentFeed);
+        const current=currentFeed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+        return feed===currentFeed&&feedAt===currentAt&&!!currentRead&&currentRead.busName===name&&!!currentRead.buttonName&&!!current
+         &&!otherPickupOccurrence(current,run.boardStopId,currentRead.assessmentText,currentFeed,clockNow());
+       }
        const currentText=await page.locator('body').innerText(),latest=feed;
        const current=latest.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
        return !!current&&cardBoardsBus(latest.buses,run.line.busRouteIds,at,name)
-        &&!otherPickupOccurrence(current,run.boardStopId,currentText,latest,Date.now());
+        &&!otherPickupOccurrence(current,run.boardStopId,currentText,latest,clockNow());
       }});}catch(e){
        const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null')?.busName??null);
        if(!stored&&e instanceof BoardingMissed){const left=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));run.excludeAccuracy=true;await event('boarding-missed',{bus:name,stop:boardLabel,observedDistanceM:distance,distanceNowM:left?metrics.haversineM(left,coord):null});await finish('boarding-missed-excluded');await status();return;}
        if(!stored)throw e;
        if(stored.replace(/^#/,'')!==name.replace(/^#/,'')){run.excludeAccuracy=true;await event('wrong-bus-boarded',{bus:name,stored,stop:boardLabel,observedDistanceM:distance});await finish('wrong-bus-boarded-excluded');await status();return;}
       }
-      run.boardedAt=new Date().toISOString();run.phase='riding';
+      run.boardedAt=new Date(clockNow()).toISOString();run.phase='riding';
       run.boardedStorage=await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage).filter(([k])=>/board/i.test(k))));
+      if(run.transfer){const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null'));if(!boardedTransferMatches(stored,run.transfer)){await event('candidate-transfer-boarded-state',{stage:run.transfer.stage+1,expected:run.transfer.legs,stored});await finish('wrong-transfer-state-excluded');await status();return;}}
       await event('boarded',{bus:name,stop:boardLabel,observedDistanceM:distance});
      }
     }
@@ -269,7 +307,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     if(arrival){
      await locate({latitude:arrival.bus.lat,longitude:arrival.bus.lon});run.lastExitDistanceM=arrival.distanceM;
      run.arrivalCriterion=arrival.criterion;run.arrivedAt=arrival.receivedAt;
-     run.arrivalProcessedAt=new Date().toISOString();run.arrivalText=text;run.phase='arrived';
+     run.arrivalProcessedAt=new Date(clockNow()).toISOString();run.arrivalText=text;run.phase='arrived';
      await event('arrived',{bus:run.busName,stop:arrival.stopName,
       rideSeconds:(Date.parse(run.arrivedAt)-Date.parse(run.boardedAt))/1000,observation:arrival});
     }else{
@@ -301,14 +339,23 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     if(now-Date.parse(run.boardedAt)>run.rideCapMin*60000)await finish('ride-timeout-needs-review');
     }
    }else if(run.phase==='arrived'&&now-Date.parse(run.arrivedAt)>15000){
-    await completeArrival(page,()=>capture('arrival-dismissed'));await finish('completed');
+    if(run.transfer?.stage===0){
+     // A normal end-of-tracking prompt alone is never an arrival. This
+     // transition requires the retained first-leg GPS receipt above.
+     const nextRun=nextTransferStage(run,feed,now);
+     await completeArrival(page,()=>capture('first-arrival-dismissed'),{buttonName:'End first ride'});
+     const handoff=page.getByTestId('transfer-handoff');await handoff.waitFor({timeout:5000});
+     const next=handoff.getByRole('button',{name:'Continue to next pickup',exact:true});if(await next.isVisible())await next.click();
+     const sections=await readTransferSections(page);if(sections.length!==1||!sameTransferLeg(sections[0],run.transfer.legs[1]))throw Error('Transfer handoff does not retain the expected second leg');
+     run=nextRun;await event('transfer-handoff',{next:run.transfer.legs[1],firstArrival:run.transfer.completedLegs[0].arrivalObservation,origin:run.trip.origin});await capture('transfer-handoff');
+    }else{await completeArrival(page,()=>capture('arrival-dismissed'));await finish('completed');}
    }
    if(run&&(lastPhase!==run.phase||now-lastImage>=60000)){await capture(run.phase+'-'+run.line.label);lastPhase=run.phase;}
    await status();
   }catch(e){await event('harness-error',{message:e.message,stack:e.stack});if(run){run.harnessErrors=(run.harnessErrors??0)+1;if(run.harnessErrors>=3)await finish('harness-failed-excluded');}await status({error:e.message});}
   finally{busy=false;}
  };
- if(initialRun){run={...initialRun,instrumentVersion:'inputs-v2',instrumentHandoverAt:new Date().toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; resumed journey excluded from accuracy scoring');await status();}
- timer=setInterval(()=>tick(),10000);await tick();
+ if(initialRun){run={...initialRun,instrumentVersion:initialRun.transfer?'transfer-v1':'inputs-v2',instrumentHandoverAt:new Date(clockNow()).toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; resumed journey excluded from accuracy scoring');await status();}
+ if(autoTick)timer=setInterval(()=>tick(),10000);await tick();
  return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt}),capture,stop:async()=>{stopped=true;clearInterval(timer);removeListeners();await status();},tick, detach:()=>{stopped=true;clearInterval(timer);removeListeners();return run;}};
 }

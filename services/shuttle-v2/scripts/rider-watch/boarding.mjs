@@ -11,9 +11,9 @@ export class BoardingMissed extends Error {}
 /** Prefer the auto-detection confirmation only when it names our chosen bus.
  * Every fallback to the card's "🚌 I'm on it" needs a current `cardBoards()`
  * check, including an offer already gone before this function starts. */
-export async function boardSelectedRide(page, busName, {cardBoards = async () => false} = {}) {
+export async function boardSelectedRide(page, busName, {cardBoards = async () => false, cardButton} = {}) {
   const yes = page.getByRole('button', {name: "Yes, I'm on it", exact: true});
-  const card = page.getByRole('button', {name: "🚌 I'm on it", exact: true});
+  const card = cardButton ?? page.getByRole('button', {name: "🚌 I'm on it", exact: true});
   const clickCard = async () => {
     if (!await cardBoards()) throw new BoardingMissed(`The card cannot confirm boarding ${busName} in the current feed`);
     await card.click();

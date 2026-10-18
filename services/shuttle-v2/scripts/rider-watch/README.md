@@ -9,6 +9,31 @@ One mobile browser continuously chooses a random running line and random
 stop pair, walks to pickup, boards through the UI, and follows live GPS to
 the destination. It identifies as the excluded test rider.
 
+The general rider excludes Red, which belongs to the dedicated fixed-trip
+rider. On its first selection and every third selection thereafter, it also
+looks for an offered one-change trip whose first line is the current line.
+Both legs must belong to its assignment, have live buses and unambiguous
+endpoint occurrences. When none is eligible it keeps the ordinary trip.
+This uses the existing general browser; there are still two live browsers.
+
+A transfer follows each leg through its own visible controls and public
+bus/stop attributes. An independently retained feed receipt must meet the
+existing GPS arrival rule before the rider ends the first ride and uses the
+handoff. It then walks from that recorded fix to the second pickup over time,
+boards the current explicitly named bus, and follows the second ride to its
+exit. Tracking expiry or a disappeared bus does not prove a transfer arrival.
+The final destination, both leg receipts, original text and boarding state
+are retained in the journey. `status.json.transfer` identifies the current
+leg and completed-leg count. Transfer runs use `instrumentVersion: transfer-v1`
+and are excluded from one-seat accuracy totals; the feed is not independent
+physical truth and a conditional connection is not a joint arrival interval.
+
+Checkpoints preserve the selected transfer and onward handoff as well as the
+boarded ride. Restarts check both legs against the rider assignment and retain
+an unassigned checkpoint in the bounded event log rather than resume it. The
+direct-card stop-count check applies to direct-card text; transfer boarding
+metadata does not establish that a literal visible stop count is correct.
+
 Artifacts default to `scripts/.rider-watcher` (`WATCHER_DIR` overrides):
 `status.json`, `events.jsonl`, `journeys.jsonl`, bounded UI samples and
 screenshots, and an auto-refreshing `index.html` gallery. Serve locally with

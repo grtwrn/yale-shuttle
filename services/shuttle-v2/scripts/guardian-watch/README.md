@@ -56,3 +56,5 @@ retain their separate existing consecutive-failure rule.
 Run `python3 -m unittest discover -s scripts/guardian-watch -p 'test_*.py' -v`
 from `services/shuttle-v2`. `bridge.test.mjs` runs the same Python tests inside
 the normal Vitest release gates.
+
+Transfer rider events carry the current leg’s `line`. Candidate and failed-journey incidents use that explicit line; older events fall back to the journey-started mapping. Resuming on the second leg does not require replaying an earlier start event to attribute an alert.

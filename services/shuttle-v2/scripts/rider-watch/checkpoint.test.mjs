@@ -35,3 +35,23 @@ test('checkpoint preserves the ride and restores browser state once, without res
     expect(local.has('shuttle-boarded-ride')).toBe(false); expect(session.has('shuttle-trip-draft')).toBe(false);
   } finally { globalThis.localStorage = priorLocal; globalThis.sessionStorage = priorSession; }
 });
+test('captures the transfer selection and handoff while excluding unrelated storage',async()=>{
+ dir=await fs.mkdtemp(path.join(os.tmpdir(),'shuttle-transfer-resume-'));
+ const priorLocal=globalThis.localStorage,priorSession=globalThis.sessionStorage;
+ globalThis.localStorage={'shuttle-transfer-handoff':'handoff','shuttle-boarded-ride':'ride',unrelated:'private'};
+ globalThis.sessionStorage={getItem:key=>({'shuttle-trip-draft':'draft','shuttle-transfer-selection':'selection'}[key]??null)};
+ try{
+  await saveCheckpoint(dir,{evaluate:async fn=>fn()},{id:'transfer',phase:'waiting'});
+  const saved=await loadCheckpoint(dir);
+  expect(saved.browserState.local).toEqual({'shuttle-transfer-handoff':'handoff','shuttle-boarded-ride':'ride'});
+  expect(saved.browserState.session).toEqual({'shuttle-trip-draft':'draft','shuttle-transfer-selection':'selection'});
+ }finally{globalThis.localStorage=priorLocal;globalThis.sessionStorage=priorSession;}
+});
+test('a transfer restore recreates the original final destination rather than the current leg exit',async()=>{
+ const trip={origin:{label:'Origin',lat:41,lon:-72},destination:{display_name:'Final destination',lat:42,lon:-72}},saved={savedAt:123,run:{phase:'waiting',line:{label:'Orange Day',busRouteIds:[2]},trip:{...trip,destination:{display_name:'Intermediate',lat:41.1,lon:-72}},transfer:{originalTrip:trip}}};
+ let fn,args;await restoreCheckpoint({setGeolocation:async()=>{},addInitScript:async(f,a)=>{fn=f;args=a;}},saved,{buses:[]});
+ const priorLocal=globalThis.localStorage,priorSession=globalThis.sessionStorage,session=new Map();
+ globalThis.localStorage={getItem:()=>null,setItem:()=>{}};globalThis.sessionStorage={getItem:k=>session.get(k)??null,setItem:(k,v)=>session.set(k,v)};
+ try{fn(args);const draft=JSON.parse(session.get('shuttle-trip-draft'));expect(draft.toText).toBe('Final destination');expect(draft.toLL).toEqual({lat:42,lon:-72});}
+ finally{globalThis.localStorage=priorLocal;globalThis.sessionStorage=priorSession;}
+});
