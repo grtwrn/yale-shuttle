@@ -143,7 +143,37 @@ try {
   }catch(error){if(page){await fs.writeFile(`${out}/end-of-service-failure-${scenario}-${width}.txt`,await page.locator('body').innerText());await page.screenshot({path:`${out}/end-of-service-failure-${scenario}-${width}.png`,fullPage:true});}throw error;}
   finally{if(page)await page.unrouteAll({behavior:'wait'});await ctx.close();}
  }
+ // Blue Day before its published 6pm close: removing the speculative
+ // return must not erase the existing "could be the last" caution.
+ for(const width of [368,1280]) {
+  const feed=structuredClone(recorded),wire=feed.server_eta,clock=Date.parse('2026-10-12T17:30:00-04:00'),shift=clock-wire.servedAt;
+  const bi=wire.buses.findIndex(b=>b[0]==='48'&&b[1]==='Blue Day');assert(bi>=0);
+  const kept=wire.rows.map((row,i)=>({row,i})).filter(x=>x.row[0]===bi);
+  assert.deepEqual(kept.filter(x=>x.row[1]===100).map(x=>x.row[5]),[1,32]); // the fixture's 31-call canonical ring
+  wire.buses=[wire.buses[bi]];wire.travel=wire.travel?[wire.travel[bi]]:undefined;
+  if(wire.distributions)wire.distributions=kept.map(x=>wire.distributions[x.i]);
+  wire.rows=kept.map(x=>[0,...x.row.slice(1)]);wire.repeatVisits=wire.rows.filter(r=>r[5]>31).map(r=>[0,r[1],r[5]]);
+  wire.at+=shift;wire.servedAt+=shift;
+  feed.buses=feed.buses.filter(b=>b.bus_name==='#48'&&b.route_id===1);
+  for(const b of feed.buses){if(b.observed_at!==undefined)b.observed_at+=shift;for(const key of ['at_stop_since','stationary_since','last_moved_at'])if(b[key])b[key]=new Date(Date.parse(b[key]+'Z')+shift).toISOString().slice(0,-1);}
+  const ctx=await browser.newContext({viewport:{width,height:854},isMobile:width<500,hasTouch:width<500,timezoneId:'America/New_York',serviceWorkers:'block'});let page;const errors=[];
+  try{
+   await seedTestId(ctx);await ctx.addInitScript(({from,to,now})=>{localStorage.setItem('listView','trip');sessionStorage.setItem('shuttle-trip-draft',JSON.stringify({fromText:'Prospect/Canner',fromLL:from,toText:'Rosenkranz Hall',toLL:to,tripTime:'',expandedKey:null,savedAt:now}));},{from:start,to:recorded.to,now:clock});
+   page=await ctx.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));await page.clock.install({time:new Date(clock)});
+   await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.hostname!=='following.test')return route.abort();
+    if(u.pathname==='/api/buses')return route.fulfill({json:feed});if(u.pathname==='/api/weather')return route.fulfill({status:204});if(u.pathname.startsWith('/api/'))return route.fulfill({json:{reports:[],results:[]}});
+    if(route.request().method()!=='GET')return route.abort();if(production){const response=await route.fetch({url:'https://yale-shuttle.fly.dev'+u.pathname+u.search});return route.fulfill({response});}
+    const file=u.pathname==='/'?'/index.html':u.pathname;try{return route.fulfill({body:await fs.readFile('web/dist'+file),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});}catch{return route.fulfill({status:404});}
+   });
+   await page.goto('https://following.test',{waitUntil:'domcontentloaded'});const row=page.locator('tbody[data-route="Blue Day"][data-pickup="100"]');await row.waitFor();await row.getByTestId('route-pickup').waitFor();assert.equal(await row.getByTestId('route-next-arrival').count(),0);
+   assert.match(await row.innerText(),/Could be the last bus/);assert(!(await row.innerText()).includes('Unavailable'));
+   await page.getByRole('button',{name:'View Blue Day trip details',exact:true}).click();await page.getByTestId('trip-detail-panel').waitFor();
+   assert.match(await page.locator('body').innerText(),/Only 1 bus is out/);assert(await page.getByRole('button',{name:"🚌 I'm on it",exact:true}).isVisible());assert.deepEqual(errors,[]);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+   await page.screenshot({path:`${out}/before-close-warning-${width}.png`,fullPage:true});results.push({kind:'before-close-warning',width,summary:await row.innerText(),withheldReturnStillWarns:true,currentPickupRetained:true,pageErrors:errors});
+  }catch(error){if(page){await fs.writeFile(`${out}/before-close-warning-failure-${width}.txt`,await page.locator('body').innerText());await page.screenshot({path:`${out}/before-close-warning-failure-${width}.png`,fullPage:true});}throw error;}
+  finally{if(page)await page.unrouteAll({behavior:'wait'});await ctx.close();}
+ }
  await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,feedCapturedAt:recorded.capturedAt,
   scope:'Recorded feed with controlled location and following-arrival availability updates; not an exact report108 replay, physical journey, or ETA accuracy evaluation',results},null,2)+'\n');
 }finally{await browser.close();}
-console.log('Next in follows the selected pickup visit, including a return by the same bus; live walking stays current. Later canonical returns beyond service hours are withheld while current pickups stay visible.');
+console.log('Next in follows the selected pickup visit, including a return by the same bus; live walking stays current. Later canonical returns beyond service hours are withheld while current pickups and before-close warnings stay visible.');
