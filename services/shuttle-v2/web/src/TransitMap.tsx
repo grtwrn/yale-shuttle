@@ -50,7 +50,7 @@ import { forecastPickupSelection, rawPickupSelection } from "./livePickupSelecti
 import { boardingBusName, tripBusIdentity } from "./tripBusIdentity";
 import { TripBoardingActions } from "./TripBoardingActions";
 import {
-  fmtClock, fmtDateTime, fmtMin, fmtWeekday, formatEtaRange, remainingSec,
+  fmtClock, fmtDateTime, fmtMin, fmtWalk, fmtWeekday, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
@@ -70,7 +70,7 @@ import {
 } from "./leaveAlert";
 import { computePickupReminder, pickupReminderMessage, type ReminderTiming } from './pickupReminder';
 import { PickupReminderControls } from './PickupReminderControls';
-import { topVisibleOptions, keptThirdLabel,
+import { alightComparison, topVisibleOptions, keptThirdLabel,
   boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, sameTripPickup, type TripOption,
 } from "./planner";
 import { optionTier, stableTripOrder, type TripOrderState } from './tripRanking';
@@ -2779,7 +2779,13 @@ const TripPlanner: FC<{
           stopCoords, segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a=>a.routeLabel===o.routeLabel),
           o.boardStopId,o.walkToSec,o.departed?null:boardingEtaLive)
       : undefined;
-    return { shuttleCtx, busEtaLive, nextArrLive, lastBus, boarding, boardingEtaLive, boardingNext, earlyPickup };
+    const alightAt = Date.now();
+    const alighting = !isFuture && etaFresh && toLL && shuttleCtx
+      ? alightComparison(o, computeUpcomingArrivals(shuttleCtx.allStops, buses, routeStops,
+          stopCoords, segmentTimes, alightAt, dwellTimes, liveAnchorStore),
+        shuttleCtx.allStops, stopCoords, toLL, alightAt)
+      : undefined;
+    return { shuttleCtx, busEtaLive, nextArrLive, lastBus, boarding, boardingEtaLive, boardingNext, earlyPickup, alighting };
   };
   const timingCache = new Map<TripOption, ReturnType<typeof buildTripTiming>>();
   const getTripTiming = (o: TripOption) => {
@@ -4310,12 +4316,17 @@ const TripPlanner: FC<{
             // route breakdown read the same values. Mirrors the anchor-
             // advance logic in computeUpcomingArrivals so the count
             // doesn't disagree with the bus pin on the mini-map.
-            const { shuttleCtx, lastBus } = getTripTiming(o);
+            const { shuttleCtx, lastBus, alighting } = getTripTiming(o);
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
               // key would remount every card's map/tracker on reorder.
               <div key={oKey} style={{ padding: "12px 16px", opacity: o.departed ? 0.7 : 1 }}>
+                {alighting && <p data-testid="alight-comparison" style={{
+                  margin: '0 0 8px', fontSize: 13, lineHeight: 1.45, color: '#5f6368',
+                }}>
+                  Getting off here means a {fmtWalk(o.walkFromSec)} walk, with an estimated arrival {fmtMin(alighting.arrivalGainSec)} sooner than staying on to {(stopNames[alighting.stopId] ?? `Stop ${alighting.stopId}`).replace(/\s*\/\s*/g, '/')} ({fmtWalk(alighting.walkFromSec)} walk).
+                </p>}
                 {/* Last-bus warning — the key carries the headline; the
                     details view adds the full explanation. Two
                     nowrap lines (measured at 390px, see lastBus.test.ts);
