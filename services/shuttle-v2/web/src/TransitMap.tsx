@@ -30,7 +30,7 @@ import {
 // module scope — see shownLog.ts. Deliberately NOT a hook: it adds no state,
 // no effect and no dependency array to this component.
 import { noteShown } from "./shownLog";
-import { captureFeedbackScreen, type FeedbackScreen } from './feedbackScreen';
+import { bindFeedbackSource, captureFeedbackScreen, feedbackSourceMetadata, type FeedbackScreen } from './feedbackScreen';
 // What a STANDING bus is allowed to promise — the chip's words and the
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
@@ -2559,6 +2559,9 @@ const TripPlanner: FC<{
   // passed" / "wrong route" / etc. The backend stores it verbatim in
   // the debug_reports table.
   const reportOption = async (o: TripOption) => {
+    // Freeze the displayed source before the blocking prompt. The rider may
+    // type through several polls; sending must not attach a newer snapshot.
+    const screen = captureFeedbackScreen('trip');
     const note = window.prompt(
       "What's wrong with this route? (optional — leave blank to just snapshot the current state)",
       "",
@@ -2579,6 +2582,7 @@ const TripPlanner: FC<{
         headers: { "Content-Type": "application/json", ...anonIdHeader() },
         body: JSON.stringify({
           note,
+          screen,
           client: {
             userAgent: navigator.userAgent,
             viewport: { w: window.innerWidth, h: window.innerHeight },
@@ -7248,6 +7252,7 @@ const TransitMap: FC = () => {
         // A malformed response is not a successfully refreshed empty fleet.
         if (!data || !Array.isArray(data.buses)) throw new Error("Invalid bus update");
         latestApplied = mySeq;
+        const receivedAt = Date.now();
         setLastBusUpdateAt(Date.now());
         setReportingSnapshot({ buses: data.buses, at: Date.now(),
           serverAt: Number.isFinite(data.server_eta?.servedAt) ? data.server_eta.servedAt : Date.now() });
@@ -7263,7 +7268,8 @@ const TransitMap: FC = () => {
         // downstream — map markers, planner, and arrival boards all read
         // this state.
         const liveBuses = ((data.buses ?? []) as BusData[]).filter((b) => isBusInService(b));
-        const etaReady = attachServerEta(liveBuses, data.server_eta);
+        const etaReady = attachServerEta(liveBuses, data.server_eta, receivedAt);
+        bindFeedbackSource(liveBuses, res.headers.get('X-Shuttle-Snapshot'), data.server_eta, receivedAt);
         setBusUpdateFailed(!etaReady && liveBuses.length > 0);
         setBuses(liveBuses);
         if (data.routes) setRouteStops(data.routes);
@@ -7369,7 +7375,8 @@ const TransitMap: FC = () => {
     ? "unavailable" : lastBusUpdateAt === null ? "loading" : "ready";
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: "#F5F3EF", minHeight: "100vh",
+    <div data-feedback-source={JSON.stringify(feedbackSourceMetadata(buses))}
+      style={{ fontFamily: "'Inter', sans-serif", background: "#F5F3EF", minHeight: "100vh",
                   display: "flex", flexDirection: "column", alignItems: "center" }}>
       {/* Global responsive tweaks */}
       <style>{`

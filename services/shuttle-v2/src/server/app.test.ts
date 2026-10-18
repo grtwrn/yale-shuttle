@@ -18,6 +18,8 @@ import { PACE_KEY } from "./v1compat.js";
 import { resetRateLimits } from "./reports.js";
 import { ServerEta, type ServerEtaWire } from './serverEta.js';
 import type { EvaluationSource } from './evaluationSource.js';
+import { FeedbackEvidence, type FeedbackEvidenceBundle } from './feedbackEvidence.js';
+import { gunzipSync } from 'node:zlib';
 
 // A fake upstream that returns a fixed snapshot. The collector contract
 // is just "give me these three methods" so we don't need network access.
@@ -672,6 +674,58 @@ describe("getLiveBuses staleness", () => {
 });
 
 describe("reports", () => {
+  it('retains the exact public response referenced by feedback and retrieves it only with admin authentication', async () => {
+    const response = await app.request('/api/buses');
+    const publicBytes = await response.text(), source = JSON.parse(response.headers.get('x-shuttle-snapshot')!);
+    expect(source.sha256).toBe(crypto.createHash('sha256').update(publicBytes).digest('hex'));
+    expect(source.bytes).toBe(Buffer.byteLength(publicBytes));
+    expect(response.headers.get('access-control-expose-headers')).toContain('X-Shuttle-Snapshot');
+    const submitted = await app.request('/api/report', {method: 'POST', headers: {'content-type': 'application/json'},
+      body: JSON.stringify({note: 'The estimate changed', source: 'feedback',
+        screen: {v: 1, source: {...source, receivedAt: 1234}}, serverEvidence: {status: 'retained', snapshotId: '../private'}})});
+    expect(submitted.status).toBe(200); const {id} = await submitted.json() as {id: number};
+    const endpoint = `/api/reports/${id}/evidence`;
+    expect((await app.request(endpoint)).status).toBe(401);
+    expect((await app.request(endpoint, {headers: {'x-admin-token': 'wrong'}})).status).toBe(401);
+    const evidence = await app.request(endpoint, {headers: {'x-admin-token': TEST_ADMIN_TOKEN}});
+    expect(evidence.status).toBe(200); expect(evidence.headers.get('cache-control')).toBe('no-store');
+    const bytes = await evidence.text(), bundle = JSON.parse(bytes) as FeedbackEvidenceBundle;
+    expect(evidence.headers.get('x-content-sha256')).toBe(crypto.createHash('sha256').update(bytes).digest('hex'));
+    expect(bundle.source).toEqual(source);
+    expect(gunzipSync(Buffer.from(bundle.gzipBase64, 'base64')).toString('utf8')).toBe(publicBytes);
+    expect(JSON.stringify(bundle)).not.toContain('receivedAt');
+    const saved = bundle.source.sha256;
+    (collector as unknown as { updateLivePositions: (positions: readonly Record<string, unknown>[]) => void }).updateLivePositions([
+      { busId: 7, busName: '#7', routeId: 10, lat: 41.31, lon: -72.93, heading: 0, lastStopId: 1, collectedAt: Date.now() },
+    ]);
+    const newer = await app.request('/api/buses');
+    expect(JSON.parse(newer.headers.get('x-shuttle-snapshot')!).sha256).not.toBe(saved);
+    const again = await app.request(endpoint, {headers: {'x-admin-token': TEST_ADMIN_TOKEN}});
+    expect((await again.json() as FeedbackEvidenceBundle).source.sha256).toBe(saved);
+  });
+  it('keeps reports working for old or malformed clients without accepting forged evidence', async () => {
+    const sourceResponse = await app.request('/api/buses'), source = JSON.parse(sourceResponse.headers.get('x-shuttle-snapshot')!);
+    for (const input of [undefined, {...source, build: 'forged'}, {snapshotId: '../../private', sha256: 'a'.repeat(64)}]) {
+      const result = await app.request('/api/report', {method: 'POST', headers: {'content-type': 'application/json'},
+        body: JSON.stringify({note: 'Still submit this report', screen: {source: input},
+          serverEvidence: {v: 1, status: 'retained', snapshotId: source.snapshotId, bundleSha256: 'a'.repeat(64)}})});
+      expect(result.status).toBe(200); const {id} = await result.json() as {id: number};
+      const evidence = await app.request(`/api/reports/${id}/evidence`, {headers: {'x-admin-token': TEST_ADMIN_TOKEN}});
+      expect(evidence.status).toBe(200); expect(await evidence.json()).toMatchObject({status: 'unavailable'});
+    }
+  });
+  it('submits feedback through an evidence disk failure and returns an explicit unavailable receipt', async () => {
+    const dir = path.join(tmpDir, 'blocked-evidence-directory'); fs.writeFileSync(dir, 'not a directory');
+    const broken = buildApp({collector, bundle, adminToken: TEST_ADMIN_TOKEN, feedbackEvidence: new FeedbackEvidence({dir})});
+    const poll = await broken.request('/api/buses'), source = JSON.parse(poll.headers.get('x-shuttle-snapshot')!);
+    const result = await broken.request('/api/report', {method: 'POST', headers: {'content-type': 'application/json'},
+      body: JSON.stringify({note: 'The report matters even without retained source', screen: {source}})});
+    expect(result.status).toBe(200); const {id} = await result.json() as {id: number};
+    const evidence = await broken.request(`/api/reports/${id}/evidence`, {headers: {'x-admin-token': TEST_ADMIN_TOKEN}});
+    expect(await evidence.json()).toMatchObject({status: 'unavailable', reason: 'storage-failed'});
+    const health = await (await broken.request('/healthz')).json() as {feedbackEvidence: {lastError: string}};
+    expect(health.feedbackEvidence.lastError).toBe('storage-failed');
+  });
   it('retains footer feedback screen evidence in the authenticated report context', async () => {
     const screen = {v: 1, capturedAt: 123456, build: 'fixture-build', view: 'trip', tripDetail: true,
       rows: [{mode: 'shuttle', route: 'Blue Day', boardStopId: 100, alightStopId: 117,

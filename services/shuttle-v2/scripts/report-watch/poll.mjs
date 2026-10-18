@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { preserveReportEvidence } from './evidence.mjs';
 
 const exec = promisify(execFile);
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -88,7 +89,7 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
   // are never discarded to make a failed check appear successful.
   const savedHealth = await read(healthFile, {}).catch(() => ({}));
   const health = savedHealth && typeof savedHealth === 'object' && !Array.isArray(savedHealth) ? savedHealth : {};
-  let prior = null;
+  let prior = null, persisted = null;
   try {
     prior = await read(path.join(dir, 'state.json'), null);
     const token = (await fs.readFile(tokenFile, 'utf8')).trim();
@@ -101,8 +102,15 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
     // Persist before notifying so restarting cannot repeat the same alert.
     await write(path.join(dir, 'state.json'), state);
     await write(path.join(dir, 'queue.json'), { checkedAt: state.checkedAt, pending: state.pending });
+    persisted = state;
     let notificationError = null;
     try { await notifier(state.events); } catch { notificationError = 'Local notification could not be delivered'; }
+    // The review queue and its notification survive evidence failures. Every
+    // later poll retries incomplete bundles even after event deduplication.
+    const evidence = await preserveReportEvidence({dir,reports:data.reports,base,token,fetcher,now,
+      complete:!state.saturated});
+    await write(path.join(dir,'evidence-status.json'),{checkedAt:state.checkedAt,...evidence});
+    if (!evidence.ok) throw new Error('Report diagnostic evidence capture is incomplete');
     let failureNotified = health.failureNotified === true;
     if (failureNotified) {
       try { await healthNotifier('recovered'); failureNotified = false; }
@@ -112,7 +120,9 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
       lastSuccessAt: state.checkedAt, lastKnownPending: state.pending.length });
     const status = { checkedAt: state.checkedAt, ok: true, openReports: data.reports.length, pending: state.pending.length,
       latestReportId: Math.max(0, ...data.reports.map(r => r.id)), newOrUpdated: state.events.map(e => e.id),
-      saturated: state.saturated, consecutiveFailures: 0, notificationError };
+      saturated: state.saturated, consecutiveFailures: 0, notificationError,
+      evidence:{ok:evidence.ok,newlyRetained:evidence.captured.length,newlyUnavailable:evidence.unavailable.length,
+        bytes:evidence.bytes,maxBytes:evidence.maxBytes,cleanupUncertain:evidence.cleanupUncertain} };
     await write(path.join(dir, 'status.json'), status); return status;
   } catch (error) {
     const consecutiveFailures = Math.min(1000,
@@ -122,7 +132,7 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
       try { await healthNotifier('failed'); failureNotified = true; }
       catch { notificationError = 'Local notification could not be delivered'; }
     }
-    const pending = prior?.pending?.length ?? health.lastKnownPending ?? null;
+    const pending = persisted?.pending?.length ?? prior?.pending?.length ?? health.lastKnownPending ?? null;
     await write(healthFile, { consecutiveFailures, failureNotified, lastFailureAt: new Date(now).toISOString(),
       lastSuccessAt: health.lastSuccessAt ?? null, lastKnownPending: pending });
     // Do not print exception details: credentials and report contents stay local.
