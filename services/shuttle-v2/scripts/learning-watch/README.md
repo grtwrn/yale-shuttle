@@ -41,3 +41,12 @@ or monitor error. Inspect actual launchd registration/exit status and fresh
 monitor output; an old healthy file does not establish that monitoring runs.
 
 Tests: `npm test -- scripts/learning-watch`.
+
+## Collector recorder supervision
+
+Once the collector witness endpoint and scheduled recorder are installed,
+`LEARNING_WATCH_COLLECTOR_STATUS` can point to the recorder's `status.json`.
+The monitor then checks that independent worker's heartbeat and failed status
+using the same spaced, persistent incident policy. Missing/corrupt/stale status
+or capture/protection/storage/queue failures reach the existing review queue.
+This setting stays absent before installation and certifies no ETA accuracy.

@@ -17,7 +17,7 @@ export function fixture({ epoch = 'collector-test', maxFrames = 720 } = {}) {
   }
   const head = () => ({ ...journal.head(at), build: 'test-build', evaluationEpoch: 'model-test', evaluationCursor: 0 });
   const page = (after = 0, limit = 16) => ({ ...journal.read(epoch, after, { now: at, limit }), build: 'test-build', evaluations: [] });
-  return { journal, topology, add, head, page, get at() { return at; } };
+  return { journal, topology, add, head, page, advance: ms => { at += ms; }, get at() { return at; } };
 }
 export function association(frame) {
   return { collectorEpoch: 'collector-test', collectorSeq: frame.seq, collectorSHA256: frame.sha256,

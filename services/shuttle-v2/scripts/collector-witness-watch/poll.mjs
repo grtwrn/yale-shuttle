@@ -5,8 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { witnessSHA } from '../../src/collector/witnessCodec.ts';
 import { atomicJson, withStorageLock } from '../retention/storage.mjs';
+import { rotateOutput } from '../retention/maintain.mjs';
 import { WitnessStore, StorageHold } from './storage.mjs';
 import { validHead, initialChain } from './protocol.mjs';
+import { dispatchIncidents } from './incidents.mjs';
 
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MiB = 1024 * 1024;
@@ -77,31 +79,44 @@ export async function pollWitnesses({ store, base = 'https://yale-shuttle.fly.de
   }
   if (cp.after === 0 && head.latest === 0) store.acknowledgeHead(head);
   const retention = store.maintain({ now });
-  return { checkedAt: new Date(now).toISOString(), ok: reportsOK && head.unavailable === null && !retention.cleanupUncertain,
+  // Empty successful polls also produce witnesses. A fresh HTTP head alone
+  // cannot hide a stalled collector or upstream failure before capture begins.
+  const lastSourceAt = cp.at >= 0 ? cp.at : cp.beganAt ?? 0;
+  const sourceStale = now - lastSourceAt > 120000 || lastSourceAt - now > 5000;
+  return { checkedAt: new Date(now).toISOString(), ok: reportsOK && head.unavailable === null && !sourceStale && !retention.cleanupUncertain,
     epoch: cp.epoch, build: cp.build, cursor: cp.after, latest: head.latest, pages, frames, leads, boundary,
-    sourceUnavailable: head.unavailable !== null, reportsOK, reportError, retention,
+    sourceUnavailable: head.unavailable !== null, sourceStale, lastSourceAt, reportsOK, reportError, retention,
     scope: 'Diagnostic input capture only. Empty service and captured data are not ETA accuracy or physical arrival proof.' };
 }
 
 export async function runOnce({ dir = process.env.COLLECTOR_WITNESS_DIR ?? path.join(service, 'scripts/.bot-artifacts/collector-witness-watch'),
   base = process.env.COLLECTOR_WITNESS_BASE_URL ?? 'https://yale-shuttle.fly.dev',
-  tokenFile = process.env.SHUTTLE_ADMIN_TOKEN_FILE ?? path.join(os.homedir(), '.config/yale-shuttle/admin-token') } = {}) {
+  tokenFile = process.env.SHUTTLE_ADMIN_TOKEN_FILE ?? path.join(os.homedir(), '.config/yale-shuttle/admin-token'),
+  incidents = process.env.COLLECTOR_WITNESS_INCIDENTS ?? path.join(os.homedir(), 'projects/yale-shuttle-guardian-bot/state/pending'),
+  fetcher = fetch, now = Date.now() } = {}) {
   return withStorageLock(dir, async () => {
-    let store;
+    let store, result;
     try {
+      await rotateOutput(path.join(dir, 'watcher.log'), { maxBytes: MiB, maxBackups: 1 });
       const token = (await fs.readFile(tokenFile, 'utf8')).trim();
       store = new WitnessStore(dir);
-      const result = await pollWitnesses({ store, base, token });
-      await atomicJson(path.join(dir, 'retention.json'), result.retention);
-      await atomicJson(path.join(dir, 'status.json'), result);
-      return result;
+      result = await pollWitnesses({ store, base, token, fetcher, now });
     } catch (error) {
       // Fixed text: network exception messages can contain URLs or headers.
       let cursor = null;
       try { cursor = store?.checkpoint()?.after ?? null; } catch {}
-      const result = { checkedAt: new Date().toISOString(), ok: false, cursor,
+      result = { checkedAt: new Date(now).toISOString(), ok: false, cursor,
         errorCode: error instanceof StorageHold ? 'storage_held' : 'capture_rejected',
         error: error instanceof StorageHold ? error.message : 'Collector evidence check failed. Previously committed evidence and cursor were preserved.' };
+    }
+    try {
+      if (store) {
+        try {
+          result.incidentDelivery = await dispatchIncidents({ store, directory: incidents, now });
+          if (!result.incidentDelivery.ok) { result.ok = false; result.incidentError = 'Collector incident delivery failed; retained incidents will retry.'; }
+        } catch { result.ok = false; result.incidentError = 'Collector incident delivery could not be checked; retained incidents are preserved.'; }
+      }
+      if (result.retention) await atomicJson(path.join(dir, 'retention.json'), result.retention);
       await atomicJson(path.join(dir, 'status.json'), result);
       return result;
     } finally { store?.close(); }

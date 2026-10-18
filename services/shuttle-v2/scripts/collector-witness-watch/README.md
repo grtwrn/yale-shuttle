@@ -18,6 +18,8 @@ has a storage lock and reads at most eight pages of 16 frames. Configuration:
 default private store is `scripts/.bot-artifacts/collector-witness-watch/`.
 The token goes only to the configured app, in a header. Redirects are refused.
 Errors/status never include credentials or arbitrary server response text.
+The supervisor log keeps 1 MiB plus one compressed tail, using copy/truncate
+so its open descriptor remains valid; these files count toward physical usage.
 
 The authenticated `/api/evaluation/collector-witnesses` endpoint retains at
 most 720 frames, one hour and 16 MiB including unique topology bytes. Each
@@ -72,6 +74,23 @@ rule to drop a row. Review the original GPS, state, geometry and revision ranges
 Incidents remain protected until deliberately reviewed; filling the protected
 budget holds ingestion instead of deleting evidence. `status.json` is the
 heartbeat and `retention.json` reports physical usage and protection findings.
+
+Review leads and expired-source gaps are durably delivered to the existing
+guardian `state/pending` queue (`COLLECTOR_WITNESS_INCIDENTS` overrides it).
+Delivery acknowledgements follow the synced queue file. Lost acknowledgements,
+failed writes and later polling outages retry from SQLite; a processed incident
+is not resurrected. Available source history from 30 minutes before through
+five minutes after a lead stays pinned, including later captured pages. A gap
+also pins the last available page before its boundary. Processing an incident
+does not silently release its source evidence.
+
+After successful deployment/startup, set `LEARNING_WATCH_COLLECTOR_STATUS` on
+the independent learning-health supervisor to this recorder's `status.json`.
+It checks the recorder heartbeat and failed status with the existing three
+spaced-check incident policy. A dead worker cannot keep itself healthy. The
+recorder also checks witness age: successful empty polls create witnesses, so
+fresh HTTP heads do not justify an indefinitely stalled collector. No input
+gets a two-minute initial grace period; this is not a claim about service.
 
 Validation includes real SQLite rollback, fresh-process retry/recovery, late
 associations, physical shrinking, protected saturation, a concurrent reader,

@@ -72,4 +72,13 @@ describe('read-only collector witness watcher',()=>{
     await expect(pollWitnesses({store:a.store,fetcher,token:'secret',now:a.f.at})).rejects.toThrow('commitment');
     expect(a.store.checkpoint().after).toBe(0);expect(a.store.db.prepare('SELECT count(*) n FROM chunks').get().n).toBe(0);
   });
+  it('reports stalled capture despite fresh HTTP heads and recovers on an actual new poll',async()=>{
+    const a=setup();a.f.add();await a.poll();a.f.advance(120001);
+    expect(await a.poll()).toMatchObject({ok:false,sourceStale:true,frames:0});
+    a.f.add();expect(await a.poll()).toMatchObject({ok:true,sourceStale:false,frames:1});
+  });
+  it('bounds the initial no-input grace period without inferring that service is absent',async()=>{
+    const a=setup();expect(await a.poll()).toMatchObject({ok:true,sourceStale:false,cursor:0});
+    a.f.advance(120001);expect(await a.poll()).toMatchObject({ok:false,sourceStale:true,cursor:0});
+  });
 });

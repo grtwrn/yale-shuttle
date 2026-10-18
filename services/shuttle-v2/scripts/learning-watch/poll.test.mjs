@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { advance, inspect, pollLearning, probeObserver } from './poll.mjs';
+import { advance, inspect, inspectCollectorCapture, pollLearning, probeObserver } from './poll.mjs';
 
 const now = Date.parse('2026-10-17T12:00:00Z');
 function healthy(at = now) {
@@ -88,6 +88,13 @@ describe('spaced persistence and recovery', () => {
   });
 });
 
+it('monitors recorder failures and stale heartbeats independently of zero service coverage', () => {
+  expect(inspectCollectorCapture({ ok: true, checkedAt: new Date(now).toISOString(), frames: 0 }, now)).toEqual([]);
+  expect(inspectCollectorCapture({ ok: false, checkedAt: new Date(now).toISOString() }, now).map(x => x.code)).toEqual(['collector-capture']);
+  expect(inspectCollectorCapture({ ok: true, checkedAt: new Date(now - 120001).toISOString() }, now).map(x => x.code)).toEqual(['collector-heartbeat']);
+  expect(inspectCollectorCapture(null, now).map(x => x.code)).toEqual(['collector-heartbeat', 'collector-capture']);
+});
+
 const temporary = [];
 afterEach(async () => { for (const d of temporary.splice(0)) await fs.rm(d, { recursive: true, force: true }); });
 async function fixture() {
@@ -154,6 +161,22 @@ it('bounds the monitor output log while preserving its live file', async () => {
   expect((await pollLearning({ ...f, now })).ok).toBe(true);
   expect((await fs.stat(log)).ino).toBe(inode); expect((await fs.stat(log)).size).toBe(0);
   expect((await fs.readdir(f.directory)).filter(n => /^watcher\.log\.\d+\.gz$/.test(n))).toHaveLength(1);
+});
+it('queues configured recorder failures across scheduled polls without changing learner or recorder evidence', async () => {
+  const f = await fixture(), collectorStatusFile = path.join(f.base, 'collector-status.json');
+  await fs.writeFile(collectorStatusFile, '{broken recorder status');
+  for (let i = 0; i < 3; i++) {
+    const at = now + i * 60000; await f.write(at);
+    const before = await digest(path.join(f.root, 'state.json'));
+    const result = await pollLearning({ ...f, collectorStatusFile, now: at });
+    expect(result.issues.map(x => x.code)).toEqual(['collector-heartbeat', 'collector-capture']);
+    expect(await digest(path.join(f.root, 'state.json'))).toBe(before);
+    expect(await fs.readFile(collectorStatusFile, 'utf8')).toBe('{broken recorder status');
+    if (i === 2) expect(result.newIncidents).toHaveLength(2);
+  }
+  const at = now + 180000; await f.write(at); await fs.writeFile(collectorStatusFile, JSON.stringify({ ok: true, checkedAt: new Date(at).toISOString(), cursor: 12 }));
+  const recovered = await pollLearning({ ...f, collectorStatusFile, now: at });
+  expect(recovered.ok).toBe(true); expect(recovered.collectorCapture).toMatchObject({ ok: true, cursor: 12 });
 });
 it('probes a real process and rejects an unrelated live PID despite a valid-looking lock', async () => {
   const f = await fixture(); const script = path.join(f.base, 'observer.ts');

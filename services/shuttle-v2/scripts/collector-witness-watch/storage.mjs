@@ -101,7 +101,8 @@ export class WitnessStore {
     let bytes = 0, unknown = false;
     for (const name of fs.readdirSync(this.root)) {
       const s = fs.lstatSync(path.join(this.root, name)); bytes += Math.max(s.size, (s.blocks ?? 0) * 512);
-      if (!s.isFile() || s.isSymbolicLink() || !['witnesses.sqlite','witnesses.sqlite-journal','storage.lock','status.json','retention.json'].includes(name)) unknown = true;
+      if (!s.isFile() || s.isSymbolicLink() || !['witnesses.sqlite','witnesses.sqlite-journal','storage.lock','status.json','retention.json','watcher.log'].includes(name)
+        && !/^watcher\.log\.\d+\.gz$/.test(name)) unknown = true;
     }
     const f = fs.statfsSync(this.root);
     return { bytes, freeBytes: f.bavail * f.bsize, unknown };
@@ -115,12 +116,21 @@ export class WitnessStore {
   beginEpoch(head, reason, now = Date.now()) {
     if (!validHead(head)) throw Error('Invalid collector head');
     const previous = this.checkpoint(), after = head.oldest - 1;
-    const cp = { epoch: head.epoch, build: head.build, after, at: -1,
+    const cp = { epoch: head.epoch, build: head.build, after, at: -1, beganAt: now,
       chain: after === 0 ? initialChain(head.epoch) : null, lastFrame: null, evaluationEpoch: null, evaluationCursor: null };
     this.assertRoom(65536);
     this.transaction(() => {
       this.db.prepare('INSERT INTO boundaries(at,json) VALUES (?,?)').run(now, JSON.stringify({ reason, previous, head, clippedPrefix: after > 0 }));
       this.db.exec('DELETE FROM boundaries WHERE id NOT IN (SELECT id FROM boundaries ORDER BY id DESC LIMIT 256)');
+      if (reason === 'source-prefix-expired' && previous) {
+        const gap = { kind: 'collector-witness-gap', at: now, epoch: head.epoch,
+          previous: { epoch: previous.epoch, after: previous.after, chain: previous.chain },
+          firstAvailable: head.oldest, missingFrom: previous.after + 1, missingThrough: head.oldest - 1 };
+        const id = witnessSHA(witnessJSON(gap));
+        this.db.prepare('INSERT OR IGNORE INTO incidents VALUES (?,?)').run(id, JSON.stringify(gap));
+        const active = this.get('activeChunk');
+        if (active) this.db.prepare('INSERT OR IGNORE INTO incident_chunks VALUES (?,?)').run(id, active);
+      }
       this.put('checkpoint', cp);
     });
     return cp;
@@ -192,6 +202,10 @@ export class WitnessStore {
         this.db.prepare('INSERT OR IGNORE INTO incidents VALUES (?,?)').run(id, JSON.stringify({ ...lead, epoch: page.epoch }));
         this.db.prepare('INSERT OR IGNORE INTO incident_chunks VALUES (?,?)').run(id, key);
       }
+      // Keep available causal context, including later pages within five
+      // minutes of a lead. Delivery/processing never silently releases pins.
+      this.db.exec(`INSERT OR IGNORE INTO incident_chunks SELECT i.id,c.key FROM incidents i JOIN chunks c
+        ON c.start_at<=json_extract(i.json,'$.at')+300000 AND c.end_at>=json_extract(i.json,'$.at')-1800000`);
       this.put('activeChunk', key); this.put('checkpoint', cp); this.refreshProtections();
     });
     return { key, duplicate: false, checkpoint: cp, leads };
