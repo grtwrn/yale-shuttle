@@ -24,15 +24,28 @@ const temporary: string[] = [];
 afterEach(() => { for (const p of temporary.splice(0)) fs.rmSync(p, { recursive: true, force: true }); resetModelParams(); registerRoutePaths(null); });
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 const read = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
-async function fixture() {
+async function fixture(isolatedSource = false) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'exact-observer-cli-')); temporary.push(root);
+  // A source-change regression mutates only this private runtime copy. Other
+  // tests and the installed observer keep their own source bytes untouched.
+  const runtimeService = isolatedSource ? path.join(fs.realpathSync(root), 'runtime-service') : service;
+  if (isolatedSource) {
+    for (const file of learningSourceFiles(service)) {
+      const target=path.join(runtimeService,path.relative(service,file));
+      fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);
+    }
+    fs.copyFileSync(path.join(service,'package.json'),path.join(runtimeService,'package.json'));
+    fs.symlinkSync(path.join(service,'node_modules'),path.join(runtimeService,'node_modules'),'dir');
+    fs.symlinkSync(path.join(service,'web/node_modules'),path.join(runtimeService,'web/node_modules'),'dir');
+  }
+
   // These retained daytime buses need a weekday service clock. Real wall time
   // made healthy CLI/control tests silently lose every eligible bus at night.
   // Keep elapsed time real, and share the explicit offset with the child CLI.
   let offset = 0;
   const clockBase = Date.parse('2026-10-14T15:00:00Z') - Date.now();
   const serverNow = () => Date.now() + clockBase + offset;
-  const sourceFiles = learningSourceFiles(service), sourceKey = identityHash(fileIdentity(sourceFiles)), initial = serverNow() - 30000;
+  const sourceFiles = learningSourceFiles(runtimeService), sourceKey = identityHash(fileIdentity(sourceFiles)), initial = serverNow() - 30000;
   const champion = { version: 'fixture-champion', accepted: true, publishedAt: initial - 86400000, params: structuredClone(COMPILED_MODEL_PARAMS) };
   const params = structuredClone(champion.params); params.P_REPEAT_STAND = .75; params.CONFORMAL = { '0-2': 1, '2-5': 1, '5-10': 1, '10-30': 1 };
   const producer = new ServerEta({ routes: ROUTE_LISTS.map(r => r.label) }); producer.useK10Trial(() => new Map());
@@ -64,7 +77,7 @@ async function fixture() {
     productionBuild: 'fixture-build', champion, candidate, trainingDays: [], trainingInputs: [], requiredRoutes: [9, 10],
     calibrationDays: [first, nextDay(first)], pending: {}, visits: {}, outbox: [], lastOutcomeAt: null,
     source: { epoch: stream.epoch, seedSha256: stream.seedSha256, seedFile, seedReceivedAt, seedAt: seed.at, seedCursor: seed.cursor, initialChain: stream.chain } };
-  for (const file of sourceFiles) { const target = path.join(directory, 'source', path.relative(service, file)); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(file, target); }
+  for (const file of sourceFiles) { const target = path.join(directory, 'source', path.relative(runtimeService, file)); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(file, target); }
   fs.writeFileSync(path.join(directory, 'frozen-candidate.json'), JSON.stringify(state)); state.frozenCandidateSha256 = digest(fs.readFileSync(path.join(directory, 'frozen-candidate.json')));
   publish(); const packet = source.read(stream.epoch, stream.cursor); stream.advance(packet);
   const recorded = JSON.stringify({ receivedAt: serverNow(), source: packet });
@@ -108,8 +121,8 @@ async function fixture() {
     fs.writeFileSync(clock, `const NativeDate=Date,offset=${clockBase + offset};globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[NativeDate.now()+offset]));}static now(){return NativeDate.now()+offset;}};`);
     let log = '';
     const child = spawn(process.execPath, ['--import', path.join(service, 'node_modules/tsx/dist/loader.mjs'), '--import', clock,
-      path.join(service, 'scripts/learning-loop/start.ts'), ...(once ? ['--once'] : [])], {
-      cwd: service, env: { ...process.env, TZ: 'America/New_York', LEARNING_PUBLISH: '1', LEARNING_DIR: root,
+      path.join(runtimeService, 'scripts/learning-loop/start.ts'), ...(once ? ['--once'] : [])], {
+      cwd: runtimeService, env: { ...process.env, TZ: 'America/New_York', LEARNING_PUBLISH: '1', LEARNING_DIR: root,
         ARCHIVE_DIR: path.join(root, 'archives'), BOT_BASE_URL: `http://127.0.0.1:${port}`, SHUTTLE_ADMIN_TOKEN: 'fixture-only-token' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -118,7 +131,7 @@ async function fixture() {
     const timer = setTimeout(() => child.kill('SIGKILL'), 25000); void exit.finally(() => clearTimeout(timer));
     return { child, exit, log: () => log };
   };
-  return { root, directory, id, state, stream, seed, requests, sourceKey, launch,
+  return { root, service: runtimeService, directory, id, state, stream, seed, requests, sourceKey, launch,
     mode: (value: string) => { mode = value; sent = false; },
     tomorrow: () => { offset = 86400000; },
     close: () => new Promise<void>(resolve => server.close(() => resolve())) };
@@ -223,6 +236,37 @@ describe('actual exact-source observer command', () => {
       expect(f.requests.some(r => r.method === 'POST' || r.path === '/api/evaluation/seed')).toBe(false);
     } finally { await f.close(); }
   }, 30000);
+  it('exits a refused-source wait after installed source changes, preserving its original failed cohort', async () => {
+    const f=await fixture(true);let run: ReturnType<typeof f.launch>|undefined;
+    const pairs=()=>Object.fromEntries(fs.readdirSync(f.directory).filter(n=>/^pairs-.*\.jsonl$/.test(n))
+      .map(n=>[n,fs.readFileSync(path.join(f.directory,n),'utf8')]));
+    try {
+      f.tomorrow();f.mode('advance');run=f.launch(false);
+      await ready(f,s=>s.phase==='calibration'&&s.pending>0);
+      f.mode('corrupt');await ready(f,s=>s.sourceRefusal&&s.protocolFailures?.count===1&&s.pending===0);
+      const refused=read(path.join(f.root,'state.json')),frozen=fs.readFileSync(path.join(f.directory,'frozen-candidate.json')),
+        beforePairs=pairs(),headCount=f.requests.filter(r=>r.path==='/api/evaluation/inputs').length;
+      expect(Object.keys(beforePairs).length).toBeGreaterThan(0);
+      // A healthy head alone must not clear the refusal or retry the cohort.
+      f.mode('healthy');const deadline=Date.now()+5000;
+      while(f.requests.filter(r=>r.path==='/api/evaluation/inputs').length===headCount&&Date.now()<deadline)await wait(50);
+      expect(f.requests.filter(r=>r.path==='/api/evaluation/inputs').length).toBeGreaterThan(headCount);
+      expect(run.child.exitCode).toBeNull();expect(read(path.join(f.root,'state.json')).sourceRefusal).toEqual(refused.sourceRefusal);
+      fs.appendFileSync(path.join(f.service,'scripts/canary-metrics.mjs'),'\n// Isolated regression source change.\n');
+      const exit=await Promise.race([run.exit,wait(16000).then(()=> 'still-running')]);
+      expect(exit,run.log()).toBe(1);
+      const after=read(path.join(f.root,'state.json')),status=read(path.join(f.root,'status.json'));
+      expect(status.running).toBe(false);expect(status.error).toContain('restart required');
+      expect(after.id).toBe(f.id);expect(after.sourceKey).toBe(f.sourceKey);
+      expect(after.sourceRefusal).toEqual(refused.sourceRefusal);expect(after.protocolFailures).toEqual(refused.protocolFailures);
+      expect(after.pending).toEqual(refused.pending);expect(pairs()).toEqual(beforePairs);
+      expect(fs.readFileSync(path.join(f.directory,'frozen-candidate.json'))).toEqual(frozen);
+      const rows=Object.values(beforePairs).flatMap(text=>text.trim().split('\n').filter(Boolean).map(line=>JSON.parse(line)));
+      expect(rows.every(r=>r.det===null&&r.reason==='source-protocol-refusal')).toBe(true);
+      expect(f.requests.some(r=>r.method==='POST'||r.path==='/api/evaluation/seed')).toBe(false);
+      expect(fs.existsSync(path.join(f.root,'observer.lock'))).toBe(false);
+    }finally{if(run&&run.child.exitCode===null){run.child.kill('SIGKILL');await run.exit;}await f.close();}
+  },45000);
   it('retains predictions as missing after a mid-run source failure during calibration', async () => {
     const f = await fixture(); let run: ReturnType<typeof f.launch> | undefined;
     try {

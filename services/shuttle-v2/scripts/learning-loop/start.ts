@@ -370,6 +370,9 @@ while(!stopping){
  const start=Date.now();
  try{
   if(!exact||state.sourceRefusal){
+   // A refused source waits below before reaching maintenance. Let the
+   // supervisor load changed code without clearing the original refusal.
+   assertLearningSourceUnchanged(service,sourceKey);
    const head=await readHead();
    const changed=state?.source&&head.epoch!==state.source.epoch||state&&head.build!==state.productionBuild
     ||state&&modelKey(head.feed?.model_params)!==modelKey(state.champion);
