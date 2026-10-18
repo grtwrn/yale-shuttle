@@ -191,6 +191,14 @@ export type AccuracyResponse = z.infer<typeof AccuracyResponseSchema>;
 
 // Reports ---------------------------------------------------------------------
 
+/** Exact public response provenance. The optional journal reference identifies
+ * its model observation; the HTTP body may be a later cache rebuild/variant. */
+export interface FeedbackSourceReceipt {
+  v: 1; snapshotId: string; sha256: string; bytes: number; build: string;
+  modelAt: number | null; servedAt: number | null;
+  evaluation?: { epoch: string; cursor: number; at: number; sha256: string };
+}
+
 export const ReportSubmitSchema = z.object({
   kind: z.enum(["issue", "feedback"]),
   routeId: z.number().int().nullable(),

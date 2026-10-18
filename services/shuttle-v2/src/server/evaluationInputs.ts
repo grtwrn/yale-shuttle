@@ -76,6 +76,15 @@ export class EvaluationInputs {
   head() { return { epoch: this.epoch, cursor: this.sequence, at: Number.isFinite(this.lastAt) ? this.lastAt : null,
     observationVersion: this.lastVersion < 0 ? null : this.lastVersion }; }
 
+  /** Public identity only. A cached HTTP variant is NOT the immutable input
+   * itself; its separate body checksum identifies the bytes actually served. */
+  reference(at: number | null, now = Date.now()) {
+    this.expire(now);
+    const frame = this.frames.at(-1);
+    return !this.failure && frame && frame.at === at
+      ? { epoch: this.epoch, cursor: frame.seq, at: frame.at, sha256: frame.sha256 } : undefined;
+  }
+
   read(epoch: string, after: number, { limit = 16, now = Date.now() }: { limit?: number; now?: number } = {}) {
     if (this.failure) throw new EvaluationInputError('unavailable', this.failure);
     if (epoch !== this.epoch) throw new EvaluationInputError('epoch', 'The production observation epoch changed');

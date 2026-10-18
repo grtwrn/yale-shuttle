@@ -21,6 +21,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { runBrowserCheck } from "./browser-stage.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -93,12 +94,17 @@ async function waitForHealthy(base, timeoutMs) {
 async function apiSmoke(base) {
   const checks = [
     ["GET /api/buses shape", async () => {
-      const j = await (await fetch(`${base}/api/buses`)).json();
+      const response = await fetch(`${base}/api/buses`), bytes = await response.text(), j = JSON.parse(bytes);
       for (const k of ["buses", "route_paths", "stop_names", "stop_coords", "announcements"]) {
         if (!(k in j)) throw new Error(`payload missing ${k}`);
       }
       if (!Array.isArray(j.buses)) throw new Error("buses not an array");
       if (Object.keys(j.route_paths).length < 10) throw new Error("route_paths suspiciously empty");
+      const source = JSON.parse(response.headers.get('X-Shuttle-Snapshot') ?? 'null');
+      if (source?.v !== 1 || !/^[a-f0-9]{64}$/.test(source.snapshotId)
+        || source.sha256 !== createHash('sha256').update(bytes).digest('hex') || source.bytes !== Buffer.byteLength(bytes)) {
+        throw new Error('public response source receipt missing or mismatched');
+      }
     }],
     ["geocode handles a missing apostrophe", async () => {
       const j = await (await fetch(`${base}/api/geocode?q=trader%20joes`)).json();

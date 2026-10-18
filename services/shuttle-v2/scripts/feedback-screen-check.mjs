@@ -1,16 +1,18 @@
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {chromium} from 'playwright-core';
 import {seedTestId} from './testId.mjs';
 
 const recorded=JSON.parse(await fs.readFile('web/src/__fixtures__/blue-hidden-feedback-2026-10-12.json','utf8'));
 const out=process.env.FEEDBACK_SCREEN_OUT??'pr-preview/feedback-screen';
 const production=process.env.FEEDBACK_SCREEN_PRODUCTION_ASSETS==='1',now=recorded.server_eta.servedAt,results=[];
+const productionAssets=[];
 await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.BOT_CHROMIUM_PATH??'/usr/bin/chromium',headless:true});
 try {
  for(const width of [368,1702]) {
-  let phase='fresh',responseStatus=503,page;const submissions=[],errors=[];
+  let phase='fresh',responseStatus=503,page;const submissions=[],errors=[],sources=[];
   const ctx=await browser.newContext({viewport:{width,height:width<500?854:1164},isMobile:width<500,hasTouch:width<500,timezoneId:'America/New_York',serviceWorkers:'block'});
   try {
    await seedTestId(ctx);await ctx.addInitScript(({from,to,now})=>{
@@ -25,13 +27,31 @@ try {
      const feed=structuredClone(recorded),at=await page.evaluate(()=>Date.now());
      feed.server_eta.at=phase==='stale'?at-46000:at;feed.server_eta.servedAt=at;
      for(const bus of feed.buses)bus.observed_at=at;
-     return route.fulfill({json:feed});
+     // Controlled, exact response receipt. This is a synthetic protocol test,
+     // not a claim to be a historical producer observation.
+     const json=JSON.stringify(feed),sha256=createHash('sha256').update(json).digest('hex');
+     const build='fixture-server-image',evaluation={epoch:'fixture-epoch',cursor:sources.length+1,
+      at:feed.server_eta.at,sha256:'a'.repeat(64)};
+     const source={v:1,snapshotId:createHash('sha256').update(JSON.stringify({sha256,build,evaluation})).digest('hex'),
+      sha256,bytes:Buffer.byteLength(json),build,modelAt:feed.server_eta.at,servedAt:feed.server_eta.servedAt,evaluation};
+     sources.push({source,json,phase});
+     const headers=phase==='missing-source'?{}:{'X-Shuttle-Snapshot':phase==='invalid-source'?'{broken':JSON.stringify(source)};
+     return route.fulfill({body:json,contentType:'application/json',headers});
     }
     if(u.pathname==='/api/report'){submissions.push(route.request().postDataJSON());return route.fulfill({status:responseStatus,json:{id:900+submissions.length}});}
     if(u.pathname==='/api/weather')return route.fulfill({status:204});
     if(u.pathname.startsWith('/api/'))return route.fulfill({json:{results:[],reports:[]}});
     if(route.request().method()!=='GET')return route.abort();
-    if(production){const response=await route.fetch({url:'https://yale-shuttle.fly.dev'+u.pathname+u.search});return route.fulfill({response});}
+    if(production){
+     const response=await route.fetch({url:'https://yale-shuttle.fly.dev'+u.pathname+u.search});
+     const bytes=await response.body();
+     if(u.pathname==='/'||/^\/assets\/[A-Za-z0-9._-]+\.(js|css)$/.test(u.pathname)){
+      const file=out+'/production-assets/'+(u.pathname==='/'?'index.html':u.pathname.slice('/assets/'.length));
+      await fs.mkdir(out+'/production-assets',{recursive:true});await fs.writeFile(file,bytes);
+      productionAssets.push({path:u.pathname,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});
+     }
+     return route.fulfill({response,body:bytes});
+    }
     const file=u.pathname==='/'?'/index.html':u.pathname;
     try{return route.fulfill({body:await fs.readFile('web/dist'+file),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});}
     catch{return route.fulfill({status:404});}
@@ -40,6 +60,7 @@ try {
    const closest=page.locator('tbody[data-route="Blue Day"][data-pickup="100"]');await closest.waitFor();
    const initialBoard=(await closest.locator(':scope > tr:first-child > td').nth(0).innerText()).replace(/\s+/g,' ').trim();
    const initialNext=(await closest.getByTestId('route-next-arrival').innerText()).replace(/\s+/g,' ').trim();
+   const initialSource=sources.at(-1).source;
    const open=async()=>{await page.getByRole('button',{name:'💬 Send feedback',exact:true}).click();await page.getByRole('textbox',{name:'Feedback',exact:true}).waitFor();};
    const send=async text=>{
     const count=submissions.length;await page.getByRole('textbox',{name:'Feedback',exact:true}).fill(text);
@@ -61,6 +82,13 @@ try {
    const failed=await send('Fixture: the closer pickup disappeared while I was watching.');
    await page.getByRole('alert').getByText("Couldn't send — try again",{exact:true}).waitFor();
    assert(failed.screen,'Feedback must include the opening-time screen evidence');
+   assert(failed.screen.source,'Feedback must preserve the source receipt from the opening-time render');
+   const {receivedAt,...submittedSource}=failed.screen.source;
+   assert.deepEqual(submittedSource,initialSource);assert(Number.isSafeInteger(receivedAt));
+   assert(receivedAt<=failed.screen.capturedAt);assert.equal(failed.screen.sourceScope,'public-input-for-render');
+   assert.notEqual(failed.screen.source.sha256,sources.at(-1).source.sha256);
+   assert(failed.screen.assets.some(path=>/^\/assets\/.+\.js$/.test(path)));
+   assert(failed.screen.assets.every(path=>/^\/assets\/[A-Za-z0-9._-]+\.(js|css)$/.test(path)));
    assert.equal(failed.screen.view,'trip');assert.equal(failed.screen.tripDetail,false);
    const selected=failed.screen.rows.find(r=>r.route==='Blue Day'&&r.boardStopId===100);
    assert(selected);assert.equal(selected.busName,'44');assert.equal(selected.pickupChoice,'closest-stop');
@@ -79,6 +107,7 @@ try {
    await open();assert(await page.getByText('Includes the trip details shown when you opened feedback.',{exact:true}).isVisible());
    const detail=await send('Fixture: selected the closest pickup.');
    assert.equal(detail.screen.tripDetail,true);assert.equal(detail.screen.rows.length,1);assert.equal(detail.screen.rows[0].boardStopId,100);assert.equal(detail.screen.rows[0].busName,'44');
+   assert.equal(detail.screen.source.sha256,sources.at(-1).source.sha256);
    assert(detail.screen.capturedAt>failed.screen.capturedAt);
    await page.getByRole('button',{name:'← All routes',exact:true}).click();
    await page.getByRole('button',{name:'View Blue Day trip details from Whitney/Canner',exact:true}).click();await page.getByTestId('trip-detail-panel').waitFor();
@@ -88,17 +117,30 @@ try {
    await transition('stale');await open();const unavailable=await send('Fixture: no fresh arrival available.');
    assert.equal(unavailable.screen.rows[0].board,'Unavailable');assert.equal(unavailable.screen.rows[0].next,'—');assert.equal(unavailable.screen.rows[0].busName,undefined);
    assert.equal(unavailable.screen.rows[0].countdownBusName,'48');
+   assert.equal(unavailable.screen.source.servedAt-unavailable.screen.source.modelAt,46000);
+   await transition('missing-source');await open();const oldServer=await send('Fixture: older server still accepts feedback.');
+   assert.equal(oldServer.screen.source,undefined);assert.equal(oldServer.screen.sourceUnavailable,'not-supplied');
+   await transition('invalid-source');await open();const malformed=await send('Fixture: invalid receipt does not block feedback.');
+   assert.equal(malformed.screen.source,undefined);assert.equal(malformed.screen.sourceUnavailable,'invalid');
+   await transition('fresh');
+   const beforePrompt=await page.locator('[data-feedback-source]').getAttribute('data-feedback-source');
+   const routeResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/report');
+   page.once('dialog',dialog=>dialog.accept('Fixture: route-specific report keeps its opening source.'));
+   await page.getByRole('button',{name:'🚩 Report',exact:true}).click();await routeResponse;
+   const routeReport=submissions.at(-1);
+   assert.deepEqual(routeReport.screen.source,JSON.parse(beforePrompt));
+   assert.equal(routeReport.screen.rows[0].boardStopId,129);
    await transition('fresh');await open();await page.getByRole('button',{name:'Cancel',exact:true}).click();
    await page.getByRole('button',{name:'Clear',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('[data-testid="route-timing-table"]'));
    await open();const empty=await send('Fixture: general feedback after clearing the trip.');
    assert.deepEqual(empty.screen.rows,[]);assert.equal(empty.screen.tripDetail,false);
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);
    await page.screenshot({path:`${out}/after-${width}.png`,fullPage:true});
-   results.push({width,submissions,pageErrors:errors});console.log(`[feedback-screen] ${width}: frozen retries, distinct pickups, stale evidence and cleared trip passed`);
+   results.push({width,submissions,sources,pageErrors:errors});console.log(`[feedback-screen] ${width}: frozen source/retries, distinct pickups, stale/missing/invalid evidence and cleared trip passed`);
   }catch(error){
-   if(page){await page.screenshot({path:`${out}/failure-${width}.png`,fullPage:true,timeout:5000}).catch(()=>{});await fs.writeFile(`${out}/failure-${width}.json`,JSON.stringify({phase,error:String(error),submissions,text:await page.locator('body').innerText().catch(()=>'')},null,2)).catch(()=>{});}
+    if(page){await page.screenshot({path:`${out}/failure-${width}.png`,fullPage:true,timeout:5000}).catch(()=>{});await fs.writeFile(`${out}/failure-${width}.json`,JSON.stringify({phase,error:String(error),submissions,productionAssets,text:await page.locator('body').innerText().catch(()=>'')},null,2)).catch(()=>{});}
    throw error;
   }finally{await ctx.close();}
  }
- await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,scope:'Actual SPA with intercepted requests and controlled feed availability; verifies submitted diagnostic context, not ETA accuracy',results},null,2)+'\n');
+ await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,assetsManifest:productionAssets,scope:'Actual SPA with intercepted requests and controlled feed availability/receipts; verifies submitted diagnostic context, not ETA accuracy',results},null,2)+'\n');
 }finally{await browser.close();}

@@ -52,6 +52,7 @@ import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { EvaluationInputError, EvaluationInputs } from './evaluationInputs.js';
 import { EvaluationSource } from './evaluationSource.js';
+import { FeedbackEvidence, type FeedbackEvidenceReceipt } from './feedbackEvidence.js';
 import { buildLiveSnapshot } from "./snapshot.js";
 import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
 import { createStopSkips } from "./stopSkips.js";
@@ -227,6 +228,8 @@ export interface AppOptions {
    * builds the "flag off" arm without touching process.env.
    */
   serverEta?: ServerEta | null;
+  /** Injectable bounded diagnostic store; public forecasts never depend on it. */
+  feedbackEvidence?: FeedbackEvidence;
 }
 
 export function buildApp(opts: AppOptions): Hono {
@@ -310,6 +313,21 @@ export function buildApp(opts: AppOptions): Hono {
       catch { evaluationInputs.fail('Production observation capture failed'); }
     });
   const evaluationSource = new EvaluationSource(serverEta, () => busesJson(true), evaluationInputs, resolveEstimatorVersion, now);
+  const feedbackEvidence = opts.feedbackEvidence ?? new FeedbackEvidence({
+    dir: path.join(path.dirname(opts.bundle.sqlite.name), 'report-evidence'), now,
+    protectedHashes: () => {
+      const hashes = new Set<string>();
+      for (const row of opts.bundle.sqlite.prepare("SELECT context FROM reports WHERE status = 'open'").all() as { context: string | null }[]) {
+        const context = JSON.parse(row.context ?? '{}'), saved = context?.serverEvidence;
+        if (saved?.status === 'retained' && typeof saved.snapshotId === 'string' && /^[a-f0-9]{64}$/.test(saved.snapshotId)) hashes.add(saved.snapshotId);
+        // A failed attestation may still have left a useful partial write.
+        // Preserve a referenced input while the report remains unresolved.
+        const supplied = context?.screen?.source?.snapshotId;
+        if (typeof supplied === 'string' && /^[a-f0-9]{64}$/.test(supplied)) hashes.add(supplied);
+      }
+      return hashes;
+    },
+  });
   if (serverEta) {
     // Priming the cache on the collector's own poll is what steps the belief:
     // it must advance on every observation, not only when a rider happens to
@@ -360,7 +378,16 @@ export function buildApp(opts: AppOptions): Hono {
     // HTTP response rewinds waiting clocks and extends stale forecast life.
     // busesJson already memoizes the expensive payload on the server.
     c.header("Cache-Control", "no-store");
-    return c.body(busesJson(c.req.query('eta_model') !== 'usual'));
+    const json = busesJson(c.req.query('eta_model') !== 'usual');
+    // Capture the exact public response, including cache-age rebuilds and
+    // comparison variants. Never label it as the first model-time payload.
+    const source = feedbackEvidence.observe(json, resolveEstimatorVersion(),
+      evaluationInputs.reference(serverEta?.evaluationClock() ?? null, now()));
+    if (source) {
+      c.header('X-Shuttle-Snapshot', JSON.stringify(source));
+      c.header('Access-Control-Expose-Headers', 'X-Shuttle-Snapshot');
+    }
+    return c.body(json);
   });
 
   // -- What the client actually displayed ------------------------------------
@@ -669,6 +696,9 @@ export function buildApp(opts: AppOptions): Hono {
     // Filenames are generated here; riders cannot attach existing reports' files.
     delete b.imageFile;
     delete b.imageFiles;
+    // Only this server may attest that it retained a public source. A rider
+    // cannot choose a filename/URL or forge an evidence retrieval receipt.
+    delete b.serverEvidence;
     const imageFiles: string[] = [];
     const removeImages = () => {
       for (const name of imageFiles) { try { fs.unlinkSync(path.join(imageDir, name)); } catch { /* absent */ } }
@@ -690,9 +720,13 @@ export function buildApp(opts: AppOptions): Hono {
     // pulled out; what remains is stored verbatim in the row, so cap it at
     // the text-only limit — a legitimate context snapshot is ~2 KB, and
     // 3 MB × 200/day of it would fill the 1 GB volume in two days.
-    if (JSON.stringify(b).length > REPORT_BODY_LIMIT) {
+    const suppliedSource = b.screen && typeof b.screen === 'object' && !Array.isArray(b.screen)
+      ? (b.screen as Record<string, unknown>).source : undefined;
+    const evidence = feedbackEvidence.retain(suppliedSource);
+    if (JSON.stringify(b).length > REPORT_BODY_LIMIT - 2048) {
       b = { note, source: b.source, contextTruncated: true };
     }
+    b = { ...b, serverEvidence: evidence };
     let id: number;
     try {
       ({ id } = submitReport(
@@ -830,6 +864,27 @@ export function buildApp(opts: AppOptions): Hono {
     }
     await next();
   };
+
+  app.get('/api/reports/:id/evidence', requireAdmin, c => {
+    c.header('Cache-Control', 'no-store');
+    const id = Number(c.req.param('id'));
+    if (!Number.isSafeInteger(id) || id <= 0) return c.json({ error: 'not_found' }, 404);
+    const row = opts.bundle.sqlite.prepare('SELECT context FROM reports WHERE id = ?').get(id) as { context: string | null } | undefined;
+    if (!row) return c.json({ error: 'not_found' }, 404);
+    let saved: FeedbackEvidenceReceipt | undefined;
+    try { saved = JSON.parse(row.context ?? '{}')?.serverEvidence; } catch { /* old or malformed context */ }
+    if (!saved || saved.status !== 'retained') return c.json({ v: 1, status: 'unavailable',
+      reason: saved?.status === 'unavailable' ? saved.reason : 'source-not-supplied' });
+    try {
+      const result = feedbackEvidence.read(saved.snapshotId, saved.bundleSha256);
+      c.header('X-Content-SHA256', result.sha256);
+      c.header('Content-Type', 'application/json');
+      return c.body(result.bytes.toString('utf8'));
+    } catch (error) {
+      return c.json({ error: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'evidence_expired' : 'evidence_unavailable' },
+        (error as NodeJS.ErrnoException).code === 'ENOENT' ? 410 : 503);
+    }
+  });
 
   app.use('/api/evaluation/*', async (c, next) => { c.header('Cache-Control', 'no-store'); await next(); });
   app.get('/api/evaluation/seed', requireAdmin, c => {
@@ -1515,6 +1570,7 @@ export function buildApp(opts: AppOptions): Hono {
         pollStalenessMs,
         collectorLagMs: lagMs,
         knownBuses: buses.length,
+        feedbackEvidence: feedbackEvidence.stats(),
         ...(serverEta ? { serverEta: serverEta.stats() } : {}),
         pollSkipped: poll.skipped,
         k10History: poll.k10History,

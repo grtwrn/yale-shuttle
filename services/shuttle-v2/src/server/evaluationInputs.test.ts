@@ -10,6 +10,18 @@ function errorCode(fn: () => unknown) {
   catch (e) { expect(e).toBeInstanceOf(EvaluationInputError); return (e as EvaluationInputError).code; }
 }
 describe('exact production observation retention', () => {
+  it('exports only a genuine retained current observation identity without input or private context', () => {
+    const j = journal(); expect(j.reference(null, clock)).toBeUndefined(); frame(j, 0);
+    expect(j.reference(clock + 1, clock)).toBeUndefined();
+    const reference = j.reference(clock, clock)!;
+    expect(reference).toEqual({epoch: 'fixture-epoch', cursor: 1, at: clock, sha256: createHash('sha256').update(JSON.stringify({bus: 0})).digest('hex')});
+    reference.epoch = 'mutated'; expect(j.reference(clock, clock)!.epoch).toBe('fixture-epoch');
+    frame(j, 1); expect(j.reference(clock, clock + 5000)).toBeUndefined();
+    expect(j.reference(clock + 5000, clock + 5000)?.cursor).toBe(2);
+    j.fail('capture failed'); expect(j.reference(clock + 5000, clock + 5000)).toBeUndefined();
+    const expired = journal({maxAgeMs: 1000}); frame(expired, 0);
+    expect(expired.reference(clock, clock + 1001)).toBeUndefined();
+  });
   it('retains original bytes and hash rather than a later cached HTTP rebuild', () => {
     const j = journal(); frame(j, 0, '{"modelTime":1}'); frame(j, 0, '{"cachedAge":2}');
     const r = j.read(j.epoch, 0, { now: clock }); expect(r.frames).toHaveLength(1);
