@@ -175,6 +175,25 @@ describe("the server's belief and the client's give the same answer", () => {
     expect(comparedRows).toBeGreaterThan(5_000);
   });
 
+  it("recent-speed display metadata cannot change any forecast over the recorded 40 polls", () => {
+    const baseline = new ServerEta({ routes: ALL_ROUTES });
+    const decorated = new ServerEta({ routes: ALL_ROUTES });
+    let rows = 0;
+    CAP.frames.forEach((frame, i) => {
+      const buses = frame.buses.map((bus, j) => ({ ...bus,
+        recent_speed: (i + j) % 4 === 0 ? null : {
+          mph: [0, 0, 65, 100_000][(i + j) % 4]!, at: frame.t,
+          window_sec: 30, expires_at: frame.t + 20_000,
+        },
+      }));
+      const a = baseline.contribute(payloadFor(frame), i, frame.t);
+      const b = decorated.contribute(payloadFor({ buses }), i, frame.t);
+      expect(b, `frame ${i}`).toEqual(a);
+      rows += a?.rows.length ?? 0;
+    });
+    expect(rows).toBeGreaterThan(5_000);
+  });
+
   it("a cold belief disagrees with a warm one — so the comparison above is about STATE", () => {
     // The whole argument for the move: a browser opened at frame 40 has a
     // different posterior from one that has been tracking since frame 1, and

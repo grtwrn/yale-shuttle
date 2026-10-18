@@ -1,9 +1,48 @@
 # Showing a bus's speed
 
-**Status: investigated, not built.** Rider report #63 asks for it. This
-records what the data actually supports so the next person does not have to
-re-measure it, and does not have to reach for a Kalman filter to find out it
-was unnecessary.
+Rider report #63 asks to see the bus's current speed. The implementation
+shows **recent speed**, a coarse GPS path average, in the selected trip's
+stop list, the on-bus view, and fleet/route map bus tooltips. Map buses can
+also be focused with the keyboard. It is not a speedometer reading.
+
+## Implemented behavior
+
+The collector keeps a bounded, trailing 30-second path per disambiguated
+vehicle track. An estimate needs at least 25 seconds of continuous history
+and 15 metres of movement extent. A gap over 20 seconds, route reassignment,
+backwards/conflicting GPS fix time, missing/stale fix time, or an implausible
+position jump clears the affected history. A normal provider ID reissue
+uses the collector's existing track reconciliation; contended names stay
+separate. State is capped at 256 tracks and 32 samples per track.
+
+`/api/buses` publishes `recent_speed` with `mph`, `at`, `window_sec`, and
+`expires_at`, or null when no estimate is supported. Values are rounded to
+5 mph. The browser states the GPS averaging window and says **<5 mph** for
+a supported reading rounded to zero. A frozen window is **unavailable**;
+this readout never infers "stopped". The estimate expires within 20 seconds
+of both the HTTP observation and the provider's GPS fix, and disappears on
+transport failure. The screen clock expires it even between polls. An older
+server that omits the field gets no speed display.
+
+Speed is display-only and does not enter the arrival estimator. A recorded
+40-poll regression compares complete forecasts with and without arbitrary
+speed metadata. Collector tests cover identity separation, warm-up, expiry,
+bounds and failure isolation; a required browser gate checks phone/desktop
+trip, map and on-bus states through expiry, outage and recovery.
+
+A new ten-minute Sunday capture on 2026-10-18 retained 121 successful polls
+and 605 observations from five reporting buses on four routes. Coordinates
+repeated in 331 of 600 consecutive pairs (55.2%). This confirms GPS stutter
+still matters; it does not establish physical speed accuracy. There is no
+independent speed truth in either capture and no ETA accuracy improvement
+or model promotion is claimed.
+
+## Historical September investigation
+
+The original investigation follows. Its comparisons use GPS-derived speed
+proxies, including overlapping windows; claims of a bus being "moving" or
+"stopped" below describe those proxies, not independent vehicle truth.
+The implemented behavior above supersedes the original display proposal.
 
 Measured 2026-09-02 against 75,570 `raw_positions` rows (08:48–15:17 ET, 23
 bus names across 8 routes) plus a 6-minute live poll of `routes_buses.php`.
@@ -102,7 +141,7 @@ The failure mode to respect: a bus stopped at a light reads 0 mph while its
 ETA is fine, and the raw signal produces that reading spuriously 21% of the
 time. Hence the window, and hence "stopped" only from the window.
 
-## If it is built, the smallest honest version
+## Original design proposal (superseded by the implementation above)
 
 Server-side, not in the browser: `/api/buses` carries no per-bus timestamp,
 and the client poll drops to 30 s when the tab is hidden, so a browser-side
