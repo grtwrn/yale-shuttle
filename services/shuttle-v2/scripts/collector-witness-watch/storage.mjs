@@ -263,12 +263,17 @@ export class WitnessStore {
   maintain({ now = Date.now(), reserveBytes = 0 } = {}) {
     const uncertain = this.disk().unknown || this.get('reportsUncertain', true) || now - this.get('reportsAt', 0) > 300000;
     let deleted = 0;
-    if (!uncertain) for (const c of this.db.prepare(`SELECT key,end_at FROM chunks WHERE key<>?
+    if (!uncertain) for (const c of this.db.prepare(`SELECT key,epoch,first,last,end_at FROM chunks WHERE key<>?
       AND key NOT IN (SELECT chunk FROM report_chunks) AND key NOT IN (SELECT chunk FROM incident_chunks) ORDER BY end_at,key`).all(this.get('activeChunk', ''))) {
       if (now - c.end_at <= this.policy.maxAgeMs && this.usedBytes() + reserveBytes <= this.databaseLimit) continue;
       this.transaction(() => {
         this.db.prepare('DELETE FROM chunks WHERE key=?').run(c.key);
-        this.db.exec('DELETE FROM frames WHERE NOT EXISTS (SELECT 1 FROM chunk_frames c WHERE c.epoch=frames.epoch AND c.seq=frames.seq)');
+        // Only this chunk's frames can have become orphaned. Searching their
+        // primary-key range avoids rescanning every retained frame for each
+        // expired page; overlapping late-association chunks still retain them.
+        this.db.prepare(`DELETE FROM frames WHERE epoch=? AND seq BETWEEN ? AND ?
+          AND NOT EXISTS (SELECT 1 FROM chunk_frames c WHERE c.epoch=frames.epoch AND c.seq=frames.seq)`)
+          .run(c.epoch, c.first, c.last);
         this.db.exec('DELETE FROM topologies WHERE sha NOT IN (SELECT topology FROM chunk_topologies)');
       }); deleted++;
     }
