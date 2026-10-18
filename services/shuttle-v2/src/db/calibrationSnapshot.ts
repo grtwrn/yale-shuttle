@@ -6,7 +6,7 @@ import { validCalibrationRead } from '../calibrator/provenance.js';
 const tables = ['arrivals', 'segments', 'stop_visits', 'legs'] as const;
 const operations = ['INSERT', 'UPDATE', 'DELETE'] as const;
 const normalize = (sql: string) => sql.replace(/\s+/g, ' ').trim().replace(/;$/, '');
-function completeRevisionSchema(sqlite: Database.Database): boolean {
+export function completeRevisionSchema(sqlite: Database.Database): boolean {
   const triggers = new Map((sqlite.prepare("SELECT name,sql FROM sqlite_master WHERE type='trigger'").all() as { name: string; sql: string }[])
     .map(r => [r.name, normalize(r.sql)]));
   return tables.every(table => operations.every(operation => {

@@ -486,7 +486,8 @@ export function createBusesPayloadCache(
       try {
         const context = serverEta.evaluationContext();
         recordObservation(collector.observationVersion(), at, cachedTrialJson,
-          context ? { ...context, calibration: collector.calibrationSource?.() ?? null } : null);
+          context ? { ...context, calibration: collector.calibrationSource?.() ?? null,
+            collectorWitness: collector.collectorWitnessReference?.() ?? null } : null);
       } catch { /* source owns its refusal */ }
     }
     cachedAt = nowMs;

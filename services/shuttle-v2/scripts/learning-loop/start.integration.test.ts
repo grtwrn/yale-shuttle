@@ -26,12 +26,17 @@ const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 const read = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
 async function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'exact-observer-cli-')); temporary.push(root);
-  const sourceFiles = learningSourceFiles(service), sourceKey = identityHash(fileIdentity(sourceFiles)), initial = Date.now() - 30000;
+  // These retained daytime buses need a weekday service clock. Real wall time
+  // made healthy CLI/control tests silently lose every eligible bus at night.
+  // Keep elapsed time real, and share the explicit offset with the child CLI.
+  let offset = 0;
+  const clockBase = Date.parse('2026-10-14T15:00:00Z') - Date.now();
+  const serverNow = () => Date.now() + clockBase + offset;
+  const sourceFiles = learningSourceFiles(service), sourceKey = identityHash(fileIdentity(sourceFiles)), initial = serverNow() - 30000;
   const champion = { version: 'fixture-champion', accepted: true, publishedAt: initial - 86400000, params: structuredClone(COMPILED_MODEL_PARAMS) };
   const params = structuredClone(champion.params); params.P_REPEAT_STAND = .75; params.CONFORMAL = { '0-2': 1, '2-5': 1, '5-10': 1, '10-30': 1 };
   const producer = new ServerEta({ routes: ROUTE_LISTS.map(r => r.label) }); producer.useK10Trial(() => new Map());
-  const inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let offset = 0, version = 0, payload: any, mode = 'healthy';
-  const serverNow = () => Date.now() + offset;
+  const inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let version = 0, payload: any, mode = 'healthy';
   const publish = (at = serverNow()) => {
     const since = new Date(initial - 60000).toISOString();
     payload = { ...cap.static, model_params: champion, buses: structuredClone(cap.frames[4].buses).map((b: any) => {
@@ -49,7 +54,7 @@ async function fixture() {
     const wire = producer.evaluationWire(current.buses, serverNow()); return JSON.stringify({ ...current, ...(wire ? { server_eta: wire } : {}) });
   }, inputs, () => 'fixture-build', serverNow);
   for (let i = 0; i < 5; i++) publish(initial + i * 5000);
-  const seed = source.seed(), seedReceivedAt = Date.now(), startedAt = Date.now(), id = `cycle-${startedAt}`;
+  const seed = source.seed(), seedReceivedAt = serverNow(), startedAt = serverNow(), id = `cycle-${startedAt}`;
   const candidate = { params, n: {}, issues: [] }, stream = new ExactForecastStream('fixture-build', sourceKey, champion, { version: id, publishedAt: startedAt, params });
   stream.seed(seed, seedReceivedAt);
   const directory = path.join(root, id); fs.mkdirSync(directory); fs.mkdirSync(path.join(root, 'archives'));
@@ -62,7 +67,7 @@ async function fixture() {
   for (const file of sourceFiles) { const target = path.join(directory, 'source', path.relative(service, file)); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(file, target); }
   fs.writeFileSync(path.join(directory, 'frozen-candidate.json'), JSON.stringify(state)); state.frozenCandidateSha256 = digest(fs.readFileSync(path.join(directory, 'frozen-candidate.json')));
   publish(); const packet = source.read(stream.epoch, stream.cursor); stream.advance(packet);
-  const recorded = JSON.stringify({ receivedAt: Date.now(), source: packet });
+  const recorded = JSON.stringify({ receivedAt: serverNow(), source: packet });
   fs.writeFileSync(path.join(directory, 'feed-0000.jsonl.gz'), gzipSync(recorded + '\n'));
   state.source.runtime = stream.persist(directory); fs.writeFileSync(path.join(root, 'state.json'), JSON.stringify(state));
   let sent = false;
@@ -100,7 +105,7 @@ async function fixture() {
     const clock = path.join(root, 'clock.mjs');
     // Explicit local clock simulation lets the real CLI reach its next-day
     // calibration phase. It changes no OS, production or test-runner clock.
-    fs.writeFileSync(clock, `const NativeDate=Date,offset=${offset};globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[NativeDate.now()+offset]));}static now(){return NativeDate.now()+offset;}};`);
+    fs.writeFileSync(clock, `const NativeDate=Date,offset=${clockBase + offset};globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[NativeDate.now()+offset]));}static now(){return NativeDate.now()+offset;}};`);
     let log = '';
     const child = spawn(process.execPath, ['--import', path.join(service, 'node_modules/tsx/dist/loader.mjs'), '--import', clock,
       path.join(service, 'scripts/learning-loop/start.ts'), ...(once ? ['--once'] : [])], {

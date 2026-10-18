@@ -165,6 +165,21 @@ it("retains the previous operating day's GPS until the overnight archive, then e
   expect(remaining).toEqual(times.slice(1));
 });
 
+it('records real poll inputs and source rows on the GPS observation clock before notifying the model', async () => {
+  let seen: ReturnType<Collector['collectorWitnessReference']> = null;
+  collector.setPollObserver(() => { seen = collector.collectorWitnessReference(); });
+  const pending = inner().runPoll(); await upstream.untilAwaited(); upstream.deliver([bus()]); await pending;
+  expect(seen).toMatchObject({ status: 'recorded', seq: 1 });
+  const head = collector.collectorWitnessHead(), page = collector.collectorWitnessRead(head.epoch, 0);
+  const frame = page.frames[0]!;
+  expect(frame.status).toBe('recorded'); expect(page.topologies).toHaveLength(1);
+  const fields = new Map<string, unknown[]>(JSON.parse(frame.json)[2]);
+  const number = (name: string) => Buffer.from(fields.get(name)![1] as string, 'hex').readDoubleBE();
+  expect(number('observationVersionAfter')).toBe(collector.observationVersion());
+  expect(fields.get('sourceWriteEvidence')).toEqual(['string', 'recorded']);
+  expect(collector.collectorWitnessStats().captureErrors).toBe(0);
+});
+
 describe("runPoll re-entrancy", () => {
   it("refuses to start a second poll while one is in flight", async () => {
     // The production shape of the bug: the poll timer fires every 5 s but the

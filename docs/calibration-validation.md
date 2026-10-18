@@ -92,6 +92,16 @@ probability rule or promotion gate. A causal stop-pass correction still needs
 immutable row/witness hashes, topology at observation, versioned resolution
 availability, and validation against the original service and accuracy gates.
 
+The prospective collector witness journal adds bounded exact poll input,
+actual observation topology, detector/visit state and returned row-mutation
+receipts. Its read-only operator watcher can retain these locally and associate
+them with reported model inputs. See [the capture and retention contract](../services/shuttle-v2/scripts/collector-witness-watch/README.md).
+This captures new evidence only. It neither reconstructs missing historical
+availability nor resolves the original stop-pass anomaly. Statement receipts
+are committed individually; whole-poll atomicity and versioned causal row
+resolutions remain separate work. The production eligibility and promotion
+gates above are unchanged.
+
 ## Artifact integrity
 
 Replay database, table patch and pairs caches include hashes of actual source
