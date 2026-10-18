@@ -15,6 +15,11 @@ const fixture = JSON.parse(readFileSync(new URL("./__fixtures__/restart-after-de
 type Inner = { refreshStaticIfNeeded(force: boolean): Promise<void>; runPoll(): Promise<void> };
 type EvidenceChange = "missing" | "pin" | "departure" | "outcome" | "conflict" | "duplicate" | "clipped-history";
 
+// Retain the fixture's original production row. Keeping the first approach
+// now avoids the two phantom 116/53 visits and the later re-anchor; the real
+// pin, resting plateau, departure and next leg must remain exactly the same.
+const continuousAnchor = 1792258982413;
+
 async function collect(restartAt?: number | readonly number[], change?: EvidenceChange) {
   const bundle = openDb(":memory:");
   migrate(bundle.db, { migrationsFolder: "./drizzle" });
@@ -45,7 +50,7 @@ async function collect(restartAt?: number | readonly number[], change?: Evidence
       latest = obs; vi.setSystemTime(obs.collectedAt);
       if (restartTimes.has(obs.collectedAt)) {
         collector.stop();
-        const anchor = fixture.recordedVisit.anchored_at;
+        const anchor = continuousAnchor;
         if (change === "missing") bundle.sqlite.prepare("DELETE FROM stop_visits WHERE anchored_at=?").run(anchor);
         if (change === "pin") bundle.sqlite.prepare("UPDATE stop_visits SET pinned_at=pinned_at+1 WHERE anchored_at=?").run(anchor);
         if (change === "departure") bundle.sqlite.prepare("UPDATE stop_visits SET departed_at=departed_at+1 WHERE anchored_at=?").run(anchor);
@@ -78,10 +83,12 @@ async function collect(restartAt?: number | readonly number[], change?: Evidence
 describe("restarting after a visit was written but before its next anchor", () => {
   it("keeps the completed Blue visit and the full following leg exactly once", async () => {
     const uninterrupted = await collect();
-    expect(uninterrupted.visits.find(v => v.anchored_at === fixture.recordedVisit.anchored_at)).toMatchObject({
+    expect(uninterrupted.visits.filter(v => v.stop_id === 116)).toEqual([expect.objectContaining({
+      anchored_at: continuousAnchor,
       stop_id: 116, pinned_at: fixture.recordedVisit.pinned_at,
       departed_at: fixture.recordedVisit.departed_at, stand_sec: fixture.recordedVisit.stand_sec,
-    });
+    })]);
+    expect(uninterrupted.visits.filter(v => [116, 53].includes(Number(v.stop_id)) && v.pinned_at === null)).toEqual([]);
     expect(uninterrupted.legs.find(v => v.departed_at === fixture.recordedLeg.departed_at)).toMatchObject({
       from_stop_id: 116, to_stop_id: 53, arrived_at: fixture.recordedLeg.arrived_at,
       leg_sec: fixture.recordedLeg.leg_sec, drive_sec: fixture.recordedLeg.drive_sec, hold_sec: fixture.recordedLeg.hold_sec,
@@ -89,7 +96,7 @@ describe("restarting after a visit was written but before its next anchor", () =
     const restarted = await collect(fixture.restartAt);
     expect.soft(restarted.visits).toEqual(uninterrupted.visits);
     expect.soft(restarted.legs).toEqual(uninterrupted.legs);
-    expect(restarted.recoveries).toContainEqual({ at: fixture.restartAt, enteredAt: fixture.recordedVisit.anchored_at });
+    expect(restarted.recoveries).toContainEqual({ at: fixture.restartAt, enteredAt: continuousAnchor });
   });
 
   const laterRestarts = fixture.observations.filter(o => o.collectedAt > fixture.restartAt
@@ -106,22 +113,22 @@ describe("restarting after a visit was written but before its next anchor", () =
     const actual = await collect([fixture.restartAt, laterRestarts[1]!]);
     expect(actual.visits).toEqual(expected.visits);
     expect(actual.legs).toEqual(expected.legs);
-    expect(actual.recoveries.filter(e => e.enteredAt === fixture.recordedVisit.anchored_at)).toHaveLength(2);
+    expect(actual.recoveries.filter(e => e.enteredAt === continuousAnchor)).toHaveLength(2);
   });
 
   it("keeps consistent older duplicate rows without inserting another visit", async () => {
     const expected = await collect();
     const actual = await collect(fixture.restartAt, "duplicate");
-    expect(actual.visits.filter(v => v.anchored_at === fixture.recordedVisit.anchored_at)).toHaveLength(2);
-    expect(actual.visits.filter(v => v.stop_id === 116 && v.pinned_at === null)).toHaveLength(1);
+    expect(actual.visits.filter(v => v.anchored_at === continuousAnchor)).toHaveLength(2);
+    expect(actual.visits.filter(v => v.stop_id === 116 && v.pinned_at === null)).toHaveLength(0);
     expect(actual.legs).toEqual(expected.legs);
-    expect(actual.recoveries).toContainEqual({ at: fixture.restartAt, enteredAt: fixture.recordedVisit.anchored_at });
+    expect(actual.recoveries).toContainEqual({ at: fixture.restartAt, enteredAt: continuousAnchor });
   });
 
   it.each<EvidenceChange>(["missing", "pin", "departure", "outcome", "conflict", "clipped-history"])(
     "refuses closed-transit recovery with %s evidence", async change => {
       const actual = await collect(fixture.restartAt, change);
-      expect(actual.recoveries).not.toContainEqual({ at: fixture.restartAt, enteredAt: fixture.recordedVisit.anchored_at });
+      expect(actual.recoveries).not.toContainEqual({ at: fixture.restartAt, enteredAt: continuousAnchor });
     },
   );
 });

@@ -622,7 +622,9 @@ export function stepVisit(
   const id: Identity = obs;
 
   // A broken track: nothing before it can be joined to anything after it.
-  if (!prev || trackBroken(before, obs)) {
+  const occurrenceChanged = before != null
+    && network.routes.get(before.routeId)?.stops[before.nearestIndex] !== before.nearestStopId;
+  if (!prev || trackBroken(before, obs) || occurrenceChanged) {
     if (prev) {
       const closed = closePass(prev, prevAt);
       events.push(...closed.events);

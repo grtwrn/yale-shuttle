@@ -818,7 +818,8 @@ export function step(
   // stale position along behind it.
   let nearest = global;
   let continuous = false;
-  if (prev && prev.routeId === obs.routeId) {
+  if (prev && prev.routeId === obs.routeId
+    && network.routes.get(obs.routeId)?.stops[prev.nearestIndex] === prev.nearestStopId) {
     let ahead = network.nearestStopAheadOnRoute(
       obs.routeId,
       obs,
@@ -827,6 +828,14 @@ export function step(
     );
     if (ahead && impossibleNearbySkip(network, prev, obs, ahead)) {
       ahead = network.nearestStopAheadOnRoute(obs.routeId, obs, prev.nearestIndex, 1);
+    }
+    // Advancing the window can expose a closer later stop even though the
+    // fix did not move. A repeated coordinate cannot establish another
+    // anchor transition. Keep the current occurrence while it is valid;
+    // the existing global/slack check still permits re-anchoring.
+    if (ahead && !discontinuous && gap <= MAX_OBSERVATION_GAP_MS
+      && prev.lat === obs.lat && prev.lon === obs.lon) {
+      ahead = network.nearestStopAheadOnRoute(obs.routeId, obs, prev.nearestIndex, 0);
     }
     if (ahead && ahead.meters <= global.meters + ANCHOR_SLACK_M) {
       nearest = ahead;
