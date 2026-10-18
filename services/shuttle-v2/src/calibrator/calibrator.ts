@@ -11,6 +11,8 @@ import type {
   SegmentStats,
 } from "../network/TransitNetwork.js";
 
+import type { CalibrationReader, CalibrationReadReceipt } from "./provenance.js";
+
 import { median, percentile, shrink } from "./shrinkage.js";
 import type { LapFit } from "./lapFit.js";
 import { attachHourStandTables, loadStandVisits } from "./hourStand.js";
@@ -104,6 +106,8 @@ const HOUR_WINDOW = 1;
 // Public API -----------------------------------------------------------------
 
 export interface CalibrationStats {
+  /** Exact read provenance when supplied by the production collector. */
+  input?: CalibrationReadReceipt;
   segmentCount: number;
   dwellCount: number;
   sampleCount: number;
@@ -145,74 +149,78 @@ export function calibrate(
    * own slow cadence by the caller). Empty: no `qh` anywhere.
    */
   hourStandCells: ReadonlySet<string> = new Set(),
+  reader?: CalibrationReader,
 ): CalibrationStats {
   const t0 = Date.now();
   const nowMs = now.getTime();
   const dow = now.getDay();
   const hours = hourWindow(now.getHours(), HOUR_WINDOW);
 
-  const segmentGroups = loadSegmentGroups(db, SEGMENT_WINDOW_DAYS, nowMs, dow, hours);
-  const dwellGroups = loadDwellGroups(db, DWELL_WINDOW_DAYS, nowMs, dow, hours);
+  const read = () => {
+    const segmentGroups = loadSegmentGroups(db, SEGMENT_WINDOW_DAYS, nowMs, dow, hours);
+    const dwellGroups = loadDwellGroups(db, DWELL_WINDOW_DAYS, nowMs, dow, hours);
 
-  const segmentStats = computeSegmentStats(segmentGroups, network);
-  const dwellStats = computeDwellStats(dwellGroups);
+    const segmentStats = computeSegmentStats(segmentGroups, network);
+    const dwellStats = computeDwellStats(dwellGroups);
 
-  // Every route gets its tables wherever data exists — nothing is withheld
-  // here any more. The legacy client's split arithmetic is gated on ITS side
-  // (`SPLIT_SERVED_ROUTE_IDS` is kept exported for that and for the replay's
-  // "served" comparison); the ring estimator prices every route and reads
-  // whatever a route has. A route with no `legs` / `stop_visits` rows simply
-  // carries no split fields, as before.
-  const standGroups = loadStandGroups(db, SPLIT_WINDOW_DAYS, nowMs);
-  const driveGroups = loadDriveGroups(db, SPLIT_WINDOW_DAYS, nowMs);
-  const legGroups = loadLegGroups(db, SPLIT_WINDOW_DAYS, nowMs);
-  const stopShares = loadStopShares(db, SPLIT_WINDOW_DAYS, nowMs);
-  const standCount = attachStandTables(dwellStats, standGroups, undefined, stopShares);
-  const occurrenceStandCount = attachOccurrenceStandTables(
-    dwellStats, network,
-    loadStandOccurrenceGroups(db, SPLIT_WINDOW_DAYS, nowMs),
-    loadStopOccurrenceShares(db, SPLIT_WINDOW_DAYS, nowMs),
-  );
-  const lapFitCount = attachLapFits(dwellStats, lapFits);
-  for (const [key, release] of releaseFits) {
-    if (key !== '3:11') continue; // Full-arrival validation accepted Winchester only.
-    const current = dwellStats.get(key);
-    if (current) dwellStats.set(key, { ...current, release });
-  }
-  // After the lap and release fits, which it steps aside for.
-  const hourStandCount = hourStandCells.size > 0
-    ? attachHourStandTables(dwellStats, network, loadStandVisits(db, SPLIT_WINDOW_DAYS, nowMs, { cells: hourStandCells }), nowMs)
-    : 0;
-  const driveCount = attachDrives(segmentStats, driveGroups, network);
-  const legQuantileCount = attachLegQuantiles(segmentStats, legGroups, network);
-  const ownPace = computePace(legGroups, network);
-  // The network-wide pace fills every route that has no legs yet, so the
-  // estimator prices every route from the same model (see computePooledPace).
-  const pooledPace = computePooledPace(legGroups, network);
-  // Guarded on `pooledPace` so the route list is read only when there is
-  // something to fill it with — before any route has a leg there is nothing
-  // to pool, and `ownPace` is already the whole answer.
-  const pace = pooledPace ? withPooledPace(ownPace, pooledPace, network.routes.keys()) : ownPace;
+    // Every route gets its tables wherever data exists — nothing is withheld
+    // here any more. The legacy client's split arithmetic is gated on ITS side
+    // (`SPLIT_SERVED_ROUTE_IDS` is kept exported for that and for the replay's
+    // "served" comparison); the ring estimator prices every route and reads
+    // whatever a route has. A route with no `legs` / `stop_visits` rows simply
+    // carries no split fields, as before.
+    const standGroups = loadStandGroups(db, SPLIT_WINDOW_DAYS, nowMs);
+    const driveGroups = loadDriveGroups(db, SPLIT_WINDOW_DAYS, nowMs);
+    const legGroups = loadLegGroups(db, SPLIT_WINDOW_DAYS, nowMs);
+    const stopShares = loadStopShares(db, SPLIT_WINDOW_DAYS, nowMs);
+    const standCount = attachStandTables(dwellStats, standGroups, undefined, stopShares);
+    const occurrenceStandCount = attachOccurrenceStandTables(
+      dwellStats, network,
+      loadStandOccurrenceGroups(db, SPLIT_WINDOW_DAYS, nowMs),
+      loadStopOccurrenceShares(db, SPLIT_WINDOW_DAYS, nowMs),
+    );
+    const lapFitCount = attachLapFits(dwellStats, lapFits);
+    for (const [key, release] of releaseFits) {
+      if (key !== '3:11') continue; // Full-arrival validation accepted Winchester only.
+      const current = dwellStats.get(key);
+      if (current) dwellStats.set(key, { ...current, release });
+    }
+    // After the lap and release fits, which it steps aside for.
+    const hourStandCount = hourStandCells.size > 0
+      ? attachHourStandTables(dwellStats, network, loadStandVisits(db, SPLIT_WINDOW_DAYS, nowMs, { cells: hourStandCells }), nowMs)
+      : 0;
+    const driveCount = attachDrives(segmentStats, driveGroups, network);
+    const legQuantileCount = attachLegQuantiles(segmentStats, legGroups, network);
+    const ownPace = computePace(legGroups, network);
+    // The network-wide pace fills every route that has no legs yet, so the
+    // estimator prices every route from the same model (see computePooledPace).
+    const pooledPace = computePooledPace(legGroups, network);
+    // Guarded on `pooledPace` so the route list is read only when there is
+    // something to fill it with — before any route has a leg there is nothing
+    // to pool, and `ownPace` is already the whole answer.
+    const pace = pooledPace ? withPooledPace(ownPace, pooledPace, network.routes.keys()) : ownPace;
 
-  network.setCalibration(segmentStats, dwellStats, pace);
-
-  return {
-    segmentCount: segmentStats.size,
-    dwellCount: dwellStats.size,
-    sampleCount: countSamples(segmentGroups) + countSamples(dwellGroups),
-    standCount,
-    driveCount,
-    legQuantileCount,
-    paceRouteCount: ownPace.size,
-    pooledPaceN: pooledPace ? pooledPace.n : 0,
-    pooledPaceMedianSpm: pooledPace ? Math.round(pooledPace.spm[pooledPace.spm.length >> 1]! * 1e4) / 1e4 : null,
-    occurrenceStandCount,
-    lapFitCount,
-    hourStandCount,
-    splitSampleCount: countSamples(standGroups)
-      + driveGroups.reduce((n, group) => n + eligibleTravelValues(group, network).length, 0),
-    durationMs: Date.now() - t0,
+    return { segmentStats, dwellStats, pace, stats: {
+      segmentCount: segmentStats.size,
+      dwellCount: dwellStats.size,
+      sampleCount: countSamples(segmentGroups) + countSamples(dwellGroups),
+      standCount,
+      driveCount,
+      legQuantileCount,
+      paceRouteCount: ownPace.size,
+      pooledPaceN: pooledPace ? pooledPace.n : 0,
+      pooledPaceMedianSpm: pooledPace ? Math.round(pooledPace.spm[pooledPace.spm.length >> 1]! * 1e4) / 1e4 : null,
+      occurrenceStandCount,
+      lapFitCount,
+      hourStandCount,
+      splitSampleCount: countSamples(standGroups)
+        + driveGroups.reduce((n, group) => n + eligibleTravelValues(group, network).length, 0),
+    } };
   };
+  const captured = reader ? reader(nowMs, read) : { value: read(), receipt: undefined };
+  const { segmentStats, dwellStats, pace, stats } = captured.value;
+  network.setCalibration(segmentStats, dwellStats, pace);
+  return { ...stats, durationMs: Date.now() - t0, ...(captured.receipt ? { input: captured.receipt } : {}) };
 }
 
 // Internals ------------------------------------------------------------------

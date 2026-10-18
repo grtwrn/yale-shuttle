@@ -483,7 +483,11 @@ export function createBusesPayloadCache(
     // Diagnostic capture failure must never break the public bus response.
     if (recordObservation && serverEta) {
       const at = serverEta.evaluationClock();
-      try { recordObservation(collector.observationVersion(), at, cachedTrialJson, serverEta.evaluationContext()); } catch { /* source owns its refusal */ }
+      try {
+        const context = serverEta.evaluationContext();
+        recordObservation(collector.observationVersion(), at, cachedTrialJson,
+          context ? { ...context, calibration: collector.calibrationSource?.() ?? null } : null);
+      } catch { /* source owns its refusal */ }
     }
     cachedAt = nowMs;
     return trial ? cachedTrialJson : cachedJson;

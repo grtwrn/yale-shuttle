@@ -1,6 +1,19 @@
 import { sql } from "drizzle-orm";
 import { blob, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
+/** Committed mutation counts from the migration's triggers. The initial epoch
+ * covers legacy rows without inventing their write times. One fixed-size row;
+ * deletes/patches count too, and rollbacks do not advance it. */
+export const calibrationInputRevision = sqliteTable("calibration_input_revision", {
+  id: integer("id").primaryKey(),
+  epoch: text("epoch").notNull(),
+  revision: integer("revision").notNull().default(0),
+  arrivals: integer("arrivals").notNull().default(0),
+  segments: integer("segments").notNull().default(0),
+  stopVisits: integer("stop_visits").notNull().default(0),
+  legs: integer("legs").notNull().default(0),
+});
+
 // Static network state, refreshed from upstream every ~6h.
 export const stops = sqliteTable("stops", {
   id: integer("id").primaryKey(),

@@ -337,6 +337,34 @@ describe("/api/buses with the flag off", () => {
       expect(next.frames).toHaveLength(1); expect(next.frames[0]!.at).toBe(at + 5000); expect(eta.stats().steps).toBe(2);
     } finally { clock.mockRestore(); }
   });
+  it('binds calibration provenance to immutable model observations across later calibration and cache rebuilds', async () => {
+    const at = Date.now(), clock = vi.spyOn(Date, 'now').mockReturnValue(at);
+    try {
+      await (collector as unknown as { runPoll(): Promise<void> }).runPoll();
+      const source = collector.calibrationSource()!;
+      const inputs = new EvaluationInputs({ epoch: 'calibration-fixture' }), eta = new ServerEta({ routes: ALL_ROUTES });
+      const get = createBusesPayloadCache(collector, null, eta, null, (version, modelAt, json, context) => {
+        if (modelAt === null || context === null) inputs.fail('Model failed');
+        else inputs.append(version, modelAt, json, context);
+      });
+      const first = get(true);
+      expect(first).not.toContain('calibration');
+      clock.mockReturnValue(at + 1200);
+      (collector as unknown as { runCalibrate(): void }).runCalibrate();
+      const nextSource = collector.calibrationSource()!;
+      expect(nextSource.main.id).not.toBe(source.main.id);
+      get(true);
+      expect(eta.stats().steps).toBe(1);
+      const initial = inputs.read(inputs.epoch, 0, { now: at + 1200 }).frames[0]!;
+      expect(JSON.parse(initial.contextJson!).calibration).toEqual(source);
+      clock.mockReturnValue(at + 5000);
+      await (collector as unknown as { runPoll(): Promise<void> }).runPoll(); get(true);
+      const next = inputs.read(inputs.epoch, 1, { now: at + 5000 }).frames[0]!;
+      expect(JSON.parse(next.contextJson!).calibration).toEqual(nextSource);
+      expect(JSON.parse(initial.contextJson!).calibration).toEqual(source);
+      expect(eta.stats().steps).toBe(2);
+    } finally { clock.mockRestore(); }
+  });
   it('contains a throwing diagnostic callback without changing public bytes', async () => {
     const at = Date.now(), clock = vi.spyOn(Date, 'now').mockReturnValue(at);
     try {

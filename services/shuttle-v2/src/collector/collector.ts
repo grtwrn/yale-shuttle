@@ -1,4 +1,7 @@
 import type Database from "better-sqlite3";
+import { createHash } from "node:crypto";
+import { calibrationReader } from "../db/calibrationSnapshot.js";
+import type { CalibrationReader, CalibrationSource } from "../calibrator/provenance.js";
 
 import { calibrate, SPLIT_WINDOW_DAYS } from "../calibrator/calibrator.js";
 import { ReleaseFitCache } from "../calibrator/releaseFit.js";
@@ -435,6 +438,13 @@ export class Collector {
 
   private readonly db: DB;
   private readonly sqlite: Database.Database;
+  private readonly calibrationRead: CalibrationReader;
+  private readonly calibrationSources = new WeakMap<TransitNetwork, CalibrationSource>();
+  /** Private producer context. A failed fresh-network calibration cannot
+   * overwrite the source associated with the still-published network. */
+  calibrationSource(): CalibrationSource | null {
+    return structuredClone(this.calibrationSources.get(this.ref.get()) ?? null);
+  }
   private readonly upstream: UpstreamClient;
   private readonly logger: Logger;
   /**
@@ -571,6 +581,7 @@ export class Collector {
   ) {
     this.db = bundle.db;
     this.sqlite = bundle.sqlite;
+    this.calibrationRead = calibrationReader(this.sqlite);
     this.ref = ref;
     this.upstream = opts.upstream ?? new UpstreamClient();
     this.logger = opts.logger ?? consoleLogger;
@@ -1345,7 +1356,7 @@ export class Collector {
    */
   private seedLapClock(): void {
     try {
-      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
+      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite, this.calibrationRead);
       const cells = this.lapFitsCache.get();
       if (cells.size === 0) return;
       const now = Date.now();
@@ -1406,24 +1417,38 @@ export class Collector {
    * cadence and names its own cost on the six-hourly refresh.
    */
   private calibrateNetwork(network: TransitNetwork) {
-    if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
+    if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite, this.calibrationRead);
     const fitAt = Date.now();
     const lapFits = this.lapFitsCache.get();
     const lapFitMs = Date.now() - fitAt;
-    if (!this.releaseFitsCache) this.releaseFitsCache = new ReleaseFitCache(this.sqlite);
+    if (!this.releaseFitsCache) this.releaseFitsCache = new ReleaseFitCache(this.sqlite, this.calibrationRead);
     const releaseAt = Date.now();
     const releaseFits = this.releaseFitsCache.get();
     const releaseFitMs = Date.now() - releaseAt;
     // The hour-of-day stand tables' cell gate (calibrator/hourStand.ts): six-hourly,
     // ledger routes only, so ~0 on the five-minute cadence; timed like the fits.
-    if (!this.hourStandGateCache) this.hourStandGateCache = new HourStandGateCache(this.db, SPLIT_WINDOW_DAYS);
+    if (!this.hourStandGateCache) this.hourStandGateCache = new HourStandGateCache(this.db, SPLIT_WINDOW_DAYS, undefined, this.calibrationRead);
     const hourGateAt = Date.now();
     const hourStandCells = this.hourStandGateCache.get();
     const hourGateMs = Date.now() - hourGateAt;
-    const stats = calibrate(this.db, network, new Date(), lapFits, releaseFits, hourStandCells);
+    const stats = calibrate(this.db, network, new Date(), lapFits, releaseFits, hourStandCells, this.calibrationRead);
+    const provenanceAt = Date.now();
+    const calibrationSource: CalibrationSource = {
+      v: 1, main: stats.input!,
+      topologySha256: createHash("sha256").update(JSON.stringify({
+        stops: [...network.stops], routes: [...network.routes],
+        legMeters: [...network.routes.values()].map(r => [r.id, r.stops.map((from, i) =>
+          network.getLegMeters(r.id, from, r.stops[(i + 1) % r.stops.length]!) ?? null)]),
+      })).digest("hex"),
+      lap: this.lapFitsCache.source?.() ?? null,
+      release: this.releaseFitsCache.source?.() ?? null,
+      hourStand: this.hourStandGateCache.source?.() ?? null,
+    };
+    this.calibrationSources.set(network, calibrationSource);
+    const provenanceMs = Date.now() - provenanceAt;
     return {
-      ...stats, lapFitMs, releaseFitMs, releaseFitCount: releaseFits.size, hourGateMs,
-      loopHeldMs: stats.durationMs + lapFitMs + releaseFitMs + hourGateMs,
+      ...stats, calibrationSource, provenanceMs, lapFitMs, releaseFitMs, releaseFitCount: releaseFits.size, hourGateMs,
+      loopHeldMs: stats.durationMs + lapFitMs + releaseFitMs + hourGateMs + provenanceMs,
     };
   }
 

@@ -59,6 +59,39 @@ also lack exact insertion/confirmation times. The filters remove known future
 outcomes without pretending these legacy records provide complete historical
 availability. That remaining limitation is an explicit promotion blocker.
 
+## Exact calibration reads
+
+The production collector now gives the main calibration and each independently
+cached lap, release and hour-stand fit its own read receipt. A receipt records
+the exact query cutoff (`asOf`), runtime timezone, observed read wall clocks, a generation UUID,
+and the committed input revision read inside the same SQLite transaction as
+the queries. A fixed-size revision row advances through triggers on every
+insert, update and delete of arrivals, segments, stop visits and legs; a rolled
+back write does not advance it. Reads are query-only. Calibration tables are
+published after the read transaction and receipt have succeeded.
+
+A cache hit preserves its original receipt. A failed refresh that keeps a fit
+also keeps that original generation; clearing a failed fit clears its receipt.
+Private production replay contexts retain the main receipt, all three cached
+sources, and a hash of the network actually used for that calibration. Later
+cache rebuilds cannot overwrite an already recorded model observation.
+
+These revisions identify committed contents within that database lineage.
+They are not source-row hashes, wall-clock commit times, or a reconstruction
+of an earlier database state. Copying a database can fork its revision history.
+Full SQLite backups preserve the ledger and triggers; older archives lacking
+the ledger, incomplete trigger schemas, and reads inside an uncommitted outer
+transaction are explicitly marked unavailable. Existing rows still have unknown
+historical write availability and observation topology. The current calibration
+network hash must never be assigned to those old observations as their topology.
+Daily table exports are not complete SQLite backups and cannot reconstruct a
+past revision from this receipt alone.
+
+This first provenance step changes no sample eligibility, fitted coefficient,
+probability rule or promotion gate. A causal stop-pass correction still needs
+immutable row/witness hashes, topology at observation, versioned resolution
+availability, and validation against the original service and accuracy gates.
+
 ## Artifact integrity
 
 Replay database, table patch and pairs caches include hashes of actual source
