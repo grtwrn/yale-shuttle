@@ -129,7 +129,17 @@ export function captureFeedbackScreen(view: string,
           approaching: row.querySelector<HTMLElement>('[data-testid="approaching-pickup"]')?.innerText,
         };
       });
-    const detail = doc.querySelector('[data-testid="trip-detail-panel"]');
+    for (const leg of doc.querySelectorAll<HTMLElement>('[data-feedback-transfer-ride]')) {
+      if (!leg.getClientRects().length) continue;
+      const number = (name: string) => { const value = leg.getAttribute(name); return value === null ? undefined : Number(value); };
+      rows.push({ mode: 'shuttle', route: leg.getAttribute('data-route'), boardStopId: number('data-pickup'), alightStopId: number('data-alight'),
+        busName: leg.getAttribute('data-board-bus'), countdownBusName: leg.getAttribute('data-countdown-bus'),
+        stopsAhead: number('data-board-stops-ahead'), pickupChoice: null,
+        board: leg.querySelector<HTMLElement>('[data-transfer-pickup]')?.innerText ?? '', next: '—', arrive: '',
+        legs: leg.querySelector<HTMLElement>('[data-transfer-ride-stops]')?.innerText,
+        approaching: leg.querySelector<HTMLElement>('details summary')?.innerText });
+    }
+    const detail = doc.querySelector('[data-testid="trip-detail-panel"],[data-testid="transfer-detail"],[data-testid="transfer-handoff"]');
     const rawSource = doc.querySelector('[data-feedback-source]')?.getAttribute('data-feedback-source');
     let source: unknown;
     try { source = rawSource ? JSON.parse(rawSource) : undefined; } catch { source = null; }

@@ -246,6 +246,7 @@ await browserRegression("following pickup visit browser regression", "scripts/fo
 await browserRegression("alighting comparison browser regression", "scripts/alighting-comparison-check.mjs", { env: { ...process.env, ALIGHTING_OUT: path.join(stageDir, "alighting-comparison"), ALIGHTING_PRODUCTION_ASSETS: "0" } });
 await browserRegression("nearby loop overview browser regression", "scripts/nearby-loop-check.mjs", { env: { ...process.env, NEARBY_LOOP_OUT: path.join(stageDir, "nearby-loop"), NEARBY_LOOP_PRODUCTION_ASSETS: "0" } });
 await browserRegression("recent GPS speed browser regression", "scripts/recent-speed-check.mjs", { env: { ...process.env, RECENT_SPEED_OUT: path.join(stageDir, "recent-speed"), RECENT_SPEED_PRODUCTION_ASSETS: "0" } });
+await browserRegression("transfer itinerary browser regression", "scripts/transfer-trip-check.mjs", { env: { ...process.env, TRANSFER_TRIP_OUT: path.join(stageDir, "transfer-trip"), TRANSFER_TRIP_PRODUCTION_ASSETS: "0" } });
 await browserRegression("feedback attachment browser regression", "scripts/feedback-accessibility-check.mjs");
 await browserRegression("feedback screen evidence browser regression", "scripts/feedback-screen-check.mjs", { env: { ...process.env, FEEDBACK_SCREEN_OUT: path.join(stageDir, "feedback-screen"), FEEDBACK_SCREEN_PRODUCTION_ASSETS: "0" } });
 await browserRegression("individual bus reporting browser regression", "scripts/bus-reporting-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "bus-reporting") } });

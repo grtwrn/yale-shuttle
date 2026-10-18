@@ -85,7 +85,7 @@ import {
   findStopAlert, loadStopAlerts, saveStopAlerts, stepStopAlerts, stopAlertPermissionHint,
   type StopAlert,
 } from "./stopAlerts";
-import { rideEndDecision, type RideEndReason } from "./rideEnd";
+import { rideEndDecision, FIX_MAX_AGE_MS, type RideEndReason } from "./rideEnd";
 import { liveUpdateMessage } from "./liveUpdates";
 import { BusReportingAlerts } from './BusReportingAlerts';
 import type { ReportingSnapshot, ReportingWatch } from './busReporting';
@@ -93,6 +93,10 @@ import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
+import { loadBoardedRide, saveBoardedRide, type BoardedRide } from "./boardedRide";
+import { TransferTrips } from "./TransferTrips";
+import { OnwardTransfer } from "./OnwardTransfer";
+import { loadTransferHandoff, saveTransferHandoff, saveTransferSelection, type TransferHandoff } from "./transferState";
 import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
 import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle, rideBoarded, rideExitNearby } from "./rideAlert";
 import { formatRideEta } from "./format";
@@ -331,52 +335,6 @@ const inServiceArea = (g: GeocodeResult): boolean =>
   haversineMeters(SERVICE_CENTER, g) <= SERVICE_RADIUS_M;
 
 
-// An active ride the rider has boarded — drives the on-bus tracking banner.
-// Persisted to localStorage so refreshing mid-trip keeps the banner alive.
-type BoardedRide = {
-  routeLabel: string;
-  color: string;
-  busName: string;
-  boardStopId: number;
-  alightStopId: number;
-  startedAt: number;
-  // Destination from the planner — where the rider is actually going,
-  // distinct from the alight stop. Optional for rides started without a plan.
-  toLat?: number;
-  toLon?: number;
-  toText?: string;
-};
-const BOARDED_LS_KEY = "shuttle-boarded-ride";
-function loadBoardedRide(): BoardedRide | null {
-  try {
-    const raw = localStorage.getItem(BOARDED_LS_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as Partial<BoardedRide>;
-    if (
-      p &&
-      typeof p.routeLabel === "string" &&
-      typeof p.boardStopId === "number" &&
-      typeof p.alightStopId === "number" &&
-      // Stale rides don't restore — mirrors the
-      // 2 h auto-end, so a forgotten ride can't resurrect days later.
-      typeof p.startedAt === "number" &&
-      Date.now() - p.startedAt < 2 * 3600_000
-    ) {
-      return p as BoardedRide;
-    }
-  } catch {
-    /* ignore corrupt value */
-  }
-  return null;
-}
-function saveBoardedRide(r: BoardedRide | null): void {
-  try {
-    if (r) localStorage.setItem(BOARDED_LS_KEY, JSON.stringify(r));
-    else localStorage.removeItem(BOARDED_LS_KEY);
-  } catch {
-    /* quota / private mode — best effort */
-  }
-}
 // What this ride's bus has been seen doing — carrying it, then at the exit
 // (`rideEvidence`) — the evidence `rideLappedExit` needs before a bus between
 // the exit and the pickup may read as having passed the exit rather than still
@@ -998,7 +956,8 @@ const CombinedTripMap: FC<{
   to: LatLon;
   options: OverviewOption[];
   timingKey: React.ReactNode;
-}> = ({ from, to, options, timingKey }) => {
+  sequential?: boolean;
+}> = ({ from, to, options, timingKey, sequential = false }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkersRef = useRef<Record<string, L.Marker>>({});
@@ -1091,7 +1050,20 @@ const CombinedTripMap: FC<{
     // Google-style, so the whole journey — walk, ride, walk — reads on
     // one map. Skipped on the multi-route overview to avoid a web of
     // connectors.
-    if (options.length === 1 && options[0].segCoords.length >= 2) {
+    if (sequential && options.length > 0) {
+      const walkStyle = { color: "#5f6368", weight: 3, opacity: 0.85, dashArray: "2 7" };
+      const rides = options.filter(o => o.segCoords.length >= 2);
+      if (rides.length) {
+        const first = rides[0].segCoords[0], lastRide = rides[rides.length - 1].segCoords;
+        const last = lastRide[lastRide.length - 1];
+        L.polyline([[from.lat, from.lon], [first.lat, first.lon]], walkStyle).addTo(map);
+        for (let i = 1; i < rides.length; i++) {
+          const a = rides[i - 1].segCoords.at(-1)!, b = rides[i].segCoords[0];
+          L.polyline([[a.lat, a.lon], [b.lat, b.lon]], walkStyle).addTo(map);
+        }
+        L.polyline([[last.lat, last.lon], [to.lat, to.lon]], walkStyle).addTo(map);
+      }
+    } else if (options.length === 1 && options[0].segCoords.length >= 2) {
       const o = options[0];
       const board = o.segCoords[0];
       const alight = o.segCoords[o.segCoords.length - 1];
@@ -1122,7 +1094,7 @@ const CombinedTripMap: FC<{
     // Timing updates do not rebuild the geography.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    to.lat, to.lon,
+    to.lat, to.lon, sequential,
     JSON.stringify(options.map((o) => ({
       label: o.label,
       color: o.color,
@@ -1789,6 +1761,7 @@ const TripPlanner: FC<{
   // toggle for anyone who'd rather not see it.
   const [overviewExpanded, setOverviewExpanded] = useState(true);
   const [showAllOptions, setShowAllOptions] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
@@ -2083,12 +2056,13 @@ const TripPlanner: FC<{
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshed, setRefreshed] = useState(false);
 
+  const futureHoursKey = isFuture ? JSON.stringify(routeHours) : "";
   const stableOptions = useMemo(
     () => (effectiveFromLL && toLL)
-      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate)
+      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), undefined, routeHours)
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
+    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey, futureHoursKey],
   );
 
   // Choices are scoped to the initial plan. Once a fallback is selected it
@@ -2275,7 +2249,7 @@ const TripPlanner: FC<{
     if (!stableOptions || !options || !etaFresh || !effectiveFromLL || !toLL
       || (targetDate && targetDate.getTime() - Date.now() > 60_000)) return;
     const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
-    const fresh = planTrip(from, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), liveAnchorStore);
+    const fresh = planTrip(from, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), liveAnchorStore, routeHours);
     const replacements = options.flatMap(current => {
       const candidate = fresh.find(o => o.routeLabel === current.routeLabel);
       const replacement = pickupFallback(current, candidate, expandedKey === current.routeLabel || reminder?.routeLabel === current.routeLabel
@@ -3260,7 +3234,11 @@ const TripPlanner: FC<{
   const showFromRow = !!toLL || fromExpanded;
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
-  const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
+  const detailOpen = transferOpen || (!!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey));
+  const handleTransferDetail = useCallback((open: boolean) => {
+    setTransferOpen(open);
+    if (open) { setExpandedKey(null); setReminder(null); setReminderBanner(null); }
+  }, []);
   const grocerySearchNotice = isMilfordGrocerySearch(fromText, fromSugg)
     || isMilfordGrocerySearch(toText, toSugg)
     ? groceryServiceNotice('Grocery Ham', targetDate ?? new Date()) : null;
@@ -3285,9 +3263,9 @@ const TripPlanner: FC<{
     : (stableOptions ?? []).filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      <BusReportingAlerts key={`trip:${tripKey}:${expandedKey ?? ''}`} snapshot={reportingSnapshot}
+      {!transferOpen && <BusReportingAlerts key={`trip:${tripKey}:${expandedKey ?? ''}`} snapshot={reportingSnapshot}
         available={reportingAvailable} watched={watchedTripBuses} scope={reportingScope}
-        replacements={watchedTripBuses} />
+        replacements={watchedTripBuses} />}
       {/* In-app fallback for a leave-time ping when a system notification
           can't be shown (permission denied, or iOS Safari page context
           where the Notification API doesn't exist). Fixed so it's seen
@@ -3959,7 +3937,7 @@ const TripPlanner: FC<{
           there, just not right now. Triggers on options=[] too because
           directWalkSec>1hr suppresses the walk entry, leaving riders
           with no context when a route is simply off-schedule. */}
-      {options && !alreadyThere && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
+      {options && !alreadyThere && !transferOpen && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
             {busStatus !== "ready"
@@ -4038,7 +4016,35 @@ const TripPlanner: FC<{
         </div>
       )}
       </div>
-      {options && options.length > 0 && !alreadyThere && (
+      {effectiveFromLL && toLL && options && !alreadyThere && !tripTimeError && <TransferTrips key={tripKey}
+        query={tripKey} from={effectiveFromLL} to={{ ...toLL, text: toText || "your destination" }}
+        liveOrigin={isCurrentLocationText(fromText) ? userLatLon : null}
+        buses={buses} available={busStatus === "ready"} routeStops={routeStops} stopCoords={stopCoords} stopNames={stopNames}
+        segmentTimes={segmentTimes} dwellTimes={dwellTimes} routeHours={routeHours} targetAtMs={targetDate?.getTime() ?? null}
+        directOptions={options} hidden={!!expandedKey} onDetailChange={handleTransferDetail} onBoard={onBoard} onPlanNow={() => setTripTime("")}
+        renderAlerts={(path, firstBus, secondBus) => {
+          const watches = [path.first, path.second].flatMap((leg, index) => {
+            const busName = index === 0 ? firstBus : secondBus;
+            return busName ? [{ busName, routeLabel: leg.routeLabel,
+              routeIds: ROUTE_LISTS.find(c => c.label === leg.routeLabel)?.busRouteIds ?? [] }] : [];
+          });
+          return <BusReportingAlerts key={path.key} snapshot={reportingSnapshot} available={reportingAvailable}
+            scope={[path.first.routeLabel, path.second.routeLabel]} watched={watches} replacements={watches} />;
+        }}
+        renderMap={(path, firstBus, secondBus) => {
+          const overview: OverviewOption[] = [path.first, path.second].map((leg, index) => {
+            const cfg = ROUTE_LISTS.find(c => c.label === leg.routeLabel)!;
+            const segCoords = leg.stops.map(id => stopCoords[id]).filter((p): p is LatLon => !!p);
+            const seqCoords = mergedRouteStops(cfg, routeStops).map(id => stopCoords[id]).filter((p): p is LatLon => !!p);
+            const road = buildStopSequencePolyline(routePaths[leg.routeId], segCoords, seqCoords);
+            const name = index === 0 ? firstBus : secondBus;
+            const bus = busStatus === "ready" && name ? buses.find(b => b.bus_name.replace(/^#/, "") === name.replace(/^#/, "") && cfg.busRouteIds.includes(b.route_id)) : undefined;
+            return { label: leg.routeLabel, color: leg.color, segCoords, ...(road ? { road } : {}),
+              bus: bus ? { lat: bus.lat, lon: bus.lon, name } : null };
+          });
+          return <CombinedTripMap from={effectiveFromLL} to={toLL} options={overview} sequential timingKey={null} />;
+        }} />}
+      {options && options.length > 0 && !alreadyThere && !transferOpen && (
         <div style={{ marginTop: 4 }}>
           {/* Details page leads with the way back — the search rows are
               hidden while a route is open, so this is the page header. */}
@@ -4710,7 +4716,7 @@ const TripPlanner: FC<{
         onClearRecent={onClearRecents}
         focusDestination={() => (toSummaryRef.current ?? toInputRef.current)?.focus({ preventScroll: true })}
       />}
-      {autoDetectOffer && (
+      {autoDetectOffer && !transferOpen && (
         <div style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
           zIndex: 9999, background: "#1a1a2e", color: "#fff",
@@ -6439,7 +6445,7 @@ const OnBusBanner: FC<{
           fontFamily: "inherit", minHeight: 44,
         }}
       >
-        Done
+        {ride.onward ? "End first ride" : "Done"}
       </button>
     </div>
     </>
@@ -6488,6 +6494,16 @@ const TransitMap: FC = () => {
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
   const [finishedRide, setFinishedRide] = useState<(BoardedRide & { endReason?: RideEndReason }) | null>(null);
+  const [transferHandoff, setTransferHandoff] = useState<TransferHandoff | null>(() => loadTransferHandoff());
+  const finishCurrentRide = useCallback((ride: BoardedRide, reason?: RideEndReason) => {
+    if (ride.onward) {
+      const next: TransferHandoff = { onward: ride.onward, stoppedAtMs: Date.now(), ready: !reason, ...(reason ? { reason } : {}) };
+      // Save the transition before retiring its ride so refresh/crash recovery
+      // always retains either the active first ride or the onward leg.
+      saveTransferHandoff(next); setTransferHandoff(next); setFinishedRide(null);
+    } else setFinishedRide({ ...ride, ...(reason ? { endReason: reason } : {}) });
+    saveBoardedRide(null); setBoardedRide(null);
+  }, []);
   const rideFinishRef = useRef<HTMLElement | null>(null);
   const mainNavRef = useRef<HTMLElement | null>(null);
   const finishReturnFocusRef = useRef(false);
@@ -6495,14 +6511,16 @@ const TransitMap: FC = () => {
     // Ending/removing a ride view removes its controls. Keep the next step
     // reachable, without taking focus from a surviving control on auto-end.
     if (document.activeElement === document.body) {
-      if (finishedRide) rideFinishRef.current?.focus();
+      if (finishedRide || transferHandoff) rideFinishRef.current?.focus();
       else if (finishReturnFocusRef.current) {
         mainNavRef.current?.querySelector<HTMLButtonElement>('[aria-current="page"]')?.focus();
       }
     }
     finishReturnFocusRef.current = false;
-  }, [finishedRide]);
+  }, [finishedRide, transferHandoff]);
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
+  useEffect(() => { saveTransferHandoff(transferHandoff); }, [transferHandoff]);
+  useEffect(() => { if (boardedRide && transferHandoff) setTransferHandoff(null); }, [boardedRide, transferHandoff]);
   // Go mode was retired 2026-07-17 ("too complicated") and its plumbing
   // deleted 2026-08-31. Clear anything an older build left in localStorage so
   // a stale trip can't linger there forever.
@@ -7120,8 +7138,7 @@ const TransitMap: FC = () => {
     offBusStreakRef.current = decision.streak;
     busLastSeenRef.current = decision.busLastSeenMs;
     if (!decision.end) return;
-    setFinishedRide({ ...boardedRide, endReason: decision.reason ?? undefined });
-    setBoardedRide(null);
+    finishCurrentRide(boardedRide, decision.reason ?? undefined);
     // Only the off-bus ending is a surprise worth a notification; the other
     // two are a ride the rider had already forgotten about.
     if (decision.reason === "off-bus"
@@ -7455,7 +7472,7 @@ const TransitMap: FC = () => {
           stopCoords={stopCoords}
           routeStops={routeStops}
           segmentTimes={segmentTimes}          dwellTimes={dwellTimes}
-          onEnd={() => { setFinishedRide(boardedRide); setBoardedRide(null); }}
+          onEnd={() => finishCurrentRide(boardedRide)}
         />
       )}
       {/* Header */}
@@ -7639,15 +7656,40 @@ const TransitMap: FC = () => {
           }} />
       )}
 
+      {!boardedRide && transferHandoff && listView === "trip" && <OnwardTransfer
+        handoff={transferHandoff} buses={buses} available={busStatus === "ready"}
+        origin={userLatLon && fixAtRef.current !== null && Date.now() - fixAtRef.current <= FIX_MAX_AGE_MS ? userLatLon : null}
+        stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops} dwellTimes={dwellTimes} routeHours={routeHours} focusRef={rideFinishRef}
+        onLocate={startLocating}
+        onContinue={() => { const next = { ...transferHandoff, ready: true }; saveTransferHandoff(next); setTransferHandoff(next); }}
+        onBoard={ride => { saveTransferSelection(null); saveBoardedRide(ride); saveTransferHandoff(null); setTransferHandoff(null); setFinishedRide(null); setBoardedRide(ride); }}
+        onReplan={() => {
+          const to = transferHandoff.onward.destination;
+          setPendingTrip({ toText: to.text, toLat: to.lat, toLon: to.lon, recoverRide: true });
+          saveTransferSelection(null); saveBoardedRide(null); saveTransferHandoff(null); setTransferHandoff(null); setListView("trip");
+        }}
+        onDismiss={() => { finishReturnFocusRef.current = true; saveTransferSelection(null); saveBoardedRide(null); saveTransferHandoff(null); setTransferHandoff(null); }}
+        renderMap={(ride, dest) => <RideRouteMap ride={ride} buses={busStatus === "ready" ? buses : []}
+          now={Date.now()} speedAvailable={busStatus === "ready"} routePaths={routePaths} stopCoords={stopCoords}
+          stopNames={stopNames} routeStops={routeStops} userLatLon={userLatLon} onRequestLocate={startLocating} dest={dest} />}
+        renderAlerts={(label, names) => <BusReportingAlerts snapshot={reportingSnapshot} available={busStatus === "ready"}
+          scope={[label]} watched={names.map(busName => ({ busName, routeLabel: label,
+            routeIds: ROUTE_LISTS.find(c => c.label === label)?.busRouteIds ?? [] }))} />} />}
+
       {/* Ride page — once on a bus this is the whole view (its own page): a map
           of just your route + your location, then the stop list. Tabs are hidden
           above; "Done" in the banner ends the ride and returns to the tabs. */}
       {boardedRide ? (
         <>
           <BusReportingAlerts key={`ride:${boardedRide.startedAt}`} snapshot={reportingSnapshot}
-            available={busStatus === 'ready'} scope={[boardedRide.routeLabel]}
+            available={busStatus === 'ready'} scope={[boardedRide.routeLabel, ...(boardedRide.onward ? [boardedRide.onward.next.routeLabel] : [])]}
             watched={[{ busName: boardedRide.busName, routeLabel: boardedRide.routeLabel,
-              routeIds: ROUTE_LISTS.find(c => c.label === boardedRide.routeLabel)?.busRouteIds ?? [] }]} />
+              routeIds: ROUTE_LISTS.find(c => c.label === boardedRide.routeLabel)?.busRouteIds ?? [] },
+              ...(boardedRide.onward?.nextBusName ? [{ busName: boardedRide.onward.nextBusName, routeLabel: boardedRide.onward.next.routeLabel,
+                routeIds: ROUTE_LISTS.find(c => c.label === boardedRide.onward!.next.routeLabel)?.busRouteIds ?? [] }] : [])]} />
+          {boardedRide.onward && <div data-testid="transfer-onward-banner" style={{ maxWidth: 528, margin: "8px auto", padding: "0 16px", fontSize: 14 }}>
+            Then {boardedRide.onward.next.routeLabel} from {(stopNames[boardedRide.onward.next.boardStopId] ?? `Stop ${boardedRide.onward.next.boardStopId}`).replace(/\s*\/\s*/g, "/")} to {boardedRide.onward.destination.text}.
+          </div>}
           <RideRouteMap
             ride={boardedRide}
             buses={buses} now={Date.now()} speedAvailable={busStatus === "ready"}
@@ -7668,7 +7710,7 @@ const TransitMap: FC = () => {
             segmentTimes={segmentTimes}            dwellTimes={dwellTimes}
           />
         </>
-      ) : listView === "map" ? (
+      ) : transferHandoff && listView === "trip" ? null : listView === "map" ? (
         <>
           <BusReportingAlerts key={`map:${[...mapHidden].sort().join(',')}:${activeOnly}`} snapshot={reportingSnapshot}
             available={busStatus === 'ready'}
@@ -7915,7 +7957,7 @@ const TransitMap: FC = () => {
           stopSkips={stopSkips}
           onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
-          onBoard={(ride) => { saveTripDraft(null); setFinishedRide(null); setBoardedRide(ride); }}
+          onBoard={(ride) => { saveTransferSelection(null); saveBoardedRide(ride); saveTripDraft(null); saveTransferHandoff(null); setTransferHandoff(null); setFinishedRide(null); setBoardedRide(ride); }}
         />
       ) : (
       // Unreachable: the tab bar offers trip/map/issues only, and a stored
