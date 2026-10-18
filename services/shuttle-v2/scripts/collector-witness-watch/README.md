@@ -71,6 +71,23 @@ Derived completed legs whose endpoint distance divided by recorded duration
 exceeds 30 m/s create **diagnostic leads** with protected source chunks/topology.
 This is a conservative review trigger, not a statement of the bus's speed or a
 rule to drop a row. Review the original GPS, state, geometry and revision ranges.
+The watcher also reviews an indexed route anchor advancing at an exactly repeated
+GPS fix while its prior marker remains within the existing 150 m global slack.
+It requires an earlier actually captured observation, matching before/after
+state identity and unchanged indexed geometry throughout the observation gap.
+Per-route generations advance at every captured frame, including empty bus polls:
+geometry changing and then changing back cannot join observations across that
+change. Cold, stale, failed, clipped, unsupported, conflicting and handoff
+contexts withhold this lead. A global escape outside the slack remains allowed.
+
+This diagnostic retains at most 128 observation contexts and 64 route geometries
+in 64 KiB of SQLite metadata. Context, incident and cursor share the existing
+transaction. The actual earlier frame must still be available; its chunk is
+protected during rolling cleanup before the incident commits. Missing earlier
+evidence and bound exhaustion are explicit withheld coverage, not negative
+results. `status.json.anchorProgress` reports captured/bound observation counts,
+candidate leads and withholding events. These counters describe the current
+captured context; they do not certify service or all moving-route phase choices.
 Incidents remain protected until deliberately reviewed; filling the protected
 budget holds ingestion instead of deleting evidence. `status.json` is the
 heartbeat and `retention.json` reports physical usage and protection findings.
