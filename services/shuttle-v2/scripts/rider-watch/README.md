@@ -17,6 +17,26 @@ Candidate issues require review; observations use the same GPS feed as the
 app and are not independent physical arrival measurements. This launcher
 does not deploy changes or submit rider reports.
 
+While waiting, the rider inspects visible overview-map bus markers and their
+pause labels. A fresh served stand of at least three minutes requires both a
+visible elapsed clock and an accessible elapsed clock, including when departure
+support is unavailable. This check does not use the app's hold/label helper or
+its usual-duration threshold. Exact route/bus identity, one matching vehicle and
+track, a valid forecast row, a receipt no older than 30 seconds and forecast age
+below 45 seconds are required. Server age and client elapsed time count once;
+the phone clock need not match the server. A newly received feed gets one second
+to settle. Feed replacement during the text/DOM read resets confirmation.
+
+Two producer and GPS observations advancing at least five seconds, with no gap
+over 30 seconds, raise one `candidate-map-pause` event and screenshot per missing
+clock episode through the existing guardian bridge. Recovery, movement, stale
+inputs, changed identity or leaving the waiting view reset the episode. The
+sample retains the DOM snapshot, source tuple/forecast row for a finding and
+coverage/skip reason. `status.json.mapPauseAudit` exposes coverage while waiting;
+zero checked markers is not evidence that all map clocks work. This audits a
+sampled UI/source contradiction, not departure accuracy or physical service.
+No boarding, arrival or journey accuracy rules change.
+
 While aboard, the rider also reviews `Get off here` and an `Arriving at`
 banner against the tracked bus and exit. The stored boarded ride, screen
 caption, route, bus identity and target name must agree; fresh GPS must put
