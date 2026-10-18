@@ -18,28 +18,37 @@ if (!local) {
     assert(health.ok && health.build === expected);
 }
 const assets = new Map(), manifest = {}, results = [];
+const pwaAssets = new Set(['/manifest.webmanifest', '/sw.js', '/icons/icon-180.png',
+    '/icons/icon-192.png', '/icons/icon-512.png', '/icons/maskable-512.png']);
 async function asset(route, u) {
     assert.equal(route.request().method(), 'GET');
     const key = u.pathname === '/' ? '/index.html' : u.pathname;
-    assert(key === '/index.html' || /^\/assets\/[A-Za-z0-9._-]+\.(js|css)$/.test(key));
-    let bytes = assets.get(key);
-    if (!bytes) {
+    assert(key === '/index.html' || pwaAssets.has(key) || /^\/assets\/[A-Za-z0-9._-]+\.(js|css)$/.test(key), `Unexpected public asset: ${key}`);
+    let pending = assets.get(key);
+    if (!pending) {
         assert(assets.size < 20);
-        if (local)
-            bytes = await fs.readFile(service + '/web/dist' + key);
-        else {
-            const r = await fetch('https://yale-shuttle.fly.dev' + (key === '/index.html' ? '/' : key), { signal: AbortSignal.timeout(12000) });
-            assert(r.ok);
-            bytes = Buffer.from(await r.arrayBuffer());
-        }
-        assert(bytes.length < 2 * 1024 * 1024);
-        assets.set(key, bytes);
-        const retained = out + '/assets' + key;
-        await fs.mkdir(path.dirname(retained), { recursive: true, mode: 0o700 });
-        await fs.writeFile(retained, bytes, { flag: 'wx', mode: 0o600 });
-        manifest[key] = { bytes: bytes.length, sha256: sha(bytes), retained };
+        pending = (async () => {
+            let bytes;
+            if (local)
+                bytes = await fs.readFile(service + '/web/dist' + key);
+            else {
+                const r = await fetch('https://yale-shuttle.fly.dev' + (key === '/index.html' ? '/' : key), { signal: AbortSignal.timeout(12000) });
+                assert(r.ok);
+                bytes = Buffer.from(await r.arrayBuffer());
+            }
+            assert(bytes.length < 2 * 1024 * 1024);
+            const retained = out + '/assets' + key;
+            await fs.mkdir(path.dirname(retained), { recursive: true, mode: 0o700 });
+            await fs.writeFile(retained, bytes, { flag: 'wx', mode: 0o600 });
+            manifest[key] = { bytes: bytes.length, sha256: sha(bytes), retained };
+            return bytes;
+        })();
+        assets.set(key, pending);
     }
-    return route.fulfill({ body: bytes, contentType: key.endsWith('.js') ? 'text/javascript' : key.endsWith('.css') ? 'text/css' : 'text/html' });
+    const bytes = await pending;
+    return route.fulfill({ body: bytes, contentType: key.endsWith('.js') ? 'text/javascript'
+        : key.endsWith('.css') ? 'text/css' : key.endsWith('.png') ? 'image/png'
+        : key.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html' });
 }
 const variants = {};
 for (const variant of ['recorded', 'extra-hold']) {
@@ -97,6 +106,25 @@ try {
                         return asset(route, u);
                     });
                     await page.goto('https://red-exit.test', { waitUntil: 'domcontentloaded' });
+                    // Full Chrome requests the shell's PWA links; headless
+                    // shell may not. Exercise the actual declared links in both.
+                    const shellAssets = await page.evaluate(async () => Promise.all(
+                        [...document.querySelectorAll('link[rel="manifest"],link[rel="icon"],link[rel="apple-touch-icon"]')]
+                            .map(async link => {
+                                const response = await fetch(link.href);
+                                const bytes = new Uint8Array(await response.arrayBuffer());
+                                return { path: new URL(link.href).pathname, status: response.status,
+                                    type: response.headers.get('content-type'), prefix: [...bytes.slice(0, 4)] };
+                            })));
+                    assert.equal(shellAssets.length, 3);
+                    for (const a of shellAssets) {
+                        assert.equal(a.status, 200);
+                        if (a.path.endsWith('.png')) {
+                            assert.equal(a.type, 'image/png');
+                            assert.deepEqual(a.prefix, [137, 80, 78, 71]);
+                        }
+                        else assert.match(a.type, /manifest\+json/);
+                    }
                     const row = page.locator(`tbody[data-route="Red"][data-pickup="${origin}"]`);
                     await row.waitFor();
                     await row.getByTestId('route-pickup').waitFor();
@@ -147,7 +175,7 @@ try {
                         await change('source-expired', expired, false);
                         await change('fresh-source-restored', structuredClone(feed), true);
                     }
-                    results.push({ width, origin, variant, selectedBoard: option.boardStopId, selectedExit: option.alightStopId, exitName: feed.stop_names[option.alightStopId], overview, detailsText: text, transitions, pageErrors: errors });
+                    results.push({ width, origin, variant, selectedBoard: option.boardStopId, selectedExit: option.alightStopId, exitName: feed.stop_names[option.alightStopId], overview, detailsText: text, shellAssets, transitions, pageErrors: errors });
                     console.log(JSON.stringify({ ok: true, width, origin, variant, exit: option.alightStopId }));
                 }
                 catch (error) {
