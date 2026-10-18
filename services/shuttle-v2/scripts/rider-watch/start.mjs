@@ -5,6 +5,8 @@ import { seedTestId } from '../testId.mjs';
 import { riderConfig } from './inputs.mjs';
 import { attach } from './runner.mjs';
 import { loadCheckpoint, restoreCheckpoint } from './checkpoint.mjs';
+import { riderAssignmentAllows } from './transfer-journey.mjs';
+import { appendRolling } from '../retention/storage.mjs';
 
 const base = process.env.BOT_BASE_URL || 'https://yale-shuttle.fly.dev';
 const outputDir = path.resolve(process.env.WATCHER_DIR || 'scripts/.rider-watcher');
@@ -14,6 +16,7 @@ const executablePath = process.env.BOT_CHROMIUM_PATH ||
 mkdirSync(outputDir, { recursive: true });
 writeFileSync(path.join(outputDir, 'watcher.pid'), String(process.pid));
 let browser, watcher, stopping = false;
+let lastRejectedCheckpoint;
 async function stop() {
   if (stopping) return;
   stopping = true;
@@ -39,7 +42,12 @@ while (!stopping) {
     const initialFeedAt = Date.now();
     const config = riderConfig(process.env, initialFeed);
     const saved = await loadCheckpoint(outputDir);
-    const resume = saved && (!config.allowedLabels || config.allowedLabels.includes(saved.run.line.label)) ? saved : null;
+    const resume = saved && riderAssignmentAllows(saved.run, config.allowedLabels, config.randomLines) ? saved : null;
+    if (saved && !resume && lastRejectedCheckpoint !== saved.savedAt) {
+      await appendRolling(outputDir, 'events', { at: new Date().toISOString(), runId: saved.run.id,
+        kind: 'checkpoint-outside-assignment', detail: { reason: 'Current rider assignment excludes one or more saved legs', saved } });
+      lastRejectedCheckpoint = saved.savedAt;
+    }
     if (resume) await restoreCheckpoint(ctx, resume, initialFeed);
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
     watcher = await attach({ page, ctx, initialFeed, initialFeedAt, outputDir, ...config, initialRun: resume?.run });

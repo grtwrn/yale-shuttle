@@ -158,7 +158,7 @@ def scan_events(st, ws, watch):
             if kind == "journey-finished" and d not in JOURNEY_OK:
                 at = parse(ev.get("at")) or now()
                 if at < st.get("journeyAlertsSince", now()): continue
-                line = ws["runs"].get(run)
+                line = ev.get("line") if isinstance(ev.get("line"), str) and ev["line"] else ws["runs"].get(run)
                 raise_incident(st, "rider-journey-failed", line, at, f"rider journey on {line or 'unknown line'} ended: {d}",
                                {"event": ev}, {"watcherDir": watch, "events": path, "samples": f"{watch}/samples.jsonl",
                                                "journeys": f"{watch}/journeys.jsonl", "runId": run,
@@ -167,7 +167,7 @@ def scan_events(st, ws, watch):
             if not kind.startswith("candidate-"): continue
             at = parse(ev.get("at")) or now()
             if at < st["since"]: continue
-            line = ws["runs"].get(run)
+            line = ev.get("line") if isinstance(ev.get("line"), str) and ev["line"] else ws["runs"].get(run)
             text = d.get("text") if isinstance(d, dict) else d
             extra = {k: v for k, v in d.items() if k != "text"} if isinstance(d, dict) else {}
             summary = f"{kind} on {line or 'unknown line'}" + (f" {extra}" if extra else "")

@@ -1,6 +1,14 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {BoardingMissed,boardSelectedRide,OFFER_CLICK_MS} from './boarding.mjs';
+test('a scoped named transfer action still requires current boarding confirmation',async()=>{
+ let clicked=0,confirmed=0;
+ const page={getByRole:(_,{name})=>{assert.equal(name,"Yes, I'm on it");return{isVisible:async()=>false};},waitForFunction:async(_,name)=>{assert.equal(name,'#41');}};
+ const cardButton={click:async()=>{clicked++;}};
+ await boardSelectedRide(page,'#41',{cardButton,cardBoards:async()=>{confirmed++;return true;}});
+ assert.equal(clicked,1);assert.equal(confirmed,1);
+ await assert.rejects(boardSelectedRide(page,'#41',{cardButton,cardBoards:async()=>false}),BoardingMissed);assert.equal(clicked,1);
+});
 
 // A page whose offer either takes the click or goes under it (the app's next
 // poll clears it; riderpromptmiss20261004). The card's button stores `stores`.
