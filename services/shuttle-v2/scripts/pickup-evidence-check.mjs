@@ -68,6 +68,10 @@ try{
         await unavailable();await farther.and(page.locator('[data-pickup-choice="more-walking"]')).waitFor();assert((await farther.innerText()).includes('More walking'));
         assert.equal(await farther.getByText('Arrive sooner',{exact:true}).count(),0);
         if(output)await page.screenshot({path:path.join(output,label+'-unavailable.png'),fullPage:true});
+        await page.getByRole('button',{name:'View Blue Day trip details',exact:true}).click();
+        await page.getByTitle('Walking directions to Prospect/Canner',{exact:true}).waitFor();
+        assert.equal(await page.getByRole('button',{name:"I'm on it",exact:false}).count(),0,'An untimed pickup with no bus identity cannot start an empty ride');
+        await page.getByTitle('Back to all routes',{exact:true}).click();
         feed.server_eta=wire('full');await page.clock.runFor(5500);await recovered();
         await farther.and(page.locator('[data-pickup-choice="arrive-sooner"]')).waitFor();assert((await farther.innerText()).includes('Arrive sooner'));
       }else if(scenario==='warm-loss'){
@@ -75,9 +79,14 @@ try{
         const pickup=page.getByTitle('Walking directions to Prospect/Canner',{exact:true});await pickup.waitFor();
         feed.server_eta=wire('pickup');await page.clock.runFor(5500);await unavailable();
         assert(await pickup.isVisible());
+        assert.equal(await page.getByRole('button',{name:"I'm on it",exact:false}).count(),1,'Retain the manual escape hatch for the last known bus');
         feed.server_eta=wire('full');await page.clock.runFor(5500);await recovered();assert(await pickup.isVisible());
       }else if(scenario==='cold-line'){
         await unavailable();assert.equal(await farther.count(),0);
+        await page.getByRole('button',{name:'View Blue Day trip details',exact:true}).click();
+        await page.getByTitle('Walking directions to Prospect/Canner',{exact:true}).waitFor();
+        assert.equal(await page.getByRole('button',{name:"I'm on it",exact:false}).count(),0);
+        await page.getByTitle('Back to all routes',{exact:true}).click();
         feed.server_eta=wire('full');await page.clock.runFor(5500);await recovered();
         await farther.and(page.locator('[data-pickup-choice="arrive-sooner"]')).waitFor();assert((await farther.innerText()).includes('Arrive sooner'));
         await page.getByRole('button',{name:'View Blue Day trip details',exact:true}).click();
