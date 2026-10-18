@@ -1,3 +1,4 @@
+import type { CalibrationReader, CalibrationReadReceipt, CachedFitSource } from "./provenance.js";
 /** Conditional release hazard, fitted on completed pinned Red layovers.
  * Fifteen-second bins, nine features, L2 penalty4, bounded Newton solve.
  * Long waits contribute censored survival exposure through30minutes; they
@@ -260,22 +261,32 @@ export class ReleaseFitCache {
   private fits: ReadonlyMap<string, Fit> = new Map();
   private at = 0;
   private succeededAt = 0;
-  constructor(private readonly db: Queryable) {}
+  private generation: CalibrationReadReceipt | null = null;
+  private readFailed = false;
+  constructor(private readonly db: Queryable, private readonly reader?: CalibrationReader) {}
+  source(): CachedFitSource { return structuredClone({ attemptedAt: this.at || null, readFailed: this.readFailed, generation: this.generation }); }
   get(now: number = Date.now()): ReadonlyMap<string, Fit> {
     if (this.at && now - this.at < 6 * 60 * 60 * 1000) return this.fits;
     try {
-      const rows = loadReleaseObservations(this.db, now);
-      const next = new Map<string, Fit>();
-      for (const stop of [11]) {
-        const fit = fitRelease(rows, stop, now);
-        if (fit) next.set(`3:${stop}`, fit);
-      }
-      this.fits = next;
+      const read = () => {
+        const rows = loadReleaseObservations(this.db, now);
+        const next = new Map<string, Fit>();
+        for (const stop of [11]) {
+          const fit = fitRelease(rows, stop, now);
+          if (fit) next.set(`3:${stop}`, fit);
+        }
+        return next;
+      };
+      const captured = this.reader ? this.reader(now, read) : { value: read(), receipt: null };
+      this.fits = captured.value;
+      this.generation = captured.receipt;
+      this.readFailed = false;
       this.succeededAt = now;
     } catch {
+      this.readFailed = true;
       // Keep a recent successful fit through a transient read error. A stale
       // model eventually falls back to the existing marginal tables.
-      if (now - this.succeededAt > DAY_MS) this.fits = new Map();
+      if (now - this.succeededAt > DAY_MS) { this.fits = new Map(); this.generation = null; }
     }
     this.at = now;
     return this.fits;

@@ -1,3 +1,5 @@
+import type { CalibrationSource } from '../calibrator/provenance.js';
+import { validCalibrationSource } from '../calibrator/provenance.js';
 import type { K10Evidence } from '../collector/k10Clock.js';
 
 /** Exact inputs to the post-processing performed at one model observation.
@@ -5,6 +7,8 @@ import type { K10Evidence } from '../collector/k10Clock.js';
 export interface EtaEvaluationContext {
   v: 1;
   at: number;
+  /** Optional on older producer journals; absence is unknown. */
+  calibration?: CalibrationSource | null;
   trial: { enabled: boolean; route: boolean; blue: boolean; evidence: [string, K10Evidence][] };
 }
 
@@ -14,6 +18,7 @@ export function validEvaluationContext(value: unknown, at: number): value is Eta
     || typeof c.trial.enabled !== 'boolean' || typeof c.trial.route !== 'boolean' || typeof c.trial.blue !== 'boolean'
     || !Array.isArray(c.trial.evidence) || c.trial.evidence.length > 200
     || (!c.trial.enabled && c.trial.evidence.length > 0)) return false;
+  if (c.calibration !== undefined && c.calibration !== null && !validCalibrationSource(c.calibration)) return false;
   const names = new Set<string>();
   for (const pair of c.trial.evidence) {
     if (!Array.isArray(pair) || pair.length !== 2) return false;

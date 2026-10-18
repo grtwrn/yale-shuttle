@@ -1,3 +1,4 @@
+import type { CalibrationReader, CalibrationReadReceipt, CachedFitSource } from "./provenance.js";
 /**
  * The lap covariate, fitted per (route, stop) — the server half of
  * `web/src/eta/lap.ts`.
@@ -550,14 +551,22 @@ export function loadLapFits(db: Queryable, nowMs: number = Date.now()): Map<stri
 export class LapFitCache {
   private fits: Map<string, LapFit> = new Map();
   private at = 0;
-  constructor(private readonly db: Queryable) {}
+  private generation: CalibrationReadReceipt | null = null;
+  private readFailed = false;
+  constructor(private readonly db: Queryable, private readonly reader?: CalibrationReader) {}
+  source(): CachedFitSource { return structuredClone({ attemptedAt: this.at || null, readFailed: this.readFailed, generation: this.generation }); }
   get(nowMs: number = Date.now()): ReadonlyMap<string, LapFit> {
     if (this.at !== 0 && nowMs - this.at < LAP_FIT_INTERVAL_MS) return this.fits;
     try {
-      this.fits = loadLapFits(this.db, nowMs);
+      const read = () => loadLapFits(this.db, nowMs);
+      const captured = this.reader ? this.reader(nowMs, read) : { value: read(), receipt: null };
+      this.fits = captured.value;
+      this.generation = captured.receipt;
+      this.readFailed = false;
     } catch {
-      // A fit that cannot be read is a fit that is not served: every stand
-      // prices exactly as it did before.
+      this.readFailed = true;
+      // Preserve the existing fallback: retain the last successful fits and
+      // their original generation through a read failure.
     }
     this.at = nowMs;
     return this.fits;

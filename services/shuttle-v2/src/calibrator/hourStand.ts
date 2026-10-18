@@ -1,3 +1,4 @@
+import type { CalibrationReader, CalibrationReadReceipt, CachedFitSource } from "./provenance.js";
 /**
  * Hour-of-day stand tables at LAYOVER cells (incident layoverhourstands20261005).
  *
@@ -439,18 +440,28 @@ export class HourStandGateCache {
   private gates: Map<string, HourGateResult> = new Map();
   private served: Set<string> = new Set();
   private at = 0;
+  private generation: CalibrationReadReceipt | null = null;
+  private readFailed = false;
+  source(): CachedFitSource { return structuredClone({ attemptedAt: this.at || null, readFailed: this.readFailed, generation: this.generation }); }
   constructor(
     private readonly db: DB,
     private readonly windowDays: number,
     /** The rollout ledger; production reads (and gates) only these routes' cells. */
     private readonly routes: ReadonlySet<number> = HOUR_STAND_ROUTE_IDS,
+    private readonly reader?: CalibrationReader,
   ) {}
   get(nowMs: number = Date.now()): ReadonlySet<string> {
     if (this.at !== 0 && nowMs - this.at < HOUR_STAND_GATE_INTERVAL_MS) return this.served;
     try {
-      this.gates = computeHourStandGates(layoverCandidates(loadStandVisits(this.db, this.windowDays, nowMs, { routes: this.routes })));
+      const read = () => computeHourStandGates(layoverCandidates(loadStandVisits(this.db, this.windowDays, nowMs, { routes: this.routes })));
+      const captured = this.reader ? this.reader(nowMs, read) : { value: read(), receipt: null };
+      this.gates = captured.value;
       this.served = servedHourStandCells(this.gates, this.routes);
+      this.generation = captured.receipt;
+      this.readFailed = false;
     } catch {
+      this.readFailed = true;
+      this.generation = null;
       this.gates = new Map();
       this.served = new Set();
     }

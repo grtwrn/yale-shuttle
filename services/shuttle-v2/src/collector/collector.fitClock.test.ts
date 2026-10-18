@@ -83,7 +83,8 @@ describe("collector.calibrated names the lap fit's own cost", () => {
     expect(typeof m.releaseFitMs).toBe("number");
     expect(typeof m.hourGateMs).toBe("number");
     expect(typeof m.loopHeldMs).toBe("number");
-    expect(m.loopHeldMs).toBe((m.durationMs as number) + (m.lapFitMs as number) + (m.releaseFitMs as number) + (m.hourGateMs as number));
+    expect(typeof m.provenanceMs).toBe("number");
+    expect(m.loopHeldMs).toBe((m.durationMs as number) + (m.lapFitMs as number) + (m.releaseFitMs as number) + (m.hourGateMs as number) + (m.provenanceMs as number));
     expect(m).toHaveProperty("hourStandCount");
     expect(m.loopHeldMs as number).toBeGreaterThanOrEqual(m.durationMs as number);
   });

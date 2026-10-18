@@ -127,6 +127,13 @@
       "when": 1789574400000,
       "tag": "0017_eta_checkpoint",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1792292700000,
+      "tag": "0018_calibration_input_revision",
+      "breakpoints": true
     }
   ]
 }

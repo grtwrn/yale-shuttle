@@ -4,6 +4,7 @@ import { openDb, type DbBundle } from "../db/client.js";
 import { legs, routes as dbRoutes, segments, stops as dbStops, stopVisits } from "../db/schema.js";
 import type { Route, Stop } from "../schema/api.js";
 import type { TransitNetwork } from "../network/TransitNetwork.js";
+import { validCalibrationSource } from "../calibrator/provenance.js";
 import { Collector } from "./collector.js";
 import { UpstreamClient, type RawBus } from "./upstream.js";
 
@@ -114,7 +115,20 @@ describe("collector startup calibration", () => {
     const calibrate = vi.spyOn(collector as unknown as Inner, "calibrateNetwork");
     await collector.start();
     expectReady();
+    const first = collector.calibrationSource()!;
+    expect(validCalibrationSource(first)).toBe(true);
+    expect(first.main.asOf).toBe(NOW);
+    expect(first.main.watermark).toMatchObject({ status: "recorded", tables: { stopVisits: 10, legs: 8, segments: 8 } });
     await vi.advanceTimersByTimeAsync(5 * 60_000);
+    const second = collector.calibrationSource()!;
+    expect(second.main.asOf).toBe(NOW + 5 * 60_000);
+    expect(second.main.id).not.toBe(first.main.id);
+    expect(second.lap).toEqual(first.lap);
+    expect(second.release).toEqual(first.release);
+    expect(second.hourStand).toEqual(first.hourStand);
+    expect(second.topologySha256).toBe(first.topologySha256);
+    first.main.asOf = 0;
+    expect(collector.calibrationSource()!.main.asOf).toBe(second.main.asOf);
     expect(calibrate).toHaveBeenCalledTimes(2);
     expect(logger.error).not.toHaveBeenCalled();
   });
