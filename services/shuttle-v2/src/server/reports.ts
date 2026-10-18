@@ -283,6 +283,7 @@ export interface MyReport {
    * Every reply the rider has been sent, oldest first — each one its own
    * bubble in the Issues tab, interleaved with `followups` by time. Older
    * reports whose notes predate the history show their single latest reply.
+   * Internal audit snapshots with unchanged public text share one bubble.
    */
   replies: ReportFollowup[];
   hasImage: boolean;
@@ -389,9 +390,14 @@ export function listMyReports(db: DB, anonId: string): MyReport[] {
       status: r.status,
       note: riderFacingNote(r.note),
       replies: (() => {
-        const history = repliesOf(ctx)
-          .map((n) => ({ text: riderFacingNote(n.text), at: n.at }))
-          .filter((n): n is ReportFollowup => n.text !== null);
+        // Audit edits retain a new raw snapshot, but do not send a new public
+        // reply. Collapse consecutive identical visible text, keeping its first
+        // timestamp. Distinct replies, including A -> B -> A, remain in order.
+        const history: ReportFollowup[] = [];
+        for (const n of repliesOf(ctx)) {
+          const text = riderFacingNote(n.text);
+          if (text !== null && history.at(-1)?.text !== text) history.push({ text, at: n.at });
+        }
         if (history.length > 0) return history;
         // Reports answered before the history existed: one bubble, stamped
         // with the report's own time so the ordering stays sane.
