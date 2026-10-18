@@ -4489,7 +4489,7 @@ const TripPlanner: FC<{
                           {/* Keep both named choices when the trip uses a later bus.
                               A named button means that bus; the unnamed one means
                               the bus the rider is on (boardingBusName). */}
-                          <TripBoardingActions {...tripBus} onBoard={(busName) => onBoard({
+                          {tripBus.pickup && <TripBoardingActions {...tripBus} onBoard={(busName) => onBoard({
                             routeLabel: o.routeLabel, color: o.color,
                             busName: tripBus.different || !shuttleCtx ? busName : boardingBusName(busName,
                               buses.filter((b) => shuttleCtx.cfg.busRouteIds.includes(b.route_id)
@@ -4498,7 +4498,7 @@ const TripPlanner: FC<{
                             boardStopId: o.boardStopId, alightStopId: o.alightStopId,
                             startedAt: Date.now(),
                             ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),
-                          })} />
+                          })} />}
                           {leaveInput && (
                             <PickupReminderControls bus={reminderBus} stopName={boardName} walkToSec={o.walkToSec}
                               activeTiming={reminderActive ? reminder!.timing : undefined}
