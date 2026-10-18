@@ -179,6 +179,11 @@ describe("the served answer", () => {
     const control = engine.contribute(payload, 1, now)!;
     const trial = engine.contribute(payload, 1, now, true)!;
     expect(trial.trial!.changedRows).toBeGreaterThan(0);
+    expect(trial.repeatVisits).toEqual(control.repeatVisits);
+    expect(trial.repeatVisits!.length).toBeGreaterThan(0);
+    for (const [bi,stop,hops] of trial.repeatVisits!) {
+      expect(trial.rows.some(r => r[0] === bi && r[1] === stop && r[5] === hops)).toBe(true);
+    }
     expect(engine.stats().steps).toBe(1);
     expect(engine.contribute(payload, 1, now)).toEqual(control);
     expect(control.trial).toBeUndefined();
@@ -192,6 +197,23 @@ describe("the served answer", () => {
     expect(handedOff.distributions).toEqual(live.distributions);
     expect(engine.stats().steps).toBe(2);
     expect(engine.contribute({ ...next, buses: [] }, 2, now + 6000, true)).toBeNull();
+  });
+
+  it('transports canonical repeat identity without removing raw evaluation forecasts', () => {
+    let raw: readonly import('../../web/src/arrivals').UpcomingArrival[] = [];
+    const engine = new ServerEta({routes: ALL_ROUTES, onBaseForecasts: rows => {raw=rows;}, onServedForecasts: () => {}});
+    const wire = engine.contribute(payloadFor(0),1,CAP.frames[0]!.t)!;
+    const expected = raw.filter(r=>r.occurrence===1).map(r=>[
+      wire.buses.findIndex(b=>b[0]===r.busName&&b[1]===r.routeLabel),r.stopId,r.stopsAhead]);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(wire.repeatVisits).toEqual(expected);
+    expect(engine.evaluationForecasts()).toHaveLength(raw.length);
+    expect(engine.evaluationForecasts().filter(r=>r.occurrence===1)).toHaveLength(expected.length);
+    expect(wire.rows).toHaveLength(raw.length);
+    // Two different calls to a folded stop on the first traversal remain firsts.
+    const firsts=raw.filter(r=>r.occurrence===0),counts=new Map<string,number>();
+    for(const r of firsts){const key=`${r.routeLabel}|${r.busName}|${r.stopId}`;counts.set(key,(counts.get(key)??0)+1);}
+    expect([...counts.values()].some(n=>n>1)).toBe(true);
   });
 
   it("carries only the allowlisted lines", () => {
@@ -224,6 +246,12 @@ describe("the served answer", () => {
       full.buses[full.rows[i]![0]]![0] === one.bus_name.replace('#', '')));
 
 
+    const keptIndices = new Set(full.buses.flatMap((b,i) => b[0] === one.bus_name.replace('#','') ? [i] : []));
+    expect(thinned.repeatVisits).toEqual(full.repeatVisits!.filter(r => keptIndices.has(r[0]))
+      .map(r => [0,r[1],r[2]]));
+    for (const [bi,stop,hops] of thinned.repeatVisits!) {
+      expect(thinned.rows.some(r => r[0] === bi && r[1] === stop && r[5] === hops)).toBe(true);
+    }
     expect(eta.contribute({ ...payloadFor(0), buses: [] }, 1, t + 1_800)).toBeNull();
   });
 });

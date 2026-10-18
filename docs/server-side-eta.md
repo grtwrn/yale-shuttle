@@ -21,6 +21,15 @@ The v2 wire contains:
 - `at`: forecast calculation time; `servedAt`: response assembly time.
 - `buses`: `[name, routeLabel, canonicalAnchorIndex, standingState]`.
 - `rows`: `[busIndex, stopId, eta, low, high, stopsAhead, estimated, departNow, lowFloor]`.
+- Optional `repeatVisits`: `[busIndex, stopId, stopsAhead]` identities for a
+  repeat of the same canonical call. Unlike a row-aligned flag, these survive
+  K10's ETA sorting. A folded route's two different calls at one stop are not
+  repeats. Live readers withhold these speculative returns when the server's
+  predicted arrival is outside `isRouteScheduledAt`; first modeled calls and
+  live tracking remain visible even after closing. Published-hours warnings
+  still apply. Older readers ignore this field; absent or malformed metadata
+  preserves the existing visits. Raw wire/evaluation rows and distributions
+  retain every forecast, including the withheld returns.
 - Optional `distributions`: one array per row, containing 50 equal-mass quantiles
   (1%, 3%, …, 99%) in rounded seconds. Older v2 clients ignore this additive field.
 

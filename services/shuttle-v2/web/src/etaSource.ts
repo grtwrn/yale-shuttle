@@ -4,16 +4,24 @@ import type { UpcomingArrival } from './arrivals';
 import type { StandingAnswer } from './liveAnchor';
 import type { BusData } from './map-data';
 import { ROUTE_LISTS } from './routes';
+import { isRouteScheduledAt } from './schedule';
 
 export const ETA_MAX_AGE_MS = 45_000;
 export type ServerEtaRow = readonly [number, number, number, number, number, number, 0 | 1, number, number];
 export type ServerEtaBus = readonly [string, string, number, StandingAnswer | null];
+/** Identity of a repeat canonical call: [busIndex, stopId, stopsAhead].
+ * Independent of row order, including K10's ETA sorting. */
+export type ServerEtaRepeatVisit = readonly [number, number, number];
 export interface ServerEtaWire {
   v: 2;
   at: number;
   servedAt: number;
   buses: ServerEtaBus[];
   rows: ServerEtaRow[];
+  /** Raw rows stay intact for evaluation. Live readers withhold only these
+   * speculative return visits when their arrival is outside service hours.
+   * Absence means unknown; never infer a repeat from a duplicated stop ID. */
+  repeatVisits?: ServerEtaRepeatVisit[];
   /** Optional row-aligned 50-point quantile distributions; old readers ignore it. */
   distributions?: number[][];
   /** Optional, aligned with `buses`: the same anchor in TRAVEL order (liveAnchor.ts
@@ -48,6 +56,11 @@ export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Dat
   const travel = Array.isArray(w.travel) && w.travel.length === w.buses.length
     && w.travel.every(n => Number.isInteger(n) && n >= -1) ? w.travel : undefined;
   const busIndex = new Map<number, { name: string; label: string; colour: string }>();
+  // Optional metadata cannot invalidate the current bus's first pickup.
+  const repeatVisits = Array.isArray(w.repeatVisits) && w.repeatVisits.length <= w.rows.length
+    && w.repeatVisits.every(r => Array.isArray(r) && r.length === 3 && r.every(Number.isInteger)
+      && r[0] >= 0 && r[0] < w.buses.length && r[2] >= 0)
+    ? new Set(w.repeatVisits.map(r => r.join('|'))) : new Set<string>();
   for (let i = 0; i < w.buses.length; i++) {
     const b = w.buses[i];
     if (!Array.isArray(b) || b.length !== 4 || typeof b[0] !== 'string' || typeof b[1] !== 'string'
@@ -70,6 +83,13 @@ export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Dat
       || row[7] < 0) return false;
     const b = busIndex.get(row[0]);
     if (!b) continue;
+    // Use the server's arrival instant, independent of the phone clock. The
+    // first modeled call stays available even after closing; a visible bus
+    // can still finish its run. No model/scoring rows are removed upstream.
+    if (repeatVisits.has([row[0], row[1], row[5]].join('|'))) {
+      const arrival = new Date(w.at + row[2] * 1000);
+      if (finite(arrival.getTime()) && !isRouteScheduledAt(b.label, arrival)) continue;
+    }
     const dots = w.distributions?.length === w.rows.length ? w.distributions[ri] : undefined;
     const distribution = Array.isArray(dots) && dots.length === 50
       && dots.every((v, i) => finite(v) && v >= 0 && (i === 0 || v >= dots[i - 1]!)) ? dots : undefined;

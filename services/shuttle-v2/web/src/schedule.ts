@@ -68,7 +68,7 @@ export const ROUTE_HOURS: Record<string, ScheduleWindow[]> = {
   "Orange Night": [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
   "Orange East":  [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
   // Observed M–F ~05:50–18:55. The 18:00 hour is a full service hour (85–100 %
-  // of days), not a straggler, so it belongs inside the window.
+  // of days), not a straggler, so it belongs inside service hours.
   "Brown":        [{ days: [1,2,3,4,5],         startMin: 5*60+45, endMin: 19*60 }],
   // Observed M–F 05:25–18:50, with the 05:00 and 18:00 hours both ~100 %
   // occupied. (Not 04:00: that was a single deadhead on 2 of 65 weekdays.)
@@ -489,7 +489,9 @@ export function serviceStateAt(
     const { mins } = etDayAndMinutes(t);
     const midnight = new Date(t.getTime() - mins * 60_000);
     // Drop only the unreliable cycle; retain permanent retirement and closures.
-    next = nextWindowStart(wins, midnight, cal ? { ...cal, alternation: undefined } : undefined);
+    const calendarWithoutCycle = cal ? { ...cal } : undefined;
+    if (calendarWithoutCycle) delete calendarWithoutCycle.alternation;
+    next = nextWindowStart(wins, midnight, calendarWithoutCycle);
   }
   return { open, off, next };
 }
