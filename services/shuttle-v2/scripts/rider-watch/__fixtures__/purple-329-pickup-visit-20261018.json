@@ -1,0 +1,1555 @@
+{
+  "source": "Derived regression: original natural rider DOM/bus/model-anchor snapshots joined to exact retained original producer frames for topology. This is not a single original HTTP response and does not prove physical boarding or doors.",
+  "run": "1792289505586",
+  "line": {
+    "label": "Purple",
+    "busRouteIds": [
+      10
+    ]
+  },
+  "trip": {
+    "kind": "random",
+    "origin": {
+      "label": "West Haven Train Station",
+      "lat": 41.271172,
+      "lon": -72.963517,
+      "stopId": 127
+    },
+    "destination": {
+      "display_name": "Building 400",
+      "lat": 41.255793,
+      "lon": -72.993569,
+      "type": "bus_stop",
+      "class": "shuttle",
+      "stopId": 22
+    },
+    "approaching": {
+      "busName": "#329",
+      "stopsAway": 1
+    },
+    "estimate": {
+      "hops": 5,
+      "rideSec": 976,
+      "waitSec": 346,
+      "walkSec": 2762,
+      "rideM": 3225
+    }
+  },
+  "boardStopId": 127,
+  "exitStopId": 22,
+  "feedMetadata": {
+    "routes": {
+      "1": [
+        106,
+        34,
+        101,
+        47,
+        100,
+        102,
+        105,
+        69,
+        139,
+        136,
+        130,
+        129,
+        140,
+        133,
+        135,
+        138,
+        97,
+        118,
+        42,
+        98,
+        38,
+        39,
+        72,
+        43,
+        10,
+        2,
+        5,
+        52,
+        41,
+        20,
+        108
+      ],
+      "2": [
+        29,
+        28,
+        82,
+        95,
+        142,
+        55,
+        56,
+        58,
+        57,
+        50,
+        79,
+        88,
+        92,
+        19,
+        64,
+        63,
+        42,
+        98,
+        38,
+        39,
+        72,
+        43,
+        10,
+        2,
+        5,
+        52,
+        41,
+        20,
+        106,
+        34,
+        101,
+        134,
+        132
+      ],
+      "3": [
+        121,
+        115,
+        45,
+        75,
+        30,
+        31,
+        41,
+        126,
+        36,
+        128,
+        120,
+        3,
+        147,
+        27,
+        11,
+        146,
+        49,
+        48,
+        104,
+        113,
+        4,
+        42,
+        98,
+        38,
+        39,
+        72,
+        117,
+        13,
+        14
+      ],
+      "4": [
+        100,
+        105,
+        129,
+        28,
+        82,
+        95,
+        83,
+        85,
+        88,
+        92,
+        93,
+        86,
+        63,
+        42,
+        98,
+        32,
+        122,
+        14,
+        13,
+        10,
+        2,
+        150,
+        21,
+        116,
+        53,
+        41,
+        20,
+        106,
+        34,
+        101,
+        47
+      ],
+      "8": [
+        149,
+        72,
+        43,
+        44,
+        60,
+        109,
+        123,
+        125,
+        124,
+        110,
+        59,
+        46
+      ],
+      "9": [
+        78,
+        84,
+        89,
+        77,
+        94,
+        143,
+        144,
+        133,
+        88,
+        92,
+        81,
+        26,
+        25,
+        23,
+        22,
+        23,
+        24,
+        25,
+        127,
+        26,
+        80,
+        91,
+        87
+      ],
+      "10": [
+        10,
+        9,
+        1,
+        122,
+        127,
+        26,
+        25,
+        24,
+        23,
+        22,
+        23,
+        24,
+        25,
+        26,
+        72
+      ],
+      "13": [
+        10,
+        2,
+        5,
+        67,
+        96,
+        53,
+        41,
+        106,
+        97,
+        118,
+        42,
+        98,
+        38,
+        9,
+        72,
+        1,
+        121,
+        12,
+        35,
+        43
+      ],
+      "14": [
+        10,
+        2,
+        5,
+        52,
+        41,
+        36,
+        141,
+        114,
+        137,
+        134,
+        132,
+        29,
+        85,
+        79,
+        88,
+        92,
+        19,
+        64,
+        63,
+        42,
+        98,
+        38,
+        9,
+        1,
+        13,
+        43
+      ],
+      "15": [
+        10,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        75,
+        160,
+        121
+      ],
+      "16": [
+        10,
+        153,
+        154,
+        155,
+        156,
+        161,
+        162,
+        27,
+        163,
+        164,
+        98
+      ],
+      "17": [
+        10,
+        150,
+        157,
+        165,
+        166,
+        167,
+        158,
+        159,
+        75,
+        160,
+        168,
+        121
+      ],
+      "18": [
+        53,
+        54,
+        137,
+        132,
+        170,
+        169
+      ],
+      "19": [
+        145,
+        147,
+        4,
+        42,
+        98,
+        121,
+        115,
+        172,
+        47
+      ]
+    },
+    "stop_names": {
+      "1": "100 Church Street South",
+      "2": "129 York",
+      "3": "130 Prospect Street (N)",
+      "4": "130 Prospect Street (S)",
+      "5": "180 York (A&A)",
+      "6": "205 Whitney Ave",
+      "7": "221 Whitney (N)",
+      "8": "300 Cedar (TAC)",
+      "9": "300 George St",
+      "10": "333 Cedar",
+      "11": "344 Winchester",
+      "12": "81 George St",
+      "13": "Amistad / Cedar",
+      "14": "Amistad / Church St South",
+      "15": "Amistad Building / Garage",
+      "16": "Amistad CSS Weekend Blue",
+      "17": "Amistand / Cedar Weekend Blue",
+      "18": "Ashmun / Webster",
+      "19": "Audubon / Orange",
+      "20": "Becton / 15 Prospect",
+      "21": "Broadway / York",
+      "22": "Building 400",
+      "23": "Building 600",
+      "24": "Building 750",
+      "25": "Building 800",
+      "26": "Building 900",
+      "27": "Canal / Munson",
+      "28": "Canner / Livingston",
+      "29": "Canner / Whitney (N)",
+      "30": "Chapel / Church",
+      "31": "Chapel / College",
+      "32": "Chapel / State Elm City Market",
+      "33": "Chapel / York",
+      "34": "Chemistry / 225 Prospect",
+      "35": "Church / George",
+      "36": "Church / Grove",
+      "37": "Church Wall",
+      "38": "College / Crown",
+      "39": "College / George",
+      "40": "College / Grove (N)",
+      "41": "College / Wall (N)",
+      "42": "College / Wall (S)",
+      "43": "Congress / Cedar",
+      "44": "Congress / Howard",
+      "45": "Court / Olive",
+      "46": "Davenport / Howard",
+      "47": "Divinity / 409 Prospect",
+      "48": "Division / Prospect",
+      "49": "Division / Sheffield",
+      "50": "Edwards / Orange",
+      "51": "Elm / High",
+      "52": "Elm / York",
+      "53": "Elm / York (TYCO)",
+      "54": "Elm / College",
+      "55": "Foster / Avon",
+      "56": "Foster / Cottage",
+      "57": "Foster / Edwards",
+      "58": "Foster / Lawrence",
+      "59": "Front / Rt 1 (N)",
+      "60": "Front / Rt 1 (S)",
+      "61": "Front Street South",
+      "62": "Grove / College",
+      "63": "Grove / Temple",
+      "64": "Grove / Whitney",
+      "65": "Grove and Hillhouse",
+      "66": "Helen Hadley Hall",
+      "67": "Wall / York",
+      "68": "Humphrey / Orange",
+      "69": "Huntington / Edgehill (E)",
+      "70": "Huntington / Edgehill (W)",
+      "71": "Lanman",
+      "72": "LEPH / 60 College",
+      "73": "Library Walk",
+      "74": "Lot 22 - Whitney / Humphrey",
+      "75": "Olive / Chapel",
+      "76": "Orange / Audobon",
+      "77": "Orange / Avon",
+      "78": "Orange / Bishop (N)",
+      "79": "Orange / Bishop (S)",
+      "80": "Orange / Bradley (N)",
+      "81": "Orange / Bradley (S)",
+      "82": "Orange / Canner",
+      "83": "Orange / Cottage",
+      "84": "Orange / Edwards (N)",
+      "85": "Orange / Edwards (S)",
+      "86": "Orange / Grove",
+      "87": "Orange / Humphrey (N)",
+      "88": "Orange / Humphrey (S)",
+      "89": "Orange / Lawrence (N)",
+      "90": "Orange / Lawrence (S)",
+      "91": "Orange / Pearl (N)",
+      "92": "Orange / Pearl (S)",
+      "93": "Orange / Trumbull",
+      "94": "Orange / Willow (N)",
+      "95": "Orange / Willow (S)",
+      "96": "Payne Whitney Gym",
+      "97": "Peabody Museum / Whitney / Sachem",
+      "98": "Phelps Gate",
+      "99": "Pierson Sage Garage",
+      "100": "Prospect / Canner",
+      "101": "Prospect / Edwards",
+      "102": "Prospect / Highland (N)",
+      "103": "Prospect / Highland (S)",
+      "104": "Prospect / Hillside",
+      "105": "Prospect / Huntington",
+      "106": "Prospect / Sachem (N)",
+      "107": "Prospect / Sachem (S)",
+      "108": "Prospect / Trumbull",
+      "109": "Quigley Stadium Inbound",
+      "110": "Quigley Stadium Outbound",
+      "111": "Sachem / Whitney",
+      "112": "Sachem / Winchester",
+      "113": "SCL",
+      "114": "SOM",
+      "115": "State St Station",
+      "116": "Stop & Shop",
+      "117": "Gilbert / Cedar",
+      "118": "Temple / Grove",
+      "119": "Trader Joe's",
+      "120": "Trumbull / Hillhouse",
+      "121": "Union Station (N)",
+      "122": "Union Station (S)",
+      "123": "VA Entrance Inbound",
+      "124": "VA Entrance Outbound",
+      "125": "VA Hospital",
+      "126": "Wall / Church",
+      "127": "West Haven Train Station",
+      "128": "Whitney / Audubon",
+      "129": "Whitney / Canner",
+      "130": "Whitney / Cold Spring (S)",
+      "131": "Whitney / Cold Springs (N)",
+      "132": "Whitney / Cottage (N)",
+      "133": "Whitney / Cottage (S)",
+      "134": "Whitney / Edwards (N)",
+      "135": "Whitney / Edwards (S)",
+      "136": "Whitney / Highland",
+      "137": "Whitney / Humphrey (N)",
+      "138": "Whitney / Humphrey (S)",
+      "139": "Whitney / Huntington",
+      "140": "Whitney / Linden",
+      "141": "Whitney / Trumbull",
+      "142": "Willow / Foster",
+      "143": "Willow / Livingston",
+      "144": "Willow / Whitney",
+      "145": "Science Park Garage",
+      "146": "Winchester / Division",
+      "147": "Winchester / Sachem",
+      "148": "Winchester / Woodland",
+      "149": "York / Cedar",
+      "150": "York / Chapel",
+      "151": "York / Crown",
+      "152": "Whitney Ave / Lawrence St",
+      "153": "Howard / Park",
+      "154": "Chapel / Dwight",
+      "155": "Howe / Edgewood",
+      "156": "Elm / Lynwood",
+      "157": "Elm / Orange",
+      "158": "Olive / Lyon",
+      "159": "Olive / Greene",
+      "160": "Olive / Wooster",
+      "161": "York / Elm",
+      "162": "Ashmun / Lock",
+      "163": "Mansfield / Division",
+      "164": "Pauli Murray College",
+      "165": "Eagle / Nash",
+      "166": "Nash / Willow",
+      "167": "Nicoll / Edwards",
+      "168": "Union / Fair",
+      "169": "Shop Rite",
+      "170": "Aldi/Walmart",
+      "171": "Broadway / Park",
+      "172": "Humphrey / Whitney"
+    },
+    "stop_coords": {
+      "1": {
+        "lat": 41.299671,
+        "lon": -72.929425
+      },
+      "2": {
+        "lat": 41.306539,
+        "lon": -72.933001
+      },
+      "3": {
+        "lat": 41.31532,
+        "lon": -72.92455
+      },
+      "4": {
+        "lat": 41.315161,
+        "lon": -72.924729
+      },
+      "5": {
+        "lat": 41.30872,
+        "lon": -72.931417
+      },
+      "6": {
+        "lat": 41.316293,
+        "lon": -72.920383
+      },
+      "7": {
+        "lat": 41.31685,
+        "lon": -72.920112
+      },
+      "8": {
+        "lat": 41.301758,
+        "lon": -72.933542
+      },
+      "9": {
+        "lat": 41.305166,
+        "lon": -72.930745
+      },
+      "10": {
+        "lat": 41.303254,
+        "lon": -72.934247
+      },
+      "11": {
+        "lat": 41.324661,
+        "lon": -72.928677
+      },
+      "12": {
+        "lat": 41.303464,
+        "lon": -72.926405
+      },
+      "13": {
+        "lat": 41.300236,
+        "lon": -72.932021
+      },
+      "14": {
+        "lat": 41.300531,
+        "lon": -72.929866
+      },
+      "15": {
+        "lat": 41.300247,
+        "lon": -72.931898
+      },
+      "16": {
+        "lat": 41.300614,
+        "lon": -72.929956
+      },
+      "17": {
+        "lat": 41.300259,
+        "lon": -72.932555
+      },
+      "18": {
+        "lat": 41.317455,
+        "lon": -72.929469
+      },
+      "19": {
+        "lat": 41.311054,
+        "lon": -72.920135
+      },
+      "20": {
+        "lat": 41.312609,
+        "lon": -72.925331
+      },
+      "21": {
+        "lat": 41.311002,
+        "lon": -72.930344
+      },
+      "22": {
+        "lat": 41.255793,
+        "lon": -72.993569
+      },
+      "23": {
+        "lat": 41.256341,
+        "lon": -72.99019
+      },
+      "24": {
+        "lat": 41.256796,
+        "lon": -72.988118
+      },
+      "25": {
+        "lat": 41.257929,
+        "lon": -72.989021
+      },
+      "26": {
+        "lat": 41.260015,
+        "lon": -72.986981
+      },
+      "27": {
+        "lat": 41.321292,
+        "lon": -72.929656
+      },
+      "28": {
+        "lat": 41.323937,
+        "lon": -72.913996
+      },
+      "29": {
+        "lat": 41.32462,
+        "lon": -72.916166
+      },
+      "30": {
+        "lat": 41.305963,
+        "lon": -72.925461
+      },
+      "31": {
+        "lat": 41.30724,
+        "lon": -72.928355
+      },
+      "32": {
+        "lat": 41.304876,
+        "lon": -72.923138
+      },
+      "33": {
+        "lat": 41.30842,
+        "lon": -72.931341
+      },
+      "34": {
+        "lat": 41.318492,
+        "lon": -72.923687
+      },
+      "35": {
+        "lat": 41.30342,
+        "lon": -72.92784
+      },
+      "36": {
+        "lat": 41.310242,
+        "lon": -72.922595
+      },
+      "37": {
+        "lat": 41.309632,
+        "lon": -72.923067
+      },
+      "38": {
+        "lat": 41.306177,
+        "lon": -72.929592
+      },
+      "39": {
+        "lat": 41.305293,
+        "lon": -72.930255
+      },
+      "40": {
+        "lat": 41.311805,
+        "lon": -72.925425
+      },
+      "41": {
+        "lat": 41.310583,
+        "lon": -72.926188
+      },
+      "42": {
+        "lat": 41.310836,
+        "lon": -72.926148
+      },
+      "43": {
+        "lat": 41.30199,
+        "lon": -72.933299
+      },
+      "44": {
+        "lat": 41.301495,
+        "lon": -72.935029
+      },
+      "45": {
+        "lat": 41.305197,
+        "lon": -72.920117
+      },
+      "46": {
+        "lat": 41.303096,
+        "lon": -72.936589
+      },
+      "47": {
+        "lat": 41.323538,
+        "lon": -72.923285
+      },
+      "48": {
+        "lat": 41.324769,
+        "lon": -72.923522
+      },
+      "49": {
+        "lat": 41.325324,
+        "lon": -72.926572
+      },
+      "50": {
+        "lat": 41.318086,
+        "lon": -72.914395
+      },
+      "51": {
+        "lat": 41.310194,
+        "lon": -72.928972
+      },
+      "52": {
+        "lat": 41.31049,
+        "lon": -72.930123
+      },
+      "53": {
+        "lat": 41.31086,
+        "lon": -72.93054
+      },
+      "54": {
+        "lat": 41.309579,
+        "lon": -72.927476
+      },
+      "55": {
+        "lat": 41.319738,
+        "lon": -72.910418
+      },
+      "56": {
+        "lat": 41.318998,
+        "lon": -72.910985
+      },
+      "57": {
+        "lat": 41.317265,
+        "lon": -72.912309
+      },
+      "58": {
+        "lat": 41.318154,
+        "lon": -72.911633
+      },
+      "59": {
+        "lat": 41.296105,
+        "lon": -72.955812
+      },
+      "60": {
+        "lat": 41.296071,
+        "lon": -72.955927
+      },
+      "61": {
+        "lat": 41.296158,
+        "lon": -72.956009
+      },
+      "62": {
+        "lat": 41.311698,
+        "lon": -72.925318
+      },
+      "63": {
+        "lat": 41.311134,
+        "lon": -72.924022
+      },
+      "64": {
+        "lat": 41.310421,
+        "lon": -72.922331
+      },
+      "65": {
+        "lat": 41.311218,
+        "lon": -72.924262
+      },
+      "66": {
+        "lat": 41.312459,
+        "lon": -72.922824
+      },
+      "67": {
+        "lat": 41.312102,
+        "lon": -72.928948
+      },
+      "68": {
+        "lat": 41.316218,
+        "lon": -72.916544
+      },
+      "69": {
+        "lat": 41.329965,
+        "lon": -72.917606
+      },
+      "70": {
+        "lat": 41.330004,
+        "lon": -72.917272
+      },
+      "71": {
+        "lat": 41.314967,
+        "lon": -72.929998
+      },
+      "72": {
+        "lat": 41.303422,
+        "lon": -72.931698
+      },
+      "73": {
+        "lat": 41.309479,
+        "lon": -72.930752
+      },
+      "74": {
+        "lat": 41.317907,
+        "lon": -72.920416
+      },
+      "75": {
+        "lat": 41.304125,
+        "lon": -72.920274
+      },
+      "76": {
+        "lat": 41.310923,
+        "lon": -72.920191
+      },
+      "77": {
+        "lat": 41.320428,
+        "lon": -72.912916
+      },
+      "78": {
+        "lat": 41.316978,
+        "lon": -72.915521
+      },
+      "79": {
+        "lat": 41.317355,
+        "lon": -72.915423
+      },
+      "80": {
+        "lat": 41.31298,
+        "lon": -72.918548
+      },
+      "81": {
+        "lat": 41.313013,
+        "lon": -72.918668
+      },
+      "82": {
+        "lat": 41.323303,
+        "lon": -72.910898
+      },
+      "83": {
+        "lat": 41.320062,
+        "lon": -72.913347
+      },
+      "84": {
+        "lat": 41.317957,
+        "lon": -72.914793
+      },
+      "85": {
+        "lat": 41.318385,
+        "lon": -72.914615
+      },
+      "86": {
+        "lat": 41.310003,
+        "lon": -72.920939
+      },
+      "87": {
+        "lat": 41.315906,
+        "lon": -72.916327
+      },
+      "88": {
+        "lat": 41.316338,
+        "lon": -72.916176
+      },
+      "89": {
+        "lat": 41.31883,
+        "lon": -72.91412
+      },
+      "90": {
+        "lat": 41.319282,
+        "lon": -72.913902
+      },
+      "91": {
+        "lat": 41.314515,
+        "lon": -72.917391
+      },
+      "92": {
+        "lat": 41.314826,
+        "lon": -72.917319
+      },
+      "93": {
+        "lat": 41.312323,
+        "lon": -72.919177
+      },
+      "94": {
+        "lat": 41.321894,
+        "lon": -72.911811
+      },
+      "95": {
+        "lat": 41.32224,
+        "lon": -72.911692
+      },
+      "96": {
+        "lat": 41.313444,
+        "lon": -72.930694
+      },
+      "97": {
+        "lat": 41.315675,
+        "lon": -72.920859
+      },
+      "98": {
+        "lat": 41.308356,
+        "lon": -72.927978
+      },
+      "99": {
+        "lat": 41.319394,
+        "lon": -72.919091
+      },
+      "100": {
+        "lat": 41.325351,
+        "lon": -72.922891
+      },
+      "101": {
+        "lat": 41.320038,
+        "lon": -72.923299
+      },
+      "102": {
+        "lat": 41.328261,
+        "lon": -72.921951
+      },
+      "103": {
+        "lat": 41.328269,
+        "lon": -72.92208
+      },
+      "104": {
+        "lat": 41.321076,
+        "lon": -72.923422
+      },
+      "105": {
+        "lat": 41.330366,
+        "lon": -72.921482
+      },
+      "106": {
+        "lat": 41.315749,
+        "lon": -72.924393
+      },
+      "107": {
+        "lat": 41.315795,
+        "lon": -72.924541
+      },
+      "108": {
+        "lat": 41.314021,
+        "lon": -72.924894
+      },
+      "109": {
+        "lat": 41.293932,
+        "lon": -72.955238
+      },
+      "110": {
+        "lat": 41.293438,
+        "lon": -72.954994
+      },
+      "111": {
+        "lat": 41.315444,
+        "lon": -72.921229
+      },
+      "112": {
+        "lat": 41.316387,
+        "lon": -72.92649
+      },
+      "113": {
+        "lat": 41.318189,
+        "lon": -72.923912
+      },
+      "114": {
+        "lat": 41.315224,
+        "lon": -72.920887
+      },
+      "115": {
+        "lat": 41.30443,
+        "lon": -72.92164
+      },
+      "116": {
+        "lat": 41.315041,
+        "lon": -72.938202
+      },
+      "117": {
+        "lat": 41.301613,
+        "lon": -72.933459
+      },
+      "118": {
+        "lat": 41.311184,
+        "lon": -72.923753
+      },
+      "119": {
+        "lat": 41.251375,
+        "lon": -73.018082
+      },
+      "120": {
+        "lat": 41.3135,
+        "lon": -72.923286
+      },
+      "121": {
+        "lat": 41.297857,
+        "lon": -72.926763
+      },
+      "122": {
+        "lat": 41.297929,
+        "lon": -72.926912
+      },
+      "123": {
+        "lat": 41.284966,
+        "lon": -72.958144
+      },
+      "124": {
+        "lat": 41.284845,
+        "lon": -72.957845
+      },
+      "125": {
+        "lat": 41.281934,
+        "lon": -72.96194
+      },
+      "126": {
+        "lat": 41.309552,
+        "lon": -72.923477
+      },
+      "127": {
+        "lat": 41.271172,
+        "lon": -72.963517
+      },
+      "128": {
+        "lat": 41.311557,
+        "lon": -72.922197
+      },
+      "129": {
+        "lat": 41.324692,
+        "lon": -72.916817
+      },
+      "130": {
+        "lat": 41.326294,
+        "lon": -72.915854
+      },
+      "131": {
+        "lat": 41.325918,
+        "lon": -72.915845
+      },
+      "132": {
+        "lat": 41.321181,
+        "lon": -72.918038
+      },
+      "133": {
+        "lat": 41.321281,
+        "lon": -72.918194
+      },
+      "134": {
+        "lat": 41.31976,
+        "lon": -72.918722
+      },
+      "135": {
+        "lat": 41.319793,
+        "lon": -72.918903
+      },
+      "136": {
+        "lat": 41.328281,
+        "lon": -72.914879
+      },
+      "137": {
+        "lat": 41.317542,
+        "lon": -72.919779
+      },
+      "138": {
+        "lat": 41.318019,
+        "lon": -72.919756
+      },
+      "139": {
+        "lat": 41.329605,
+        "lon": -72.914275
+      },
+      "140": {
+        "lat": 41.323205,
+        "lon": -72.917287
+      },
+      "141": {
+        "lat": 41.313259,
+        "lon": -72.92169
+      },
+      "142": {
+        "lat": 41.321121,
+        "lon": -72.909616
+      },
+      "143": {
+        "lat": 41.32299,
+        "lon": -72.913872
+      },
+      "144": {
+        "lat": 41.323779,
+        "lon": -72.916575
+      },
+      "145": {
+        "lat": 41.323328,
+        "lon": -72.928795
+      },
+      "146": {
+        "lat": 41.325379,
+        "lon": -72.92774
+      },
+      "147": {
+        "lat": 41.316131,
+        "lon": -72.926506
+      },
+      "148": {
+        "lat": 41.319277,
+        "lon": -72.927761
+      },
+      "149": {
+        "lat": 41.303784,
+        "lon": -72.935017
+      },
+      "150": {
+        "lat": 41.308511,
+        "lon": -72.931505
+      },
+      "151": {
+        "lat": 41.30702,
+        "lon": -72.93265
+      },
+      "152": {
+        "lat": 41.32038,
+        "lon": -72.91866
+      },
+      "153": {
+        "lat": 41.304249,
+        "lon": -72.936812
+      },
+      "154": {
+        "lat": 41.30977,
+        "lon": -72.93715
+      },
+      "155": {
+        "lat": 41.31082,
+        "lon": -72.93426
+      },
+      "156": {
+        "lat": 41.31162,
+        "lon": -72.9328
+      },
+      "157": {
+        "lat": 41.30742,
+        "lon": -72.92249
+      },
+      "158": {
+        "lat": 41.30824,
+        "lon": -72.91904
+      },
+      "159": {
+        "lat": 41.30595,
+        "lon": -72.91974
+      },
+      "160": {
+        "lat": 41.30309,
+        "lon": -72.92048
+      },
+      "161": {
+        "lat": 41.31121,
+        "lon": -72.92956
+      },
+      "162": {
+        "lat": 41.31541,
+        "lon": -72.92892
+      },
+      "163": {
+        "lat": 41.32486,
+        "lon": -72.9247
+      },
+      "164": {
+        "lat": 41.3154,
+        "lon": -72.92466
+      },
+      "165": {
+        "lat": 41.31906,
+        "lon": -72.90805
+      },
+      "166": {
+        "lat": 41.32007,
+        "lon": -72.90738
+      },
+      "167": {
+        "lat": 41.31674,
+        "lon": -72.91137
+      },
+      "168": {
+        "lat": 41.30238,
+        "lon": -72.92294
+      },
+      "169": {
+        "lat": 41.36879,
+        "lon": -72.92047
+      },
+      "170": {
+        "lat": 41.37512,
+        "lon": -72.91709
+      },
+      "171": {
+        "lat": 41.31172,
+        "lon": -72.93105
+      },
+      "172": {
+        "lat": 41.31775,
+        "lon": -72.91947
+      }
+    }
+  },
+  "samples": [
+    {
+      "at": "2026-10-18T02:29:12.350Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n← All routes\nPURPLE ROUTE · Runs Daily 5:30a–11:45p\n▴\n🚌\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRoute\tBoard in (min)\tNext in\tArrive at\nPurple\t\n~44 (33 – 61)\n\t~66 min\t11:10p – 11:40p\n\n🚌 10 min\n🚌 #329 · 6 stops away\n🚌Building 900\nLEPH/60 College\n333 Cedar\n300 George St\n100 Church Street South\nUnion Station (S)\nBOARDWest Haven Train Station\nArrival: About 44 min · Likely 33–61 min\nBuilding 900\nBuilding 800\nBuilding 750\nBuilding 600\nGET OFFBuilding 400\n🧭 Directions to stop\n🚌 I'm on it\n🔔 Remind me for #329\n🚩 Report\n📱 Yale tracker\n▾\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "bus": {
+        "observed_at": 1792290544602,
+        "bus_id": 67836,
+        "bus_name": "#329",
+        "route_id": 10,
+        "lat": 41.270984,
+        "lon": -72.966051,
+        "heading": 87,
+        "last_stop_id": 26,
+        "stationary": false,
+        "stationary_since": "2026-10-18T02:28:59.600",
+        "last_moved_at": "2026-10-18T02:29:04.602"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792290544603,
+        "servedAt": 1792290547378,
+        "buses": [
+          [
+            "44",
+            "Blue Night",
+            11,
+            {
+              "stopId": 98,
+              "standingSec": 70.001,
+              "approach": false
+            }
+          ],
+          [
+            "49",
+            "Blue Night",
+            19,
+            {
+              "stopId": 10,
+              "standingSec": 10.005,
+              "approach": true
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            13,
+            null
+          ],
+          [
+            "53",
+            "Orange Night",
+            20,
+            {
+              "stopId": 98,
+              "standingSec": 139.84,
+              "approach": true
+            }
+          ],
+          [
+            "57",
+            "Orange Night",
+            24,
+            null
+          ],
+          [
+            "46",
+            "Orange East",
+            11,
+            null
+          ],
+          [
+            "317",
+            "Blue West",
+            10,
+            null
+          ]
+        ]
+      },
+      "originalProducer": {
+        "at": 1792290544603,
+        "seq": 1525,
+        "sha256": "dc5af257d3ac3ede65c97762490e27fcdda995da9508922fe2ab16b9fa39ba96",
+        "build": "7d36a7ecb38b",
+        "epoch": "71b5f782-31f9-4be6-83e1-c857604857b9"
+      }
+    },
+    {
+      "at": "2026-10-18T02:29:22.354Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n← All routes\nPURPLE ROUTE · Runs Daily 5:30a–11:45p\n▴\n🚌\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRoute\tBoard in (min)\tNext in\tArrive at\nPurple\t\n~44 (32 – 61)\n\t~66 min\t11:10p – 11:40p\n\n🚌 10 min\n🚌 #329 · 6 stops away\n🚌Building 900\nLEPH/60 College\n333 Cedar\n300 George St\n100 Church Street South\nUnion Station (S)\nBOARDWest Haven Train Station\nArrival: About 44 min · Likely 32–61 min\nBuilding 900\nBuilding 800\nBuilding 750\nBuilding 600\nGET OFFBuilding 400\n🧭 Directions to stop\n🚌 I'm on it\n🔔 Remind me for #329\n🚩 Report\n📱 Yale tracker\n▾\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "bus": {
+        "observed_at": 1792290554605,
+        "bus_id": 67836,
+        "bus_name": "#329",
+        "route_id": 10,
+        "lat": 41.271204,
+        "lon": -72.964486,
+        "heading": 71,
+        "last_stop_id": 26,
+        "stationary": false,
+        "stationary_since": "2026-10-18T02:29:14.605",
+        "last_moved_at": "2026-10-18T02:29:14.605"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792290554606,
+        "servedAt": 1792290557376,
+        "buses": [
+          [
+            "49",
+            "Blue Night",
+            0,
+            {
+              "stopId": 10,
+              "standingSec": 20.008,
+              "approach": false
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            13,
+            null
+          ],
+          [
+            "53",
+            "Orange Night",
+            20,
+            {
+              "stopId": 98,
+              "standingSec": 149.843,
+              "approach": true
+            }
+          ],
+          [
+            "44",
+            "Blue Night",
+            11,
+            {
+              "stopId": 98,
+              "standingSec": 80.004,
+              "approach": true
+            }
+          ],
+          [
+            "57",
+            "Orange Night",
+            24,
+            null
+          ],
+          [
+            "46",
+            "Orange East",
+            11,
+            null
+          ],
+          [
+            "317",
+            "Blue West",
+            10,
+            null
+          ]
+        ]
+      },
+      "originalProducer": {
+        "at": 1792290554606,
+        "seq": 1527,
+        "sha256": "2bb4949adb07872ea4d10c96befdb4645c6b8a0729dcf30074358a1b34f4c0f1",
+        "build": "7d36a7ecb38b",
+        "epoch": "71b5f782-31f9-4be6-83e1-c857604857b9"
+      }
+    },
+    {
+      "at": "2026-10-18T02:29:32.352Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n← All routes\nPURPLE ROUTE · Runs Daily 5:30a–11:45p\n▴\n🚌\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRoute\tBoard in (min)\tNext in\tArrive at\nPurple\t\n~44 (32 – 61)\n\t~65 min\t11:10p – 11:40p\n\n🚌 10 min\n🚌 #329 · 6 stops away\n🚌Building 900\nLEPH/60 College\n333 Cedar\n300 George St\n100 Church Street South\nUnion Station (S)\nBOARDWest Haven Train Station\nArrival: About 44 min · Likely 32–61 min\nBuilding 900\nBuilding 800\nBuilding 750\nBuilding 600\nGET OFFBuilding 400\n🧭 Directions to stop\n🚌 I'm on it\n🔔 Remind me for #329\n🚩 Report\n📱 Yale tracker\n▾\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "bus": {
+        "observed_at": 1792290564608,
+        "bus_id": 67836,
+        "bus_name": "#329",
+        "route_id": 10,
+        "lat": 41.271311,
+        "lon": -72.964079,
+        "heading": 70,
+        "last_stop_id": 26,
+        "stationary": true,
+        "at_stop_id": 127,
+        "at_stop_since": "2026-10-18T02:29:19.612",
+        "stationary_since": "2026-10-18T02:29:19.612",
+        "last_moved_at": "2026-10-18T02:29:19.612"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792290564620,
+        "servedAt": 1792290567375,
+        "buses": [
+          [
+            "49",
+            "Blue Night",
+            0,
+            {
+              "stopId": 10,
+              "standingSec": 30.022,
+              "approach": false
+            }
+          ],
+          [
+            "329",
+            "Purple",
+            13,
+            {
+              "stopId": 127,
+              "standingSec": 10.015,
+              "approach": false
+            }
+          ],
+          [
+            "53",
+            "Orange Night",
+            20,
+            null
+          ],
+          [
+            "44",
+            "Blue Night",
+            11,
+            {
+              "stopId": 38,
+              "standingSec": 90.018,
+              "approach": true
+            }
+          ],
+          [
+            "57",
+            "Orange Night",
+            24,
+            null
+          ],
+          [
+            "46",
+            "Orange East",
+            11,
+            null
+          ],
+          [
+            "317",
+            "Blue West",
+            10,
+            null
+          ]
+        ]
+      },
+      "originalProducer": {
+        "at": 1792290564620,
+        "seq": 1529,
+        "sha256": "3c45aa66dec97f90c8e6e54d28dbe7362109a04971c1790bcca0afb674383a3e",
+        "build": "7d36a7ecb38b",
+        "epoch": "71b5f782-31f9-4be6-83e1-c857604857b9"
+      }
+    },
+    {
+      "at": "2026-10-18T02:29:42.355Z",
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n← All routes\nPURPLE ROUTE · Runs Daily 5:30a–11:45p\n▴\n🚌\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRoute\tBoard in (min)\tNext in\tArrive at\nPurple\t\n~44 (32 – 61)\n\t~65 min\t11:11p – 11:40p\n\n🚌 10 min\n🚌 #329 · 6 stops away\n🚌Building 900\nLEPH/60 College\n333 Cedar\n300 George St\n100 Church Street South\nUnion Station (S)\nBOARDWest Haven Train Station\nArrival: About 44 min · Likely 32–61 min\nBuilding 900\nBuilding 800\nBuilding 750\nBuilding 600\nGET OFFBuilding 400\n🧭 Directions to stop\n🚌 I'm on it\n🔔 Remind me for #329\n🚩 Report\n📱 Yale tracker\n▾\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "bus": {
+        "observed_at": 1792290574678,
+        "bus_id": 67836,
+        "bus_name": "#329",
+        "route_id": 10,
+        "lat": 41.271236,
+        "lon": -72.96341,
+        "heading": 69,
+        "last_stop_id": 26,
+        "stationary": true,
+        "at_stop_id": 127,
+        "at_stop_since": "2026-10-18T02:29:19.612",
+        "stationary_since": "2026-10-18T02:29:19.612",
+        "last_moved_at": "2026-10-18T02:29:34.678"
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792290574680,
+        "servedAt": 1792290577380,
+        "buses": [
+          [
+            "49",
+            "Blue Night",
+            0,
+            {
+              "stopId": 10,
+              "standingSec": 40.082,
+              "approach": false
+            }
+          ],
+          [
+            "53",
+            "Orange Night",
+            20,
+            {
+              "stopId": 38,
+              "standingSec": 10.072,
+              "approach": false
+            }
+          ],
+          [
+            "44",
+            "Blue Night",
+            11,
+            {
+              "stopId": 38,
+              "standingSec": 100.078,
+              "approach": true
+            }
+          ],
+          [
+            "57",
+            "Orange Night",
+            24,
+            null
+          ],
+          [
+            "46",
+            "Orange East",
+            11,
+            null
+          ],
+          [
+            "317",
+            "Blue West",
+            10,
+            null
+          ],
+          [
+            "329",
+            "Purple",
+            4,
+            {
+              "stopId": 127,
+              "standingSec": 20.075,
+              "approach": false
+            }
+          ]
+        ]
+      },
+      "originalProducer": {
+        "at": 1792290574680,
+        "seq": 1531,
+        "sha256": "dd0185ec9dea44906eec2aae50865ff28b7c81e4f72cefd0878da7b30c01a201",
+        "build": "7d36a7ecb38b",
+        "epoch": "71b5f782-31f9-4be6-83e1-c857604857b9"
+      }
+    }
+  ]
+}

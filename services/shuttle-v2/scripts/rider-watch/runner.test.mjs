@@ -916,3 +916,28 @@ test('a packet received during the settling wait replaces the boarding snapshot'
  assert.equal(samples.at(-1).buses[0].lat,departed.lat);assert(samples.at(-1).mapPauseAudit.renderWaitMs>0);
  assert.equal(h.watcher.status().run.harnessErrors,undefined);
 });
+
+
+test.each(['recorded','contradictory-BOARD-marker'])('Purple329 follows the selected pickup visit instead of an earlier station encounter (%s)',async mode=>{
+ const capture=JSON.parse(await fs.readFile(new URL('./__fixtures__/purple-329-pickup-visit-20261018.json',import.meta.url),'utf8'));
+ let sample=capture.samples[0];const feedOf=buses=>({...capture.feedMetadata,buses,server_eta:sample.server_eta});
+ // The second mode is a modeled contradictory decoration, separate from the
+ // unchanged historical text. A pending visit conflict must override it too.
+ const textOf=text=>mode==='recorded'?text:text.replace(/(^|\n)BOARD/,'$1BOARD🚌');
+ const h=current=await harness(feedOf([sample.bus]),capture.trip,{initialLine:capture.line,feedOf,text:textOf(sample.text),at:sample.at});
+ for(const next of capture.samples.slice(1)){
+  sample=next;vi.setSystemTime(Date.parse(sample.at)-10000);await h.poll(textOf(sample.text),[sample.bus]);
+  assert.equal(h.watcher.status().run.phase,'waiting',sample.at);
+ }
+ assert.deepEqual(h.clicks,[]);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ const conflicts=events.filter(e=>e.kind==='waiting-bus-other-occurrence');assert.equal(conflicts.length,1);assert.equal(conflicts[0].detail.reason,'pickup-still-ahead');
+ // Modeled later current-visit control, not a recovered outbound screen:
+ // the natural journey had already boarded on the first encounter.
+ const now=Date.parse(sample.at)+24*60000;vi.setSystemTime(now-10000);
+ sample={...sample,server_eta:{v:2,at:now,servedAt:now,buses:[['329','Purple',4,{stopId:127,standingSec:20,approach:false}]]}};
+ const bus={...sample.bus,...capture.feedMetadata.stop_coords[127],observed_at:now,stationary:true,at_stop_id:127};
+ await h.poll('BOARD🚌West Haven Train Station⏸ 0:20\nGET OFFBuilding 400',[bus]);
+ assert.equal(h.watcher.status().run.phase,'riding');assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+ assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+});

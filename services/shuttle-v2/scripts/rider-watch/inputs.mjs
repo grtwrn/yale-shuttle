@@ -39,26 +39,33 @@ export const BOARD_M = 45;
 /** A nearby bus can be serving an earlier occurrence on a loop. Require the
  * named card, fresh direct stand and served model to agree before vetoing
  * proximity: Blue58 passed within29m of Elm/York while at Broadway/York,
- * still two stops away via Stop&Shop (2026-10-17). Missing evidence is not a
- * confirmed conflict. This does not assert physical boarding or doors. */
+ * still two stops away via Stop&Shop (2026-10-17). Purple329 also reached
+ * the pickup pole on an inbound pass while the card described a later visit
+ * (2026-10-18). A fresh named stops-away card plus both stand witnesses can
+ * veto automatic boarding at that same pole without asserting which pass is
+ * physically boardable. Missing evidence is not a confirmed conflict. */
 export function otherPickupOccurrence(bus, stopId, text, feed, now) {
   const bare = name => String(name).replace(/^#/, '');
   const quotes = [...String(text).matchAll(/🚌\s*(#[\w-]+)\s*·\s*(\d+) stops? away/g)];
   if (quotes.length !== 1 || bare(quotes[0][1]) !== bare(bus.bus_name)) return null;
   const actual = Number(quotes[0][2]), seq = feed.routes?.[bus.route_id], wire = feed.server_eta;
   if (actual < 2 || !Array.isArray(seq) || seq.filter(id => id === stopId).length !== 1
-    || seq.filter(id => id === bus.at_stop_id).length !== 1 || stopId === bus.at_stop_id
+    || seq.filter(id => id === bus.at_stop_id).length !== 1
     || !Number.isFinite(now) || !Number.isFinite(bus.observed_at)
     || now - bus.observed_at >= 30000 || bus.observed_at > now + 5000
     || wire?.v !== 2 || !Number.isFinite(wire.at) || !Number.isFinite(wire.servedAt)
     || wire.servedAt < wire.at || now - wire.at >= 30000 || wire.servedAt > now + 5000) return null;
   const matches = (wire.buses ?? []).filter(b => bare(b[0]) === bare(bus.bus_name));
   const track = matches.length === 1 ? matches[0] : null, standing = track?.[3];
+  if (!Number.isSafeInteger(track?.[2]) || track[2] < 0 || track[2] >= seq.length
+    || !standing || standing.approach !== false || standing.stopId !== bus.at_stop_id
+    || !observedAtStop(bus, bus.at_stop_id, feed.stop_coords)) return null;
+  if (bus.at_stop_id === stopId) return {bus: bus.bus_name, pickupStop: stopId, standingStop: stopId,
+    stopsAway: actual, reason: 'pickup-still-ahead', modelIndex: track[2], observedAt: bus.observed_at, modelAt: wire.at};
   const from = seq.indexOf(bus.at_stop_id), expected = (seq.indexOf(stopId) - from + seq.length) % seq.length;
   // One stop ahead keeps the existing approach rules. Forward counts also
   // handle a pickup reached after wrapping around the end of the route.
-  if (expected !== actual || track?.[2] !== from || !standing || standing.approach !== false
-    || standing.stopId !== bus.at_stop_id || !observedAtStop(bus, bus.at_stop_id, feed.stop_coords)) return null;
+  if (expected !== actual || track[2] !== from) return null;
   return {bus: bus.bus_name, pickupStop: stopId, standingStop: bus.at_stop_id,
     stopsAway: expected, observedAt: bus.observed_at, modelAt: wire.at};
 }
