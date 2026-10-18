@@ -83,9 +83,10 @@ export async function pollWitnesses({ store, base = 'https://yale-shuttle.fly.de
   // cannot hide a stalled collector or upstream failure before capture begins.
   const lastSourceAt = cp.at >= 0 ? cp.at : cp.beganAt ?? 0;
   const sourceStale = now - lastSourceAt > 120000 || lastSourceAt - now > 5000;
-  return { checkedAt: new Date(now).toISOString(), ok: reportsOK && head.unavailable === null && !sourceStale && !retention.cleanupUncertain,
+  const sourceCaptureUnavailable = store.get('capture-run') !== null;
+  return { checkedAt: new Date(now).toISOString(), ok: reportsOK && head.unavailable === null && !sourceStale && !sourceCaptureUnavailable && !retention.cleanupUncertain,
     epoch: cp.epoch, build: cp.build, cursor: cp.after, latest: head.latest, pages, frames, leads, boundary,
-    sourceUnavailable: head.unavailable !== null, sourceStale, lastSourceAt, reportsOK, reportError, retention,
+    sourceUnavailable: head.unavailable !== null, sourceStale, sourceCaptureUnavailable, lastSourceAt, reportsOK, reportError, retention,
     scope: 'Diagnostic input capture only. Empty service and captured data are not ETA accuracy or physical arrival proof.' };
 }
 

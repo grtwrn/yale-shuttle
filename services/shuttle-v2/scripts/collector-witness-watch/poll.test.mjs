@@ -81,4 +81,10 @@ describe('read-only collector witness watcher',()=>{
     const a=setup();expect(await a.poll()).toMatchObject({ok:true,sourceStale:false,cursor:0});
     a.f.advance(120001);expect(await a.poll()).toMatchObject({ok:false,sourceStale:true,cursor:0});
   });
+  it('reports incomplete source evidence even when the journal head and HTTP clock are healthy',async()=>{
+    const a=setup();a.f.add({sourceWriteEvidence:'unavailable'});
+    expect(await a.poll()).toMatchObject({ok:false,sourceCaptureUnavailable:true,sourceUnavailable:false});
+    a.f.add();expect(await a.poll()).toMatchObject({ok:true,sourceCaptureUnavailable:false});
+    expect(a.store.db.prepare('SELECT count(*) n FROM incidents').get().n).toBe(1);
+  });
 });

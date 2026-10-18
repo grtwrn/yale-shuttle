@@ -102,4 +102,29 @@ describe('durable collector incident review delivery', () => {
     const reopened = new WitnessStore(a.root, { policy: { minFreeBytes: 0 } }); stores.push(reopened);
     expect(reopened.readChunk(saved.key).frames).toHaveLength(1);
   });
+  it('groups consecutive capture failures and retains the review incident after the source head recovers', async () => {
+    const a = setup(); a.f.advance(5000); a.f.journal.fail(a.f.at, 'capture unavailable'); const first = a.commit();
+    a.f.advance(5000); a.f.journal.fail(a.f.at, 'capture unavailable again'); const second = a.commit();
+    expect(a.store.db.prepare('SELECT count(*) n FROM incidents').get().n).toBe(1);
+    expect(a.store.get('capture-run')).toMatchObject({ reason: 'frame-unavailable', lastSeq: 3 });
+    a.f.add(); a.commit(); expect(a.f.head().unavailable).toBeNull(); expect(a.store.get('capture-run')).toBeNull();
+    expect(await dispatchIncidents(a)).toMatchObject({ ok: true, pending: 0 });
+    const name = fs.readdirSync(a.directory)[0], value = JSON.parse(fs.readFileSync(path.join(a.directory, name)));
+    expect(value.kind).toBe('collector-capture-unavailable'); expect(a.store.readChunk(first.key)).toBeTruthy(); expect(a.store.readChunk(second.key)).toBeTruthy();
+  });
+  it('queues partial failed polls and unknown write provenance as separate diagnostic episodes', async () => {
+    const a = setup(); a.f.add({ pollResult: 'failed' }); a.commit();
+    a.f.add({ sourceWriteEvidence: 'unavailable' }); a.commit();
+    const records = a.store.db.prepare('SELECT json FROM incidents').all().map(r => JSON.parse(r.json));
+    expect(records.map(r => r.reason).sort()).toEqual(['poll-failed','source-writes-unavailable']);
+    expect(a.store.get('capture-run')).toMatchObject({ reason: 'source-writes-unavailable' });
+  });
+  it('rolls incident grouping back with a later cursor failure, then retries once', () => {
+    const a = setup(); a.f.advance(5000); a.f.journal.fail(a.f.at, 'unavailable'); const cp = a.store.checkpoint();
+    a.store.db.exec("CREATE TRIGGER fault_cursor BEFORE INSERT ON meta WHEN NEW.key='checkpoint' BEGIN SELECT RAISE(ABORT,'late cursor fault'); END");
+    expect(a.commit).toThrow('late cursor fault'); expect(a.store.checkpoint()).toEqual(cp); expect(a.store.get('capture-run')).toBeNull();
+    expect(a.store.db.prepare('SELECT count(*) n FROM incidents').get().n).toBe(0);
+    a.store.db.exec('DROP TRIGGER fault_cursor'); a.commit();
+    expect(a.store.db.prepare('SELECT count(*) n FROM incidents').get().n).toBe(1);
+  });
 });

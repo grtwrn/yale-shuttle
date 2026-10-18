@@ -83,6 +83,10 @@ is not resurrected. Available source history from 30 minutes before through
 five minutes after a lead stays pinned, including later captured pages. A gap
 also pins the last available page before its boundary. Processing an incident
 does not silently release its source evidence.
+Unavailable frames, partial failed polls and unknown source-write provenance
+also reach review, even when a good poll has already cleared the current head's
+error. Consecutive failures of the same kind share one incident while each
+affected page stays pinned. The current failure keeps the recorder unhealthy.
 
 After successful deployment/startup, set `LEARNING_WATCH_COLLECTOR_STATUS` on
 the independent learning-health supervisor to this recorder's `status.json`.

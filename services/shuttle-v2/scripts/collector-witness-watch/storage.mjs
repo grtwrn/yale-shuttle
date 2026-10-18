@@ -131,6 +131,7 @@ export class WitnessStore {
         const active = this.get('activeChunk');
         if (active) this.db.prepare('INSERT OR IGNORE INTO incident_chunks VALUES (?,?)').run(id, active);
       }
+      this.put('capture-run', null);
       this.put('checkpoint', cp);
     });
     return cp;
@@ -202,6 +203,26 @@ export class WitnessStore {
         this.db.prepare('INSERT OR IGNORE INTO incidents VALUES (?,?)').run(id, JSON.stringify({ ...lead, epoch: page.epoch }));
         this.db.prepare('INSERT OR IGNORE INTO incident_chunks VALUES (?,?)').run(id, key);
       }
+      // A transient failed capture can be followed by a good poll before the
+      // watcher reads the head. Its actual frame must still reach review.
+      // Group consecutive failures of one kind; retain every affected page.
+      let run = this.get('capture-run');
+      for (const { frame, input } of verified.frames) {
+        const reason = frame.status === 'unavailable' ? 'frame-unavailable'
+          : input.pollResult === 'failed' ? 'poll-failed'
+          : input.sourceWriteEvidence !== 'recorded' ? 'source-writes-unavailable' : null;
+        if (!reason) { run = null; continue; }
+        if (!run || run.epoch !== page.epoch || run.reason !== reason || ![frame.seq,frame.seq-1].includes(run.lastSeq)) {
+          const id = witnessSHA(witnessJSON([page.epoch, 'collector-capture-unavailable', frame.seq, frame.sha256, reason]));
+          const incident = { kind: 'collector-capture-unavailable', at: frame.at, epoch: page.epoch, seq: frame.seq,
+            reason, frameSHA256: frame.sha256, scope: 'Captured poll provenance is incomplete; no row eligibility or service verdict.' };
+          this.db.prepare('INSERT OR IGNORE INTO incidents VALUES (?,?)').run(id, JSON.stringify(incident));
+          run = { id, epoch: page.epoch, reason, lastSeq: frame.seq };
+        }
+        run.lastSeq = frame.seq;
+        this.db.prepare('INSERT OR IGNORE INTO incident_chunks VALUES (?,?)').run(run.id, key);
+      }
+      this.put('capture-run', run);
       // Keep available causal context, including later pages within five
       // minutes of a lead. Delivery/processing never silently releases pins.
       this.db.exec(`INSERT OR IGNORE INTO incident_chunks SELECT i.id,c.key FROM incidents i JOIN chunks c

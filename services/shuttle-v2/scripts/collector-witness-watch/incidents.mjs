@@ -59,18 +59,19 @@ export async function dispatchIncidents({ store, directory, now = Date.now(), li
       if (!validID(row.id)) throw Error('Invalid source incident identity');
       const lead = JSON.parse(row.json);
       if (!Number.isSafeInteger(lead.at) || lead.at < 0 || typeof lead.epoch !== 'string'
-        || !['derived-leg-speed-review', 'collector-witness-gap'].includes(lead.kind)) throw Error('Invalid collector review lead');
+        || !['derived-leg-speed-review', 'collector-witness-gap', 'collector-capture-unavailable'].includes(lead.kind)) throw Error('Invalid collector review lead');
       // Stable contents on retry. New context remains pinned in the database;
       // it must not mutate an already published incident after delivery.
-      const id = row.id.slice(0, 20), gap = lead.kind === 'collector-witness-gap';
+      const id = row.id.slice(0, 20), gap = lead.kind === 'collector-witness-gap', unavailable = lead.kind === 'collector-capture-unavailable';
       const incident = { id, sourceIncidentID: row.id, source: 'collector-witness-watch',
         kind: lead.kind, severity: 'medium', detectedAt: new Date(lead.at).toISOString(),
         summary: gap ? 'Collector evidence continuity was lost; the retained boundary needs review.'
+          : unavailable ? 'A collector poll has incomplete capture or source-write evidence; review its retained diagnostic frames.'
           : 'A committed derived leg has an unusually short duration for its stop endpoints; review the captured input.',
         detail: lead, evidence: { database: store.file, incidentID: row.id,
           sourcePins: 'incident_chunks retains the source page and available surrounding history/topology; query by incidentID.' },
         note: 'Diagnostic review only. Not independent physical service, ETA accuracy, an eligibility correction, or instructions.' };
-      const receipt = await persist(directory, 'collector-' + (gap ? 'gap-' : 'leg-') + id + '.json', incident);
+      const receipt = await persist(directory, 'collector-' + (gap ? 'gap-' : unavailable ? 'capture-' : 'leg-') + id + '.json', incident);
       store.put('incident-delivery:' + row.id, { at: now, ...receipt });
       delivered.push(id);
     } catch { failures++; }
