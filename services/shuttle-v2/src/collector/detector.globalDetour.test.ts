@@ -66,6 +66,13 @@ describe("a nearby global marker before its intervening published journey", () =
       expect(result.visits).toContainEqual(expect.objectContaining({ stop_id: target,
         pinned_at: capture.laterCall.pinned_at, arrived_at: capture.laterCall.arrived_at,
         departed_at: capture.laterCall.departed_at, stand_sec: capture.laterCall.stand_sec }));
+    } else {
+      // The later movement becomes ambiguous between published legs. Keep
+      // that model re-anchor as an unpinned source record. Its existing
+      // "passed" label does not establish a served call or known timing.
+      const unresolved = result.visits.filter(r => r.stop_id === target && Number(r.anchored_at) >= capture.fromCall.anchored_at);
+      expect(unresolved).toHaveLength(1);
+      expect(unresolved[0]).toMatchObject({ pinned_at: null, arrived_at: null, departed_at: null, stand_sec: 0, outcome: "passed" });
     }
   });
 });
