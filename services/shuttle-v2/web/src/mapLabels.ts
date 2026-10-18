@@ -1,6 +1,6 @@
 import { arrivalSummary } from './arrivalDetails';
 import { shownStandSec, type DwellStat, type DwellTimes } from './arrivals';
-import { standChipFor } from './standWait';
+import { standChipFor, standClockText } from './standWait';
 
 type Rect = { left: number; top: number; right: number; bottom: number };
 
@@ -52,22 +52,25 @@ export function compactMapArrival(label: ReturnType<typeof mapArrivalLabel>) {
 
 /** Name the current departure remainder, just like the stop list. A typical
  * total belongs in explanatory detail, not beside the bus as an apparent ETA.
- * Only label wait stops (the same >=3-minute typical hold used in stop lists). */
+ * Label usual wait stops and actual pauses lasting at least three minutes.
+ * A short usual hold must not hide a bus that is already waiting much longer. */
 export function mapWaitLabel(standing: { stopId: number; standingSec: number; approach?: boolean } | null,
   routeDwells: Record<string, DwellStat>, dwells: DwellTimes | undefined) {
   if (!standing || !Number.isFinite(standing.standingSec) || standing.standingSec < 0) return null;
   const stat = routeDwells[String(standing.stopId)];
   const typical = stat && stat.n >= 3 ? shownStandSec(stat, null, routeDwells, dwells)?.sec : undefined;
-  if (typical === undefined || !Number.isFinite(typical) || typical < 180) return null;
-  const chip = standChipFor(standing, routeDwells, dwells);
-  if (!chip) return null;
-  const clock = chip.clock;
-  const typicalMinutes = Math.round(typical / 60);
+  const knownTypical = typical !== undefined && Number.isFinite(typical) && typical >= 0;
+  const longPause = standing.standingSec >= 180;
+  if (!longPause && (!knownTypical || typical! < 180)) return null;
+  const chip = knownTypical ? standChipFor(standing, routeDwells, dwells) : null;
+  if (!chip && !longPause) return null;
+  const clock = chip?.clock ?? standClockText(standing.standingSec);
+  const departure = chip?.text ?? 'departure time unavailable';
   return {
-    compact: `Stopped${standing.approach ? " nearby" : ""} ${clock} · ${chip.text}`,
+    compact: `Stopped${standing.approach ? " nearby" : ""} ${clock} · ${departure}`,
     elapsed: `Waiting${standing.approach ? ' nearby' : ''} ${clock}`,
-    departure: chip.text,
-    typical: `Usual total stop duration: ~${typicalMinutes} min`,
-    overdue: chip.overdue,
+    departure,
+    typical: knownTypical ? `Usual total stop duration: ~${Math.round(typical! / 60)} min` : 'Usual stop duration unavailable',
+    overdue: chip?.overdue ?? false,
   };
 }
