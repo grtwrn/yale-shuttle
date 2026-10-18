@@ -275,6 +275,15 @@ export class TransitNetwork {
   private readonly dwellStats = new Map<string, DwellStats>();
   private readonly paceStats = new Map<number, PaceStats>();
 
+  /** Immutable geometry actually used by this network generation. The private
+   * collector witness encoder consumes it immediately; fitted statistics are
+   * intentionally absent. Preserve insertion order and duplicate stop slots. */
+  observationTopology() {
+    return { stops: this.stops, routes: this.routes, segmentEdges: this.segmentEdges,
+      walkTransfers: this.walkTransfers, routeStopIndex: this.routeStopIndex,
+      routeStopPositions: this.routeStopPositions, legMeters: this.legMeters };
+  }
+
   private constructor(args: {
     stops: ReadonlyMap<number, Stop>;
     routes: ReadonlyMap<number, Route>;

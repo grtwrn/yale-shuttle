@@ -99,6 +99,23 @@ export class EvaluationInputs {
     return { epoch: this.epoch, cursor, latest: this.sequence, hasMore: cursor < this.sequence, frames };
   }
 
+  /** Cross-index for durable diagnostic capture. It exposes only references
+   * already bound to immutable model inputs, never a replacement context. */
+  collectorReferences(epoch: string, selected: readonly { seq: number; sha256: string }[], now = Date.now()) {
+    this.expire(now);
+    const wanted = new Map(selected.map(frame => [frame.seq, frame.sha256]));
+    const references = [];
+    for (const frame of this.frames) {
+      if (!frame.contextJson) continue;
+      const context = JSON.parse(frame.contextJson) as EtaEvaluationContext, witness = context.collectorWitness;
+      if (!witness || witness.epoch !== epoch || wanted.get(witness.seq) !== witness.sha256) continue;
+      references.push({ collectorEpoch: epoch, collectorSeq: witness.seq, collectorSHA256: witness.sha256,
+        evaluation: { epoch: this.epoch, cursor: frame.seq, at: frame.at,
+          sha256: frame.sha256, contextSha256: frame.contextSha256 } });
+    }
+    return references;
+  }
+
   stats() { return { epoch: this.epoch, latest: this.sequence, retained: this.frames.length,
     retainedBytes: this.totalBytes, maxFrames: this.maxFrames, maxBytes: this.maxBytes, maxAgeMs: this.maxAgeMs,
     failed: this.failure !== null }; }

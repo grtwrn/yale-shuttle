@@ -52,6 +52,7 @@ import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { EvaluationInputError, EvaluationInputs } from './evaluationInputs.js';
 import { EvaluationSource } from './evaluationSource.js';
+import { WitnessReadError } from '../collector/witnessJournal.js';
 import { FeedbackEvidence, type FeedbackEvidenceReceipt } from './feedbackEvidence.js';
 import { buildLiveSnapshot } from "./snapshot.js";
 import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
@@ -890,6 +891,28 @@ export function buildApp(opts: AppOptions): Hono {
   app.get('/api/evaluation/seed', requireAdmin, c => {
     try { return c.json(evaluationSource.seed()); }
     catch { return c.json({ error: 'evaluation_unavailable' }, 503); }
+  });
+  app.get('/api/evaluation/collector-witnesses', requireAdmin, c => {
+    const epoch = c.req.query('epoch'), after = c.req.query('after'), limit = c.req.query('limit');
+    const known = c.req.query('knownTopologies'), knownHashes = known === undefined ? [] : known.split(',');
+    try {
+      if (epoch === undefined && after === undefined && limit === undefined && known === undefined)
+        return c.json({ ...opts.collector.collectorWitnessHead(), build: resolveEstimatorVersion(),
+          evaluationEpoch: evaluationInputs.epoch, evaluationCursor: evaluationInputs.stats().latest });
+      if (!epoch || after === undefined || !/^\d+$/.test(after) || !Number.isSafeInteger(Number(after))
+        || knownHashes.length > 16 || knownHashes.some(hash => !/^[a-f0-9]{64}$/.test(hash))
+        || (limit !== undefined && (!/^\d+$/.test(limit) || !Number.isSafeInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 16)))
+        return c.json({ error: 'collector_witness_cursor' }, 400);
+      const page = opts.collector.collectorWitnessRead(epoch, Number(after), limit === undefined ? 16 : Number(limit));
+      const omitted = new Set(knownHashes);
+      return c.json({ ...page, topologies: page.topologies.filter(t => !omitted.has(t.sha256)),
+        omittedTopologies: page.topologies.filter(t => omitted.has(t.sha256)).map(t => t.sha256),
+        evaluations: evaluationInputs.collectorReferences(epoch, page.frames, now()), build: resolveEstimatorVersion() });
+    } catch (error) {
+      if (error instanceof WitnessReadError && error.code !== 'unavailable')
+        return c.json({ error: 'collector_witness_' + error.code }, error.code === 'cursor' ? 400 : 409);
+      return c.json({ error: 'collector_witness_unavailable' }, 503);
+    }
   });
   app.get('/api/evaluation/inputs', requireAdmin, c => {
     const epoch = c.req.query('epoch'), after = c.req.query('after'), limit = c.req.query('limit');

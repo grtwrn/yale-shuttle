@@ -62,13 +62,44 @@ const TEST_ADMIN_TOKEN = "test-admin-token";
 
 describe('evaluation source authentication and protocol', () => {
   it('requires the admin header and never caches source history', async () => {
-    for (const endpoint of ['/api/evaluation/seed', '/api/evaluation/inputs']) {
+    for (const endpoint of ['/api/evaluation/seed', '/api/evaluation/inputs', '/api/evaluation/collector-witnesses']) {
       for (const headers of [{}, { 'x-admin-token': 'wrong' }]) {
         const response = await app.request(endpoint, { headers });
         expect(response.status).toBe(401); expect(response.headers.get('cache-control')).toBe('no-store');
         expect(await response.json()).toEqual({ error: 'unauthorized' });
       }
     }
+  });
+  it('serves the actual collector empty-poll witness privately with its topology and an explicit expiry gap', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(1_700_000_000_000);
+    try {
+      await (collector as unknown as { runPoll(): Promise<void> }).runPoll();
+      const headers = { 'x-admin-token': TEST_ADMIN_TOKEN };
+      const response = await app.request('/api/evaluation/collector-witnesses', { headers });
+      expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('no-store');
+      const head = await response.json() as { epoch: string; latest: number };
+      expect(head.latest).toBe(1);
+      const page = await app.request('/api/evaluation/collector-witnesses?epoch=' + head.epoch + '&after=0', { headers });
+      const data = await page.json() as { frames: { status: string; json: string }[]; topologies: { sha256: string }[] };
+      expect(page.status).toBe(200); expect(data.frames[0]!.status).toBe('recorded');
+      expect(data.topologies).toHaveLength(1); expect(data.frames[0]!.json).toContain('live-collector');
+      // A model may be created after the witness was first read (lazy empty
+      // startup). The head advertises the new association without a new poll.
+      await app.request('/api/buses');
+      const linkedHead = await app.request('/api/evaluation/collector-witnesses', { headers });
+      expect(await linkedHead.json()).toMatchObject({ latest: 1, evaluationCursor: 1 });
+      const linkedPage = await app.request('/api/evaluation/collector-witnesses?epoch=' + head.epoch + '&after=0', { headers });
+      expect(await linkedPage.json()).toMatchObject({ evaluations: [{ collectorSeq: 1, evaluation: { cursor: 1 } }] });
+      const cached = await app.request('/api/evaluation/collector-witnesses?epoch=' + head.epoch + '&after=0&knownTopologies=' + data.topologies[0]!.sha256, { headers });
+      expect(await cached.json()).toMatchObject({ topologies: [], omittedTopologies: [data.topologies[0]!.sha256] });
+      const invalid = await app.request('/api/evaluation/collector-witnesses?epoch=' + head.epoch + '&after=0&knownTopologies=bad', { headers });
+      expect(invalid.status).toBe(400);
+      const wrong = await app.request('/api/evaluation/collector-witnesses?epoch=wrong&after=0', { headers });
+      expect(wrong.status).toBe(409); expect(await wrong.json()).toEqual({ error: 'collector_witness_epoch' });
+      vi.setSystemTime(1_700_000_000_000 + 3600001);
+      const expired = await app.request('/api/evaluation/collector-witnesses?epoch=' + head.epoch + '&after=0', { headers });
+      expect(expired.status).toBe(409); expect(await expired.json()).toEqual({ error: 'collector_witness_gap' });
+    } finally { vi.useRealTimers(); }
   });
   it('exports an empty-service seed without inventing a bus forecast', async () => {
     vi.useFakeTimers(); vi.setSystemTime(1_700_000_000_000);

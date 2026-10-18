@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { CollectorWitnessCapture, sourceWitnessRow, type SourceMutation } from './witnessCapture.js';
 import { createHash } from "node:crypto";
 import { calibrationReader } from "../db/calibrationSnapshot.js";
 import type { CalibrationReader, CalibrationSource } from "../calibrator/provenance.js";
@@ -439,12 +440,19 @@ export class Collector {
   private readonly db: DB;
   private readonly sqlite: Database.Database;
   private readonly calibrationRead: CalibrationReader;
+  private readonly witnessCapture: CollectorWitnessCapture;
   private readonly calibrationSources = new WeakMap<TransitNetwork, CalibrationSource>();
   /** Private producer context. A failed fresh-network calibration cannot
    * overwrite the source associated with the still-published network. */
   calibrationSource(): CalibrationSource | null {
     return structuredClone(this.calibrationSources.get(this.ref.get()) ?? null);
   }
+  collectorWitnessReference() { return this.witnessCapture.reference(); }
+  collectorWitnessHead() { return this.witnessCapture.journal.head(); }
+  collectorWitnessRead(epoch: string, after: number, limit = 16) {
+    return this.witnessCapture.journal.read(epoch, after, { limit });
+  }
+  collectorWitnessStats() { return this.witnessCapture.stats(); }
   private readonly upstream: UpstreamClient;
   private readonly logger: Logger;
   /**
@@ -582,6 +590,7 @@ export class Collector {
     this.db = bundle.db;
     this.sqlite = bundle.sqlite;
     this.calibrationRead = calibrationReader(this.sqlite);
+    this.witnessCapture = new CollectorWitnessCapture(this.sqlite);
     this.ref = ref;
     this.upstream = opts.upstream ?? new UpstreamClient();
     this.logger = opts.logger ?? consoleLogger;
@@ -659,7 +668,7 @@ export class Collector {
         WHERE bus_id = @anchorBusId AND stop_id = @stopId
           AND arrived_at <= @enteredAt
         ORDER BY arrived_at DESC LIMIT 1
-      )
+      ) RETURNING *
     `);
     // Both hit raw_positions_route_time_idx. The COUNT is the cheap gate that
     // keeps an idle route (the usual case) from ever reading a row; the fetch
@@ -852,6 +861,7 @@ export class Collector {
       // Persistence + detector can throw (SQLite locked/full, bad geometry). A
       // single bad tick must never reject the poll promise — that would surface
       // as an unhandledRejection and could take the whole process down.
+      let captureAt = 0, captureStarted = false;
       try {
         // Strictly monotonic: two polls CAN complete within one millisecond
         // (observed in tests on fast machines; possible in prod under a burst
@@ -859,8 +869,12 @@ export class Collector {
         // observations by collectedAt treats a timestamp tie as staleness.
         // Sub-millisecond skew is harmless; an unorderable pair is not.
         const now = Math.max(Date.now(), this.lastObservationStampMs + 1);
+        captureAt = now;
         this.lastObservationStampMs = now;
         const observations = this.sanitizeObservations(buses, now);
+        captureStarted = true;
+        this.witnessCapture.begin(now, observations, this.ref.get(), this.observationVersion(),
+          { states: this.states, visits: this.visitStates });
 
         // Prune on every tick, not only on ticks that carried observations.
         // Upstream returns `[]` overnight when nothing is running, and the
@@ -869,7 +883,10 @@ export class Collector {
         // left behind until the next morning.
         this.pruneStale(now);
 
-        if (observations.length === 0) return;
+        if (observations.length === 0) {
+          this.witnessCapture.complete(now, this.observationVersion(), { states: this.states, visits: this.visitStates });
+          return;
+        }
 
         this.persistRawPositions(observations);
         // One plan per poll, shared by both per-vehicle maps so their keys can
@@ -912,8 +929,12 @@ export class Collector {
           obs.collectedAt - K10_HISTORY_MS, obs.collectedAt, obs.busName, K10_HISTORY_LIMIT,
         ).reverse() as BusObservation[]);
         this.updateLivePositions(observations, plan);
+        this.witnessCapture.complete(now, this.observationVersion(), { states: this.states, visits: this.visitStates });
         this.notifyPollObserver();
       } catch (err) {
+        if (captureStarted) this.witnessCapture.complete(captureAt, this.observationVersion(),
+          { states: this.states, visits: this.visitStates }, String(err));
+        else if (captureAt) this.witnessCapture.missed(captureAt, err);
         this.logger.error("collector.poll_process_failed", {
           error: (err as Error).message,
         });
@@ -1923,18 +1944,27 @@ export class Collector {
       }
     }
 
-    if (arrivalRows.length > 0) this.db.insert(arrivals).values(arrivalRows).run();
-    if (segmentRows.length > 0) this.db.insert(segments).values(segmentRows).run();
+    if (arrivalRows.length > 0) this.witnessCapture.write(() => {
+      const rows = this.db.insert(arrivals).values(arrivalRows).returning().all();
+      return { value: undefined, mutations: rows.map(row => ({ table: 'arrivals', operation: 'insert',
+        before: null, after: sourceWitnessRow(row) } as SourceMutation)) };
+    });
+    if (segmentRows.length > 0) this.witnessCapture.write(() => {
+      const rows = this.db.insert(segments).values(segmentRows).returning().all();
+      return { value: undefined, mutations: rows.map(row => ({ table: 'segments', operation: 'insert',
+        before: null, after: sourceWitnessRow(row) } as SourceMutation)) };
+    });
 
     for (const e of events) {
       if (e.kind !== "dwell") continue;
       this.noteDeparture(e.busName, e.stopId, e.leftAt);
-      this.patchDwellStmt.run({
-        leftAt: e.leftAt,
-        dwellSec: e.dwellSec,
-        anchorBusId: e.anchorBusId,
-        stopId: e.stopId,
-        enteredAt: e.enteredAt,
+      this.witnessCapture.write(() => {
+        const before = this.sqlite.prepare('SELECT * FROM arrivals WHERE bus_id=? AND stop_id=? AND arrived_at<=? ORDER BY arrived_at DESC LIMIT 1')
+          .get(e.anchorBusId, e.stopId, e.enteredAt) as Record<string, unknown> | undefined;
+        const after = this.patchDwellStmt.get({ leftAt: e.leftAt, dwellSec: e.dwellSec,
+          anchorBusId: e.anchorBusId, stopId: e.stopId, enteredAt: e.enteredAt }) as Record<string, unknown> | undefined;
+        return { value: undefined, mutations: after ? [{ table: 'arrivals', operation: 'update',
+          before: before ?? null, after } as SourceMutation] : [] };
       });
     }
   }
@@ -1947,8 +1977,16 @@ export class Collector {
    */
   private persistVisits(events: readonly VisitEvent[]): void {
     const { visitRows, legRows } = visitRowsOf(events);
-    if (visitRows.length > 0) this.db.insert(stopVisits).values(visitRows).run();
-    if (legRows.length > 0) this.db.insert(legs).values(legRows).run();
+    if (visitRows.length > 0) this.witnessCapture.write(() => {
+      const rows = this.db.insert(stopVisits).values(visitRows).returning().all();
+      return { value: undefined, mutations: rows.map(row => ({ table: 'stop_visits', operation: 'insert',
+        before: null, after: sourceWitnessRow(row) } as SourceMutation)) };
+    });
+    if (legRows.length > 0) this.witnessCapture.write(() => {
+      const rows = this.db.insert(legs).values(legRows).returning().all();
+      return { value: undefined, mutations: rows.map(row => ({ table: 'legs', operation: 'insert',
+        before: null, after: sourceWitnessRow(row) } as SourceMutation)) };
+    });
   }
 
   private persistStatic(stops: readonly Stop[], routes: readonly Route[]): void {
