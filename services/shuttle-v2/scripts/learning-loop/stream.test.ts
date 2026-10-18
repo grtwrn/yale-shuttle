@@ -100,6 +100,25 @@ describe('exact source consumption and paired recovery', () => {
     expect(result.champion).toEqual([]); expect(result.productionControl!.modelAt).toBe(f.clock());
     expect(isDeepStrictEqual(decodedRuntime(f.stream.runtime()), decodedRuntime(before))).toBe(true);
   });
+  it('keeps watching an expired modeled fleet while a fresh unmodeled bus remains', () => {
+    const f = setup(); f.publish(5); const packet = f.source.read(f.stream.epoch, f.stream.cursor); f.stream.advance(packet);
+    const expired = structuredClone(packet.feed), at = f.clock() + 45000;
+    expired.buses.push({ ...expired.buses[0], bus_name: '#unmodeled', bus_id: -1, observed_at: at });
+    delete expired.server_eta;
+    const before = decodedRuntime(f.stream.runtime());
+    expect(f.stream.sample(expired, at + 35, at)).toMatchObject({champion: [], challenger: [],
+      productionControl: {modelAt: f.clock(), compared: 0, matched: 0, missing: 0, mismatched: 0}});
+    expect(decodedRuntime(f.stream.runtime())).toEqual(before);
+    f.publish(6); const resumed = f.source.read(f.stream.epoch, f.stream.cursor); f.stream.advance(resumed);
+    expect(f.stream.sample(resumed.feed, f.clock()).productionControl!.compared).toBeGreaterThan(0);
+  });
+  it('still refuses a missing served control when the caught-up engine has visible forecasts', () => {
+    const f = setup(); f.publish(5); const packet = f.source.read(f.stream.epoch, f.stream.cursor); f.stream.advance(packet);
+    const missing = structuredClone(packet.feed); delete missing.server_eta;
+    const before = decodedRuntime(f.stream.runtime());
+    expect(() => f.stream.sample(missing, f.clock())).toThrow('Current served control differs');
+    expect(decodedRuntime(f.stream.runtime())).toEqual(before);
+  });
   it('forks idle past state after a model publication without relabeling past computations',()=>{
     const f=setup(),seed=structuredClone(f.seed),champion=structuredClone(f.champion);champion.version='published-while-idle';
     seed.idle=true;seed.feed.buses=[];delete seed.feed.server_eta;seed.feed.model_params=champion;seed.modelParams=champion;
