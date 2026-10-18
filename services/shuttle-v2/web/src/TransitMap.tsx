@@ -2144,25 +2144,9 @@ const TripPlanner: FC<{
         const totalSec = walkSecFromMeters(haversineMeters(from, toLL));
         return { ...o, livePickupSelection: undefined, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
       }
-      if (!etaFresh || (!liveEtaAvailable(buses, Date.now(), o.routeLabel)
-        && !liveRouteTracked(buses, o.routeLabel))) return unavailablePickup(o);
-      // Re-derive wait from current arrivals. Simpler than it used to
-      // be — a large pinned.eta *by itself* doesn't mean "just
-      // passed" (it could just mean the bus is on the far side of
-      // the loop coming toward you). We only flag departed when NO
-      // bus on the route is catchable.
       const nowMs = Date.now();
-      const visits = computeUpcomingArrivals(
-        [o.boardStopId, o.alightStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
-      ).filter((a) => a.routeLabel === o.routeLabel);
-      const live = rideBoardArrivals(visits, o.boardStopId, o.alightStopId);
-      // THE countdown — the number every accuracy and stability finding is
-      // about, and until now the one nothing recorded. Sampled and dedup'd
-      // inside noteShown; this call allocates nothing on an unsampled load.
-      noteShown(live, "trip", nowMs);
-      // Raw at_stop_id can describe the wrong visit on a folded route.
-      // Reject its board-now override only when the modeled visit order
-      // positively shows another pickup before the destination.
+      // Walking progress belongs to the rider GPS, independently of shuttle
+      // forecasts. Keep it live even when the selected pickup has no ETA.
       // If the user's GPS puts them within AT_PLACE_M of the board stop, treat
       // them as already there (walkToSec = 0). Stale GPS commonly reports a
       // position 30-100 m off, which makes an arriving bus look uncatchable when
@@ -2186,8 +2170,24 @@ const TripPlanner: FC<{
       // progress toward the stop shrinks the wait/catchable window.
       const effectiveWalkToSec = distToBoard < AT_PLACE_M
         ? 0
-        : (usingLive ? walkSecFromMeters(distToBoard) : o.walkToSec);
+        : (usingLive && Number.isFinite(distToBoard) ? walkSecFromMeters(distToBoard) : o.walkToSec);
 
+      const unavailable = () => unavailablePickup({ ...o, walkToSec: effectiveWalkToSec });
+      if (!etaFresh || (!liveEtaAvailable(buses, nowMs, o.routeLabel)
+        && !liveRouteTracked(buses, o.routeLabel, nowMs))) return unavailable();
+      // Re-derive wait from current arrivals. Simpler than it used to
+      // be — a large pinned.eta *by itself* doesn't mean "just
+      // passed" (it could just mean the bus is on the far side of
+      // the loop coming toward you). We only flag departed when NO
+      // bus on the route is catchable.
+      const visits = computeUpcomingArrivals(
+        [o.boardStopId, o.alightStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
+      ).filter((a) => a.routeLabel === o.routeLabel);
+      const live = rideBoardArrivals(visits, o.boardStopId, o.alightStopId);
+      // THE countdown — the number every accuracy and stability finding is
+      // about, and until now the one nothing recorded. Sampled and dedup'd
+      // inside noteShown; this call allocates nothing on an unsampled load.
+      noteShown(live, "trip", nowMs);
       // Prefer the planned dwelling bus only when the estimator agrees this
       // is its current boarding visit, not another pass by the same curb.
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
@@ -2216,14 +2216,14 @@ const TripPlanner: FC<{
       }
 
       if (live.length === 0) {
-        return unavailablePickup(o);
+        return unavailable();
       }
       // Which arrival to follow — pinned-bus loyalty, its catchability
       // bounds, the report-#49 dominance switch, and the departed verdict
       // all live in pickLiveArrival (planner.ts), where they are unit
       // tested. `live` is non-empty here, so the pick exists.
       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
-      if (!picked) return unavailablePickup(o);
+      if (!picked) return unavailable();
       const { match, boardable, departed, missedBus } = picked;
       // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
       // the one the rider can see coming, which must not vanish while it is
