@@ -20,6 +20,17 @@ function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {
 afterEach(() => vi.restoreAllMocks());
 
 describe('route option arrival times', () => {
+  it('keeps an untimed closest pickup and a distinct farther action without an earlier-arrival claim', () => {
+    const html=renderToStaticMarkup(<MiniMapKey rows={[
+      {option:{...option,boardStopId:100,etaUnavailable:true,pickupPreference:'closest-stop'},pickupName:'Prospect/Canner',status:'Unavailable'},
+      {option:{...option,boardStopId:129,pickupPreference:'more-walking'},pickupName:'Whitney/Canner',status:'Live'},
+    ]} destination="Union Station" onSelectOption={()=>{}} />);
+    expect(html).toContain('Closest stop');expect(html).toContain('More walking');expect(html).not.toContain('Arrive sooner');
+    expect(html).toContain('View Red trip details from Whitney/Canner');expect(html).toContain('View Red trip details"');
+    const closest=html.split('data-pickup="100"')[1]!.split('</tbody>')[0]!;
+    expect(closest).toContain('Unavailable');expect(closest).toContain('Destination arrival unavailable');
+    expect(closest).not.toContain('pickup-range');expect(closest).not.toContain('route-next-arrival');
+  });
   // Expected foregrounds checked against the canonical palette's sRGB contrast.
   // Keep this at the rendered component boundary: a helper test would miss a
   // pill that still hard-codes white after the calculation changes.
