@@ -1,6 +1,8 @@
-import { distanceMeters } from "../network/geo.js";
+import { distanceMeters, makeProjector } from "../network/geo.js";
+import { legSlicesInOrder } from "../network/alignStops.js";
 import type { RouteAnchor, TransitNetwork } from "../network/TransitNetwork.js";
 import type { EpochMs, Stop } from "../schema/api.js";
+import { witnessJSON, witnessSHA } from "./witnessCodec.js";
 
 // Inputs ----------------------------------------------------------------------
 
@@ -41,6 +43,9 @@ export interface BusState extends TrackedIdentity {
    * Carrying the index makes hop counts exact instead of inferred.
    */
   nearestIndex: number;
+  /** Geometry used to hold an otherwise noncompetitive model anchor. This
+   * preserves that choice at repeated fixes; it is not service evidence. */
+  detourGeometrySHA256?: string;
   /** When the bus first became nearest to `nearestStopId`. */
   enteredAt: EpochMs;
   /** Most recent observed position (for staleness checks). */
@@ -729,14 +734,89 @@ function impossibleDetourSkip(network: TransitNetwork, prev: BusState, obs: BusO
   const route = network.routes.get(obs.routeId);
   if (!route?.stops.length) return false;
   const n = route.stops.length;
-  if ((next.index - prev.nearestIndex + n) % n !== 2) return false;
+  if (route.stops[next.index] !== next.stopId) return false;
+  const hops = (next.index - prev.nearestIndex + n) % n;
+  if (hops < 2) return false;
   const from = network.stops.get(prev.nearestStopId);
   const to = network.stops.get(next.stopId);
-  const via = network.stops.get(route.stops[(prev.nearestIndex + 1) % n]!);
-  if (!from || !to || !via || distanceMeters(prev, obs) > MAX_HANDOFF_JUMP_M) return false;
-  const minimumJourney = distanceMeters(prev, via) + distanceMeters(via, obs) - 2 * AT_STOP_PIN_M;
+  if (!from || !to || distanceMeters(prev, obs) > MAX_HANDOFF_JUMP_M) return false;
+  let point: { lat: number; lon: number } = prev, minimumJourney = 0;
+  for (let offset = 1; offset < hops; offset++) {
+    const via = network.stops.get(route.stops[(prev.nearestIndex + offset) % n]!);
+    if (!via) return false;
+    minimumJourney += distanceMeters(point, via) - 2 * AT_STOP_PIN_M;
+    point = via;
+  }
+  minimumJourney += distanceMeters(point, obs);
   const elapsedSec = (obs.collectedAt - prev.lastObservedAt) / 1000;
   return minimumJourney > Math.max(MAX_HANDOFF_JUMP_M, elapsedSec * MAX_HANDOFF_SPEED_MPS);
+}
+
+interface DetourGeometry {
+  sha256: string;
+  legs: readonly (readonly (readonly [number, number])[])[];
+  supported: ReadonlySet<number>;
+}
+const detourGeometryCache = new WeakMap<TransitNetwork, Map<number, { json: string; value: DetourGeometry | null }>>();
+function detourGeometry(network: TransitNetwork, routeId: number): DetourGeometry | null {
+  try {
+    const route = network.routes.get(routeId);
+    if (!route?.path || route.stops.length < 2) return null;
+    const stops = route.stops.map(id => network.stops.get(id));
+    if (stops.some(s => !s || !Number.isFinite(s.lat) || !Number.isFinite(s.lon))) return null;
+    const points = stops.map(s => ({ lat: s!.lat, lon: s!.lon }));
+    // Recheck values as well as membership: in-place geometry edits must
+    // invalidate the model choice. The cache changes cost, not behavior.
+    const json = witnessJSON([route.stops, route.path, points]);
+    let cache = detourGeometryCache.get(network);
+    if (!cache) { cache = new Map(); detourGeometryCache.set(network, cache); }
+    const prior = cache.get(routeId); if (prior?.json === json) return prior.value;
+    const legs = legSlicesInOrder(route.path, points), supported = new Set<number>();
+    if (legs) for (let i = 0; i < legs.length; i++) {
+      const p = legs[i]?.[0];
+      if (p && distanceMeters(points[i]!, { lat: p[0], lon: p[1] }) <= AT_STOP_PIN_M) supported.add(i);
+    }
+    const value = legs?.length === route.stops.length ? { sha256: witnessSHA(json), legs, supported } : null;
+    cache.set(routeId, { json, value }); return value;
+  } catch { return null; }
+}
+
+/** A moving fix is compatible with any nearby forward segment. Include
+ * both served sides of a target; ambiguity must not suppress a re-anchor. */
+function motionFitsLeg(path: readonly (readonly [number, number])[], before: BusState, obs: BusObservation): boolean {
+  const project = makeProjector(before), [ox, oy] = project(obs);
+  for (let i = 1; i < path.length; i++) {
+    const [ax, ay] = project({ lat: path[i - 1]![0], lon: path[i - 1]![1] });
+    const [bx, by] = project({ lat: path[i]![0], lon: path[i]![1] });
+    const dx = bx - ax, dy = by - ay, length2 = dx * dx + dy * dy;
+    if (!length2) continue;
+    const clamp = (t: number) => Math.max(0, Math.min(1, t));
+    const p = clamp(-(ax * dx + ay * dy) / length2);
+    const q = clamp(((ox - ax) * dx + (oy - ay) * dy) / length2);
+    if (Math.hypot(ax + p * dx, ay + p * dy) <= AT_STOP_PIN_M
+      && Math.hypot(ax + q * dx - ox, ay + q * dy - oy) <= AT_STOP_PIN_M
+      && (ox * dx + oy * dy) / Math.sqrt(length2) > MOVED_M) return true;
+  }
+  return false;
+}
+
+function followsCurrentApproach(geometry: DetourGeometry, before: BusState, obs: BusObservation, target: RouteAnchor): boolean {
+  const n = geometry.legs.length, hops = (target.index - before.nearestIndex + n) % n;
+  if (hops < 2) return false;
+  for (let i = 0; i <= hops; i++) if (!geometry.supported.has((before.nearestIndex + i) % n)) return false;
+  const incoming = (i: number) => geometry.legs[(i - 1 + n) % n]!;
+  const outgoing = (i: number) => geometry.legs[i]!;
+  const hasDirection = (path: readonly (readonly [number, number])[]) => path.some((p, i) => i > 0
+    && (p[0] !== path[i - 1]![0] || p[1] !== path[i - 1]![1]));
+  if (!hasDirection(incoming(target.index)) || !hasDirection(outgoing(target.index))) return false;
+  return (motionFitsLeg(incoming(before.nearestIndex), before, obs) || motionFitsLeg(outgoing(before.nearestIndex), before, obs))
+    && !motionFitsLeg(incoming(target.index), before, obs) && !motionFitsLeg(outgoing(target.index), before, obs);
+}
+
+function withDetourGeometry(state: BusState, sha256: string | undefined): BusState {
+  if (sha256) state.detourGeometrySHA256 = sha256;
+  else delete state.detourGeometrySHA256;
+  return state;
 }
 
 /**
@@ -817,6 +897,7 @@ export function step(
   // stale position along behind it.
   let nearest = global;
   let continuous = false;
+  let heldGeometrySHA256: string | undefined;
   if (prev && prev.routeId === obs.routeId
     && network.routes.get(obs.routeId)?.stops[prev.nearestIndex] === prev.nearestStopId) {
     let ahead = network.nearestStopAheadOnRoute(
@@ -832,13 +913,32 @@ export function step(
     // fix did not move. A repeated coordinate cannot establish another
     // anchor transition. Keep the current occurrence while it is valid;
     // the existing global/slack check still permits re-anchoring.
-    if (ahead && !discontinuous && gap <= MAX_OBSERVATION_GAP_MS
-      && prev.lat === obs.lat && prev.lon === obs.lon) {
+    const unchanged = !discontinuous && gap <= MAX_OBSERVATION_GAP_MS && prev.lat === obs.lat && prev.lon === obs.lon;
+    if (ahead && unchanged) {
       ahead = network.nearestStopAheadOnRoute(obs.routeId, obs, prev.nearestIndex, 0);
     }
-    if (ahead && ahead.meters <= global.meters + ANCHOR_SLACK_M) {
+    const competitive = ahead && ahead.meters <= global.meters + ANCHOR_SLACK_M;
+    let geometry: DetourGeometry | null = null;
+    const retained = !competitive && unchanged && gap <= MAX_HANDOFF_GAP_MS && prev.detourGeometrySHA256
+      && (geometry = detourGeometry(network, obs.routeId))?.sha256 === prev.detourGeometrySHA256;
+    // A nearby global marker may belong to a later pass of this street.
+    // Retain local progress only while the fixes support this approach and
+    // contradict both served sides of the otherwise unreachable target.
+    const constrained = !competitive && !retained && !discontinuous && gap <= MAX_HANDOFF_GAP_MS
+      && impossibleDetourSkip(network, prev, obs, global)
+      && (geometry ??= detourGeometry(network, obs.routeId)) != null
+      && followsCurrentApproach(geometry, prev, obs, global);
+    if (ahead && (competitive || retained || constrained)) {
+      // The global constraint supports the current journey, not every marker
+      // in the rolling window. On a long incoming leg, a different far-away
+      // marker can become closer before we have even reached the current one.
+      if (!competitive && ahead.index !== prev.nearestIndex && geometry
+        && !motionFitsLeg(geometry.legs[(ahead.index - 1 + geometry.legs.length) % geometry.legs.length]!, prev, obs)) {
+        ahead = network.nearestStopAheadOnRoute(obs.routeId, obs, prev.nearestIndex, 0)!;
+      }
       nearest = ahead;
       continuous = true;
+      if (!competitive) heldGeometrySHA256 = geometry!.sha256;
     }
   }
 
@@ -940,7 +1040,7 @@ export function step(
   // the 6.6 h replay that mislabelled 457 observations as handoffs.)
   if (nearest.index === prev.nearestIndex) {
     return {
-      state: {
+      state: withDetourGeometry({
         ...prev,
         busId: obs.busId,
         busName: obs.busName,
@@ -949,7 +1049,7 @@ export function step(
         lat: obs.lat,
         lon: obs.lon,
         ...stationaryFields(prev, obs, anchorStop),
-      },
+      }, heldGeometrySHA256),
       events: [],
       resumed: null,
     };
@@ -1022,6 +1122,7 @@ export function step(
       routeId: obs.routeId,
       nearestStopId: nearest.stopId,
       nearestIndex: nearest.index,
+      ...(heldGeometrySHA256 ? { detourGeometrySHA256: heldGeometrySHA256 } : {}),
       // The nearest-stop anchor restarts here — that is what it is for, and
       // the dwell/segment events above depend on it.
       enteredAt: obs.collectedAt,
