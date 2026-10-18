@@ -1034,7 +1034,16 @@ export function topVisibleOptions(
   shownThird?: string | null,
 ): TripOption[] {
   const directWalkSec = sorted.find(o => o.mode === 'walk')?.totalSec;
-  const eligible = sorted.filter(o => worthwhileOverviewOption(o, directWalkSec ?? o.directWalkSec));
+  // #78: a long loop to a destination at most two minutes away on foot
+  // belongs in Show more, even when live GPS zeroes the pickup walk.
+  // Count planned moving time, not waiting or a changing live ride estimate.
+  // A useful explicit pickup alternative still earns the route its place.
+  const nearbyLoop = (o: TripOption) => o.mode === 'shuttle'
+    && directWalkSec !== undefined && directWalkSec <= 120
+    && [o, ...(o.pickupAlternatives ?? [])]
+      .every(choice => commuteSec(choice) >= directWalkSec + 600);
+  const eligible = sorted.filter(o => worthwhileOverviewOption(o, directWalkSec ?? o.directWalkSec)
+    && !nearbyLoop(o));
   // Without a direct-walk alternative (e.g. a walk over an hour), retain
   // the best available option rather than rendering an empty overview.
   if (eligible.length === 0) return sorted.slice(0, 1);

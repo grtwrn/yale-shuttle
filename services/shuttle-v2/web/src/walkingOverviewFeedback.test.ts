@@ -63,3 +63,66 @@ it('keeps Brown under Show more when its planned ride clears the third-slot slac
   expect(all).toContain(brown);
   expect(brown.busName).toBe('310');
 });
+
+const nearbyWalk = (seconds = 68) => ({
+  mode: 'walk', routeLabel: 'Walk', totalSec: seconds, directWalkSec: seconds,
+  walkToSec: 0, walkFromSec: 0, rideSec: 0,
+} as import('./planner').TripOption);
+const nearbyLoop = (patch: Partial<import('./planner').TripOption> = {}) => ({
+  mode: 'shuttle', routeLabel: 'Red', color: '#C62828',
+  boardStopId: 3, alightStopId: 4, busName: '126',
+  walkToSec: 0, walkFromSec: 48, waitSec: 699,
+  rideSec: 1163, plannedRideSec: 1163, totalSec: 1910, directWalkSec: 68,
+  ...patch,
+} as import('./planner').TripOption);
+
+it('keeps a nearby long loop under Show more even after live pickup walking becomes zero (#78)', () => {
+  const walk = nearbyWalk(), loop = nearbyLoop(), options = [walk, loop];
+  // The live at-stop adjustment makes this pass the useful-pickup exception.
+  expect(worthwhileOverviewOption(loop)).toBe(true);
+  const before = JSON.stringify(options);
+  expect(topVisibleOptions(options)).toEqual([walk]);
+  expect(options).toContain(loop); // The full list still offers the ride.
+  expect(JSON.stringify(options)).toBe(before);
+});
+
+it('does not restore a nearby loop when its wait or live ride estimate changes (#78)', () => {
+  const walk = nearbyWalk();
+  for (const waitSec of [0, 300, 3600]) for (const rideSec of [0, 60, 1163]) {
+    const loop = nearbyLoop({waitSec, rideSec, totalSec: waitSec + rideSec + 48});
+    expect(topVisibleOptions([walk, loop], 'Red')).toEqual([walk]);
+  }
+});
+
+it('keeps a nearby long loop collapsed even when it removes all walking (#78)', () => {
+  const walk = nearbyWalk(), loop = nearbyLoop({walkFromSec: 0});
+  expect(worthwhileOverviewOption(loop)).toBe(true);
+  expect(topVisibleOptions([walk, loop])).toEqual([walk]);
+});
+
+it('keeps a genuinely short nearby ride visible despite a long wait (#78)', () => {
+  const walk = nearbyWalk(90), ride = nearbyLoop({plannedRideSec: 30, rideSec: 1200,
+    walkFromSec: 0, waitSec: 3600, directWalkSec: 90, totalSec: 4800});
+  expect(topVisibleOptions([walk, ride])).toEqual([walk, ride]);
+});
+
+it('keeps a route with an explicit short-ride pickup alternative (#78)', () => {
+  const walk = nearbyWalk(), alternative = nearbyLoop({boardStopId: 5, plannedRideSec: 20,
+    rideSec: 20, walkToSec: 10, walkFromSec: 0, totalSec: 729});
+  const loop = nearbyLoop({pickupAlternatives: [alternative]});
+  expect(topVisibleOptions([walk, loop])).toEqual([walk, loop]);
+});
+
+it('keeps useful closest-stop choices on ordinary trips and without a walk alternative (#78)', () => {
+  const walk = nearbyWalk(3 * 60), loop = nearbyLoop({directWalkSec: 3 * 60});
+  expect(topVisibleOptions([walk, loop])).toEqual([walk, loop]);
+  expect(topVisibleOptions([nearbyLoop()])).toHaveLength(1);
+});
+
+it('keeps the nearby-loop rule scoped to a short walk and a substantial extra commute (#78)', () => {
+  const walk = nearbyWalk(120), ordinary = nearbyLoop({plannedRideSec: 600,
+    walkFromSec: 0, directWalkSec: 120});
+  expect(topVisibleOptions([walk, ordinary])).toEqual([walk, ordinary]);
+  const long = nearbyLoop({plannedRideSec: 19 * 60, directWalkSec: 120});
+  expect(topVisibleOptions([walk, long])).toEqual([walk]);
+});
