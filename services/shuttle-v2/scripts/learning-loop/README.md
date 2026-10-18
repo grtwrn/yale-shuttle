@@ -80,6 +80,10 @@ snapshots retain their original declared-file scope; missing helper bytes are
 never retroactively attested. This inventory does not attest remote services,
 dynamic filesystem reads or installed dependency bytes.
 
+Source identity is also checked before a source-recovery or refused-source
+wait, which bypasses normal maintenance. A change exits for supervised reload;
+the original refusal, failed predictions and frozen candidate remain intact.
+
 Sampling waits for each arm's first actual post-seed computation rather than
 an arbitrary cold-start delay. Calibration uses the next two full ET dates to fit
 candidate interval factors. A horizon needs 200 sampled visit forecasts and a
