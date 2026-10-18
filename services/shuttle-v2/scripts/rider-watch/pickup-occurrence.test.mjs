@@ -48,3 +48,22 @@ test('forward occurrence counts wrap across the route seam and do not depend on 
  const remap=id=>id+1000;c.bus.at_stop_id=remap(c.bus.at_stop_id);c.feed.routes[4]=c.feed.routes[4].map(remap);track(c.feed)[3].stopId=remap(track(c.feed)[3].stopId);c.feed.stop_coords=Object.fromEntries(Object.entries(c.feed.stop_coords).map(([id,v])=>[remap(Number(id)),v]));c.feed.stop_names={};
  assert.equal(otherPickupOccurrence(c.bus,1053,c.text,c.feed,c.at)?.standingStop,1021);
 });
+
+const purple=JSON.parse(await fs.readFile(new URL('./__fixtures__/purple-329-pickup-visit-20261018.json',import.meta.url),'utf8'));
+test('a named later pickup conflicts with boarding the same pole on an earlier pass',()=>{
+ const sample=purple.samples.at(-1),feed={...purple.feedMetadata,server_eta:sample.server_eta};
+ const conflict=otherPickupOccurrence(sample.bus,127,sample.text,feed,Date.parse(sample.at));
+ assert(conflict);assert.equal(conflict.pickupStop,127);assert.equal(conflict.standingStop,127);assert.equal(conflict.stopsAway,6);
+ assert.equal(conflict.reason,'pickup-still-ahead');
+ // Recorded model index: requiring a different index or stop reintroduces it.
+ assert.equal(conflict.modelIndex,4);
+ for(const [label,change]of [
+  ['stale source',c=>c.now+=30000],
+  ['different named bus',c=>c.text=c.text.replace('#329 ·','#330 ·')],
+  ['ambiguous named card',c=>c.text+='\n🚌 #329 · 6 stops away'],
+  ['missing served stand',c=>c.feed.server_eta.buses.find(b=>b[0]==='329')[3]=null],
+  ['model approach',c=>c.feed.server_eta.buses.find(b=>b[0]==='329')[3].approach=true],
+  ['raw bus moving',c=>c.bus.stationary=false],
+ ]){const c={bus:structuredClone(sample.bus),text:sample.text,feed:structuredClone(feed),now:Date.parse(sample.at)};change(c);assert.equal(otherPickupOccurrence(c.bus,127,c.text,c.feed,c.now),null,label);}
+ assert.equal(otherPickupOccurrence(sample.bus,127,'BOARD🚌West Haven Train Station',feed,Date.parse(sample.at)),null);
+});

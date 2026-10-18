@@ -89,8 +89,14 @@ another stop, and the served model confirms that same stand and route index.
 The card count must equal the unambiguous forward route count to pickup;
 counts include wrapping around the loop. Ambiguous repeated stops, missing or
 stale evidence, model approaches and contradictory counts cannot establish
-this veto. Ordinary one-stop approaches and at-pickup boarding keep their
-existing rules. One `waiting-bus-other-occurrence` event records the reason
+this veto. A second conflict can occur at the pickup pole itself: the named
+card still says at least two stops away while fresh raw GPS and the served
+model both confirm a stand at that pole. The runner waits for the selected
+visit instead of using proximity to board this earlier encounter. This also
+vetoes a contradictory BOARD-bus decoration. It does not establish a physical
+boarding opportunity or which forecast is correct. Ordinary one-stop
+approaches and at-pickup cards without a conflicting named stops-away line
+keep their existing rules. One `waiting-bus-other-occurrence` event records the reason
 per journey; waiting does not exclude a later legitimate pickup. The manual
 boarding-button fallback rechecks against its latest feed and screen too.
 
@@ -100,6 +106,17 @@ Its original completed run remains retained, with a separate audit recording
 that its pickup was invalid. The regression preserves the original screen, bus and model-anchor
 receipts with separately captured same-day stop metadata; its later legitimate
 pickup is a modelled control, not a historical screen or physical boarding claim.
+
+October 18 Purple #329 run 1792289505586 boarded West Haven Train Station
+while the screen still described a pickup six stops away. Its original
+producer input contains separate earlier/later station forecasts, and GPS
+subsequently shows a downtown loop before another station encounter. The
+completed run is retained as a diagnostic journey; its first encounter must
+not be scored against the later displayed pickup quote. The regression joins
+original rider DOM/raw/model-anchor snapshots to exact retained producer
+frames for route metadata, with source hashes. Its later current-pickup control
+and contradictory BOARD-decoration variant are explicitly modeled. They are
+not recovered outbound waiting screens or independent service truth.
 
 `status.json` distinguishes the loop heartbeat from feed receipt:
 `feedReceivedAt`, `feedAgeMs`, `feedStale` and `cachedBuses` describe the last

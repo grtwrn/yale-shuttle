@@ -231,7 +231,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      if(opposite){run.oppositeCurbSamples=(run.oppositeCurbSamples??0)+1;if(!run.oppositeCurbReported){run.oppositeCurbReported=true;await event('waiting-bus-opposite-curb',{bus:name,stop:boardLabel,distanceM:distance,atStopId:bus.at_stop_id});}}
      const other=distance<=BOARD_M&&otherPickupOccurrence(bus,run.boardStopId,text,feed,now);
      if(other){run.otherOccurrenceSamples=(run.otherOccurrenceSamples??0)+1;if(!run.otherOccurrenceReported){run.otherOccurrenceReported=true;await event('waiting-bus-other-occurrence',{...other,distanceM:distance});}}
-     if(((distance<=BOARD_M&&!past&&!opposite&&!other)||atStop)&&now>=run.walkUntil){
+     if(((distance<=BOARD_M&&!past&&!opposite)||atStop)&&!other&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
       // A ride the app started on another bus replaces the trip card, so
       // waiting on only reaches the 45 min cap (wrongbusboard20261002: it
