@@ -84,8 +84,12 @@ describe("step", () => {
   });
 
   it("skips dwell events shorter than MIN_DWELL_SEC", () => {
-    const first = step(net, null, obsAt(stops[0]!, T0)).state;
-    const result = step(net, first, obsAt(stops[1]!, T0 + (MIN_DWELL_SEC - 1) * 1000));
+    // A short dwell can be followed by a nearby marker; 840m within the
+    // dwell floor would also exercise a GPS discontinuity.
+    const nearby = stops.map(s => ({ ...s, lon: stops[0]!.lon + (s.lon - stops[0]!.lon) / 10 }));
+    const nearbyNet = TransitNetwork.build(nearby, routes);
+    const first = step(nearbyNet, null, obsAt(nearby[0]!, T0)).state;
+    const result = step(nearbyNet, first, obsAt(nearby[1]!, T0 + (MIN_DWELL_SEC - 1) * 1000));
     expect(result.events.some((e) => e.kind === "dwell")).toBe(false);
     // Arrival + segment should still fire — a quick pass-through is real
     // information about travel time, just not about dwell.
@@ -192,8 +196,8 @@ describe("step", () => {
     const events = stepMany(net, states, [
       obsAt(stops[0]!, T0, 1),
       obsAt(stops[0]!, T0, 2),
-      obsAt(stops[1]!, T0 + 60_000, 1),
-      obsAt(stops[2]!, T0 + 60_000, 2),
+      obsAt(stops[1]!, T0 + 120_000, 1),
+      obsAt(stops[2]!, T0 + 120_000, 2),
     ]);
     // Bus 1 transitioned 1→2; bus 2 transitioned 1→3 (2 hops). Both should
     // emit arrival + dwell + segment.
@@ -243,8 +247,10 @@ describe("step: segment plausibility", () => {
   });
 
   it("keeps a segment at the plausibility floor", () => {
-    const first = step(net, null, obsAt(stops[0]!, T0)).state!;
-    const ok = step(net, first, obsAt(stops[1]!, T0 + MIN_SEGMENT_SEC * 1000));
+    const nearby = stops.map(s => ({ ...s, lon: stops[0]!.lon + (s.lon - stops[0]!.lon) / 10 }));
+    const nearbyNet = TransitNetwork.build(nearby, routes);
+    const first = step(nearbyNet, null, obsAt(nearby[0]!, T0)).state!;
+    const ok = step(nearbyNet, first, obsAt(nearby[1]!, T0 + MIN_SEGMENT_SEC * 1000));
     expect(ok.events.some((e) => e.kind === "segment")).toBe(true);
   });
 
@@ -397,7 +403,7 @@ describe("step: out-and-back route (West Campus)", () => {
     const events = stepMany(
       wcNet,
       states,
-      drive.map((id, i) => atStop(id, T0 + i * 60_000)),
+      drive.map((id, i) => atStop(id, T0 + i * 120_000)),
     );
     const legs = events
       .filter((e) => e.kind === "segment")
@@ -579,8 +585,8 @@ describe("two live ids sharing one bus name", () => {
     drive.forEach(([a, b], i) => {
       events.push(
         ...stepMany(net, states, [
-          seen(a, T0 + i * 60_000, 65531),
-          seen(b, T0 + i * 60_000, 65533),
+          seen(a, T0 + i * 120_000, 65531),
+          seen(b, T0 + i * 120_000, 65533),
         ]),
       );
     });

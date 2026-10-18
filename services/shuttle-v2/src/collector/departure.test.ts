@@ -309,7 +309,7 @@ describe("legs", () => {
   it("indexes stops by sequence position on an out-and-back route", () => {
     // Route 3: A(0) B(1) C(2) B(3). Rest at each in turn.
     const r = run(track([
-      0, ...rep(0, 4), 100, 300, 500, 700, 840, ...rep(840, 4), 950, 1200, 1400, 1600, 1680, ...rep(1680, 4), 1550, 1300, 1050, 900, 840, ...rep(840, 4), 700,
+      0, ...rep(0, 4), 100, 300, 500, 700, 840, ...rep(840, 4), 950, 1170, 1390, 1600, 1680, ...rep(1680, 4), 1550, 1330, 1110, 900, 840, ...rep(840, 4), 700,
     ], { routeId: 3 }));
     const visitsAtB = r.out.filter((v) => v.stopId === 2);
     expect(visitsAtB.map((v) => v.stopIndex)).toEqual([1, 3]);

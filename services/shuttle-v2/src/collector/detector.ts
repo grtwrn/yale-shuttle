@@ -606,6 +606,17 @@ export const MAX_HANDOFF_GAP_MS = 60_000;
 export const MAX_HANDOFF_JUMP_M = 250;
 export const MAX_HANDOFF_SPEED_MPS = 25;
 
+/** A provider id does not establish continuity across a missing GPS interval.
+ * Apply the existing spatial bounds to every track; only an id reissue has
+ * the shorter time-only handoff limit. Keep this shared with visit tracking
+ * so a model reset cannot leave a leg spanning the same unobserved motion. */
+export function observationDiscontinuous(before: BusState, obs: BusObservation): boolean {
+  const gap = obs.collectedAt - before.lastObservedAt;
+  const jumpM = distanceMeters(before, obs);
+  return (before.busId !== obs.busId && gap > MAX_HANDOFF_GAP_MS)
+    || (jumpM > MAX_HANDOFF_JUMP_M && jumpM > (gap / 1000) * MAX_HANDOFF_SPEED_MPS);
+}
+
 /**
  * Track key for a bus: the stable `bus_name`, except while more than one live
  * `bus_id` is claiming that name in the same poll.
@@ -877,13 +888,7 @@ export function step(
   // continuous with the old one in both time and space; otherwise fall through
   // to the re-anchor below, which keeps the identity and the live-map slot but
   // restarts the stopwatch instead of billing the gap as travel time.
-  let discontinuous = false;
-  if (prev && prev.busId !== obs.busId) {
-    const jumpM = distanceMeters(prev, obs);
-    discontinuous =
-      gap > MAX_HANDOFF_GAP_MS ||
-      (jumpM > MAX_HANDOFF_JUMP_M && jumpM > (gap / 1000) * MAX_HANDOFF_SPEED_MPS);
-  }
+  const discontinuous = prev != null && observationDiscontinuous(prev, obs);
 
   // Anchor selection. While we are tracking a bus, prefer the closest stop
   // among the few it could plausibly reach next, rather than the closest stop

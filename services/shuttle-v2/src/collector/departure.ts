@@ -4,13 +4,11 @@ import type { EpochMs } from "../schema/api.js";
 
 import {
   AT_STOP_PIN_M,
-  MAX_HANDOFF_GAP_MS,
-  MAX_HANDOFF_JUMP_M,
-  MAX_HANDOFF_SPEED_MPS,
   MAX_OBSERVATION_GAP_MS,
   MAX_SEGMENT_HOPS,
   MAX_SEGMENT_SEC,
   MIN_DWELL_SEC,
+  observationDiscontinuous,
   planTracks,
   reconcileTracks,
   step,
@@ -553,12 +551,7 @@ function trackBroken(before: BusState | null, obs: BusObservation): boolean {
   if (!before) return true;
   const gap = obs.collectedAt - before.lastObservedAt;
   if (gap > MAX_OBSERVATION_GAP_MS || before.routeId !== obs.routeId) return true;
-  if (before.busId !== obs.busId) {
-    const jumpM = distanceMeters(before, obs);
-    if (gap > MAX_HANDOFF_GAP_MS) return true;
-    if (jumpM > MAX_HANDOFF_JUMP_M && jumpM > (gap / 1000) * MAX_HANDOFF_SPEED_MPS) return true;
-  }
-  return false;
+  return observationDiscontinuous(before, obs);
 }
 
 /**
