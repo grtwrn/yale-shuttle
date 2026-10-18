@@ -19,6 +19,12 @@ describe('feedback screen evidence',()=>{
     const s=feedbackScreenFromRows([row,{...row,boardStopId:129,busName:'41',pickupChoice:'arrive-sooner',board:'~16 min'}],meta);
     expect(s.rows.map(r=>[r.boardStopId,r.busName,r.pickupChoice])).toEqual([[100,'44','closest-stop'],[129,'41','arrive-sooner']]);
   });
+  it('retains the noncomparative farther pickup label beside unavailable closest-stop evidence',()=>{
+    const s=feedbackScreenFromRows([{...row,board:'Unavailable',next:'—',arrive:'—'},
+      {...row,boardStopId:129,pickupChoice:'more-walking'}],meta);
+    expect(s.rows.map(r=>r.pickupChoice)).toEqual(['closest-stop','more-walking']);
+    expect(s.rows[0]!.board).toBe('Unavailable');
+  });
   it('records unavailable evidence as displayed without inventing a bus or time',()=>{
     const s=feedbackScreenRow({mode:'shuttle',route:'Red',boardStopId:48,alightStopId:4,countdownBusName:'316',board:'Unavailable',next:'—',arrive:'—'});
     expect(s).toMatchObject({board:'Unavailable',next:'—',arrive:'—'});

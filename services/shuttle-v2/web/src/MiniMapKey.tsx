@@ -61,7 +61,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
       style={{ borderTop: '1px solid #eceff1', cursor: canSelect ? 'pointer' : undefined }}>
       <tr>
         <th scope="row" style={{ padding: '0 6px', fontWeight: 650, color: option.mode === 'walk' ? '#5f6368' : option.color, overflowWrap: 'anywhere' }}>
-          {canSelect ? <button type="button" aria-label={`View ${option.routeLabel} trip details${pickupName && option.pickupPreference === 'arrive-sooner' ? ` from ${pickupName}` : ''}`}
+          {canSelect ? <button type="button" aria-label={`View ${option.routeLabel} trip details${pickupName && option.pickupPreference && option.pickupPreference !== 'closest-stop' ? ` from ${pickupName}` : ''}`}
             aria-describedby={pickupName ? `pickup-${option.routeLabel.replace(/\s/g, '-')}-${option.boardStopId}-${option.alightStopId}` : undefined}
             onClick={event => { event.stopPropagation(); select(option); }}
             style={{ display: 'inline-block', width: '100%', minHeight: 44, padding: 0, border: 0, background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer', overflowWrap: 'anywhere' }}>
@@ -86,7 +86,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
       </tr>
       {pickupName && <tr><td colSpan={4} style={{ padding: '0 6px 4px', fontSize: 12 }}>
         <span id={`pickup-${option.routeLabel.replace(/\s/g, '-')}-${option.boardStopId}-${option.alightStopId}`} data-testid="pickup-choice-name" style={{ fontWeight: 600 }}>{pickupName}</span>
-        {option.pickupPreference && <span style={{ color: '#5f6368' }}> · {option.pickupPreference === 'closest-stop' ? 'Closest stop' : 'Arrive sooner'}</span>}
+        {option.pickupPreference && <span style={{ color: '#5f6368' }}> · {option.pickupPreference === 'closest-stop' ? 'Closest stop' : option.pickupPreference === 'arrive-sooner' ? 'Arrive sooner' : 'More walking'}</span>}
       </td></tr>}
       {earlyPickup && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
         <EarlyPickupNotice arrival={earlyPickup} walkSec={option.walkToSec} />

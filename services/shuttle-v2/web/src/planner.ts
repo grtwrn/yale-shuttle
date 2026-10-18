@@ -2,7 +2,7 @@
 // for the walk model, which now matches the server (see walk.ts).
 
 import { computeUpcomingArrivals } from "./liveArrivals";
-import { liveEtaAvailable, liveBusAvailable } from './etaSource';
+import { liveEtaAvailable, liveBusAvailable, liveRouteTracked } from './etaSource';
 import type { AnchorStore } from "./eta";
 import type { DwellTimes, SegmentTimes, UpcomingArrival } from "./arrivals";
 import { haversineMeters } from "./geo";
@@ -27,7 +27,7 @@ export type TripOption = {
   plannedRideSec?: number;
   /** A second pickup on the same line with a meaningful walking/arrival tradeoff. */
   pickupAlternatives?: TripOption[];
-  pickupPreference?: 'closest-stop' | 'arrive-sooner';
+  pickupPreference?: 'closest-stop' | 'arrive-sooner' | 'more-walking';
   directWalkSec: number;
   // True when the pinned bus has already gone past the board stop and
   // isn't catchable anymore. Set only while the rider is watching the
@@ -408,7 +408,8 @@ export function planTrip(
     // The calendar question, alternation included: a plan for next Saturday
     // must not ride the grocery line that runs the OTHER weekends.
     if (futureMode && !isRouteScheduledAt(cfg.label, targetDate!)) continue;
-    if (!futureMode && !liveEtaAvailable(buses, now, cfg.label)) continue;
+    const tracked = !futureMode && liveRouteTracked(buses, cfg.label, now);
+    if (!futureMode && !liveEtaAvailable(buses, now, cfg.label) && !tracked) continue;
     const stops = mergedRouteStops(cfg, routeStops);
     if (stops.length < 2) continue;
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
@@ -473,6 +474,7 @@ export function planTrip(
         let busLowSec: number | undefined;
         let busHighSec: number | undefined;
         let departed = false;
+        let etaUnavailable = false;
         let destination: JourneyArrival | undefined;
         if (futureMode) {
           waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
@@ -494,7 +496,12 @@ export function planTrip(
             busName = hereBus.bus_name.replace(/^#/, "");
             destination = journeyArrival(atStopJourneyBoard(boardArrivals, cfg.label, busName, b, cur), boardArrivals, cur, walkToSec, walkFromSec, now, 'at-stop');
           } else if (arrivals.length === 0) {
-            continue;
+            if (!tracked) continue;
+            // Missing forecast rows say nothing about whether the bus passed
+            // this stop. Retain the walking choice, with no invented ETA.
+            waitSec = 0;
+            busName = '';
+            etaUnavailable = true;
           } else {
             // Pin the soonest *catchable* bus (one the rider can reach before it
             // finishes dwelling), not merely the soonest — with second-lap
@@ -529,6 +536,7 @@ export function planTrip(
           boardStopId: b, alightStopId: cur,
           walkToSec, waitSec, rideSec, plannedRideSec: cumRide, walkFromSec,
           departed, journeyArrival: destination,
+          ...(etaUnavailable ? { etaUnavailable } : {}),
           totalSec, busName,
           directWalkSec,
           busEtaSec,
@@ -558,9 +566,9 @@ export function planTrip(
   for (const [label, group] of byRoute) {
     bestPerRoute.set(label, routePickupChoices(group));
   }
-  // Sort the chosen options by total time for display.
+  // Untimed geometry cannot displace a forecast-backed route at the limit.
   const dedup = [...bestPerRoute.values()]
-    .sort((a, b) => a.totalSec - b.totalSec)
+    .sort((a, b) => Number(!!a.etaUnavailable) - Number(!!b.etaUnavailable) || a.totalSec - b.totalSec)
     .slice(0, 6);
   // Include the direct-walk option and sort the whole list by totalSec
   // so the FASTEST badge actually lands on the fastest one — previously
@@ -1036,8 +1044,9 @@ export function pickupFallback(current: TripOption, candidate: TripOption | unde
 /** Shared initial/live per-route choice: catchable first, then least walking
  * among arrivals within three minutes of the best journey time. */
 export function bestRoutePickup(group: readonly TripOption[]): TripOption {
+  const available = group.filter(o => !o.departed && !o.etaUnavailable);
   const catchable = group.filter(o => !o.departed);
-  const candidates = catchable.length ? catchable : group;
+  const candidates = available.length ? available : catchable.length ? catchable : group;
   const minTotal = Math.min(...candidates.map(o => o.totalSec));
   const nearBest = candidates.filter(o => o.totalSec <= minTotal + 180);
   nearBest.sort((a, b) => (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
@@ -1059,10 +1068,45 @@ export function routePickupChoices(group: readonly TripOption[]): TripOption {
   const closest = [...byStop.values()].map(bestRoutePickup).sort((a, b) =>
     a.walkToSec - b.walkToSec || a.walkFromSec - b.walkFromSec || a.totalSec - b.totalSec)[0]!;
   const faster = bestRoutePickup(group);
-  if (faster.boardStopId === closest.boardStopId
-    || faster.departed || faster.etaUnavailable || faster.totalSec > closest.totalSec - 180) return closest;
+  if (faster.boardStopId === closest.boardStopId || faster.departed || faster.etaUnavailable
+    || (!closest.etaUnavailable && !closest.departed && faster.totalSec > closest.totalSec - 180)) {
+    return closest.etaUnavailable ? { ...closest, pickupPreference: 'closest-stop' } : closest;
+  }
   return { ...closest, pickupPreference: 'closest-stop',
-    pickupAlternatives: [{ ...faster, pickupPreference: 'arrive-sooner' }] };
+    pickupAlternatives: [{ ...faster, pickupPreference: closest.etaUnavailable || closest.departed ? 'more-walking' : 'arrive-sooner' }] };
+}
+
+/** Missing evidence must not retain an old countdown or imply a departure. */
+export function unavailablePickup(option: TripOption): TripOption {
+  const rideSec = option.plannedRideSec ?? option.rideSec;
+  return { ...option, etaUnavailable: true, departed: false, missedBus: undefined,
+    waitSec: 0, rideSec, totalSec: option.walkToSec + rideSec + option.walkFromSec,
+    livePickupSelection: undefined, journeyArrival: undefined,
+    busEtaSec: undefined, busDepartNowSec: undefined, busDistribution: undefined,
+    busLowSec: undefined, busHighSec: undefined, busBoardHops: undefined, computedAtMs: undefined };
+}
+
+/** Refresh the wording without moving the selected pickup. Unknown timing
+ * cannot justify an "Arrive sooner" comparison against the closest stop. */
+export function labelPickupChoices(group: readonly TripOption[]): TripOption[] {
+  if (!group.length) return [];
+  const closest = [...group].sort((a, b) => a.walkToSec - b.walkToSec
+    || a.walkFromSec - b.walkFromSec || a.totalSec - b.totalSec)[0]!;
+  return group.map(option => ({ ...option, pickupPreference: option === closest
+    ? (group.length > 1 || option.pickupPreference || option.etaUnavailable ? 'closest-stop' : undefined)
+    : !option.departed && !option.etaUnavailable && !closest.departed && !closest.etaUnavailable
+      && option.totalSec <= closest.totalSec - 180 ? 'arrive-sooner' : 'more-walking' }));
+}
+
+/** Discover alternatives once an initially untimed line gains forecasts.
+ * Keep the original pickup/exit pair so recovery never redirects a rider. */
+export function recoveredPickupCatalog(initial: TripOption, fresh: TripOption | undefined): TripOption[] | undefined {
+  if (!initial.etaUnavailable || !fresh || fresh.routeLabel !== initial.routeLabel) return undefined;
+  const live = [fresh, ...(fresh.pickupAlternatives ?? [])];
+  if (!live.some(o => !o.etaUnavailable && !o.departed)) return undefined;
+  const catalog = [initial, ...(initial.pickupAlternatives ?? [])];
+  for (const option of live) if (!catalog.some(o => o.boardStopId === option.boardStopId)) catalog.push(option);
+  return catalog;
 }
 
 /** Option identity includes both ends of the ride, rather than just its line. */

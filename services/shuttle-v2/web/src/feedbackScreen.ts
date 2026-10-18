@@ -84,7 +84,7 @@ export function feedbackScreenRow(input: Record<string, unknown>): FeedbackScree
       boardStopId: integer(input.boardStopId, 1), alightStopId: integer(input.alightStopId, 1),
       busName: text(input.busName, 24) || undefined, countdownBusName: text(input.countdownBusName, 24) || undefined,
       stopsAhead: integer(input.stopsAhead, 0),
-      pickupChoice: input.pickupChoice === 'closest-stop' || input.pickupChoice === 'arrive-sooner'
+      pickupChoice: input.pickupChoice === 'closest-stop' || input.pickupChoice === 'arrive-sooner' || input.pickupChoice === 'more-walking'
         ? input.pickupChoice : undefined,
     } : {}),
     board: text(input.board), next: text(input.next), arrive: text(input.arrive),

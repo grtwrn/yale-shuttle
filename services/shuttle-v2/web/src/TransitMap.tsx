@@ -1,4 +1,4 @@
-import { pickupFallback } from "./planner";
+import { pickupFallback, unavailablePickup, labelPickupChoices, recoveredPickupCatalog } from "./planner";
 import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGES_MAX_DATA_URL_LENGTH } from "./reportAttachments";
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
 import L from "leaflet";
@@ -12,7 +12,7 @@ import {
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
-import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
+import { attachServerEta, liveEtaAvailable, liveBusAvailable, liveRouteTracked } from "./etaSource";
 import { liveAnchorStore } from "./eta";
 import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach, rideCallIndex, rideCalls, rideStopsToExit } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
@@ -2086,7 +2086,7 @@ const TripPlanner: FC<{
 
   // Choices are scoped to the initial plan. Once a fallback is selected it
   // remains the pickup when its card opens; opening cannot revert to the old stop.
-  const [pickupChoices, setPickupChoices] = useState<{ plan: TripOption[]; byRoute: Map<string, TripOption>; selectedByRider?: Set<string> } | null>(null);
+  const [pickupChoices, setPickupChoices] = useState<{ plan: TripOption[]; byRoute: Map<string, TripOption>; selectedByRider?: Set<string>; catalogs?: Map<string, TripOption[]> } | null>(null);
 
   // Collapse the "show more" list whenever a new trip is planned.
   useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
@@ -2144,7 +2144,8 @@ const TripPlanner: FC<{
         const totalSec = walkSecFromMeters(haversineMeters(from, toLL));
         return { ...o, livePickupSelection: undefined, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
       }
-      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, livePickupSelection: undefined, etaUnavailable: true, journeyArrival: undefined };
+      if (!etaFresh || (!liveEtaAvailable(buses, Date.now(), o.routeLabel)
+        && !liveRouteTracked(buses, o.routeLabel))) return unavailablePickup(o);
       // Re-derive wait from current arrivals. Simpler than it used to
       // be — a large pinned.eta *by itself* doesn't mean "just
       // passed" (it could just mean the bus is on the far side of
@@ -2206,7 +2207,7 @@ const TripPlanner: FC<{
         const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
           : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
-          ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+          ...o, etaUnavailable: false, walkToSec: effectiveWalkToSec, waitSec, totalSec,
           rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
           livePickupSelection: rawPickupSelection(hereBus.bus_name, o.boardStopId, nowMs),
           journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
@@ -2215,15 +2216,14 @@ const TripPlanner: FC<{
       }
 
       if (live.length === 0) {
-        // No future arrival and no bus parked at the stop — truly unreachable.
-        return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
+        return unavailablePickup(o);
       }
       // Which arrival to follow — pinned-bus loyalty, its catchability
       // bounds, the report-#49 dominance switch, and the departed verdict
       // all live in pickLiveArrival (planner.ts), where they are unit
       // tested. `live` is non-empty here, so the pick exists.
       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
-      if (!picked) return { ...o, livePickupSelection: undefined, journeyArrival: undefined, departed: true };
+      if (!picked) return unavailablePickup(o);
       const { match, boardable, departed, missedBus } = picked;
       // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
       // the one the rider can see coming, which must not vanish while it is
@@ -2243,7 +2243,7 @@ const TripPlanner: FC<{
       const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
         : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
       return {
-        ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+        ...o, etaUnavailable: false, walkToSec: effectiveWalkToSec, waitSec, totalSec,
         rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - waitSec - o.walkFromSec) : o.rideSec,
         livePickupSelection: forecastPickupSelection(picked, nowMs),
         journeyArrival: arrival, busName: match.busName, departed, missedBus,
@@ -2254,10 +2254,12 @@ const TripPlanner: FC<{
     };
     return stableOptions.map(initial => {
       const selected = pickupChoices?.plan === stableOptions ? pickupChoices.byRoute.get(initial.routeLabel) ?? initial : initial;
-      const alternatives = [initial, ...(initial.pickupAlternatives ?? [])]
-        .filter(o => !sameTripPickup(o, selected))
+      const catalog = (pickupChoices?.plan === stableOptions ? pickupChoices.catalogs?.get(initial.routeLabel) : undefined)
+        ?? [initial, ...(initial.pickupAlternatives ?? [])];
+      const refreshed = [selected, ...catalog.filter(o => !sameTripPickup(o, selected))]
         .map(o => refreshOption({ ...o, pickupAlternatives: undefined }));
-      return { ...refreshOption(selected), pickupAlternatives: alternatives };
+      const [primary, ...alternatives] = initial.mode === 'shuttle' ? labelPickupChoices(refreshed) : refreshed;
+      return { ...primary!, pickupAlternatives: alternatives };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableOptions, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
@@ -2273,11 +2275,18 @@ const TripPlanner: FC<{
         || (pickupChoices?.plan === stableOptions && !!pickupChoices.selectedByRider?.has(current.routeLabel)));
       return replacement ? [replacement] : [];
     });
-    if (!replacements.length) return;
+    const recoveries = stableOptions.flatMap(initial => {
+      if (pickupChoices?.plan === stableOptions && pickupChoices.catalogs?.has(initial.routeLabel)) return [];
+      const catalog = recoveredPickupCatalog(initial, fresh.find(o => o.routeLabel === initial.routeLabel));
+      return catalog ? [[initial.routeLabel, catalog] as const] : [];
+    });
+    if (!replacements.length && !recoveries.length) return;
     setPickupChoices(prev => {
       const byRoute = new Map(prev?.plan === stableOptions ? prev.byRoute : []);
+      const catalogs = new Map(prev?.plan === stableOptions ? prev.catalogs : []);
       for (const replacement of replacements) byRoute.set(replacement.routeLabel, replacement);
-      return { plan: stableOptions, byRoute, selectedByRider: prev?.plan === stableOptions ? prev.selectedByRider : undefined };
+      for (const [label, catalog] of recoveries) catalogs.set(label, catalog);
+      return { plan: stableOptions, byRoute, catalogs, selectedByRider: prev?.plan === stableOptions ? prev.selectedByRider : undefined };
     });
   }, [options, stableOptions, etaFresh, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, effectiveFromLL, toLL, fromText, userLatLon, expandedKey, reminder, pickupChoices]);
 
@@ -2287,7 +2296,7 @@ const TripPlanner: FC<{
       const byRoute = new Map(prev?.plan === stableOptions ? prev.byRoute : []);
       const selectedByRider = new Set(prev?.plan === stableOptions ? prev.selectedByRider : []);
       byRoute.set(o.routeLabel, o); selectedByRider.add(o.routeLabel);
-      return { plan: stableOptions, byRoute, selectedByRider };
+      return { plan: stableOptions, byRoute, selectedByRider, catalogs: prev?.plan === stableOptions ? prev.catalogs : undefined };
     });
     if (reminder?.routeLabel === o.routeLabel
       && (reminder.boardStopId !== o.boardStopId || reminder.alightStopId !== o.alightStopId)) {

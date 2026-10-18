@@ -113,3 +113,9 @@ export function serverTrack(bus: object, label: string, now: number): { index: n
 export function liveBusAvailable(bus: BusData, label: string, now: number): boolean {
   return serverTrack(bus, label, now) !== null;
 }
+
+/** A fresh published track can retain route geometry without promising any
+ * stop forecast. Offline callers and expired/invalid sources supply no proof. */
+export function liveRouteTracked(buses: readonly BusData[], label: string, now = Date.now()): boolean {
+  return buses.some(bus => serverTrack(bus, label, now) != null);
+}
