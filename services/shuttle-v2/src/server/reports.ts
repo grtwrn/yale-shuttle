@@ -158,6 +158,13 @@ function repliesOf(ctx: Record<string, unknown>): ReportFollowup[] {
   return out;
 }
 
+/** One pre-history reply, using the report-time fallback already shown to
+ * the rider. This is not a recovered send time. Keep it separate from the
+ * fifty timestamped audit snapshots so internal edits cannot evict it. */
+function legacyReplyOf(ctx: Record<string, unknown>): ReportFollowup | undefined {
+  return repliesOf({ noteHistory: [ctx.legacyReply] })[0];
+}
+
 /** Bounds context growth; the operator's own view reads the column, not this. */
 const MAX_NOTE_HISTORY = 50;
 
@@ -173,13 +180,19 @@ export function updateReport(
   let contextPatch: { context: string } | Record<string, never> = {};
   if (update.note !== undefined) {
     const row = db
-      .select({ context: reports.context, note: reports.note })
+      .select({ context: reports.context, note: reports.note, createdAt: reports.createdAt })
       .from(reports)
       .where(eq(reports.id, id))
       .get();
-    if (row) {
+    if (row && row.note !== update.note) {
       const ctx = parseContext(row.context);
       const history = repliesOf(ctx);
+      const previousLegacy = legacyReplyOf(ctx);
+      const hasVisibleHistory = [previousLegacy, ...history]
+        .some(n => n !== undefined && riderFacingNote(n.text) !== null);
+      const legacyReply = !hasVisibleHistory && riderFacingNote(row.note) !== null
+        ? { text: row.note!, at: row.createdAt.getTime() }
+        : previousLegacy;
       // Don't record a no-op: the bot re-stamps the same note when it
       // re-processes a report, and that must not fill the thread with copies.
       const last = history.at(-1);
@@ -189,6 +202,7 @@ export function updateReport(
       contextPatch = {
         context: JSON.stringify({
           ...ctx,
+          ...(legacyReply ? { legacyReply } : {}),
           noteHistory: history.slice(-MAX_NOTE_HISTORY),
         }),
       };
@@ -394,7 +408,8 @@ export function listMyReports(db: DB, anonId: string): MyReport[] {
         // reply. Collapse consecutive identical visible text, keeping its first
         // timestamp. Distinct replies, including A -> B -> A, remain in order.
         const history: ReportFollowup[] = [];
-        for (const n of repliesOf(ctx)) {
+        const legacy = legacyReplyOf(ctx);
+        for (const n of [...(legacy ? [legacy] : []), ...repliesOf(ctx)]) {
           const text = riderFacingNote(n.text);
           if (text !== null && history.at(-1)?.text !== text) history.push({ text, at: n.at });
         }

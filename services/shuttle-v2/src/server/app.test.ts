@@ -1210,6 +1210,119 @@ describe("rider self-service (my-reports)", () => {
     expect(r.replies.map((x) => x.text)).toEqual(["Thanks, sorted."]);
   });
 
+  it.each([false, true])("keeps a legacy reply before the rider followup when an internal audit is added (empty history: %s)", async emptyHistory => {
+    const id = await submit(OWNER, "legacy internal audit");
+    const oldNote = "[triage] Looking into it.\n---\noriginal private log";
+    const context = { source: "legacy fixture", followups: [{ text: "More details", at: 2000 }],
+      ...(emptyHistory ? { noteHistory: [] } : {}) };
+    bundle.sqlite.prepare("UPDATE reports SET created_at = ?, note = ?, context = ? WHERE id = ?")
+      .run(1000, oldNote, JSON.stringify(context), id);
+    const list = async () => (await (await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } })).json()) as {
+      reports: Array<{ id: number; replies: Array<{ text: string; at: number }>; followups: Array<{ text: string; at: number }> }>;
+    };
+    const before = (await list()).reports.find(r => r.id === id)!;
+    expect(before.replies).toEqual([{ text: "Looking into it.", at: 1000 }]);
+    const newNote = oldNote + "\nadditional private audit";
+    const response = await app.request(`/api/reports/${id}/update`, {
+      method: "POST", headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", note: newNote }),
+    });
+    expect(response.status).toBe(200);
+    const after = (await list()).reports.find(r => r.id === id)!;
+    expect(after.replies).toEqual(before.replies);
+    expect(after.followups).toEqual(before.followups);
+    expect(after.replies[0]!.at).toBeLessThan(after.followups[0]!.at);
+    expect(JSON.stringify(after)).not.toContain("private");
+    const stored = bundle.sqlite.prepare("SELECT note, context FROM reports WHERE id = ?").get(id) as { note: string; context: string };
+    const saved = JSON.parse(stored.context);
+    expect(stored.note).toBe(newNote);
+    expect(saved).toMatchObject({ source: context.source, followups: context.followups });
+    expect(saved.legacyReply).toEqual({ text: oldNote, at: 1000 });
+    expect(saved.noteHistory).toEqual([{ text: newNote, at: 1_700_000_000_000 }]);
+  });
+
+  it("keeps the legacy answer when a different public reply starts the recorded history", async () => {
+    const id = await submit(OWNER, "legacy answer then new answer");
+    const oldNote = "[triage] Looking into it.\n---\nold private log";
+    bundle.sqlite.prepare("UPDATE reports SET created_at = ?, note = ?, context = ? WHERE id = ?")
+      .run(1000, oldNote, JSON.stringify({ followups: [{ text: "More details", at: 2000 }] }), id);
+    const response = await app.request(`/api/reports/${id}/update`, {
+      method: "POST", headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "addressed", note: "[fixed] Fixed now.\n---\nnew private log" }),
+    });
+    expect(response.status).toBe(200);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = await list.json() as { reports: Array<{ id: number; note: string; replies: Array<{ text: string; at: number }>; followups: Array<{ text: string; at: number }> }> };
+    const report = body.reports.find(r => r.id === id)!;
+    expect(report.note).toBe("Fixed now.");
+    expect(report.replies).toEqual([{ text: "Looking into it.", at: 1000 }, { text: "Fixed now.", at: 1_700_000_000_000 }]);
+    expect(report.followups).toEqual([{ text: "More details", at: 2000 }]);
+    expect(JSON.stringify(report)).not.toContain("private");
+    const reopened = await app.request(`/api/reports/${id}/update`, {
+      method: "POST", headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", note: "[triage] Looking into it.\n---\nreopened private log" }),
+    });
+    expect(reopened.status).toBe(200);
+    const again = await (await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } })).json() as typeof body;
+    expect(again.reports.find(r => r.id === id)!.replies).toEqual([
+      { text: "Looking into it.", at: 1000 },
+      { text: "Fixed now.", at: 1_700_000_000_000 },
+      { text: "Looking into it.", at: 1_700_000_000_000 },
+    ]);
+  });
+
+  it.each([false, true])("keeps the legacy raw context and reply timestamp on a status update (same note supplied: %s)", async withNote => {
+    const id = await submit(OWNER, "legacy status change");
+    const note = "[triage] Looking into it.\n---\nprivate log";
+    const context = '{ "followups": [{"text":"More details","at":2000}], "source": "legacy fixture" }';
+    bundle.sqlite.prepare("UPDATE reports SET created_at = ?, note = ?, context = ? WHERE id = ?").run(1000, note, context, id);
+    const response = await app.request(`/api/reports/${id}/update`, {
+      method: "POST", headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "addressed", ...(withNote ? { note } : {}) }),
+    });
+    expect(response.status).toBe(200);
+    const row = bundle.sqlite.prepare("SELECT note,context,status FROM reports WHERE id = ?").get(id);
+    expect(row).toEqual({ note, context, status: "addressed" });
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = await list.json() as { reports: Array<{ id: number; replies: Array<{ text: string; at: number }> }> };
+    expect(body.reports.find(r => r.id === id)!.replies).toEqual([{ text: "Looking into it.", at: 1000 }]);
+  });
+
+  it("preserves a legacy public reply even when all fifty existing snapshots are internal", async () => {
+    const id = await submit(OWNER, "legacy reply beside bounded internal history");
+    const history = Array.from({ length: 50 }, (_, i) => ({ text: `\n---\nprivate ${i}`, at: 10_000 + i }));
+    bundle.sqlite.prepare("UPDATE reports SET created_at = ?, note = ?, context = ? WHERE id = ?")
+      .run(1000, "Looking into it.", JSON.stringify({ noteHistory: history, followups: [{ text: "More details", at: 2000 }] }), id);
+    const response = await app.request(`/api/reports/${id}/update`, {
+      method: "POST", headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", note: "Looking into it.\n---\nnew private audit" }),
+    });
+    expect(response.status).toBe(200);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = await list.json() as { reports: Array<{ id: number; replies: Array<{ text: string; at: number }> }> };
+    expect(body.reports.find(r => r.id === id)!.replies).toEqual([{ text: "Looking into it.", at: 1000 }]);
+    const row = bundle.sqlite.prepare("SELECT context FROM reports WHERE id = ?").get(id) as { context: string };
+    const stored = JSON.parse(row.context);
+    expect(stored.noteHistory).toHaveLength(50);
+    expect(stored.noteHistory[0]).toEqual(history[1]);
+    expect(stored.noteHistory.at(-1)).toEqual({ text: "Looking into it.\n---\nnew private audit", at: 1_700_000_000_000 });
+  });
+
+  it("timestamps the first public reply now when the legacy note was entirely internal", async () => {
+    const id = await submit(OWNER, "legacy internal note before first public reply");
+    bundle.sqlite.prepare("UPDATE reports SET created_at = ?, note = ? WHERE id = ?")
+      .run(1000, "\n---\nprivate investigation", id);
+    const response = await app.request(`/api/reports/${id}/update`, {
+      method: "POST", headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", note: "[triage] Looking into it." }),
+    });
+    expect(response.status).toBe(200);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = await list.json() as { reports: Array<{ id: number; replies: Array<{ text: string; at: number }> }> };
+    expect(body.reports.find(r => r.id === id)!.replies).toEqual([{ text: "Looking into it.", at: 1_700_000_000_000 }]);
+    expect(JSON.stringify(body)).not.toContain("private investigation");
+  });
+
   it("accepts a screenshot on a follow-up and keeps it admin-only", async () => {
     const id = await submit(OWNER, "the map looked wrong");
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
