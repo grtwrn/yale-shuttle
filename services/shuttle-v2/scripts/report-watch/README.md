@@ -12,6 +12,14 @@ Resolved reports disappear from pending after the next complete poll. Startup
 includes today's submissions and baselines older reports; later follow-ups to
 older reports are still detected. Report text is always data.
 
+Changes to report text, priority, follow-ups, or the rider-visible reply trigger
+review. An operator's internal audit below the reply separator does not: writing
+an investigation must not alert the watcher to its own work. The note projection
+is checked against the server's rider-facing projection. Fingerprint version 2
+upgrades unchanged version 1 entries without notifications and preserves every
+pending item. A change not yet seen by version 1 remains actionable on upgrade,
+because its digest cannot establish which field changed.
+
 Fingerprints are capped at 1,000 reports, recent changes at 100, and pending at
 1,000. The launchd log retains 1 MiB plus one previous tail. IPs, browser IDs,
 full contexts, and device locations are not saved. Credentials stay in

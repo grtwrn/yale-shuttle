@@ -2,11 +2,18 @@ import { describe, expect, it, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { reconcileReports, pollReports } from './poll.mjs';
+import { riderFacingNote } from '../../src/server/reports.ts';
 const now = Date.parse('2026-10-15T13:00:00-04:00');
 const report = (id, change = {}) => ({ id, status: 'open', body: 'Red has the wrong stop count',
   createdAt: '2026-10-15T12:43:38Z', priority: 'normal', context: '{}', note: null, ...change });
 const dirs = [];
+const legacyState = r => ({ version: 1, seen: { [r.id]: { lastSeenAt: now,
+  digest: createHash('sha256').update(JSON.stringify([r.body, r.note, r.priority,
+    JSON.parse(r.context).followups ?? []])).digest('hex') } },
+  pending: [{ id: r.id, kind: 'report-submitted', detectedAt: new Date(now).toISOString(),
+    createdAt: r.createdAt, priority: r.priority, body: r.body, followupCount: 0 }], recent: [] });
 afterEach(async () => { for (const dir of dirs.splice(0)) await fs.rm(dir, { recursive: true, force: true }); });
 
 describe('persistent submitted-report watcher', () => {
@@ -20,6 +27,80 @@ describe('persistent submitted-report watcher', () => {
     const changed = reconcileReports(first, [report(143), report(139, { createdAt: '2026-10-05T12:00:00Z',
       context: JSON.stringify({ followups: [{ at: now, text: 'Still happening' }] }) })], now + 60000);
     expect(changed.events.map(e => [e.id, e.kind])).toEqual([[143, 'report-submitted'], [139, 'report-updated']]);
+  });
+  it('does not requeue a report when only an internal operator audit changes', () => {
+    const older = report(111, { createdAt: '2026-09-16T18:13:51Z' });
+    const first = reconcileReports(null, [older], now);
+    const updated = { ...older, note: '\n---\n[internal operator audit]\nReviewed the retained source; still unresolved.' };
+    const next = reconcileReports(first, [updated], now + 60000);
+    expect(next.events).toEqual([]);
+    expect(next.pending).toEqual([]);
+  });
+  it('preserves unresolved pending work when an internal note changes', () => {
+    const first = reconcileReports(null, [report(142)], now);
+    const next = reconcileReports(first, [report(142, { note: '\n---\nInternal review' })], now + 60000);
+    expect(next.events).toEqual([]);
+    expect(next.pending).toEqual(first.pending);
+  });
+  it('compares notes by the actual server rider-facing projection', () => {
+    const notes = [null, '', '\n---\nInternal only', '[triage]', 'A fix is available.',
+      'A fix is available.\n---\nInternal audit', '[fixed] [approved] A fix is available.\r\n --- \r\nInternal audit',
+      'automated: A fix is available.\n----\nDifferent audit', 'automated-abuse: A fix is available.'];
+    for (const before of notes) for (const after of notes) {
+      const first = reconcileReports(null, [report(139, { note: before })], now);
+      const next = reconcileReports(first, [report(139, { note: after })], now + 60000);
+      expect(next.events.length, JSON.stringify([before, after])).toBe(riderFacingNote(before) === riderFacingNote(after) ? 0 : 1);
+    }
+  });
+  it('still detects body, priority, and follow-up changes alongside an internal audit', () => {
+    const first = reconcileReports(null, [report(139)], now);
+    for (const change of [{ body: 'Still the wrong stop' }, { priority: 'urgent' },
+      { context: JSON.stringify({ followups: [{ at: now, text: 'Still happening' }] }) }]) {
+      const next = reconcileReports(first, [report(139, { ...change, note: '\n---\nInternal review' })], now + 60000);
+      expect(next.events.map(e => [e.id, e.kind])).toEqual([[139, 'report-updated']]);
+    }
+  });
+  it('detects a follow-up edit even when its timestamp and count are unchanged', () => {
+    const first = reconcileReports(null, [report(139, { context: JSON.stringify({ followups: [{ at: now, text: 'First description' }] }) })], now);
+    const next = reconcileReports(first, [report(139, { context: JSON.stringify({ followups: [{ at: now, text: 'Corrected description' }] }) })], now + 60000);
+    expect(next.events).toHaveLength(1);
+  });
+  it('upgrades unchanged legacy fingerprints quietly and keeps pending work', () => {
+    const r = report(139, { note: '\n---\nPrevious internal audit' }), legacy = legacyState(r);
+    const upgraded = reconcileReports(legacy, [r], now + 60000);
+    expect(upgraded.version).toBe(2);
+    expect(upgraded.seen[r.id].fingerprintVersion).toBe(2);
+    expect(upgraded.events).toEqual([]);
+    expect(upgraded.pending).toEqual(legacy.pending);
+    const later = reconcileReports(upgraded, [report(139, { note: '\n---\nNew internal audit' })], now + 120000);
+    expect(later.events).toEqual([]);
+    expect(later.pending).toEqual(legacy.pending);
+  });
+  it('does not lose a rider change made while the legacy watcher was stopped', () => {
+    const legacy = legacyState(report(139));
+    const updated = report(139, { context: JSON.stringify({ followups: [{ at: now, text: 'New evidence' }] }) });
+    const next = reconcileReports(legacy, [updated], now + 60000);
+    expect(next.events.map(e => [e.id, e.kind])).toEqual([[139, 'report-updated']]);
+    expect(reconcileReports(next, [updated], now + 120000).events).toEqual([]);
+  });
+  it('alerts once for an unclassified legacy note change rather than assuming no rider change', () => {
+    const legacy = legacyState(report(139)), updated = report(139, { note: '\n---\nNot yet seen audit' });
+    const next = reconcileReports(legacy, [updated], now + 60000);
+    expect(next.events).toHaveLength(1);
+    expect(reconcileReports(next, [updated], now + 120000).events).toEqual([]);
+  });
+  it('persists a quiet legacy upgrade across scheduled process restarts', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shuttle-report-upgrade-')); dirs.push(dir);
+    const tokenFile = path.join(dir, 'token'); await fs.writeFile(tokenFile, 'test-only-token');
+    const r = report(139), legacy = legacyState(r), notifications = [];
+    await fs.writeFile(path.join(dir, 'state.json'), JSON.stringify(legacy));
+    const options = { dir, tokenFile, notifier: async events => notifications.push(...events), healthNotifier: async () => {},
+      fetcher: async () => ({ ok: true, json: async () => ({ reports: [r] }) }) };
+    await pollReports({ ...options, now });
+    await pollReports({ ...options, now: now + 60000 });
+    expect(notifications).toEqual([]);
+    expect(JSON.parse(await fs.readFile(path.join(dir, 'state.json'), 'utf8')).version).toBe(2);
+    expect(JSON.parse(await fs.readFile(path.join(dir, 'queue.json'), 'utf8')).pending).toEqual(legacy.pending);
   });
   it('removes resolved reports from pending, preserving them if the API result is truncated', () => {
     const first = reconcileReports(null, [report(142)], now);
