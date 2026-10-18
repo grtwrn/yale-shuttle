@@ -1,5 +1,7 @@
 import {describe, expect, it} from 'vitest';
-import {attachServerEta, serverArrivals, serverTrack, type ServerEtaWire} from './etaSource';
+import {attachServerEta, serverArrivals, serverArrivalsForServiceWarning, serverTrack, type ServerEtaWire} from './etaSource';
+import {nextArrivalAfterPinned} from './arrivals';
+import {lastBusVerdict} from './lastBus';
 import {ROUTE_LISTS} from './routes';
 import type {BusData} from './map-data';
 function example(label = 'Red', clock = '2026-09-03T18:58:00-04:00') {
@@ -11,6 +13,25 @@ function example(label = 'Red', clock = '2026-09-03T18:58:00-04:00') {
   return {buses,wire};
 }
 describe('end-of-service return visits',()=>{
+  it('retains the closing caution when the next return is withheld before closing',()=>{
+    const {buses,wire}=example('Blue Day','2026-09-03T17:30:00-04:00');attachServerEta(buses,wire,50_000);
+    const shown=serverArrivals(buses,[48],50_000)!,warning=serverArrivalsForServiceWarning(buses,[48],50_000)!;
+    expect(nextArrivalAfterPinned(shown,'12',110,2)).toBeNull();
+    const next=nextArrivalAfterPinned(warning,'12',110,2)!;
+    expect(lastBusVerdict({label:'Blue Day',now:new Date(wire.at),busEtaSec:110,nextBusEtaSec:next.eta,liveCount:1})?.kind).toBe('closing');
+  });
+  it('uses the earlier real following bus before warning about an excluded return',()=>{
+    const {buses,wire}=example('Blue Day','2026-09-03T17:30:00-04:00');
+    buses.push({...buses[0]!,bus_id:2,bus_name:'#13'});wire.buses.push(['13','Blue Day',2,null]);
+    wire.rows.push([1,48,300,200,400,3,0,300,200]);attachServerEta(buses,wire,50_000);
+    const next=nextArrivalAfterPinned(serverArrivalsForServiceWarning(buses,[48],50_000)!,'12',110,2)!;
+    expect(next.busName).toBe('13');expect(lastBusVerdict({label:'Blue Day',now:new Date(wire.at),busEtaSec:110,nextBusEtaSec:next.eta,liveCount:2})).toBeNull();
+  });
+  it('ages and expires warning evidence with the available pickup',()=>{
+    const {buses,wire}=example();attachServerEta(buses,wire,50_000);
+    expect(serverArrivalsForServiceWarning(buses,[48],55_000)?.map(r=>r.eta)).toEqual([105,3585]);
+    expect(serverArrivalsForServiceWarning(buses,[48],85_000)).toEqual([]);
+  });
   it('keeps the current bus, track and raw forecast, withholding only the later canonical return',()=>{
     const {buses,wire}=example(),before=structuredClone(wire);
     expect(attachServerEta(buses,wire,50_000)).toBe(true);

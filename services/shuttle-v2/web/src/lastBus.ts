@@ -158,10 +158,10 @@ export type LastBusInput = {
   /** Buses live on this line (on-route, ghost-filtered), as the card counts them. */
   liveCount: number;
   /**
-   * Seconds until the bus AFTER the offered one reaches the board stop, when
-   * the card can see it — the "then 14 min" half of its own countdown
-   * (`nextArrivalAfterPinned`). Null/absent when there is no second arrival
-   * to see, and only then does the headway prior below stand in.
+   * Seconds until the modeled visit AFTER the offered one reaches this stop
+   * (`nextArrivalAfterPinned`). A speculative return withheld from boarding
+   * can still support this caution; its time is never advertised. Null/absent
+   * when the snapshot has no second visit, then the headway prior stands in.
    */
   nextBusEtaSec?: number | null;
   /**

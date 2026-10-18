@@ -29,7 +29,9 @@ The v2 wire contains:
   live tracking remain visible even after closing. Published-hours warnings
   still apply. Older readers ignore this field; absent or malformed metadata
   preserves the existing visits. Raw wire/evaluation rows and distributions
-  retain every forecast, including the withheld returns.
+  retain every forecast, including the withheld returns. The reader also
+  retains those rows for `serverArrivalsForServiceWarning`: they support the
+  closing caution without supplying pickup selection or an advertised time.
 - Optional `distributions`: one array per row, containing 50 equal-mass quantiles
   (1%, 3%, …, 99%) in rounded seconds. Older v2 clients ignore this additive field.
 

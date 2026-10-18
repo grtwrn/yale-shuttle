@@ -12,7 +12,7 @@ import {
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
-import { attachServerEta, liveEtaAvailable, liveBusAvailable, liveRouteTracked } from "./etaSource";
+import { attachServerEta, liveEtaAvailable, liveBusAvailable, liveRouteTracked, serverArrivalsForServiceWarning } from "./etaSource";
 import { liveAnchorStore } from "./eta";
 import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach, rideCallIndex, rideCalls, rideStopsToExit } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
@@ -2737,23 +2737,28 @@ const TripPlanner: FC<{
 
     // Is this the last one, and will there be another? Judged
     // against the PUBLISHED close (the same `route_hours` the
-    // "Runs …" caption shows), the second bus above when the card
-    // can see it — one headway when it cannot — and the live count;
-    // see lastBus.ts. It is computed AFTER `nextArrLive` for exactly
-    // that reason: the countdown's own second slot is the evidence,
-    // and reading the headway prior instead printed a warning under
-    // Blue Day while withholding it from a Red card whose "then 14
-    // min" said the same thing. Plain render-time arithmetic, no
-    // hook, so it cannot trip the TDZ hazard this component is known
-    // for. It only ever ADDS a line: the option is never hidden or
-    // moved.
+    // "Runs …" caption shows), the same snapshot's following visit
+    // and the live count; see lastBus.ts. A modeled return can support
+    // a caution even when it is withheld from boarding. Use a headway
+    // only when that snapshot has no following visit at all. Plain
+    // render-time arithmetic, no hook. It only ever adds a line: the
+    // current pickup is never hidden or moved.
+    // A return withheld from boarding can still show why this may be the
+    // last bus. Use its timing only for that caution, never for Next in.
+    const warningNext = busEtaLive !== null && !o.departed
+      ? nextArrivalAfterPinned(
+          (serverArrivalsForServiceWarning(buses, [o.boardStopId], Date.now()) ?? [])
+            .filter(a => a.routeLabel === o.routeLabel),
+          o.busName, busEtaLive, countdown?.source === 'forecast' ? countdown.stopsAhead : undefined,
+        ) ?? nextArrLive
+      : nextArrLive;
     const lastBus = shuttleCtx
       ? lastBusVerdict({
           label: o.routeLabel,
           published: publishedWindowFor(shuttleCtx.cfg, routeHours),
           now: new Date(),
           busEtaSec: busEtaLive,
-          nextBusEtaSec: nextArrLive?.eta ?? null,
+          nextBusEtaSec: warningNext?.eta ?? null,
           liveCount: shuttleCtx.liveCount,
           future: isFuture,
         })
