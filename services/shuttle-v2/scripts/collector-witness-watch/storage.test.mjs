@@ -83,6 +83,32 @@ describe('durable bounded collector evidence', () => {
     const r = s.maintain({ now: f.at }); expect(r.incidents).toBe(1); expect(s.readChunk(first.key).frames).toHaveLength(1);
     expect(s.topology(f.topology.sha256).json).toBe(f.topology.json);
   });
+  it('retains shared frame headers through late-association cleanup and retires only the old epoch', () => {
+    const f = fixture(), s = open({ maxAgeMs: 60000 });
+    f.add(); start(s, f); const first = commit(s, f);
+    const frame = f.add(), original = commit(s, f), late = f.page(1);
+    late.evaluations = [association(frame)];
+    const retained = s.commitPage(late, { seenHead: { ...f.head(), evaluationCursor: 1 }, revisit: true, now: f.at });
+    const cp = s.checkpoint();
+    f.advance(62000); s.updateReports([], { now: f.at });
+    expect(s.maintain({ now: f.at }).deleted).toBe(2);
+    expect(() => s.readChunk(first.key)).toThrow('unavailable');
+    expect(() => s.readChunk(original.key)).toThrow('unavailable');
+    expect(s.readChunk(retained.key).frames[0]).toEqual(frame);
+    expect(s.db.prepare('SELECT epoch,seq FROM frames').all()).toEqual([{ epoch: 'collector-test', seq: 2 }]);
+    expect(s.db.prepare('SELECT collector_seq FROM model_refs').all()).toEqual([{ collector_seq: 2 }]);
+    expect(s.checkpoint()).toEqual(cp);
+
+    const next = fixture({ epoch: 'next-collector-epoch' }); next.advance(100000); next.add();
+    start(s, next); const current = commit(s, next); s.updateReports([], { now: next.at });
+    expect(s.maintain({ now: next.at }).deleted).toBe(1);
+    expect(() => s.readChunk(retained.key)).toThrow('unavailable');
+    expect(s.readChunk(current.key).frames[0].seq).toBe(1);
+    expect(s.db.prepare('SELECT epoch,seq FROM frames').all()).toEqual([{ epoch: 'next-collector-epoch', seq: 1 }]);
+    expect(s.db.prepare('SELECT count(*) n FROM model_refs').get().n).toBe(0);
+    expect(s.topology(next.topology.sha256).json).toBe(next.topology.json);
+    expect(s.checkpoint()).toMatchObject({ epoch: 'next-collector-epoch', after: 1 });
+  });
   it('holds on a full protected store, preserves its cursor and measures journal-inclusive disk use', () => {
     const f = fixture(), s = open({ maxBytes: 3 * 1024 * 1024 }), at = f.at;
     f.add(); start(s, f);
