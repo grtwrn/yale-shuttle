@@ -14,11 +14,12 @@ const baseline = process.argv.includes('--baseline'), prefix = baseline ? 'befor
 const desktop = !!process.env.DESKTOP;
 const from = { lat: 41.321, lon: -72.927 }, to = { lat: 41.307, lon: -72.926 };
 const base = { label: 'Red', segCoords: [from, to], bus: { ...from, name: '307' }, passedBus: { lat: 41.3207, lon: -72.927, name: '309' }, boardEta: '2–19 min', arriveAt: '12:59–1:32 PM', busWait: { compact: 'Stopped 3:21 · leaves in 1-5 min', elapsed: 'Waiting 3:21', departure: 'leaves in 1-5 min', typical: 'Usual total stop duration: ~5 min', overdue: false } };
+const cedar = JSON.parse(await fs.readFile(service + '/web/src/__fixtures__/cedar-map-wait-20261017.json', 'utf8'));
 const source = baseline ? process.env.BASELINE_SOURCE : service + '/web/src/TransitMap.tsx';
 if (!source)
     throw Error('Set BASELINE_SOURCE when using --baseline');
-const code = `import React,{useState} from 'react'; import {createRoot} from 'react-dom/client'; import {CombinedTripMap} from './TransitMap'; import {ROUTE_COLOR} from './routes';
-const colors=options=>options.map(o=>({...o,color:ROUTE_COLOR[o.label]}));function App(){const [options,setOptions]=useState(colors(${JSON.stringify([base])}));window.setOptions=next=>setOptions(colors(next));return <><button>Before map</button><CombinedTripMap from={${JSON.stringify(from)}} to={${JSON.stringify(to)}} options={options}/><button>After map</button></>};createRoot(document.getElementById('root')).render(<App/>);`;
+const code = `import React,{useState} from 'react'; import {createRoot} from 'react-dom/client'; import {CombinedTripMap} from './TransitMap'; import {ROUTE_COLOR} from './routes'; import {mapWaitLabel} from './mapLabels';
+const colors=options=>options.map(o=>({...o,color:ROUTE_COLOR[o.label]}));function App(){const [options,setOptions]=useState(colors(${JSON.stringify([base])}));window.setOptions=next=>setOptions(colors(next));window.setPause=(standing,tables,network)=>setOptions(colors([{...${JSON.stringify(base)},label:'Orange Night',bus:{...${JSON.stringify(from)},name:'53'},passedBus:null,busWait:mapWaitLabel(standing,tables,network)}]));return <><button>Before map</button><CombinedTripMap from={${JSON.stringify(from)}} to={${JSON.stringify(to)}} options={options}/><button>After map</button></>};createRoot(document.getElementById('root')).render(<App/>);`;
 const bundle = await build({ stdin: { contents: code, resolveDir: service + '/web/src', loader: 'tsx' }, outdir: out + '/virtual', bundle: true, write: false, format: 'iife', jsx: 'automatic', loader: { '.png': 'dataurl' }, define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env.DEV': 'false' }, plugins: [{ name: 'actual-map', setup(b) {
                 b.onLoad({ filter: /\/TransitMap\.tsx$/ }, async () => ({ contents: (await fs.readFile(source, 'utf8')).replace('const CombinedTripMap:', 'export const CombinedTripMap:').replaceAll('mapRef.current = map;\n    L.tileLayer', 'mapRef.current = map; window.fixtureMap = map;\n    L.tileLayer'), loader: 'tsx', resolveDir: service + '/web/src' }));
                 b.onResolve({ filter: /^\.\.?\// }, async (a) => { for (const ext of ['.ts', '.tsx', '.js']) {
@@ -31,7 +32,7 @@ const bundle = await build({ stdin: { contents: code, resolveDir: service + '/we
                 } });
             } }] });
 const js = bundle.outputFiles.find(f => f.path.endsWith('.js')).text, css = bundle.outputFiles.find(f => f.path.endsWith('.css'))?.text ?? '';
-const report = { phase: prefix, desktop, source: 'Actual CombinedTripMap with synthetic props; test-only export/map reference; no estimator or live network', states: [], checks: [], errors: [] };
+const report = { phase: prefix, desktop, source: 'Actual mapWaitLabel and CombinedTripMap with captured Cedar calibration and controlled standing inputs; test-only export/map reference; not an original report replay or arrival truth; all network intercepted', states: [], checks: [], errors: [] };
 const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
 let ctx;
 try {
@@ -55,7 +56,7 @@ try {
             await page.screenshot({ path: path.join(out, `${prefix}-${name}.png`) });
         return state;
     }
-    for (const width of [360, 390, 430, 640, 1280]) {
+    for (const width of [320, 360, 390, 430, 640, 1280]) {
         await page.setViewportSize({ width, height: 844 });
         await page.evaluate(() => window.fixtureMap.invalidateSize());
         await page.waitForTimeout(100);
@@ -68,6 +69,45 @@ try {
         assert(bus.name.includes('Usual total stop duration: ~5 min'));
         assert(label.left >= state.map.left && label.right <= state.map.right, 'pause label fits map');
         assert(!state.overflow, 'no phone overflow');
+    }
+    for (const width of [320, 390, 1280]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.evaluate(() => window.fixtureMap.invalidateSize());
+        for (const [name, seconds, support, approach] of [
+            ['short-hold', 179, 'captured', false],
+            ['threshold', 180, 'captured', false],
+            ['long-cedar-pause', 601, 'captured', false],
+            ['missing-departure', 240, 'missing', false],
+            ['thin-departure', 240, 'thin', false],
+            ['nearby-unknown', 240, 'missing', true],
+            ['moving', null, 'captured', false],
+        ]) {
+            const tables = support === 'captured' ? cedar.routeDwells : support === 'thin' ? { 10: { ...cedar.routeDwells['10'], n: 2 } } : {};
+            const network = support === 'captured' ? cedar.dwellsByRoute : undefined;
+            const standing = seconds === null ? null : { stopId: 10, standingSec: seconds, approach };
+            await page.evaluate(({ standing, tables, network }) => window.setPause(standing, tables, network), { standing, tables, network });
+            // Leaflet fades the removed permanent tooltip for 200 ms.
+            await page.waitForTimeout(350);
+            const state = await capture(`${name}-${width}`, width === 320 && seconds === 601);
+            const label = state.labels.find(l => l.wait);
+            const bus = state.buses.find(b => b.name?.includes('53'));
+            assert(bus, 'Orange Night marker remains present');
+            if (seconds === null || seconds < 180) {
+                assert(!label, 'moving or short usual hold clears permanent pause label');
+                assert(!/Waiting|Stopped|departure time unavailable/i.test(bus.name), 'accessible marker clears old pause');
+            } else {
+                const clock = seconds === 601 ? '10:01' : seconds === 180 ? '3:00' : '4:00';
+                assert(label?.text.includes(`Stopped${approach ? ' nearby' : ''} ${clock}`));
+                assert(bus.name.includes(`Waiting${approach ? ' nearby' : ''} ${clock}`));
+                assert(label.left >= state.map.left && label.right <= state.map.right, 'observed pause fits map');
+                if (support !== 'captured') {
+                    assert(label.text.includes('departure time unavailable'));
+                    assert(bus.name.includes('Usual stop duration unavailable'));
+                    assert(!/leaves in|leaving/i.test(label.text), 'unknown support never becomes a departure forecast');
+                } else assert(!label.text.includes('departure time unavailable'));
+            }
+            assert(!state.overflow, 'no phone overflow');
+        }
     }
     assert.deepEqual(report.errors, []);
     report.completed = true;

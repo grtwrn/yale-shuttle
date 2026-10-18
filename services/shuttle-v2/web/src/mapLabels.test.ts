@@ -3,6 +3,8 @@ import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWai
 import { displayBand, chipCountdownText } from './etaBand';
 import { arrivalSummary } from './arrivalDetails';
 import { standChipFor } from './standWait';
+import cedarWait from './__fixtures__/cedar-map-wait-20261017.json';
+import { shownStandSec, type DwellStat, type DwellTimes } from './arrivals';
 
 describe('map route identity without color', () => {
   it.each([
@@ -50,6 +52,40 @@ describe('reports 113/114: point and range keep separate roles', () => {
 });
 
 describe('bus wait label', () => {
+  const cedar = cedarWait.routeDwells as Record<string, DwellStat>;
+  const network = cedarWait.dwellsByRoute as unknown as DwellTimes;
+  it('shows an actual long Orange Night pause at Cedar despite its short usual hold', () => {
+    const typical = shownStandSec(cedar['10'], null, cedar, network)!.sec;
+    expect(typical).toBeLessThan(180);
+    const standing = { stopId: 10, standingSec: 601 };
+    const label = mapWaitLabel(standing, cedar, network)!;
+    expect(label).not.toBeNull();
+    expect(label.elapsed).toBe('Waiting 10:01');
+    expect(label.departure).toBe(standChipFor(standing, cedar, network)!.text);
+    expect(label.compact).toContain('Stopped 10:01');
+    expect(label.overdue).toBe(true);
+  });
+  it('reveals a usually short stop at three actual minutes and clears when the bus moves', () => {
+    expect(mapWaitLabel({ stopId: 10, standingSec: 179 }, cedar, network)).toBeNull();
+    expect(mapWaitLabel({ stopId: 10, standingSec: 180 }, cedar, network)?.elapsed).toBe('Waiting 3:00');
+    expect(mapWaitLabel(null, cedar, network)).toBeNull();
+  });
+  it.each(['missing', 'thin'])('keeps a long observed clock with %s departure support without inventing an estimate', support => {
+    const tables: Record<string, DwellStat> = support === 'missing' ? {} : { 10: { ...cedar['10']!, n: 2 } };
+    const label = mapWaitLabel({ stopId: 10, standingSec: 240 }, tables, undefined)!;
+    expect(label).not.toBeNull();
+    expect(label.elapsed).toBe('Waiting 4:00');
+    expect(label.departure).toBe('departure time unavailable');
+    expect(label.typical).toBe('Usual stop duration unavailable');
+    expect(label.overdue).toBe(false);
+    expect(label.compact).not.toMatch(/leaves in|leaving|~\d/);
+  });
+  it('keeps a long approach pause nearby and never displays an invalid clock', () => {
+    expect(mapWaitLabel({ stopId: 10, standingSec: 240, approach: true }, {}, undefined)?.elapsed).toBe('Waiting nearby 4:00');
+    for (const standingSec of [NaN, Infinity, -1]) {
+      expect(mapWaitLabel({ stopId: 10, standingSec }, {}, undefined)).toBeNull();
+    }
+  });
   it('stays beside the bus when stacking above an arrival chip would be farther away', () => {
     const rect = { left: 141, right: 219, top: 328, bottom: 348 };
     const bus = { left: 166, right: 194, top: 350, bottom: 378 };

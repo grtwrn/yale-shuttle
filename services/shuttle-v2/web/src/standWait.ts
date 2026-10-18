@@ -96,6 +96,9 @@ function mmss(s: number): string {
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
 }
 
+/** The observed clock can remain visible without a supported departure estimate. */
+export const standClockText = mmss;
+
 /** "4 min" -> "4", "<1 min" -> "<1". Same shared-unit idiom as fmtBusPair. */
 function bare(s: string): string {
   return s.replace(" min", "");
