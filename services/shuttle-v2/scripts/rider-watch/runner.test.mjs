@@ -16,8 +16,8 @@ const dwelling="🚌 20 min\nBOARD🚌Union Station (S)⏸ 0:29\nWest Haven Trai
 const at126={bus_name:'#126',route_id:10,lat:41.297912,lon:-72.926694,at_stop_id:122,stationary:true};
 const near126={bus_name:'#126',route_id:10,lat:41.296923,lon:-72.927685,stationary:false};
 
-async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0}={}){
- vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});
+async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0,fakeTimeouts=false}={}){
+ vi.useFakeTimers({toFake:['Date','setInterval','clearInterval',...(fakeTimeouts?['setTimeout','clearTimeout']:[])]});
  vi.setSystemTime(Date.parse(at));
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
  const h={text,clicks:[],handlers:{}};
@@ -868,5 +868,51 @@ test('the real rider loop raises one candidate for a sustained missing map pause
  assert.equal(await count(),1);
  await h.poll(text,[bus]);assert.equal(await count(),1);
  await h.poll(text,[bus]);assert.equal(await count(),2);
+ assert.equal(h.watcher.status().run.harnessErrors,undefined);
+});
+
+
+test('phase-aligned fresh feeds get a settled map check instead of skipping forever',async()=>{
+ const coords={10:{lat:41.303254,lon:-72.934247},2:{lat:41.306539,lon:-72.933001},114:{lat:41.315675,lon:-72.920859}};
+ const bus={bus_name:'#57',route_id:14,...coords[10],at_stop_id:10,stationary:true};
+ const feedOf=buses=>({buses:buses.map(b=>({...b,observed_at:Date.now()})),routes:{14:[10,2,114]},stop_names:{10:'333 Cedar',2:'129 York',114:'Whitney / Sachem'},stop_coords:coords,server_eta:{v:2,at:Date.now(),servedAt:Date.now(),buses:[['57','Orange Night',0,{stopId:10,standingSec:601,approach:false}]],rows:[[0,2,300,120,540,1,0,120,120]]}});
+ const trip={kind:'fixed',origin:{label:'129 York',...coords[2],stopId:2},destination:{display_name:'Whitney / Sachem',...coords[114],stopId:114}};
+ const text='🚌 #57 · 1 stop away\nBOARD129 York\nGET OFFWhitney / Sachem';
+ const h=current=await harness(feedOf([bus]),trip,{initialLine:{label:'Orange Night',busRouteIds:[14]},feedOf,text,initialFeedAgeMs:2000,fakeTimeouts:true});
+ h.maps=[{markers:[{name:'Orange Night #57'}],labels:[]}];
+ for(let i=0;i<2;i++){
+  vi.setSystemTime(Date.now()+10000);
+  await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedOf([bus])});
+  const tick=h.watcher.tick();
+  // Let the old immediate sample finish, or the corrected sampler reach its
+  // bounded settling wait, before advancing the clock.
+  for(let n=0;n<2000&&h.watcher.status().busy&&vi.getTimerCount()<2;n++)await new Promise(r=>setImmediate(r));
+  await vi.advanceTimersByTimeAsync(1100);await tick;
+  assert.equal(h.watcher.status().run.mapPauseAudit.checked,1,'every aligned tick must eventually inspect its long pause');
+ }
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal(events.filter(e=>e.kind==='candidate-map-pause').length,1);
+});
+
+
+test('a packet received during the settling wait replaces the boarding snapshot',async()=>{
+ const coords={10:{lat:41.303254,lon:-72.934247},2:{lat:41.306539,lon:-72.933001},114:{lat:41.315675,lon:-72.920859}};
+ const bus={bus_name:'#57',route_id:14,...coords[10],at_stop_id:10,stationary:true};let stop=10;
+ const feedOf=buses=>({buses:buses.map(b=>({...b,observed_at:Date.now()})),routes:{14:[10,2,114]},stop_names:{10:'333 Cedar',2:'129 York',114:'Whitney / Sachem'},stop_coords:coords,server_eta:{v:2,at:Date.now(),servedAt:Date.now(),buses:[['57','Orange Night',0,stop===null?null:{stopId:stop,standingSec:601,approach:false}]],rows:[[0,2,300,120,540,1,0,120,120]]}});
+ const trip={kind:'fixed',origin:{label:'129 York',...coords[2],stopId:2},destination:{display_name:'Whitney / Sachem',...coords[114],stopId:114}};
+ const text='🚌 #57 · 1 stop away\nBOARD129 York\nGET OFFWhitney / Sachem';
+ const h=current=await harness(feedOf([bus]),trip,{initialLine:{label:'Orange Night',busRouteIds:[14]},feedOf,text,initialFeedAgeMs:2000,fakeTimeouts:true});
+ h.maps=[{markers:[{name:'Orange Night #57'}],labels:[]}];stop=2;
+ await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedOf([{...bus,...coords[2],at_stop_id:2}])});
+ const tick=h.watcher.tick();
+ for(let n=0;n<2000&&h.watcher.status().busy&&vi.getTimerCount()<2;n++)await new Promise(r=>setImmediate(r));
+ await vi.advanceTimersByTimeAsync(500);stop=null;
+ const departed={...bus,lat:coords[2].lat+0.001,lon:coords[2].lon,at_stop_id:undefined,stationary:false,last_stop_id:2,last_moved_at:new Date().toISOString()};
+ h.text=text.replace('1 stop','2 stops');
+ await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedOf([departed])});
+ await vi.advanceTimersByTimeAsync(600);await tick;
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+ const samples=(await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal(samples.at(-1).buses[0].lat,departed.lat);assert(samples.at(-1).mapPauseAudit.renderWaitMs>0);
  assert.equal(h.watcher.status().run.harnessErrors,undefined);
 });

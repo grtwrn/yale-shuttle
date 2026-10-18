@@ -25,7 +25,13 @@ its usual-duration threshold. Exact route/bus identity, one matching vehicle and
 track, a valid forecast row, a receipt no older than 30 seconds and forecast age
 below 45 seconds are required. Server age and client elapsed time count once;
 the phone clock need not match the server. A newly received feed gets one second
-to settle. Feed replacement during the text/DOM read resets confirmation.
+to settle. For a long pause on the watched line, a tick landing inside that
+second waits at most 1.05 seconds, then takes a new payload/receipt snapshot
+before reading the screen or making its existing boarding decision. This
+prevents the 10 second rider ticks from remaining aligned with 5 second feed
+refreshes and skipping every check. The wait is recorded as `renderWaitMs`;
+ordinary/moving/stale inputs do not request it. Feed replacement during the
+subsequent text/DOM read resets confirmation.
 
 Two producer and GPS observations advancing at least five seconds, with no gap
 over 30 seconds, raise one `candidate-map-pause` event and screenshot per missing

@@ -28,6 +28,23 @@ export async function readPauseMaps(page) {
   }));
 }
 
+/** Wait only for a fresh long pause on the watched line, bounded to 1.05s.
+ * Sampling at 10s can otherwise stay aligned with 5s feed refreshes forever.
+ * The caller must take a new feed snapshot after this wait. */
+export function pauseReadDelay(feed, receivedAt, now, label) {
+  if (![receivedAt, now].every(finite)) return 0;
+  const elapsed = now - receivedAt;
+  if (elapsed < 0 || elapsed >= 1000) return 0;
+  const wire = feed?.server_eta;
+  if (wire?.v !== 2 || ![wire.at, wire.servedAt].every(finite) || wire.servedAt < wire.at
+    || wire.servedAt - wire.at + elapsed >= 45_000 || !Array.isArray(wire.buses)
+    || !Array.isArray(wire.rows) || !wire.rows.length) return 0;
+  const age = (wire.servedAt - wire.at + elapsed) / 1000;
+  return wire.buses.some(bus => bus?.[1] === label && finite(bus[3]?.standingSec)
+    && bus[3].standingSec >= 0 && bus[3].standingSec + age >= 180)
+    ? 1050 - elapsed : 0;
+}
+
 /** Independent of the app's label/hold helpers. This tests an observed clock,
  * never the correctness of a departure forecast or a physical bus stop. */
 export function auditPauseMaps(maps, feed, receivedAt, now, stable = true) {

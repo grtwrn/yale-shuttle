@@ -1,5 +1,5 @@
 import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
-import { auditPauseMaps, confirmPauseMaps, readPauseMaps } from './map-pause.mjs';
+import { auditPauseMaps, confirmPauseMaps, pauseReadDelay, readPauseMaps } from './map-pause.mjs';
 import { completeArrival } from './complete-arrival.mjs';
 import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
 import { confirmExitInstruction, offPoleExitInstruction } from './exit-instruction.mjs';
@@ -146,7 +146,13 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
      await select();return;
     }
    }
-   const sampledFeed=feed,sampledFeedAt=feedAt;
+   let sampledFeed=feed,sampledFeedAt=feedAt;
+   const renderWaitMs=run.phase==='waiting'?pauseReadDelay(sampledFeed,sampledFeedAt,Date.now(),run.line.label):0;
+   if(renderWaitMs){
+    await sleep(renderWaitMs);if(stopped)return;
+    // Refresh both receipt and payload before reading text/DOM or deciding to board.
+    sampledFeed=feed;sampledFeedAt=feedAt;
+   }
    const text=await page.locator('body').innerText();
    const maps=run.phase==='waiting'?await readPauseMaps(page):[];
    const now=Date.now();
@@ -155,9 +161,9 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    const mapPause=run.phase==='waiting'?auditPauseMaps(maps,sampledFeed,sampledFeedAt,now,feedStable):null;
    const pauses=confirmPauseMaps(run.mapPauseConflicts,mapPause?.findings??[],now);
    run.mapPauseConflicts=pauses.state;
-   run.mapPauseAudit=mapPause?{checked:mapPause.checked,skipped:mapPause.skipped,reason:mapPause.reason,sampledAt:new Date(now).toISOString()}:null;
+   run.mapPauseAudit=mapPause?{checked:mapPause.checked,skipped:mapPause.skipped,reason:mapPause.reason,renderWaitMs,sampledAt:new Date(now).toISOString()}:null;
    const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-sampledFeedAt,text,buses:sampledFeed.buses,
-    ...(mapPause?{mapPauseAudit:{...mapPause,maps,feedStableDuringRead:feedStable}}:{}),
+    ...(mapPause?{mapPauseAudit:{...mapPause,maps,renderWaitMs,feedStableDuringRead:feedStable}}:{}),
     ...(run.phase==='riding'?{rideContext:{busName:run.busName,routeLabel:run.line.label,
      exitStopId:run.exitStopId,exitStopName:sampledFeed.stop_names?.[run.exitStopId],
      exitCoords:sampledFeed.stop_coords?.[run.exitStopId],feedStableDuringTextRead:feedStable}}:{}),

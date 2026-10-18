@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { auditPauseMaps, confirmPauseMaps } from './map-pause.mjs';
+import { auditPauseMaps, confirmPauseMaps, pauseReadDelay } from './map-pause.mjs';
 
 const at=1_000_000,receivedAt=2_000_000,now=receivedAt+2000;
 const feed=()=>({buses:[{bus_name:'#57',bus_id:67840,route_id:14,observed_at:at}],server_eta:{v:2,at,servedAt:at,buses:[['57','Orange Night',0,{stopId:10,standingSec:601,approach:false}]],rows:[[0,2,300,120,540,1,0,120,120]]}});
@@ -80,5 +80,22 @@ describe('sustained pause label episodes',()=>{
   if(mode==='regressed-model')next.modelAt=f.modelAt-1;if(mode==='gap')time=now+30001;
   if(mode==='stop-change')next.stopId=2;if(mode==='route-change')next.label='Blue Night';
   expect(confirmPauseMaps(first.state,[next],time).alerts).toEqual([]);
+ });
+});
+
+
+describe('bounded settling read',()=>{
+ test('waits just beyond the render boundary, then stops waiting',()=>{
+  expect(pauseReadDelay(feed(),receivedAt,receivedAt,'Orange Night')).toBe(1050);
+  expect(pauseReadDelay(feed(),receivedAt,receivedAt+999,'Orange Night')).toBe(51);
+  expect(pauseReadDelay(feed(),receivedAt,receivedAt+1000,'Orange Night')).toBe(0);
+ });
+ test.each(['other-line','moving','short','stale','missing','invalid-clock'])('does not delay ordinary boarding on %s data',mode=>{
+  const f=feed();let label='Orange Night',time=receivedAt;
+  if(mode==='other-line')label='Blue Night';if(mode==='moving')f.server_eta.buses[0][3]=null;
+  if(mode==='short')f.server_eta.buses[0][3].standingSec=179;
+  if(mode==='stale')f.server_eta.servedAt=f.server_eta.at+45000;
+  if(mode==='missing')delete f.server_eta;if(mode==='invalid-clock')time=NaN;
+  expect(pauseReadDelay(f,receivedAt,time,label)).toBe(0);
  });
 });
