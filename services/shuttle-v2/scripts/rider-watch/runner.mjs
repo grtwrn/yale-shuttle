@@ -1,4 +1,5 @@
 import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
+import { auditPauseMaps, confirmPauseMaps, readPauseMaps } from './map-pause.mjs';
 import { completeArrival } from './complete-arrival.mjs';
 import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
 import { confirmExitInstruction, offPoleExitInstruction } from './exit-instruction.mjs';
@@ -40,7 +41,7 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
   return {feedReceivedAt:new Date(feedAt).toISOString(),feedAgeMs,feedStale:feedAgeMs>MAX_FEED_AGE_MS,cachedBuses:feed.buses.length};
  };
  const status=async(extra={})=>{
-  await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date().toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,...feedStatus(),...extra},null,2));
+  await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date().toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,mapPauseAudit:run?.phase==='waiting'?run.mapPauseAudit:null,...feedStatus(),...extra},null,2));
   await saveCheckpoint(ROOT,page,run,lastPosition);
  };
  const event=async(kind,detail)=>{const e={at:new Date().toISOString(),runId:run?.id,kind,detail};await appendRolling(ROOT,'events',e);console.log(JSON.stringify(e));};
@@ -146,15 +147,23 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
     }
    }
    const sampledFeed=feed,sampledFeedAt=feedAt;
-   const text=await page.locator('body').innerText(),now=Date.now();
+   const text=await page.locator('body').innerText();
+   const maps=run.phase==='waiting'?await readPauseMaps(page):[];
+   const now=Date.now();
    const feedStable=feed===sampledFeed&&feedAt===sampledFeedAt;
    const wire=sampledFeed.server_eta;
+   const mapPause=run.phase==='waiting'?auditPauseMaps(maps,sampledFeed,sampledFeedAt,now,feedStable):null;
+   const pauses=confirmPauseMaps(run.mapPauseConflicts,mapPause?.findings??[],now);
+   run.mapPauseConflicts=pauses.state;
+   run.mapPauseAudit=mapPause?{checked:mapPause.checked,skipped:mapPause.skipped,reason:mapPause.reason,sampledAt:new Date(now).toISOString()}:null;
    const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-sampledFeedAt,text,buses:sampledFeed.buses,
+    ...(mapPause?{mapPauseAudit:{...mapPause,maps,feedStableDuringRead:feedStable}}:{}),
     ...(run.phase==='riding'?{rideContext:{busName:run.busName,routeLabel:run.line.label,
      exitStopId:run.exitStopId,exitStopName:sampledFeed.stop_names?.[run.exitStopId],
      exitCoords:sampledFeed.stop_coords?.[run.exitStopId],feedStableDuringTextRead:feedStable}}:{}),
     ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{})};
    await appendRolling(ROOT,'samples',sample);run.samples++;
+   for(const alert of pauses.alerts){await event('candidate-map-pause',alert);await capture('candidate-map-pause');}
    if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
     const checked=confirmConflict(run.countConflict,pickupCountConflict(text,feed,run.line.busRouteIds,now),now);

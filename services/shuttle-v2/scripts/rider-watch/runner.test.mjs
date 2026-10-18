@@ -22,7 +22,7 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
  const h={text,clicks:[],handlers:{}};
  const button=name=>({isVisible:async()=>name==="🚌 I'm on it",click:async()=>h.clicks.push(name)});
- const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:()=>({innerText:async()=>h.text}),
+ const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:()=>({innerText:async()=>h.text,evaluateAll:async()=>h.maps??[]}),
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
  const ctx={setGeolocation:async g=>{h.geo=g;}};
@@ -835,4 +835,38 @@ test('a stale feed interrupts exit-instruction confirmation before a fresh recov
 test('the real rider accepts the fixed off-pole screen without an arrival-instruction candidate',async()=>{
  const h=await blueExitHarness();for(const s of blueExitFixture.samples)await h.poll(s.text.replaceAll('Get off here','Watch for your stop').replaceAll('Arriving at College/George','Watch for College/George'),s.buses);
  assert.equal((await h.events()).filter(e=>e.kind==='candidate-exit-instruction').length,0);assert.equal(h.watcher.status().run.phase,'riding');
+});
+
+
+test('the real rider loop raises one candidate for a sustained missing map pause',async()=>{
+ const coords={10:{lat:41.303254,lon:-72.934247},2:{lat:41.306539,lon:-72.933001},114:{lat:41.315675,lon:-72.920859}};
+ const bus={bus_name:'#57',route_id:14,...coords[10],at_stop_id:10,stationary:true};
+ const feedOf=buses=>({buses:buses.map(b=>({...b,observed_at:Date.now()})),routes:{14:[10,2,114]},stop_names:{10:'333 Cedar',2:'129 York',114:'Whitney / Sachem'},stop_coords:coords,server_eta:{v:2,at:Date.now(),servedAt:Date.now(),buses:[['57','Orange Night',0,{stopId:10,standingSec:601,approach:false}]],rows:[[0,2,300,120,540,1,0,120,120]]}});
+ const trip={kind:'fixed',origin:{label:'129 York',...coords[2],stopId:2},destination:{display_name:'Whitney / Sachem',...coords[114],stopId:114}};
+ const text='🚌 #57 · 1 stop away\nBOARD129 York\nGET OFFWhitney / Sachem';
+ const h=current=await harness(feedOf([bus]),trip,{initialLine:{label:'Orange Night',busRouteIds:[14]},feedOf,text});
+ h.maps=[{markers:[{name:'Orange Night #57'}],labels:[]}];
+ for(let i=0;i<3;i++)await h.poll(text,[bus]);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal(events.filter(e=>e.kind==='candidate-map-pause').length,1);
+ assert.equal(h.watcher.status().run.phase,'waiting');
+ h.maps=[{markers:[{name:'Orange Night #57. Waiting 10:01.'}],labels:[{text:'Orange Night #57 Stopped 10:01 · departure time unavailable',visible:true}]}];
+ await h.poll(text,[bus]);
+ assert.deepEqual(h.watcher.status().run.mapPauseConflicts,{});
+ // A new response arriving during the actual DOM await must reset the episode.
+ h.maps=[{markers:[{name:'Orange Night #57'}],labels:[]}];
+ await h.poll(text,[bus]);
+ const locator=h.page.locator;
+ h.page.locator=()=>({innerText:async()=>h.text,evaluateAll:async()=>{
+  await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedOf([bus])});
+  return h.maps;
+ }});
+ await h.poll(text,[bus]);h.page.locator=locator;
+ assert.deepEqual(h.watcher.status().run.mapPauseConflicts,{});
+ assert.equal(h.watcher.status().run.mapPauseAudit.reason,'feed-replaced-during-read');
+ const count=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse).filter(e=>e.kind==='candidate-map-pause').length;
+ assert.equal(await count(),1);
+ await h.poll(text,[bus]);assert.equal(await count(),1);
+ await h.poll(text,[bus]);assert.equal(await count(),2);
+ assert.equal(h.watcher.status().run.harnessErrors,undefined);
 });

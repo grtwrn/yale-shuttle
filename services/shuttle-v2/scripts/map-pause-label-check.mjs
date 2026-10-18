@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const service = process.cwd(), require = createRequire(service + '/package.json');
 const { build } = require('esbuild'), { chromium } = require('playwright-core');
+const { readPauseMaps, auditPauseMaps, confirmPauseMaps } = await import(service + '/scripts/rider-watch/map-pause.mjs');
 const { seedTestId } = await import(service + '/scripts/testId.mjs');
 const out = process.env.OUT;
 if (!out)
@@ -108,6 +109,40 @@ try {
             }
             assert(!state.overflow, 'no phone overflow');
         }
+    }
+    // Exercise the live rider's independent DOM auditor against the actual map.
+    // Fault injection removes the permanent label, matching the old suppression;
+    // this is a controlled browser regression, not a historical screen replay.
+    const modelAt = 1_000_000;
+    const monitorFeed = (offset = 0) => ({ buses: [{ bus_name: '#53', route_id: 14, observed_at: modelAt + offset }],
+        server_eta: { v: 2, at: modelAt + offset, servedAt: modelAt + offset,
+            buses: [['53', 'Orange Night', 0, { stopId: 10, standingSec: 601 + offset / 1000, approach: false }]],
+            rows: [[0, 2, 300, 120, 540, 1, 0, 120, 120]] } });
+    report.pauseMonitor = [];
+    for (const width of [320, 1280]) {
+        await page.setViewportSize({ width, height: 844 });
+        await page.evaluate(() => window.fixtureMap.invalidateSize());
+        await page.evaluate(({ tables, network }) => window.setPause({ stopId: 10, standingSec: 601 }, tables, network),
+            { tables: cedar.routeDwells, network: cedar.dwellsByRoute });
+        await page.waitForTimeout(350);
+        const healthy = auditPauseMaps(await readPauseMaps(page), monitorFeed(), modelAt, modelAt + 2000);
+        assert.equal(healthy.checked, 1); assert.deepEqual(healthy.findings, []);
+        await page.evaluate(base => window.setOptions([{ ...base, label: 'Orange Night', bus: { ...base.bus, name: '53' }, passedBus: null, busWait: null }]), base);
+        await page.waitForTimeout(350);
+        const suppressed = auditPauseMaps(await readPauseMaps(page), monitorFeed(), modelAt, modelAt + 2000);
+        assert.equal(suppressed.findings.length, 1);
+        assert.deepEqual(suppressed.findings[0].missing, ['accessible-clock', 'visible-clock']);
+        const pending = confirmPauseMaps(null, suppressed.findings, modelAt + 2000);
+        assert.deepEqual(pending.alerts, []);
+        const next = auditPauseMaps(await readPauseMaps(page), monitorFeed(10000), modelAt + 10000, modelAt + 12000);
+        const confirmed = confirmPauseMaps(pending.state, next.findings, modelAt + 12000);
+        assert.equal(confirmed.alerts.length, 1);
+        await page.evaluate(() => window.setPause({ stopId: 10, standingSec: 601 }, {}, undefined));
+        await page.waitForTimeout(350);
+        const recovered = auditPauseMaps(await readPauseMaps(page), monitorFeed(20000), modelAt + 20000, modelAt + 22000);
+        assert.equal(recovered.checked, 1); assert.deepEqual(recovered.findings, []);
+        assert.deepEqual(confirmPauseMaps(confirmed.state, recovered.findings, modelAt + 22000).state, {});
+        report.pauseMonitor.push({ width, healthy, suppressed, confirmed, recovered });
     }
     assert.deepEqual(report.errors, []);
     report.completed = true;
