@@ -1133,6 +1133,73 @@ describe("rider self-service (my-reports)", () => {
     expect(all.reports.find((x) => x.id === id)!.note).toContain("operator log two");
   });
 
+  it("keeps internal audit snapshots without repeating an unchanged public reply", async () => {
+    const id = await submit(OWNER, "synthetic reply-history check");
+    const notes = [
+      "[triage] Looking into it.\n---\noperator-only audit one",
+      "[triage] Looking into it.\n---\noperator-only audit two",
+      "[approved] Looking into it.\r\n---\r\noperator-only audit three",
+    ];
+    for (const note of notes) {
+      const response = await app.request(`/api/reports/${id}/update`, {
+        method: "POST",
+        headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+        body: JSON.stringify({ status: "open", note }),
+      });
+      expect(response.status).toBe(200);
+    }
+    const row = bundle.sqlite.prepare("SELECT note,context FROM reports WHERE id = ?").get(id) as { note: string; context: string };
+    const history = JSON.parse(row.context).noteHistory as Array<{ text: string; at: number }>;
+    expect(history.map(n => n.text)).toEqual(notes);
+    expect(row.note).toBe(notes.at(-1));
+    const response = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    expect(response.status).toBe(200);
+    const body = await response.json() as { reports: Array<{ id: number; note: string; replies: Array<{ text: string; at: number }> }> };
+    const report = body.reports.find(r => r.id === id)!;
+    expect(report.note).toBe("Looking into it.");
+    expect(report.replies).toEqual([{ text: "Looking into it.", at: history[0]!.at }]);
+    expect(JSON.stringify(report)).not.toContain("operator-only");
+    expect((bundle.sqlite.prepare("SELECT context FROM reports WHERE id = ?").get(id) as { context: string }).context).toBe(row.context);
+  });
+
+  it("projects stored duplicate replies once while retaining distinct replies and original timestamps", async () => {
+    const id = await submit(OWNER, "stored reply-history check");
+    const context = JSON.stringify({ noteHistory: [
+      { text: "[triage] Looking into it.\n---\nprivate one", at: 1000 },
+      { text: "[approved] Looking into it.\n---\nprivate two", at: 2000 },
+      { text: "\n---\nprivate-only snapshot", at: 3000 },
+      { text: "Looking into it.\n---\nprivate three", at: 4000 },
+      { text: "Fixed now.\n---\nprivate four", at: 5000 },
+      { text: "Looking into it.\n---\nprivate five", at: 6000 },
+    ], followups: [{ text: "More rider details", at: 3500 }] });
+    bundle.sqlite.prepare("UPDATE reports SET note = ?, context = ? WHERE id = ?").run("Looking into it.\n---\nprivate five", context, id);
+    const response = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    expect(response.status).toBe(200);
+    const body = await response.json() as { reports: Array<{ id: number; replies: Array<{ text: string; at: number }>; followups: Array<{ text: string; at: number }> }> };
+    const report = body.reports.find(r => r.id === id)!;
+    expect(report.replies).toEqual([
+      { text: "Looking into it.", at: 1000 },
+      { text: "Fixed now.", at: 5000 },
+      { text: "Looking into it.", at: 6000 },
+    ]);
+    expect(report.followups).toEqual([{ text: "More rider details", at: 3500 }]);
+    expect(JSON.stringify(report)).not.toContain("private");
+    expect((bundle.sqlite.prepare("SELECT context FROM reports WHERE id = ?").get(id) as { context: string }).context).toBe(context);
+  });
+
+  it("does not turn an internal-only note history into a public reply", async () => {
+    const id = await submit(OWNER, "internal-only reply-history check");
+    const context = JSON.stringify({ noteHistory: [
+      { text: "\n---\nprivate audit one", at: 1000 },
+      { text: "[triage]\n---\nprivate audit two", at: 2000 },
+    ] });
+    bundle.sqlite.prepare("UPDATE reports SET note = ?, context = ? WHERE id = ?").run("\n---\nprivate audit two", context, id);
+    const response = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = await response.json() as { reports: Array<{ id: number; note: string | null; replies: unknown[] }> };
+    expect(body.reports.find(r => r.id === id)).toMatchObject({ note: null, replies: [] });
+    expect((bundle.sqlite.prepare("SELECT context FROM reports WHERE id = ?").get(id) as { context: string }).context).toBe(context);
+  });
+
   it("shows a single reply for a report answered before the thread existed", async () => {
     const id = await submit(OWNER, "older report");
     // Simulate the pre-thread world: a note on the row, no history in context.
