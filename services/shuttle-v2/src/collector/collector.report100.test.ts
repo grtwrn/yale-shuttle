@@ -259,12 +259,19 @@ describe("report #100: four restarts through one stand leave one arrival row", (
       if (RESTARTS.includes(ms)) await boot();
       await pollAt(ms, lat, lon);
     }
-    // Cedar / Congress, the next stop on the line. Four polls: one to open the
-    // candidate, the rest to let the detector settle its new anchor.
-    const last = FEED[FEED.length - 1]![0];
-    for (let i = 1; i <= 4; i++) {
-      await pollAt(last + i * 5_000, cedarCongress.lat, cedarCongress.lon);
+    await driveAway();
+  }
+
+  /** Synthetic continuation after the unchanged recorded stand. Supply the
+   * intervening motion rather than jumping to the next stop in one poll. */
+  async function driveAway(): Promise<number> {
+    const [last, lat, lon] = FEED[FEED.length - 1]!;
+    for (let i = 1; i <= 8; i++) {
+      const progress = Math.min(i / 5, 1);
+      await pollAt(last + i * 5_000, lat + (cedarCongress.lat - lat) * progress,
+        lon + (cedarCongress.lon - lon) * progress);
     }
+    return last + 40_000;
   }
 
   const arrivalsAtCedar = () =>
@@ -360,11 +367,14 @@ describe("report #100: four restarts through one stand leave one arrival row", (
     // stand must get its own arrival row, because the first one closed.
     await boot();
     for (const [ms, lat, lon] of FEED) await pollAt(ms, lat, lon);
-    const last = FEED[FEED.length - 1]![0];
-    for (let i = 1; i <= 4; i++) await pollAt(last + i * 5_000, cedarCongress.lat, cedarCongress.lon);
+    const last = await driveAway();
     // Back at Cedar, with the process restarted under it.
     await boot();
-    for (let i = 5; i <= 10; i++) await pollAt(last + i * 5_000, RESTING.lat, RESTING.lon);
+    for (let i = 1; i <= 10; i++) {
+      const progress = Math.min(i / 5, 1);
+      await pollAt(last + i * 5_000, cedarCongress.lat + (RESTING.lat - cedarCongress.lat) * progress,
+        cedarCongress.lon + (RESTING.lon - cedarCongress.lon) * progress);
+    }
 
     const rows = arrivalsAtCedar();
     expect(rows).toHaveLength(2);
