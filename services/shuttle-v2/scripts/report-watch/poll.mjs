@@ -12,6 +12,22 @@ const exec = promisify(execFile);
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const day = at => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(at));
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+// The same projection as server/reports.ts riderFacingNote, with a parity
+// test. Keep this dependency-free scheduled Node process out of the TS server
+// module graph. Internal investigations must not become new rider work.
+function visibleNote(note) {
+  if (note == null) return null;
+  let text = note.replace(/\r\n/g, '\n');
+  const rule = text.search(/^[ \t]*-{3,}[ \t]*$/m);
+  if (rule >= 0) text = text.slice(0, rule);
+  text = text.trim();
+  for (;;) {
+    const next = text.replace(/^(?:\[[a-z-]+\]|automated(?:-abuse)?:)\s*/i, '');
+    if (next === text) break;
+    text = next.trimStart();
+  }
+  return text.length > 0 ? text : null;
+}
 const read = async (file, fallback) => {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); }
   catch (e) { if (e.code === 'ENOENT') return fallback; throw e; }
@@ -32,19 +48,24 @@ export function reconcileReports(prior, reports, now = Date.now(), complete = re
     openIds.add(report.id);
     let followups = [];
     try { followups = JSON.parse(report.context ?? '{}').followups ?? []; } catch { /* no thread */ }
-    const digest = hash([report.body, report.note, report.priority, followups]);
+    const digest = hash([report.body, visibleNote(report.note), report.priority, followups]);
     const old = seen[report.id];
-    const actionable = old ? old.digest !== digest : !!prior || day(report.createdAt) === day(now);
+    // A v1 digest also included the raw operator note. Upgrade unchanged
+    // entries quietly, but retain an alert for any unclassified change during
+    // migration: the old state cannot prove that only internal text changed.
+    const comparisonDigest = old?.fingerprintVersion === 2 ? digest
+      : hash([report.body, report.note, report.priority, followups]);
+    const actionable = old ? old.digest !== comparisonDigest : !!prior || day(report.createdAt) === day(now);
     if (actionable) {
       const event = { id: report.id, kind: old ? 'report-updated' : 'report-submitted', detectedAt: new Date(now).toISOString(),
         createdAt: report.createdAt, priority: report.priority, body: String(report.body ?? '').slice(0, 1000),
         followupCount: Array.isArray(followups) ? followups.length : 0 };
       events.push(event); pending.set(report.id, event);
     }
-    seen[report.id] = { digest, lastSeenAt: now };
+    seen[report.id] = { digest, fingerprintVersion: 2, lastSeenAt: now };
   }
   if (complete) for (const id of pending.keys()) if (!openIds.has(id)) pending.delete(id);
-  return { version: 1, checkedAt: new Date(now).toISOString(),
+  return { version: 2, checkedAt: new Date(now).toISOString(),
     seen: Object.fromEntries(Object.entries(seen).sort((a, b) => b[1].lastSeenAt - a[1].lastSeenAt).slice(0, 1000)),
     pending: [...pending.values()].sort((a, b) => b.id - a.id).slice(0, 1000),
     recent: [...events, ...(prior?.recent ?? [])].slice(0, 100), events, saturated: !complete };
