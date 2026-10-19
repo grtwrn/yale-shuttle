@@ -6,12 +6,12 @@ const first={routeLabel:'Blue Day',boardStopId:1,exitStopId:2},second={routeLabe
 let active;
 afterEach(async()=>{await active?.watcher.stop();vi.useRealTimers();if(active)await fs.rm(active.dir,{recursive:true,force:true});active=null;});
 function storage(){const s={};Object.defineProperties(s,{getItem:{value:k=>s[k]??null},setItem:{value:(k,v)=>{s[k]=v;}},removeItem:{value:k=>{delete s[k];}}});return s;}
-async function harness({initialRun,wrongOnward=false,feedAgeMs=0}={}){
+async function harness({initialRun,wrongOnward=false,feedAgeMs=0,controlText='Arrives in ~1 min, ~1 min range',controls=true}={}){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});vi.setSystemTime(Date.parse('2026-10-18T12:00:00Z'));
- const h={dir:await fs.mkdtemp(path.join(os.tmpdir(),'transfer-rider-')),handlers:{},clicks:[],geo:[],local:storage(),session:storage(),stage:0,ui:'waiting'};
+ const h={dir:await fs.mkdtemp(path.join(os.tmpdir(),'transfer-rider-')),handlers:{},clicks:[],geo:[],local:storage(),session:storage(),stage:0,ui:'waiting',controlText,controls};
  let buses=[{bus_name:'#41',route_id:1,lat:41.3107,lon:a.lon,stationary:false},{bus_name:'#42',route_id:2,...c,stationary:true,at_stop_id:3}];
  const feed=()=>({buses:buses.map(x=>({...x,observed_at:Date.now()})),routes:{1:[1,2,5],2:[3,4,6]},stop_names:{1:'Origin',2:'First exit',3:'Second pickup',4:'Destination',5:'Other A',6:'Other B'},stop_coords:{1:a,2:b,3:c,4:d,5:d,6:a}});
- const sections=()=>h.ui==='waiting'||h.ui==='handoff'?[{...(h.stage===0?first:second),controls:true,boardBusName:h.stage===0?'41':'42',countdownBusName:h.stage===0?'39':'42',boardingStopsAhead:0,text:'Original scoped transfer text',controlText:'Arrival: About 1 min',buttons:h.stage===0?["🚌 I'm on #41","🚌 I'm on #39"]:["🚌 I'm on it"]},...(h.stage===0?[{...second,controls:false,text:'Second bus preview'}]:[])]:[];
+ const sections=()=>h.ui==='waiting'||h.ui==='handoff'?[{...(h.stage===0?first:second),controls:h.controls,boardBusName:h.stage===0?'41':'42',countdownBusName:h.stage===0?'39':'42',boardingStopsAhead:0,text:'Original scoped transfer text',controlText:h.controlText,buttons:h.stage===0?["🚌 I'm on #41","🚌 I'm on #39"]:["🚌 I'm on it"]},...(h.stage===0?[{...second,controls:false,text:'Second bus preview\nArrives in ~80 min, 60–90 min range'}]:[])]:[];
  const evaluate=async(fn,arg)=>{const pl=globalThis.localStorage,ps=globalThis.sessionStorage;globalThis.localStorage=h.local;globalThis.sessionStorage=h.session;try{return fn(arg);}finally{globalThis.localStorage=pl;globalThis.sessionStorage=ps;}};
  const button=name=>({isVisible:async()=>name==='End first ride'?h.ui==='riding'&&h.stage===0:name==='Done'?h.ui==='riding'&&h.stage===1:name.startsWith('🚌 I')?['waiting','handoff'].includes(h.ui):false,
   click:async()=>{h.clicks.push(name);if(name.startsWith('🚌 I')){
@@ -20,7 +20,7 @@ async function harness({initialRun,wrongOnward=false,feedAgeMs=0}={}){
    h.local.setItem('shuttle-boarded-ride',JSON.stringify(ride));h.ui='riding';
   }else if(name==='End first ride'){h.local.removeItem('shuttle-boarded-ride');h.stage=1;h.ui='handoff';}
   else if(name==='Done'){h.local.removeItem('shuttle-boarded-ride');h.ui='finished';}}});
- const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:selector=>({innerText:async()=>h.ui==='riding'?`${h.stage===0?'Blue Day':'Orange Day'} · Bus #${h.stage===0?'41':'42'}`:'Original visible transfer itinerary',evaluateAll:async()=>selector==='[data-feedback-transfer-ride]'?sections():[]}),
+ const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:selector=>({innerText:async()=>h.ui==='riding'?`${h.stage===0?'Blue Day':'Orange Day'} · Bus #${h.stage===0?'41':'42'}`:(h.bodyText??'Original visible transfer itinerary'),evaluateAll:async()=>selector==='[data-feedback-transfer-ride]'?sections():[]}),
   getByRole:(role,{name}={})=>role==='alertdialog'?{getByRole:(_,{name})=>button(name)}:button(name),
   getByTestId:id=>({getByRole:(_,{name})=>button(name),waitFor:async()=>{if(id==='transfer-handoff')assert.equal(h.ui,'handoff');}}),
   evaluate,waitForFunction:async(_,name)=>{assert.equal(JSON.parse(h.local.getItem('shuttle-boarded-ride')).busName,String(name).replace(/^#/,''));},
@@ -55,4 +55,30 @@ test('a wrong onward target is retained and ends the run without declaring a tra
 });
 test('stale feed prevents transfer boarding even if its old controls remain visible',async()=>{
  const h=active=await harness();await h.poll({dt:31000,fresh:false});assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+});
+
+test('a current-style 44 minute pickup quote lets a transfer board at 47.6 minutes',async()=>{
+ const h=active=await harness({controlText:'Arrives in ~44 min, 33–60 min range'});
+ h.controlText='Arrives in ~80 min, 60–90 min range';
+ await h.poll({dt:45*60000+10000});
+ assert.equal(h.watcher.status().run?.phase,'waiting');
+ assert.equal(h.watcher.status().run.waitCapMin,66);
+ await h.poll({dt:146000,nextBuses:[{bus_name:'#41',route_id:1,...a,stationary:true,at_stop_id:1},{bus_name:'#42',route_id:2,...c,stationary:true,at_stop_id:3}]});
+ assert.equal(h.watcher.status().run.phase,'riding');
+ assert.equal(h.watcher.status().run.boardedAt,'2026-10-18T12:47:36.000Z');
+ assert.equal(h.watcher.status().run.waitCapMin,66);
+ assert.deepEqual(await h.journeys(),[]);
+});
+test('later transfer ETA jumps do not extend the original quote cap indefinitely',async()=>{
+ const h=active=await harness({controlText:'Arrives in ~44 min, 33–60 min range'});
+ h.controlText='Arrives in ~80 min, 60–90 min range';
+ await h.poll({dt:66*60000+1000});
+ assert.equal(h.watcher.status().run,null);
+ const [journey]=await h.journeys();assert.equal(journey.result,'waiting-timeout-needs-review');assert.equal(journey.waitCapMin,66);
+});
+test('an unmatched active transfer never borrows a quote from the body or onward preview',async()=>{
+ const h=active=await harness({controls:false});h.bodyText='Arrives in ~80 min, 60–90 min range';
+ await h.poll();assert.equal(h.watcher.status().run.waitCapMin,undefined);
+ await h.poll({dt:45*60000});assert.equal(h.watcher.status().run,null);
+ const [journey]=await h.journeys();assert.equal(journey.result,'transfer-screen-timeout-needs-review');assert.equal(journey.waitCapMin,undefined);
 });

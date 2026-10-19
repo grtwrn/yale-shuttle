@@ -200,7 +200,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     // Wait as long as the card's first quote allows, as the ride cap does:
     // Grocery Ham quoted "About 44 min · Likely 33–60 min" and #42 pulled in
     // at 47.6 min, 2.6 min after a fixed 45 min cap ended the run (96f99a88).
-    if(run.waitCapMin==null){const quoted=quotedWaitMin(transferRead?.controlText??text);if(quoted!==null)run.waitCapMin=waitCapMin(quoted);}
+    if(run.waitCapMin==null){const quoted=quotedWaitMin(run.transfer?transferRead?.controlText:text);if(quoted!==null)run.waitCapMin=waitCapMin(quoted);}
     const waitCapMs=(run.waitCapMin??WAIT_CAP_MIN)*60000;
     // The line left service (e.g. Orange Night after its last loop): nothing
     // to board, so stop instead of waiting out the cap.

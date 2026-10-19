@@ -114,14 +114,27 @@ try {
       const initial = await readTransferSections(page); assert(initial[0].boardBusName);
       const firstBus = initial[0].boardBusName, first = selected.legs[0], second = selected.legs[1];
       assert.notEqual(first.routeLabel, 'Red'); assert.notEqual(second.routeLabel, 'Red');
+      // Reproduce the long pickup quote using the actual ArrivalDetails UI.
+      // Shift the constructed Blue forecasts together to preserve bus ranking.
+      const wire = feed.server_eta, bi = wire.buses.findIndex(b => b[0].replace(/^#/, '') === firstBus.replace(/^#/, ''));
+      const pickupRows = wire.rows.filter(r => r[0] === bi && r[1] === first.boardStopId).sort((a, b) => a[5] - b[5]);
+      assert(pickupRows.length); const delay = 45 * 60 - pickupRows[0][2];
+      for (let i = 0; i < wire.rows.length; i++) if (wire.buses[wire.rows[i][0]][1] === first.routeLabel) {
+        for (const column of [2, 3, 4, 7, 8]) wire.rows[i][column] = Math.max(0, wire.rows[i][column] + delay);
+        if (wire.distributions?.[i]) wire.distributions[i] = wire.distributions[i].map(sec => Math.max(0, sec + delay));
+      }
+      await advance(5500);
+      const longQuote = await readTransferSections(page);
+      assert.match(longQuote[0].controlText, /Arrives in ~44 min/);
       const simCtx = { setGeolocation: async p => { await ctx.setGeolocation(p); await page.evaluate(point => window.__riderTransferMoveTo(point), { lat: p.latitude, lon: p.longitude }); } };
       const trip = { kind: 'constructed-transfer', origin: { ...from, stopId: 100, label: 'Prospect / Canner' }, destination: { ...to, stopId: 94, display_name: 'Orange / Willow' } };
       watcher = await attach({ page, ctx: simCtx, initialTrip: trip, initialLine: { label: 'Blue Day', busRouteIds: [1] }, initialTransfer: selected,
         initialFeed: structuredClone(feed), initialFeedAt: now, outputDir: `${out}/rider-${width}`, allowedLabels: ['Blue Day', 'Orange Day'], randomLines: true, clockNow: () => now, autoTick: false });
+      assert.equal(watcher.status().run?.waitCapMin, 66, 'Current visible 44 minute quote must allow a 66 minute wait');
       await state('selected');
       place(firstBus, first, first.boardStopId); await advance(10000); await watcher.tick();
       for (let attempt = 0; watcher.status().run?.phase === 'waiting' && attempt < 12; attempt++) { await advance(30000); await watcher.tick(); }
-      assert.equal(watcher.status().run?.phase, 'riding'); assert.equal(watcher.status().run.busName.replace(/^#/, ''), firstBus.replace(/^#/, '')); await state('first-ride');
+      assert.equal(watcher.status().run?.phase, 'riding'); assert.equal(watcher.status().run.busName.replace(/^#/, ''), firstBus.replace(/^#/, '')); assert.equal(watcher.status().run.waitCapMin, 66); await state('first-ride');
       await page.reload(); await advance(5500); await page.getByRole('button', { name: 'End first ride', exact: true }).waitFor();
       place(firstBus, first, first.exitStopId); await advance(40000); await watcher.tick(); assert.equal(watcher.status().run?.phase, 'arrived'); await state('first-arrived');
       await advance(20000); await watcher.tick(); assert.equal(watcher.status().run?.transfer.stage, 1); assert.equal(watcher.status().run.phase, 'waiting'); await state('handoff');
@@ -129,14 +142,14 @@ try {
       await page.reload(); await advance(5500); await page.getByTestId('transfer-handoff').waitFor();
       place(secondBus, second, second.boardStopId); await advance(10000); await watcher.tick();
       for (let attempt = 0; watcher.status().run?.phase === 'waiting' && attempt < 20; attempt++) { await advance(30000); await watcher.tick(); }
-      assert.equal(watcher.status().run?.phase, 'riding'); assert.equal(watcher.status().run.busName.replace(/^#/, ''), secondBus.replace(/^#/, '')); await state('second-ride');
+      assert.equal(watcher.status().run?.phase, 'riding'); assert.equal(watcher.status().run.busName.replace(/^#/, ''), secondBus.replace(/^#/, '')); assert.equal(watcher.status().run.waitCapMin, 45); await state('second-ride');
       place(secondBus, second, second.exitStopId); await advance(40000); await watcher.tick(); assert.equal(watcher.status().run?.phase, 'arrived');
       await advance(20000); await watcher.tick(); assert.equal(watcher.status().run, null); await state('finished');
       const journeys = (await fs.readFile(`${out}/rider-${width}/journeys.jsonl`, 'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse); assert.equal(journeys.length, 1);
       const journey = journeys[0]; assert.equal(journey.result, 'completed'); assert.equal(journey.excludeAccuracy, true); assert.equal(journey.transfer.completedLegs.length, 2);
       assert.deepEqual(journey.transfer.completedLegs.map(l => l.arrivalObservation.stopId), [first.exitStopId, second.exitStopId]); assert.equal(journey.transfer.originalTrip.destination.display_name, 'Orange / Willow');
       const last = states.at(-1).storage; assert.equal(last.ride, null); assert.equal(last.handoff, null); assert.deepEqual(errors, []);
-      results.push({ width, selected: selected.legs, firstBus, secondBus, checks: ['Actual built SPA and normal transfer selection helper', 'First bus and onward storage verified', 'First source arrival retained', 'Normal first-ride end and onward controls', 'Reload retains each stage', 'Timed walking precedes second boarding', 'Second source arrival retained', 'Final ride completes through Done', 'Both leg receipts and final destination retained', 'Excluded from one-seat accuracy aggregates', 'No report submission or external page/API traffic'], states, errors });
+      results.push({ width, selected: selected.legs, firstBus, secondBus, checks: ['Actual built SPA and normal transfer selection helper', 'Current visible 44 minute pickup quote sets 66 minute cap', 'First quote stays fixed through boarding; second pickup gets its own cap', 'First bus and onward storage verified', 'First source arrival retained', 'Normal first-ride end and onward controls', 'Reload retains each stage', 'Timed walking precedes second boarding', 'Second source arrival retained', 'Final ride completes through Done', 'Both leg receipts and final destination retained', 'Excluded from one-seat accuracy aggregates', 'No report submission or external page/API traffic'], states, errors });
     } finally { await watcher?.stop(); if (page) await page.unrouteAll({ behavior: 'wait' }); await ctx.close(); }
   }
 } catch (error) { failure = error; }
