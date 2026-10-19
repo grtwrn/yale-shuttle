@@ -185,3 +185,19 @@ test('an unset rider stays random and a bad assignment fails instead of riding e
  assert.throws(()=>riderConfig({RIDER_LINE:'Red',RIDER_FROM:'106',RIDER_TO:'ysph'},redFeed),/RIDER_FROM=106 is not a Red stop/);
  assert.throws(()=>riderConfig({RIDER_LINE:'Red',RIDER_FROM:'48'},redFeed),/RIDER_TO=undefined/);
 });
+
+// TransferPickupControls renders ArrivalDetails rather than the legacy direct card.
+test('current transfer pickup text quotes the estimate, never its range or following shuttle',()=>{
+ assert.equal(quotedWaitMin('Blue Day #48\nArrives in ~44 min, 33–60 min range\nNext in ~78 min'),44);
+ assert.equal(quotedWaitMin('Arrives in <1 min, ~1 min range'),0);
+ assert.equal(quotedWaitMin('Arrives in ~31 min'),31);
+ assert.equal(quotedWaitMin('Arrives in 44 min'),44);
+ assert.equal(waitCapMin(quotedWaitMin('Arrives in ~44 min, 33–60 min range')),66);
+});
+test('current arrival quotes preserve ambiguity checks and reject incomplete or unrelated timing',()=>{
+ for(const text of ['Arrives in ~20 min\nArrives in ~30 min','Arrival: About 20 min\nArrives in ~30 min',
+  'Next in ~44 min','Following shuttle\nAbout 44 min later','Likely arrival window: 33–60 min',
+  'Orange Day arrival details: Arrives in ~44 min','Arrives in ~<1 min','Arrives in -1 min','Arrives in ~44 minutes'])
+  assert.equal(quotedWaitMin(text),null,text);
+ assert.equal(quotedWaitMin('Arrival: About 44 min · Likely 33–60 min\nArrives in ~44 min, 33–60 min range'),44);
+});

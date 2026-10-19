@@ -185,11 +185,13 @@ export const RIDE_CAP_MIN = 50, RIDE_CAP_MAX_MIN = 90;
 export function rideCapMin(quoted) {
   return Math.min(RIDE_CAP_MAX_MIN, Math.max(RIDE_CAP_MIN, Math.ceil((quoted ?? 0) * 1.5)));
 }
-/** The wait the trip card quoted ("Arrival: About 44 min · Likely 33–60 min";
- * "About <1 min" is 0), or null when it shows none or disagreeing values. */
+/** The visible pickup quote: the direct card's "Arrival: About 44 min" or
+ * the active transfer's "Arrives in ~44 min". "<1 min" is 0. Ranges and the
+ * following shuttle are not pickup quotes; disagreeing quotes fail closed. */
 export function quotedWaitMin(text) {
-  const quotes = [...String(text ?? '').matchAll(/(?:^|\n)Arrival: About (<1|\d+) min/g)].map(m => m[1] === '<1' ? 0 : Number(m[1]));
-  return quotes.length && quotes.every(q => q === quotes[0]) ? quotes[0] : null;
+  const quotes = [...String(text ?? '').matchAll(/(?:^|\n)(?:Arrival: About (<1|\d+)|Arrives in (<1|~?\d+)) min(?=[ \t]*(?:[,·\r\n]|$))/g)]
+    .map(m => { const value = m[1] ?? m[2]; return value === '<1' ? 0 : Number(value.replace(/^~/, '')); });
+  return quotes.length && quotes.every(q => Number.isSafeInteger(q) && q === quotes[0]) ? quotes[0] : null;
 }
 export const WAIT_CAP_MIN = 45, WAIT_CAP_MAX_MIN = 90;
 /** Minutes to wait before giving up, from the journey's start: 1.5× the
