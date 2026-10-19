@@ -1,3 +1,5 @@
+Transfer choices were withdrawn from production at the operator’s request on 2026-10-19. Trip planning presents ordinary single-bus and walking options. Existing boarded-ride recovery remains available; saved planner selections do not reopen the removed chooser. The implementation notes below describe the retained internal modules, not an available route-planning feature.
+
 # Transfer itineraries
 
 The Trip view can show one change between two shuttle lines. Each route pair

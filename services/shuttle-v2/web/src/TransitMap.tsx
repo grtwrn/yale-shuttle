@@ -94,7 +94,6 @@ import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { loadBoardedRide, saveBoardedRide, type BoardedRide } from "./boardedRide";
-import { TransferTrips } from "./TransferTrips";
 import { OnwardTransfer } from "./OnwardTransfer";
 import { loadTransferHandoff, saveTransferHandoff, saveTransferSelection, type TransferHandoff } from "./transferState";
 import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
@@ -1761,7 +1760,6 @@ const TripPlanner: FC<{
   // toggle for anyone who'd rather not see it.
   const [overviewExpanded, setOverviewExpanded] = useState(true);
   const [showAllOptions, setShowAllOptions] = useState(false);
-  const [transferOpen, setTransferOpen] = useState(false);
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
@@ -3234,11 +3232,7 @@ const TripPlanner: FC<{
   const showFromRow = !!toLL || fromExpanded;
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
-  const detailOpen = transferOpen || (!!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey));
-  const handleTransferDetail = useCallback((open: boolean) => {
-    setTransferOpen(open);
-    if (open) { setExpandedKey(null); setReminder(null); setReminderBanner(null); }
-  }, []);
+  const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
   const grocerySearchNotice = isMilfordGrocerySearch(fromText, fromSugg)
     || isMilfordGrocerySearch(toText, toSugg)
     ? groceryServiceNotice('Grocery Ham', targetDate ?? new Date()) : null;
@@ -3263,7 +3257,7 @@ const TripPlanner: FC<{
     : (stableOptions ?? []).filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {!transferOpen && <BusReportingAlerts key={`trip:${tripKey}:${expandedKey ?? ''}`} snapshot={reportingSnapshot}
+      {<BusReportingAlerts key={`trip:${tripKey}:${expandedKey ?? ''}`} snapshot={reportingSnapshot}
         available={reportingAvailable} watched={watchedTripBuses} scope={reportingScope}
         replacements={watchedTripBuses} />}
       {/* In-app fallback for a leave-time ping when a system notification
@@ -3937,7 +3931,7 @@ const TripPlanner: FC<{
           there, just not right now. Triggers on options=[] too because
           directWalkSec>1hr suppresses the walk entry, leaving riders
           with no context when a route is simply off-schedule. */}
-      {options && !alreadyThere && !transferOpen && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
+      {options && !alreadyThere && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
             {busStatus !== "ready"
@@ -4016,35 +4010,7 @@ const TripPlanner: FC<{
         </div>
       )}
       </div>
-      {effectiveFromLL && toLL && options && !alreadyThere && !tripTimeError && <TransferTrips key={tripKey}
-        query={tripKey} from={effectiveFromLL} to={{ ...toLL, text: toText || "your destination" }}
-        liveOrigin={isCurrentLocationText(fromText) ? userLatLon : null}
-        buses={buses} available={busStatus === "ready"} routeStops={routeStops} stopCoords={stopCoords} stopNames={stopNames}
-        segmentTimes={segmentTimes} dwellTimes={dwellTimes} routeHours={routeHours} targetAtMs={targetDate?.getTime() ?? null}
-        directOptions={options} hidden={!!expandedKey} onDetailChange={handleTransferDetail} onBoard={onBoard} onPlanNow={() => setTripTime("")}
-        renderAlerts={(path, firstBus, secondBus) => {
-          const watches = [path.first, path.second].flatMap((leg, index) => {
-            const busName = index === 0 ? firstBus : secondBus;
-            return busName ? [{ busName, routeLabel: leg.routeLabel,
-              routeIds: ROUTE_LISTS.find(c => c.label === leg.routeLabel)?.busRouteIds ?? [] }] : [];
-          });
-          return <BusReportingAlerts key={path.key} snapshot={reportingSnapshot} available={reportingAvailable}
-            scope={[path.first.routeLabel, path.second.routeLabel]} watched={watches} replacements={watches} />;
-        }}
-        renderMap={(path, firstBus, secondBus) => {
-          const overview: OverviewOption[] = [path.first, path.second].map((leg, index) => {
-            const cfg = ROUTE_LISTS.find(c => c.label === leg.routeLabel)!;
-            const segCoords = leg.stops.map(id => stopCoords[id]).filter((p): p is LatLon => !!p);
-            const seqCoords = mergedRouteStops(cfg, routeStops).map(id => stopCoords[id]).filter((p): p is LatLon => !!p);
-            const road = buildStopSequencePolyline(routePaths[leg.routeId], segCoords, seqCoords);
-            const name = index === 0 ? firstBus : secondBus;
-            const bus = busStatus === "ready" && name ? buses.find(b => b.bus_name.replace(/^#/, "") === name.replace(/^#/, "") && cfg.busRouteIds.includes(b.route_id)) : undefined;
-            return { label: leg.routeLabel, color: leg.color, segCoords, ...(road ? { road } : {}),
-              bus: bus ? { lat: bus.lat, lon: bus.lon, name } : null };
-          });
-          return <CombinedTripMap from={effectiveFromLL} to={toLL} options={overview} sequential timingKey={null} />;
-        }} />}
-      {options && options.length > 0 && !alreadyThere && !transferOpen && (
+      {options && options.length > 0 && !alreadyThere && (
         <div style={{ marginTop: 4 }}>
           {/* Details page leads with the way back — the search rows are
               hidden while a route is open, so this is the page header. */}
@@ -4716,7 +4682,7 @@ const TripPlanner: FC<{
         onClearRecent={onClearRecents}
         focusDestination={() => (toSummaryRef.current ?? toInputRef.current)?.focus({ preventScroll: true })}
       />}
-      {autoDetectOffer && !transferOpen && (
+      {autoDetectOffer && (
         <div style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
           zIndex: 9999, background: "#1a1a2e", color: "#fff",
