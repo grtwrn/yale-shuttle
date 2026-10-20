@@ -102,6 +102,20 @@ are committed individually; whole-poll atomicity and versioned causal row
 resolutions remain separate work. The production eligibility and promotion
 gates above are unchanged.
 
+## First-rest collection clocks
+
+The collector's first resting plateau must still be within the existing 75 m
+pin radius and belong to that stop. The detector can retain a stop's stationary
+anchor out to 125 m; that retained anchor does not turn a later outside repeat
+into the stop's first rest. A roll-through keeps its closest-approach clock,
+and sufficiently long outside freezes remain leg holds under the existing
+stillness rule. A first pass without an inbound leg buffers those frozen runs
+until its onward leg is confirmed. Outside fixes do not extend its recorded
+time inside the stop radius. These are source-clock definitions, not physical
+door or service truth. Historical rows are unchanged, and legacy warm states
+cannot recover missing earlier hold history. No calibration eligibility or
+promotion gate is relaxed by this collection correction.
+
 ## Artifact integrity
 
 Replay database, table patch and pairs caches include hashes of actual source
