@@ -4,11 +4,40 @@ import { openDb } from "../db/client.js";
 import type { Route, Stop } from "../schema/api.js";
 import { Collector } from "./collector.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
-import { step, type BusObservation, type BusState } from "./detector.js";
+import { distanceMeters } from "../network/geo.js";
+import { AT_STOP_PIN_M, step, type BusObservation, type BusState } from "./detector.js";
 import { UpstreamClient, type RawBus } from "./upstream.js";
 import fixture from "./__fixtures__/global-detour-reanchors-20261018.json";
 
 type Capture = typeof fixture.cases[number];
+
+function expectCallTiming(capture: Capture, call: Capture["earlyCall"], visits: Record<string, unknown>[]) {
+  const observations = capture.polls.flatMap(p => p.observations);
+  const index = observations.findIndex(o => o.collectedAt === call.arrived_at);
+  expect(index).toBeGreaterThanOrEqual(0);
+  const rest = observations[index]!, next = observations[index + 1]!;
+  const stop = capture.stops.find(s => s.id === call.stop_id)!;
+  expect([rest.lat, rest.lon]).toEqual([next.lat, next.lon]);
+  if (distanceMeters(rest, stop) <= AT_STOP_PIN_M) {
+    expect(visits).toContainEqual(expect.objectContaining({ stop_id: call.stop_id,
+      pinned_at: call.pinned_at, arrived_at: call.arrived_at,
+      departed_at: call.departed_at, stand_sec: call.stand_sec }));
+    return;
+  }
+  // Keep the captured source rows intact. Purple's early LEPH repeat was
+  // 110.8 m away; Blue Night's later College/Wall repeat was 122.6 m away.
+  // Neither window contains an inside-radius plateau. Their current collector
+  // clocks must use the observed closest approach, while retaining the visit.
+  const window = observations.filter(o => o.collectedAt >= call.pinned_at! && o.collectedAt <= call.departed_at!);
+  expect(window.some((o, i) => i > 0 && o.lat === window[i - 1]!.lat && o.lon === window[i - 1]!.lon
+    && distanceMeters(o, stop) <= AT_STOP_PIN_M)).toBe(false);
+  const closest = window.reduce((a, b) => distanceMeters(a, stop) <= distanceMeters(b, stop) ? a : b);
+  expect(distanceMeters(closest, stop)).toBeLessThanOrEqual(AT_STOP_PIN_M);
+  expect(visits).toContainEqual(expect.objectContaining({ stop_id: call.stop_id,
+    pinned_at: call.pinned_at, arrived_at: closest.collectedAt,
+    departed_at: closest.collectedAt, stand_sec: 0, outcome: "passed" }));
+}
+
 async function collect(capture: Capture, restartAt?: number) {
   const bundle = openDb(":memory:"); migrate(bundle.db, { migrationsFolder: "./drizzle" });
   let latest: readonly BusObservation[] = [], collector: Collector | undefined;
@@ -56,16 +85,15 @@ describe("a nearby global marker before its intervening published journey", () =
       const encounters = result.arrivals.filter(r => r.stop_id === target && Number(r.arrived_at) >= capture.fromCall.anchored_at);
       expect(encounters).toHaveLength(capture.route.id === 10 ? 2 : 1);
       // The continuous return can anchor LEPH earlier on its long incoming
-      // leg. Preserve both actual pin/rest/departure records, not a nearest
-      // marker clock that the old global reset had discarded.
-      if (capture.route.id === 10) expect(result.visits).toContainEqual(expect.objectContaining({
-        stop_id: target, anchored_at: capture.earlyCall.anchored_at,
-        pinned_at: capture.earlyCall.pinned_at, arrived_at: capture.earlyCall.arrived_at,
-        departed_at: capture.earlyCall.departed_at, stand_sec: capture.earlyCall.stand_sec,
-      }));
-      expect(result.visits).toContainEqual(expect.objectContaining({ stop_id: target,
-        pinned_at: capture.laterCall.pinned_at, arrived_at: capture.laterCall.arrived_at,
-        departed_at: capture.laterCall.departed_at, stand_sec: capture.laterCall.stand_sec }));
+      // leg. Keep both encounters and pins; first-rest clocks must also obey
+      // the existing radius. These source records are not physical door truth.
+      if (capture.route.id === 10) {
+        expect(result.visits).toContainEqual(expect.objectContaining({
+          stop_id: target, anchored_at: capture.earlyCall.anchored_at, pinned_at: capture.earlyCall.pinned_at,
+        }));
+        expectCallTiming(capture, capture.earlyCall, result.visits);
+      }
+      expectCallTiming(capture, capture.laterCall, result.visits);
     } else {
       // The later movement becomes ambiguous between published legs. Keep
       // that model re-anchor as an unpinned source record. Its existing

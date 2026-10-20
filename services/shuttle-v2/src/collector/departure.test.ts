@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
+import greenFirstRest from "./__fixtures__/green-first-rest-2026-10-18.json";
 
 import {
   CONFIDENCE_BY_HOW,
@@ -12,6 +13,7 @@ import {
   STILL_MIN_MS,
   pruneVisits,
   stepManyWithVisits,
+  stepVisit,
   type LegEvent,
   type StopVisitEvent,
   type VisitState,
@@ -23,6 +25,7 @@ import {
   STATIONARY_RADIUS_M,
   planTracks,
   stepMany,
+  step,
   type BusObservation,
   type BusState,
   type DetectorEvent,
@@ -156,6 +159,86 @@ describe("the roll-in is not a shuffle", () => {
     expect(r.out[0]!.arrivedAt).toBe(T0 + 3 * POLL);
     expect(r.out[0]!.standSec).toBe(30);
     expect(r.resolved.filter((c) => c.outcome === "shuffle")).toHaveLength(0);
+  });
+});
+
+describe("the first rest stays inside the stop radius", () => {
+  it("replays the recorded Green pass using its closest approach instead of the outside repeat", () => {
+    const network = TransitNetwork.build(greenFirstRest.stops, [greenFirstRest.route as Route]);
+    // One captured warm state, followed continuously by all 21 source polls.
+    // This checks collector clocks, not independent physical arrival truth.
+    let state: BusState | null = structuredClone(greenFirstRest.state);
+    let visit: VisitState | null = structuredClone(greenFirstRest.visit);
+    const events: (StopVisitEvent | LegEvent)[] = [];
+    for (const { sequence, observation } of greenFirstRest.observations) {
+      const before = state;
+      const r = step(network, state, observation);
+      const v = stepVisit(network, visit, before, r.state, observation, r.resumed);
+      state = r.state;
+      visit = v.state;
+      events.push(...v.events);
+      if (sequence === 93) {
+        expect(visit!.pass!.stopId).toBe(77);
+        expect(visit!.pass!.arrivedAt).toBeNull();
+      }
+    }
+    expect(events.find(e => e.kind === "visit" && e.stopId === 77)).toMatchObject({
+      outcome: "passed", standSec: 0, departedAt: 1792355509650,
+    });
+    expect(events.find(e => e.kind === "leg" && e.fromStopId === 77 && e.toStopId === 94)).toMatchObject({
+      departedAt: 1792355509650, arrivedAt: 1792355529629, legSec: 19.979, driveSec: 19.979, holdSec: 0,
+    });
+  });
+
+  it("does not turn a repeated outbound fix into an arrival at the earlier pin", () => {
+    const positions = [0, 30, 60, 90, 90];
+    const rolling = run(track(positions));
+    const pass = rolling.visits.get("#42")!.pass!;
+    expect(pass.pinnedAt).toBe(T0);
+    expect(pass.arrivedAt).toBeNull();
+
+    const r = run(track([...positions, 120, 170, 300, 450, 600, 780, 840, ...rep(840, 4)]));
+    const a = r.out.find(v => v.stopId === 1)!;
+    expect(a.outcome).toBe("passed");
+    expect(a.arrivedAt).toBe(T0);
+    expect(a.departedAt).toBe(T0);
+    expect(a.standSec).toBe(0);
+    expect(a.insideSec).toBe(10);
+    expect(r.legs[0]).toMatchObject({ fromStopId: 1, toStopId: 2, departedAt: T0, legSec: 55 });
+  });
+
+  it("counts a sustained off-stop freeze as a leg hold", () => {
+    const r = run(track([0, 30, 60, 90, ...rep(90, 4), 120, 170, 300, 450, 600, 840, ...rep(840, 4)]));
+    const a = r.out.find(v => v.stopId === 1)!;
+    expect(a.outcome).toBe("passed");
+    expect(a.standSec).toBe(0);
+    expect(a.insideSec).toBe(10);
+    expect(r.legs[0]).toMatchObject({ legSec: 65, holdSec: 20, driveSec: 45, holds: 1 });
+  });
+
+  it("starts the first rest when a bus returns inside, without backdating to the outside freeze", () => {
+    const r = run(track([0, 30, 90, 90, 60, ...rep(60, 6), 90, 130, 200]));
+    const a = r.out.find(v => v.stopId === 1)!;
+    expect(a.arrivedAt).toBe(T0 + 4 * POLL);
+    expect(a.departedAt).toBe(T0 + 10 * POLL);
+    expect(a.standSec).toBe(30);
+    expect(a.outcome).toBe("stopped");
+  });
+
+  it.each([
+    { metres: 74, arrivedAt: T0 + POLL },
+    { metres: 76, arrivedAt: T0 },
+  ])("uses the existing pin boundary for a first rest at $metres metres", ({ metres, arrivedAt }) => {
+    const r = run(track([0, metres, metres, 110, 170]));
+    expect(r.out[0]!.arrivedAt).toBe(arrivedAt);
+  });
+
+  it("preserves an established inside-radius rest across an outbound off-stop hold", () => {
+    const r = run(track([0, 30, 30, 90, ...rep(90, 4), 120, 170]));
+    const a = r.out.find(v => v.stopId === 1)!;
+    expect(a.arrivedAt).toBe(T0 + POLL);
+    expect(a.departedAt).toBe(T0 + 2 * POLL);
+    expect(a.standSec).toBe(5);
   });
 });
 

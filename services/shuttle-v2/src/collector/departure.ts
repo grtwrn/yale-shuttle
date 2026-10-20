@@ -326,6 +326,9 @@ interface Pass {
   restSince: EpochMs;
   /** Repeated polls of it. */
   restPolls: number;
+  /** Frozen runs before the first inbound leg exists. Optional for legacy states. */
+  rollingRuns?: FrozenRun[];
+  rollingFrozenSince?: EpochMs | null;
   lastAtRestAt: EpochMs;
   shuffles: number;
   firstMovedAt: EpochMs | null;
@@ -687,6 +690,22 @@ export function stepVisit(
     return done();
   }
 
+  // The first pass may roll through without ever resting. Until its departure
+  // is confirmed there is no inbound transit to retain off-stop holds. Keep
+  // those runs on the pass so the onward leg can account for them once its
+  // departure is known. Earlier legacy state supplies no missing hold history.
+  if (!transit && pass.arrivedAt === null) {
+    const runs = [...(pass.rollingRuns ?? [])];
+    let frozenSince = pass.rollingFrozenSince ?? null;
+    if (fresh) {
+      closeRun(runs, frozenSince, prevAt);
+      frozenSince = null;
+    } else if (frozenSince === null) {
+      frozenSince = prevAt;
+    }
+    pass = { ...pass, rollingRuns: runs, rollingFrozenSince: frozenSince };
+  }
+
   const stop = network.stops.get(pass.stopId);
   const dStop = stop ? distanceMeters(obs, stop) : Infinity;
   const left = after.stationaryStopId !== pass.stopId;
@@ -699,7 +718,11 @@ export function stepVisit(
       events.push(visitEvent(pass, id, { departedAt: null, how: null, confidence: null, cand: null, resolvedAt: t }));
       const from = pass;
       endTransit(from, from.closestAt, false);
-      startTransit(from, from.closestAt, prev.transit ? prev.transit.runs : [], prev.transit ? prev.transit.frozenSince : null);
+      startTransit(
+        from, from.closestAt,
+        prev.transit ? prev.transit.runs : from.rollingRuns ?? [],
+        prev.transit ? prev.transit.frozenSince : from.rollingFrozenSince ?? null,
+      );
       pass = openPass(network, anchorOf(after, obs), after, obs);
       return done();
     }
@@ -713,9 +736,12 @@ export function stepVisit(
   // -- Pinned, not yet at rest: rolling in (or through) --------------------------
   if (pass.arrivedAt === null) {
     if (anchorMoved && !left) pass = { ...pass, nextAnchor: anchorOf(after, obs) };
-    if (!fresh) {
+    if (!fresh && dStop <= AT_STOP_PIN_M && !left) {
       // First repeated fix: the bus has come to rest at the coordinate reported
-      // on the previous poll. That is the arrival, and the end of the inbound leg.
+      // on the previous poll, inside this stop's pin radius. A previous pin
+      // does not make a later off-stop hold an arrival: the detector can keep
+      // its stationary anchor while the bus rolls beyond the pin radius.
+      // That arrival is the end of the inbound leg.
       pass = { ...pass, arrivedAt: pass.restSince, restPolls: 1, lastAtRestAt: t };
       endTransit(pass, pass.arrivedAt!, true);
       return done();
@@ -727,13 +753,21 @@ export function stepVisit(
       events.push(visitEvent(pass, id, { departedAt: pass.closestAt, how, confidence: CONFIDENCE_BY_HOW[how], cand: null, resolvedAt: t }));
       const from = pass;
       endTransit(from, from.closestAt, true);
-      startTransit(from, from.closestAt, prev.transit ? prev.transit.runs : [], prev.transit ? prev.transit.frozenSince : null);
+      startTransit(
+        from, from.closestAt,
+        prev.transit ? prev.transit.runs : from.rollingRuns ?? [],
+        prev.transit ? prev.transit.frozenSince : from.rollingFrozenSince ?? null,
+      );
       const next = from.nextAnchor ?? (anchorMoved ? anchorOf(after, obs) : null);
       pass = next ? openPass(network, next, after, obs) : null;
       return done();
     }
-    // Still rolling inside the radius: the resting point moves with the bus.
-    pass = { ...pass, restLat: obs.lat, restLon: obs.lon, restSince: t, lastAtRestAt: t };
+    // Still rolling. Only a fresh fix moves the prospective resting point;
+    // outside repeats are holds, and cannot extend time inside the stop radius.
+    if (fresh) pass = {
+      ...pass, restLat: obs.lat, restLon: obs.lon, restSince: t,
+      lastAtRestAt: dStop <= AT_STOP_PIN_M ? t : pass.lastAtRestAt,
+    };
     return done();
   }
 
