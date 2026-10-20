@@ -5,7 +5,7 @@ import path from 'node:path';
 import { WitnessStore } from './storage.mjs';
 import { dispatchIncidents } from './incidents.mjs';
 import { pollWitnesses, runOnce } from './poll.mjs';
-import { fixture } from './testFixtures.mjs';
+import { fixture, association } from './testFixtures.mjs';
 import { witnessJSON, witnessSHA } from '../../src/collector/witnessCodec.ts';
 
 const roots = [], stores = [];
@@ -55,6 +55,33 @@ describe('durable collector incident review delivery', () => {
     const reopened = new WitnessStore(a.root, { policy: { minFreeBytes: 0 } }); stores.push(reopened);
     expect(await dispatchIncidents({ store: reopened, directory: a.directory })).toMatchObject({ ok: true, pending: 0 });
     expect(fs.readdirSync(a.directory)).toEqual([]); expect(fs.readdirSync(processed)).toEqual([name]);
+  });
+  it('preserves a v1 incident through a v2 metric revisit, lost acknowledgement and restart', async () => {
+    const a = setup(), first = a.lead();
+    const row = a.store.db.prepare('SELECT id,json FROM incidents').get(), current = JSON.parse(row.json);
+    expect(current.metricVersion).toBe(2);
+    // Simulate the serialized v1 record already stored by the previous operator.
+    const legacy = { ...current, minimumDistanceM: current.stopPoleDistanceM,
+      lowerBoundMetresPerSec: current.stopPoleDistancePerLegSecond,
+      scope: 'Diagnostic lead only. Review raw GPS, topology, state and committed source rows; do not filter rows or infer physical service.' };
+    delete legacy.metricVersion; delete legacy.stopPoleDistanceM; delete legacy.stopPoleDistancePerLegSecond;
+    const originalJSON = JSON.stringify(legacy);
+    a.store.db.prepare('UPDATE incidents SET json=? WHERE id=?').run(originalJSON, row.id);
+    a.store.db.exec("CREATE TRIGGER lost_metric_ack BEFORE INSERT ON meta WHEN NEW.key LIKE 'incident-delivery:%' BEGIN SELECT RAISE(ABORT,'lost acknowledgement'); END");
+    expect(await dispatchIncidents(a)).toMatchObject({ ok: false, pending: 1 });
+    const name = fs.readdirSync(a.directory)[0], file = path.join(a.directory, name), bytes = fs.readFileSync(file);
+    a.store.db.exec('DROP TRIGGER lost_metric_ack');
+
+    const page = a.f.page(a.f.head().latest - 1);
+    page.evaluations = [association(page.frames[0])];
+    const revisited = a.store.commitPage(page, { seenHead: { ...a.f.head(), evaluationCursor: page.frames[0].seq }, revisit: true, now: a.f.at });
+    expect(a.store.db.prepare('SELECT id,json FROM incidents').all()).toEqual([{ id: row.id, json: originalJSON }]);
+    expect(a.store.readChunk(first.key)).toBeTruthy(); expect(a.store.readChunk(revisited.key)).toBeTruthy();
+    a.store.close(); stores.splice(stores.indexOf(a.store), 1);
+    const reopened = new WitnessStore(a.root, { policy: { minFreeBytes: 0 } }); stores.push(reopened);
+    expect(await dispatchIncidents({ store: reopened, directory: a.directory })).toMatchObject({ ok: true, pending: 0 });
+    expect(fs.readdirSync(a.directory)).toEqual([name]); expect(fs.readFileSync(file)).toEqual(bytes);
+    expect(JSON.parse(bytes).detail).toEqual(legacy);
   });
   it('refuses conflicting queue content without overwriting it or releasing source pins', async () => {
     const a = setup(); a.lead();

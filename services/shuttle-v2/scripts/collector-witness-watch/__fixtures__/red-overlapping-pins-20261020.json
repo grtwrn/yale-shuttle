@@ -1,0 +1,65 @@
+{
+  "source": {
+    "collectorEpoch": "43717850-6e2d-428c-abf6-e5433dc6613e",
+    "rowSHA256": "df927fdcd2269cbd300aed30f774caacc6a5bad02a28c9089573632885db74ee",
+    "topologySHA256": "07d47fd2d03e0b426a6c5b3590dd0c53e40fd53f52b99260a93223a0d35d04b3",
+    "receiptAt": 1792534711411,
+    "originalSequence": 530,
+    "scope": "Exact public row, stop markers and source fixes from the retained October20 collector witness. This is a narrowed diagnostic fixture, not a complete source frame or independent physical service truth."
+  },
+  "stops": [
+    {
+      "id": 11,
+      "lat": 41.324661,
+      "lon": -72.928677,
+      "name": "344 Winchester"
+    },
+    {
+      "id": 146,
+      "lat": 41.325379,
+      "lon": -72.92774,
+      "name": "Winchester / Division"
+    }
+  ],
+  "row": {
+    "arrived_at": 1792534706438,
+    "bus_id": 67945,
+    "bus_name": "#127",
+    "departed_at": 1792534702971,
+    "dow": 2,
+    "drive_sec": 3.467,
+    "from_index": 14,
+    "from_stop_id": 11,
+    "hold_sec": 0,
+    "holds": 0,
+    "hops": 1,
+    "hour": 18,
+    "id": 220391,
+    "leg_sec": 3.467,
+    "reached": 1,
+    "route_id": 3,
+    "to_index": 15,
+    "to_pinned_at": 1792534706438,
+    "to_stop_id": 146
+  },
+  "departureFix": {
+    "busId": 67945,
+    "busName": "#127",
+    "collectedAt": 1792534702971,
+    "heading": 14,
+    "lastStopId": 27,
+    "lat": 41.324764,
+    "lon": -72.92795,
+    "routeId": 3
+  },
+  "arrivalFix": {
+    "busId": 67945,
+    "busName": "#127",
+    "collectedAt": 1792534706438,
+    "heading": 14,
+    "lastStopId": 27,
+    "lat": 41.325059,
+    "lon": -72.927849,
+    "routeId": 3
+  }
+}

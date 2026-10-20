@@ -89,10 +89,14 @@ export function derivedLegLeads(records) {
       if(!a||!b||!Number.isFinite(leg.leg_sec)||leg.leg_sec<=0)continue;
       const rad=Math.PI/180,dlat=(b.lat-a.lat)*rad,dlon=(b.lon-a.lon)*rad;
       const hav=Math.sin(dlat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dlon/2)**2;
-      const metres=6371000*2*Math.atan2(Math.sqrt(hav),Math.sqrt(Math.max(0,1-hav))),lowerBoundMetresPerSec=metres/leg.leg_sec;
-      if(lowerBoundMetresPerSec>30)leads.push({kind:'derived-leg-speed-review',seq:frame.seq,at:frame.at,rowId:leg.id,
+      // Leg clocks use pin/closest-approach points, not the stop poles. Their
+      // distance/time ratio is a review trigger, not a physical-speed bound.
+      const stopPoleDistanceM=6371000*2*Math.atan2(Math.sqrt(hav),Math.sqrt(Math.max(0,1-hav)));
+      const stopPoleDistancePerLegSecond=stopPoleDistanceM/leg.leg_sec;
+      if(stopPoleDistancePerLegSecond>30)leads.push({kind:'derived-leg-speed-review',seq:frame.seq,at:frame.at,rowId:leg.id,
         rowSHA256:mutation.afterSHA256,fromStopId:leg.from_stop_id,toStopId:leg.to_stop_id,legSec:leg.leg_sec,
-        minimumDistanceM:metres,lowerBoundMetresPerSec,scope:'Diagnostic lead only. Review raw GPS, topology, state and committed source rows; do not filter rows or infer physical service.'});
+        metricVersion:2,stopPoleDistanceM,stopPoleDistancePerLegSecond,
+        scope:'Diagnostic stop-pole distance / recorded leg duration only; not measured speed or a speed lower bound. Pin/closest-approach endpoints differ from poles. Review raw GPS, topology, state and committed source rows; do not filter rows or infer physical service.'});
     }
   }
   return leads;

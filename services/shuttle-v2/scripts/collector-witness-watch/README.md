@@ -67,10 +67,18 @@ recover old reports' missing evidence. A truncated/invalid report queue, stale
 protection refresh or damaged storage prevents cleanup; earlier pins survive.
 The public feedback format and its public-response-only bundles are unchanged.
 
-Derived completed legs whose endpoint distance divided by recorded duration
+Derived completed legs whose stop-pole distance divided by recorded duration
 exceeds 30 m/s create **diagnostic leads** with protected source chunks/topology.
-This is a conservative review trigger, not a statement of the bus's speed or a
-rule to drop a row. Review the original GPS, state, geometry and revision ranges.
+Version 2 labels these values `stopPoleDistanceM` and
+`stopPoleDistancePerLegSecond`. Leg endpoints use pin or closest-approach fixes;
+they need not be at the poles, and their pin areas can overlap. The ratio is
+neither measured bus speed nor a physical-speed lower bound. Review the original
+GPS, state, geometry and revision ranges; do not drop or repair a row from this
+trigger. The threshold and legacy `derived-leg-speed-review` kind remain
+unchanged so incident identities stay stable. Existing incidents retain their
+original version 1 fields and bytes, including on late association/retry; their
+old `minimumDistanceM` and `lowerBoundMetresPerSec` names do not establish a
+physical measurement.
 The watcher also reviews an indexed route anchor advancing at an exactly repeated
 GPS fix while its prior marker remains within the existing 150 m global slack.
 It requires an earlier actually captured observation, matching before/after
