@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { witnessJSON, witnessSHA } from '../../src/collector/witnessCodec.ts';
 import { decodeWitness, validatePage, validHead, initialChain, derivedLegLeads } from './protocol.mjs';
 import { fixture, association } from './testFixtures.mjs';
+import { distanceMeters } from '../../src/network/geo.ts';
+import overlappingPins from './__fixtures__/red-overlapping-pins-20261020.json';
 
 describe('collector witness transport verification', () => {
   it('round-trips minus zero, one ULP, dates, maps, aliases and cycles', () => {
@@ -41,5 +43,30 @@ describe('collector witness transport verification', () => {
     expect(leads).toHaveLength(1); expect(leads[0]).toMatchObject({ rowId: 5, legSec: 5 });
     expect(p.frames).toHaveLength(1); expect(leads[0].scope).toContain('do not filter');
     records.frames[0].input.pollResult = 'failed'; expect(derivedLegLeads(records.frames)).toEqual([]);
+  });
+  it('labels the recorded overlapping-pin ratio without claiming a measured speed or lower bound', () => {
+    const { row, departureFix, arrivalFix, stops, source } = overlappingPins;
+    const afterJSON = witnessJSON(row);
+    expect(witnessSHA(afterJSON)).toBe(source.rowSHA256);
+    // The row and points are captured data. This narrowed record supplies the
+    // diagnostic's already-validated inputs; it is not the original full frame.
+    const record = { frame: { status: 'recorded', seq: source.originalSequence, at: source.receiptAt },
+      input: { pollResult: 'completed', sourceWriteEvidence: 'recorded', sourceWrites: [
+        { mutations: [{ table: 'legs', afterJSON, afterSHA256: source.rowSHA256 }] },
+      ] }, topology: { decoded: { stops: new Map(stops.map(s => [s.id, s])) } } };
+    const original = witnessJSON(record);
+    expect(distanceMeters(departureFix, stops[0])).toBeLessThan(75);
+    expect(distanceMeters(arrivalFix, stops[1])).toBeLessThan(75);
+    expect(distanceMeters(departureFix, arrivalFix) / row.leg_sec).toBeLessThan(10);
+    const leads = derivedLegLeads([record]);
+    expect(leads).toHaveLength(1);
+    expect(leads[0]).toMatchObject({ kind: 'derived-leg-speed-review', rowId: 220391,
+      rowSHA256: source.rowSHA256, legSec: 3.467, metricVersion: 2 });
+    expect(leads[0].stopPoleDistanceM).toBeCloseTo(111.78644201751116, 7);
+    expect(leads[0].stopPoleDistancePerLegSecond).toBeCloseTo(32.24298875613244, 7);
+    expect(leads[0]).not.toHaveProperty('minimumDistanceM');
+    expect(leads[0]).not.toHaveProperty('lowerBoundMetresPerSec');
+    expect(leads[0].scope).toContain('not measured speed or a speed lower bound');
+    expect(witnessJSON(record)).toBe(original);
   });
 });
