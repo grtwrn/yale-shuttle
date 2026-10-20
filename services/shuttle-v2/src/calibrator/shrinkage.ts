@@ -105,8 +105,18 @@ export function median(xs: readonly number[]): number {
 }
 
 export function percentile(xs: readonly number[], p: number): number {
-  if (xs.length === 0) return 0;
   const sorted = [...xs].sort((a, b) => a - b);
+  return percentileFromSorted(sorted, p);
+}
+
+/** The same interpolated percentiles, sharing one sort of a copied input. */
+export function percentiles(xs: readonly number[], probabilities: readonly number[]): number[] {
+  const sorted = [...xs].sort((a, b) => a - b);
+  return probabilities.map(p => percentileFromSorted(sorted, p));
+}
+
+function percentileFromSorted(sorted: readonly number[], p: number): number {
+  if (sorted.length === 0) return 0;
   // Linear interpolation between the two nearest ranks.
   const rank = (sorted.length - 1) * p;
   const lo = Math.floor(rank);
