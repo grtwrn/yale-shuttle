@@ -1,5 +1,49 @@
 import { describe, expect, it } from 'vitest';
-import { routePickupChoices, type TripOption } from './planner';
+import { MAX_RIDE_SEC, planTrip, routePickupChoices, type TripOption } from './planner';
+import { readFileSync } from 'node:fs';
+import { attachServerEta } from './etaSource';
+
+// Captured report #143 forecast/topology; endpoints are stop-coordinate proxies,
+// because the reporter's precise origin and destination were not recorded.
+const captured = JSON.parse(readFileSync(new URL('./__fixtures__/blue-same-bus-pickup-2026-10-20.json', import.meta.url), 'utf8'));
+function capturedBlue(change = (_input: typeof captured) => {}, future = false) {
+  const input = structuredClone(captured);
+  change(input);
+  const now = input.server_eta.servedAt;
+  attachServerEta(input.buses, input.server_eta, now);
+  return planTrip(input.from, input.to, input.buses, input.routes, input.stop_coords,
+    input.segments, input.dwells, future ? new Date(now + 120_000) : null, now)
+    .find(o => o.routeLabel === 'Blue Day')!;
+}
+
+describe('one bus and one onward destination (report #143)', () => {
+  it('keeps the closest pickup with the same better exit beyond the historical ride cutoff', () => {
+    const option = capturedBlue();
+    expect(option).toMatchObject({boardStopId: 72, alightStopId: 100, busName: '45', walkFromSec: 0});
+    expect(option.plannedRideSec).toBeGreaterThan(MAX_RIDE_SEC);
+    expect(option.journeyArrival?.pointMs).toBeCloseTo(captured.server_eta.at + 2086_000, 0);
+    expect(option.pickupAlternatives).toBeUndefined();
+  });
+  it('does not extend an untimed ride past the fallback limit when the destination forecast is missing', () => {
+    const option = capturedBlue(input => {
+      const keep = input.server_eta.rows.map((row: number[], i: number) => ({row, i})).filter(({row}: {row: number[]}) => row[5] <= 15);
+      input.server_eta.rows = keep.map(({row}: {row: number[]}) => row);
+      input.server_eta.distributions = keep.map(({i}: {i: number}) => input.server_eta.distributions[i]);
+    });
+    expect(option.boardStopId).toBe(72);
+    expect(option.alightStopId).not.toBe(100);
+    expect(option.plannedRideSec).toBeLessThanOrEqual(MAX_RIDE_SEC);
+  });
+  it('retains the fallback limit for future plans without live visit evidence', () => {
+    const option = capturedBlue(undefined, true);
+    expect(option.plannedRideSec).toBeLessThanOrEqual(MAX_RIDE_SEC);
+    expect(option.journeyArrival).toBeUndefined();
+  });
+  it('does not suppress a real earlier visit just because the vehicle name is the same', () => {
+    const option = routePickupChoices([close, {...farther, busName: close.busName}]);
+    expect(option.pickupAlternatives?.[0]).toMatchObject({boardStopId: 129, busName: close.busName, pickupPreference: 'arrive-sooner'});
+  });
+});
 
 const close: TripOption = { mode: 'shuttle', routeLabel: 'Blue Day', color: '#1565c0',
   boardStopId: 100, alightStopId: 97, walkToSec: 120, walkFromSec: 60,
