@@ -80,7 +80,7 @@ export type TripOption = {
   etaUnavailable?: boolean;
 };
 
-/** Don't keep looping past a boarding point. */
+/** Bound untimed/future rides; a live forward visit supplies its own limit. */
 export const MAX_RIDE_SEC = 25 * 60;
 
 /** Explain a longer final walk using the same live boarding opportunity.
@@ -464,8 +464,9 @@ export function planTrip(
       // it. The old forward-only scan couldn't pair those, which made
       // the planner skip the stop nearest the rider whenever it sat
       // "after" the destination in array order and suggest a farther
-      // one instead (user report 2026-07-17, Blue). MAX_RIDE_SEC still
-      // caps how far around the loop an option can ride.
+      // one instead (user report 2026-07-17, Blue). Untimed options retain
+      // MAX_RIDE_SEC; live journeys require a forward destination visit
+      // before that bus returns to pickup.
       // These two depend only on the BOARD stop, not on how far around the
       // loop we ride, but they sat inside the alight scan and were recomputed
       // for every candidate. computeUpcomingArrivals is the expensive one, and
@@ -496,10 +497,11 @@ export function planTrip(
             cumRide += 90;
           }
         }
-        // Stop searching along this route once the ride would wrap past
-        // 25 minutes — any further alight would mean the bus is just
-        // circling back near the boarding point.
-        if (cumRide > MAX_RIDE_SEC) break;
+        // Historical segment time is only a fallback bound. A valid live
+        // journey may take longer without returning to pickup (report #143).
+        // Keep scanning so the close pickup can use the same onward exit as
+        // a farther pickup on that bus. journeyArrival checks visit order.
+        if (futureMode && cumRide > MAX_RIDE_SEC) break;
         if (toDist[cur] === undefined || toDist[cur] > MAX_WALK_M) continue;
         const walkToSec = walkSecFromMeters(fromDist[b]);
         const walkFromSec = walkSecFromMeters(toDist[cur]);
@@ -567,6 +569,7 @@ export function planTrip(
             busName = next.busName;
           }
         }
+        if (cumRide > MAX_RIDE_SEC && !destination) continue;
         const totalSec = destination ? (destination.pointMs - now) / 1000
           : walkToSec + waitSec + cumRide + walkFromSec;
         const rideSec = destination ? Math.max(0, totalSec - walkToSec - waitSec - walkFromSec) : cumRide;

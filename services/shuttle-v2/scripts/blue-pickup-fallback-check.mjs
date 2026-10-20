@@ -57,3 +57,4 @@ try {
   }
 } finally { await browser.close(); }
 console.log('Blue pickup choices: close pickup remains available across feed changes; explicitly selected farther pickup and opened close pickup stay pinned.');
+await (await import('./same-bus-pickup-check.mjs')).checkSameBusPickup();
