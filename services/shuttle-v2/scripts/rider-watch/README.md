@@ -161,6 +161,15 @@ incident bridge; fresh responses recover naturally with a `feed-recovered`
 event. The process remains running. Active journeys keep their existing
 stale-feed pause behavior, and resumed journeys remain excluded from accuracy.
 
+A failed reload while selecting a new trip requests a browser restart instead
+of waiting forever on an error page that no longer requests the feed. The
+runner saves its idle checkpoint, reports `running: false` and
+`restartRequested: selection-navigation-failed`, and retains the original
+`harness-error`. The existing launcher closes that browser and retries after
+its normal 30-second backoff. A failed selection creates no journey outcome.
+Active-trip stale-feed pauses and boarding/arrival rules keep their existing
+behavior.
+
 For a detached run, use a process supervisor; redirect stdout/stderr to
 `scripts/watcher.log`. The watcher PID is saved in the artifact directory as
 `watcher.pid`. The browser restarts after a transport failure. Journey and tester browser state are checkpointed in `resume.json`; a recent checkpoint restores the journey as a diagnostic continuation excluded from accuracy scoring. On the team Mac

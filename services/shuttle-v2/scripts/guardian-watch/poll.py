@@ -20,7 +20,7 @@ HEALTH = "https://yale-shuttle.fly.dev/healthz"
 DEDUPE_S = 2 * 3600
 SEVERITY = {"candidate-stale-alert": "high", "candidate-page-error": "high",
             "candidate-stale-feed": "medium", "prod-health": "high", "rider-stalled": "low",
-            "rider-journey-failed": "medium"}
+            "rider-journey-failed": "medium", "rider-feed-stalled": "medium"}
 # bus-left-feed / bus-off-route: the runner only ends these when the app correctly showed
 # "Looking for your bus…" (upstream feed drop, end-of-service deadhead); every one triaged so
 # far was expected. Garrett OK'd dropping them from the queue 2026-10-03.
@@ -193,11 +193,42 @@ def check_health(st):
 
 def check_rider(st, watch, line=None):
     status = load(f"{watch}/status.json", None)
+    status = status if isinstance(status, dict) else None
     t = parse(status.get("updatedAt")) if status else None
-    if t is not None and now() - t > 15 * 60:
-        raise_incident(st, "rider-stalled", line, now(),
-                       f"{os.path.basename(watch)} status.json not updated for {int((now()-t)/60)} min",
+    checked = now()
+    if t is not None and checked - t > 15 * 60:
+        raise_incident(st, "rider-stalled", line, checked,
+                       f"{os.path.basename(watch)} status.json not updated for {int((checked-t)/60)} min",
                        {"status": status}, {"watcherDir": watch, "log": f"{os.path.dirname(watch)}/watcher.log"})
+        return
+    # A live heartbeat is not evidence that the browser still receives data.
+    # Persist one alert per outage so polling/restarts do not grow unbounded
+    # occurrences and protected bundles while a broken page remains idle.
+    health = st.setdefault("riderFeedHealth", {})
+    previous = health.get(watch, {})
+    info = {"checkedAt": iso(checked), "state": "unknown",
+            "reported": previous.get("reported", False)}
+    health[watch] = info
+    received = parse(status.get("feedReceivedAt")) if status else None
+    if (t is None or t > checked + 5 or received is None or received > checked
+            or received > t + 5 or status.get("running") is False):
+        return
+    age = checked - received
+    info.update({"feedReceivedAt": iso(received), "feedAgeSec": age})
+    if age <= 30:
+        info.update({"state": "fresh", "reported": False})
+        return
+    if age <= 5 * 60:
+        info["state"] = "stale"
+        return
+    info["state"] = "stalled"
+    if not info["reported"]:
+        log = "watcher-red.log" if line == "Red" else "watcher.log"
+        raise_incident(st, "rider-feed-stalled", line, checked,
+                       f"{os.path.basename(watch)} has no fresh feed receipt for {int(age/60)} min despite its heartbeat",
+                       {"status": status, "scope": "Receipt health only, not upstream GPS age or an ETA accuracy verdict"},
+                       {"watcherDir": watch, "log": f"{os.path.dirname(watch)}/{log}"})
+        info["reported"] = True
 
 MONITOR_LOG_BYTES = 1024 * 1024
 
