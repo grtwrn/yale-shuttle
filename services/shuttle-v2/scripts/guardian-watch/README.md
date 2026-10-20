@@ -53,6 +53,22 @@ running Python source hashes in `bridge-state.json`. Exit 0 means the poll's
 evidence work succeeded; exit 1 means it needs attention. Health incidents
 retain their separate existing consecutive-failure rule.
 
+Rider heartbeats and feed receipts are checked separately. A running browser
+with no valid feed receipt for more than five minutes raises
+`rider-feed-stalled`, even if its heartbeat is fresh or its `feedStale` flag is
+false. Receipts older than 30 seconds remain `stale` during the five-minute
+alert grace; that grace never labels old data fresh. The existing 15-minute
+heartbeat-stall check remains. Fresh empty feeds
+are healthy receipt evidence; this does not attest upstream GPS age, a
+completed journey, or ETA accuracy. Missing, malformed or future receipt clocks
+remain `unknown` in `bridge-state.json`'s `riderFeedHealth`.
+
+One feed-stall incident is emitted per outage. That latch survives monitor
+restarts and rearms only after an observed fresh receipt, keeping repeated
+checks from growing protected occurrences and bundles indefinitely. Unknown
+data does not clear the latch. Existing incidents and their evidence remain
+untouched.
+
 Run `python3 -m unittest discover -s scripts/guardian-watch -p 'test_*.py' -v`
 from `services/shuttle-v2`. `bridge.test.mjs` runs the same Python tests inside
 the normal Vitest release gates.

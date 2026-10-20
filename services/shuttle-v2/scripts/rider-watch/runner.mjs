@@ -30,6 +30,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
  let feed=initialFeed,feedAt=initialFeedAt,busy=false,stopped=false,timer,run=null,lastImage=0,lastPhase='',cursor=metrics.CANARY_LINES.findIndex(l=>l.label===initialLine?.label),imageBytes=0;
  let idleStale=false,pendingInitialTrip=initialRun?null:initialTrip;
  let journeySelections=0;
+ let restartRequested;
  let lastPosition;
  // A line whose trip row is missing (e.g. a bus still in the feed after its
  // last loop) is skipped for a while, so a fixed-trip rider does not reload,
@@ -44,7 +45,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
  };
  const status=async(extra={})=>{
   await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date(clockNow()).toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,mapPauseAudit:run?.phase==='waiting'?run.mapPauseAudit:null,
-   ...(run?.transfer?{transfer:{stage:run.transfer.stage+1,lines:run.transfer.legs.map(l=>l.routeLabel),completedLegs:run.transfer.completedLegs.length,startedAt:run.transfer.startedAt,finalDestination:run.transfer.originalTrip.destination}}:{}),...feedStatus(),...extra},null,2));
+   ...(run?.transfer?{transfer:{stage:run.transfer.stage+1,lines:run.transfer.legs.map(l=>l.routeLabel),completedLegs:run.transfer.completedLegs.length,startedAt:run.transfer.startedAt,finalDestination:run.transfer.originalTrip.destination}}:{}),...feedStatus(),...(restartRequested?{restartRequested}:{}),...extra},null,2));
   await saveCheckpoint(ROOT,page,run,lastPosition,clockNow());
  };
  const event=async(kind,detail)=>{const e={at:new Date(clockNow()).toISOString(),runId:run?.id,line:run?.line.label,kind,detail};await appendRolling(ROOT,'events',e);console.log(JSON.stringify(e));};
@@ -125,7 +126,14 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    cursor=idx;
    await page.evaluate(()=>{localStorage.removeItem('shuttle-boarded-ride');localStorage.removeItem('shuttle-transfer-handoff');sessionStorage.clear();localStorage.setItem('listView','trip');});
    await locate({latitude:picked.origin.lat,longitude:picked.origin.lon});
-   await page.reload({waitUntil:'domcontentloaded',timeout:30000});
+   try{await page.reload({waitUntil:'domcontentloaded',timeout:30000});}
+   catch(error){
+    // A failed navigation can leave an error page with no more feed requests.
+    // Let the existing launcher replace this idle browser. A stale-feed pause
+    // alone cannot recover a page that has stopped fetching altogether.
+    restartRequested='selection-navigation-failed';stopped=true;clearInterval(timer);
+    throw error;
+   }
    const clear=page.getByRole('button',{name:'Clear',exact:true});if(await clear.isVisible())await clear.click();
    await selectDestination(page,picked.destination);
    await sleep(1500);
@@ -357,5 +365,5 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
  };
  if(initialRun){run={...initialRun,instrumentVersion:initialRun.transfer?'transfer-v1':'inputs-v2',instrumentHandoverAt:new Date(clockNow()).toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; resumed journey excluded from accuracy scoring');await status();}
  if(autoTick)timer=setInterval(()=>tick(),10000);await tick();
- return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt}),capture,stop:async()=>{stopped=true;clearInterval(timer);removeListeners();await status();},tick, detach:()=>{stopped=true;clearInterval(timer);removeListeners();return run;}};
+ return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt,restartRequested}),capture,stop:async()=>{stopped=true;clearInterval(timer);removeListeners();await status();},tick, detach:()=>{stopped=true;clearInterval(timer);removeListeners();return run;}};
 }

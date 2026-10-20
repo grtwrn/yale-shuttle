@@ -279,6 +279,7 @@ async function fixedRed(initialFeed,initialFeedAgeMs=0){
  h.feed=buses=>h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>({...red,buses})});
  h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8').catch(()=>'')).trim().split('\n').filter(Boolean).map(JSON.parse);
  h.storedStatus=async()=>JSON.parse(await fs.readFile(path.join(h.dir,'status.json'),'utf8'));
+ h.journeys=async()=>(await fs.readFile(path.join(h.dir,'journeys.jsonl'),'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
  h.page=page;
  return h;
 }
@@ -349,6 +350,32 @@ test('a slow destination lookup cannot open a new trip from a feed that expired 
  assert.equal(h.watcher.status().run,null);assert.deepEqual(h.opened,[]);
  assert.equal((await h.storedStatus()).feedStale,true);
  assert.equal((await h.events()).filter(e=>e.kind==='candidate-stale-feed').length,1);
+});
+
+test('a failed selection reload releases the browser to the launcher instead of idling forever',async()=>{
+ const h=current=await fixedRed({...red,buses:[]});await h.feed([red317]);
+ let reloads=0;h.page.reload=async()=>{reloads++;throw new Error('page.reload: Timeout 30000ms exceeded.');};
+ await h.watcher.tick();
+ assert.equal(h.watcher.status().running,false);
+ assert.equal(h.watcher.status().restartRequested,'selection-navigation-failed');
+ assert.equal(h.watcher.status().run,null);
+ const saved=JSON.parse(await fs.readFile(path.join(h.dir,'resume.json'),'utf8'));
+ assert.equal(saved.run,null);
+ assert.equal((await h.storedStatus()).running,false);
+ assert.equal((await h.storedStatus()).restartRequested,'selection-navigation-failed');
+ assert.deepEqual((await h.events()).map(e=>e.kind),['harness-error']);
+ assert.match((await h.events())[0].detail.message,/page.reload: Timeout/);
+ vi.setSystemTime(Date.now()+86400000);await h.watcher.tick();
+ assert.equal(reloads,1);assert.deepEqual(await h.journeys(),[]);
+});
+
+test('a successful selection reload still starts the normal waiting journey',async()=>{
+ const h=current=await fixedRed({...red,buses:[]});await h.feed([red317]);
+ await h.watcher.tick();
+ assert.equal(h.watcher.status().running,true);
+ assert.equal(h.watcher.status().restartRequested,undefined);
+ assert.equal(h.watcher.status().run.phase,'waiting');
+ assert.deepEqual(await h.journeys(),[]);
 });
 
 test('service disappearing during destination lookup leaves the rider idle without a stale alert',async()=>{
