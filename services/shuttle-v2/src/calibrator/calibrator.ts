@@ -169,15 +169,13 @@ export function calibrate(
     // "served" comparison); the ring estimator prices every route and reads
     // whatever a route has. A route with no `legs` / `stop_visits` rows simply
     // carries no split fields, as before.
-    const standGroups = loadStandGroups(db, SPLIT_WINDOW_DAYS, nowMs);
-    const driveGroups = loadDriveGroups(db, SPLIT_WINDOW_DAYS, nowMs);
-    const legGroups = loadLegGroups(db, SPLIT_WINDOW_DAYS, nowMs);
-    const stopShares = loadStopShares(db, SPLIT_WINDOW_DAYS, nowMs);
+    const { standGroups, standOccurrenceGroups, stopShares, stopOccurrenceShares } = loadVisitCalibration(db, SPLIT_WINDOW_DAYS, nowMs);
+    const { driveGroups, legGroups } = loadLegCalibration(db, SPLIT_WINDOW_DAYS, nowMs);
     const standCount = attachStandTables(dwellStats, standGroups, undefined, stopShares);
     const occurrenceStandCount = attachOccurrenceStandTables(
       dwellStats, network,
-      loadStandOccurrenceGroups(db, SPLIT_WINDOW_DAYS, nowMs),
-      loadStopOccurrenceShares(db, SPLIT_WINDOW_DAYS, nowMs),
+      standOccurrenceGroups,
+      stopOccurrenceShares,
     );
     const lapFitCount = attachLapFits(dwellStats, lapFits);
     for (const [key, release] of releaseFits) {
@@ -403,6 +401,86 @@ const VISIT_AVAILABLE_AFTER = sql.raw(`(
 interface StandGroupRow { routeId: number; stopId: number; n: number; allValues: string | null }
 interface StandOccurrenceRow extends StandGroupRow { stopIndex: number }
 interface DriveGroupRow { routeId: number; fromStopId: number; toStopId: number; n: number; allValues: string | null }
+
+const STAND_SAMPLE = sql.raw(`pinned_at IS NOT NULL AND (
+  (outcome = 'stopped' AND departed_at IS NOT NULL AND departed_at >= pinned_at)
+  OR outcome = 'passed'
+)`);
+const DRIVE_SAMPLE = sql.raw('COALESCE(to_pinned_at, arrived_at) > departed_at');
+
+interface VisitCalibrationRow {
+  routeId: number; stopId: number; stopIndex: number;
+  standN: number; standValues: string | null; stopped: number; total: number;
+}
+
+/** Read the same visit window once for stand samples and stop shares. Per-pass
+ * samples form the pooled stand table; pool stop counts before dividing so
+ * frequent and infrequent passes retain their original weights. */
+export function loadVisitCalibration(db: DB, windowDays: number, nowMs: number) {
+  const cutoff = nowMs - windowDays * 86_400_000;
+  const rows = db.all<VisitCalibrationRow>(sql`
+    SELECT route_id AS routeId, stop_id AS stopId, stop_index AS stopIndex,
+      SUM(CASE WHEN ${STAND_SAMPLE} THEN 1 ELSE 0 END) AS standN,
+      group_concat(CASE WHEN ${STAND_SAMPLE} THEN ${STAND_VALUE} END) AS standValues,
+      SUM(CASE WHEN outcome = 'stopped' THEN 1 ELSE 0 END) AS stopped,
+      COUNT(*) AS total
+    FROM stop_visits
+    WHERE anchored_at >= ${cutoff} AND anchored_at <= ${nowMs}
+      AND ${VISIT_AVAILABLE_AFTER} <= ${nowMs}
+      AND outcome IN ('stopped', 'passed')
+    GROUP BY route_id, stop_id, stop_index
+  `);
+  const stands = new Map<string, ValueGroup>(), standOccurrenceGroups: ValueGroup[] = [];
+  const counts = new Map<string, { stopped: number; total: number }>(), stopOccurrenceShares = new Map<string, number>();
+  for (const row of rows) {
+    const key = TransitNetwork.dwellKey(row.routeId, row.stopId);
+    const occurrence = TransitNetwork.occurrenceDwellKey(row.routeId, row.stopId, row.stopIndex);
+    const pooled = counts.get(key) ?? { stopped: 0, total: 0 };
+    pooled.stopped += row.stopped; pooled.total += row.total; counts.set(key, pooled);
+    if (row.total > 0) stopOccurrenceShares.set(occurrence, row.stopped / row.total);
+    if (row.standN > 0) {
+      const values = parseValueList(row.standValues);
+      standOccurrenceGroups.push({ key: occurrence, n: row.standN, all: values, windowed: [] });
+      const group = stands.get(key) ?? { key, n: 0, all: [], windowed: [] };
+      group.n += row.standN;
+      for (const value of values) group.all.push(value);
+      stands.set(key, group);
+    }
+  }
+  const stopShares = new Map<string, number>();
+  for (const [key, count] of counts) if (count.total > 0) stopShares.set(key, count.stopped / count.total);
+  return { standGroups: [...stands.values()], standOccurrenceGroups, stopShares, stopOccurrenceShares };
+}
+
+interface LegCalibrationRow {
+  routeId: number; fromStopId: number; toStopId: number;
+  driveN: number; driveValues: string | null; legN: number; legValues: string | null;
+}
+
+/** Departure-to-pin drive and whole-leg time have different eligibility.
+ * Keep those masks separate while sharing their source scan and clock fence. */
+export function loadLegCalibration(db: DB, windowDays: number, nowMs: number) {
+  const cutoff = nowMs - windowDays * 86_400_000;
+  const rows = db.all<LegCalibrationRow>(sql`
+    SELECT route_id AS routeId, from_stop_id AS fromStopId, to_stop_id AS toStopId,
+      SUM(CASE WHEN ${DRIVE_SAMPLE} THEN 1 ELSE 0 END) AS driveN,
+      group_concat(CASE WHEN ${DRIVE_SAMPLE} THEN ${DRIVE_VALUE} END) AS driveValues,
+      SUM(CASE WHEN leg_sec > 0 THEN 1 ELSE 0 END) AS legN,
+      group_concat(CASE WHEN leg_sec > 0 THEN ${LEG_VALUE} END) AS legValues
+    FROM legs
+    WHERE departed_at >= ${cutoff} AND departed_at <= ${nowMs}
+      AND MAX(arrived_at, COALESCE(to_pinned_at, arrived_at)) <= ${nowMs}
+      AND hops = 1 AND (${DRIVE_SAMPLE} OR leg_sec > 0)
+    GROUP BY route_id, from_stop_id, to_stop_id
+  `);
+  const driveGroups: ValueGroup[] = [], legGroups: ValueGroup[] = [];
+  for (const row of rows) {
+    const key = TransitNetwork.segmentKey(row.routeId, row.fromStopId, row.toStopId);
+    if (row.driveN > 0) driveGroups.push({ key, n: row.driveN, all: parseValueList(row.driveValues), windowed: [] });
+    if (row.legN > 0) legGroups.push({ key, n: row.legN, all: parseValueList(row.legValues), windowed: [] });
+  }
+  return { driveGroups, legGroups };
+}
 
 /**
  * The four split loaders are bounded ABOVE at `nowMs` as well as below. In
