@@ -69,7 +69,12 @@ export function inspectTimingHistory(status, now = Date.now()) {
   const at=stamp(status?.checkedAt),issues=[];
   if(!fresh(at,now,20*60000))issues.push({code:'timing-history-heartbeat',summary:'The compact timing-history archive heartbeat is missing, stale or invalid.'});
   const empty=status?.idleReceipt,idle=status?.idleService===true&&empty?.emptyFleet===true&&empty?.hasServerEta===false&&/^[a-f0-9]{64}$/.test(empty?.recordSHA256??'')&&fresh(empty?.receivedAt,at,120000)&&fresh(empty?.responseAt,at,120000);
-  if(status?.ok!==true||(!fresh(status?.modelAt,at,120000)&&!idle)||!fresh(status?.collectorAt,at,120000))issues.push({code:'timing-history-capture',summary:'The compact timing-history archive reports a capture/storage failure or lacks fresh original source frames.'});
+  const missing=status?.forecastUnavailableReceipt,observations=missing?.observations,unavailable=status?.forecastUnavailable===true&&missing?.emptyFleet===false&&missing?.hasServerEta===false
+    &&/^[a-f0-9]{64}$/.test(missing?.recordSHA256??'')&&fresh(missing?.receivedAt,at,120000)&&fresh(missing?.responseAt,at,120000)
+    &&Array.isArray(observations)&&observations.length>0&&observations.length<=200&&missing.freshGpsBuses===observations.length
+    &&observations.every(b=>Number.isSafeInteger(b.busId)&&Number.isSafeInteger(b.routeId)&&/^#?[A-Za-z0-9-]{1,24}$/.test(b.busName??'')
+      &&Number.isFinite(b.lat)&&Math.abs(b.lat)<=90&&Number.isFinite(b.lon)&&Math.abs(b.lon)<=180&&Number.isSafeInteger(b.observedAt)&&b.observedAt<=missing.responseAt&&missing.responseAt-b.observedAt<45000);
+  if(status?.ok!==true||(!fresh(status?.modelAt,at,120000)&&!idle&&!unavailable)||!fresh(status?.collectorAt,at,120000))issues.push({code:'timing-history-capture',summary:'The compact timing-history archive reports a capture/storage failure or lacks fresh original source frames.'});
   return issues;
 }
 

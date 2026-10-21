@@ -88,3 +88,9 @@ the archive's fresh original empty-feed receipt rather than a model timestamp
 or an idle flag alone. Missing, failed or stalled capture uses the same three
 spaced-check incident policy and retains the archive status path for review.
 This monitoring does not change learner sampling or accuracy qualification.
+
+Fresh GPS without any ETA uses a separate original forecast-unavailable feed
+receipt. The supervisor verifies its checksum identity, response/receive clocks
+and actual bounded GPS observations, including their freshness and locations.
+It does not accept an unavailable flag or bus count alone, invent a model
+timestamp, declare the fleet empty or infer that physical service ended.

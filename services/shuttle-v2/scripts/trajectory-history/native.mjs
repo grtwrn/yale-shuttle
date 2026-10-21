@@ -35,7 +35,7 @@ export async function* nativeRecords(file,{previous,captureBytes,expectedFile,ma
  * the collector's eventual departure nor a last-rest clock is backfilled. */
 export class ModelProjection{
  constructor(state={},topologies=new Map()){
-  this.state=structuredClone(state);this.state.tracks??={};this.topologies=topologies;this.records=[];this.required=new Set();this.counts={frames:0,duplicates:0,selected:0,clockEntries:0,unknownContexts:0,idleReceipts:0};
+  this.state=structuredClone(state);this.state.tracks??={};this.topologies=topologies;this.records=[];this.required=new Set();this.counts={frames:0,duplicates:0,selected:0,clockEntries:0,unknownContexts:0,idleReceipts:0,unavailableFrames:0,unavailableReceipts:0};
  }
  consume(packet,{cycle,sourceKey,receivedAt,rawSHA256}={}){
   if(!packet?.build){if(packet?.response?.status===409&&packet.response.body?.error==='evaluation_epoch')return;throw Error('Unsupported native record');}
@@ -45,22 +45,22 @@ export class ModelProjection{
     ||Buffer.byteLength(f.json)!==f.bytes||witnessSHA(f.json)!==f.sha256||Buffer.byteLength(f.contextJson)!==f.contextBytes||witnessSHA(f.contextJson)!==f.contextSha256)throw Error('Native frame commitment differs');
    const old=this.state.last;
    if(old?.epoch===packet.epoch&&f.seq<=old.cursor){if(f.seq===old.cursor&&(old.sha256!==f.sha256||old.contextSha256!==f.contextSha256))throw Error('Conflicting native cursor');this.counts.duplicates++;continue;}
-   const payload=JSON.parse(f.json),context=JSON.parse(f.contextJson),wire=payload.server_eta,head=context.collectorWitness;
-   if(wire?.v!==2||wire.at!==f.at||wire.servedAt!==f.at||context.at!==f.at||!Array.isArray(payload.buses)||!Array.isArray(wire.buses)||!Array.isArray(wire.rows))throw Error('Unsupported original forecast frame');
+   const payload=JSON.parse(f.json),context=JSON.parse(f.contextJson),wire=payload.server_eta,available=wire!=null,head=context.collectorWitness;
+   if(context.at!==f.at||!Array.isArray(payload.buses)||(available&&(wire?.v!==2||wire.at!==f.at||wire.servedAt!==f.at||!Array.isArray(wire.buses)||!Array.isArray(wire.rows))))throw Error('Unsupported original forecast frame');
    const adjacent=old?.epoch===packet.epoch&&old.build===packet.build&&old.cycle===cycle&&old.cursor+1===f.seq&&f.at>old.at&&f.at-old.at<=30000;
    if(!adjacent){this.state.tracks={};this.records.push({kind:'model-boundary',at:f.at,epoch:packet.epoch,cursor:f.seq,previous:old??null,reason:old?'context-or-history-gap':'first-capture'});}
    const fresh=head?.status==='recorded'&&typeof head.epoch==='string'&&integer(head.seq)&&integer(head.at)&&head.at<=f.at&&f.at-head.at<30000&&hash(head.sha256)&&hash(head.topologySha256);
    const topology=fresh?this.topologies.get(head.topologySha256):null,groups=new Map();
    for(const b of payload.buses){const name=String(b.bus_name??'').replace(/^#/,'');if(!/^[A-Za-z0-9-]{1,24}$/.test(name))continue;const list=groups.get(name)??[];list.push(b);groups.set(name,list);}
-   let changed=false;const buses=[];
+   let changed=!!old&&(this.state.forecastAvailable??true)!==available;const buses=[];
    for(const name of Object.keys(this.state.tracks))if(!groups.has(name)){delete this.state.tracks[name];changed=true;}
    for(const[name,group]of groups){
     if(group.length!==1){delete this.state.tracks[name];this.counts.unknownContexts++;continue;}
-    const b=group[0],anchors=wire.buses.map((a,i)=>({a,i})).filter(x=>x.a[0]===name),route=topology?.decoded.routes.get(b.route_id),prior=Object.hasOwn(this.state.tracks,name)?this.state.tracks[name]:null;
+    const b=group[0],anchors=(wire?.buses??[]).map((a,i)=>({a,i})).filter(x=>x.a[0]===name),route=topology?.decoded.routes.get(b.route_id),prior=Object.hasOwn(this.state.tracks,name)?this.state.tracks[name]:null;
     const valid=integer(b.bus_id)&&integer(b.route_id)&&Number.isFinite(b.lat)&&Math.abs(b.lat)<=90&&Number.isFinite(b.lon)&&Math.abs(b.lon)<=180
      &&integer(b.observed_at)&&Math.abs(b.observed_at-head?.at)<=5000&&anchors.length===1&&route&&integer(anchors[0].a[2])&&anchors[0].a[2]>=0&&anchors[0].a[2]<route.stops.length;
     let entry=null,reason=null;const anchor=anchors.length===1?anchors[0].a:null;
-    if(!valid)reason='missing-or-ambiguous-source-topology-observation-or-anchor';
+    if(!valid)reason=available?'missing-or-ambiguous-source-topology-observation-or-anchor':'missing-original-forecast';
     else if(!prior||prior.id!==b.bus_id||prior.route!==b.route_id||prior.topology!==head.topologySha256||prior.collectorEpoch!==head.epoch)reason='first-or-changed-vehicle-source-context';
     else if(prior.lead===anchor[2])entry=prior.entry;
     else{
@@ -77,10 +77,19 @@ export class ModelProjection{
    }
    if(Object.keys(this.state.tracks).length>128)throw Error('Model context bound exceeded');
    const bucket=Math.floor(f.at/MINUTE),selected=changed||!adjacent||bucket!==this.state.bucket;
-   if(selected){this.records.push({kind:'model-projection',v:1,at:f.at,build:packet.build,epoch:packet.epoch,cursor:f.seq,sha256:f.sha256,contextSha256:f.contextSha256,contextJson:f.contextJson,cycle,sourceKey,buses,collector:head??null,selection:changed?'transition':!adjacent?'boundary':'minute',quantileGrid:'(i+0.5)/50; original rounded public quantiles'});if(fresh)this.required.add(head.epoch+':'+head.seq);this.counts.selected++;}
-   this.state.bucket=bucket;this.state.idleService=false;this.state.last={epoch:packet.epoch,build:packet.build,cycle,cursor:f.seq,at:f.at,sha256:f.sha256,contextSha256:f.contextSha256};this.counts.frames++;
+   if(selected){this.records.push({kind:'model-projection',v:1,at:f.at,build:packet.build,epoch:packet.epoch,cursor:f.seq,sha256:f.sha256,contextSha256:f.contextSha256,contextJson:f.contextJson,cycle,sourceKey,forecastAvailable:available,buses,collector:head??null,selection:changed?'transition':!adjacent?'boundary':'minute',quantileGrid:'(i+0.5)/50; original rounded public quantiles'});if(fresh)this.required.add(head.epoch+':'+head.seq);this.counts.selected++;}
+   this.state.bucket=bucket;this.state.idleService=false;this.state.forecastAvailable=available;this.state.forecastUnavailable=false;this.state.last={epoch:packet.epoch,build:packet.build,cycle,cursor:f.seq,at:f.at,sha256:f.sha256,contextSha256:f.contextSha256};this.counts.frames++;if(!available)this.counts.unavailableFrames++;
   }
-  if(packet.hasMore===false&&Array.isArray(packet.feed?.buses)&&packet.feed.buses.length===0&&!packet.feed.server_eta){
+  if(packet.hasMore===false&&Array.isArray(packet.feed?.buses)){
+   const empty=packet.feed.buses.length===0&&packet.feed.server_eta==null;
+   if(!integer(receivedAt)||!integer(packet.responseAt)||receivedAt-packet.responseAt>120000||packet.responseAt>receivedAt+5000||!hash(rawSHA256)||!integer(packet.cursor)||packet.cursor<1)throw Error(empty?'Invalid empty-feed receipt':'Invalid original feed receipt');
+   const old=this.state.feedReceipt??[this.state.idleReceipt,this.state.forecastUnavailableReceipt].filter(r=>r?.epoch===packet.epoch).sort((a,b)=>b.receivedAt-a.receivedAt)[0];
+   if(old?.epoch===packet.epoch&&receivedAt<=old.receivedAt){if(receivedAt===old.receivedAt&&old.recordSHA256!==rawSHA256)throw Error('Conflicting original feed receipt');return;}
+   if(this.state.last?.epoch===packet.epoch&&receivedAt<this.state.last.at)return;
+   if(this.state.last?.epoch===packet.epoch&&this.state.last.cursor!==packet.cursor)throw Error('Original feed cursor differs');
+   this.state.feedReceipt={epoch:packet.epoch,cursor:packet.cursor,receivedAt,responseAt:packet.responseAt,recordSHA256:rawSHA256};
+  }
+  if(packet.hasMore===false&&Array.isArray(packet.feed?.buses)&&packet.feed.buses.length===0&&packet.feed.server_eta==null){
    if(!integer(receivedAt)||!integer(packet.responseAt)||receivedAt-packet.responseAt>120000||packet.responseAt>receivedAt+5000||!hash(rawSHA256)||!integer(packet.cursor)||packet.cursor<1)throw Error('Invalid empty-feed receipt');
    const old=this.state.idleReceipt;
    if(old?.epoch===packet.epoch&&receivedAt<=old.receivedAt){if(receivedAt===old.receivedAt&&old.recordSHA256!==rawSHA256)throw Error('Conflicting empty-feed receipt');return;}
@@ -88,7 +97,20 @@ export class ModelProjection{
    if(this.state.last?.epoch===packet.epoch&&this.state.last.cursor!==packet.cursor)throw Error('Empty-feed cursor differs');
    const receipt={receivedAt,responseAt:packet.responseAt,recordSHA256:rawSHA256,epoch:packet.epoch,cursor:packet.cursor,emptyFleet:true,hasServerEta:false};
    const bucket=Math.floor(receivedAt/MINUTE);if(!this.state.idleService||this.state.idleBucket!==bucket)this.records.push({kind:'empty-feed-receipt',v:1,at:receivedAt,build:packet.build,cycle,sourceKey,...receipt,scope:'Original fresh empty GPS feed; no physical service/end-of-day verdict.'});
-   this.state.tracks={};this.state.idleService=true;this.state.idleBucket=bucket;this.state.idleReceipt=receipt;this.counts.idleReceipts++;
+   this.state.tracks={};this.state.idleService=true;this.state.forecastUnavailable=false;this.state.idleBucket=bucket;this.state.idleReceipt=receipt;this.counts.idleReceipts++;
+  }else if(packet.hasMore===false&&Array.isArray(packet.feed?.buses)){
+   const observations=packet.feed.buses.filter(b=>Number.isSafeInteger(b.bus_id)&&Number.isSafeInteger(b.route_id)&&/^#?[A-Za-z0-9-]{1,24}$/.test(b.bus_name??'')
+    &&Number.isFinite(b.lat)&&Math.abs(b.lat)<=90&&Number.isFinite(b.lon)&&Math.abs(b.lon)<=180&&integer(b.observed_at)&&b.observed_at<=packet.responseAt&&packet.responseAt-b.observed_at<45000)
+    .map(b=>({busId:b.bus_id,busName:b.bus_name,routeId:b.route_id,observedAt:b.observed_at,lat:b.lat,lon:b.lon}));
+   if(packet.feed.server_eta!=null||!observations.length){this.state.forecastUnavailable=false;this.state.idleService=false;return;}
+   if(packet.feed.buses.length>200||!integer(receivedAt)||!integer(packet.responseAt)||receivedAt-packet.responseAt>120000||packet.responseAt>receivedAt+5000||!hash(rawSHA256)||!integer(packet.cursor)||packet.cursor<1)throw Error('Invalid forecast-unavailable receipt');
+   const old=this.state.forecastUnavailableReceipt;
+   if(old?.epoch===packet.epoch&&receivedAt<=old.receivedAt){if(receivedAt===old.receivedAt&&old.recordSHA256!==rawSHA256)throw Error('Conflicting forecast-unavailable receipt');return;}
+   if(this.state.last?.epoch===packet.epoch&&receivedAt<this.state.last.at)return;
+   if(this.state.last?.epoch===packet.epoch&&this.state.last.cursor!==packet.cursor)throw Error('Forecast-unavailable cursor differs');
+   const receipt={receivedAt,responseAt:packet.responseAt,recordSHA256:rawSHA256,epoch:packet.epoch,cursor:packet.cursor,emptyFleet:false,hasServerEta:false,freshGpsBuses:observations.length,observations};
+   const bucket=Math.floor(receivedAt/MINUTE);if(!this.state.forecastUnavailable||this.state.unavailableBucket!==bucket)this.records.push({kind:'forecast-unavailable-feed-receipt',v:1,at:receivedAt,build:packet.build,cycle,sourceKey,...receipt,scope:'Original fresh GPS feed without an arrival forecast; not an empty fleet, new model frame or physical service verdict.'});
+   this.state.tracks={};this.state.idleService=false;this.state.forecastUnavailable=true;this.state.unavailableBucket=bucket;this.state.forecastUnavailableReceipt=receipt;this.counts.unavailableReceipts++;
   }
  }
 }

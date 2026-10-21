@@ -11,6 +11,21 @@ empty-feed receipt instead of inventing a new model timestamp. Its independent
 supervisor requires that actual receipt; an idle flag alone is insufficient.
 An empty GPS feed is not proof that a vehicle physically finished its service.
 
+A model observation may also legitimately contain no arrival forecast while
+GPS observations remain available. Such an original frame retains its actual
+model timestamp, with `forecastAvailable: false` and no invented anchor,
+distribution or entry clock. Forecast loss and recovery both break the entry
+clock context, including within one minute.
+
+When the current HTTP feed contains fresh GPS but no ETA, a separate
+`forecast-unavailable-feed-receipt` preserves the original response identity
+and whitelisted observations. This receipt advances capture freshness, never
+the model timestamp, and never claims an empty fleet or physical service
+status. The independent supervisor verifies the actual GPS observation clocks
+and locations; an unavailable flag or count alone is insufficient. Original
+feed receipts remain ordered across forecast loss, empty feeds and recovery,
+so replaying an older cached response cannot undo a newer state.
+
 The independent private output defaults to
 `scripts/.bot-artifacts/trajectory-history/`. Configure `TRAJECTORY_HISTORY_DIR`,
 `TRAJECTORY_HISTORY_LEARNING_ROOT` and `TRAJECTORY_HISTORY_COLLECTOR_FILE` when
