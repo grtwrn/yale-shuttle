@@ -30,6 +30,27 @@ The independent private output defaults to
 `scripts/.bot-artifacts/trajectory-history/`. Configure `TRAJECTORY_HISTORY_DIR`,
 `TRAJECTORY_HISTORY_LEARNING_ROOT` and `TRAJECTORY_HISTORY_COLLECTOR_FILE` when
 needed. Output overlapping either input is refused before creating files.
+Catch-up uses original fifteen-minute intervals. Each verified interval commits
+its projections and cursor atomically before the next begins; a later failure
+preserves earlier progress. Native files are selected for that interval rather
+than rereading completed earlier hours into the same compressed-input budget.
+The recorder keeps the inspected time frontier separately from its current
+heartbeat. A prefix may contain later, unprocessed frames: an unchanged gzip
+file is rescanned when that frontier moves, so those frames are not skipped.
+
+Collector queries and projections use the same upper time frontier. Historical
+source holes are explicit `history-source-gap` records and reset the affected
+derived clocks. They never become invented movement or departure evidence.
+Current missing sources still fail capture. Pending associations expire against
+the inspected historical interval, rather than being discarded immediately
+because a backfill runs hours later.
+
+One invocation attempts at most thirty-two intervals and stops after its
+two-minute work budget at an interval boundary. `backfill_pending` remains
+unhealthy until original inputs reach the current capture window; the next
+invocation resumes the committed cursor. Private progress and a bounded failure
+reason make stalls diagnosable. These limits leave the existing per-file,
+compressed read, raw record/batch and physical storage caps in place.
 After an actual successful capture, configure `LEARNING_WATCH_HISTORY_STATUS`
 on the independent learning-health supervisor. It checks the fifteen-minute
 archive's heartbeat against twenty minutes and uses its existing three spaced
