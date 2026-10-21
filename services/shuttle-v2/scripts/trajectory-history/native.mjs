@@ -34,7 +34,8 @@ export async function* nativeRecords(file,{previous,captureBytes,expectedFile,ma
  * replay. Entry clocks are first observed adjacent model transitions; neither
  * the collector's eventual departure nor a last-rest clock is backfilled. */
 export class ModelProjection{
- constructor(state={},topologies=new Map()){
+ constructor(state={},topologies=new Map(),onFrame=null){
+  this.onFrame=onFrame;
   this.state=structuredClone(state);this.state.tracks??={};this.topologies=topologies;this.records=[];this.required=new Set();this.counts={frames:0,duplicates:0,selected:0,clockEntries:0,unknownContexts:0,idleReceipts:0,unavailableFrames:0,unavailableReceipts:0};
  }
  consume(packet,{cycle,sourceKey,receivedAt,rawSHA256}={}){
@@ -79,6 +80,7 @@ export class ModelProjection{
    const bucket=Math.floor(f.at/MINUTE),selected=changed||!adjacent||bucket!==this.state.bucket;
    if(selected){this.records.push({kind:'model-projection',v:1,at:f.at,build:packet.build,epoch:packet.epoch,cursor:f.seq,sha256:f.sha256,contextSha256:f.contextSha256,contextJson:f.contextJson,cycle,sourceKey,forecastAvailable:available,buses,collector:head??null,selection:changed?'transition':!adjacent?'boundary':'minute',quantileGrid:'(i+0.5)/50; original rounded public quantiles'});if(fresh)this.required.add(head.epoch+':'+head.seq);this.counts.selected++;}
    this.state.bucket=bucket;this.state.idleService=false;this.state.forecastAvailable=available;this.state.forecastUnavailable=false;this.state.last={epoch:packet.epoch,build:packet.build,cycle,cursor:f.seq,at:f.at,sha256:f.sha256,contextSha256:f.contextSha256};this.counts.frames++;if(!available)this.counts.unavailableFrames++;
+   this.onFrame?.({frame:f,buses});
   }
   if(packet.hasMore===false&&Array.isArray(packet.feed?.buses)){
    const empty=packet.feed.buses.length===0&&packet.feed.server_eta==null;

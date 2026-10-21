@@ -94,3 +94,13 @@ receipt. The supervisor verifies its checksum identity, response/receive clocks
 and actual bounded GPS observations, including their freshness and locations.
 It does not accept an unavailable flag or bus count alone, invent a model
 timestamp, declare the fleet empty or infer that physical service ended.
+
+Once optional posterior capture is enabled on that archive, set
+`LEARNING_WATCH_POSTERIOR_REQUIRED=1`. The supervisor checks its separate
+coverage status, original model/runtime/posterior hashes, fresh model timestamp
+and actual sample count. A disabled, missing, corrupt or source-unbound sample
+becomes a `timing-history-posterior` finding through the same spaced checks.
+An old model is acceptable only alongside the already-validated original
+idle or forecast-unavailable receipt. This does not certify that rolling
+retention still contains any previously sampled state, change parameters,
+restart the observer or qualify ETA accuracy.
