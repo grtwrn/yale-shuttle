@@ -52,15 +52,42 @@ bytes. Delayed model/source associations may attach an older original frame;
 they do not reconstruct a past clock from later state. Unavailable associations
 remain pending for two hours, then become explicit unknown records.
 
-These are verified projections at capture time, with original frame/context
-hashes. They are not complete original forecast payloads or collector reducer
-inputs. The existing full recordings and protected incident/report evidence
-keep their separate policies. Repeated polls, a projected collector row and a
+These timing and collector rows are verified projections at capture time,
+with original frame/context hashes. They are not complete original forecast
+payloads or collector reducer inputs. The existing full recordings and protected
+incident/report evidence keep their separate policies. Repeated polls, a projected collector row and a
 GPS-correlated virtual pickup do not establish independent physical truth or
 authorize promotion. Full source replay and all support/held-out quality gates
 are still required.
 
-The archive records the hashes of its four implementation modules and the
+Set `TRAJECTORY_HISTORY_POSTERIORS=1` to retain one fresh, already-computed
+champion posterior per archive invocation. The recorder verifies the native
+checkpoint identity and checksums, finds its exact original model frame, and
+compares the complete original served answer and bus inputs with the saved
+champion cache. A sample keeps the complete original input/context JSON and
+a lossless V8 projection of the champion's posterior store, observations and
+parameters. It does not construct, restore, step or sample an estimator.
+The previous fresh checkpoint is preferred to avoid an unflushed current
+recorder tail; a rotated previous file can fall back to the current checkpoint.
+Node/V8 versions and original model and capture clocks are recorded separately.
+
+Model entry context is attached only when the archive processes that exact
+new original frame. Enabling capture against an unchanged prefix may retain
+the posterior with unknown entry context; it never substitutes native last-rest
+state or a later clock. Already-sampled status prevents duplicate records and
+does not promise an older sample survived rolling retention. Missing/corrupt
+state or input, identity mismatches and size bounds retain an explicit
+`posterior-unavailable` record while ordinary timing capture can continue.
+An idle/unavailable feed does not turn an old posterior into a fresh model.
+
+After enabling capture, set `LEARNING_WATCH_POSTERIOR_REQUIRED=1` on the
+independent supervisor. It requires actual posterior reference fields and
+fresh model clocks, or a separately validated original idle/unavailable feed
+receipt. Posterior records use the same existing physical/age limits below;
+they have no separate unbounded store. The projection omits engine caches and
+is not a complete forecast runtime or an independent accuracy qualification.
+
+The archive records the hashes of its five implementation modules and the
 collector protocol/codec. Changes to that projection identity reset derived
 clock contexts and add an explicit archive boundary, while preserving earlier
 records and cursor provenance. The live estimator source identity is separate.

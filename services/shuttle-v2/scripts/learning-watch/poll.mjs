@@ -65,7 +65,7 @@ export function inspectCollectorCapture(status, now = Date.now()) {
 
 /** The local compact archive runs every fifteen minutes. Its independent
  * supervisor refuses a stale heartbeat or a claimed capture with stale inputs. */
-export function inspectTimingHistory(status, now = Date.now()) {
+export function inspectTimingHistory(status, now = Date.now(), posteriorRequired = false) {
   const at=stamp(status?.checkedAt),issues=[];
   if(!fresh(at,now,20*60000))issues.push({code:'timing-history-heartbeat',summary:'The compact timing-history archive heartbeat is missing, stale or invalid.'});
   const empty=status?.idleReceipt,idle=status?.idleService===true&&empty?.emptyFleet===true&&empty?.hasServerEta===false&&/^[a-f0-9]{64}$/.test(empty?.recordSHA256??'')&&fresh(empty?.receivedAt,at,120000)&&fresh(empty?.responseAt,at,120000);
@@ -75,6 +75,11 @@ export function inspectTimingHistory(status, now = Date.now()) {
     &&observations.every(b=>Number.isSafeInteger(b.busId)&&Number.isSafeInteger(b.routeId)&&/^#?[A-Za-z0-9-]{1,24}$/.test(b.busName??'')
       &&Number.isFinite(b.lat)&&Math.abs(b.lat)<=90&&Number.isFinite(b.lon)&&Math.abs(b.lon)<=180&&Number.isSafeInteger(b.observedAt)&&b.observedAt<=missing.responseAt&&missing.responseAt-b.observedAt<45000);
   if(status?.ok!==true||(!fresh(status?.modelAt,at,120000)&&!idle&&!unavailable)||!fresh(status?.collectorAt,at,120000))issues.push({code:'timing-history-capture',summary:'The compact timing-history archive reports a capture/storage failure or lacks fresh original source frames.'});
+  const posterior=status?.posteriorCapture;
+  const posteriorProof=posterior?.ok===true&&(['captured','already-sampled'].includes(posterior.state)
+    ? fresh(posterior.modelAt,at,120000)&&posterior.capturedModels===(posterior.state==='captured'?1:0)&&[posterior.sourceModelSha256,posterior.nativeRuntimeSha256,posterior.posteriorStateSha256].every(h=>/^[a-f0-9]{64}$/.test(h??''))
+    : ['no-fresh-model','awaiting-first-model'].includes(posterior.state)&&posterior.capturedModels===0&&(idle||unavailable));
+  if((posteriorRequired&&posterior?.enabled!==true)||(posterior?.enabled===true&&!posteriorProof))issues.push({code:'timing-history-posterior',summary:'The timing archive did not retain the required source-bound model posterior sample; inspect its explicit coverage reason.'});
   return issues;
 }
 
@@ -133,6 +138,7 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
   incidents = process.env.LEARNING_WATCH_INCIDENTS ?? path.join(os.homedir(), 'projects/yale-shuttle-guardian-bot/state/pending'),
   collectorStatusFile = process.env.LEARNING_WATCH_COLLECTOR_STATUS,
   historyStatusFile = process.env.LEARNING_WATCH_HISTORY_STATUS,
+  posteriorRequired = process.env.LEARNING_WATCH_POSTERIOR_REQUIRED === '1',
   performancePolicyFile, platformProbe = collectPlatform,
   script = path.join(service, 'scripts/learning-loop/start.ts'), probe = probeObserver, now = Date.now() } = {}) {
   return withStorageLock(directory, async () => {
@@ -153,7 +159,7 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
       issues.push(...inspectCollectorCapture(collectorCapture, now));
     }
     let timingHistory=null;
-    if(historyStatusFile){try{timingHistory=await readJson(historyStatusFile,null);}catch{}issues.push(...inspectTimingHistory(timingHistory,now));}
+    if(historyStatusFile){try{timingHistory=await readJson(historyStatusFile,null);}catch{}issues.push(...inspectTimingHistory(timingHistory,now,posteriorRequired));}
     let platform;
     try { platform = await platformProbe(await readJson(performancePolicyFile ?? path.join(directory, 'performance-policy.json'), null), { now }); }
     catch { platform = { configured: true, enabled: true, state: 'unknown', error: 'Platform monitoring policy or metrics cannot be read' }; }
@@ -197,7 +203,7 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
       feedReceivedAt: status?.feedReceivedAt ?? null, lastInputAt: status?.lastInputAt ?? null,
       collectorCapture: collectorStatusFile ? { ok: collectorCapture?.ok === true,
         checkedAt: collectorCapture?.checkedAt ?? null, cursor: collectorCapture?.cursor ?? null } : null,
-      ...(historyStatusFile ? {timingHistory:{ok:timingHistory?.ok===true,checkedAt:timingHistory?.checkedAt??null,modelAt:timingHistory?.modelAt??null,collectorAt:timingHistory?.collectorAt??null}} : {}),
+      ...(historyStatusFile ? {timingHistory:{ok:timingHistory?.ok===true,checkedAt:timingHistory?.checkedAt??null,modelAt:timingHistory?.modelAt??null,collectorAt:timingHistory?.collectorAt??null,posteriorRequired,posteriorCapture:timingHistory?.posteriorCapture??null}} : {}),
       platformPerformance: { configured: platform.configured, enabled: platform.enabled, state: platform.state,
         instances: platform.instances, superseded: platform.superseded, snapshotSha256: platform.snapshotSha256, error: platform.error },
       newIncidents: emitted, incidentError, accuracyVerdict: 'Not evaluated by this monitor' };
