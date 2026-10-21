@@ -13,7 +13,7 @@ import type {
 
 import type { CalibrationReader, CalibrationReadReceipt } from "./provenance.js";
 
-import { median, percentile, shrink } from "./shrinkage.js";
+import { median, percentile, percentiles, shrink } from "./shrinkage.js";
 import type { LapFit } from "./lapFit.js";
 import { attachHourStandTables, loadStandVisits } from "./hourStand.js";
 
@@ -591,11 +591,11 @@ export function loadStopOccurrenceShares(db: DB, windowDays: number, nowMs: numb
   return out;
 }
 
-/** Ascending stand quantiles at levels (i + 0.5) / STAND_Q_COUNT — the client's reading of `q`. */
+/** Ascending quantiles at the existing levels. Stand, hop and pace tables
+ * share this path; sorting per rank repeats the large pooled-pace sort ten
+ * times on the event loop that also serves HTTP requests. */
 export function standQuantiles(samples: readonly number[]): number[] {
-  const out = new Array<number>(STAND_Q_COUNT);
-  for (let i = 0; i < STAND_Q_COUNT; i++) out[i] = percentile(samples, (i + 0.5) / STAND_Q_COUNT);
-  return out;
+  return percentiles(samples, Array.from({ length: STAND_Q_COUNT }, (_, i) => (i + 0.5) / STAND_Q_COUNT));
 }
 
 /**

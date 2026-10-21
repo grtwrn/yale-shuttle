@@ -5,6 +5,7 @@ import {
   mean,
   median,
   percentile,
+  percentiles,
   shrink,
   variance,
 } from "./shrinkage.js";
@@ -58,6 +59,15 @@ describe("confidenceHalfWidth", () => {
 });
 
 describe("stats helpers", () => {
+  it("returns several interpolated ranks without changing the caller's samples", () => {
+    const values = Object.freeze([10, 1, 9, 2, 8, 3, 7, 4, 6, 5]);
+    expect(percentiles(values, [1, 0.5, 0, 0.9, 0.5])).toEqual([10, 5.5, 1, 9.1, 5.5]);
+    expect(values).toEqual([10, 1, 9, 2, 8, 3, 7, 4, 6, 5]);
+    expect(percentiles([], [0.05, 0.5, 0.95])).toEqual([0, 0, 0]);
+    expect(percentiles([60], [0.05, 0.5, 0.95])).toEqual([60, 60, 60]);
+    expect(percentiles(values, [])).toEqual([]);
+  });
+
   it("computes mean / variance / median / percentile", () => {
     expect(mean([1, 2, 3, 4])).toBe(2.5);
     expect(variance([2, 4, 4, 4, 5, 5, 7, 9])).toBeCloseTo(4.571428, 4);
