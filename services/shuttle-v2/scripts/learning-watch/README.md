@@ -79,3 +79,12 @@ remain verifiable through a lost acknowledgement or monitor
 restart. Existing incident IDs, learner evidence and pending records are
 unchanged. This adds no model publication, accuracy qualification or process
 restart capability.
+
+The optional `LEARNING_WATCH_HISTORY_STATUS` points to the separately scheduled
+compact timing-history archive's `status.json`. That job runs every fifteen
+minutes; this supervisor requires a heartbeat within twenty minutes and fresh
+model/collector evidence at capture time. During an empty GPS feed it requires
+the archive's fresh original empty-feed receipt rather than a model timestamp
+or an idle flag alone. Missing, failed or stalled capture uses the same three
+spaced-check incident policy and retains the archive status path for review.
+This monitoring does not change learner sampling or accuracy qualification.
