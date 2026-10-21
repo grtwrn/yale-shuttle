@@ -1,16 +1,20 @@
 import type { BusData } from './map-data';
 import { LIVE_UPDATE_STALE_MS } from './liveUpdates';
+import type { ForecastReportingSnapshot } from './busForecastReporting';
 
 export const REPORTING_LOSS_GRACE_MS = 5_000;
 export const REPORTING_RETURN_NOTICE_MS = 30_000;
 export interface ReportingWatch { busName: string; routeLabel: string; routeIds: readonly number[] }
-export interface ReportingSnapshot { buses: readonly BusData[]; at: number; serverAt: number }
+export interface ReportingSnapshot { buses: readonly BusData[]; at: number; serverAt: number;
+  forecasts?: ForecastReportingSnapshot | null }
 export interface ReportingRecord extends ReportingWatch {
   status: 'watching' | 'lost' | 'returned';
   missingSince?: number;
   missingPolls: number;
   changedAt: number;
   dismissed?: boolean;
+  /** Keep the original GPS watch when its ETA, rather than GPS, disappears. */
+  forecastWithheld?: boolean;
 }
 export interface ReportingState { lastPollAt: number | null; records: ReportingRecord[] }
 export const emptyReportingState = (): ReportingState => ({ lastPollAt: null, records: [] });
@@ -19,7 +23,8 @@ export const reportingKey = (watch: ReportingWatch) => `${watch.routeLabel}:${re
 
 /** Only successful, new position snapshots prove a vehicle stopped reporting.
  * Keep a missing selected bus when its card switches to another vehicle, but
- * forget an ordinary selection change while the previous bus is still live.
+ * forget an ordinary selection change while the previous bus is still live
+ * and its forecast has not been withheld.
  * Physical bus number + line survives an upstream tracking-ID change. */
 export function stepBusReporting(
   prior: ReportingState, snapshot: ReportingSnapshot | null, watched: readonly ReportingWatch[],
@@ -37,11 +42,13 @@ export function stepBusReporting(
     reportingName(b.bus_name) === reportingName(w.busName) && w.routeIds.includes(b.route_id)
     && (b.observed_at === undefined || (Number.isFinite(b.observed_at)
       && snapshot.serverAt - b.observed_at < LIVE_UPDATE_STALE_MS)));
+  const forecastKeys = snapshot.forecasts ? new Set(snapshot.forecasts.watches.map(reportingKey)) : null;
   for (const [key, watch] of current) {
     if (!records.some(r => reportingKey(r) === key) && fresh(watch)) records.push({ ...watch,
       busName: reportingName(watch.busName), status: 'watching', missingPolls: 0, changedAt: snapshot.at });
   }
   records = records.flatMap<ReportingRecord>(r => {
+    r = { ...r, forecastWithheld: forecastKeys ? !forecastKeys.has(reportingKey(r)) : r.forecastWithheld };
     if (r.status === 'returned' && snapshot.at - r.changedAt >= REPORTING_RETURN_NOTICE_MS) {
       r = { ...r, status: 'watching', dismissed: false };
     }
@@ -52,7 +59,7 @@ export function stepBusReporting(
       if (r.status === 'returned' && snapshot.at - r.changedAt < REPORTING_RETURN_NOTICE_MS) {
         return [{ ...r, missingSince: undefined, missingPolls: 0 }];
       }
-      return selected ? [{ ...r, status: 'watching' as const, missingSince: undefined,
+      return selected || r.forecastWithheld ? [{ ...r, status: 'watching' as const, missingSince: undefined,
         missingPolls: 0, dismissed: false }] : [];
     }
     const missingSince = r.missingSince ?? snapshot.at, missingPolls = r.missingPolls + 1;
