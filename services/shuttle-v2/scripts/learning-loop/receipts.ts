@@ -3,7 +3,7 @@ import { productionControlInputValid, UNIT } from './lib.mjs';
 
 /** Rebuild the full seed -> input chain from retained HTTP receipts, not from
  * row annotations. Only small digests and requested sample cursors are kept. */
-export function verifyExactReceipts(state: any, rows: any[], records: Iterable<any>, seed: any) {
+function exactReceiptVerifier(state: any, rows: any[], seed: any) {
   const seedSha256 = digest(JSON.stringify(seed));
   if (seedSha256 !== state.source?.seedSha256 || seed.build !== state.productionBuild || seed.epoch !== state.source.epoch
     || seed.cursor !== state.source.seedCursor || seed.at !== state.source.seedAt || state.source.seedReceivedAt > state.startedAt
@@ -20,7 +20,7 @@ export function verifyExactReceipts(state: any, rows: any[], records: Iterable<a
       inputs.add(row.arrivalInputHash); inputs.add(row.outcomeInputHash);
     }
   }
-  for (const { raw, input } of records) {
+  function accept({ raw, input }: any) {
     const hash = digest(raw);
     if (controls.has(hash)) {
       for (const row of controls.get(hash)!) if (!productionControlInputValid(row, input)) throw Error('Exact control differs from its retained HTTP input');
@@ -50,15 +50,30 @@ export function verifyExactReceipts(state: any, rows: any[], records: Iterable<a
     }
     if (packet.cursor > cursor) throw Error('HTTP cursor advanced without retained model input');
   }
-  if (inputs.size || controls.size) throw Error('Required exact forecast/outcome HTTP inputs are missing');
-  for (const row of rows) {
-    const s = row.champion?.control?.source, recorded = s && chains.get(s.cursor);
-    const candidate = { version: state.id, params: { ...state.candidate.params, CONFORMAL: row.phase === 'calibration' ? UNIT : state.candidate.params.CONFORMAL } };
-    if (!recorded || s.seedSha256 !== seedSha256 || s.epoch !== seed.epoch || s.build !== seed.build || s.sourceKey !== state.sourceKey
-      || Object.entries(recorded).some(([key, value]) => s[key] !== value)
-      || s.championModel !== modelKey(state.champion) || s.challengerModel !== modelKey(candidate)
-      || row.champion.runtimeIntervals !== true || (!row.challenger?.missing && row.challenger?.runtimeIntervals !== true))
-      throw Error('Sample is not bound to the frozen seed, complete source chain and actual runtime models');
+  function finish() {
+    if (inputs.size || controls.size) throw Error('Required exact forecast/outcome HTTP inputs are missing');
+    for (const row of rows) {
+      const s = row.champion?.control?.source, recorded = s && chains.get(s.cursor);
+      const candidate = { version: state.id, params: { ...state.candidate.params, CONFORMAL: row.phase === 'calibration' ? UNIT : state.candidate.params.CONFORMAL } };
+      if (!recorded || s.seedSha256 !== seedSha256 || s.epoch !== seed.epoch || s.build !== seed.build || s.sourceKey !== state.sourceKey
+        || Object.entries(recorded).some(([key, value]) => s[key] !== value)
+        || s.championModel !== modelKey(state.champion) || s.challengerModel !== modelKey(candidate)
+        || row.champion.runtimeIntervals !== true || (!row.challenger?.missing && row.challenger?.runtimeIntervals !== true))
+        throw Error('Sample is not bound to the frozen seed, complete source chain and actual runtime models');
+    }
+    return { framesVerified: cursor - seed.cursor, lastCursor: cursor, sampledCursorsVerified: chains.size };
   }
-  return { framesVerified: cursor - seed.cursor, lastCursor: cursor, sampledCursorsVerified: chains.size };
+  return { accept, finish };
+}
+
+export function verifyExactReceipts(state: any, rows: any[], records: Iterable<any>, seed: any) {
+  const verifier = exactReceiptVerifier(state, rows, seed);
+  for (const record of records) verifier.accept(record);
+  return verifier.finish();
+}
+
+export async function verifyExactReceiptsAsync(state: any, rows: any[], records: AsyncIterable<any> | Iterable<any>, seed: any) {
+  const verifier = exactReceiptVerifier(state, rows, seed);
+  for await (const record of records) verifier.accept(record);
+  return verifier.finish();
 }
