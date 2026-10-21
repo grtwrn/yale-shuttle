@@ -32,6 +32,23 @@ class PickupWindowTests(unittest.TestCase):
         self.assertEqual(actual[1]['pickupObservation']['bus']['bus_id'], 67959)
         self.assertEqual(self.c, PURPLE)
 
+    def test_two_original_single_value_window_runs_from_the_broader_population(self):
+        cases = json.loads((Path(__file__).parent/'__fixtures__/single-value-pickups-20261020.json').read_text())['cases']
+        self.assertEqual(len(cases), 2)
+        for case in cases:
+            result = pickup.analyze(case['journey'], case['samples'], case['coverage'])
+            self.assertEqual(result['state'], 'within-diagnostic-tolerance')
+            self.assertEqual(result['firstQuote']['hiSec'], 60)
+
+    def test_single_value_windows_preserve_their_upper_endpoint_without_raising(self):
+        for text, lo, hi in [('Arrival: About <1 min · Likely ~1 min', 0, 60), ('Arrival: About <1 min · Likely <1 min', 0, 60), ('Arrival: About 5 min · Likely 5 min', 300, 300)]:
+            with self.subTest(text=text):
+                self.c = copy.deepcopy(PURPLE)
+                self.c['samples'][0]['text'] = self.c['samples'][0]['text'].replace('Arrival: About 7 min · Likely 4–12 min', text)
+                result = self.audit()
+                self.assertEqual(result['state'], 'late-window')
+                self.assertEqual((result['firstQuote']['loSec'], result['firstQuote']['hiSec']), (lo, hi))
+
     def test_tolerance_matches_the_existing_canary_and_boundary_is_strict(self):
         code = (Path(__file__).parent.parent/'canary-metrics.mjs').read_text()
         self.assertEqual(pickup.MISS_SECONDS, int(re.search(r'firstSightMissSec:\s*(\d+)', code)[1]))
