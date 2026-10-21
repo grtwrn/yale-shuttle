@@ -5,7 +5,8 @@ import { once } from 'node:events';
 import { createHash } from 'node:crypto';
 import { observationKey } from './forecasts';
 import { ExactForecastStream, SourceContextChanged, digest, modelKey, pruneRuntimes } from './stream';
-import { verifyExactReceipts } from './receipts';
+import { verifyExactReceiptsAsync } from './receipts';
+import { inputFiles, readInputLines, readInputRecords } from './input-records.mjs';
 import { archiveTableFile, readArchiveTable } from '../archive-files.mjs';
 import { assembleCandidate, conformalFit, estimateEmissions, estimateVisitRates,
   sameParams, tracksByName, zoneTester } from '../reestimate-lib.mjs';
@@ -108,16 +109,9 @@ function verifyFrozen(){
  }
  readSeed();
 }
-function verifyInputs(rows:any[]){
+async function verifyInputs(rows:any[]){
  if(state.forecastProtocol==='served-control-v2'){
-  function* records(){
-   for(const name of fs.readdirSync(path.join(root,state.id)).filter(n=>/^feed-.*\.jsonl.gz$/.test(n)).sort()){
-    const text=zlib.gunzipSync(fs.readFileSync(path.join(root,state.id,name)),{finishFlush:zlib.constants.Z_SYNC_FLUSH}).toString('utf8');
-    const complete=text.endsWith('\n')?text:text.slice(0,text.lastIndexOf('\n')+1);
-    for(const raw of complete.split('\n').filter(Boolean))yield {raw,input:JSON.parse(raw)};
-   }
-  }
-  try{return verifyExactReceipts(state,rows,records(),readSeed());}
+  try{return await verifyExactReceiptsAsync(state,rows,readInputRecords(path.join(root,state.id)),readSeed());}
   catch(error){holdSource(Date.now(),state.source.seedSha256,'Retained evaluation evidence failed: '+String(error));throw error;}
  }
  const needed=new Set<string>();
@@ -127,13 +121,11 @@ function verifyInputs(rows:any[]){
   const group=controls.get(p.inputHash)??[];group.push(p);controls.set(p.inputHash,group);
   if(p.det!==null){if(!p.arrivalInputHash||!p.outcomeInputHash)throw Error('Missing curb outcome receipts');needed.add(p.arrivalInputHash);needed.add(p.outcomeInputHash);}
  }
- for(const name of fs.readdirSync(path.join(root,state.id)).filter(n=>/^feed-.*\.jsonl.gz$/.test(n))){
+ for(const file of inputFiles(path.join(root,state.id))){
   if(!needed.size)break;
   // Validate the actual retained bytes, including concatenated gzip members
   // after a process restart. A missing/corrupt journal cannot authorize a fit.
-  const text=zlib.gunzipSync(fs.readFileSync(path.join(root,state.id,name)),{finishFlush:zlib.constants.Z_SYNC_FLUSH}).toString('utf8');
-  const complete=text.endsWith('\n')?text:text.slice(0,text.lastIndexOf('\n')+1);
-  for(const line of complete.split('\n').filter(Boolean)){
+  for await(const line of readInputLines(file)){
    const hash=createHash('sha256').update(line).digest('hex');
    if(controls.has(hash)){
     const input=JSON.parse(line);
@@ -241,7 +233,7 @@ async function maintain(now:number){
    const today=etDay(now);if(!state.calibrationDays.includes(today))state.calibrationDays.push(today);
    checkpoint();return;
   }
-  await sealInputs();verifyInputs(rows);
+  await sealInputs();await verifyInputs(rows);
   const candidate=structuredClone(state.candidate);
   candidate.params.CONFORMAL=Object.fromEntries(Object.entries(fit).map(([h,f]:any)=>[h,Math.max(0.5,f.w)]));
   for(const [h,f]of Object.entries(fit)as any)candidate.n[`CONFORMAL.${h}`]=f.n;
@@ -259,7 +251,7 @@ async function maintain(now:number){
  const days=[...new Set(rows.filter(p=>p.phase==='test').map(p=>p.day))].filter(d=>dayStart(nextDay(d))+SETTLE_MS<=now).sort();
  if(days.length<3)return;
  const key=days.join(',');if(state.evaluatedDays===key)return;
- await sealInputs();verifyInputs(rows.filter(p=>p.phase==='test'&&days.includes(p.day)));
+ await sealInputs();await verifyInputs(rows.filter(p=>p.phase==='test'&&days.includes(p.day)));
  const decision=evaluate(state,rows,days);state.evaluatedDays=key;state.decision=decision;checkpoint();
  atomic(path.join(root,state.id,'validation.json'),decision);atomic(path.join(root,'latest-validation.json'),{id:state.id,...decision});
  event('validation',{id:state.id,promote:decision.promote,reasons:decision.reasons,uncertainty:decision.uncertainty});
