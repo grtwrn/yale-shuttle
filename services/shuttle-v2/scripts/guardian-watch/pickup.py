@@ -84,7 +84,7 @@ def analyze(journey, samples, coverage):
         return unknown('initial-window-unavailable')
     raw, _, low, high = quote[0]
     lo = 0 if low in ('<1', '~1') else int(low)*60
-    hi = int(high)*60 if high is not None else 60 if low in ('<1', '~1') else int(low)*60
+    hi = int(high)*60 if high else 60 if low in ('<1', '~1') else int(low)*60
     if not 0 <= lo <= hi <= 24*3600:
         return unknown('invalid-initial-window')
     named = re.findall(r'(?:^|\n)🚌 #([A-Za-z0-9-]{1,24}) · \d+ stops? away(?=\n|$)', str(first.get('text', '')))
