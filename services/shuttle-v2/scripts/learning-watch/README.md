@@ -50,3 +50,32 @@ The monitor then checks that independent worker's heartbeat and failed status
 using the same spaced, persistent incident policy. Missing/corrupt/stale status
 or capture/protection/storage/queue failures reach the existing review queue.
 This setting stays absent before installation and certifies no ETA accuracy.
+
+## Recent production CPU throttling
+
+An optional private `performance-policy.json` in the monitor directory enables
+Fly platform telemetry: `{"version":1,"enabled":true,"org":"personal","app":"yale-shuttle"}`.
+`performancePolicyFile` can select an isolated policy for diagnostics. Credentials
+come from `flyctl auth token -q` (`FLYCTL` overrides the Mac binary path); they
+are sent only to the fixed Fly Prometheus origin and are never retained.
+Absent configuration explicitly reports disabled coverage. Bad configuration,
+failed authentication, missing/stale series, mismatched machine identities and
+insufficient counter support remain unknown operational findings.
+
+The check reads the platform counter increase over five minutes, rather than
+only asking whether the app responds at this instant. At least 20 seconds of
+CPU quota throttling is a finding. The existing three spaced confirmations
+still apply, so a short stall stays visible after HTTP service recovers.
+This measures platform throttling, not a bus delay or an exact duration of
+request unavailability. Fresh source timestamps and at least two counter
+observations are required. A stale host is superseded only when the same
+machine has a fresh replacement; other missing coverage stays unknown.
+
+CPU episodes persist independently of learner cycles. Unknown telemetry does
+not confirm or rearm them; a later healthy measurement rearms the alert.
+Incidents retain all three confirmation receipts, each bounded to 64 KiB of
+checksummed metric responses, without request headers or credentials. These
+remain verifiable through a lost acknowledgement or monitor
+restart. Existing incident IDs, learner evidence and pending records are
+unchanged. This adds no model publication, accuracy qualification or process
+restart capability.

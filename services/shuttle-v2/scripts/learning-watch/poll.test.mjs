@@ -5,6 +5,7 @@ import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { advance, inspect, inspectCollectorCapture, pollLearning, probeObserver } from './poll.mjs';
+import { collectPlatform } from './platform.mjs';
 
 const now = Date.parse('2026-10-17T12:00:00Z');
 function healthy(at = now) {
@@ -112,6 +113,92 @@ async function fixture() {
 }
 const read = async file => JSON.parse(await fs.readFile(file, 'utf8'));
 const digest = async file => createHash('sha256').update(await fs.readFile(file)).digest('hex');
+async function platformFixture(f) {
+  const performancePolicyFile = path.join(f.base, 'performance-policy.json');
+  await fs.writeFile(performancePolicyFile, JSON.stringify({ version: 1, enabled: true, org: 'personal', app: 'yale-shuttle' }));
+  let seconds = 50, unavailable = false;
+  const platformProbe = (policy, { now: at }) => collectPlatform(policy, { now: at,
+    tokenProvider: async () => 'fm2_private_fixture_not_a_real_credential',
+    fetcher: async url => {
+      if (unavailable) throw Error('Unreachable fixture');
+      const query = new URL(url).searchParams.get('query');
+      const n = query.startsWith('increase(') ? seconds : query.startsWith('timestamp(') ? (at - 15000) / 1000 : 20;
+      return Response.json({ status: 'success', data: { resultType: 'vector', result: [{
+        metric: { app: 'yale-shuttle', instance: '91854406a779d8', host: '744d', region: 'ewr' }, value: [at / 1000, String(n)],
+      }] } });
+    } });
+  return { performancePolicyFile, platformProbe, seconds: n => { seconds = n; }, unavailable: v => { unavailable = v; } };
+}
+it('retains a recent CPU stall across healthy learner checks, cycle change, lost acknowledgement and unknown telemetry', async () => {
+  const f = await fixture(), p = await platformFixture(f), receipts = [];
+  for (let i = 0; i < 3; i++) {
+    const at = now + i * 60000; await f.write(at);
+    const files = ['state.json', 'status.json', f.x.state.id + '/frozen-candidate.json'].map(n => path.join(f.root, n));
+    const before = await Promise.all(files.map(digest));
+    receipts.push(await pollLearning({ ...f, ...p, now: at }));
+    expect(await Promise.all(files.map(digest))).toEqual(before);
+  }
+  expect(receipts.map(r => r.newIncidents.length)).toEqual([0, 0, 1]);
+  expect(receipts[2].issues).toEqual([{ code: 'platform-cpu-throttle', summary: expect.any(String), consecutiveChecks: 3, reported: true }]);
+  const name = (await fs.readdir(f.incidents))[0], file = path.join(f.incidents, name), original = await digest(file), incident = await read(file);
+  expect(incident.kind).toBe('learning-platform-cpu-throttle');
+  const evidence = incident.evidence.platformMetrics;
+  expect(evidence.confirmations.map(r => r.at)).toEqual([now, now + 60000, now + 120000]);
+  for (const confirmation of evidence.confirmations) {
+    expect(confirmation.sha256).toBe(createHash('sha256').update(JSON.stringify(confirmation.snapshot)).digest('hex'));
+    expect(confirmation.snapshot.responses).toHaveLength(3);
+    for (const response of confirmation.snapshot.responses) expect(response.sha256).toBe(createHash('sha256').update(response.raw).digest('hex'));
+  }
+  expect(JSON.stringify(incident)).not.toContain('fm2_private');
+
+  // The write succeeded but its acknowledgement was lost before a new learner cycle.
+  const monitorState = path.join(f.directory, 'state.json'), prior = await read(monitorState);
+  prior.platform.observations['platform-cpu-throttle'].reported = false;
+  await fs.writeFile(monitorState, JSON.stringify(prior));
+  f.x.state.id = 'cycle-1792236978159'; f.x.frozen = structuredClone(f.x.state); f.x.status.cycle = f.x.state.id;
+  await fs.mkdir(path.join(f.root, f.x.state.id)); await f.write(now + 180000);
+  await pollLearning({ ...f, ...p, now: now + 180000 });
+  expect(await fs.readdir(f.incidents)).toEqual([name]); expect(await digest(file)).toBe(original);
+
+  p.unavailable(true); await f.write(now + 240000);
+  const unknown = await pollLearning({ ...f, ...p, now: now + 240000 });
+  expect(unknown.platformPerformance.state).toBe('unknown'); expect(unknown.ok).toBe(false);
+  expect((await read(monitorState)).platform.observations['platform-cpu-throttle'].reported).toBe(true);
+  p.unavailable(false); await f.write(now + 300000);
+  expect((await pollLearning({ ...f, ...p, now: now + 300000 })).newIncidents).toEqual([]);
+  expect(await digest(file)).toBe(original);
+  p.seconds(0); await f.write(now + 360000);
+  expect((await pollLearning({ ...f, ...p, now: now + 360000 })).ok).toBe(true);
+  p.seconds(30);
+  for (let i = 7; i < 10; i++) { await f.write(now + i * 60000); await pollLearning({ ...f, ...p, now: now + i * 60000 }); }
+  expect(await fs.readdir(f.incidents)).toHaveLength(2); expect(await digest(file)).toBe(original);
+});
+it('keeps unknown platform evidence from completing an unconfirmed CPU streak and reports corrupt policy', async () => {
+  const f = await fixture(), p = await platformFixture(f);
+  for (let i = 0; i < 2; i++) { await f.write(now + i * 60000); await pollLearning({ ...f, ...p, now: now + i * 60000 }); }
+  p.unavailable(true); await f.write(now + 240000); await pollLearning({ ...f, ...p, now: now + 240000 });
+  p.unavailable(false); await f.write(now + 300000);
+  const r = await pollLearning({ ...f, ...p, now: now + 300000 });
+  expect(r.issues[0].consecutiveChecks).toBe(1); expect(r.newIncidents).toEqual([]);
+  await fs.writeFile(p.performancePolicyFile, '{broken policy'); await f.write(now + 360000);
+  const damaged = await pollLearning({ ...f, ...p, now: now + 360000 });
+  expect(damaged.ok).toBe(false); expect(damaged.platformPerformance.state).toBe('unknown');
+  expect(await fs.readFile(p.performancePolicyFile, 'utf8')).toBe('{broken policy');
+});
+it('keeps the CPU episode identity across a long telemetry gap and lost acknowledgement', async () => {
+  const f = await fixture(), p = await platformFixture(f);
+  for (let i = 0; i < 3; i++) { await f.write(now + i * 60000); await pollLearning({ ...f, ...p, now: now + i * 60000 }); }
+  const name = (await fs.readdir(f.incidents))[0], original = await digest(path.join(f.incidents, name));
+  const file = path.join(f.directory, 'state.json'), state = await read(file);
+  state.platform.observations['platform-cpu-throttle'].reported = false;
+  await fs.writeFile(file, JSON.stringify(state)); p.unavailable(true);
+  await f.write(now + 300000); await pollLearning({ ...f, ...p, now: now + 300000 });
+  p.unavailable(false);
+  for (let i = 6; i < 9; i++) { await f.write(now + i * 60000); await pollLearning({ ...f, ...p, now: now + i * 60000 }); }
+  expect(await fs.readdir(f.incidents)).toEqual([name]); expect(await digest(path.join(f.incidents, name))).toBe(original);
+  const current = await read(file);
+  expect(current.platform.observations['platform-cpu-throttle'].issue.platformEvidence.confirmations.map(r => r.at)).toEqual([now + 360000, now + 420000, now + 480000]);
+});
 it('queues one durable incident for persistent refusal and never changes learner evidence', async () => {
   const f = await fixture(); f.x.state.protocolFailures = { count: 1 }; const receipts = [];
   for (let i = 0; i < 4; i++) {
