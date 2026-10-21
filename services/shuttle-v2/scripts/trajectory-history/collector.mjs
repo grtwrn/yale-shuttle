@@ -5,15 +5,15 @@ const {DatabaseSync}=createRequire(import.meta.url)('node:sqlite'),MiB=1024*1024
 
 /** Copy bounded original buffers inside a short read-only transaction. Decode
  * after COMMIT so a large archive never blocks the live collector recorder. */
-export function collectorSnapshot(file,{since=Date.now()-2*3600000,maxBytes=16*MiB}={}){
+export function collectorSnapshot(file,{since=Date.now()-2*3600000,until=Number.MAX_SAFE_INTEGER,maxBytes=16*MiB}={}){
  const st=fs.lstatSync(file);if(!st.isFile()||st.isSymbolicLink())throw Error('Invalid collector database');
  const db=new DatabaseSync(file,{readOnly:true});let chunks,topologies,finished;const started=Date.now();
  try{db.exec('PRAGMA busy_timeout=1000;BEGIN');
   if(db.prepare('PRAGMA user_version').get().user_version!==1)throw Error('Unsupported collector store');
-  const bounds=db.prepare('SELECT count(*) n,coalesce(sum(length(payload)),0) bytes FROM chunks WHERE end_at>=?').get(since);
+  const bounds=db.prepare('SELECT count(*) n,coalesce(sum(length(payload)),0) bytes FROM chunks WHERE end_at>=? AND start_at<=?').get(since,until);
   if(bounds.n>512||bounds.bytes>maxBytes)throw Error('Collector snapshot bound exceeded');
   const topologyBounds=db.prepare('SELECT count(*) n,coalesce(sum(length(payload)),0) bytes FROM topologies').get();if(topologyBounds.n>64||topologyBounds.bytes>2*MiB)throw Error('Collector topology bound exceeded');
-  const rows=db.prepare('SELECT * FROM chunks WHERE end_at>=? ORDER BY start_at,first,key').all(since);let bytes=0;
+  const rows=db.prepare('SELECT * FROM chunks WHERE end_at>=? AND start_at<=? ORDER BY start_at,first,key').all(since,until);let bytes=0;
   chunks=rows.map(r=>{bytes+=r.payload.length;if(bytes>maxBytes||rows.length>512)throw Error('Collector snapshot bound exceeded');return{...r,payload:Buffer.from(r.payload)};});
   topologies=db.prepare('SELECT * FROM topologies').all().map(r=>({...r,payload:Buffer.from(r.payload)}));
   if(topologies.length>64||topologies.reduce((s,t)=>s+t.payload.length,0)>2*MiB)throw Error('Collector topology bound exceeded');
@@ -27,7 +27,7 @@ export class CollectorProjection{
  constructor(state={},required=new Set()){
   this.state=structuredClone(state);this.state.tracks??={};this.required=new Set(required);this.records=[];this.topologyHashes=new Set();this.counts={frames:0,selected:0,sourceWrites:0,boundaries:0};
  }
- consume(snapshot){
+ consume(snapshot,{until=Number.MAX_SAFE_INTEGER}={}){
   for(const stored of snapshot.chunks){
    const raw=gunzipSync(stored.payload,{maxOutputLength:20*1024*1024}).toString();if(witnessSHA(raw)!==stored.raw_sha)throw Error('Stored collector page differs');const p=JSON.parse(raw);
    if(witnessSHA(witnessJSON({epoch:p.epoch,build:p.build,frames:p.frames,evaluations:p.evaluations??[]}))!==stored.key)throw Error('Stored collector page identity differs');
@@ -35,6 +35,7 @@ export class CollectorProjection{
    const used=[...new Set(p.frames.map(f=>f.topologySha256).filter(Boolean))].map(s=>{const t=snapshot.topologies.get(s);if(!t)throw Error('Collector topology unavailable');return t;});
    const verified=validatePage({...p,v:1,cursor:last.seq,latest:last.seq,hasMore:false,topologies:used},{epoch:p.epoch,build:p.build,after:first.seq-1,at:first.at-1,chain:first.previousChain});
    for(const{frame:f,input,topology}of verified.frames){
+    if(f.at>until)continue;
     const old=this.state.last;
     if(old?.epoch===p.epoch&&f.seq<=old.seq){
      if(f.seq===old.seq&&f.sha256!==old.sha256)throw Error('Conflicting collector cursor');
