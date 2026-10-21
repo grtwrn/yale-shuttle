@@ -61,9 +61,18 @@ Every complete original model frame is inspected for causal adjacent lead
 transitions. The archive keeps minute samples and transitions, with the next
 stop's original forecast rows and all available fifty public quantiles. Missing
 distributions remain missing. Entry clocks are first observed model transitions,
-not physical departure times. Bus/provider/route, repaired collector topology,
-source epochs and model continuity qualify the clock; gaps reset it. The
-published route array is not used to infer repaired ring indices.
+not physical departure times. Bus/provider/route, source epochs, model
+continuity and the exact original indexed stop sequence qualify the clock;
+gaps reset it. Public anchors index the published list, while the collector
+can reorder or duplicate stops in its repaired ring. Entry clocks therefore
+remain unknown whenever those full sequences differ or the original published
+sequence is missing. A matching length or a +1 public-slot change is insufficient.
+Qualified entries carry their index-space name and original stop-sequence hash;
+resumed legacy contexts without that qualification start fresh. Forecast rows,
+public quantiles, collector evidence and posterior capture remain available.
+Earlier records are preserved unchanged; readers must treat unqualified legacy
+entries on repaired routes as unknown, rather than interpret published indices
+as collector-ring positions.
 
 Collector capture uses a bounded read-only transaction, then validates and
 decodes copied original pages after committing that read. It preserves selected

@@ -58,19 +58,26 @@ export class ModelProjection{
    for(const[name,group]of groups){
     if(group.length!==1){delete this.state.tracks[name];this.counts.unknownContexts++;continue;}
     const b=group[0],anchors=(wire?.buses??[]).map((a,i)=>({a,i})).filter(x=>x.a[0]===name),route=topology?.decoded.routes.get(b.route_id),prior=Object.hasOwn(this.state.tracks,name)?this.state.tracks[name]:null;
-    const valid=integer(b.bus_id)&&integer(b.route_id)&&Number.isFinite(b.lat)&&Math.abs(b.lat)<=90&&Number.isFinite(b.lon)&&Math.abs(b.lon)<=180
+    const observationValid=integer(b.bus_id)&&integer(b.route_id)&&Number.isFinite(b.lat)&&Math.abs(b.lat)<=90&&Number.isFinite(b.lon)&&Math.abs(b.lon)<=180
      &&integer(b.observed_at)&&Math.abs(b.observed_at-head?.at)<=5000&&anchors.length===1&&route&&integer(anchors[0].a[2])&&anchors[0].a[2]>=0&&anchors[0].a[2]<route.stops.length;
+    // Public anchors index the original published list. The collector indexes
+    // its repaired travel ring, which can reorder or duplicate those stops.
+    // Equal length, stop IDs or a +1 public-slot change do not prove adjacency.
+    const published=payload.routes?.[String(b.route_id)],indexSpaceKnown=Array.isArray(published)&&Array.isArray(route?.stops)
+     &&published.length===route.stops.length&&route.stops.every((id,i)=>integer(published[i])&&published[i]===id);
+    const indexSpace='published-and-collector-ring',routeStopsSHA256=indexSpaceKnown?witnessSHA(witnessJSON(route.stops)):null,valid=observationValid&&indexSpaceKnown;
     let entry=null,reason=null;const anchor=anchors.length===1?anchors[0].a:null;
-    if(!valid)reason=available?'missing-or-ambiguous-source-topology-observation-or-anchor':'missing-original-forecast';
-    else if(!prior||prior.id!==b.bus_id||prior.route!==b.route_id||prior.topology!==head.topologySha256||prior.collectorEpoch!==head.epoch)reason='first-or-changed-vehicle-source-context';
+    if(!observationValid)reason=available?'missing-or-ambiguous-source-topology-observation-or-anchor':'missing-original-forecast';
+    else if(!indexSpaceKnown)reason='different-published-and-collector-index-space';
+    else if(!prior||prior.id!==b.bus_id||prior.route!==b.route_id||prior.topology!==head.topologySha256||prior.collectorEpoch!==head.epoch||prior.indexSpace!==indexSpace||prior.routeStopsSHA256!==routeStopsSHA256)reason='first-or-changed-vehicle-source-context';
     else if(prior.lead===anchor[2])entry=prior.entry;
     else{
      const delta=(anchor[2]-prior.lead+route.stops.length)%route.stops.length;changed=true;
-     if(delta===1){entry={at:f.at,previousAt:prior.at,previousCursor:prior.cursor,previousModelSHA256:prior.sha256,previousAnchor:prior.anchor,modelSHA256:f.sha256,fromIndex:anchor[2],toIndex:(anchor[2]+1)%route.stops.length,scope:'First observed adjacent model transition; not physical departure.'};this.counts.clockEntries++;}
+     if(delta===1){entry={at:f.at,previousAt:prior.at,previousCursor:prior.cursor,previousModelSHA256:prior.sha256,previousAnchor:prior.anchor,modelSHA256:f.sha256,fromIndex:anchor[2],toIndex:(anchor[2]+1)%route.stops.length,indexSpace,routeStopsSHA256,scope:'First observed adjacent model transition; not physical departure.'};this.counts.clockEntries++;}
      else reason='non-adjacent-model-transition';
     }
     if(reason){this.counts.unknownContexts++;changed ||= !!valid||!!prior;}
-    if(valid)this.state.tracks[name]={id:b.bus_id,route:b.route_id,collectorEpoch:head.epoch,topology:head.topologySha256,lead:anchor[2],entry,at:f.at,cursor:f.seq,sha256:f.sha256,anchor};else delete this.state.tracks[name];
+    if(valid)this.state.tracks[name]={id:b.bus_id,route:b.route_id,collectorEpoch:head.epoch,topology:head.topologySha256,indexSpace,routeStopsSHA256,lead:anchor[2],entry,at:f.at,cursor:f.seq,sha256:f.sha256,anchor};else delete this.state.tracks[name];
     const forecasts=[];
     if(anchors.length===1)for(let i=0;i<wire.rows.length;i++){const row=wire.rows[i];if(row[0]!==anchors[0].i||row[5]>1)continue;if(!Array.isArray(row)||row.length<9||!row.slice(0,9).every(Number.isFinite)||row[5]<0)throw Error('Invalid original forecast row');
      const q=wire.distributions?.[i];if(q!==undefined&&(!Array.isArray(q)||q.length!==50||q.some((x,j)=>!Number.isFinite(x)||j>0&&x<q[j-1])))throw Error('Invalid original forecast quantiles');forecasts.push({row,quantiles:q??null});}
