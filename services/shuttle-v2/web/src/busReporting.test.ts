@@ -40,6 +40,25 @@ describe('individual bus reporting notices', () => {
     expect(step(state, 10000, [bus(start + 10000, { bus_name: '#126' })], [next]).records[0]?.status).toBe('watching');
   });
 
+  it('keeps the GPS watch when a fresh bus loses its forecast, then alerts if it also stops reporting', () => {
+    const changed = stepBusReporting(watching(), { buses: [bus(start + 5000), bus(start + 5000, { bus_name: '#126' })],
+      at: start + 5000, serverAt: start + 5000, forecasts: { at: start + 5000, watches: [next] } }, [next], ['Red'], true, true);
+    expect(changed.records.find(r => r.busName === '317')).toMatchObject({ status: 'watching', forecastWithheld: true });
+    // An unknown whole model cannot erase the original identity.
+    const unknown = stepBusReporting(changed, { buses: [bus(start + 10000), bus(start + 10000, { bus_name: '#126' })],
+      at: start + 10000, serverAt: start + 10000, forecasts: null }, [next], ['Red'], true, true);
+    expect(unknown.records.find(r => r.busName === '317')?.forecastWithheld).toBe(true);
+    const missing = step(unknown, 15000, [bus(start + 15000, { bus_name: '#126' })], [next]);
+    expect(step(missing, 20000, [bus(start + 20000, { bus_name: '#126' })], [next]).records
+      .find(r => r.busName === '317')?.status).toBe('lost');
+  });
+
+  it('forgets an ordinary selection change when the original fresh forecast is still available', () => {
+    const state = stepBusReporting(watching(), { buses: [bus(start + 5000), bus(start + 5000, { bus_name: '#126' })],
+      at: start + 5000, serverAt: start + 5000, forecasts: { at: start + 5000, watches: [watch, next] } }, [next], ['Red'], true, true);
+    expect(state.records.map(r => r.busName)).toEqual(['126']);
+  });
+
   it('keeps a stationary bus live when observations keep arriving', () => {
     expect(step(watching(), 120000, [bus(start + 120000)]).records[0]?.status).toBe('watching');
   });

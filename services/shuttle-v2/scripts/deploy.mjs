@@ -251,6 +251,7 @@ await browserRegression("ordinary rider fallback browser regression", "scripts/r
 await browserRegression("feedback attachment browser regression", "scripts/feedback-accessibility-check.mjs");
 await browserRegression("feedback screen evidence browser regression", "scripts/feedback-screen-check.mjs", { env: { ...process.env, FEEDBACK_SCREEN_OUT: path.join(stageDir, "feedback-screen"), FEEDBACK_SCREEN_PRODUCTION_ASSETS: "0" } });
 await browserRegression("individual bus reporting browser regression", "scripts/bus-reporting-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "bus-reporting") } });
+await browserRegression("arrival estimate availability browser regression", "scripts/forecast-reporting-check.mjs", { env: { ...process.env, FORECAST_REPORTING_OUT: path.join(stageDir, "forecast-reporting"), FORECAST_REPORTING_PRODUCTION_ASSETS: "0" } });
 await browserRegression("Winchester standing stop browser regression", "scripts/winchester-stand-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "winchester-stand") } });
 await browserRegression("folded-line standing position browser regression", "scripts/folded-standing-check.mjs", { env: { ...process.env, BOT_OUT: path.join(stageDir, "folded-standing") } });
 await browserRegression("ride arrival and recovery browser regression", "scripts/ride-recovery-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "ride-recovery") } });

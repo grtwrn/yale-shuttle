@@ -88,6 +88,7 @@ import {
 import { rideEndDecision, FIX_MAX_AGE_MS, type RideEndReason } from "./rideEnd";
 import { liveUpdateMessage } from "./liveUpdates";
 import { BusReportingAlerts } from './BusReportingAlerts';
+import { forecastReportingSnapshot } from './busForecastReporting';
 import type { ReportingSnapshot, ReportingWatch } from './busReporting';
 import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
@@ -3259,7 +3260,7 @@ const TripPlanner: FC<{
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {<BusReportingAlerts key={`trip:${tripKey}:${expandedKey ?? ''}`} snapshot={reportingSnapshot}
         available={reportingAvailable} watched={watchedTripBuses} scope={reportingScope}
-        replacements={watchedTripBuses} />}
+        replacements={watchedTripBuses} watchForecasts />}
       {/* In-app fallback for a leave-time ping when a system notification
           can't be shown (permission denied, or iOS Safari page context
           where the Notification API doesn't exist). Fixed so it's seen
@@ -7292,8 +7293,6 @@ const TransitMap: FC = () => {
         latestApplied = mySeq;
         const receivedAt = Date.now();
         setLastBusUpdateAt(Date.now());
-        setReportingSnapshot({ buses: data.buses, at: Date.now(),
-          serverAt: Number.isFinite(data.server_eta?.servedAt) ? data.server_eta.servedAt : Date.now() });
         setBusUpdateFailed(false);
         setBusSnapshotFailed(false);
         // The estimator's learned parameters, before anything that prices a
@@ -7307,6 +7306,9 @@ const TransitMap: FC = () => {
         // this state.
         const liveBuses = ((data.buses ?? []) as BusData[]).filter((b) => isBusInService(b));
         const etaReady = attachServerEta(liveBuses, data.server_eta, receivedAt);
+        setReportingSnapshot({ buses: data.buses, at: receivedAt,
+          serverAt: Number.isFinite(data.server_eta?.servedAt) ? data.server_eta.servedAt : receivedAt,
+          forecasts: forecastReportingSnapshot(liveBuses, data.server_eta?.at, receivedAt, etaReady) });
         bindFeedbackSource(liveBuses, res.headers.get('X-Shuttle-Snapshot'), data.server_eta, receivedAt);
         setBusUpdateFailed(!etaReady && liveBuses.length > 0);
         setBuses(liveBuses);
