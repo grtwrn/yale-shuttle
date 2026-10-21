@@ -9,6 +9,7 @@ Watcher data is only read, never modified.
 import fcntl, gzip, hashlib, json, os, sys, time, urllib.request
 from pathlib import Path
 from evidence import atomic_json, capture_bundle, maintain_bundles, verify_bundle
+from pickup import audit_bundle
 from datetime import datetime, timezone
 
 WATCH = os.environ.get("GUARDIAN_WATCH", str(Path.home() / "projects/yale-shuttle-watcher/services/shuttle-v2/scripts/.rider-watcher"))
@@ -153,6 +154,10 @@ def scan_events(st, ws, watch):
             if kind == "journey-started" and isinstance(d, dict):
                 ws["runs"][run] = d.get("line")
                 ws["runs"] = dict(list(ws["runs"].items())[-50:])
+            if kind == "journey-finished" and d == "completed" and isinstance(run, str):
+                at = parse(ev.get("at"))
+                if at is not None and at >= st.get("pickupAuditsSince", now()):
+                    ws.setdefault("pickupAuditPending", {})[run] = ev
             # A journey that ends without a measurement (timeout, excluded run) means
             # the rider is not validating the rider experience; no-service is expected.
             if kind == "journey-finished" and d not in JOURNEY_OK:
@@ -176,6 +181,55 @@ def scan_events(st, ws, watch):
                            {"watcherDir": watch, "events": path, "samples": f"{watch}/samples.jsonl",
                             "journeys": f"{watch}/journeys.jsonl", "runId": run,
                             "screenshots": screenshots(watch, run, at)}, capture_event=ev)
+
+
+def pickup_already_reported(watch, run):
+    # A crash after incident persistence but before the bridge checkpoint must
+    # not append the same completed run again, including after it was processed.
+    for folder in [PENDING, PROCESSED]:
+        for file in Path(folder).glob("*-rider-pickup-window-miss-*.json"):
+            inc = json.loads(file.read_text())
+            if inc.get("evidence", {}).get("watcherDir") != watch:
+                continue
+            if inc.get("evidence", {}).get("runId") == run or any(
+                    row.get("runId") == run for row in inc.get("occurrences", [])):
+                return str(file)
+    return None
+
+
+def check_completed_pickups(st, ws, watch):
+    pending = ws.setdefault("pickupAuditPending", {})
+    audits = ws.setdefault("pickupAudits", {})
+    # Slow work is bounded per poll. Pending work survives retries/checkpoints.
+    for run, event in list(pending.items())[:2]:
+        try:
+            if run in audits:
+                del pending[run]
+                continue
+            identity = hashlib.sha256(run.encode()).hexdigest()[:24]
+            refs = {"watcherDir": watch, "runId": run, "screenshots": []}
+            receipt = capture_bundle(EVIDENCE, "pickup-audit-" + identity, event, refs, [WATCH, WATCH_RED])
+            result = audit_bundle(receipt)
+            result.update({"checkedAt": iso(now()), "bundle": receipt})
+            if result["state"] == "late-window":
+                prior = pickup_already_reported(watch, run)
+                if not prior:
+                    at = parse(event["at"])
+                    line = event.get("line") or ws.get("runs", {}).get(run)
+                    summary = (f"{line or 'Shuttle'} #{result['busName']} pickup observation was "
+                               f"{round(result['lateBeyondWindowSec']/60)} min beyond the first displayed window; "
+                               "GPS-correlated virtual rider diagnostic needs review")
+                    raise_incident(st, "rider-pickup-window-miss", line, at, summary,
+                                   {"event": event, "pickupAudit": result}, refs, capture_event=event)
+                result["reported"] = True
+                result["alreadyRetainedIncident"] = prior
+            audits[run] = result
+            del pending[run]
+        except Exception as error:
+            CAPTURE_ERRORS.append({"stage": "pickup-window-audit", "runId": run,
+                                   "error": str(error)[:300]})
+    # Routine verdicts roll. Only candidate incidents protect sealed evidence.
+    ws["pickupAudits"] = dict(list(audits.items())[-200:])
 
 def check_health(st):
     ok, info = False, ""
@@ -267,12 +321,14 @@ def run_once():
     st.setdefault("offset", 0); st.setdefault("runs", {}); st.setdefault("open", {})
     if "since" not in st:  # candidates that predate the bridge are not queued
         st["since"] = now()
+    st.setdefault("pickupAuditsSince", now())
     st.setdefault("journeyAlertsSince", now())  # alert only on journeys finishing after this was enabled
     if "red" not in st:  # start the Red rider at its current end; its older events are not queued
         try: red_offset = os.path.getsize(f"{WATCH_RED}/events.jsonl")
         except FileNotFoundError: red_offset = 0
         st["red"] = {"offset": red_offset, "runs": {}}
     scan_events(st, st, WATCH); scan_events(st, st["red"], WATCH_RED)
+    check_completed_pickups(st, st, WATCH); check_completed_pickups(st, st["red"], WATCH_RED)
     check_health(st); check_rider(st, WATCH); check_rider(st, WATCH_RED, "Red")
     st["open"] = {k: v for k, v in st["open"].items() if now() - v["lastAt"] < DEDUPE_S}
     backfill_pending()
@@ -283,11 +339,18 @@ def run_once():
         CAPTURE_ERRORS.append({"stage": "evidence-retention", "error": str(error)[:300]})
     healthy = not CAPTURE_ERRORS and not storage.get("protectedOverageBytes", 0)
     status = {"checkedAt": iso(now()), "ok": healthy, "errors": CAPTURE_ERRORS,
-              "storage": storage, "scope": "Incident evidence retention, not rider or model accuracy"}
+              "storage": storage, "pickupAudits": {
+                  "general": {"retained": len(st.get("pickupAudits", {})), "pending": len(st.get("pickupAuditPending", {})),
+                              "states": {kind: sum(r.get("state") == kind for r in st.get("pickupAudits", {}).values())
+                                         for kind in ["late-window", "within-diagnostic-tolerance", "unknown"]}},
+                  "red": {"retained": len(st["red"].get("pickupAudits", {})), "pending": len(st["red"].get("pickupAuditPending", {})),
+                          "states": {kind: sum(r.get("state") == kind for r in st["red"].get("pickupAudits", {}).values())
+                                     for kind in ["late-window", "within-diagnostic-tolerance", "unknown"]}}},
+              "scope": "Incident evidence and virtual pickup-window diagnostics, not independent physical arrival or model accuracy"}
     dump(f"{STATE}/evidence-status.json", status)
     st["evidence"] = status
     st["sourceSha256"] = {name: hashlib.sha256((Path(__file__).parent / name).read_bytes()).hexdigest()
-                           for name in ["poll.py", "evidence.py"]}
+                           for name in ["poll.py", "evidence.py", "pickup.py"]}
     st["lastRunAt"] = iso(now())
     dump(BRIDGE, st)
     print(json.dumps(status))

@@ -74,3 +74,33 @@ from `services/shuttle-v2`. `bridge.test.mjs` runs the same Python tests inside
 the normal Vitest release gates.
 
 Transfer rider events carry the current leg’s `line`. Candidate and failed-journey incidents use that explicit line; older events fall back to the journey-started mapping. Resuming on the second leg does not require replaying an earlier start event to attribute an alert.
+
+Completed one-seat journeys also receive a pickup-window diagnostic. The bridge
+seals the original run before comparing its first literal `Arrival: ... Likely`
+window with a recorded pickup-area observation. It requires complete samples,
+a fresh initial screen, the same named vehicle, unchanged provider ID, one
+route, the same pickup label and stop coordinates, fresh GPS and receipt clocks,
+and no waiting-observation gap over 30 seconds. The first qualifying pickup
+position must agree with the at-pickup card and precede the boarding action by
+at most 15 seconds. An earlier close pass stays unknown. Resumed, excluded,
+transfer, ambiguous, missing and changed-vehicle records remain unknown.
+
+A pickup observed more than five minutes beyond the first window raises
+`rider-pickup-window-miss` for review, even when the journey completed. This is
+the existing canary's five-minute first-sight diagnostic tolerance, checked for
+parity by tests. These shared-GPS records do not prove physical boarding or
+independent ETA accuracy, and do not fit or publish a model. A result inside
+the tolerance is not an accuracy qualification. The October 20 Purple #124
+record has a literal 4–12 min first window and a pickup-area observation 27 min
+later; the retained Orange Night record instead changed vehicles and cannot
+be scored as the original vehicle's late arrival.
+
+Auditing starts with future completed events at first activation. It does not
+relabel old journeys or retrospectively emit alerts from an old backlog.
+At most two queued runs per rider are checked per poll. Capture failures leave
+pending work for retry. A retained incident, including one already processed,
+prevents duplicate occurrences after a lost bridge checkpoint. Each rider keeps
+at most 200 routine verdicts in bridge state. Routine audit bundles use the
+existing seven-day / 256 MiB rolling store; candidate incident bundles receive
+the existing pending-evidence protection. `evidence-status.json.pickupAudits`
+reports pending work and separate unknown, late-window and tolerance counts.
