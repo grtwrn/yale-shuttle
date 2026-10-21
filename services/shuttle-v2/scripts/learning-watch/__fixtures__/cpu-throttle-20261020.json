@@ -1,0 +1,237 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "at": 1792535651496,
+      "originalMonitorHealthy": false,
+      "originalMonitorSHA256": "a36fef97edabac804cd2965fa05403c61c260d3ca76b366ec7811a8ab807f1be",
+      "sourceSnapshotSHA256": "97fe2dba3e24fd6dd621330e1d8d071a8f4ad8236a5bd3f033eaca98f58bafae",
+      "responses": {
+        "throttled": {
+          "sourceResponseSHA256": "ef4a0242d17103066d82f730472b4c28eada76ad659255cecb886e4aba5f2540",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535651.496,
+                    "74.37879297309999"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "sourceTime": {
+          "sourceResponseSHA256": "a78e00952d1c2856864e33c382c303619851a7a2657d4b9e700c8518bf63c123",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535651.496,
+                    "1792535645.937"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "support": {
+          "sourceResponseSHA256": "ad33765f8ab21ba77eb263d12fc21bef1089aa73599ca0085a16fc9fe8622df6",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535651.496,
+                    "20"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1792535711721,
+      "originalMonitorHealthy": true,
+      "originalMonitorSHA256": "8b7d335294892c451f457b87675d1136c46c61e5135294ccd90a5c5a4112d69c",
+      "sourceSnapshotSHA256": "4c1d2b22ff8ed78e43613a1837ff46d09d2d24dcc1c48e6a607ccb33b2982607",
+      "responses": {
+        "throttled": {
+          "sourceResponseSHA256": "2ea8189d88af8550ae846234db105b874d70be11c437c498234c1156a12b6df7",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535711.721,
+                    "84.8426267511"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "sourceTime": {
+          "sourceResponseSHA256": "e43667381f7bbb162b99a391158a714a1e19d4a1cf975a49b25651ad3ac7d770",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535711.721,
+                    "1792535705.933"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "support": {
+          "sourceResponseSHA256": "134f55500ec6cd972df04726e7fc02dfe8544411d598a19b957862ea4daf58fb",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535711.721,
+                    "20"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 1792535771924,
+      "originalMonitorHealthy": true,
+      "originalMonitorSHA256": "385aa8f5c5cfda6d816cae41e1b19949e287bb6de37f4f274f0a7cd2c584aeb6",
+      "sourceSnapshotSHA256": "3c133b82a4e9dccbdebcac19a4f4fcd8330b97edabdd114e3618a1d7de7bb30e",
+      "responses": {
+        "throttled": {
+          "sourceResponseSHA256": "d8b7dd9455dfe2bc5ba3313a2bbb4f72d3a4e45be72e88befad9222ec491b91d",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535771.924,
+                    "95.37830514000001"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "sourceTime": {
+          "sourceResponseSHA256": "107cc8e0d4ccb00bc81e92ae9ca0cfb98c52e879c2bc9ace222097653bd5107b",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535771.924,
+                    "1792535765.932"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "support": {
+          "sourceResponseSHA256": "c34b4f45cd244720ce7b7f73a091f4d4fc7db1af8db84f4e202e8cdbb962c20f",
+          "data": {
+            "status": "success",
+            "data": {
+              "resultType": "vector",
+              "result": [
+                {
+                  "metric": {
+                    "app": "yale-shuttle",
+                    "instance": "fixture-instance",
+                    "host": "fixture-host",
+                    "region": "ewr"
+                  },
+                  "value": [
+                    1792535771.924,
+                    "20"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "scope": "Narrow diagnostic projection of retained platform metrics and original emitted checks. Numerical values and source clocks are retained; infrastructure identity labels are replaced. Historical ingestion and availability at those checks are unknown. Not an ETA accuracy or held-out qualification."
+}
