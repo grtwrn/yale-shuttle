@@ -26,10 +26,11 @@ objects (`chunkBytes`, `maxFiles`, `maxAgeMs`). Defaults:
 | launchd output logs | 10 MiB live + 3 compressed backups |
 | Superseded learning inputs | 256 MiB / 7 days |
 
-Active calibration/test inputs, pending/candidate receipts and the current
-champion's publication evidence remain protected. Warming input hours that
-predate calibration can expire only when they contain no pending/candidate
-receipt and are outside the 47-minute boundary window. Source snapshots,
+Active served-control-v2 inputs remain protected from their original seed,
+including warming: later verification needs the complete source chain.
+Legacy warming inputs can expire only when they contain no pending/candidate
+receipt and are outside the 47-minute boundary window. Active calibration/test
+inputs and the current champion's publication evidence remain protected. Source snapshots,
 paired outcomes, validation/submission files and archived training inputs are
 preserved. Daily training archives retain their existing 180-day policy.
 An active evaluation can exceed the retired-input budget; retention must not

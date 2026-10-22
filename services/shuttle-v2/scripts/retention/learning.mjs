@@ -36,7 +36,7 @@ export async function maintainLearning(root, { now = Date.now(), dryRun = false,
       else {
         activeBytes += stat.size;
         const end = Date.parse(h.slice(0, 10) + 'T' + h.slice(11) + ':00:00Z') + 3600000;
-        if (entry.name === state.id && warmingCutoff !== null && end < warmingCutoff
+        if (entry.name === state.id && state.forecastProtocol !== 'served-control-v2' && warmingCutoff !== null && end < warmingCutoff
           && !retainedHours.has(h) && stat.mtimeMs < now - 60000) warming.push({ ...item, reason: 'unreferenced-warming-input' });
       }
     }

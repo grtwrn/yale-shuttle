@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { observationKey } from './forecasts';
 import { ExactForecastStream, SourceContextChanged, digest, modelKey, pruneRuntimes } from './stream';
 import { verifyExactReceiptsAsync } from './receipts';
-import { inputFiles, readInputLines, readInputRecords } from './input-records.mjs';
+import { inputFiles, readInputLines, readInputRecords, recordInputFile, verifyInputFiles } from './input-records.mjs';
 import { archiveTableFile, readArchiveTable } from '../archive-files.mjs';
 import { assembleCandidate, conformalFit, estimateEmissions, estimateVisitRates,
   sameParams, tracksByName, zoneTester } from '../reestimate-lib.mjs';
@@ -108,6 +108,7 @@ function verifyFrozen(){
    throw Error('Frozen calibrated candidate is missing or changed');
  }
  readSeed();
+ verifyInputFiles(path.join(root,state.id),state.source.inputFiles,state.source.runtime.cursor>state.source.seedCursor);
 }
 async function verifyInputs(rows:any[]){
  if(state.forecastProtocol==='served-control-v2'){
@@ -184,7 +185,7 @@ async function begin(feed:any,health:any){
  for(const file of files){const dest=path.join(directory,'source',path.relative(service,file));fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(file,dest);}
  assertLearningSourceUnchanged(service,sourceKey);
  state={version:2,forecastProtocol:'served-control-v2',id,startedAt,sourceKey,productionBuild:health.build,champion:current,candidate,
-  source:{epoch:next.epoch,seedSha256:next.seedSha256,seedFile,seedReceivedAt,seedAt:seed.at,seedCursor:seed.cursor,initialChain:next.chain},
+  source:{epoch:next.epoch,seedSha256:next.seedSha256,seedFile,seedReceivedAt,seedAt:seed.at,seedCursor:seed.cursor,initialChain:next.chain,inputFiles:{}},
   trainingDays:days.sort(),trainingInputs:inputs,requiredRoutes:[...new Set(positions.map(r=>r.route_id))].sort((a,b)=>a-b),
   calibrationDays:[first,nextDay(first)],pending:{},visits:{},outbox:[],archiveLastDay:days.at(-1),lastOutcomeAt:null};
  atomic(path.join(directory,'frozen-candidate.json'),state);
@@ -211,6 +212,7 @@ async function captureInput(feed:any,receivedAt:number,source?:unknown){
  inputStream!.write(raw+'\n');
  await new Promise<void>((resolve,reject)=>inputStream!.flush(zlib.constants.Z_SYNC_FLUSH,err=>err?reject(err):resolve()));
  await new Promise<void>((resolve,reject)=>inputSink!.write('',err=>err?reject(err):resolve()));
+ recordInputFile(state.source,path.basename(file),fs.statSync(file).size);
  return createHash('sha256').update(raw).digest('hex');
 }
 async function maintain(now:number){

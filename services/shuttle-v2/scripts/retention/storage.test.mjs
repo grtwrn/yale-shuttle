@@ -77,9 +77,9 @@ test('output rotation keeps an append writer usable and bounds compressed backup
     expect(await Promise.all(backups.map(async name => zlib.gunzipSync(await fs.readFile(path.join(dir, name))).toString()))).toEqual(['2'.repeat(32), '3'.repeat(32)]);
   } finally { await writer.close(); }
 });
-test('learning cleanup preserves active calibration, pending/candidate receipts and current champion evidence', async () => {
+test.each(['legacy','served-control-v2'])('learning cleanup preserves active calibration, pending/candidate receipts and current champion evidence for %s', async protocol => {
   const dir = await root(), now = Date.parse('2026-10-13T20:00:00Z'), active = 'cycle-1791816582411', retired = 'cycle-1791761234701', champion = 'cycle-1791700000000';
-  await atomicJson(path.join(dir, 'state.json'), { id: active, calibrationDays: ['2026-10-13', '2026-10-14'],
+  await atomicJson(path.join(dir, 'state.json'), { id: active, forecastProtocol: protocol, calibrationDays: ['2026-10-13', '2026-10-14'],
     champion: { version: 'prospective-1791700000000' }, pending: { x: { at: Date.parse('2026-10-12T16:00:00Z'), closed: false } },
     visits: { x: { candidate: { receivedAt: Date.parse('2026-10-12T15:09:00Z') } } } });
   for (const [cycle, hour] of [[active, '2026-10-12-14'], [active, '2026-10-12-15'], [active, '2026-10-12-16'], [active, '2026-10-13-04'], [retired, '2026-10-12-14'], [champion, '2026-10-12-14']]) {
@@ -88,8 +88,8 @@ test('learning cleanup preserves active calibration, pending/candidate receipts 
     const f = path.join(folder, `feed-${hour}-123.jsonl.gz`); await fs.writeFile(f, 'raw'); await fs.utimes(f, now / 1000 - 100, now / 1000 - 100);
   }
   const result = await maintainLearning(dir, { now, closedMaxBytes: 1 });
-  expect(result.removed.map(r => r.reason).sort()).toEqual(['superseded-cycle', 'unreferenced-warming-input']);
-  expect((await fs.readdir(path.join(dir, active))).filter(n => n.startsWith('feed'))).toHaveLength(3);
+  expect(result.removed.map(r => r.reason).sort()).toEqual(protocol === 'served-control-v2' ? ['superseded-cycle'] : ['superseded-cycle', 'unreferenced-warming-input']);
+  expect((await fs.readdir(path.join(dir, active))).filter(n => n.startsWith('feed'))).toHaveLength(protocol === 'served-control-v2' ? 4 : 3);
   expect(await fs.readFile(path.join(dir, champion, 'feed-2026-10-12-14-123.jsonl.gz'), 'utf8')).toBe('raw');
   expect(await fs.readFile(path.join(dir, retired, 'frozen-candidate.json'), 'utf8')).toContain('startedAt');
 });

@@ -81,7 +81,8 @@ async function fixture(isolatedSource = false) {
   fs.writeFileSync(path.join(directory, 'frozen-candidate.json'), JSON.stringify(state)); state.frozenCandidateSha256 = digest(fs.readFileSync(path.join(directory, 'frozen-candidate.json')));
   publish(); const packet = source.read(stream.epoch, stream.cursor); stream.advance(packet);
   const recorded = JSON.stringify({ receivedAt: serverNow(), source: packet });
-  fs.writeFileSync(path.join(directory, 'feed-0000.jsonl.gz'), gzipSync(recorded + '\n'));
+  const inputName='feed-2026-10-14-15-0.jsonl.gz',inputBytes=gzipSync(recorded+'\n');
+  fs.writeFileSync(path.join(directory,inputName),inputBytes);state.source.inputFiles={[inputName]:inputBytes.length};
   state.source.runtime = stream.persist(directory); fs.writeFileSync(path.join(root, 'state.json'), JSON.stringify(state));
   let sent = false;
   const requests: { method: string; path: string }[] = [];
@@ -181,6 +182,9 @@ describe('actual exact-source observer command', () => {
       expect(state.protocolFailures.count).toBe(1);expect(f.requests.some(r=>r.path==='/api/evaluation/seed'||r.method==='POST')).toBe(false);
       expect(digest(fs.readFileSync(file))).not.toBe(state.source.runtime.sha256);
     }finally{await f.close();}
+  },30000);
+  it('refuses a removed warming journal without recreating its source or publishing',async()=>{
+    const f=await fixture();try{const before=read(path.join(f.root,'state.json')),name=Object.keys(before.source.inputFiles)[0]!;fs.unlinkSync(path.join(f.directory,name));const run=f.launch();expect(await run.exit,run.log()).toBe(1);const after=read(path.join(f.root,'state.json'));expect(after.id).toBe(f.id);expect(after.sourceRefusal).toBeTruthy();expect(after.source.inputFiles).toEqual(before.source.inputFiles);expect(f.requests.some(r=>r.path==='/api/evaluation/seed'||r.method==='POST')).toBe(false);}finally{await f.close();}
   },30000);
   it('restores the candidate own runtime across two real command executions', async () => {
     const f = await fixture();

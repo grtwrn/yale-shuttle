@@ -14,6 +14,27 @@ export function inputFiles(directory) {
     .map(name => path.join(directory, name));
 }
 
+// The exact verifier needs every journal from its seed, including warming.
+// Checkpoint the flushed prefix size so cleanup cannot silently remove a
+// dependency while the live runtime continues sampling successfully.
+export function recordInputFile(source, name, bytes) {
+  if (!/^feed-\d{4}-\d\d-\d\d-\d\d-\d+\.jsonl\.gz$/.test(name)
+    || !Number.isSafeInteger(bytes) || bytes <= 0) throw Error('Invalid retained input file receipt');
+  source.inputFiles ??= {};
+  source.inputFiles[name] = Math.max(source.inputFiles[name] ?? 0, bytes);
+}
+
+export function verifyInputFiles(directory, manifest, requireNonEmpty = false) {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
+    || requireNonEmpty && !Object.keys(manifest).length) throw Error('Missing retained input file manifest');
+  for (const [name, bytes] of Object.entries(manifest)) {
+    if (!/^feed-\d{4}-\d\d-\d\d-\d\d-\d+\.jsonl\.gz$/.test(name)
+      || !Number.isSafeInteger(bytes) || bytes <= 0) throw Error('Invalid retained input file receipt');
+    const stat = fs.lstatSync(path.join(directory, name));
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size < bytes) throw Error('Retained input file is missing or truncated');
+  }
+}
+
 /** Read the exact complete lines, including concatenated gzip members and
  * an open gzip/JSON tail, without materializing a whole hour in one string. */
 export async function* readInputLines(file, limits = INPUT_READ_LIMITS) {
