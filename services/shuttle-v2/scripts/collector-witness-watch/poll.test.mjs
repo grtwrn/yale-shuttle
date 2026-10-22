@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fixture, association } from './testFixtures.mjs';
-import { WitnessStore } from './storage.mjs';
-import { pollWitnesses, getJSON } from './poll.mjs';
+import { WitnessStore, DEFAULT_POLICY } from './storage.mjs';
+import { pollWitnesses, getJSON, runOnce, readStoragePolicy } from './poll.mjs';
 
 const roots = [], stores = [];
 afterEach(() => { for (const s of stores.splice(0)) s.close(); for (const r of roots.splice(0)) fs.rmSync(r,{recursive:true,force:true}); });
@@ -28,6 +28,43 @@ function setup() {
   return{f,store,requests,poll,setModel:v=>model=v,setCorrupt:v=>corrupt=v,setReportFailure:v=>reportFailure=v};
 }
 describe('read-only collector witness watcher',()=>{
+  it('defaults when the optional policy is absent and accepts partial local limits',async()=>{
+    const root=fs.mkdtempSync(path.join(os.tmpdir(),'collector-policy-test-'));roots.push(root);
+    const file=path.join(root,'policy.json');expect(await readStoragePolicy(file)).toEqual({});
+    fs.writeFileSync(file,JSON.stringify({maxBytes:512*1024*1024}));
+    expect(await readStoragePolicy(file)).toEqual({maxBytes:512*1024*1024});
+    expect(DEFAULT_POLICY).toEqual({maxBytes:256*1024*1024,maxAgeMs:7*86400000,minFreeBytes:128*1024*1024});
+  });
+  it('rejects malformed, unknown, fractional, unsafe and oversized policy values',async()=>{
+    const root=fs.mkdtempSync(path.join(os.tmpdir(),'collector-policy-test-'));roots.push(root);
+    const file=path.join(root,'policy.json');
+    for(const value of ['null','[]','1','{',JSON.stringify({maxByte:123}),JSON.stringify({maxBytes:3*1024*1024-1}),
+      JSON.stringify({maxBytes:Number.MAX_SAFE_INTEGER+1}),JSON.stringify({maxAgeMs:0}),JSON.stringify({minFreeBytes:-1}),
+      JSON.stringify({minFreeBytes:0.5}),' '.repeat(4097)]){
+      fs.writeFileSync(file,value);await expect(readStoragePolicy(file)).rejects.toThrow();
+    }
+    fs.writeFileSync(file,JSON.stringify({minFreeBytes:0}));expect(await readStoragePolicy(file)).toEqual({minFreeBytes:0});
+    await expect(readStoragePolicy(root)).rejects.toThrow();
+  });
+  it('applies a raised cap across invocations and refuses invalid config without touching the cursor or evidence',async()=>{
+    const root=fs.mkdtempSync(path.join(os.tmpdir(),'collector-policy-run-'));roots.push(root);
+    const dir=path.join(root,'store'),policyFile=path.join(root,'policy.json'),tokenFile=path.join(root,'token');
+    fs.writeFileSync(tokenFile,'secret');fs.writeFileSync(policyFile,JSON.stringify({maxBytes:512*1024*1024,minFreeBytes:0}));
+    const f=fixture();f.add();let requests=0;
+    const fetcher=async url=>{requests++;url=new URL(url);return json(url.pathname==='/api/reports'?{reports:[]}:
+      !url.search?f.head():f.page(Number(url.searchParams.get('after')),Number(url.searchParams.get('limit'))));};
+    const options={dir,policyFile,tokenFile,incidents:path.join(root,'pending'),fetcher,now:f.at};
+    expect(await runOnce(options)).toMatchObject({ok:true,cursor:1,retention:{maxBytes:512*1024*1024,maxAgeMs:7*86400000}});
+    const db=path.join(dir,'witnesses.sqlite'),before=fs.readFileSync(db),count=requests;
+    fs.writeFileSync(policyFile,JSON.stringify({maxBytes:'secret-invalid-value'}));f.add();
+    expect(await runOnce({...options,now:f.at})).toMatchObject({ok:false,errorCode:'capture_rejected'});
+    expect(requests).toBe(count);expect(fs.readFileSync(db)).toEqual(before);
+    expect(fs.readFileSync(path.join(dir,'status.json'),'utf8')).not.toContain('secret-invalid-value');
+    fs.writeFileSync(policyFile,JSON.stringify({maxBytes:512*1024*1024,minFreeBytes:0}));
+    expect(await runOnce({...options,now:f.at})).toMatchObject({ok:true,cursor:2,frames:1,boundary:null,retention:{maxBytes:512*1024*1024}});
+    const store=new WitnessStore(dir,{policy:{maxBytes:512*1024*1024,minFreeBytes:0}});stores.push(store);
+    expect(store.db.prepare('SELECT count(*) n FROM frames').get().n).toBe(2);
+  });
   it('captures a page, omits a known topology later, and does not fetch unchanged payloads',async()=>{
     const a=setup();a.f.add();const first=await a.poll();expect(first).toMatchObject({ok:true,frames:1,cursor:1});
     const count=a.requests.length;await a.poll();expect(a.requests.length).toBe(count+1);

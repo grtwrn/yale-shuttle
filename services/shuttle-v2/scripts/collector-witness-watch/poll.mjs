@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { witnessSHA } from '../../src/collector/witnessCodec.ts';
 import { atomicJson, withStorageLock } from '../retention/storage.mjs';
 import { rotateOutput } from '../retention/maintain.mjs';
-import { WitnessStore, StorageHold } from './storage.mjs';
+import { WitnessStore, StorageHold, DEFAULT_POLICY } from './storage.mjs';
 import { validHead, initialChain } from './protocol.mjs';
 import { dispatchIncidents } from './incidents.mjs';
 import { anchorProgressSummary } from './progress.mjs';
@@ -14,6 +14,27 @@ import { monitorFetch, monitorNetworkSummary } from '../monitor-fetch.mjs';
 
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MiB = 1024 * 1024;
+
+/** Optional local configuration lives outside the evidence directory. Invalid
+ * limits fail before opening SQLite; absence preserves the existing defaults. */
+export async function readStoragePolicy(file) {
+  if (!file) return {};
+  let handle;
+  try { handle = await fs.open(file, 'r'); }
+  catch (error) { if (error.code === 'ENOENT') return {}; throw error; }
+  try {
+    if (!(await handle.stat()).isFile()) throw Error('Invalid witness storage policy file');
+    const buffer = Buffer.alloc(4097), { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    if (bytesRead > 4096) throw Error('Witness storage policy file exceeds byte bound');
+    const policy = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(buffer.subarray(0, bytesRead)));
+    if (!policy || typeof policy !== 'object' || Array.isArray(policy)) throw Error('Invalid witness storage policy');
+    for (const [key, value] of Object.entries(policy)) {
+      if (!Object.hasOwn(DEFAULT_POLICY, key) || !Number.isSafeInteger(value)
+        || value < (key === 'minFreeBytes' ? 0 : key === 'maxBytes' ? 3 * MiB : 1)) throw Error('Invalid witness storage policy');
+    }
+    return policy;
+  } finally { await handle.close(); }
+}
 
 /** Only the configured app receives credentials. Redirects, oversized bodies,
  * HTML fallbacks and unbounded error text never enter the evidence store. */
@@ -97,13 +118,14 @@ export async function runOnce({ dir = process.env.COLLECTOR_WITNESS_DIR ?? path.
   base = process.env.COLLECTOR_WITNESS_BASE_URL ?? 'https://yale-shuttle.fly.dev',
   tokenFile = process.env.SHUTTLE_ADMIN_TOKEN_FILE ?? path.join(os.homedir(), '.config/yale-shuttle/admin-token'),
   incidents = process.env.COLLECTOR_WITNESS_INCIDENTS ?? path.join(os.homedir(), 'projects/yale-shuttle-guardian-bot/state/pending'),
-  fetcher = monitorFetch, now = Date.now() } = {}) {
+  policyFile = null, fetcher = monitorFetch, now = Date.now() } = {}) {
   return withStorageLock(dir, async () => {
     let store, result;
     try {
       await rotateOutput(path.join(dir, 'watcher.log'), { maxBytes: MiB, maxBackups: 1 });
+      const policy = await readStoragePolicy(policyFile);
       const token = (await fs.readFile(tokenFile, 'utf8')).trim();
-      store = new WitnessStore(dir);
+      store = new WitnessStore(dir, { policy });
       result = await pollWitnesses({ store, base, token, fetcher, now });
     } catch (error) {
       // Fixed text: network exception messages can contain URLs or headers.
@@ -128,6 +150,7 @@ export async function runOnce({ dir = process.env.COLLECTOR_WITNESS_DIR ?? path.
   });
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const result = await runOnce();
+  const result = await runOnce({ policyFile: process.env.COLLECTOR_WITNESS_POLICY_FILE
+    ?? path.join(os.homedir(), '.config/yale-shuttle/collector-witness-policy.json') });
   process.exitCode = result.ok ? 0 : 1;
 }
