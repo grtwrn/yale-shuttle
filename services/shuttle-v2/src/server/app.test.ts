@@ -111,7 +111,9 @@ describe('evaluation source authentication and protocol', () => {
       expect(seed.history.sha256).toBe(crypto.createHash('sha256').update(bytes).digest('hex'));
       const batch = await app.request('/api/evaluation/inputs?epoch=' + seed.epoch + '&after=' + seed.cursor,
         { headers: { 'x-admin-token': TEST_ADMIN_TOKEN } });
-      expect(batch.status).toBe(200); const data = await batch.json() as ReturnType<EvaluationSource['read']>; expect(data.frames).toEqual([]); expect(data.feed.buses).toEqual([]);
+      expect(batch.status).toBe(200); expect(batch.headers.get('content-type')).toBe('application/json');
+      expect(batch.headers.get('cache-control')).toBe('no-store');
+      const data = await batch.json() as ReturnType<EvaluationSource['read']>; expect(data.frames).toEqual([]); expect(data.feed.buses).toEqual([]);
     } finally { vi.useRealTimers(); }
   });
   it('returns fixed cursor and epoch errors without source bytes', async () => {
