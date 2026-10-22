@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { auditDisplay, type AuditFeed, type Finding } from './check';
 import { matchesProduction } from '../deployment-scope.mjs';
 
@@ -15,6 +16,65 @@ const readState = async (file: string): Promise<State | null> => {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
 };
+const MiB = 1024 * 1024;
+const FAILURE_PART_BYTES = MiB;
+const FAILURE_CHECK_BYTES = 2 * MiB;
+const FAILURE_HISTORY_BYTES = 8 * MiB;
+const FAILURE_HISTORY_CHECKS = 32;
+const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+interface DiagnosticPart {
+  state: 'captured' | 'oversized' | 'unavailable' | 'unserializable' | 'check-bound';
+  bytes?: number; sha256?: string; json?: string;
+}
+interface FailureRecord { checkedAt: string; bytes: number; sha256: string; json: string }
+function diagnosticPart(value: unknown): DiagnosticPart {
+  if (value == null) return { state: 'unavailable' };
+  try {
+    const json = JSON.stringify(value), bytes = Buffer.byteLength(json);
+    return bytes > FAILURE_PART_BYTES ? { state: 'oversized', bytes, sha256: digest(json) }
+      : { state: 'captured', bytes, sha256: digest(json), json };
+  } catch { return { state: 'unserializable' }; }
+}
+async function retainUnavailable(directory: string, checkedAt: string, revision: string, error: unknown,
+  responseStatus: { health: number | null; feed: number | null }, health: unknown, feed: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const check = { v: 1, checkedAt, complete: false, operatorRevision: revision.slice(0, 128), revisionTruncated: revision.length > 128,
+    error: { message: message.slice(0, 1024), truncated: message.length > 1024,
+      bytes: Buffer.byteLength(message), sha256: digest(message) }, responseStatus,
+    values: { health: diagnosticPart(health), feed: diagnosticPart(feed) } };
+  check.complete = Object.values(check.values).every(part => part.state === 'captured');
+  let json = JSON.stringify(check);
+  if (Buffer.byteLength(json) > FAILURE_CHECK_BYTES) {
+    for (const part of Object.values(check.values)) if (part.state === 'captured') {
+      part.state = 'check-bound'; delete part.json;
+    }
+    check.complete = false;
+    json = JSON.stringify(check);
+  }
+  const record: FailureRecord = { checkedAt, bytes: Buffer.byteLength(json), sha256: digest(json), json };
+  if (record.bytes > FAILURE_CHECK_BYTES) throw new Error('Unavailable-check metadata exceeds its bound');
+  const file = path.join(directory, 'unavailable-history.json');
+  let checks: FailureRecord[] = [];
+  try {
+    const stat = await fs.lstat(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > FAILURE_HISTORY_BYTES) throw new Error('Invalid unavailable-check history');
+    const raw = await fs.readFile(file);
+    if (raw.length > FAILURE_HISTORY_BYTES) throw new Error('Unavailable-check history exceeds its bound');
+    const history = JSON.parse(raw.toString('utf8'));
+    if (history?.v !== 1 || !Array.isArray(history.checks) || history.checks.length > FAILURE_HISTORY_CHECKS
+      || !history.checks.every((r: FailureRecord) => typeof r?.checkedAt === 'string' && typeof r.json === 'string'
+        && Buffer.byteLength(r.json) === r.bytes && digest(r.json) === r.sha256)) throw new Error('Invalid unavailable-check history');
+    checks = history.checks;
+  } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  checks.push(record);
+  let evictedChecks = 0;
+  const history = { v: 1, checks, scope: 'Rolling availability diagnostics from parsed check inputs; not original HTTP bytes or an ETA accuracy result.' };
+  while (checks.length > FAILURE_HISTORY_CHECKS || Buffer.byteLength(JSON.stringify(history, null, 2) + '\n') > FAILURE_HISTORY_BYTES) {
+    checks.shift(); evictedChecks++;
+  }
+  await atomic(file, history);
+  return { file, checkedAt, bytes: record.bytes, sha256: record.sha256, retainedChecks: checks.length, evictedChecks };
+}
 export async function rotateLog(file: string, limit = 1024 * 1024) {
   let handle;
   try {
@@ -54,19 +114,22 @@ export async function poll({ directory, revision, sourceClean = true, sourceMatc
 }) {
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const stateFile = path.join(directory, 'state.json');
+  let healthInput: { ok: boolean; build: string } | null = null, feedInput: AuditFeed | null = null;
+  const responseStatus: { health: number | null; feed: number | null } = { health: null, feed: null };
   try {
     const previous = await readState(stateFile);
     const [healthResponse, feedResponse] = await Promise.all([
       fetchImpl(base + '/healthz', { signal: AbortSignal.timeout(20_000) }),
       fetchImpl(base + '/api/buses', { signal: AbortSignal.timeout(20_000) }),
     ]);
+    responseStatus.health = healthResponse.status; responseStatus.feed = feedResponse.status;
     if (!healthResponse.ok || !feedResponse.ok) throw new Error(`HTTP health=${healthResponse.status}, feed=${feedResponse.status}`);
-    const health = await healthResponse.json() as { ok: boolean; build: string };
+    const health = healthInput = await healthResponse.json() as { ok: boolean; build: string };
     if (!health?.ok || !sourceClean || typeof health.build !== 'string' || !/^[a-f0-9]{7,40}$/.test(health.build)
       || !(sourceMatches ? sourceMatches(health.build) : revision.startsWith(health.build))) {
       throw new Error('Production build and clean local screen-calculator revision must match');
     }
-    const feed = await feedResponse.json() as AuditFeed;
+    const feed = feedInput = await feedResponse.json() as AuditFeed;
     const now = clock();
     const result = auditDisplay(feed, now);
     const pollAt = result.activity === 'idle' ? now : (feed.server_eta as { at: number }).at;
@@ -85,7 +148,11 @@ export async function poll({ directory, revision, sourceClean = true, sourceMatc
     await atomic(path.join(directory, 'health.json'), { failures: 0, notified: false });
     return status;
   } catch (error) {
-    const status = { checkedAt: new Date(clock()).toISOString(), ok: false, error: (error as Error).message };
+    const checkedAt = new Date(clock()).toISOString();
+    let failureEvidence: Awaited<ReturnType<typeof retainUnavailable>> | null = null, failureEvidenceError: string | null = null;
+    try { failureEvidence = await retainUnavailable(directory, checkedAt, revision, error, responseStatus, healthInput, feedInput); }
+    catch { failureEvidenceError = 'Could not retain unavailable-check inputs; existing evidence is preserved'; }
+    const status = { checkedAt, ok: false, error: (error as Error).message, failureEvidence, failureEvidenceError };
     await atomic(path.join(directory, 'status.json'), status);
     const healthFile = path.join(directory, 'health.json');
     let health = { failures: 0, notified: false };
