@@ -28,9 +28,13 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
  const ctx={setGeolocation:async g=>{h.geo=g;}};
  h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,initialFeedAt:Date.now()-initialFeedAgeMs,outputDir:dir});
  // The runner's own 10 s interval drives each poll; wait for it to settle.
- h.poll=async(text,buses)=>{h.text=text;
+ // receiptDelayMs models delivery within the existing 10 s poll interval;
+ // recorded vehicle timestamps are unchanged, and no historical HTTP receipt is inferred.
+ h.poll=async(text,buses,{receiptDelayMs=0}={})=>{h.text=text;
+  assert(receiptDelayMs>=0&&receiptDelayMs<10000);
+  vi.advanceTimersByTime(receiptDelayMs);
   await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>feedOf(buses)});
-  vi.advanceTimersByTime(10000);
+  vi.advanceTimersByTime(10000-receiptDelayMs);
   do await new Promise(r=>setImmediate(r)); while(h.watcher.status().busy);};
  h.journeys=async()=>(await fs.readFile(path.join(dir,'journeys.jsonl'),'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
  h.dir=dir;h.page=page;return h;
@@ -64,6 +68,49 @@ test('Purple #126 dwelling 18 m from the stop is boarded, not an invalid sample'
  assert.deepEqual(h.clicks,["🚌 I'm on it"]);
  assert.equal(run.invalidStopSamples,undefined);
  assert.equal(run.excludeAccuracy,undefined);
+});
+
+test.each(['stale','future','nonfinite','null','string'])('a fresh HTTP receipt cannot board a %s vehicle observation',async mode=>{
+ const h=current=await harness(feedWith([near126]));
+ const decisionAt=Date.now()+10000;
+ const clocks={stale:decisionAt-30001,future:decisionAt+5001,nonfinite:NaN,null:null,string:'not-a-clock'};
+ await h.poll(dwelling,[{...at126,observed_at:clocks[mode]}]);
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+ assert.deepEqual(await h.journeys(),[]);
+ await h.poll(dwelling,[{...at126,observed_at:Date.now()}]);
+ assert.equal(h.watcher.status().run.phase,'riding');
+ assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+});
+test.each([-30000,5000])('a vehicle clock at the %s ms decision boundary can board',async offset=>{
+ const h=current=await harness(feedWith([near126]));
+ vi.setSystemTime(Date.now()+10000);h.text=dwelling;
+ await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,
+  json:async()=>feedWith([{...at126,observed_at:Date.now()+offset}])});
+ await h.watcher.tick();
+ assert.equal(h.watcher.status().run.phase,'riding');assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+});
+test('a clock invalid when received stays unavailable without a replacement observation',async()=>{
+ const h=current=await harness(feedWith([near126]));
+ await h.poll(dwelling,[{...at126,observed_at:Date.now()+5001}]);
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+ vi.advanceTimersByTime(10000);
+ do await new Promise(r=>setImmediate(r));while(h.watcher.status().busy);
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+ await h.poll(dwelling,[{...at126,observed_at:Date.now()}]);
+ assert.equal(h.watcher.status().run.phase,'riding');
+});
+test.each(['pickup-screenshot','confirmation','stored-recovery'])('vehicle evidence lost during %s never becomes accepted boarding',async mode=>{
+ const h=current=await harness(feedWith([near126]));
+ const stale=async()=>h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,
+  json:async()=>feedWith([{...at126,observed_at:Date.now()-30001}])});
+ if(mode==='pickup-screenshot')h.page.screenshot=async()=>{await stale();return Buffer.from('jpg');};
+ else h.page.waitForFunction=async()=>{await stale();if(mode==='stored-recovery')throw Error('confirmation timeout');};
+ if(mode==='stored-recovery')h.page.evaluate=async()=>'#126';
+ await h.poll(dwelling,[{...at126,observed_at:Date.now()}]);
+ const [journey]=await h.journeys();
+ assert.equal(h.watcher.status().run,null);assert.equal(journey.result,'boarding-observation-unavailable-excluded');
+ assert.equal(journey.excludeAccuracy,true);assert.equal(journey.boardedAt,undefined);
+ assert.equal(h.clicks.length,mode==='pickup-screenshot'?0:1);
 });
 
 // wrongbusboard20261002: "I'm on it" stored Green #331 while #122 pulled in;
@@ -281,8 +328,10 @@ async function waitBoundaryRider(){
 }
 test.each([45*60000,45*60000+5762])('boarding at %s ms starts the ride without a waiting timeout',async elapsed=>{
  const h=await waitBoundaryRider();
- vi.setSystemTime(Date.parse(waitBoundaryStart)+elapsed-10000);
- await h.poll('🚌 14 min\nBOARD🚌Division/Prospect\nGET OFFLEPH/60 College',[waitBoundaryBus]);
+ vi.setSystemTime(Date.parse(waitBoundaryStart)+elapsed);
+ h.text='🚌 14 min\nBOARD🚌Division/Prospect\nGET OFFLEPH/60 College';
+ await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>waitBoundaryFeed([waitBoundaryBus])});
+ await h.watcher.tick();
  const run=h.watcher.status().run;
  assert.equal(run?.phase,'riding');assert.equal(run.busName,'#127');
  assert.equal(run.boardedAt,new Date(Date.parse(waitBoundaryStart)+elapsed).toISOString());
@@ -646,7 +695,7 @@ async function waitAtChurch({cards,polls}){
  const [first]=polls;
  const h=current=await harness(purpleFeedOf(purpleAt(first[2])),churchTrip,{feedOf:purpleFeedOf,text:cards[first[1]],at:first[0]});
  for(const [at,card,rows] of polls.slice(1)){
-  vi.setSystemTime(Date.parse(at)-10000);await h.poll(cards[card],purpleAt(rows));
+  vi.setSystemTime(Date.parse(at)-10000);await h.poll(cards[card],purpleAt(rows),{receiptDelayMs:9999});
   if(h.watcher.status().run?.phase!=='waiting')break;
  }
  h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
@@ -814,7 +863,7 @@ test('Blue58 waits through the earlier nearby route occurrence, then boards the 
  const feedOf=buses=>({...capture.feedMetadata,buses,server_eta:sample.server_eta});
  const h=current=await harness(feedOf([sample.bus]),capture.trip,{initialLine:capture.line,feedOf,text:sample.text,at:sample.at});
  for(const next of capture.samples.slice(1)){
-  sample=next;vi.setSystemTime(Date.parse(sample.at)-10000);await h.poll(sample.text,[sample.bus]);
+  sample=next;vi.setSystemTime(Date.parse(sample.at)-10000);await h.poll(sample.text,[sample.bus],{receiptDelayMs:9999});
   assert.equal(h.watcher.status().run.phase,'waiting',sample.at);
  }
  assert.deepEqual(h.clicks,[]);
@@ -827,7 +876,7 @@ test('Blue58 waits through the earlier nearby route occurrence, then boards the 
  vi.setSystemTime(now-10000);
  sample={...sample,server_eta:{v:2,at:now,servedAt:now,buses:[['58','Blue Weekend',24,{stopId:53,standingSec:15,approach:false}]]}};
  const bus={...sample.bus,...capture.feedMetadata.stop_coords[53],at_stop_id:53,stationary:true,observed_at:now};
- await h.poll('🚌 6 min\nBOARD🚌Elm / York (TYCO)⏸ 0:15\nGET OFFProspect / Edwards',[bus]);
+ await h.poll('🚌 6 min\nBOARD🚌Elm / York (TYCO)⏸ 0:15\nGET OFFProspect / Edwards',[bus],{receiptDelayMs:9999});
  assert.equal(h.watcher.status().run.phase,'riding');
  assert.deepEqual(h.clicks,["🚌 I'm on it"]);
 });
@@ -986,7 +1035,7 @@ test.each(['recorded','contradictory-BOARD-marker'])('Purple329 follows the sele
  const textOf=text=>mode==='recorded'?text:text.replace(/(^|\n)BOARD/,'$1BOARD🚌');
  const h=current=await harness(feedOf([sample.bus]),capture.trip,{initialLine:capture.line,feedOf,text:textOf(sample.text),at:sample.at});
  for(const next of capture.samples.slice(1)){
-  sample=next;vi.setSystemTime(Date.parse(sample.at)-10000);await h.poll(textOf(sample.text),[sample.bus]);
+  sample=next;vi.setSystemTime(Date.parse(sample.at)-10000);await h.poll(textOf(sample.text),[sample.bus],{receiptDelayMs:9999});
   assert.equal(h.watcher.status().run.phase,'waiting',sample.at);
  }
  assert.deepEqual(h.clicks,[]);
@@ -997,7 +1046,7 @@ test.each(['recorded','contradictory-BOARD-marker'])('Purple329 follows the sele
  const now=Date.parse(sample.at)+24*60000;vi.setSystemTime(now-10000);
  sample={...sample,server_eta:{v:2,at:now,servedAt:now,buses:[['329','Purple',4,{stopId:127,standingSec:20,approach:false}]]}};
  const bus={...sample.bus,...capture.feedMetadata.stop_coords[127],observed_at:now,stationary:true,at_stop_id:127};
- await h.poll('BOARD🚌West Haven Train Station⏸ 0:20\nGET OFFBuilding 400',[bus]);
+ await h.poll('BOARD🚌West Haven Train Station⏸ 0:20\nGET OFFBuilding 400',[bus],{receiptDelayMs:9999});
  assert.equal(h.watcher.status().run.phase,'riding');assert.deepEqual(h.clicks,["🚌 I'm on it"]);
  assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
 });

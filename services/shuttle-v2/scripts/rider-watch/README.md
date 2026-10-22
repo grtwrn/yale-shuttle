@@ -47,6 +47,19 @@ boarding at or after the waiting deadline does not also emit a waiting timeout.
 An unboardable bus still uses the existing quoted wait limit. Boarding and
 arrival evidence requirements and historical journey outcomes stay unchanged.
 
+For simulated boarding, a supplied `observed_at` must be no more than 30 seconds
+old or five seconds ahead of both the response-receipt and decision clocks.
+A fresh HTTP receipt does not refresh an old vehicle position, and processing
+time alone cannot validate a timestamp invalid for that receipt.
+A later valid response can resume boarding;
+older saved feeds without this field retain their existing compatibility rule.
+The runner checks HTTP and vehicle freshness again before either boarding
+control, on a fallback, after confirmation, and after recovering matching ride
+storage from a delayed confirmation. Losing evidence during these controls
+excludes the diagnostic run instead of claiming observed boarding. The app's
+manual controls and existing geometry, wait/ride limits and arrival rules are
+unchanged. Historical outcomes are not rewritten.
+
 While waiting, the rider inspects visible overview-map bus markers and their
 pause labels. A fresh served stand of at least three minutes requires both a
 visible elapsed clock and an accessible elapsed clock, including when departure

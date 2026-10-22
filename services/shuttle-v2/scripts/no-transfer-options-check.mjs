@@ -77,7 +77,7 @@ export async function checkNoTransferOptions({ rider = false } = {}) {
         await page.route('**/*', async route => {
           const url = new URL(route.request().url()); if (url.hostname !== 'no-transfers.test') return route.abort();
           if (url.pathname === '/api/buses') {
-            const payload = structuredClone(feed), at = await page.evaluate(() => Date.now()); payload.server_eta.at = at; payload.server_eta.servedAt = at;
+            const payload = structuredClone(feed), at = await page.evaluate(() => Date.now()); now = at; payload.server_eta.at = at; payload.server_eta.servedAt = at;
             for (const bus of payload.buses) bus.observed_at = at; return route.fulfill({ json: payload });
           }
           if (url.pathname === '/api/report') throw Error('Withdrawal check must not submit a report');
@@ -86,7 +86,7 @@ export async function checkNoTransferOptions({ rider = false } = {}) {
           return asset(route, url);
         });
         async function advance(ms) {
-          for (let elapsed = 0; elapsed < ms; elapsed += 500) { await page.clock.runFor(Math.min(500, ms - elapsed)); await new Promise(r => setTimeout(r, 2)); }
+          for (let elapsed = 0; elapsed < ms; elapsed += 500) { await page.clock.runFor(Math.min(500, ms - elapsed)); now = await page.evaluate(() => Date.now()); await new Promise(r => setTimeout(r, 2)); }
           now = await page.evaluate(() => Date.now());
         }
         async function absent() {
