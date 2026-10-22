@@ -141,7 +141,7 @@ export function leaveAlertMessage(
 }
 
 /**
- * The live option an armed reminder should follow, or null → quietly disarm.
+ * The live option an armed reminder can use now, or null → withhold delivery.
  * Null when the option is gone from the plan, flagged departed, or carries no
  * live bus ETA (walk options, future-mode plans, route stopped running).
  */

@@ -69,7 +69,7 @@ import {
   liveReminderInput, markFired, NO_PINGS_FIRED,
   notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
-import { computePickupReminder, pickupReminderMessage, type ReminderTiming } from './pickupReminder';
+import { computePickupReminder, pickupReminderMessage, reminderTimingLabel, type ReminderTiming } from './pickupReminder';
 import { PickupReminderControls } from './PickupReminderControls';
 import { alightComparison, topVisibleOptions, keptThirdLabel,
   boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, sameTripPickup, type TripOption,
@@ -1705,7 +1705,8 @@ const TripPlanner: FC<{
   // engine effect below (after the options memo) feeds it live data.
   // Declared HERE, before any hook that references it — see the TDZ
   // warning at the top of this file's conventions.
-  const [reminder, setReminder] = useState<{ routeLabel: string; boardStopId: number; alightStopId: number; timing: ReminderTiming } | null>(null);
+  const [reminder, setReminder] = useState<{ routeLabel: string; boardStopId: number; alightStopId: number; timing: ReminderTiming; tripKey: string } | null>(null);
+  const [reminderWaiting, setReminderWaiting] = useState(false);
   // In-app fallback banner when a system notification can't be shown
   // (permission denied, or iOS Safari where the page-context
   // Notification API doesn't exist at all).
@@ -2297,26 +2298,33 @@ const TripPlanner: FC<{
   // above rebuilds the array every /api/buses poll, and re-arming the
   // interval on each poll would reset nothing but still churn; a ref lets
   // one interval read fresh data.
+  const tripKey = `${fromLL?.lat}|${fromLL?.lon}|${toLL?.lat}|${toLL?.lon}|${targetDate?.getTime() ?? ""}`;
   const optionsRef = useRef(options);
   optionsRef.current = options;
-  const reminderContextRef = useRef({ buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null });
-  reminderContextRef.current = { buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null };
+  const reminderContextRef = useRef({ buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null, tripKey });
+  reminderContextRef.current = { buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null, tripKey };
 
   // The reminder engine: once armed, check every second (piggybacking on
   // selected boarding window, using the table's rounding and clock). computePickupReminder
   // decides IF a ping fires; this effect only delivers it.
   useEffect(() => {
-    if (!reminder) return;
+    if (!reminder) { setReminderWaiting(false); return; }
     const { routeLabel, boardStopId, alightStopId } = reminder;
     const check = () => {
-      const input = liveReminderInput(optionsRef.current, routeLabel,
-        { ...reminderContextRef.current, boardStopId, alightStopId, nowMs: Date.now() });
-      if (!input) {
-        // Option gone / departed / no live bus (route stopped running,
-        // plan cleared) — quietly disarm.
+      if (reminderContextRef.current.tripKey !== reminder.tripKey) {
         setReminder(null);
         return;
       }
+      const input = liveReminderInput(optionsRef.current, routeLabel,
+        { ...reminderContextRef.current, boardStopId, alightStopId, nowMs: Date.now() });
+      if (!input) {
+        // Missing live evidence pauses delivery, not the rider's request.
+        // Keep the same timing and fired-ping history until fresh input
+        // returns or the rider changes the trip or cancels the reminder.
+        setReminderWaiting(true);
+        return;
+      }
+      setReminderWaiting(false);
       const ping = computePickupReminder(input, reminderFiredRef.current, reminder.timing);
       if (!ping) return;
       reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
@@ -2632,7 +2640,6 @@ const TripPlanner: FC<{
   // state pattern: setState-during-render is legal when gated on a
   // prop/state change, and React reschedules the render with the new
   // state before paint.
-  const tripKey = `${fromLL?.lat}|${fromLL?.lon}|${toLL?.lat}|${toLL?.lon}|${targetDate?.getTime() ?? ""}`;
   const tripKeyRef = useRef<string>(tripKey);
   if (tripKeyRef.current !== tripKey) {
     tripKeyRef.current = tripKey;
@@ -3261,6 +3268,20 @@ const TripPlanner: FC<{
       {<BusReportingAlerts key={`trip:${tripKey}:${expandedKey ?? ''}`} snapshot={reportingSnapshot}
         available={reportingAvailable} watched={watchedTripBuses} scope={reportingScope}
         replacements={watchedTripBuses} watchForecasts />}
+      {reminder && reminderWaiting && (
+        <div role="status" aria-label="Pickup reminder waiting for live updates" style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+          border: '1px solid #dadce0', borderRadius: 8, padding: 10, marginBottom: 8,
+          background: '#f8f9fa', color: '#37474f', fontSize: 14, lineHeight: 1.4,
+        }}>
+          <span style={{ flex: '1 1 180px' }}>
+            {reminder.routeLabel}: {reminderTimingLabel(reminder.timing)}.
+            {' '}Waiting for live pickup updates. Keep this page open.
+          </span>
+          <button className="trip-action-button" style={{ width: 'auto' }}
+            aria-label="Cancel pickup reminder" onClick={() => setReminder(null)}>Cancel reminder</button>
+        </div>
+      )}
       {/* In-app fallback for a leave-time ping when a system notification
           can't be shown (permission denied, or iOS Safari page context
           where the Notification API doesn't exist). Fixed so it's seen
@@ -4510,7 +4531,7 @@ const TripPlanner: FC<{
                                 reminderFiredRef.current = NO_PINGS_FIRED;
                                 setReminderBanner(null);
                                 void ensureNotifyPermission();
-                                setReminder({ routeLabel: o.routeLabel, boardStopId: o.boardStopId, alightStopId: o.alightStopId, timing });
+                                setReminder({ routeLabel: o.routeLabel, boardStopId: o.boardStopId, alightStopId: o.alightStopId, timing, tripKey });
                               }}
                             />
                           )}

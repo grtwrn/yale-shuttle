@@ -184,7 +184,7 @@ describe('live reminder boarding identity and feed age', () => {
     expect(liveReminderInput([o], 'Red', { ...c, nowMs: at })).toBeNull();
   });
 
-  it('disarms when feed fails, planning is future, the visit disappears, or the trip changes', () => {
+  it('withholds live input when feed fails, planning is future, the visit disappears, or the trip changes', () => {
     const c = context(), o = option();
     expect(liveReminderInput([o], 'Red', { ...c, busUpdateFailed: true })).toBeNull();
     expect(liveReminderInput([o], 'Red', { ...c, targetDateMs: NOW + 60_001 })).toBeNull();
@@ -372,7 +372,7 @@ describe("leaveAlertMessage", () => {
   });
 });
 
-describe("findReminderOption — disarm when the bus/option disappears", () => {
+describe("findReminderOption — withhold delivery when the bus/option disappears", () => {
   const shuttle = { mode: "shuttle", routeLabel: "Blue Day", busEtaSec: 300, walkToSec: 180 };
   const walkOpt = { mode: "walk", routeLabel: "Walk", walkToSec: 0 };
 
