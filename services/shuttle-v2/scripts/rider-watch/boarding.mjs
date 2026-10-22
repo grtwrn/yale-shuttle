@@ -8,18 +8,26 @@ export const OFFER_CLICK_MS = 3000;
 /** The offer went before it was clicked and the card's "I'm on it" would no
  * longer store our bus: the bus was at the stop and left without us. */
 export class BoardingMissed extends Error {}
+/** A manual UI confirmation is not an independent vehicle observation. */
+export class BoardingEvidenceUnavailable extends Error {}
 /** Prefer the auto-detection confirmation only when it names our chosen bus.
  * Every fallback to the card's "🚌 I'm on it" needs a current `cardBoards()`
  * check, including an offer already gone before this function starts. */
-export async function boardSelectedRide(page, busName, {cardBoards = async () => false, cardButton} = {}) {
+export async function boardSelectedRide(page, busName, {cardBoards = async () => false, cardButton, boardingReady = async () => true} = {}) {
   const yes = page.getByRole('button', {name: "Yes, I'm on it", exact: true});
   const card = cardButton ?? page.getByRole('button', {name: "🚌 I'm on it", exact: true});
+  const checkObservation = async () => {
+    if (!await boardingReady()) throw new BoardingEvidenceUnavailable(`Current vehicle observation cannot confirm boarding ${busName}`);
+  };
   const clickCard = async () => {
+    await checkObservation();
     if (!await cardBoards()) throw new BoardingMissed(`The card cannot confirm boarding ${busName} in the current feed`);
+    await checkObservation();
     await card.click();
   };
   // False when the offer went away instead of taking the click.
-  const clickOffer = async (button) => {
+  const clickOffer = async (button, boards = false) => {
+    if (boards) await checkObservation();
     try { await button.click({timeout: OFFER_CLICK_MS}); return true; }
     catch (e) { if (await yes.isVisible()) throw e; return false; }
   };
@@ -27,7 +35,7 @@ export async function boardSelectedRide(page, busName, {cardBoards = async () =>
     const text = await page.locator('body').innerText();
     const detected = text.match(/On [^\n]*?#([\w-]+)\?/i)?.[1];
     if (detected === busName.replace(/^#/, '')) {
-      if (!await clickOffer(yes)) await clickCard();
+      if (!await clickOffer(yes, true)) await clickCard();
     } else {
       await clickOffer(page.getByRole('button', {name: 'Not me', exact: true}));
       await clickCard();
@@ -37,4 +45,5 @@ export async function boardSelectedRide(page, busName, {cardBoards = async () =>
     const ride = JSON.parse(localStorage.getItem('shuttle-boarded-ride') || 'null');
     return ride && ride.busName.replace(/^#/, '') === name.replace(/^#/, '');
   }, busName, {timeout: 5000});
+  await checkObservation();
 }

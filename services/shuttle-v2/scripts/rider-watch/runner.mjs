@@ -1,4 +1,4 @@
-import { BoardingMissed, boardSelectedRide } from './boarding.mjs';
+import { BoardingEvidenceUnavailable, BoardingMissed, boardSelectedRide } from './boarding.mjs';
 import { auditPauseMaps, confirmPauseMaps, pauseReadDelay, readPauseMaps } from './map-pause.mjs';
 import { completeArrival } from './complete-arrival.mjs';
 import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
@@ -21,6 +21,10 @@ export const BUS_GONE_MS=10*60000;
 // As long for a boarded bus the feed and the app both put off its route.
 export const BUS_OFF_ROUTE_MS=10*60000;
 const MAX_FEED_AGE_MS=30000;
+// Earlier saved feeds omit the clock. A supplied clock must satisfy the
+// existing arrival-observation bounds, independently of HTTP receipt age.
+const observationFresh=(bus,at)=>Number.isFinite(at)&&(bus.observed_at===undefined
+ ||Number.isFinite(bus.observed_at)&&bus.observed_at<=at+5000&&at-bus.observed_at<=MAX_FEED_AGE_MS);
 const LOOKING_FOR_BUS=/(?:^|\n)Looking for your bus…(?:\n|$)/;
 export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,initialTrip,initialLine,initialTransfer,initialFeed,initialFeedAt=clockNow(),initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
@@ -70,8 +74,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
   const bus=next.buses.find(b=>b.bus_name===run.busName&&run.line.busRouteIds.includes(b.route_id));
   const coord=next.stop_coords?.[run.exitStopId];
   if(!bus||![bus.lat,bus.lon,coord?.lat,coord?.lon].every(Number.isFinite))return;
-  if(bus.observed_at!==undefined&&(!Number.isFinite(bus.observed_at)
-   ||bus.observed_at>receivedAt+5000||receivedAt-bus.observed_at>MAX_FEED_AGE_MS))return;
+  if(!observationFresh(bus,receivedAt))return;
   const distanceM=metrics.haversineM(bus,coord);
   const criterion=distanceM<=45?'GPS-within-45m':distanceM<=60&&bus.at_stop_id===run.exitStopId&&bus.stationary===true?'stationary-at-target-within-60m':null;
   if(criterion)run.arrivalObservation={receivedAt:new Date(receivedAt).toISOString(),
@@ -268,7 +271,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
      if(opposite){run.oppositeCurbSamples=(run.oppositeCurbSamples??0)+1;if(!run.oppositeCurbReported){run.oppositeCurbReported=true;await event('waiting-bus-opposite-curb',{bus:name,stop:boardLabel,distanceM:distance,atStopId:bus.at_stop_id});}}
      const other=distance<=BOARD_M&&otherPickupOccurrence(bus,run.boardStopId,assessmentText,feed,now);
      if(other){run.otherOccurrenceSamples=(run.otherOccurrenceSamples??0)+1;if(!run.otherOccurrenceReported){run.otherOccurrenceReported=true;await event('waiting-bus-other-occurrence',{...other,distanceM:distance});}}
-     if(((distance<=BOARD_M&&!past&&!opposite)||atStop)&&!other&&now>=run.walkUntil){
+     if(observationFresh(bus,now)&&((distance<=BOARD_M&&!past&&!opposite)||atStop)&&!other&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
       // A ride the app started on another bus replaces the trip card, so
       // waiting on only reaches the 45 min cap (wrongbusboard20261002: it
@@ -279,7 +282,18 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
       // 100 m in the app's latest feed. Otherwise the bus left without us,
       // and waiting on would time the next one (riderpromptmiss20261004:
       // #317, boarded 15 min after #330 stood at the stop, ended "completed").
+      const boardingReady=async()=>{
+       const current=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+       return !!current&&!feedStatus().feedStale&&observationFresh(current,clockNow());
+      };
+      const unavailableBoarding=async()=>{
+       const current=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+       run.excludeAccuracy=true;
+       await event('boarding-observation-unavailable',{bus:name,observedAt:current?.observed_at??null,feedReceivedAt:new Date(feedAt).toISOString()});
+       await finish('boarding-observation-unavailable-excluded');await status();
+      };
       try{await boardSelectedRide(page,name,{
+       boardingReady,
        ...(transferRead?.buttonName?{cardButton:page.getByTestId('transfer-pickup-controls').getByRole('button',{name:transferRead.buttonName,exact:true})}:{}),
        cardBoards:async()=>{
        if(run.transfer){
@@ -293,11 +307,15 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
        return !!current&&cardBoardsBus(latest.buses,run.line.busRouteIds,at,name)
         &&!otherPickupOccurrence(current,run.boardStopId,currentText,latest,clockNow());
       }});}catch(e){
+       if(e instanceof BoardingEvidenceUnavailable){await unavailableBoarding();return;}
        const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null')?.busName??null);
        if(!stored&&e instanceof BoardingMissed){const left=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));run.excludeAccuracy=true;await event('boarding-missed',{bus:name,stop:boardLabel,observedDistanceM:distance,distanceNowM:left?metrics.haversineM(left,coord):null});await finish('boarding-missed-excluded');await status();return;}
        if(!stored)throw e;
        if(stored.replace(/^#/,'')!==name.replace(/^#/,'')){run.excludeAccuracy=true;await event('wrong-bus-boarded',{bus:name,stored,stop:boardLabel,observedDistanceM:distance});await finish('wrong-bus-boarded-excluded');await status();return;}
       }
+      // Matching storage can recover a delayed confirmation, but cannot
+      // restore vehicle evidence that went unavailable during that wait.
+      if(!await boardingReady()){await unavailableBoarding();return;}
       run.boardedAt=new Date(clockNow()).toISOString();run.phase='riding';
       run.boardedStorage=await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage).filter(([k])=>/board/i.test(k))));
       if(run.transfer){const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null'));if(!boardedTransferMatches(stored,run.transfer)){await event('candidate-transfer-boarded-state',{stage:run.transfer.stage+1,expected:run.transfer.legs,stored});await finish('wrong-transfer-state-excluded');await status();return;}}

@@ -66,6 +66,36 @@ test('Purple #126 dwelling 18 m from the stop is boarded, not an invalid sample'
  assert.equal(run.excludeAccuracy,undefined);
 });
 
+test.each(['stale','future','nonfinite','null','string'])('a fresh HTTP receipt cannot board a %s vehicle observation',async mode=>{
+ const h=current=await harness(feedWith([near126]));
+ const decisionAt=Date.now()+10000;
+ const clocks={stale:decisionAt-30001,future:decisionAt+5001,nonfinite:NaN,null:null,string:'not-a-clock'};
+ await h.poll(dwelling,[{...at126,observed_at:clocks[mode]}]);
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+ assert.deepEqual(await h.journeys(),[]);
+ await h.poll(dwelling,[{...at126,observed_at:Date.now()+10000}]);
+ assert.equal(h.watcher.status().run.phase,'riding');
+ assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+});
+test.each([-30000,5000])('a vehicle clock at the %s ms decision boundary can board',async offset=>{
+ const h=current=await harness(feedWith([near126]));
+ await h.poll(dwelling,[{...at126,observed_at:Date.now()+10000+offset}]);
+ assert.equal(h.watcher.status().run.phase,'riding');assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+});
+test.each(['pickup-screenshot','confirmation','stored-recovery'])('vehicle evidence lost during %s never becomes accepted boarding',async mode=>{
+ const h=current=await harness(feedWith([near126]));
+ const stale=async()=>h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,
+  json:async()=>feedWith([{...at126,observed_at:Date.now()-30001}])});
+ if(mode==='pickup-screenshot')h.page.screenshot=async()=>{await stale();return Buffer.from('jpg');};
+ else h.page.waitForFunction=async()=>{await stale();if(mode==='stored-recovery')throw Error('confirmation timeout');};
+ if(mode==='stored-recovery')h.page.evaluate=async()=>'#126';
+ await h.poll(dwelling,[{...at126,observed_at:Date.now()+10000}]);
+ const [journey]=await h.journeys();
+ assert.equal(h.watcher.status().run,null);assert.equal(journey.result,'boarding-observation-unavailable-excluded');
+ assert.equal(journey.excludeAccuracy,true);assert.equal(journey.boardedAt,undefined);
+ assert.equal(h.clicks.length,mode==='pickup-screenshot'?0:1);
+});
+
 // wrongbusboard20261002: "I'm on it" stored Green #331 while #122 pulled in;
 // the run then waited behind the ride until the 45 min cap.
 const boardingTimeout=async()=>{throw new Error('page.waitForFunction: Timeout 5000ms exceeded.');};

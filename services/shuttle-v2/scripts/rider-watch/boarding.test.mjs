@@ -78,3 +78,23 @@ test('declining another bus does not permit an unchecked card fallback',async()=
   assert.deepEqual(p.clicks,[['Not me',OFFER_CLICK_MS]]);assert.equal(p.stored,null);
  }
 });
+
+const observationUnavailable=e=>e.constructor.name==='BoardingEvidenceUnavailable';
+test.each(['offer','card','scoped'])('unavailable observation prevents the %s boarding action',async mode=>{
+ const p=page({offer:mode==='offer'?undefined:null});
+ const options={cardBoards:async()=>true,boardingReady:async()=>false};
+ if(mode==='scoped')options.cardButton={click:async()=>{p.clicks.push(['scoped']);p.stored='#330';}};
+ await assert.rejects(boardSelectedRide(p,'#330',options),observationUnavailable);
+ assert.deepEqual(p.clicks,[]);assert.equal(p.stored,null);
+});
+test('a changed observation prevents a card fallback after the offer disappears',async()=>{
+ const p=page({goes:true});let checks=0;
+ await assert.rejects(boardSelectedRide(p,'#330',{cardBoards:async()=>true,boardingReady:async()=>++checks===1}),observationUnavailable);
+ assert.deepEqual(p.clicks,[["Yes, I'm on it",OFFER_CLICK_MS]]);assert.equal(p.stored,null);
+});
+test('a stored matching ride does not validate an observation lost during confirmation',async()=>{
+ const p=page({offer:null}),wait=p.waitForFunction;let available=true;
+ p.waitForFunction=async(...args)=>{await wait(...args);available=false;};
+ await assert.rejects(boardSelectedRide(p,'#330',{cardBoards:async()=>true,boardingReady:async()=>available}),observationUnavailable);
+ assert.equal(p.stored,'#330');assert.deepEqual(p.clicks,[["🚌 I'm on it",undefined]]);
+});
