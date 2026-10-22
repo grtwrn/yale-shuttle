@@ -68,6 +68,39 @@ class PickupWindowTests(unittest.TestCase):
                 self.c['journey'][key] = value
                 self.assertEqual(self.audit()['state'], 'unknown')
 
+    def test_constructed_early_window_keeps_the_original_pickup_qualification(self):
+        # Constructed interval on the recorded qualification fixture; this is
+        # not the interval that its rider originally saw.
+        first = self.c['samples'][0]
+        first['text'] = first['text'].replace('Arrival: About 7 min · Likely 4–12 min', 'Arrival: About 45 min · Likely 40–50 min')
+        result = self.audit()
+        self.assertEqual(result['state'], 'early-window')
+        self.assertEqual(result['firstQuote']['loSec'], 2400)
+        self.assertAlmostEqual(result['earlyBeforeWindowSec'], 779.735, places=3)
+        self.assertLess(result['lateBeyondWindowSec'], 0)
+        self.assertEqual(result['pickupObservation']['bus']['bus_id'], 67959)
+        self.assertEqual(PURPLE['samples'][0]['text'].count('4–12 min'), 1)
+
+    def test_early_tolerance_has_the_same_strict_boundary_and_preserves_old_fields(self):
+        first = self.c['samples'][0]
+        first['text'] = first['text'].replace('Arrival: About 7 min · Likely 4–12 min', 'Arrival: About 35 min · Likely 32–38 min')
+        final = [s for s in self.c['samples'] if s['phase'] == 'waiting'][-1]
+        at = pickup.timestamp(first['at'])+1920-300
+        final['at'] = datetime.fromtimestamp(at, timezone.utc).isoformat()
+        result = self.audit()
+        self.assertEqual(result['state'], 'within-diagnostic-tolerance')
+        self.assertNotIn('earlyBeforeWindowSec', result)
+        final['at'] = datetime.fromtimestamp(at-.001, timezone.utc).isoformat()
+        result = self.audit()
+        self.assertEqual(result['state'], 'early-window')
+        self.assertAlmostEqual(result['earlyBeforeWindowSec'], 300.001, places=3)
+
+    def test_an_early_quote_cannot_override_unknown_gps_evidence(self):
+        self.c['samples'][0]['text'] = self.c['samples'][0]['text'].replace('Arrival: About 7 min · Likely 4–12 min', 'Arrival: About 45 min · Likely 40–50 min')
+        self.c['samples'][20]['buses'][0]['observed_at'] -= 60000
+        result = self.audit()
+        self.assertEqual(result, {'state': 'unknown', 'reason': 'stale-or-invalid-gps-clock'})
+
     def test_missing_duplicate_or_partial_samples_never_pass(self):
         for change in ['missing', 'duplicate', 'partial']:
             self.c = copy.deepcopy(PURPLE)
@@ -175,6 +208,26 @@ class PickupBridgeTests(unittest.TestCase):
         self.run_check()
         self.assertEqual(target.read_bytes(), before)
         self.assertEqual(list((self.root/'pending').glob('*.json')), [])
+
+    def test_constructed_early_pickup_is_sealed_and_deduplicated_after_lost_ack(self):
+        samples = copy.deepcopy(PURPLE['samples'])
+        samples[0]['text'] = samples[0]['text'].replace('Arrival: About 7 min · Likely 4–12 min', 'Arrival: About 45 min · Likely 40–50 min')
+        (self.watch/'samples.jsonl').write_text(''.join(json.dumps(r)+'\n' for r in samples))
+        self.run_check()
+        file = next((self.root/'pending').glob('*.json'))
+        original = file.read_bytes()
+        incident = json.loads(original)
+        self.assertEqual(incident['kind'], 'rider-pickup-window-miss')
+        self.assertEqual(incident['detail']['pickupAudit']['state'], 'early-window')
+        self.assertGreater(incident['detail']['pickupAudit']['earlyBeforeWindowSec'], 300)
+        self.assertIn('before the first displayed window', incident['summary'])
+        self.assertTrue(poll.verify_bundle(incident['evidenceBundles'][0]['directory'])['sampleCoverage']['complete'])
+        self.state['pickupAudits'] = {}
+        self.state['pickupAuditPending'] = {PURPLE['runId']: self.event}
+        self.run_check()
+        self.assertEqual(file.read_bytes(), original)
+        self.assertEqual(len(list((self.root/'pending').glob('*.json'))), 1)
+        self.assertEqual(poll.CAPTURE_ERRORS, [])
 
     def test_capture_failure_keeps_pending_work_and_retry_recovers(self):
         poll.scan_events(self.state, self.state, str(self.watch))
