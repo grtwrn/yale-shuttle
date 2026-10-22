@@ -56,6 +56,17 @@ actual allocated-file accounting bound this operator store without changing
 production SQLite settings. Busy readers, unknown files, a protected full store
 or low disk space hold capture and preserve the last committed cursor. They can
 cause an explicit source gap if the server journal expires before recovery.
+The CLI reads optional `~/.config/yale-shuttle/collector-witness-policy.json`
+on every invocation (`COLLECTOR_WITNESS_POLICY_FILE` overrides its location).
+For example, `{"maxBytes":536870912}` raises only the local physical cap to
+512 MiB while preserving seven-day rolling retention and the host reserve.
+Optional `maxAgeMs` and `minFreeBytes` use the same units as their names.
+Limits must be safe integers: at least 3 MiB for `maxBytes`, positive for
+`maxAgeMs`, and nonnegative for `minFreeBytes`. Unknown keys, malformed JSON
+and files larger than 4096 bytes fail capture without opening the database.
+A missing file uses defaults. Keep this file outside the evidence directory;
+unknown files inside that directory hold capture. Raising the cap does not
+release protected evidence, reset the cursor, or change production resources.
 Full synchronous commits provide SQLite's local durability guarantees, not
 remote backups or a promise against hardware failure.
 
