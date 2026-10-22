@@ -3,6 +3,9 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runBrowserCheck } from './browser-stage.mjs';
+import { browserPhaseEvidence, recordBrowserPhase } from './browser-stage-diagnostics.mjs';
+
+const diagnosticsURL = new URL('./browser-stage-diagnostics.mjs', import.meta.url).href;
 
 const directories = [];
 async function fixture(source) {
@@ -78,20 +81,57 @@ describe('bounded browser stage', () => {
     'stops a ready Playwright browser when the supervising deploy process exits', async () => {
       const options = await fixture(`import { createRequire } from 'node:module';
         const { chromium } = createRequire(${JSON.stringify(import.meta.url)})('playwright-core');
+        import { recordBrowserPhase } from ${JSON.stringify(diagnosticsURL)};
         import fs from 'node:fs';
-        const browser = await chromium.launchServer({executablePath:process.env.BOT_CHROMIUM_PATH,headless:true,
-          args:['--no-sandbox','--disable-gpu','--disable-dev-shm-usage']});
+        const record = (phase, details) => recordBrowserPhase('phases.jsonl',phase,details);
+        record('check-started'); record('browser-launching');
+        let browser;
+        try { browser = await chromium.launchServer({executablePath:process.env.BOT_CHROMIUM_PATH,headless:true,
+          args:['--no-sandbox','--disable-gpu','--disable-dev-shm-usage']}); }
+        catch (error) { record('browser-launch-failed',{errorName:error.name}); throw error; }
         fs.writeFileSync('ready.json',JSON.stringify({parent:process.pid,child:browser.process().pid}));
+        record('browser-ready',{browserPid:browser.process().pid});
         process.kill(process.ppid,'SIGTERM');
         setInterval(()=>{},100);`);
       await fs.writeFile(path.join(options.cwd, 'supervisor.mjs'), `
         import { runBrowserCheck } from ${JSON.stringify(new URL('./browser-stage.mjs', import.meta.url).href)};
-        process.on('SIGTERM',()=>process.exit(143));
-        await runBrowserCheck('check.mjs',{timeoutMs:30_000});`);
+        import { recordBrowserPhase } from ${JSON.stringify(diagnosticsURL)};
+        const record = (phase, details) => recordBrowserPhase('phases.jsonl',phase,details);
+        record('supervisor-started');
+        process.on('SIGTERM',()=>{record('supervisor-signaled');process.exit(143);});
+        process.on('exit',code=>record('supervisor-exit-started',{code}));
+        const checking=runBrowserCheck('check.mjs',{timeoutMs:30_000});
+        // The production exit listener is installed by runBrowserCheck above.
+        process.on('exit',code=>record('supervisor-exit-cleanup-complete',{code}));
+        await checking;`);
       // Browser startup gets a separate generous ceiling. The interruption
       // happens only after readiness, without racing CPU load on the CI host.
-      await expect(runBrowserCheck('supervisor.mjs', { ...options, stdio: 'inherit', timeoutMs: 30_000 })).rejects.toThrow(/exit 143/);
-      const { parent, child } = JSON.parse(await fs.readFile(path.join(options.cwd, 'ready.json'), 'utf8'));
-      await stopped(parent); await stopped(child);
+      const trace = path.join(options.cwd, 'phases.jsonl');
+      recordBrowserPhase(trace, 'outer-started');
+      try {
+        await expect(runBrowserCheck('supervisor.mjs', { ...options, stdio: 'inherit', timeoutMs: 30_000 })).rejects.toThrow(/exit 143/);
+        const { parent, child } = JSON.parse(await fs.readFile(path.join(options.cwd, 'ready.json'), 'utf8'));
+        await stopped(parent); await stopped(child);
+        expect(browserPhaseEvidence(trace).rows.map(row => row.phase)).toEqual(expect.arrayContaining([
+          'browser-ready', 'supervisor-signaled', 'supervisor-exit-cleanup-complete',
+        ]));
+      } catch (error) {
+        console.error('[browser-stage supervision evidence]', JSON.stringify(browserPhaseEvidence(trace)));
+        throw error;
+      }
     }, 35_000);
+
+  it.each([
+    ['before-readiness', ['check-started', 'browser-launching']],
+    ['after-readiness', ['browser-ready', 'supervisor-signaled', 'supervisor-exit-started']],
+  ])('retains the observed phases when a check fails %s', async (_label, phases) => {
+    const options = await fixture(`import { recordBrowserPhase } from ${JSON.stringify(diagnosticsURL)};
+      for (const phase of ${JSON.stringify(phases)}) recordBrowserPhase('phases.jsonl',phase);
+      process.exit(7);`);
+    await expect(runBrowserCheck('check.mjs', options)).rejects.toThrow(/exit 7/);
+    const evidence = browserPhaseEvidence(path.join(options.cwd, 'phases.jsonl'));
+    expect(evidence.rows.map(row => row.phase)).toEqual(phases);
+    expect(evidence.truncated).toBe(false);
+    expect(evidence.malformedRows).toBe(0);
+  });
 });
