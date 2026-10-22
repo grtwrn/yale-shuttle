@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { auditDisplay, type AuditFeed, type Finding } from './check';
 import { matchesProduction } from '../deployment-scope.mjs';
+import { monitorFetch, monitorNetworkSummary } from '../monitor-fetch.mjs';
 
 type Observation = { firstAt: number; lastAt: number; firstPoll: number; reported: boolean; finding: Finding };
 interface State { build: string; observations: Record<string, Observation>; queue: { at: string; build: string; findings: Finding[] }[] }
@@ -108,7 +109,7 @@ export function observe(previous: State | null, findings: Finding[], build: stri
 }
 
 export async function poll({ directory, revision, sourceClean = true, sourceMatches, base = 'https://yale-shuttle.fly.dev',
-  fetchImpl = fetch, clock = Date.now, notify = async (_count: number) => {} }: {
+  fetchImpl = monitorFetch, clock = Date.now, notify = async (_count: number) => {} }: {
   directory: string; revision: string; sourceClean?: boolean; sourceMatches?: (build: string) => boolean; base?: string;
   fetchImpl?: typeof fetch; clock?: () => number; notify?: (count: number) => Promise<void>;
 }) {
@@ -143,7 +144,8 @@ export async function poll({ directory, revision, sourceClean = true, sourceMatc
     if (alerts.length) try { await notify(alerts.length); } catch { notificationError = 'Desktop notification failed; incident is saved'; }
     const status = { checkedAt: new Date(now).toISOString(), ok: true, build: health.build, operatorRevision: revision, ...result,
       confirmed: Object.values(state.observations).filter(o => o.reported).length,
-      queuedBatches: state.queue.length, newAlerts: alerts.length, notificationError };
+      queuedBatches: state.queue.length, newAlerts: alerts.length, notificationError,
+      ...(fetchImpl === monitorFetch ? { transport: monitorNetworkSummary() } : {}) };
     await atomic(path.join(directory, 'status.json'), status);
     await atomic(path.join(directory, 'health.json'), { failures: 0, notified: false });
     return status;
@@ -152,7 +154,8 @@ export async function poll({ directory, revision, sourceClean = true, sourceMatc
     let failureEvidence: Awaited<ReturnType<typeof retainUnavailable>> | null = null, failureEvidenceError: string | null = null;
     try { failureEvidence = await retainUnavailable(directory, checkedAt, revision, error, responseStatus, healthInput, feedInput); }
     catch { failureEvidenceError = 'Could not retain unavailable-check inputs; existing evidence is preserved'; }
-    const status = { checkedAt, ok: false, error: (error as Error).message, failureEvidence, failureEvidenceError };
+    const status = { checkedAt, ok: false, error: (error as Error).message, failureEvidence, failureEvidenceError,
+      ...(fetchImpl === monitorFetch ? { transport: monitorNetworkSummary() } : {}) };
     await atomic(path.join(directory, 'status.json'), status);
     const healthFile = path.join(directory, 'health.json');
     let health = { failures: 0, notified: false };

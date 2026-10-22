@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { preserveReportEvidence } from './evidence.mjs';
+import { monitorFetch, monitorNetworkSummary } from '../monitor-fetch.mjs';
 
 const exec = promisify(execFile);
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -102,7 +103,7 @@ async function rotateLog(file) {
 export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.join(service, 'scripts/.bot-artifacts/report-watch'),
   base = process.env.REPORT_WATCH_BASE_URL ?? 'https://yale-shuttle.fly.dev',
   tokenFile = process.env.SHUTTLE_ADMIN_TOKEN_FILE ?? path.join(os.homedir(), '.config/yale-shuttle/admin-token'),
-  fetcher = fetch, notifier = notify, healthNotifier = notifyHealth, now = Date.now() } = {}) {
+  fetcher = monitorFetch, notifier = notify, healthNotifier = notifyHealth, now = Date.now() } = {}) {
   await fs.mkdir(dir, { recursive: true, mode: 0o700 });
   await rotateLog(path.join(dir, 'watcher.log'));
   const healthFile = path.join(dir, 'health.json');
@@ -142,6 +143,7 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
     const status = { checkedAt: state.checkedAt, ok: true, openReports: data.reports.length, pending: state.pending.length,
       latestReportId: Math.max(0, ...data.reports.map(r => r.id)), newOrUpdated: state.events.map(e => e.id),
       saturated: state.saturated, consecutiveFailures: 0, notificationError,
+      ...(fetcher === monitorFetch ? { transport: monitorNetworkSummary() } : {}),
       evidence:{ok:evidence.ok,newlyRetained:evidence.captured.length,newlyUnavailable:evidence.unavailable.length,
         bytes:evidence.bytes,maxBytes:evidence.maxBytes,cleanupUncertain:evidence.cleanupUncertain} };
     await write(path.join(dir, 'status.json'), status); return status;
@@ -159,6 +161,7 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
     // Do not print exception details: credentials and report contents stay local.
     await write(path.join(dir, 'status.json'), { checkedAt: new Date(now).toISOString(), ok: false,
       pending, consecutiveFailures, failureNotified, notificationError,
+      ...(fetcher === monitorFetch ? { transport: monitorNetworkSummary() } : {}),
       error: 'Report check failed; retrying on the next scheduled poll' });
     throw new Error('Report check failed; retrying on the next scheduled poll');
   }
