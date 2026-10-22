@@ -14,6 +14,7 @@ const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM
 try {
   for (const width of [307, 320, 390, 1280]) {
     const feed = structuredClone(original), now = feed.server_eta.servedAt;
+    let feedMode = 'fresh';
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 600, hasTouch: width < 600,
       ...(width === 307 ? { userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36' } : {}),
       timezoneId: 'America/New_York', serviceWorkers: 'block' });
@@ -35,7 +36,17 @@ try {
       await page.route('**/*', async route => {
         const u = new URL(route.request().url());
         if (u.hostname !== new URL(base).hostname) return route.abort();
-        if (u.pathname === '/api/buses') return route.fulfill({ json: feed });
+        if (u.pathname === '/api/buses') {
+          if (feedMode === 'http-failed') return route.fulfill({ status: 503, json: { error: 'Fixture connection failure' } });
+          const payload = structuredClone(feed), at = await page.evaluate(() => Date.now());
+          for (const bus of payload.buses) bus.observed_at = at;
+          if (feedMode === 'missing-forecast') delete payload.server_eta;
+          else {
+            const sourceAt = feedMode === 'stale-forecast' ? at - 60000 : at;
+            payload.server_eta.at = sourceAt; payload.server_eta.servedAt = at;
+          }
+          return route.fulfill({ json: payload });
+        }
         if (u.pathname === '/api/weather') return route.fulfill({ status: 204 });
         if (u.pathname.startsWith('/api/')) return route.fulfill({ json: { results: [], reports: [] } });
         if (process.env.BOT_BASE_URL) return route.continue();
@@ -99,7 +110,62 @@ try {
       assert.equal(await armed.count(), 0, 'custom reminder completes after its one ping');
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await page.screenshot({ path: `${out}/fired-${width}.png`, fullPage: true });
-      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false });
+      // Loss of live evidence must pause the chosen reminder and its ping
+      // history. These are constructed API/clock transitions, not service truth.
+      const advance = async ms => {
+        for (let n = 0; n < ms; n += 500) {
+          await page.clock.runFor(Math.min(500, ms - n));
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+      };
+      const waiting = page.getByRole('status', { name: 'Pickup reminder waiting for live updates', exact: true });
+      const buzzes = () => page.evaluate(() => window.reminderBuzzes);
+      const armTiming = async timing => {
+        await trigger.click(); await mode.selectOption(timing);
+        await settings.getByLabel(timing === 'stops' ? 'Stops before pickup' : 'Minutes before pickup', { exact: true }).selectOption(timing === 'stops' ? '3' : '1');
+        await settings.getByRole('button', { name: 'Set reminder', exact: true }).click(); await armed.waitFor();
+      };
+      const resetThreshold = async () => { row[5] = 11; row[3] = 480; feedMode = 'fresh'; await advance(6500); };
+      const recoveryCases = [];
+      for (const [failure, timing] of [['http-failed', 'stops'], ['missing-forecast', 'stops'], ['stale-forecast', 'stops'], ['http-failed', 'minutes']]) {
+        await resetThreshold(); const before = await buzzes(); await armTiming(timing); await advance(1100);
+        feedMode = failure; await advance(6500); await waiting.waitFor();
+        assert.equal(await buzzes(), before, 'unavailable or stale evidence must never notify');
+        assert.match(await waiting.innerText(), timing === 'stops' ? /3 stops before pickup/ : /1 min before pickup/);
+        const cancel = waiting.getByRole('button', { name: 'Cancel pickup reminder', exact: true });
+        const box = await cancel.boundingBox(); assert(box.width >= 44 && box.height >= 44);
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        await waiting.screenshot({ path: out + '/waiting-' + failure + '-' + timing + '-' + width + '.png' });
+        if (timing === 'stops') row[5] = 3; else row[3] = 30;
+        feedMode = 'fresh'; await advance(6500);
+        await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).waitFor();
+        assert.equal(await waiting.count(), 0); assert.equal(await buzzes(), before + 1);
+        await advance(1100); assert.equal(await buzzes(), before + 1, 'recovery must not repeat a completed ping');
+        await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
+        recoveryCases.push({ failure, timing, heldWithoutAlert: true, resumedOnceOnFreshData: true, cancelAvailableWhileWaiting: true });
+      }
+      await resetThreshold(); const leaveBefore = await buzzes(); row[3] = 300; await advance(6500);
+      await trigger.click(); await mode.selectOption('leave');
+      await settings.getByRole('button', { name: 'Set reminder', exact: true }).click(); await advance(1100);
+      assert.equal(await buzzes(), leaveBefore + 1, 'leave-time heads-up control');
+      await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
+      feedMode = 'http-failed'; await advance(6500); await waiting.waitFor(); assert.equal(await buzzes(), leaveBefore + 1);
+      feedMode = 'fresh'; await advance(6500); assert.equal(await waiting.count(), 0);
+      assert.equal(await buzzes(), leaveBefore + 1, 'recovery must preserve the fired heads-up');
+      row[3] = 0; await advance(6500);
+      await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).waitFor();
+      assert.equal(await buzzes(), leaveBefore + 2, 'the final leave-time ping still fires once');
+      await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
+      await advance(1100); assert.equal(await buzzes(), leaveBefore + 2);
+      await resetThreshold(); let before = await buzzes(); await armTiming('stops'); feedMode = 'http-failed'; await advance(6500); await waiting.waitFor();
+      await waiting.getByRole('button', { name: 'Cancel pickup reminder', exact: true }).click(); await advance(1100); assert.equal(await waiting.count(), 0);
+      row[5] = 3; feedMode = 'fresh'; await advance(6500); assert.equal(await buzzes(), before, 'a canceled pending reminder must not resume');
+      await resetThreshold(); before = await buzzes(); await armTiming('stops'); feedMode = 'http-failed'; await advance(6500); await waiting.waitFor();
+      await page.getByTitle('Back to all routes', { exact: true }).first().click();
+      await page.getByRole('button', { name: 'Swap start and destination', exact: true }).click(); await advance(1100);
+      assert.equal(await waiting.count(), 0, 'changing the trip must cancel the old reminder');
+      row[5] = 3; feedMode = 'fresh'; await advance(6500); assert.equal(await buzzes(), before, 'the old trip must not notify after recovery');
+      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false, recoveryCases, leavePingHistoryPreserved: true, canceledPendingNeverResumed: true, changedTripNeverResumed: true });
     } catch (error) {
       const page = ctx.pages()[0];
       report.failure = { width, message: error.message, body: await page.locator('body').ariaSnapshot().catch(() => null) };
