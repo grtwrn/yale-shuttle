@@ -10,13 +10,14 @@ import { WitnessStore, StorageHold } from './storage.mjs';
 import { validHead, initialChain } from './protocol.mjs';
 import { dispatchIncidents } from './incidents.mjs';
 import { anchorProgressSummary } from './progress.mjs';
+import { monitorFetch, monitorNetworkSummary } from '../monitor-fetch.mjs';
 
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MiB = 1024 * 1024;
 
 /** Only the configured app receives credentials. Redirects, oversized bodies,
  * HTML fallbacks and unbounded error text never enter the evidence store. */
-export async function getJSON(url, token, fetcher = fetch, maxBytes = 20 * MiB) {
+export async function getJSON(url, token, fetcher = monitorFetch, maxBytes = 20 * MiB) {
   const response = await fetcher(url, { headers: { 'x-admin-token': token }, redirect: 'error', signal: AbortSignal.timeout(20000) });
   if (!response.ok) throw Error(`Witness endpoint HTTP ${response.status}`);
   if (!/^application\/json\b/i.test(response.headers.get('content-type') ?? '') || Number(response.headers.get('content-length') ?? 0) > maxBytes) throw Error('Invalid witness response type/size');
@@ -39,7 +40,7 @@ export async function getJSON(url, token, fetcher = fetch, maxBytes = 20 * MiB) 
 
 /** Read-only production requests. No fitting, source-row edits, publication,
  * report replies or service-status inference. Gaps are explicit boundaries. */
-export async function pollWitnesses({ store, base = 'https://yale-shuttle.fly.dev', token, fetcher = fetch, now = Date.now(), maxPages = 8 } = {}) {
+export async function pollWitnesses({ store, base = 'https://yale-shuttle.fly.dev', token, fetcher = monitorFetch, now = Date.now(), maxPages = 8 } = {}) {
   const origin = new URL(base);
   if (origin.username || origin.password || (origin.protocol !== 'https:' && !(origin.protocol === 'http:' && ['localhost','127.0.0.1','[::1]'].includes(origin.hostname)))) throw Error('Invalid witness app origin');
   if (!Number.isSafeInteger(maxPages) || maxPages < 1 || maxPages > 16 || typeof token !== 'string' || !token) throw Error('Invalid witness poll configuration');
@@ -96,7 +97,7 @@ export async function runOnce({ dir = process.env.COLLECTOR_WITNESS_DIR ?? path.
   base = process.env.COLLECTOR_WITNESS_BASE_URL ?? 'https://yale-shuttle.fly.dev',
   tokenFile = process.env.SHUTTLE_ADMIN_TOKEN_FILE ?? path.join(os.homedir(), '.config/yale-shuttle/admin-token'),
   incidents = process.env.COLLECTOR_WITNESS_INCIDENTS ?? path.join(os.homedir(), 'projects/yale-shuttle-guardian-bot/state/pending'),
-  fetcher = fetch, now = Date.now() } = {}) {
+  fetcher = monitorFetch, now = Date.now() } = {}) {
   return withStorageLock(dir, async () => {
     let store, result;
     try {
@@ -119,6 +120,7 @@ export async function runOnce({ dir = process.env.COLLECTOR_WITNESS_DIR ?? path.
           if (!result.incidentDelivery.ok) { result.ok = false; result.incidentError = 'Collector incident delivery failed; retained incidents will retry.'; }
         } catch { result.ok = false; result.incidentError = 'Collector incident delivery could not be checked; retained incidents are preserved.'; }
       }
+      if (fetcher === monitorFetch) result.transport = monitorNetworkSummary();
       if (result.retention) await atomicJson(path.join(dir, 'retention.json'), result.retention);
       await atomicJson(path.join(dir, 'status.json'), result);
       return result;
