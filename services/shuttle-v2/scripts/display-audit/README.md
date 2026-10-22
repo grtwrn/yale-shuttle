@@ -45,6 +45,17 @@ No agent is spawned and no rider report, code, or production setting is changed.
 These are consistency checks against the upstream feed, not independent arrival
 measurements, browser coverage of every possible trip, or ETA accuracy scores.
 
+Failed checks also retain `unavailable-history.json`, a rolling history of the
+last 32 availability samples bounded to 8 MiB of formatted disk JSON. Recovery
+leaves that history intact. Each check contains checksummed snapshots of the
+parsed health/feed values it inspected and the available HTTP status codes.
+Each input is limited to 1 MiB and each combined check payload to 2 MiB; missing,
+oversized and omitted inputs are explicit. These are parsed diagnostic values,
+not original HTTP response bytes. A corrupt or unwritable history is preserved,
+and `failureEvidenceError` reports that capture failed alongside the original
+check error. Rolling availability samples are separate from confirmed incident
+queues and do not change comparison, freshness or notification thresholds.
+
 `DISPLAY_AUDIT_DIR`, `BOT_BASE_URL`, and `DISPLAY_AUDIT_NOTIFY=0` override local
 artifacts, target, and notifications. The scheduled process is short-lived; use
 `launchctl start com.grtwrn.yale-shuttle-display-audit` for an extra check rather
