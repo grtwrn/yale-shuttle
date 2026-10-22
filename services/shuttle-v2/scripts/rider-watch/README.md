@@ -48,8 +48,10 @@ An unboardable bus still uses the existing quoted wait limit. Boarding and
 arrival evidence requirements and historical journey outcomes stay unchanged.
 
 For simulated boarding, a supplied `observed_at` must be no more than 30 seconds
-old or five seconds ahead of the decision clock. A fresh HTTP receipt does not
-refresh an old vehicle position. A later valid position can resume boarding;
+old or five seconds ahead of both the response-receipt and decision clocks.
+A fresh HTTP receipt does not refresh an old vehicle position, and processing
+time alone cannot validate a timestamp invalid for that receipt.
+A later valid response can resume boarding;
 older saved feeds without this field retain their existing compatibility rule.
 The runner checks HTTP and vehicle freshness again before either boarding
 control, on a fallback, after confirmation, and after recovering matching ride

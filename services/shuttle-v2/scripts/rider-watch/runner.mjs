@@ -271,7 +271,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
      if(opposite){run.oppositeCurbSamples=(run.oppositeCurbSamples??0)+1;if(!run.oppositeCurbReported){run.oppositeCurbReported=true;await event('waiting-bus-opposite-curb',{bus:name,stop:boardLabel,distanceM:distance,atStopId:bus.at_stop_id});}}
      const other=distance<=BOARD_M&&otherPickupOccurrence(bus,run.boardStopId,assessmentText,feed,now);
      if(other){run.otherOccurrenceSamples=(run.otherOccurrenceSamples??0)+1;if(!run.otherOccurrenceReported){run.otherOccurrenceReported=true;await event('waiting-bus-other-occurrence',{...other,distanceM:distance});}}
-     if(observationFresh(bus,now)&&((distance<=BOARD_M&&!past&&!opposite)||atStop)&&!other&&now>=run.walkUntil){
+     if(observationFresh(bus,feedAt)&&observationFresh(bus,now)&&((distance<=BOARD_M&&!past&&!opposite)||atStop)&&!other&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
       // A ride the app started on another bus replaces the trip card, so
       // waiting on only reaches the 45 min cap (wrongbusboard20261002: it
@@ -284,7 +284,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
       // #317, boarded 15 min after #330 stood at the stop, ended "completed").
       const boardingReady=async()=>{
        const current=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
-       return !!current&&!feedStatus().feedStale&&observationFresh(current,clockNow());
+       return !!current&&!feedStatus().feedStale&&observationFresh(current,feedAt)&&observationFresh(current,clockNow());
       };
       const unavailableBoarding=async()=>{
        const current=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
