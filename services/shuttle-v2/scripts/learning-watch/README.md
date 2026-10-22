@@ -19,6 +19,24 @@ three confirmations. Incident-write failures remain unreported and retry.
 Durable incidents enter the existing guardian pending queue. No Slack, email,
 desktop notification or app report is sent by this script.
 
+Each new incident embeds a checksummed diagnostic snapshot of the parsed status
+values used by the confirming check: learner error/control status, frozen and
+live source identities, observer probe, configured collector/archive statuses,
+read errors and platform summary. These are diagnostic JSON values, not original
+file bytes. They remain available when the mutable status paths later recover
+or rotate. The first alert snapshot survives a persistent write retry; existing
+pending or processed incidents, including older incidents without snapshots,
+are never rewritten or given reconstructed failure details.
+
+Each diagnostic section is bounded to 8 KiB and the combined snapshot to 64 KiB.
+Missing, oversized or unserializable sections are explicitly incomplete;
+size-limited omissions retain their byte count and checksum. A new incident,
+including any existing CPU confirmation receipts, is bounded to 512 KiB.
+Full pending forecasts, visits, training data and model parameters are omitted.
+Snapshots share the guardian incident's retention, so no separate snapshot
+directory grows outside that policy. This adds no application requests and
+changes no alert threshold, sampling cadence or publication gate.
+
 Warmup control mismatches are diagnostics. Calibration/test mismatches and
 persisted protocol failures prevent a valid publication and warrant review.
 Ordinary lack of visit support and a candidate losing its quality comparison

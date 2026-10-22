@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { advance, inspect, inspectCollectorCapture, pollLearning, probeObserver } from './poll.mjs';
+import { advance, inspect, inspectCollectorCapture, pollLearning, probeObserver, snapshotDiagnostics } from './poll.mjs';
 import { collectPlatform } from './platform.mjs';
 
 const now = Date.parse('2026-10-17T12:00:00Z');
@@ -113,6 +113,121 @@ async function fixture() {
 }
 const read = async file => JSON.parse(await fs.readFile(file, 'utf8'));
 const digest = async file => createHash('sha256').update(await fs.readFile(file)).digest('hex');
+function decodeDiagnostics(snapshot) {
+  expect(snapshot.v).toBe(1); expect(snapshot.encoding).toBe('diagnostic-json');
+  expect(snapshot.bytes).toBe(Buffer.byteLength(snapshot.json));
+  expect(snapshot.bytes).toBeLessThanOrEqual(64 * 1024);
+  expect(snapshot.sha256).toBe(createHash('sha256').update(snapshot.json).digest('hex'));
+  const payload = JSON.parse(snapshot.json);
+  for (const part of Object.values(payload.parts)) if (part.state === 'captured') {
+    expect(part.bytes).toBe(Buffer.byteLength(part.json));
+    expect(part.sha256).toBe(createHash('sha256').update(part.json).digest('hex'));
+  }
+  return payload.parts;
+}
+describe('failure detail survives mutable diagnostic files', () => {
+  it('retains the inspected failure, identity and recorder statuses after recovery without changing learner evidence', async () => {
+    const f = await fixture(), collectorStatusFile = path.join(f.base, 'collector.json'), historyStatusFile = path.join(f.base, 'history.json');
+    f.x.status.error = 'Original exact-receipt reader failure';
+    f.x.state.sourceRefusal = { reason: 'Original required source journal missing' };
+    f.x.state.pending = { deliberatelyExcluded: 'large pending state '.repeat(10000) };
+    for (let i = 0; i < 3; i++) {
+      const at = now + i * 60000; await f.write(at);
+      await fs.writeFile(collectorStatusFile, JSON.stringify({ checkedAt: new Date(at).toISOString(), ok: false, error: 'Original collector storage failure' }));
+      await fs.writeFile(historyStatusFile, JSON.stringify({ checkedAt: new Date(at).toISOString(), ok: false, error: 'Original archive cursor failure', modelAt: at, collectorAt: at }));
+      const files = ['state.json', 'status.json', f.x.state.id + '/frozen-candidate.json'].map(n => path.join(f.root, n));
+      const before = await Promise.all(files.map(digest));
+      await pollLearning({ ...f, collectorStatusFile, historyStatusFile, now: at });
+      expect(await Promise.all(files.map(digest))).toEqual(before);
+    }
+    const file = (await fs.readdir(f.incidents)).map(n => path.join(f.incidents, n));
+    const chosen = (await Promise.all(file.map(read))).find(r => r.kind === 'learning-collector-capture');
+    const snapshot = chosen.evidence.diagnosticSnapshot, parts = decodeDiagnostics(snapshot);
+    expect(snapshot.checkedAt).toBe(now + 120000); expect(snapshot.complete).toBe(true);
+    expect(JSON.parse(parts.status.json).error).toBe('Original exact-receipt reader failure');
+    expect(JSON.parse(parts.stateIdentity.json).sourceRefusal.reason).toBe('Original required source journal missing');
+    expect(JSON.parse(parts.stateIdentity.json).sourceKey).toBe(f.x.state.sourceKey);
+    expect(JSON.parse(parts.frozenIdentity.json).productionBuild).toBe(f.x.frozen.productionBuild);
+    expect(JSON.parse(parts.collectorCapture.json).error).toBe('Original collector storage failure');
+    expect(JSON.parse(parts.timingHistory.json).error).toBe('Original archive cursor failure');
+    expect(JSON.parse(parts.observer.json).expectedCommand).toBe(true);
+    expect(snapshot.json).not.toContain('deliberatelyExcluded');
+    const hashes = await Promise.all(file.map(digest));
+    delete f.x.status.error; delete f.x.state.sourceRefusal; await f.write(now + 180000);
+    await fs.writeFile(collectorStatusFile, JSON.stringify({ checkedAt: new Date(now + 180000).toISOString(), ok: true }));
+    await fs.writeFile(historyStatusFile, JSON.stringify({ checkedAt: new Date(now + 180000).toISOString(), ok: true, modelAt: now + 180000, collectorAt: now + 180000 }));
+    expect((await pollLearning({ ...f, collectorStatusFile, historyStatusFile, now: now + 180000 })).ok).toBe(true);
+    expect(await Promise.all(file.map(digest))).toEqual(hashes);
+  });
+  it('keeps the first alert snapshot through a persistent write retry and a processed acknowledgement retry', async () => {
+    const f = await fixture(), collectorStatusFile = path.join(f.base, 'collector.json');
+    await fs.mkdir(path.dirname(f.incidents), { recursive: true }); await fs.writeFile(f.incidents, 'blocked destination');
+    for (let i = 0; i < 3; i++) {
+      const at = now + i * 60000; await f.write(at);
+      await fs.writeFile(collectorStatusFile, JSON.stringify({ checkedAt: new Date(at).toISOString(), ok: false, error: 'Failure before delivery retry' }));
+      const r = await pollLearning({ ...f, collectorStatusFile, now: at });
+      if (i === 2) expect(r.incidentError).toBeTruthy();
+    }
+    await fs.unlink(f.incidents); await f.write(now + 180000);
+    await fs.writeFile(collectorStatusFile, JSON.stringify({ checkedAt: new Date(now + 180000).toISOString(), ok: false, error: 'Later mutable failure detail' }));
+    await pollLearning({ ...f, collectorStatusFile, now: now + 180000 });
+    const name = (await fs.readdir(f.incidents))[0], file = path.join(f.incidents, name), incident = await read(file);
+    expect(incident.evidence.diagnosticSnapshot.checkedAt).toBe(now + 120000);
+    const parts = decodeDiagnostics(incident.evidence.diagnosticSnapshot);
+    expect(JSON.parse(parts.collectorCapture.json).error).toBe('Failure before delivery retry');
+    const processed = path.join(path.dirname(f.incidents), 'processed'); await fs.mkdir(processed);
+    await fs.rename(file, path.join(processed, name)); const original = await digest(path.join(processed, name));
+    const priorFile = path.join(f.directory, 'state.json'), prior = await read(priorFile);
+    prior.observations['collector-capture'].reported = false; await fs.writeFile(priorFile, JSON.stringify(prior));
+    await f.write(now + 240000); await pollLearning({ ...f, collectorStatusFile, now: now + 240000 });
+    expect(await fs.readdir(f.incidents)).toEqual([]); expect(await digest(path.join(processed, name))).toBe(original);
+  });
+  it('keeps legacy incident bytes unchanged instead of adding reconstructed diagnostics on retry', async () => {
+    const f = await fixture(); f.x.state.protocolFailures = { count: 1 };
+    for (let i = 0; i < 3; i++) { await f.write(now + i * 60000); await pollLearning({ ...f, now: now + i * 60000 }); }
+    const file = path.join(f.incidents, (await fs.readdir(f.incidents))[0]), legacy = await read(file);
+    delete legacy.evidence.diagnosticSnapshot; await fs.writeFile(file, JSON.stringify(legacy)); const original = await digest(file);
+    const priorFile = path.join(f.directory, 'state.json'), prior = await read(priorFile);
+    prior.observations['production-control'].reported = false; await fs.writeFile(priorFile, JSON.stringify(prior));
+    await f.write(now + 180000); await pollLearning({ ...f, now: now + 180000 });
+    expect(await digest(file)).toBe(original); expect((await read(file)).evidence.diagnosticSnapshot).toBeUndefined();
+  });
+  it('records unreadable input and incomplete capture without modifying the corrupt source', async () => {
+    const f = await fixture(), collectorStatusFile = path.join(f.base, 'collector.json');
+    await fs.writeFile(collectorStatusFile, '{broken collector status');
+    for (let i = 0; i < 3; i++) { await f.write(now + i * 60000); await pollLearning({ ...f, collectorStatusFile, now: now + i * 60000 }); }
+    const incidents = await Promise.all((await fs.readdir(f.incidents)).map(n => read(path.join(f.incidents, n))));
+    expect(incidents.some(r => r.kind === 'learning-collector-capture')).toBe(true);
+    for (const r of incidents) {
+      const snapshot = r.evidence.diagnosticSnapshot, parts = decodeDiagnostics(snapshot);
+      expect(snapshot.complete).toBe(false); expect(parts.collectorCapture.state).toBe('unavailable');
+      expect(JSON.parse(parts.readErrors.json).collector.name).toBe('SyntaxError');
+    }
+    expect(await fs.readFile(collectorStatusFile, 'utf8')).toBe('{broken collector status');
+  });
+  it('marks oversized, missing and unserializable sections explicitly', () => {
+    const cycle = {}; cycle.self = cycle;
+    const large = { error: '☃'.repeat(5000) }, snapshot = snapshotDiagnostics({ large, missing: null, cycle }, now), parts = decodeDiagnostics(snapshot);
+    expect(snapshot.complete).toBe(false); expect(parts.large.state).toBe('oversized');
+    expect(parts.large.bytes).toBe(Buffer.byteLength(JSON.stringify(large)));
+    expect(parts.large.sha256).toBe(createHash('sha256').update(JSON.stringify(large)).digest('hex'));
+    expect(parts.missing.state).toBe('unavailable'); expect(parts.cycle.state).toBe('unserializable');
+    expect(snapshot.json).not.toContain('☃');
+  });
+  it('bounds aggregate escaping overhead and keeps the omitted payload hashes', () => {
+    const values = Object.fromEntries(Array.from({ length: 20 }, (_, i) => ['part' + i, '\\'.repeat(3000)]));
+    const snapshot = snapshotDiagnostics(values, now), parts = decodeDiagnostics(snapshot);
+    expect(snapshot.complete).toBe(false); expect(JSON.parse(snapshot.json).omitted.bytes).toBeGreaterThan(64 * 1024);
+    expect(Object.values(parts).every(p => p.state === 'total-bound' && p.sha256.length === 64)).toBe(true);
+  });
+  it('keeps the total bound even when section names and omission metadata are excessive', () => {
+    const values = Object.fromEntries(Array.from({ length: 2000 }, (_, i) => ['diagnostic-' + i, i]));
+    const snapshot = snapshotDiagnostics(values, now), parts = decodeDiagnostics(snapshot);
+    expect(snapshot.complete).toBe(false); expect(parts).toEqual({});
+    expect(JSON.parse(snapshot.json).omittedPartCount).toBe(2000);
+    expect(JSON.parse(snapshot.json).omitted.sha256).toHaveLength(64);
+  });
+});
 async function platformFixture(f) {
   const performancePolicyFile = path.join(f.base, 'performance-policy.json');
   await fs.writeFile(performancePolicyFile, JSON.stringify({ version: 1, enabled: true, org: 'personal', app: 'yale-shuttle' }));
