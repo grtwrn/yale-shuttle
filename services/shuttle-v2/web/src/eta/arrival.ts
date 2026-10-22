@@ -51,6 +51,19 @@ const MAX_OCCURRENCES = 2;
 
 export const DISTRIBUTION_QUANTILES = Array.from({ length: 50 }, (_, i) => (i + 0.5) / 50);
 
+/** One ordered query for the display and transported distribution. The merge
+ * walks the same weighted samples for both; querying them together avoids a
+ * second walk without changing the exact CDF-boundary comparisons. */
+function distributionPlan(tau: number) {
+  // Preserve the existing display query order for callers outside its usual
+  // q10..q90 range. Production's display quantile is the median.
+  if (tau < 0.1 || tau > 0.9 || !Number.isFinite(tau)) return null;
+  const display = [0.1, tau, 0.9];
+  const probabilities = [...display, ...DISTRIBUTION_QUANTILES].sort((a, b) => a - b);
+  return { probabilities, display: display.map(p => probabilities.indexOf(p)),
+    distribution: DISTRIBUTION_QUANTILES.map(p => probabilities.indexOf(p)) };
+}
+
 export interface StopArrival {
   /** Equal-mass quantile dots from the priced mixture, with display corrections. */
   distribution?: number[] | undefined;
@@ -704,6 +717,7 @@ export function priceRoute(
   includeDistribution = false,
   releasePin?: ReleasePin,
 ): StopArrival[] {
+  const query = includeDistribution ? distributionPlan(tau) : null;
   const sits = situations(belief, ring);
   if (sits.length === 0) return [];
   const N = ring.N;
@@ -840,7 +854,11 @@ export function priceRoute(
     // the RANGE is honest about the rest: while alternatives still hold a
     // fifth of the mass, low and high come from the full mixture, so a
     // 50/50 fold does not read as "17 s [13-23]" (the review's finding 7).
-    const [q10, qt, q90] = mixedQuantiles(parts, [0.1, tau, 0.9]) as [number, number, number];
+    const fullMix = mass < LEAD_SWITCH_MASS && all.length > parts.length;
+    const combinedLead = query && !fullMix ? mixedQuantiles(parts, query.probabilities) : null;
+    const [q10, qt, q90] = (combinedLead && query
+      ? query.display.map(i => combinedLead[i]!)
+      : mixedQuantiles(parts, [0.1, tau, 0.9])) as [number, number, number];
     let eta = qt, low = q10, high = q90;
     // The lead cluster's own chain, minus the rest in progress. It follows the
     // LEAD only — an alternative situation on another leg is not what the rider
@@ -858,16 +876,19 @@ export function priceRoute(
     // While alternatives hold real mass the low end is the FULL mixture's, and
     // an alternative may put the bus AHEAD of the lead's stand — its q10 can
     // honestly sit below the lead's own drive, so the floor stands down.
-    let fullMix = false;
-    if (mass < LEAD_SWITCH_MASS && all.length > parts.length) {
-      const [f10, f90] = mixedQuantiles(all, [0.1, 0.9]) as [number, number];
+    let combinedFull: number[] | null = null;
+    if (fullMix) {
+      combinedFull = query ? mixedQuantiles(all, query.probabilities) : null;
+      const [f10, f90] = (combinedFull && query
+        ? [combinedFull[query.display[0]!]!, combinedFull[query.display[2]!]!]
+        : mixedQuantiles(all, [0.1, 0.9])) as [number, number];
       low = Math.min(low, f10); high = Math.max(high, f90);
-      fullMix = true;
     }
     // Read the actual mixture while the chain samples are still available.
     // This is optional for server transport; it never changes ETA arithmetic.
-    let distribution = includeDistribution
-      ? mixedQuantiles(fullMix ? all : parts, DISTRIBUTION_QUANTILES) : undefined;
+    const combined = combinedFull ?? combinedLead;
+    let distribution = combined && query ? query.distribution.map(i => combined[i]!)
+      : includeDistribution ? mixedQuantiles(fullMix ? all : parts, DISTRIBUTION_QUANTILES) : undefined;
     const key = chainKey(cur, o);
     if (floors && clampAt >= 0 && currentRelease?.index !== clampAt) {
       const prev = floors.map.get(key);
@@ -880,9 +901,13 @@ export function priceRoute(
       if (armOnStanding && cleared && standParts !== null && standParts.length > 0 && (!held || held.armed === false)) {
         // Arming (or re-arming a provisional entry): the standing variant's
         // own quantiles, not the mixture's. The one rise a stand may show.
-        const [s10, sT, s90] = mixedQuantiles(standParts, [0.1, tau, 0.9]) as [number, number, number];
+        const combinedStand = query ? mixedQuantiles(standParts, query.probabilities) : null;
+        const [s10, sT, s90] = (combinedStand && query
+          ? query.display.map(i => combinedStand[i]!)
+          : mixedQuantiles(standParts, [0.1, tau, 0.9])) as [number, number, number];
         standing = sT;
-        if (distribution) distribution = mixedQuantiles(standParts, DISTRIBUTION_QUANTILES);
+        if (distribution) distribution = combinedStand && query ? query.distribution.map(i => combinedStand[i]!)
+          : mixedQuantiles(standParts, DISTRIBUTION_QUANTILES);
         eta = sT; low = s10; high = s90;
         if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: held ? held.eta : null, action: held ? "rearm" : "arm" });
         floors.map.set(key, { eta, standingAt: clampAt, since: clockSince, armed: true });
