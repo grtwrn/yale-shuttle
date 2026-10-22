@@ -611,18 +611,18 @@ export function mixedQuantiles(parts: { s: Float64Array; w: number }[], ps: read
   };
   for (const p of ps) {
     const target = p * total;
-    const atMost = () => {
+    // Match floor(p * N) in the single-part branch: select the first sample
+    // whose CDF is strictly greater than p (the maximum at p = 1).
+    while (true) {
       // Conservative positive-sum/product error bound; it only selects the
       // exact comparison, never treats a nearby probability as equal.
       const operations = steps + P + 2;
       const error = 4 * operations * Number.EPSILON * (Math.abs(acc) + Math.abs(target) + total) + operations * Number.MIN_VALUE;
-      if (acc < target - error) return true;
-      if (acc > target + error) return false;
-      return exactAtMost(p);
-    };
-    // Match floor(p * N) in the single-part branch: select the first sample
-    // whose CDF is strictly greater than p (the maximum at p = 1).
-    while (atMost()) {
+      let atMost: boolean;
+      if (acc < target - error) atMost = true;
+      else if (acc > target + error) atMost = false;
+      else atMost = exactAtMost(p);
+      if (!atMost) break;
       let best = -1, bestV = Infinity;
       for (let i = 0; i < P; i++) {
         const part = parts[i]!;
