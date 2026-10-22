@@ -266,6 +266,39 @@ const fixedTrip={kind:'fixed',origin:{label:'Division / Prospect',lat:41.324769,
 const red={routes:{3:[11,48,72],10:[122,127]},stop_names:{11:'344 Winchester',48:'Division / Prospect',72:'LEPH / 60 College',122:'Union Station (S)',127:'West Haven Train Station'},
  stop_coords:{11:{lat:41.3271,lon:-72.9298},48:fixedTrip.origin,72:{lat:41.30378,lon:-72.93261},122:union,127:westHaven}};
 const red317={bus_name:'#317',route_id:3,lat:41.3271,lon:-72.9298,at_stop_id:11,stationary:true};
+// Run 1792525721613 recorded boarding #127 at 20:33:47.511Z, then
+// waiting-timeout 38 ms later. Replay the recorded pickup position and clock
+// boundary with the existing constructed route and browser controls. These
+// controls do not reconstruct the original HTTP response or physical boarding.
+const waitBoundaryStart='2026-10-20T19:48:41.613Z';
+const waitBoundaryText='🚌 #127 · 1 stop away\nBOARDDivision/Prospect\nGET OFFLEPH/60 College';
+const waitBoundaryBus={bus_name:'#127',route_id:3,lat:41.324824,lon:-72.923697,
+ at_stop_id:48,last_stop_id:49,stationary:true,observed_at:1792528418277};
+const waitBoundaryFeed=buses=>({...red,buses});
+async function waitBoundaryRider(){
+ return current=await harness(waitBoundaryFeed([{...red317,bus_name:'#127'}]),fixedTrip,
+  {initialLine:{label:'Red',busRouteIds:[3]},feedOf:waitBoundaryFeed,text:waitBoundaryText,at:waitBoundaryStart});
+}
+test.each([45*60000,45*60000+5762])('boarding at %s ms starts the ride without a waiting timeout',async elapsed=>{
+ const h=await waitBoundaryRider();
+ vi.setSystemTime(Date.parse(waitBoundaryStart)+elapsed-10000);
+ await h.poll('🚌 14 min\nBOARD🚌Division/Prospect\nGET OFFLEPH/60 College',[waitBoundaryBus]);
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'riding');assert.equal(run.busName,'#127');
+ assert.equal(run.boardedAt,new Date(Date.parse(waitBoundaryStart)+elapsed).toISOString());
+ assert.ok(run.lastBoardDistanceM>15&&run.lastBoardDistanceM<16);
+ assert.deepEqual(await h.journeys(),[]);assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+ await h.poll('Red · Bus #127',[waitBoundaryBus]);
+ assert.equal(h.watcher.status().run.phase,'riding');assert.deepEqual(await h.journeys(),[]);
+});
+test('the same expired waiting cap still closes a run when the bus cannot board',async()=>{
+ const h=await waitBoundaryRider();
+ vi.setSystemTime(Date.parse(waitBoundaryStart)+45*60000+5762-10000);
+ await h.poll(waitBoundaryText,[{...red317,bus_name:'#127'}]);
+ const [journey]=await h.journeys();assert.equal(journey.result,'waiting-timeout-needs-review');
+ assert.equal(journey.boardedAt,undefined);assert.deepEqual(h.clicks,[]);
+ assert.equal(h.watcher.status().run,null);
+});
 async function fixedRed(initialFeed,initialFeedAgeMs=0){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});
  vi.setSystemTime(Date.parse('2026-10-01T15:00:00Z'));

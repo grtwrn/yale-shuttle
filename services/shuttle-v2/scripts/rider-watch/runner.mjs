@@ -304,7 +304,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
       await event('boarded',{bus:name,stop:boardLabel,observedDistanceM:distance});
      }
     }
-    if(now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
+    if(run.phase==='waiting'&&now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
    }else if(run.phase==='riding'){
     const instruction=confirmExitInstruction(run.exitInstructionConflict,feedStable
      ?offPoleExitInstruction(text,sampledFeed,run,now,now-sampledFeedAt):null,now);

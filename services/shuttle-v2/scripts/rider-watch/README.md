@@ -42,6 +42,11 @@ Candidate issues require review; observations use the same GPS feed as the
 app and are not independent physical arrival measurements. This launcher
 does not deploy changes or submit rider reports.
 
+Successful boarding switches to the separate ride timer. A tick that accepts
+boarding at or after the waiting deadline does not also emit a waiting timeout.
+An unboardable bus still uses the existing quoted wait limit. Boarding and
+arrival evidence requirements and historical journey outcomes stay unchanged.
+
 While waiting, the rider inspects visible overview-map bus markers and their
 pause labels. A fresh served stand of at least three minutes requires both a
 visible elapsed clock and an accessible elapsed clock, including when departure
