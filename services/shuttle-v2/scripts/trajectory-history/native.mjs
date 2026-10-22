@@ -95,15 +95,24 @@ export class ModelProjection{
    const old=this.state.feedReceipt??[this.state.idleReceipt,this.state.forecastUnavailableReceipt].filter(r=>r?.epoch===packet.epoch).sort((a,b)=>b.receivedAt-a.receivedAt)[0];
    if(old?.epoch===packet.epoch&&receivedAt<=old.receivedAt){if(receivedAt===old.receivedAt&&old.recordSHA256!==rawSHA256)throw Error('Conflicting original feed receipt');return;}
    if(this.state.last?.epoch===packet.epoch&&receivedAt<this.state.last.at)return;
-   if(this.state.last?.epoch===packet.epoch&&this.state.last.cursor!==packet.cursor)throw Error('Original feed cursor differs');
-   this.state.feedReceipt={epoch:packet.epoch,cursor:packet.cursor,receivedAt,responseAt:packet.responseAt,recordSHA256:rawSHA256};
+   const last=this.state.last,sameContext=r=>r?.epoch===packet.epoch&&r.build===packet.build&&r.cycle===cycle;
+   const anchor=sameContext(last)?last:sameContext(this.state.feedReceipt)?this.state.feedReceipt:null;
+   if(anchor&&anchor.cursor!==packet.cursor)throw Error('Original feed cursor differs');
+   if(last?.epoch===packet.epoch&&!anchor&&last.cursor!==packet.cursor){
+    // A new native seed may include a frame never written by the old cycle.
+    // Preserve that gap explicitly; a feed receipt cannot become a model frame.
+    if(!/^cycle-\d+$/.test(cycle??'')||cycle===last.cycle||last.build!==packet.build||packet.frames.length||packet.cursor<last.cursor||!hash(sourceKey))throw Error('Original feed cursor differs');
+    this.records.push({kind:'model-boundary',at:receivedAt,epoch:packet.epoch,build:packet.build,cycle,sourceKey,cursor:packet.cursor,previous:last,recordSHA256:rawSHA256,reason:'native-seed-frame-not-in-journal',scope:'New native-cycle feed cursor; intervening original model frames and entry clocks remain unknown.'});
+    this.state.tracks={};
+   }
+   this.state.feedReceipt={epoch:packet.epoch,build:packet.build,cycle,sourceKey,cursor:packet.cursor,receivedAt,responseAt:packet.responseAt,recordSHA256:rawSHA256};
   }
   if(packet.hasMore===false&&Array.isArray(packet.feed?.buses)&&packet.feed.buses.length===0&&packet.feed.server_eta==null){
    if(!integer(receivedAt)||!integer(packet.responseAt)||receivedAt-packet.responseAt>120000||packet.responseAt>receivedAt+5000||!hash(rawSHA256)||!integer(packet.cursor)||packet.cursor<1)throw Error('Invalid empty-feed receipt');
    const old=this.state.idleReceipt;
    if(old?.epoch===packet.epoch&&receivedAt<=old.receivedAt){if(receivedAt===old.receivedAt&&old.recordSHA256!==rawSHA256)throw Error('Conflicting empty-feed receipt');return;}
    if(this.state.last?.epoch===packet.epoch&&receivedAt<this.state.last.at)return;
-   if(this.state.last?.epoch===packet.epoch&&this.state.last.cursor!==packet.cursor)throw Error('Empty-feed cursor differs');
+   if(this.state.last?.epoch===packet.epoch&&(cycle===undefined||this.state.last.cycle===cycle)&&this.state.last.cursor!==packet.cursor)throw Error('Empty-feed cursor differs');
    const receipt={receivedAt,responseAt:packet.responseAt,recordSHA256:rawSHA256,epoch:packet.epoch,cursor:packet.cursor,emptyFleet:true,hasServerEta:false};
    const bucket=Math.floor(receivedAt/MINUTE);if(!this.state.idleService||this.state.idleBucket!==bucket)this.records.push({kind:'empty-feed-receipt',v:1,at:receivedAt,build:packet.build,cycle,sourceKey,...receipt,scope:'Original fresh empty GPS feed; no physical service/end-of-day verdict.'});
    this.state.tracks={};this.state.idleService=true;this.state.forecastUnavailable=false;this.state.idleBucket=bucket;this.state.idleReceipt=receipt;this.counts.idleReceipts++;
@@ -116,7 +125,7 @@ export class ModelProjection{
    const old=this.state.forecastUnavailableReceipt;
    if(old?.epoch===packet.epoch&&receivedAt<=old.receivedAt){if(receivedAt===old.receivedAt&&old.recordSHA256!==rawSHA256)throw Error('Conflicting forecast-unavailable receipt');return;}
    if(this.state.last?.epoch===packet.epoch&&receivedAt<this.state.last.at)return;
-   if(this.state.last?.epoch===packet.epoch&&this.state.last.cursor!==packet.cursor)throw Error('Forecast-unavailable cursor differs');
+   if(this.state.last?.epoch===packet.epoch&&(cycle===undefined||this.state.last.cycle===cycle)&&this.state.last.cursor!==packet.cursor)throw Error('Forecast-unavailable cursor differs');
    const receipt={receivedAt,responseAt:packet.responseAt,recordSHA256:rawSHA256,epoch:packet.epoch,cursor:packet.cursor,emptyFleet:false,hasServerEta:false,freshGpsBuses:observations.length,observations};
    const bucket=Math.floor(receivedAt/MINUTE);if(!this.state.forecastUnavailable||this.state.unavailableBucket!==bucket)this.records.push({kind:'forecast-unavailable-feed-receipt',v:1,at:receivedAt,build:packet.build,cycle,sourceKey,...receipt,scope:'Original fresh GPS feed without an arrival forecast; not an empty fleet, new model frame or physical service verdict.'});
    this.state.tracks={};this.state.idleService=false;this.state.forecastUnavailable=true;this.state.unavailableBucket=bucket;this.state.forecastUnavailableReceipt=receipt;this.counts.unavailableReceipts++;

@@ -87,6 +87,26 @@ describe('compact original model timing projections',()=>{
  it('refuses unbound or stale empty-feed receipts',()=>{const p=projector(),packet={build:'build',epoch:'model',cursor:1,frames:[],hasMore:false,responseAt:base,feed:{buses:[]}};expect(()=>p.consume(packet,{receivedAt:base+180000,rawSHA256:h})).toThrow('empty-feed');expect(()=>p.consume(packet,{receivedAt:base+1})).toThrow('empty-feed');});
 });
 
+describe('native-cycle feed boundaries',()=>{
+ it.each(['active','empty','unavailable'])('retains a new-cycle %s seed view as a gap, without inventing a frame or entry clock',kind=>{
+  const p=projector();consume(p,model(1,0));const original=structuredClone(p.state.last),at=base+10000,packet=missingFeed(at,kind==='empty'?[]:undefined);packet.cursor=2;if(kind==='active')packet.feed.server_eta={v:2};
+  p.consume(packet,{cycle:'cycle-2',sourceKey:h,receivedAt:at+1,rawSHA256:h});
+  expect(p.state.last).toEqual(original);expect(p.counts.frames).toBe(1);expect(p.state.tracks).toEqual({});expect(p.records.filter(r=>r.kind==='model-boundary').at(-1)).toMatchObject({reason:'native-seed-frame-not-in-journal',cycle:'cycle-2',cursor:2,recordSHA256:h});
+  expect(p.state.feedReceipt).toMatchObject({cycle:'cycle-2',build:'build',cursor:2});
+  const resumed=projector(JSON.parse(JSON.stringify(p.state)));resumed.consume(packet,{cycle:'cycle-2',sourceKey:h,receivedAt:at+1,rawSHA256:h});expect(resumed.records).toEqual([]);
+  resumed.consume(model(3,1),{cycle:'cycle-2',sourceKey:h});expect(resumed.records.filter(r=>r.kind==='model-projection').at(-1).buses[0].entry).toBeNull();
+  resumed.consume(model(4,2),{cycle:'cycle-2',sourceKey:h});expect(resumed.counts.clockEntries).toBe(1);expect(resumed.state.last.cursor).toBe(4);
+ });
+ it.each(['same-cycle','backward','unbound-cycle','bad-source','duplicate-frame'])('still refuses an unproved %s cursor jump',kind=>{
+  const p=projector();consume(p,model(2,0));const packet=missingFeed(base+20000);packet.cursor=kind==='backward'?1:3;if(kind==='duplicate-frame')packet.frames=model(2,0).frames;
+  expect(()=>p.consume(packet,{cycle:kind==='same-cycle'?'cycle-1':kind==='unbound-cycle'?undefined:'cycle-2',sourceKey:kind==='bad-source'?'bad':h,receivedAt:base+20001,rawSHA256:h})).toThrow('Original feed cursor differs');
+ });
+ it('does not let a second seed view advance its cursor without a retained frame',()=>{
+  const p=projector();consume(p,model(1,0));const packet=missingFeed(base+10000);packet.cursor=2;p.consume(packet,{cycle:'cycle-2',sourceKey:h,receivedAt:base+10001,rawSHA256:h});const resumed=projector(p.state),later={...packet,cursor:3,responseAt:base+20000};
+  expect(()=>resumed.consume(later,{cycle:'cycle-2',sourceKey:h,receivedAt:base+20001,rawSHA256:'b'.repeat(64)})).toThrow('Original feed cursor differs');expect(resumed.state.last.cursor).toBe(1);
+ });
+});
+
 describe('read-only streaming original gzip prefixes',()=>{
  it('retains complete lines from an open sync-flushed stream and resumes after a partial final line',async()=>{const file=path.join(temporary(),'feed.gz'),gzip=createGzip(),sink=fs.createWriteStream(file);gzip.pipe(sink);gzip.write('{"a":"🚌"}\n{"b":');await new Promise((resolve,reject)=>gzip.flush(constants.Z_SYNC_FLUSH,e=>e?reject(e):resolve()));await new Promise((resolve,reject)=>sink.write('',e=>e?reject(e):resolve()));const first=await records(file);expect(first[0].record).toEqual({a:'🚌'});expect(first.at(-1).prefix.partialTail).toBe(true);gzip.write('2}\n');await new Promise((resolve,reject)=>gzip.flush(constants.Z_SYNC_FLUSH,e=>e?reject(e):resolve()));await new Promise((resolve,reject)=>sink.write('',e=>e?reject(e):resolve()));const next=await records(file,{previous:first.at(-1).prefix});expect(next.filter(r=>r.record).map(r=>r.record)).toEqual([{a:'🚌'},{b:2}]);gzip.end();await once(sink,'finish');});
  it('pins the captured prefix despite a concurrently appended new gzip member',async()=>{const file=path.join(temporary(),'feed.gz');fs.writeFileSync(file,gzipSync('{"a":1}\n'));const size=fs.statSync(file).size;fs.appendFileSync(file,gzipSync('{"a":2}\n'));const all=await records(file,{captureBytes:size});expect(all.filter(r=>r.record)).toHaveLength(1);expect(all.at(-1).prefix.bytes).toBe(size);});
