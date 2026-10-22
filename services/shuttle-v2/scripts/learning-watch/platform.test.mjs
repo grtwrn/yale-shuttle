@@ -52,6 +52,29 @@ describe('retained quota observations', () => {
   it.each([[19.999, 'healthy'], [20, 'throttled'], [20.001, 'throttled'], [0, 'healthy']])('uses the observed recent counter increase %s', (seconds, state) => {
     expect(inspectPlatform(packets(seconds), now).state).toBe(state);
   });
+  it.each(['throttled', 'sourceTime', 'support'])('keeps an explicitly partial %s response unknown', async name => {
+    for (const seconds of [0, 50]) {
+      const data = packets(seconds); data[name].isPartial = true;
+      const r = await collectPlatform(policy, { now, tokenProvider: async () => token, fetcher: transport(data) });
+      expect(r.state).toBe('unknown'); expect(r.snapshot).toBeUndefined();
+      expect(JSON.stringify(r)).not.toContain(token);
+    }
+  });
+  it.each([null, 'false', 0])('rejects the malformed completeness marker %s', async marker => {
+    for (const name of ['throttled', 'sourceTime', 'support']) {
+      const data = packets(0); data[name].isPartial = marker;
+      const r = await collectPlatform(policy, { now, tokenProvider: async () => token, fetcher: transport(data) });
+      expect(r.state).toBe('unknown'); expect(r.snapshot).toBeUndefined();
+    }
+  });
+  it.each([undefined, false])('accepts a valid vector with completeness marker %s', async marker => {
+    for (const seconds of [0, 50]) {
+      const data = packets(seconds);
+      for (const value of Object.values(data)) if (marker !== undefined) value.isPartial = marker;
+      const r = await collectPlatform(policy, { now, tokenProvider: async () => token, fetcher: transport(data) });
+      expect(r.state).toBe(seconds ? 'throttled' : 'healthy'); expect(r.snapshot).toBeDefined();
+    }
+  });
   it('keeps absent configuration disabled and rejects unsafe policy scope before authentication', async () => {
     let calls = 0; const tokenProvider = async () => { calls++; return token; };
     expect(await collectPlatform(null, { now, tokenProvider })).toEqual({ configured: false, enabled: false, state: 'disabled' });

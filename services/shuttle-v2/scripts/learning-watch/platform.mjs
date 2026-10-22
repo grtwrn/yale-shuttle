@@ -49,6 +49,8 @@ async function boundedJSON(response) {
 }
 
 function vector(data, now) {
+  // A partial query can omit counter history while still returning success.
+  if (data?.isPartial !== undefined && data.isPartial !== false) throw Error('Incomplete platform metric response');
   if (data?.status !== 'success' || data.data?.resultType !== 'vector'
     || !Array.isArray(data.data.result) || data.data.result.length < 1 || data.data.result.length > 16) throw Error('Invalid platform metric vector');
   const result = new Map();

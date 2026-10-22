@@ -231,19 +231,40 @@ describe('failure detail survives mutable diagnostic files', () => {
 async function platformFixture(f) {
   const performancePolicyFile = path.join(f.base, 'performance-policy.json');
   await fs.writeFile(performancePolicyFile, JSON.stringify({ version: 1, enabled: true, org: 'personal', app: 'yale-shuttle' }));
-  let seconds = 50, unavailable = false;
+  let seconds = 50, unavailable = false, partial = false;
   const platformProbe = (policy, { now: at }) => collectPlatform(policy, { now: at,
     tokenProvider: async () => 'fm2_private_fixture_not_a_real_credential',
     fetcher: async url => {
       if (unavailable) throw Error('Unreachable fixture');
       const query = new URL(url).searchParams.get('query');
       const n = query.startsWith('increase(') ? seconds : query.startsWith('timestamp(') ? (at - 15000) / 1000 : 20;
-      return Response.json({ status: 'success', data: { resultType: 'vector', result: [{
+      return Response.json({ status: 'success', ...(partial ? { isPartial: true } : {}), data: { resultType: 'vector', result: [{
         metric: { app: 'yale-shuttle', instance: '91854406a779d8', host: '744d', region: 'ewr' }, value: [at / 1000, String(n)],
       }] } });
     } });
-  return { performancePolicyFile, platformProbe, seconds: n => { seconds = n; }, unavailable: v => { unavailable = v; } };
+  return { performancePolicyFile, platformProbe, seconds: n => { seconds = n; }, unavailable: v => { unavailable = v; }, partial: v => { partial = v; } };
 }
+it('does not recover or rearm a confirmed CPU episode from a partial zero-throttling response', async () => {
+  const f = await fixture(), p = await platformFixture(f);
+  for (let i = 0; i < 3; i++) { await f.write(now + i * 60000); await pollLearning({ ...f, ...p, now: now + i * 60000 }); }
+  const [name] = await fs.readdir(f.incidents), incidentFile = path.join(f.incidents, name), original = await digest(incidentFile);
+  const monitorState = path.join(f.directory, 'state.json'), before = (await read(monitorState)).platform;
+  p.seconds(0); p.partial(true); await f.write(now + 180000);
+  const missing = await pollLearning({ ...f, ...p, now: now + 180000 });
+  expect(missing.platformPerformance.state).toBe('unknown'); expect(missing.ok).toBe(false);
+  expect(missing.newIncidents).toEqual([]); expect((await read(monitorState)).platform).toEqual(before);
+  expect(await fs.readdir(f.incidents)).toEqual([name]); expect(await digest(incidentFile)).toBe(original);
+  p.partial(false); p.seconds(50); await f.write(now + 240000);
+  expect((await pollLearning({ ...f, ...p, now: now + 240000 })).newIncidents).toEqual([]);
+  expect((await read(monitorState)).platform.observations['platform-cpu-throttle'].firstAt)
+    .toBe(before.observations['platform-cpu-throttle'].firstAt);
+  p.seconds(0); await f.write(now + 300000);
+  expect((await pollLearning({ ...f, ...p, now: now + 300000 })).ok).toBe(true);
+  expect((await read(monitorState)).platform.observations).toEqual({});
+  p.seconds(50);
+  for (let i = 6; i < 9; i++) { await f.write(now + i * 60000); await pollLearning({ ...f, ...p, now: now + i * 60000 }); }
+  expect(await fs.readdir(f.incidents)).toHaveLength(2); expect(await digest(incidentFile)).toBe(original);
+});
 it('retains a recent CPU stall across healthy learner checks, cycle change, lost acknowledgement and unknown telemetry', async () => {
   const f = await fixture(), p = await platformFixture(f), receipts = [];
   for (let i = 0; i < 3; i++) {

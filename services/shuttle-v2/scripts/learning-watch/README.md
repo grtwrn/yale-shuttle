@@ -79,6 +79,9 @@ are sent only to the fixed Fly Prometheus origin and are never retained.
 Absent configuration explicitly reports disabled coverage. Bad configuration,
 failed authentication, missing/stale series, mismatched machine identities and
 insufficient counter support remain unknown operational findings.
+Responses marked `isPartial: true`, or with a malformed completeness marker,
+also remain unknown. An omitted marker and an explicit `false` are accepted;
+an incomplete zero-throttling response cannot recover or rearm a CPU episode.
 
 The check reads the platform counter increase over five minutes, rather than
 only asking whether the app responds at this instant. At least 20 seconds of
