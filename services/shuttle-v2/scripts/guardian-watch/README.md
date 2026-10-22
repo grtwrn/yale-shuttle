@@ -47,6 +47,18 @@ The scheduled output log keeps approximately 1 MiB live plus one compressed
 routine log can roll because incident records and evidence have separate
 retention; pending evidence is not deleted when output rotates.
 
+The production health check normally uses Python's standard HTTPS client.
+Only a DNS lookup failure for that fixed health URL invokes `health.mjs` using
+`GUARDIAN_NODE` (default `/opt/homebrew/bin/node`). The child uses the shared
+`monitor-fetch.mjs` transport, retains certificate and hostname verification,
+and has a ten-second request deadline, 16 KiB JSON limit and fifteen-second
+process deadline. HTTP errors, timeouts and TLS failures from the original
+check keep the normal three-failure alert rule without this retry. A fallback
+response still needs HTTP 200 and literal `ok: true`. `healthCheck` records the
+latest check; `healthDNSFallbacks` and `healthDNSLastFallback` retain the retry
+count and last outcome, including the original lookup failure. No system DNS
+or VPN configuration changes.
+
 `evidence-status.json` exposes fresh status, capture/retention errors, retained
 and protected bytes, and historical sample gaps. The bridge also records the
 running Python source hashes in `bridge-state.json`. Exit 0 means the poll's
