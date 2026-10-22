@@ -6,7 +6,7 @@ queue, and raises incidents when production /healthz fails or the rider stalls.
 Repeats of the same kind/line within DEDUPE_S are appended to the open incident.
 Watcher data is only read, never modified.
 """
-import fcntl, gzip, hashlib, json, os, sys, time, urllib.request
+import fcntl, gzip, hashlib, json, os, socket, subprocess, sys, time, urllib.error, urllib.request
 from pathlib import Path
 from evidence import atomic_json, capture_bundle, maintain_bundles, verify_bundle
 from pickup import audit_bundle
@@ -231,8 +231,34 @@ def check_completed_pickups(st, ws, watch):
     # Routine verdicts roll. Only candidate incidents protect sealed evidence.
     ws["pickupAudits"] = dict(list(audits.items())[-200:])
 
+def health_dns_failure(error):
+    cause = error.reason if isinstance(error, urllib.error.URLError) else error
+    codes = {socket.EAI_NONAME, socket.EAI_AGAIN, socket.EAI_FAIL}
+    if hasattr(socket, 'EAI_NODATA'):
+        codes.add(socket.EAI_NODATA)
+    return isinstance(cause, socket.gaierror) and cause.errno in codes
+
+
+def recover_health_dns():
+    result = subprocess.run([
+        os.environ.get('GUARDIAN_NODE', '/opt/homebrew/bin/node'),
+        str(Path(__file__).with_name('health.mjs')),
+    ], capture_output=True, text=True, timeout=15, check=False)
+    if result.returncode != 0 or len(result.stdout) > 8192:
+        raise ValueError('Guardian DNS recovery did not complete')
+    value = json.loads(result.stdout)
+    if (not isinstance(value, dict) or type(value.get('httpStatus')) is not int
+            or not 100 <= value['httpStatus'] <= 599
+            or not isinstance(value.get('health'), dict)
+            or type(value['health'].get('ok')) is not bool
+            or not isinstance(value.get('transport'), dict)):
+        raise ValueError('Invalid guardian DNS recovery result')
+    return value
+
+
 def check_health(st):
     ok, info = False, ""
+    fallback = False
     try:
         with urllib.request.urlopen(HEALTH, timeout=15) as r:
             body = json.loads(r.read())
@@ -240,6 +266,20 @@ def check_health(st):
             info = {k: body.get(k) for k in ("ok", "pollStalenessMs", "collectorLagMs", "knownBuses", "build")}
     except Exception as e:
         info = f"{type(e).__name__}: {e}"[:300]
+        if health_dns_failure(e):
+            fallback = True
+            primary = info
+            try:
+                recovered = recover_health_dns()
+                ok = recovered['httpStatus'] == 200 and recovered['health']['ok'] is True
+                info = {'primaryFailure': primary, 'fallback': recovered}
+            except Exception:
+                info = {'primaryFailure': primary, 'fallbackFailure': 'Guardian DNS recovery did not complete'}
+    checked = {'checkedAt': iso(now()), 'ok': ok, 'dnsFallbackAttempted': fallback, 'detail': info}
+    st['healthCheck'] = checked
+    if fallback:
+        st['healthDNSFallbacks'] = min(1_000_000, st.get('healthDNSFallbacks', 0) + 1)
+        st['healthDNSLastFallback'] = checked
     st["healthFails"] = 0 if ok else st.get("healthFails", 0) + 1
     if st["healthFails"] == 3:  # three consecutive minutes
         raise_incident(st, "prod-health", None, now(), "production /healthz failing for 3 consecutive checks",
