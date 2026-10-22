@@ -97,10 +97,14 @@ position must agree with the at-pickup card and precede the boarding action by
 at most 15 seconds. An earlier close pass stays unknown. Resumed, excluded,
 transfer, ambiguous, missing and changed-vehicle records remain unknown.
 
-A pickup observed more than five minutes beyond the first window raises
+A pickup observed more than five minutes before the first window's lower
+bound or beyond its upper bound raises
 `rider-pickup-window-miss` for review, even when the journey completed. This is
 the existing canary's five-minute first-sight diagnostic tolerance, checked for
-parity by tests. These shared-GPS records do not prove physical boarding or
+parity by tests and applied equally to both tails. Early receipts use
+`early-window` and include `earlyBeforeWindowSec`; late receipts retain
+`late-window` and `lateBeyondWindowSec`. The strict threshold excludes exactly
+five minutes in either direction. These shared-GPS records do not prove physical boarding or
 independent ETA accuracy, and do not fit or publish a model. A result inside
 the tolerance is not an accuracy qualification. The October 20 Purple #124
 record has a literal 4–12 min first window and a pickup-area observation 27 min
@@ -115,4 +119,6 @@ prevents duplicate occurrences after a lost bridge checkpoint. Each rider keeps
 at most 200 routine verdicts in bridge state. Routine audit bundles use the
 existing seven-day / 256 MiB rolling store; candidate incident bundles receive
 the existing pending-evidence protection. `evidence-status.json.pickupAudits`
-reports pending work and separate unknown, late-window and tolerance counts.
+reports pending work and separate unknown, early-window, late-window and
+tolerance counts. Existing audit verdicts are not rewritten when early-window
+support is installed.

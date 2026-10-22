@@ -147,12 +147,18 @@ def analyze(journey, samples, coverage):
             or not arrival['cardAtPickup']):
         return unknown('earlier-or-unbound-pickup-opportunity')
     late = arrival_at-first_at-hi
-    return {'state': 'late-window' if late > MISS_SECONDS else 'within-diagnostic-tolerance',
+    early = lo-(arrival_at-first_at)
+    result = {'state': 'early-window' if early > MISS_SECONDS else 'late-window' if late > MISS_SECONDS else 'within-diagnostic-tolerance',
             'runId': journey['id'], 'busName': name, 'routeId': route_ids[0], 'boardStopId': target,
             'firstQuote': {'at': first['at'], 'text': raw, 'loSec': lo, 'hiSec': hi},
             'pickupObservation': arrival, 'observedWaitSec': arrival_at-first_at,
             'lateBeyondWindowSec': late, 'toleranceSec': MISS_SECONDS,
             'scope': 'Same-feed GPS-correlated virtual pickup diagnostic, not physical boarding, independent ETA accuracy or model promotion.'}
+    # Preserve existing late/within receipts. New early incidents carry their
+    # positive lower-bound miss separately from the signed upper-bound value.
+    if early > MISS_SECONDS:
+        result['earlyBeforeWindowSec'] = early
+    return result
 
 
 def audit_bundle(receipt):

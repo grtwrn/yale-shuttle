@@ -211,13 +211,16 @@ def check_completed_pickups(st, ws, watch):
             receipt = capture_bundle(EVIDENCE, "pickup-audit-" + identity, event, refs, [WATCH, WATCH_RED])
             result = audit_bundle(receipt)
             result.update({"checkedAt": iso(now()), "bundle": receipt})
-            if result["state"] == "late-window":
+            if result["state"] in ("late-window", "early-window"):
                 prior = pickup_already_reported(watch, run)
                 if not prior:
                     at = parse(event["at"])
                     line = event.get("line") or ws.get("runs", {}).get(run)
+                    early = result["state"] == "early-window"
+                    miss = result["earlyBeforeWindowSec"] if early else result["lateBeyondWindowSec"]
+                    relation = "before" if early else "beyond"
                     summary = (f"{line or 'Shuttle'} #{result['busName']} pickup observation was "
-                               f"{round(result['lateBeyondWindowSec']/60)} min beyond the first displayed window; "
+                               f"{round(miss/60)} min {relation} the first displayed window; "
                                "GPS-correlated virtual rider diagnostic needs review")
                     raise_incident(st, "rider-pickup-window-miss", line, at, summary,
                                    {"event": event, "pickupAudit": result}, refs, capture_event=event)
@@ -382,10 +385,10 @@ def run_once():
               "storage": storage, "pickupAudits": {
                   "general": {"retained": len(st.get("pickupAudits", {})), "pending": len(st.get("pickupAuditPending", {})),
                               "states": {kind: sum(r.get("state") == kind for r in st.get("pickupAudits", {}).values())
-                                         for kind in ["late-window", "within-diagnostic-tolerance", "unknown"]}},
+                                         for kind in ["early-window", "late-window", "within-diagnostic-tolerance", "unknown"]}},
                   "red": {"retained": len(st["red"].get("pickupAudits", {})), "pending": len(st["red"].get("pickupAuditPending", {})),
                           "states": {kind: sum(r.get("state") == kind for r in st["red"].get("pickupAudits", {}).values())
-                                     for kind in ["late-window", "within-diagnostic-tolerance", "unknown"]}}},
+                                     for kind in ["early-window", "late-window", "within-diagnostic-tolerance", "unknown"]}}},
               "scope": "Incident evidence and virtual pickup-window diagnostics, not independent physical arrival or model accuracy"}
     dump(f"{STATE}/evidence-status.json", status)
     st["evidence"] = status
