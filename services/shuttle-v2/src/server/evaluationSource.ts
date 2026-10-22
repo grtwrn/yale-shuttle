@@ -10,11 +10,12 @@ export class EvaluationSource {
 
   private current() {
     if (!this.engine || this.inputs.stats().failed) throw new EvaluationInputError('unavailable', 'Evaluation source unavailable');
-    const feed = JSON.parse(this.getPublicJson());
+    const feedJson = this.getPublicJson();
+    const feed = JSON.parse(feedJson);
     const head = this.inputs.head();
     if (this.inputs.stats().failed || head.at === null || this.engine.evaluationClock() !== head.at)
       throw new EvaluationInputError('unavailable', 'Evaluation source is not ready');
-    return { feed, head, engine: this.engine };
+    return { feed, feedJson, head, engine: this.engine };
   }
 
   head() {
@@ -34,9 +35,27 @@ export class EvaluationSource {
         sha256: createHash('sha256').update(snapshot.bytes).digest('hex'), data: Buffer.from(snapshot.bytes).toString('base64') }, feed };
   }
 
-  read(epoch: string, after: number, limit = 16) {
-    const { feed } = this.current();
+  private readPage(epoch: string, after: number, limit: number) {
+    const { feed, feedJson } = this.current();
     const result = this.inputs.read(epoch, after, { limit, now: this.clock() });
-    return { v: 1 as const, build: this.build(), ...result, responseAt: this.clock(), feed: result.hasMore ? null : feed };
+    return {
+      envelope: { v: 1 as const, build: this.build(), ...result, responseAt: this.clock() },
+      feed: result.hasMore ? null : feed,
+      feedJson: result.hasMore ? 'null' : feedJson,
+    };
+  }
+
+  read(epoch: string, after: number, limit = 16) {
+    const { envelope, feed } = this.readPage(epoch, after, limit);
+    return { ...envelope, feed };
+  }
+
+  /** Reuse the already validated public JSON rather than serializing its
+   * complete feed again for each source poll. Validation and page clocks
+   * are shared with the object reader, including failed and idle sources. */
+  readJson(epoch: string, after: number, limit = 16): string {
+    const { envelope, feedJson } = this.readPage(epoch, after, limit);
+    const header = JSON.stringify(envelope);
+    return header.slice(0, -1) + ',"feed":' + feedJson + '}';
   }
 }

@@ -921,7 +921,8 @@ export function buildApp(opts: AppOptions): Hono {
       if (!epoch || !after || !/^\d+$/.test(after) || !Number.isSafeInteger(Number(after))
         || (limit !== undefined && (!/^\d+$/.test(limit) || !Number.isSafeInteger(Number(limit)) || Number(limit) < 1 || Number(limit) > 16)))
         return c.json({ error: 'evaluation_cursor' }, 400);
-      return c.json(evaluationSource.read(epoch, Number(after), limit === undefined ? 16 : Number(limit)));
+      return c.body(evaluationSource.readJson(epoch, Number(after), limit === undefined ? 16 : Number(limit)), 200,
+        { 'Content-Type': 'application/json' });
     } catch (error) {
       if (error instanceof EvaluationInputError && error.code !== 'unavailable')
         return c.json({ error: 'evaluation_' + error.code }, error.code === 'cursor' ? 400 : 409);
