@@ -173,6 +173,23 @@ describe("arrival: the sum of the chain", () => {
     expect(row.stopsAhead).toBe(1);
   });
 
+  it("keeps the modeled wait in the arrival distribution after a stand outlasts CDF precision", () => {
+    const { ring, tables } = setup(), now = 3_200_000;
+    let b = stepBelief(undefined, ring, standAt1(0), now - 30_000, STOPS);
+    for (let t = 1; t <= 6; t++) b = stepBelief(b, ring, standAt1(0), now - 30_000 + t * 5000, STOPS);
+    // Isolate the already-confirmed standing phase and its residual term.
+    b.p.fill(0); b.p[ring.stopCell[0]!] = 1; b.lead = 0;
+    tables.hops[0]!.drive = point(0);
+    const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, .5, undefined, undefined, true)
+      .find(r => r.stopId === 2 && r.occurrence === 0)!;
+    expect(row.standingAt).toBe(0);
+    const h = tables.stops[0]!.stand.tailHazard;
+    expect(row.eta).toBeCloseTo(Math.log(2) / h, 0);
+    expect(row.low).toBeCloseTo(-Math.log(.9) / h, 0);
+    expect(row.high).toBeCloseTo(-Math.log(.1) / h, 0);
+    expect(row.distribution!.every(x => Number.isFinite(x) && x > 0)).toBe(true);
+  });
+
   it("the departure poll moves the number to the drive, and the next poll finishes it", () => {
     const { ring, tables } = setup();
     let now = 300_000;
