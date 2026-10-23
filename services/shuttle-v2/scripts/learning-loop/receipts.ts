@@ -1,5 +1,22 @@
 import { digest, initialSourceChain, modelKey, nextSourceChain, validateExactFrame } from './stream';
-import { productionControlInputValid, UNIT } from './lib.mjs';
+import { MATCH_MS, productionControlInputValid, UNIT } from './lib.mjs';
+import { haversineM } from '../canary-metrics.mjs';
+
+type CurbEvidence = { observedAt: number; receivedAt: number };
+
+/** Check the live curb observation itself, independently of the scored row.
+ * Catchup frames advance model history but never supply observed arrivals. */
+function curbEvidence(row: any, input: any): CurbEvidence {
+  const packet = input.source, feed = packet?.feed;
+  const buses = feed?.buses?.filter((bus: any) => bus.route_id === row.r && bus.bus_id === row.busId && bus.bus_name === row.busName);
+  const bus = buses?.length === 1 ? buses[0] : null, coord = feed?.stop_coords?.[row.stop];
+  if (packet?.hasMore !== false || packet.cursor !== packet.latest || packet.frames?.length !== 0
+    || !bus || !coord || bus.at_stop_id !== row.stop || bus.stationary !== true
+    || ![bus.lat, bus.lon, coord.lat, coord.lon, bus.observed_at, input.receivedAt].every(Number.isFinite)
+    || Math.abs(input.receivedAt - bus.observed_at) > 30000 || haversineM(bus, coord) > 75)
+    throw Error('Retained curb receipt does not show the named bus stationary at the target stop');
+  return { observedAt: bus.observed_at, receivedAt: input.receivedAt };
+}
 
 /** Rebuild the full seed -> input chain from retained HTTP receipts, not from
  * row annotations. Only small digests and requested sample cursors are kept. */
@@ -12,12 +29,17 @@ function exactReceiptVerifier(state: any, rows: any[], seed: any) {
   if (chain !== state.source.initialChain) throw Error('Original source chain changed');
   const needed = new Set(rows.map(r => r.champion?.control?.source?.cursor)), chains = new Map<number, any>();
   const recent = new Map<number, string>(), controls = new Map<string, any[]>(), inputs = new Set<string>();
+  const curbs = new Map<string, { row: any; kind: 'arrival' | 'outcome' }[]>();
+  const evidence = new Map<any, Partial<Record<'arrival' | 'outcome', CurbEvidence>>>();
   for (const row of rows) {
     if (!row.inputHash) throw Error('Missing exact forecast input receipt');
     const group = controls.get(row.inputHash) ?? []; group.push(row); controls.set(row.inputHash, group); inputs.add(row.inputHash);
     if (row.det !== null) {
       if (!row.arrivalInputHash || !row.outcomeInputHash) throw Error('Missing exact curb outcome receipts');
       inputs.add(row.arrivalInputHash); inputs.add(row.outcomeInputHash);
+      for (const [kind, hash] of [['arrival', row.arrivalInputHash], ['outcome', row.outcomeInputHash]] as const) {
+        const group = curbs.get(hash) ?? []; group.push({ row, kind }); curbs.set(hash, group);
+      }
     }
   }
   function accept({ raw, input }: any) {
@@ -49,10 +71,23 @@ function exactReceiptVerifier(state: any, rows: any[], seed: any) {
       if (needed.has(cursor)) chains.set(cursor, { at, chain, sha256: frame.sha256, contextSha256: frame.contextSha256, observationVersion: frame.observationVersion });
     }
     if (packet.cursor > cursor) throw Error('HTTP cursor advanced without retained model input');
+    for (const { row, kind } of curbs.get(hash) ?? []) {
+      const pair = evidence.get(row) ?? {}; pair[kind] = curbEvidence(row, input); evidence.set(row, pair);
+    }
+    curbs.delete(hash);
   }
   function finish() {
     if (inputs.size || controls.size) throw Error('Required exact forecast/outcome HTTP inputs are missing');
     for (const row of rows) {
+      if (row.det !== null) {
+        const { arrival, outcome } = evidence.get(row) ?? {};
+        if (!arrival || !outcome || ![row.at, row.arrivedAt, row.availableAt, row.det].every(Number.isFinite)
+          || arrival.receivedAt < row.at || outcome.receivedAt < arrival.receivedAt
+          || outcome.observedAt - arrival.observedAt < 9000 || row.arrivedAt !== arrival.observedAt
+          || row.availableAt !== outcome.receivedAt || row.det !== (arrival.observedAt - row.at) / 1000
+          || row.det < 0 || row.det * 1000 > MATCH_MS)
+          throw Error('Scored curb outcome differs from its two prospective retained observations');
+      }
       const s = row.champion?.control?.source, recorded = s && chains.get(s.cursor);
       const candidate = { version: state.id, params: { ...state.candidate.params, CONFORMAL: row.phase === 'calibration' ? UNIT : state.candidate.params.CONFORMAL } };
       if (!recorded || s.seedSha256 !== seedSha256 || s.epoch !== seed.epoch || s.build !== seed.build || s.sourceKey !== state.sourceKey
