@@ -98,8 +98,12 @@ describe("the lap clock is warm-started from history", () => {
   }
 
   async function boot(): Promise<Collector> {
-    collector = await Collector.create(bundle, { upstream: new StubUpstream() });
+    // This replay controls Date in the Vitest thread.
+    collector = await Collector.create(bundle, { upstream: new StubUpstream(), calibrationMode: 'inline' });
     await collector.start();
+    // A passing warm-start assertion must also use this replay's date for
+    // calibration, rather than fitting September data with today's clock.
+    expect(collector.calibrationSource()!.main.asOf).toBe(Date.now());
     return collector;
   }
 

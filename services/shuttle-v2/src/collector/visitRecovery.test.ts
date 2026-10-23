@@ -147,13 +147,15 @@ describe("recovering the complete visit on a fresh restart fix", () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(latest.collectedAt);
-      collector = await Collector.create(bundle, { upstream: new Stub() });
+      // Worker threads do not inherit the historical Vitest clock.
+      collector = await Collector.create(bundle, { upstream: new Stub(), calibrationMode: 'inline' });
       await (collector as unknown as Inner).refreshStaticIfNeeded(true);
+      expect(collector.calibrationSource()!.main.asOf).toBe(latest.collectedAt);
       for (const obs of fixture.observations) {
         latest = obs; vi.setSystemTime(obs.collectedAt);
         if (obs.collectedAt === fixture.restartAt) {
           collector.stop();
-          collector = await Collector.create(bundle, { upstream: new Stub() });
+          collector = await Collector.create(bundle, { upstream: new Stub(), calibrationMode: 'inline' });
         }
         await (collector as unknown as Inner).runPoll();
       }

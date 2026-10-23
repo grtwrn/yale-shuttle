@@ -1,10 +1,12 @@
 import type Database from "better-sqlite3";
 import { CollectorWitnessCapture, sourceWitnessRow, type SourceMutation } from './witnessCapture.js';
-import { createHash } from "node:crypto";
+import { witnessJSON, witnessSHA } from './witnessCodec.js';
+import { performance } from 'node:perf_hooks';
 import { calibrationReader } from "../db/calibrationSnapshot.js";
 import type { CalibrationReader, CalibrationSource } from "../calibrator/provenance.js";
 
-import { calibrate, SPLIT_WINDOW_DAYS } from "../calibrator/calibrator.js";
+import { calibrateNetwork as calculateNetwork } from '../calibrator/networkCalibration.js';
+import { CalibrationWorker } from '../calibrator/calibrationWorker.js';
 import { ReleaseFitCache } from "../calibrator/releaseFit.js";
 import { LapFitCache } from "../calibrator/lapFit.js";
 import { HourStandGateCache } from "../calibrator/hourStand.js";
@@ -403,9 +405,14 @@ export interface DerivedPathStats {
   paths: DerivedPathRouteStat[];
 }
 
+class CalibrationTargetChanged extends Error {}
+
 export interface CollectorOptions {
   upstream?: UpstreamClient;
   logger?: Logger;
+  /** File databases default to the background worker. Inline mode supports
+   * in-memory databases and harnesses that control the JavaScript clock. */
+  calibrationMode?: 'inline' | 'worker';
   /**
    * Record the operator's own ETAs beside ours (see `upstreamEta.ts`).
    * Defaults ON in production and OFF whenever `upstream` is injected, so the
@@ -441,6 +448,11 @@ export class Collector {
   private readonly db: DB;
   private readonly sqlite: Database.Database;
   private readonly calibrationRead: CalibrationReader;
+  private readonly calibrationMode: 'inline' | 'worker';
+  private calibrationWorker: CalibrationWorker | null = null;
+  private calibrationStopped = false;
+  private calibrationLifecycle = 0;
+  private readonly calibrationLapCells = new WeakMap<TransitNetwork, readonly string[]>();
   private readonly witnessCapture: CollectorWitnessCapture;
   private readonly calibrationSources = new WeakMap<TransitNetwork, CalibrationSource>();
   /** Private producer context. A failed fresh-network calibration cannot
@@ -592,6 +604,9 @@ export class Collector {
     this.db = bundle.db;
     this.sqlite = bundle.sqlite;
     this.calibrationRead = calibrationReader(this.sqlite);
+    this.calibrationMode = opts.calibrationMode ?? (this.sqlite.name && this.sqlite.name !== ':memory:' ? 'worker' : 'inline');
+    if (this.calibrationMode === 'worker' && (!this.sqlite.name || this.sqlite.name === ':memory:'))
+      throw new Error('Background calibration requires a file database');
     this.witnessCapture = new CollectorWitnessCapture(this.sqlite);
     this.ref = ref;
     this.upstream = opts.upstream ?? new UpstreamClient();
@@ -761,19 +776,23 @@ export class Collector {
   }
 
   async start(): Promise<void> {
+    this.calibrationStopped = false;
+    const lifecycle = ++this.calibrationLifecycle;
     const initialStaticGeneration = this.staticGeneration;
     await this.refreshStaticIfNeeded(true);
+    if (this.calibrationStopped || lifecycle !== this.calibrationLifecycle) return;
     // A successful refresh publishes a fully calibrated network. Only warm
     // the cached network here when that refresh did not publish one; repeating
     // the full calibration otherwise holds the first live poll for seconds.
-    if (this.staticGeneration === initialStaticGeneration) this.runCalibrate();
+    if (this.staticGeneration === initialStaticGeneration) await this.runCalibrate();
+    if (this.calibrationStopped || lifecycle !== this.calibrationLifecycle) return;
     // ...and warm the lap clock from history, for the same reason. It has to
     // come AFTER the first calibration, because the fitted cells are what say
     // which stops are worth seeding.
     this.seedLapClock();
 
     this.pollHandle = setInterval(() => void this.runPoll(), POLL_INTERVAL_MS);
-    this.calibrateHandle = setInterval(() => this.runCalibrate(), CALIBRATE_INTERVAL_MS);
+    this.calibrateHandle = setInterval(() => { void this.runCalibrate(); }, CALIBRATE_INTERVAL_MS);
     this.staticHandle = setInterval(
       () => void this.refreshStaticIfNeeded(false),
       STATIC_REFRESH_INTERVAL_MS,
@@ -807,6 +826,10 @@ export class Collector {
   }
 
   stop(): void {
+    this.calibrationStopped = true;
+    this.calibrationLifecycle++;
+    this.calibrationWorker?.close();
+    this.calibrationWorker = null;
     for (const h of [
       this.pollHandle,
       this.calibrateHandle,
@@ -1396,8 +1419,14 @@ export class Collector {
    */
   private seedLapClock(): void {
     try {
-      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite, this.calibrationRead);
-      const cells = this.lapFitsCache.get();
+      // Worker mode seeds exactly the cells in the published generation,
+      // without recomputing the six-hour fit on the request event loop.
+      let cells: ReadonlySet<string>;
+      if (this.calibrationMode === 'worker') cells = new Set(this.calibrationLapCells.get(this.ref.get()) ?? []);
+      else {
+        if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite, this.calibrationRead);
+        cells = new Set(this.lapFitsCache.get().keys());
+      }
       if (cells.size === 0) return;
       const now = Date.now();
       const floor = now - LAP_CLOCK_TTL_MS;
@@ -1441,68 +1470,78 @@ export class Collector {
     }
   }
 
-  /**
-   * Calibrate, and report the WHOLE stall.
-   *
-   * `CalibrationStats.durationMs` times `calibrate()` alone, which excludes
-   * the lap fit the argument list hides: `lapFitsCache.get()` is evaluated
-   * before the call, on this same event loop, and every six hours it is the
-   * expensive half. That is how a 21,190 ms hold on the loop that serves
-   * `/api/buses` reported itself as `durationMs: 996` and hid for a day
-   * (NEXT-STEPS 2026-09-10 §7, §9). So the fit is timed here, beside
-   * `lapFitCount`, and `loopHeldMs` is the number to read: the total
-   * synchronous hold, which is what `pollStalenessMs` will show.
-   *
-   * A cached get costs microseconds, so `lapFitMs` is ~0 on the 5-minute
-   * cadence and names its own cost on the six-hourly refresh.
-   */
+  /** Tables, source receipts and cache invalidation publish in one event-loop
+   * turn. A worker result for an obsolete target cannot change live state.
+   * loopHeldMs measures main-thread dispatch/apply work; workerLoopHeldMs
+   * names the worker's synchronous calculation, including cached fit refresh.
+   * Inline harnesses retain the existing full synchronous timing. */
   private calibrateNetwork(network: TransitNetwork) {
-    if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite, this.calibrationRead);
-    const fitAt = Date.now();
-    const lapFits = this.lapFitsCache.get();
-    const lapFitMs = Date.now() - fitAt;
-    if (!this.releaseFitsCache) this.releaseFitsCache = new ReleaseFitCache(this.sqlite, this.calibrationRead);
-    const releaseAt = Date.now();
-    const releaseFits = this.releaseFitsCache.get();
-    const releaseFitMs = Date.now() - releaseAt;
-    // The hour-of-day stand tables' cell gate (calibrator/hourStand.ts): six-hourly,
-    // ledger routes only, so ~0 on the five-minute cadence; timed like the fits.
-    if (!this.hourStandGateCache) this.hourStandGateCache = new HourStandGateCache(this.db, SPLIT_WINDOW_DAYS, undefined, this.calibrationRead);
-    const hourGateAt = Date.now();
-    const hourStandCells = this.hourStandGateCache.get();
-    const hourGateMs = Date.now() - hourGateAt;
-    const stats = calibrate(this.db, network, new Date(), lapFits, releaseFits, hourStandCells, this.calibrationRead);
-    const provenanceAt = Date.now();
-    const calibrationSource: CalibrationSource = {
-      v: 1, main: stats.input!,
-      topologySha256: createHash("sha256").update(JSON.stringify({
-        stops: [...network.stops], routes: [...network.routes],
-        legMeters: [...network.routes.values()].map(r => [r.id, r.stops.map((from, i) =>
-          network.getLegMeters(r.id, from, r.stops[(i + 1) % r.stops.length]!) ?? null)]),
-      })).digest("hex"),
-      lap: this.lapFitsCache.source?.() ?? null,
-      release: this.releaseFitsCache.source?.() ?? null,
-      hourStand: this.hourStandGateCache.source?.() ?? null,
-    };
-    this.calibrationSources.set(network, calibrationSource);
-    const provenanceMs = Date.now() - provenanceAt;
-    return {
-      ...stats, calibrationSource, provenanceMs, lapFitMs, releaseFitMs, releaseFitCount: releaseFits.size, hourGateMs,
-      loopHeldMs: stats.durationMs + lapFitMs + releaseFitMs + hourGateMs + provenanceMs,
-    };
+    if (this.calibrationStopped) throw new Error('Collector calibration is stopped');
+    const wasPublished = this.ref.get() === network;
+    if (this.calibrationMode === 'inline') {
+      const caches = { lapFitsCache: this.lapFitsCache, releaseFitsCache: this.releaseFitsCache, hourStandGateCache: this.hourStandGateCache };
+      try {
+        const { lapFitCells, ...stats } = calculateNetwork(this.db, this.sqlite, network, caches, this.calibrationRead);
+        this.calibrationSources.set(network, stats.calibrationSource);
+        this.calibrationLapCells.set(network, lapFitCells);
+        if (wasPublished) this.version++;
+        return { ...stats, execution: 'inline' as const };
+      } finally {
+        this.lapFitsCache = caches.lapFitsCache;
+        this.releaseFitsCache = caches.releaseFitsCache;
+        this.hourStandGateCache = caches.hourStandGateCache;
+      }
+    }
+    const lifecycle = this.calibrationLifecycle;
+    const started = performance.now(), topology = network.observationTopology();
+    const topologySHA256 = witnessSHA(witnessJSON(topology));
+    this.calibrationWorker ??= new CalibrationWorker(this.sqlite.name);
+    const pending = this.calibrationWorker.run(topology);
+    const dispatchMs = performance.now() - started;
+    return pending.then(result => {
+      const applyAt = performance.now();
+      if (this.calibrationStopped || lifecycle !== this.calibrationLifecycle
+        || wasPublished && this.ref.get() !== network
+        || result.topologySHA256 !== topologySHA256
+        || witnessSHA(witnessJSON(network.observationTopology())) !== topologySHA256)
+        throw new CalibrationTargetChanged('Calibration result discarded because its target changed');
+      const watermark = result.stats.calibrationSource.main.watermark;
+      if (watermark.status === 'recorded') {
+        const current = this.sqlite.prepare('SELECT epoch FROM calibration_input_revision WHERE id=1').get() as { epoch: string } | undefined;
+        if (current?.epoch !== watermark.epoch) throw new Error('Calibration came from a different source database');
+      }
+      network.setCalibration(result.tables.segments, result.tables.dwells, result.tables.pace);
+      const { lapFitCells, ...stats } = result.stats;
+      this.calibrationSources.set(network, stats.calibrationSource);
+      this.calibrationLapCells.set(network, lapFitCells);
+      if (wasPublished) this.version++;
+      return { ...stats, execution: 'worker' as const, workerElapsedMs: result.workerElapsedMs,
+        workerLoopHeldMs: stats.loopHeldMs, loopHeldMs: dispatchMs + performance.now() - applyAt };
+    });
   }
 
-  private runCalibrate(): void {
+  private runCalibrate(): void | Promise<void> {
+    if (this.calibrationStopped || this.calibrationMode === 'worker' && this.calibrationWorker?.busy) return;
+    const network = this.ref.get(), lifecycle = this.calibrationLifecycle;
+    const failed = (err: unknown) => {
+      if (this.calibrationStopped || lifecycle !== this.calibrationLifecycle) return;
+      if (err instanceof CalibrationTargetChanged) {
+        this.logger.info('collector.calibration_discarded', { error: err.message });
+        return;
+      }
+      this.logger.error('collector.calibrate_failed', { error: (err as Error).message });
+    };
     try {
-      const stats = this.calibrateNetwork(this.ref.get());
-      // Calibration mutates the live network's stats in place, so readers
-      // memoizing on dataVersion() must be told the segment/dwell numbers moved.
-      this.version++;
-      this.logger.info("collector.calibrated", stats);
+      const result = this.calibrateNetwork(network);
+      const publish = (stats: Awaited<typeof result>) => {
+        if (this.calibrationStopped || lifecycle !== this.calibrationLifecycle || this.ref.get() !== network) return;
+        // calibrateNetwork already changed tables/source/version atomically.
+        this.logger.info('collector.calibrated', stats);
+      };
+      if (result instanceof Promise) return result.then(publish, failed);
+      publish(result);
     } catch (err) {
-      this.logger.error("collector.calibrate_failed", {
-        error: (err as Error).message,
-      });
+      failed(err);
     }
   }
 
@@ -1567,8 +1606,10 @@ export class Collector {
     const now = Date.now();
     if (!force && now - this.lastStaticRefreshAt < STATIC_REFRESH_INTERVAL_MS) return;
     this.staticRefreshInFlight = true;
+    const lifecycle = this.calibrationLifecycle;
     try {
       const [stops, routes] = await Promise.all([this.upstream.stops(), this.upstream.routes()]);
+      if (this.calibrationStopped || lifecycle !== this.calibrationLifecycle) return;
       if (stops.length === 0 || routes.length === 0) {
         // An empty feed is a failure, not a refresh: keep the topology we
         // have and try again soon rather than in six hours.
@@ -1584,7 +1625,8 @@ export class Collector {
       // Build fresh, run calibration into it, then swap — so the new network
       // is already calibrated when consumers start reading it.
       const rebuilt = TransitNetwork.build(stops, routes);
-      const stats = this.calibrateNetwork(rebuilt);
+      const stats = await this.calibrateNetwork(rebuilt);
+      if (this.calibrationStopped || lifecycle !== this.calibrationLifecycle) return;
       this.ref.replace(rebuilt);
       this.version++;
       this.lastStaticRefreshAt = now;
@@ -1596,6 +1638,7 @@ export class Collector {
       });
       this.logger.info("collector.calibrated", stats);
     } catch (err) {
+      if (this.calibrationStopped || lifecycle !== this.calibrationLifecycle) return;
       this.logUpstreamError("static_refresh", err);
       this.scheduleStaticRetry();
     } finally {

@@ -397,6 +397,10 @@ describe("state pruning", () => {
 
 describe("static refresh", () => {
   it("keeps fitted Winchester waits on a replacement network and its retry", async () => {
+    // This test installs cache objects directly; choose the inline harness
+    // explicitly rather than changing the production file-database default.
+    collector.stop();
+    collector = await Collector.create(bundle, { upstream, logger: recordingLogger(logs), calibrationMode: 'inline' });
     const redStops = stops.map((s, i) => ({ ...s, id: [11, 121, 48][i]! }));
     vi.spyOn(upstream, "stops").mockResolvedValue(redStops);
     const routeFetch = vi.spyOn(upstream, "routes").mockResolvedValue([

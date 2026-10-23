@@ -85,9 +85,11 @@ describe("report #100: a restarted collector recovers the wait it can read", () 
   }
 
   async function bootAndPoll(): Promise<BusPosition> {
-    collector = await Collector.create(bundle, { upstream: new StubUpstream() });
+    // Keep calibration on the historical clock installed by this replay.
+    collector = await Collector.create(bundle, { upstream: new StubUpstream(), calibrationMode: 'inline' });
     const inner = collector as unknown as Internals;
     await inner.refreshStaticIfNeeded(true);
+    expect(collector.calibrationSource()!.main.asOf).toBe(Date.now());
     // Four polls: `updateLivePositions` publishes `at_stop_id` only once the
     // bus has been anchored for 15 s, which after a restart is measured afresh.
     for (let i = 0; i < 4; i++) {
@@ -220,8 +222,9 @@ describe("report #100: four restarts through one stand leave one arrival row", (
   /** Start a fresh process against the same database — what a deploy does. */
   async function boot(): Promise<void> {
     collector?.stop();
-    collector = await Collector.create(bundle, { upstream: new Playback() });
+    collector = await Collector.create(bundle, { upstream: new Playback(), calibrationMode: 'inline' });
     await (collector as unknown as Internals).refreshStaticIfNeeded(true);
+    expect(collector.calibrationSource()!.main.asOf).toBe(Date.now());
   }
 
   async function pollAt(ms: number, lat: number, lon: number): Promise<void> {
