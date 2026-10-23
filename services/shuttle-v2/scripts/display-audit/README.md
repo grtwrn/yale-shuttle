@@ -34,6 +34,19 @@ guardian incident bridge. Lightweight served stand records now accompany their
 rolling UI samples, so future audits can distinguish curb service from the raw
 stop-zone flag while approaching.
 
+The existing riders also independently check the published Purple Union Station
+pickup request rule after noon Eastern. They inspect the selected physical
+pickup row, visible Dispatch instructions and ordinary time/reminder promises.
+Two fresh retained responses at least five seconds apart must contradict the
+rule before `candidate-pickup-service` is raised. Correct request-only service
+stays excluded from scheduled-service accuracy. Missing row bindings or original
+response evidence remain unassessed. This uses the same two rider browsers and
+poll cadence. Guardian keeps both confirmation response bodies within the
+existing context and bundle budgets. The expectation is independent of the
+product's service-state attribute; a correct disclosure without that attribute
+is accepted. See Yale's [West Campus service policy](https://your.yale.edu/campus-essentials/getting-around-campus/using-the-shuttle/west-campus-shuttle)
+and [Dispatch contact](https://your.yale.edu/campus-essentials/getting-around-campus/using-the-shuttle/contact-us), verified October 23, 2026.
+
 Artifacts are private local files in `scripts/.bot-artifacts/display-audit/`:
 `status.json` exposes freshness, build, coverage, exclusions and findings;
 `queue.json` keeps the last 100 confirmed incident batches for operator review;

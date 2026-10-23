@@ -1,6 +1,7 @@
 import { BoardingEvidenceUnavailable, BoardingMissed, boardSelectedRide } from './boarding.mjs';
 import { auditPauseMaps, confirmPauseMaps, pauseReadDelay, readPauseMaps } from './map-pause.mjs';
 import { completeArrival } from './complete-arrival.mjs';
+import { auditPickupDisclosure, confirmPickupDisclosure, publishedPickupRequirement } from './service-disclosure.mjs';
 import { confirmConflict, pickupCountConflict, rideCountConflict } from './screen-consistency.mjs';
 import { confirmExitInstruction, offPoleExitInstruction } from './exit-instruction.mjs';
 import { boardedTransferMatches, completedLegRecord, nextTransferStage, readTransferSections, riderLineAllowed, sameTransferLeg, selectTransferTrip, transferLegTrip, transferWaitingContext } from './transfer-journey.mjs';
@@ -138,6 +139,15 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
   return rows.find(row=>row.routeLabel===lineLabel&&Number.isSafeInteger(row.stopId)
    &&(stopId==null||row.stopId===stopId));
  };
+ const pickupRows=async()=>page.locator('tbody[data-route][data-pickup]').evaluateAll(elements=>elements.map(el=>{
+  const visible=node=>!!node&&node.getClientRects().length>0&&getComputedStyle(node).visibility!=='hidden';
+  const shown=selector=>[...el.querySelectorAll(selector)].some(visible);
+  return {routeLabel:el.dataset.route,stopId:Number(el.dataset.pickup),visible:visible(el),text:el.innerText,
+   callLinks:[...el.querySelectorAll('a[href^="tel:"]')].filter(visible).map(a=>a.getAttribute('href')),
+   hasPickupTime:shown('[data-testid="pickup-range"]'),hasNextTime:shown('[data-testid="route-next-arrival"]'),
+   hasDestinationTime:shown('[data-testid="destination-arrival"]')};
+ }));
+ const pickupAudit=async(lineLabel,stopId,text,at)=>auditPickupDisclosure({routeLabel:lineLabel,stopId,at,rows:await pickupRows(),text});
  const select=async()=>{
   // One page, one journey at a time. Normal UI interactions test lookup too.
   const order=metrics.CANARY_LINES.map((_,i)=>(cursor+i+1)%metrics.CANARY_LINES.length);
@@ -189,7 +199,22 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    // focused trip card itself; its keyboard handler opens the trip view.
    await row.focus();await page.keyboard.press('Enter');
    if(!await selectionReady(line))return;
-   const requested=await requestOnlyPickup(line.label);
+   const selectedText=await page.locator('body').innerText();
+   const selectedStop=labeledStopId(selectedText,'BOARD',feed.stop_names);
+   const expected=publishedPickupRequirement(line.label,selectedStop,clockNow());
+   if(expected){
+    const audit=await pickupAudit(line.label,selectedStop,selectedText,clockNow());
+    if(audit.state==='contradiction'){
+     // Keep this bad screen long enough for two independently retained
+     // observations. The diagnostic cannot board or count toward accuracy.
+     await begin(picked,line);run.excludeAccuracy=true;run.pickupServiceDiagnostic=true;
+     run.excludeAccuracyReason='Published pickup requires Dispatch; verifying missing service disclosure';await status();return;
+    }
+    unavailableUntil[line.label]=clockNow()+SELECTION_BACKOFF_MS;
+    await event('selection-on-demand-request-required',{line:line.label,trip:picked,service:expected,audit});
+    await status({note:'Choose a scheduled pickup; this rider cannot request Dispatch service'});continue;
+   }
+   const requested=selectedStop!==null?await requestOnlyPickup(line.label,selectedStop):null;
    if(requested){unavailableUntil[line.label]=clockNow()+SELECTION_BACKOFF_MS;
     await event('selection-on-demand-request-required',{line:line.label,trip:picked,service:requested});
     await status({note:'Choose a scheduled pickup; this rider cannot request Dispatch service'});continue;}
@@ -239,6 +264,30 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
     const requestedBoard=transferRead?.boardStopId??labeledStopId(text,'BOARD',sampledFeed.stop_names);
+    const expected=publishedPickupRequirement(run.line.label,requestedBoard,now);
+    if(expected&&!run.transfer){
+     run.pickupServiceDiagnostic=true;run.excludeAccuracy=true;run.excludeAccuracyReason='Published pickup requires a Dispatch request; automated rider cannot arrange service';
+     if(!feedStable){await status({note:'Waiting for a stable pickup-service observation'});return;}
+     const audit=await pickupAudit(run.line.label,requestedBoard,text,now);
+     if(feed!==sampledFeed||feedAt!==sampledFeedAt){await status({note:'Waiting for a stable pickup-service observation'});return;}
+     const checked=confirmPickupDisclosure(run.pickupServiceConflict,audit,{at:now,feedResponse:sample.feedResponse});
+     run.pickupServiceConflict=checked.state;run.pickupServiceAudit=audit;
+     if(checked.alert){run.pickupServiceObservation=checked.alert;await event('candidate-pickup-service',checked.alert);await capture('candidate-pickup-service');}
+     if(audit.state==='contradiction'&&!checked.unassessedReason&&!checked.state?.reported){
+      await status({note:'Checking request-only pickup instructions against a second fresh response'});return;
+     }
+     unavailableUntil[run.line.label]=now+SELECTION_BACKOFF_MS;
+     await event('on-demand-request-required',{service:expected,audit,...(checked.unassessedReason?{unassessedReason:checked.unassessedReason}:{})});
+     await finish('on-demand-request-required-excluded');await status();return;
+    }
+    run.pickupServiceConflict=null;
+    if(run.pickupServiceDiagnostic){
+     // A clock/date transition or changed selected stop ended this diagnostic.
+     // It is never converted into a scored scheduled-service journey.
+     unavailableUntil[run.line.label]=now+SELECTION_BACKOFF_MS;
+     await event('on-demand-observation-ended',{reason:'Selected policy context changed before confirmation'});
+     await finish('on-demand-request-required-excluded');await status();return;
+    }
     const requested=feedStable&&requestedBoard!==null?await requestOnlyPickup(run.line.label,requestedBoard):null;
     if(requested){run.excludeAccuracy=true;run.excludeAccuracyReason='Published pickup requires a Dispatch request; automated rider cannot arrange service';
      await event('on-demand-request-required',{service:requested});

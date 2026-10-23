@@ -392,5 +392,63 @@ class IncidentEvidenceTests(unittest.TestCase):
         self.assertTrue(json.loads((self.root / "evidence-status.json").read_text())["ok"])
 
 
+    def service_disclosure_fixture(self, *, event_only=False, unavailable=False):
+        module = Path(__file__).resolve().parent.parent / "rider-watch/feed-evidence.mjs"
+        source = ("import {retainFeedResponse} from " + json.dumps(module.as_uri()) + ";"
+                  "const refs=[];for(let i=0;i<5;i++)refs.push(await retainFeedResponse(" + json.dumps(str(self.watch)) + ","
+                  "{runId:'1234',body:Buffer.from(' '+JSON.stringify({buses:[],serviceControl:i})+'\\n'),receivedAt:1234+i*1000}));"
+                  "process.stdout.write(JSON.stringify(refs));")
+        refs = json.loads(subprocess.check_output(["node", "--input-type=module", "-e", source]))
+        self.event = {**self.event, "runId": "1234", "kind": "candidate-pickup-service"}
+        self.refs = {**self.refs, "runId": "1234"}
+        self.rows(self.watch / "samples.jsonl", [{"runId": "1234", "feedResponse": refs[i]} for i in [0, 2, 4]])
+        first = {"state": "unavailable", "runId": "1234", "reason": "raw-body-unavailable"} if unavailable else refs[1]
+        observation = {"v": 1, "policy": {"routeLabel": "Purple", "stopId": 122},
+                       "observations": [{"feedResponse": first}, {"feedResponse": refs[3]}]}
+        journey = {"id": "1234", "samples": 3}
+        if not event_only:
+            journey["pickupServiceObservation"] = observation
+        self.rows(self.watch / "journeys.jsonl", [journey])
+        self.rows(self.watch / "events.jsonl", [{**self.event, "detail": observation}])
+        return refs
+
+    def test_service_disclosure_keeps_both_middle_confirmation_responses(self):
+        refs = self.service_disclosure_fixture()
+        receipt = self.capture()
+        coverage = self.manifest(receipt)["feedResponseCoverage"]
+        self.assertEqual(coverage["pickupServiceContextReferences"], 2)
+        self.assertEqual(coverage["retainedBodies"], 4)
+        self.assertEqual(coverage["omittedByContextSelection"], 1)
+        self.assertTrue(coverage["contextComplete"])
+        records = [json.loads(line) for line in gzip.decompress((Path(receipt["directory"]) / "feed-responses.jsonl.gz").read_bytes()).splitlines()]
+        self.assertTrue({refs[1]["id"], refs[3]["id"]}.issubset({r["id"] for r in records}))
+        for record in records:
+            evidence.verify_feed_response(record)
+        shutil.rmtree(self.watch / "feed-responses")
+        self.assertEqual(evidence.verify_bundle(receipt["directory"]), receipt)
+
+    def test_service_disclosure_event_survives_journey_without_observations(self):
+        self.service_disclosure_fixture(event_only=True)
+        coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertEqual(coverage["pickupServiceContextReferences"], 2)
+        self.assertEqual(coverage["retainedBodies"], 4)
+        self.assertTrue(coverage["contextComplete"])
+
+    def test_service_disclosure_respects_existing_body_budget(self):
+        self.service_disclosure_fixture()
+        with patch.object(evidence, "MAX_FEED_CONTEXT_BYTES", 1):
+            coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertEqual(coverage["pickupServiceContextReferences"], 2)
+        self.assertEqual(coverage["omittedByByteBudget"], 4)
+        self.assertFalse(coverage["contextComplete"])
+
+    def test_unavailable_service_confirmation_body_is_explicit(self):
+        self.service_disclosure_fixture(unavailable=True)
+        coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertGreater(coverage["unavailablePickupServiceReferences"], 0)
+        self.assertFalse(coverage["contextComplete"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
