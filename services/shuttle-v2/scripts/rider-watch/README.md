@@ -258,3 +258,21 @@ First-arrival evidence retains its own response even if the next poll moves
 the bus away before the UI tick. The receipt can reconstruct available feed
 and prediction rows; it is not independent physical service truth. See the
 [rolling storage policy](../retention/README.md) for limits and incident copies.
+
+On-bus added-pass counts are checked separately from off-pole exit instructions.
+For a single route with a unique published list, an explicit served `travel`
+slot that differs from the physical marker's slot identifies an added pass.
+Two fresh, stable screen/feed samples that disagree with that forward count
+raise `candidate-ride-stop-count`; the existing guardian captures its evidence.
+The pickup-count check uses the same explicit travel slot on those passes.
+Missing travel metadata, ambiguous screens, unmatched boarded storage and
+repeated published lists remain unassessed by this check. This is a diagnostic
+of screen/source consistency, with no physical arrival or ETA accuracy verdict.
+
+The October 23 Pink #324 journey reached the VA entrance area while its alert
+and banner jumped from one stop to ten. Its published list names both curbs
+once, but the repaired ring includes extra passes. The former off-pole check
+required an explicit arrival instruction beyond 75 m and therefore did not
+cover this far-away count near the target. Source-bound reconstructed inputs
+and the saved screenshot reproduce the discrepancy; the original browser HTTP
+body predates response retention and remains unavailable.

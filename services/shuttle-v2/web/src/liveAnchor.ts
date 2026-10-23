@@ -296,7 +296,12 @@ export function anchorIndexOnList(
   const stand = served?.standing;
   if (stand && !stand.approach && observedAtStop(bus, stand.stopId, stopCoords)) {
     const at = canonical.indexOf(stand.stopId);
-    if (at >= 0 && new Set(canonical).size === canonical.length) idx = at;
+    // Pink's published list names each curb once, but its repaired ring adds
+    // passes of those markers in the other direction. The served travel slot
+    // identifies that pass: replacing it with the physical marker's published
+    // slot wrapped a next-stop VA Inbound count to ten stops at VA Outbound.
+    const addedPass = travel && served?.travel !== served?.index;
+    if (at >= 0 && new Set(canonical).size === canonical.length && !addedPass) idx = at;
     // A folded line's de-duplicated overview can name the physical stop
     // without choosing its outbound/return occurrence. Keep canonical and
     // travel indices unchanged: rideApproach needs those served passes.
