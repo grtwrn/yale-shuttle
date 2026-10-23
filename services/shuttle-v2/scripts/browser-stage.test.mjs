@@ -80,10 +80,28 @@ describe('bounded browser stage', () => {
   it.skipIf(!process.env.BOT_CHROMIUM_PATH || process.platform === 'win32')(
     'stops a ready Playwright browser when the supervising deploy process exits', async () => {
       const options = await fixture(`import { createRequire } from 'node:module';
-        const { chromium } = createRequire(${JSON.stringify(import.meta.url)})('playwright-core');
         import { recordBrowserPhase } from ${JSON.stringify(diagnosticsURL)};
         import fs from 'node:fs';
         const record = (phase, details) => recordBrowserPhase('phases.jsonl',phase,details);
+        const require = createRequire(${JSON.stringify(import.meta.url)});
+        const childProcess = require('node:child_process'), spawn = childProcess.spawn;
+        // Observe only this fixture's exact Chrome executable. Forward every
+        // argument and the original ChildProcess; leave protocol pipes alone.
+        // launchServer does not stream DEBUG=pw:browser before readiness.
+        childProcess.spawn = function(command, ...args) {
+          const child = spawn.call(this, command, ...args);
+          if (command === process.env.BOT_CHROMIUM_PATH) {
+            record('browser-process-started',{browserPid:child.pid});
+            let chunks = 0;
+            child.stderr?.on('data',chunk=>{
+              if (chunks++ < 8) record('browser-stderr',{text:chunk.toString('utf8').slice(0,512),bytes:chunk.length});
+            });
+            child.once('error',error=>record('browser-process-error',{errorName:error.name,errorCode:error.code??null}));
+            child.once('exit',(code,signal)=>record('browser-process-exited',{code,signal}));
+          }
+          return child;
+        };
+        const { chromium } = require('playwright-core');
         record('check-started'); record('browser-launching');
         let browser;
         try { browser = await chromium.launchServer({executablePath:process.env.BOT_CHROMIUM_PATH,headless:true,
@@ -112,7 +130,9 @@ describe('bounded browser stage', () => {
         await expect(runBrowserCheck('supervisor.mjs', { ...options, stdio: 'inherit', timeoutMs: 30_000 })).rejects.toThrow(/exit 143/);
         const { parent, child } = JSON.parse(await fs.readFile(path.join(options.cwd, 'ready.json'), 'utf8'));
         await stopped(parent); await stopped(child);
-        expect(browserPhaseEvidence(trace).rows.map(row => row.phase)).toEqual(expect.arrayContaining([
+        const evidence = browserPhaseEvidence(trace);
+        expect(evidence.rows.find(row => row.phase === 'browser-process-started')?.browserPid).toBe(child);
+        expect(evidence.rows.map(row => row.phase)).toEqual(expect.arrayContaining([
           'browser-ready', 'supervisor-signaled', 'supervisor-exit-cleanup-complete',
         ]));
       } catch (error) {
