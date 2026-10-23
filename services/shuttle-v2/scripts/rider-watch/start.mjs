@@ -50,7 +50,7 @@ while (!stopping) {
     }
     if (resume) await restoreCheckpoint(ctx, resume, initialFeed);
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    watcher = await attach({ page, ctx, initialFeed, initialFeedAt, outputDir, ...config, initialRun: resume?.run });
+    watcher = await attach({ page, ctx, initialFeed, initialFeedAt, initialResponse:response, outputDir, ...config, initialRun: resume?.run });
     const trip = config.fixedTrip && `${config.fixedTrip.origin.label} → ${config.fixedTrip.destination.display_name}`;
     console.log(`Watcher started: ${base}; artifacts: ${outputDir}; lines: ${config.allowedLabels ?? 'random'}${trip ? `; trip: ${trip}` : ''}`);
     while (!stopping && browser.isConnected() && !page.isClosed() && watcher.status().running)

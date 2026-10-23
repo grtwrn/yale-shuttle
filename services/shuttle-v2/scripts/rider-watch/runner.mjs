@@ -8,6 +8,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { appendRolling, maintainImages, saveImage } from '../retention/storage.mjs';
 import { saveCheckpoint } from './checkpoint.mjs';
+import { captureFeedResponse } from './feed-evidence.mjs';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
 import {BOARD_M,cardBoardsBus,followedBusName,labeledStopId,observedAtStop,oppositePickupCurb,otherPickupOccurrence,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
@@ -26,7 +27,7 @@ const MAX_FEED_AGE_MS=30000;
 const observationFresh=(bus,at)=>Number.isFinite(at)&&(bus.observed_at===undefined
  ||Number.isFinite(bus.observed_at)&&bus.observed_at<=at+5000&&at-bus.observed_at<=MAX_FEED_AGE_MS);
 const LOOKING_FOR_BUS=/(?:^|\n)Looking for your bus…(?:\n|$)/;
-export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,initialTrip,initialLine,initialTransfer,initialFeed,initialFeedAt=clockNow(),initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
+export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,initialTrip,initialLine,initialTransfer,initialFeed,initialFeedAt=clockNow(),initialResponse,initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
  if (!Array.isArray(initialFeed?.buses) || !Number.isFinite(initialFeedAt)) throw new Error('A valid initial feed and receipt time are required');
  const ROOT=outputDir;
@@ -35,6 +36,10 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
  let idleStale=false,pendingInitialTrip=initialRun?null:initialTrip;
  let journeySelections=0;
  let restartRequested;
+ const feedSources=new WeakMap();
+ feedSources.set(initialFeed,{response:initialResponse,receivedAt:initialFeedAt,sourceKind:'bootstrap-request',byRun:new Map()});
+ const feedEvidence={state:'initializing',captured:0,unavailable:0,consecutiveFailures:0};
+ let pendingArrivalEvidence;
  let lastPosition;
  // A line whose trip row is missing (e.g. a bus still in the feed after its
  // last loop) is skipped for a while, so a fixed-trip rider does not reload,
@@ -49,7 +54,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
  };
  const status=async(extra={})=>{
   await fs.writeFile(path.join(ROOT,'status.json'),JSON.stringify({updatedAt:new Date(clockNow()).toISOString(),running:!stopped,phase:run?.phase??'selecting',line:run?.line.label,trip:run?.trip,startedAt:run?.startedAt,boardedAt:run?.boardedAt,bus:run?.busName,imageBytes,retention,mapPauseAudit:run?.phase==='waiting'?run.mapPauseAudit:null,
-   ...(run?.transfer?{transfer:{stage:run.transfer.stage+1,lines:run.transfer.legs.map(l=>l.routeLabel),completedLegs:run.transfer.completedLegs.length,startedAt:run.transfer.startedAt,finalDestination:run.transfer.originalTrip.destination}}:{}),...feedStatus(),...(restartRequested?{restartRequested}:{}),...extra},null,2));
+   ...(run?.transfer?{transfer:{stage:run.transfer.stage+1,lines:run.transfer.legs.map(l=>l.routeLabel),completedLegs:run.transfer.completedLegs.length,startedAt:run.transfer.startedAt,finalDestination:run.transfer.originalTrip.destination}}:{}),...feedStatus(),feedEvidence,...(restartRequested?{restartRequested}:{}),...extra},null,2));
   await saveCheckpoint(ROOT,page,run,lastPosition,clockNow());
  };
  const event=async(kind,detail)=>{const e={at:new Date(clockNow()).toISOString(),runId:run?.id,line:run?.line.label,kind,detail};await appendRolling(ROOT,'events',e);console.log(JSON.stringify(e));};
@@ -59,9 +64,24 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
   retention=await saveImage(ROOT,{at,name,label,runId:run?.id},buffer,run?.id,{phase:run?.phase,line:run?.line.label});
   imageBytes=retention.imageBytes;lastImage=clockNow();
  };
- const finish=async(reason)=>{run.finishedAt=new Date(clockNow()).toISOString();run.result=reason;
+ const retainFeed=(sampledFeed,runId)=>{
+  const source=feedSources.get(sampledFeed);
+  if(!source)return Promise.resolve({v:1,state:'unavailable',runId,reason:'feed-response-identity-unavailable'});
+  if(!source.byRun.has(runId))source.byRun.set(runId,captureFeedResponse(ROOT,{response:source.response,feed:sampledFeed,runId,receivedAt:source.receivedAt,sourceKind:source.sourceKind}).then(async receipt=>{
+   if(receipt.state==='captured'){feedEvidence.state='healthy';feedEvidence.captured++;feedEvidence.consecutiveFailures=0;feedEvidence.storage=receipt.storage;}
+   else{
+    feedEvidence.state='unavailable';feedEvidence.unavailable++;feedEvidence.consecutiveFailures++;
+    feedEvidence.lastFailure={at:new Date(clockNow()).toISOString(),runId,reason:receipt.reason};
+    if(feedEvidence.consecutiveFailures===3)await event('candidate-feed-evidence',feedEvidence.lastFailure).catch(()=>{});
+   }
+   return receipt;
+  }));
+  return source.byRun.get(runId);
+ };
+ const finish=async(reason)=>{if(pendingArrivalEvidence?.runId===run.id)await pendingArrivalEvidence.promise;
+  run.finishedAt=new Date(clockNow()).toISOString();run.result=reason;
   if(run.transfer){run.transfer.completedLegs.push(completedLegRecord(run,reason));run.transfer.finishedAt=run.finishedAt;if(reason==='completed')run.transfer.busLegsFinishedAt=run.arrivedAt;}
-  await capture(reason);await appendRolling(ROOT,'journeys',run);await event('journey-finished',reason);run=null;};
+  await capture(reason);await appendRolling(ROOT,'journeys',run);await event('journey-finished',reason);run=null;pendingArrivalEvidence=undefined;};
  const begin=async(trip,line,transfer)=>{run={instrumentVersion:transfer?'transfer-v1':'inputs-v2',id:clockNow().toString(),startedAt:new Date(clockNow()).toISOString(),phase:'waiting',line,trip,samples:0};
   if(transfer){run.transfer={...transfer,originalTrip:structuredClone(trip),stage:0,completedLegs:[],startedAt:run.startedAt,allowedLabels};run.trip=transferLegTrip(trip,transfer.legs[0],feed);run.excludeAccuracy=true;run.excludeAccuracyReason='Two-leg diagnostic; separate from one-seat accuracy aggregates';}
   journeySelections++;await event('journey-started',{line:line.label,trip,...(transfer?{transfer:run.transfer}: {})});await capture('waiting-'+line.label);await status();};
@@ -77,13 +97,14 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
   if(!observationFresh(bus,receivedAt))return;
   const distanceM=metrics.haversineM(bus,coord);
   const criterion=distanceM<=45?'GPS-within-45m':distanceM<=60&&bus.at_stop_id===run.exitStopId&&bus.stationary===true?'stationary-at-target-within-60m':null;
-  if(criterion)run.arrivalObservation={receivedAt:new Date(receivedAt).toISOString(),
+  if(criterion){const observation=run.arrivalObservation={receivedAt:new Date(receivedAt).toISOString(),
    stopId:run.exitStopId,stopName:next.stop_names?.[run.exitStopId],stopCoords:structuredClone(coord),
-   bus:structuredClone(bus),distanceM,criterion};
+   bus:structuredClone(bus),distanceM,criterion,feedResponse:{v:1,state:'pending',receivedAt}};
+   pendingArrivalEvidence={runId:run.id,promise:retainFeed(next,run.id).then(receipt=>{observation.feedResponse=receipt;})};}
  };
  const onResponse=async r=>{if(new URL(r.url()).pathname==='/api/buses'&&r.ok())try{
   const receiving=run?.phase==='riding'?run:null,next=await r.json();
-  if(Array.isArray(next?.buses)){feed=next;feedAt=clockNow();if(receiving&&run===receiving)rememberArrival(next,feedAt);}
+  if(Array.isArray(next?.buses)){feed=next;feedAt=clockNow();feedSources.set(next,{response:r,receivedAt:feedAt,sourceKind:'page-response',byRun:new Map()});if(receiving&&run===receiving)rememberArrival(next,feedAt);}
  }catch{}};
  page.on('response',onResponse);
  const onPageError=e=>event('candidate-page-error',e.message).catch(()=>{});
@@ -198,7 +219,8 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     ...(run.phase==='riding'?{rideContext:{busName:run.busName,routeLabel:run.line.label,
      exitStopId:run.exitStopId,exitStopName:sampledFeed.stop_names?.[run.exitStopId],
      exitCoords:sampledFeed.stop_coords?.[run.exitStopId],feedStableDuringTextRead:feedStable}}:{}),
-    ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{})};
+    ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{}),
+    feedResponse:await retainFeed(sampledFeed,run.id)};
    await appendRolling(ROOT,'samples',sample);run.samples++;
    for(const alert of pauses.alerts){await event('candidate-map-pause',alert);await capture('candidate-map-pause');}
    if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
@@ -331,6 +353,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     rememberArrival(feed,feedAt);
     const arrival=run.arrivalObservation;
     if(arrival){
+     if(pendingArrivalEvidence?.runId===run.id)await pendingArrivalEvidence.promise;
      await locate({latitude:arrival.bus.lat,longitude:arrival.bus.lon});run.lastExitDistanceM=arrival.distanceM;
      run.arrivalCriterion=arrival.criterion;run.arrivedAt=arrival.receivedAt;
      run.arrivalProcessedAt=new Date(clockNow()).toISOString();run.arrivalText=text;run.phase='arrived';
@@ -383,5 +406,5 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
  };
  if(initialRun){run={...initialRun,instrumentVersion:initialRun.transfer?'transfer-v1':'inputs-v2',instrumentHandoverAt:new Date(clockNow()).toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; resumed journey excluded from accuracy scoring');await status();}
  if(autoTick)timer=setInterval(()=>tick(),10000);await tick();
- return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt,restartRequested}),capture,stop:async()=>{stopped=true;clearInterval(timer);removeListeners();await status();},tick, detach:()=>{stopped=true;clearInterval(timer);removeListeners();return run;}};
+ return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt,restartRequested,feedEvidence}),capture,stop:async()=>{stopped=true;clearInterval(timer);removeListeners();await pendingArrivalEvidence?.promise;await status();},tick, detach:()=>{stopped=true;clearInterval(timer);removeListeners();return run;}};
 }

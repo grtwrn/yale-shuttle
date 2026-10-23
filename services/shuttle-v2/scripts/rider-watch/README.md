@@ -242,3 +242,19 @@ Run `npm test -- scripts/rider-watch/runner.test.mjs scripts/rider-watch/checkpo
 Live browser verification is recorded separately in the QA workspace. Local release copies only rewrite the two canary import paths for the companion watcher directory. No application bundle, estimator or service deployment is changed.
 
 October 18: active transfer pickups use `ArrivalDetails` text ("Arrives in ~44 min"), while direct cards retain "Arrival: About 44 min". The rider now reads either visible quote. A transfer uses only its verified active pickup controls; missing or mismatched controls never borrow a quote from the whole page or the second-bus preview. The first valid quote still fixes the leg’s wait cap at 1.5×, bounded to 45–90 min; later estimate jumps cannot extend it. The constructed transfer regression waits past 45 min and boards at 47.6 min under a 66 min cap, and the actual SPA browser gate verifies a long quote and separate second-leg cap. No live transfer timeout has been demonstrated, and this is sampling coverage, not ETA accuracy evidence.
+# Original feed response evidence
+
+Samples and first qualifying arrival observations now carry an optional
+versioned `feedResponse` receipt. It refers to the actual decoded bytes of the
+response used by the sampler, retained in a separate rolling per-trip journal.
+The bytes are checked against that parsed feed before capture. They are never
+recreated by serializing a saved object. `sourceKind` distinguishes a startup
+`bootstrap-request` from an observed `page-response`; existing read-stability
+fields still describe whether the tester feed changed during the UI read.
+
+An unavailable body, failed write or storage limit records `state: unavailable`
+and a reason. Capture health and storage overage appear in operator status.
+First-arrival evidence retains its own response even if the next poll moves
+the bus away before the UI tick. The receipt can reconstruct available feed
+and prediction rows; it is not independent physical service truth. See the
+[rolling storage policy](../retention/README.md) for limits and incident copies.

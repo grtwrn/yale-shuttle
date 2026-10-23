@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import time
 import unittest
@@ -44,6 +45,63 @@ class IncidentEvidenceTests(unittest.TestCase):
 
     def manifest(self, receipt):
         return json.loads((Path(receipt["directory"]) / "manifest.json").read_text())
+
+    def feed_fixture(self):
+        module = Path(__file__).resolve().parent.parent / "rider-watch/feed-evidence.mjs"
+        raw = '{ "buses":[],"text":"héllo 🚌","same":1,"same":2 }\n'.encode()
+        source = ("import {retainFeedResponse} from " + json.dumps(module.as_uri()) + ";"
+                  "const reference=await retainFeedResponse(" + json.dumps(str(self.watch)) + ","
+                  "{runId:'1234',body:Buffer.from(" + json.dumps(list(raw)) + "),receivedAt:1234,"
+                  "headers:{'content-type':'application/json','set-cookie':'DO_NOT_RETAIN'}});"
+                  "process.stdout.write(JSON.stringify(reference));")
+        reference = json.loads(subprocess.check_output(["node", "--input-type=module", "-e", source]))
+        self.event = {**self.event, "runId": "1234"}
+        self.refs = {**self.refs, "runId": "1234"}
+        self.rows(self.watch / "samples.jsonl", [{"runId": "1234", "text": "actual", "feedResponse": reference}])
+        self.rows(self.watch / "journeys.jsonl", [{"id": "1234", "samples": 1, "arrivalObservation": {"feedResponse": reference}}])
+        return raw, reference
+
+    def test_node_captured_feed_bytes_survive_in_python_incident_bundle_after_cache_rotation(self):
+        raw, _ = self.feed_fixture()
+        receipt = self.capture()
+        manifest = self.manifest(receipt)
+        self.assertTrue(manifest["feedResponseCoverage"]["contextComplete"])
+        self.assertTrue(manifest["feedResponseCoverage"]["fullTripBodiesRetained"])
+        records = [json.loads(line) for line in gzip.decompress((Path(receipt["directory"]) / "feed-responses.jsonl.gz").read_bytes()).splitlines()]
+        self.assertEqual(len(records), 1)
+        self.assertEqual(evidence.verify_feed_response(records[0]), raw)
+        self.assertNotIn("DO_NOT_RETAIN", json.dumps(records))
+        shutil.rmtree(self.watch / "feed-responses")
+        self.assertEqual(evidence.verify_bundle(receipt["directory"]), receipt)
+
+    def test_damaged_feed_body_is_an_explicit_gap_and_does_not_prevent_incident_delivery(self):
+        _, reference = self.feed_fixture()
+        source = self.watch / reference["file"]
+        record = json.loads(source.read_text())
+        record["decodedSHA256"] = "0" * 64
+        self.rows(source, [record])
+        receipt = self.capture()
+        manifest = self.manifest(receipt)
+        self.assertTrue(manifest["sampleCoverage"]["complete"])
+        self.assertFalse(manifest["feedResponseCoverage"]["contextComplete"])
+        self.assertEqual(manifest["feedResponseCoverage"]["retainedBodies"], 0)
+        self.assertTrue(manifest["gaps"])
+        self.assertTrue(source.exists())
+
+    def test_feed_context_byte_budget_reports_omission_without_expanding_bundle_budget(self):
+        self.feed_fixture()
+        with patch.object(evidence, "MAX_FEED_CONTEXT_BYTES", 1):
+            receipt = self.capture()
+        coverage = self.manifest(receipt)["feedResponseCoverage"]
+        self.assertFalse(coverage["contextComplete"])
+        self.assertEqual(coverage["omittedByByteBudget"], 1)
+        self.assertEqual(coverage["retainedBodies"], 0)
+
+    def test_legacy_null_arrival_does_not_block_incident_capture(self):
+        self.rows(self.watch / "journeys.jsonl", [{"id": "r1", "samples": 2, "arrivalObservation": None}])
+        receipt = self.capture()
+        self.assertTrue(receipt["sampleCoverage"]["complete"])
+        self.assertEqual(self.manifest(receipt)["feedResponseCoverage"]["retainedBodies"], 0)
 
     def test_snapshot_survives_source_rotation_and_captures_only_its_run(self):
         receipt = self.capture()
