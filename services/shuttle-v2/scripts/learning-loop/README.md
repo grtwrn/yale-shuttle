@@ -112,6 +112,11 @@ challenger prediction is retained as missing, not removed from its cohort.
 A curb-service outcome requires two fresh stationary observations at the
 feed's named stop, within 75 m, nine seconds apart. The stop re-arms beyond
 150 m. Observation time and actual evidence-receipt time are recorded separately.
+Before calibration or validation, both original outcome receipts are checked
+for the exact vehicle, curb, stationary position and fresh observation clocks.
+They must be caught-up live views, not catchup frames. The scored arrival,
+wait and confirmation time must agree with those two observations; receipt
+existence alone cannot establish an outcome.
 No outcome within 47 minutes becomes missing; interruptions also become missing.
 These are feed-correlated observations, not independent physical arrival truth.
 
