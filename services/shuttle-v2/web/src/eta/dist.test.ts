@@ -74,6 +74,30 @@ describe("dist: the residual given elapsed time", () => {
     expect(residualMedian(d, 900)).toBeGreaterThan(30);
   });
 
+  it("preserves the conditional exponential tail after CDF precision and quantile caps are exhausted", () => {
+    const d = fromQuantiles(Q11), h = Math.log(3) / 131;
+    for (const elapsed of [674, 1200, 2000, 5000, 1e12]) {
+      const sample = residual(d, elapsed);
+      for (const u of [0, .01, .1, .5, .9, 1 - 1e-10, 1]) {
+        const expected = -Math.log1p(-Math.min(1 - Number.EPSILON, u)) / h;
+        expect(sample(u), `elapsed=${elapsed}, u=${u}`).toBeCloseTo(expected, 8);
+      }
+    }
+  });
+
+  it("conditions before the first atom and through flat survival segments without clipping the upper tail", () => {
+    const atom = point(42);
+    expect(residual(atom, 12)(0)).toBe(30);
+    expect(residual(atom, 12)(.5)).toBe(30);
+    expect(residual(atom, 42)(.5)).toBeCloseTo(Math.log(2) / atom.tailHazard, 10);
+    const d = { xs: Float64Array.of(10, 20, 30), ps: Float64Array.of(.1, .1, .6), tailHazard: .02 };
+    const sample = residual(d, 15);
+    expect(sample(0)).toBe(0);
+    expect(sample(.1)).toBeCloseTo(5 + 10 * Math.log(.9 / .81) / Math.log(.9 / .4), 10);
+    expect(sample(.99)).toBeCloseTo(15 + Math.log(.4 / .009) / .02, 9);
+    expect(sample(1 - 1e-10)).toBeGreaterThan(sample(.99));
+  });
+
   it("samples the residual with the right distribution", () => {
     const d = fromQuantiles(Q11);
     const f = residual(d, 200);

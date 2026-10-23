@@ -169,15 +169,37 @@ export function quantile(d: Dist, p: number): number {
 
 /**
  * The remaining time given that `r` seconds have already elapsed:
- * Finv_r(u) = Finv(F(r) + u (1 - F(r))) - r. Returns a sampler in u ∈ (0, 1).
- * At u = 0.5 this is the conditional median.
+ * S(r + t) = S(r) (1 - u). Invert log survival directly: converting through
+ * F(r) loses the tail to rounding and the unconditional quantile cap. Past
+ * the last knot, exponential memorylessness also avoids subtracting a large
+ * elapsed clock from a nearly equal absolute quantile.
  */
 export function residual(d: Dist, r: number): (u: number) => number {
-  const rr = Math.max(0, r);
-  const Fr = cdf(d, rr);
-  const rest = 1 - Fr;
-  if (rest <= 1e-9) return () => 0;
-  return (u) => Math.max(0, quantile(d, Fr + u * rest) - rr);
+  const rr = Math.max(0, r), { xs, ps, tailHazard } = d, last = xs.length - 1;
+  const logFraction = (u: number) => Math.log1p(-Math.min(1 - Number.EPSILON, u));
+  if (rr >= xs[last]!) return (u) => u <= 0 ? 0 : -logFraction(u) / tailHazard;
+  const logs = Array.from(ps, p => Math.log1p(-p));
+  let logAtRest = 0;
+  if (rr >= xs[0]!) {
+    let lo = 0, hi = last;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >>> 1;
+      if (xs[mid]! <= rr) lo = mid; else hi = mid;
+    }
+    logAtRest = logs[lo]! + (logs[hi]! - logs[lo]!) * ((rr - xs[lo]!) / (xs[hi]! - xs[lo]!));
+  }
+  return (u) => {
+    if (u <= 0) return Math.max(0, xs[0]! - rr);
+    const target = logAtRest + logFraction(u);
+    if (target >= logs[0]!) return Math.max(0, xs[0]! - rr);
+    if (target <= logs[last]!) return Math.max(0, xs[last]! - rr + (logs[last]! - target) / tailHazard);
+    let lo = 0, hi = last;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >>> 1;
+      if (logs[mid]! > target) lo = mid; else hi = mid;
+    }
+    return Math.max(0, xs[lo]! - rr + (xs[hi]! - xs[lo]!) * ((target - logs[lo]!) / (logs[hi]! - logs[lo]!)));
+  };
 }
 
 /** The conditional median of the remainder — the number the chip shows. */
