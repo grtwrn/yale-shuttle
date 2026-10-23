@@ -64,5 +64,20 @@ class RiderEventLineTests(unittest.TestCase):
         self.assertNotIn('transfer1', watcher.get('pickupAuditPending', {}))
 
 
+    def test_service_disclosure_candidate_is_queued_even_when_journey_is_correctly_excluded(self):
+        detail = {"v": 1, "policy": {"routeLabel": "Purple", "stopId": 122},
+                  "observations": [{"feedResponse": {"id": "first"}}, {"feedResponse": {"id": "second"}}]}
+        calls, watcher = self.scan([
+            self.event('candidate-pickup-service', detail, line='Purple'),
+            self.event('journey-finished', 'on-demand-request-required-excluded', line='Purple'),
+        ])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0].args[1], 'candidate-pickup-service')
+        self.assertEqual(calls[0].args[2], 'Purple')
+        self.assertEqual(calls[0].args[5]['event']['detail'], detail)
+        self.assertNotIn('transfer1', watcher.get('pickupAuditPending', {}))
+
+
+
 if __name__ == '__main__':
     unittest.main()

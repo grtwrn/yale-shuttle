@@ -53,7 +53,7 @@ def verify_feed_response(record):
 
 
 def feed_response_context(watch, run, references, event, budget):
-    """Keep first/latest/event-nearest/arrival/text/boarding context within limits."""
+    """Keep first/latest/event-nearest/arrival/text/boarding/service context within limits."""
     valid, gaps = {}, []
     def gap(message):
         if message not in gaps and len(gaps) < 32:
@@ -70,7 +70,8 @@ def feed_response_context(watch, run, references, event, budget):
         prior = valid.get(ref["id"], {})
         valid[ref["id"]] = {**ref, "arrivalContext": prior.get("arrivalContext") is True or ref.get("arrivalContext") is True,
                             "arrivalTextContext": prior.get("arrivalTextContext") is True or ref.get("arrivalTextContext") is True,
-                            "boardingContext": prior.get("boardingContext") is True or ref.get("boardingContext") is True}
+                            "boardingContext": prior.get("boardingContext") is True or ref.get("boardingContext") is True,
+                            "pickupServiceContext": prior.get("pickupServiceContext") is True or ref.get("pickupServiceContext") is True}
     ordered = sorted(valid.values(), key=lambda r: (r["receivedAt"], r["id"]))
     selected = set()
     if ordered:
@@ -83,7 +84,7 @@ def feed_response_context(watch, run, references, event, budget):
         arrival = [r for r in ordered if r.get("arrivalContext") is True]
         if arrival:
             selected.add(arrival[-1]["id"])
-        selected.update(r["id"] for r in ordered if r.get("boardingContext") is True or r.get("arrivalTextContext") is True)
+        selected.update(r["id"] for r in ordered if r.get("boardingContext") is True or r.get("arrivalTextContext") is True or r.get("pickupServiceContext") is True)
     rows, found, used, omitted = [], set(), 0, 0
     if selected:
         try:
@@ -129,6 +130,8 @@ def feed_response_context(watch, run, references, event, budget):
                 "unavailableBoardingReferences": sum(r.get("boardingContext") is True and r.get("state") != "captured" for r in references),
                 "arrivalTextContextReferences": sum(r.get("arrivalTextContext") is True for r in valid.values()),
                 "unavailableArrivalTextReferences": sum(r.get("arrivalTextContext") is True and r.get("state") != "captured" for r in references),
+                "pickupServiceContextReferences": sum(r.get("pickupServiceContext") is True for r in valid.values()),
+                "unavailablePickupServiceReferences": sum(r.get("pickupServiceContext") is True and r.get("state") != "captured" for r in references),
                 "contextReferences": len(selected), "retainedBodies": len(rows), "missingContextIDs": missing,
                 "omittedByContextSelection": len(valid) - len(selected), "omittedByByteBudget": omitted,
                 "contextComplete": bool(selected) and unavailable == 0 and not missing and not omitted and not gaps,
@@ -162,6 +165,20 @@ def arrival_feed_references(kind, row):
                     (row["detail"].get("screen"), "arrivalTextContext")]
     return [{**context["feedResponse"], flag: True} for context, flag in contexts
             if isinstance(context, dict) and isinstance(context.get("feedResponse"), dict)]
+
+
+def pickup_service_feed_references(kind, row):
+    """Keep the two versioned responses that confirmed a service disclosure."""
+    observation = row.get("pickupServiceObservation") if kind == "journeys" else None
+    if kind == "events" and row.get("kind") == "candidate-pickup-service":
+        observation = row.get("detail")
+    if not isinstance(observation, dict) or observation.get("v") != 1:
+        return []
+    items = observation.get("observations")
+    if not isinstance(items, list):
+        return []
+    return [{**item["feedResponse"], "pickupServiceContext": True} for item in items[:2]
+            if isinstance(item, dict) and isinstance(item.get("feedResponse"), dict)]
 
 
 def digest(data):
@@ -324,6 +341,7 @@ def capture_bundle(store, incident_id, event, evidence, allowed_watchers):
                                 feed_references.append(row["feedResponse"])
                             feed_references.extend(boarding_feed_references(kind, row))
                             feed_references.extend(arrival_feed_references(kind, row))
+                            feed_references.extend(pickup_service_feed_references(kind, row))
                             matched += 1
                             if kind == "journeys":
                                 last_journey = row

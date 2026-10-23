@@ -238,6 +238,7 @@ await browserSmoke(STAGE_URL, { markAsTest: false });
 await browserRegression("stop-count notification browser regression", "scripts/stop-alert-controls-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "stop-alert-controls") } });
 await browserRegression("pickup reminder timing browser regression", "scripts/pickup-reminder-check.mjs", { env: { ...process.env, BOT_BASE_URL: STAGE_URL, BOT_OUT: path.join(stageDir, "pickup-reminder") } });
 await browserRegression("on-demand pickup service browser regression", "scripts/pickup-service-check.mjs", { env: { ...process.env, PICKUP_SERVICE_OUT: path.join(stageDir, "pickup-service"), PICKUP_SERVICE_PRODUCTION_ASSETS: "0" } });
+await browserRegression("pickup service observer browser regression", "scripts/service-disclosure-watch-check.mjs", { env: { ...process.env, SERVICE_DISCLOSURE_OUT: path.join(stageDir, "service-disclosure-watch") } });
 await browserRegression("map pause wording browser regression", "scripts/map-pause-label-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "map-pause-labels") } });
 await browserRegression("route label readability browser regression", "scripts/route-readability-check.mjs", { env: { ...process.env, ROUTE_READABILITY_OUT: path.join(stageDir, "route-readability"), ROUTE_READABILITY_PRODUCTION_ASSETS: "0" } });
 await browserRegression("Blue pickup transition browser regression", "scripts/blue-pickup-fallback-check.mjs");

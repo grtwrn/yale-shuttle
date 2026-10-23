@@ -17,13 +17,13 @@ const dwelling="🚌 20 min\nBOARD🚌Union Station (S)⏸ 0:29\nWest Haven Trai
 const at126={bus_name:'#126',route_id:10,lat:41.297912,lon:-72.926694,at_stop_id:122,stationary:true};
 const near126={bus_name:'#126',route_id:10,lat:41.296923,lon:-72.927685,stationary:false};
 
-async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0,initialResponse,initialRun,fakeTimeouts=false}={}){
+async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0,initialResponse,initialRun,fakeTimeouts=false,pickupRows=[]}={}){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval',...(fakeTimeouts?['setTimeout','clearTimeout']:[])]});
  vi.setSystemTime(Date.parse(at));
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
- const h={text,clicks:[],handlers:{}};
+ const h={text,clicks:[],handlers:{},pickupRows};
  const button=name=>({isVisible:async()=>name==="🚌 I'm on it",click:async()=>h.clicks.push(name)});
- const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:selector=>({innerText:async()=>h.text,evaluateAll:async()=>selector==='tbody[data-pickup-service="on-demand"]'?h.requestStops??[]:h.maps??[]}),
+ const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:selector=>({innerText:async()=>h.text,evaluateAll:async()=>selector==='tbody[data-pickup-service="on-demand"]'?h.requestStops??[]:selector==='tbody[data-route][data-pickup]'?h.pickupRows??[]:h.maps??[]}),
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
  const ctx={setGeolocation:async g=>{h.geo=g;}};
@@ -503,7 +503,7 @@ async function fixedRed(initialFeed,initialFeedAgeMs=0,{requestStops=[]}={}){
  vi.setSystemTime(Date.parse('2026-10-01T15:00:00Z'));
  const h={dir:await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-')),geo:[],opened:[],handlers:{},rowShown:true,requestStops};
  const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},reload:async()=>{},screenshot:async()=>Buffer.from('jpg'),
-  locator:()=>({innerText:async()=>'',evaluateAll:async()=>h.requestStops??[]}),keyboard:{press:async k=>h.opened.push(k)},waitForFunction:async()=>{},
+  locator:selector=>({innerText:async()=>'BOARDDivision/Prospect\nGET OFFLEPH/60 College',evaluateAll:async()=>selector==='tbody[data-pickup-service="on-demand"]'?h.requestStops??[]:[]}),keyboard:{press:async k=>h.opened.push(k)},waitForFunction:async()=>{},
   evaluate:async()=>({toLL:{lat:ysph.lat,lon:ysph.lon}}),
   getByPlaceholder:()=>({fill:async()=>{},press:async()=>{}}),
   getByRole:(_,{name})=>({isVisible:async()=>h.rowShown&&name==='View Red trip details',click:async()=>{},focus:async()=>h.opened.push(name)})};
@@ -1262,4 +1262,64 @@ test.each(['recorded','contradictory-BOARD-marker'])('Purple329 follows the sele
  await h.poll('BOARD🚌West Haven Train Station⏸ 0:20\nGET OFFBuilding 400',[bus],{receiptDelayMs:9999});
  assert.equal(h.watcher.status().run.phase,'riding');assert.deepEqual(h.clicks,["🚌 I'm on it"]);
  assert.equal(h.watcher.status().run.excludeAccuracy,undefined);
+});
+
+const requestRow={routeLabel:'Purple',stopId:122,visible:true,text:'On request. Call Dispatch: 203-281-5470 · option 1',callLinks:['tel:+12032815470'],hasPickupTime:false,hasNextTime:false,hasDestinationTime:false};
+const missingRequestRow={...requestRow,text:'About <1 min',callLinks:[],hasPickupTime:true};
+const requestClock='2026-10-23T19:20:38.703Z';
+async function serviceWatch(rows,text=approaching){
+ const feed=feedWith([near126]);
+ return current=await harness(feed,trip,{at:requestClock,text,initialResponse:rawResponse(JSON.stringify(feed)),pickupRows:rows});
+}
+async function freshServicePoll(h,text=approaching){
+ vi.advanceTimersByTime(6000);
+ const feed=feedWith([{...near126,observed_at:Date.now()}]);
+ await h.handlers.response(rawResponse(JSON.stringify(feed)));
+ vi.advanceTimersByTime(4000);
+ do await new Promise(r=>setImmediate(r));while(h.watcher.status().busy);
+}
+test('missing request disclosure is detected without trusting product service metadata',async()=>{
+ const h=await serviceWatch([missingRequestRow]);assert.equal(h.watcher.status().run.phase,'waiting');assert.equal(h.watcher.status().run.excludeAccuracy,true);assert.deepEqual(h.clicks,[]);
+ await freshServicePoll(h);
+ const [journey]=await h.journeys();assert.equal(journey.result,'on-demand-request-required-excluded');assert.equal(journey.boardedAt,undefined);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse),alerts=events.filter(e=>e.kind==='candidate-pickup-service');assert.equal(alerts.length,1);
+ assert.equal(alerts[0].detail.observations.length,2);assert.notEqual(alerts[0].detail.observations[0].feedResponse.id,alerts[0].detail.observations[1].feedResponse.id);
+ assert.deepEqual(journey.pickupServiceObservation,alerts[0].detail);assert.deepEqual(h.clicks,[]);
+ const bodies=(await fs.readFile(path.join(h.dir,'feed-responses',journey.id+'.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ for(const o of alerts[0].detail.observations)assert(bodies.some(r=>r.id===o.feedResponse.id&&verifyFeedResponseRecord(r)));
+});
+test('correct instructions without the product service marker are excluded without an incident',async()=>{
+ const h=await serviceWatch([requestRow]);const [journey]=await h.journeys();assert.equal(journey.result,'on-demand-request-required-excluded');
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert(!events.some(e=>e.kind==='candidate-pickup-service'));assert.deepEqual(h.clicks,[]);
+});
+test('request disclosure recovery before confirmation does not invent an incident',async()=>{
+ const h=await serviceWatch([missingRequestRow]);h.pickupRows=[requestRow];await freshServicePoll(h);
+ assert.equal((await h.journeys())[0].result,'on-demand-request-required-excluded');
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert(!events.some(e=>e.kind==='candidate-pickup-service'));
+});
+test('an unreadable selected row remains explicitly unassessed and cannot board',async()=>{
+ const h=await serviceWatch([{...requestRow,stopId:121}]);const [journey]=await h.journeys();assert.equal(journey.result,'on-demand-request-required-excluded');assert.equal(journey.pickupServiceAudit.state,'unassessed');assert.deepEqual(h.clicks,[]);
+});
+
+async function selectPurpleService({text=approaching,rows=[missingRequestRow],markers=[]}={}){
+ vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});vi.setSystemTime(Date.parse(requestClock));
+ const h={dir:await fs.mkdtemp(path.join(os.tmpdir(),'rider-service-select-')),text,rows,markers,handlers:{},opened:[]};
+ const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},reload:async()=>{},screenshot:async()=>Buffer.from('jpg'),
+  locator:selector=>({innerText:async()=>h.text,evaluateAll:async()=>selector==='tbody[data-route][data-pickup]'?h.rows:selector==='tbody[data-pickup-service="on-demand"]'?h.markers:[]}),
+  keyboard:{press:async k=>h.opened.push(k)},waitForFunction:async()=>{},evaluate:async()=>({toLL:{lat:b400.lat,lon:b400.lon}}),
+  getByPlaceholder:()=>({fill:async()=>{},press:async()=>{}}),
+  getByRole:(_,{name})=>({isVisible:async()=>name==='View Purple trip details',click:async()=>{},focus:async()=>h.opened.push(name)})};
+ h.watcher=await attach({page,ctx:{setGeolocation:async()=>{}},initialFeed:feedWith([near126]),initialFeedAt:Date.now(),outputDir:h.dir,autoTick:false,allowedLabels:['Purple'],fixedTrip:trip});
+ h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);current=h;return h;
+}
+test('selection keeps a malformed request-only disclosure for confirmation instead of trusting its marker',async()=>{
+ const h=await selectPurpleService({markers:[{routeLabel:'Purple',stopId:122,text:'On request'}]});assert.equal(h.watcher.status().run.phase,'waiting');assert.equal(h.watcher.status().run.excludeAccuracy,true);assert.equal(h.watcher.status().run.pickupServiceDiagnostic,true);
+ assert(!(await h.events()).some(e=>e.kind==='selection-on-demand-request-required'));
+});
+test('selection skips a correct request disclosure even if the product marker is missing',async()=>{
+ const h=await selectPurpleService({rows:[requestRow]});assert.equal(h.watcher.status().run,null);assert.equal((await h.events()).filter(e=>e.kind==='selection-on-demand-request-required').length,1);
+});
+test('selection binds request service to the displayed BOARD stop rather than another row of the same route',async()=>{
+ const h=await selectPurpleService({text:'🚌 #126\nBOARDWest Haven Train Station\nGET OFFBuilding 400',rows:[requestRow],markers:[{routeLabel:'Purple',stopId:122,text:'Other pickup'}]});
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.equal(h.watcher.status().run.excludeAccuracy,undefined);assert(!(await h.events()).some(e=>e.kind==='selection-on-demand-request-required'));
 });
