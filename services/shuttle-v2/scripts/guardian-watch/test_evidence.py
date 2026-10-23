@@ -159,8 +159,73 @@ class IncidentEvidenceTests(unittest.TestCase):
         self.assertGreater(coverage["unavailableBoardingReferences"], 0)
         self.assertEqual(coverage["retainedBodies"], 2)
 
+    def arrival_text_feed_fixture(self, *, event_only=False, same_receipt=False, unavailable=False):
+        module = Path(__file__).resolve().parent.parent / "rider-watch/feed-evidence.mjs"
+        source = ("import {retainFeedResponse} from " + json.dumps(module.as_uri()) + ";"
+                  "const refs=[];for(let i=0;i<5;i++)refs.push(await retainFeedResponse(" + json.dumps(str(self.watch)) + ","
+                  "{runId:'1234',body:Buffer.from(' '+JSON.stringify({buses:[],textControl:i})+'\\n'),receivedAt:1234+i*1000}));"
+                  "process.stdout.write(JSON.stringify(refs));")
+        refs = json.loads(subprocess.check_output(["node", "--input-type=module", "-e", source]))
+        self.event = {**self.event, "runId": "1234"}
+        self.refs = {**self.refs, "runId": "1234"}
+        self.rows(self.watch / "samples.jsonl", [{"runId": "1234", "feedResponse": refs[i]} for i in [0, 2, 4]])
+        text_ref = refs[1] if same_receipt else refs[2]
+        if unavailable:
+            text_ref = {"state": "unavailable", "runId": "1234", "reason": "raw-feed-response-unavailable"}
+        observation = {"feedResponse": refs[1]}
+        screen = {"sampledAt": "2026-10-23T19:06:28Z", "feedResponse": text_ref}
+        journey = {"id": "1234", "samples": 3, "boardingObservation": {
+            "v": 1, "sample": {"feedResponse": refs[0]}, "checks": [{"feedResponse": refs[3]}]}}
+        if not event_only:
+            journey.update({"arrivalObservation": observation, "arrivalTextContext": screen})
+        self.rows(self.watch / "journeys.jsonl", [journey])
+        self.rows(self.watch / "events.jsonl", [self.event, {**self.event, "kind": "arrived", "detail": {
+            "observation": observation, "screen": screen}}])
+        return refs
+
+    def test_arrival_text_middle_body_is_retained_separately_from_first_arrival(self):
+        refs = self.arrival_text_feed_fixture()
+        receipt = self.capture()
+        coverage = self.manifest(receipt)["feedResponseCoverage"]
+        records = [json.loads(line) for line in gzip.decompress((Path(receipt["directory"]) / "feed-responses.jsonl.gz").read_bytes()).splitlines()]
+        self.assertIn(refs[2]["id"], {row["id"] for row in records})
+        self.assertEqual(coverage["arrivalTextContextReferences"], 1)
+        self.assertEqual(coverage["retainedBodies"], 5)
+        self.assertTrue(coverage["contextComplete"])
+
+    def test_arrival_text_event_preserves_context_absent_from_journey(self):
+        self.arrival_text_feed_fixture(event_only=True)
+        coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertEqual(coverage["arrivalTextContextReferences"], 1)
+        self.assertEqual(coverage["retainedBodies"], 5)
+        self.assertTrue(coverage["contextComplete"])
+
+    def test_arrival_text_and_first_arrival_tags_share_one_body(self):
+        self.arrival_text_feed_fixture(same_receipt=True)
+        coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertEqual(coverage["arrivalTextContextReferences"], 1)
+        self.assertEqual(coverage["retainedBodies"], 4)
+        self.assertTrue(coverage["contextComplete"])
+
+    def test_arrival_text_unavailable_receipt_prevents_complete_context_claim(self):
+        self.arrival_text_feed_fixture(unavailable=True)
+        coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertFalse(coverage["contextComplete"])
+        self.assertGreater(coverage["unavailableArrivalTextReferences"], 0)
+
+    def test_arrival_text_context_keeps_existing_byte_budget(self):
+        self.arrival_text_feed_fixture()
+        with patch.object(evidence, "MAX_FEED_CONTEXT_BYTES", 1):
+            coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertEqual(coverage["arrivalTextContextReferences"], 1)
+        self.assertEqual(coverage["omittedByByteBudget"], 5)
+        self.assertFalse(coverage["contextComplete"])
+
     def test_legacy_null_arrival_does_not_block_incident_capture(self):
-        self.rows(self.watch / "journeys.jsonl", [{"id": "r1", "samples": 2, "arrivalObservation": None}])
+        self.rows(self.watch / "journeys.jsonl", [{"id": "r1", "samples": 2,
+                  "arrivalObservation": None, "arrivalTextContext": None}])
+        self.rows(self.watch / "events.jsonl", [self.event, {**self.event, "kind": "arrived",
+                  "detail": {"observation": None, "screen": None}}])
         receipt = self.capture()
         self.assertTrue(receipt["sampleCoverage"]["complete"])
         self.assertEqual(self.manifest(receipt)["feedResponseCoverage"]["retainedBodies"], 0)

@@ -40,6 +40,17 @@ Duplicate references preserve both boarding and arrival context. Existing
 unavailable bodies remain explicit, and unavailable references prevent a
 complete-context claim. No missing historical response is reconstructed.
 
+Arrival context also selects the response linked by `arrivalTextContext` and
+the `arrived` event's `detail.screen`. It can differ from the first qualifying
+arrival response and from the final sample. References from both the event and
+journey preserve their context tags while sharing one body when their IDs
+match. Unavailable text references prevent a complete-context claim; the same
+response-context and bundle byte limits still apply. The text's source
+association does not identify an atomic screenshot render or physical arrival.
+The October 23 Gold trip demonstrated this gap: its saved arrival text used a
+response five seconds after its first-arrival response, which the old selected
+context omitted. Existing immutable bundles retain their original omissions.
+
 Routine rider images and logs keep their existing rolling policies. Bundles
 referenced by pending incidents are protected. Once their incident leaves the
 pending queue, bundles roll by seven days from capture and a combined 256 MiB target.
