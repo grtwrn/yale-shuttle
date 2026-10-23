@@ -1,0 +1,620 @@
+{
+  "source": {
+    "caseManifestSHA256": "568d9a1f3e83d219ab615759fd7c6d565819c439c85c408f93803dfea4677ef3",
+    "runId": "1792774865767",
+    "scope": "Selected actual bus/route/stop and compact-wire context from verified original page responses. Test JSON serialization is derived fixture data, not an original HTTP body.",
+    "arrivalScreenDeltaMs": 41
+  },
+  "run": {
+    "id": "1792774865767",
+    "line": {
+      "label": "Purple",
+      "busRouteIds": [
+        10
+      ]
+    },
+    "trip": {
+      "kind": "random",
+      "origin": {
+        "label": "West Haven Train Station",
+        "lat": 41.271172,
+        "lon": -72.963517,
+        "stopId": 127
+      },
+      "destination": {
+        "display_name": "Building 400",
+        "lat": 41.255793,
+        "lon": -72.993569,
+        "type": "bus_stop",
+        "class": "shuttle",
+        "stopId": 22
+      },
+      "approaching": {
+        "busName": "#308",
+        "stopsAway": 2
+      },
+      "estimate": {
+        "hops": 5,
+        "rideSec": 842,
+        "waitSec": 506,
+        "walkSec": 2762,
+        "rideM": 3225
+      }
+    },
+    "busName": "#308",
+    "boardStopId": 127,
+    "exitStopId": 22,
+    "boardedAt": "2026-10-23T17:10:02.261Z",
+    "boardedStorage": {
+      "shuttle-ride-boarded": "1792773952004:307:153:158",
+      "shuttle-boarded-ride": "{\"routeLabel\":\"Purple\",\"color\":\"#7B1FA2\",\"busName\":\"#308\",\"boardStopId\":127,\"alightStopId\":22,\"startedAt\":1792775402256,\"toLat\":41.255793,\"toLon\":-72.993569,\"toText\":\"Building 400\"}"
+    },
+    "phase": "riding"
+  },
+  "before": {
+    "receivedAt": 1792775897190,
+    "sourceReceiptID": "c2cc7c096d1affbd504900ebd38fb3f943ed03cc597647d1c87f7f9005c7188e",
+    "originalBodySHA256": "5604fa745c3c62cf6ecaa84e7caef2fbaaa5984ab8c0ed567904881853dd85d3",
+    "feed": {
+      "buses": [
+        {
+          "observed_at": 1792775894874,
+          "recent_speed": {
+            "mph": 20,
+            "at": 1792775894874,
+            "window_sec": 30,
+            "expires_at": 1792775909000
+          },
+          "bus_id": 68131,
+          "bus_name": "#308",
+          "route_id": 10,
+          "lat": 41.255011,
+          "lon": -72.993268,
+          "heading": 321,
+          "last_stop_id": 23,
+          "stationary": false,
+          "stationary_since": "2026-10-23T17:18:09.866",
+          "last_moved_at": "2026-10-23T17:18:09.866"
+        }
+      ],
+      "routes": {
+        "10": [
+          10,
+          9,
+          1,
+          122,
+          127,
+          26,
+          25,
+          24,
+          23,
+          22,
+          23,
+          24,
+          25,
+          26,
+          72
+        ]
+      },
+      "stop_names": {
+        "1": "100 Church Street South",
+        "9": "300 George St",
+        "10": "333 Cedar",
+        "22": "Building 400",
+        "23": "Building 600",
+        "24": "Building 750",
+        "25": "Building 800",
+        "26": "Building 900",
+        "72": "LEPH / 60 College",
+        "122": "Union Station (S)",
+        "127": "West Haven Train Station"
+      },
+      "stop_coords": {
+        "1": {
+          "lat": 41.299671,
+          "lon": -72.929425
+        },
+        "9": {
+          "lat": 41.305166,
+          "lon": -72.930745
+        },
+        "10": {
+          "lat": 41.303254,
+          "lon": -72.934247
+        },
+        "22": {
+          "lat": 41.255793,
+          "lon": -72.993569
+        },
+        "23": {
+          "lat": 41.256341,
+          "lon": -72.99019
+        },
+        "24": {
+          "lat": 41.256796,
+          "lon": -72.988118
+        },
+        "25": {
+          "lat": 41.257929,
+          "lon": -72.989021
+        },
+        "26": {
+          "lat": 41.260015,
+          "lon": -72.986981
+        },
+        "72": {
+          "lat": 41.303422,
+          "lon": -72.931698
+        },
+        "122": {
+          "lat": 41.297929,
+          "lon": -72.926912
+        },
+        "127": {
+          "lat": 41.271172,
+          "lon": -72.963517
+        }
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792775894916,
+        "servedAt": 1792775897139,
+        "buses": [
+          [
+            "119",
+            "Red",
+            4,
+            {
+              "stopId": 30,
+              "standingSec": 55.012,
+              "approach": false
+            }
+          ],
+          [
+            "41",
+            "Blue Day",
+            24,
+            {
+              "stopId": 10,
+              "standingSec": 265.038,
+              "approach": false
+            }
+          ],
+          [
+            "300",
+            "Brown",
+            5,
+            {
+              "stopId": 121,
+              "standingSec": 220.046,
+              "approach": false
+            }
+          ],
+          [
+            "324",
+            "Pink",
+            0,
+            {
+              "stopId": 149,
+              "standingSec": 270.048,
+              "approach": false
+            }
+          ],
+          [
+            "310",
+            "Pink",
+            7,
+            {
+              "stopId": 125,
+              "standingSec": 460.034,
+              "approach": false
+            }
+          ],
+          [
+            "302",
+            "Green",
+            14,
+            {
+              "stopId": 22,
+              "standingSec": 60.048,
+              "approach": false
+            }
+          ],
+          [
+            "325",
+            "Green",
+            1,
+            {
+              "stopId": 84,
+              "standingSec": 125.052,
+              "approach": false
+            }
+          ],
+          [
+            "307",
+            "Gold",
+            0,
+            {
+              "stopId": 10,
+              "standingSec": 445.033,
+              "approach": false
+            }
+          ],
+          [
+            "43",
+            "Blue Day",
+            15,
+            {
+              "stopId": 97,
+              "standingSec": 69.845,
+              "approach": false
+            }
+          ],
+          [
+            "308",
+            "Purple",
+            8,
+            {
+              "stopId": 22,
+              "standingSec": 20.027,
+              "approach": true
+            }
+          ],
+          [
+            "44",
+            "Blue Day",
+            1,
+            {
+              "stopId": 34,
+              "standingSec": 74.971,
+              "approach": false
+            }
+          ],
+          [
+            "317",
+            "Red",
+            1,
+            {
+              "stopId": 115,
+              "standingSec": 74.971,
+              "approach": true
+            }
+          ],
+          [
+            "330",
+            "Purple",
+            2,
+            null
+          ],
+          [
+            "57",
+            "Orange Day",
+            27,
+            {
+              "stopId": 20,
+              "standingSec": 34.945,
+              "approach": false
+            }
+          ],
+          [
+            "332",
+            "Green",
+            7,
+            null
+          ],
+          [
+            "326",
+            "Purple",
+            13,
+            {
+              "stopId": 26,
+              "standingSec": 25.007,
+              "approach": false
+            }
+          ]
+        ],
+        "travel": [
+          4,
+          24,
+          5,
+          0,
+          7,
+          14,
+          1,
+          0,
+          15,
+          8,
+          1,
+          1,
+          2,
+          27,
+          7,
+          13
+        ]
+      }
+    },
+    "sampleAt": "2026-10-23T17:18:22.169Z",
+    "text": "\ud83d\udd14\nGet off at the next stop\nPurple #308 \u2192 Building 400\nGot it\nGet off NEXT stop! \u00b7 holding near Building 400\n\ud83d\ude8c Purple #308 \u2192 Building 400\nDone\nYALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\n\u21bb\n#308 \u00b7 Recent speed \u224820 mph \u00b7 30s GPS average\n\ud83d\ude8f\n330\n308\n326\n+\n\u2212\n Leaflet | \u00a9 OpenStreetMap contributors\n\ud83d\udccd\nPurple \u00b7 Bus #308\u00b7 holding near Building 400\n\u00b7\nWest Haven Train Stationboarded\n\u2713\nBuilding 900\n\u2713\nBuilding 800\n\u2713\nBuilding 750\n\ud83d\ude8c\nBuilding 600\n\ud83d\ude8f\nBuilding 400<1 min\n\ud83d\udcac Send feedback\nContribute\nAbout"
+  },
+  "arrival": {
+    "receivedAt": 1792775902210,
+    "sourceReceiptID": "b3072d4e21742144056485b50318c1a6ee4da73146578db9bce5a07a58c888e3",
+    "originalBodySHA256": "32ff0e2f7a5071ad179c2cfe96eeb4493e07d6b8088f6efe07f8d3fd1a735ae5",
+    "feed": {
+      "buses": [
+        {
+          "observed_at": 1792775899994,
+          "recent_speed": {
+            "mph": 20,
+            "at": 1792775899994,
+            "window_sec": 30,
+            "expires_at": 1792775916000
+          },
+          "bus_id": 68131,
+          "bus_name": "#308",
+          "route_id": 10,
+          "lat": 41.255273,
+          "lon": -72.993472,
+          "heading": 329,
+          "last_stop_id": 23,
+          "stationary": true,
+          "at_stop_id": 22,
+          "at_stop_since": "2026-10-23T17:18:19.994",
+          "stationary_since": "2026-10-23T17:18:19.994",
+          "last_moved_at": "2026-10-23T17:18:19.994"
+        }
+      ],
+      "routes": {
+        "10": [
+          10,
+          9,
+          1,
+          122,
+          127,
+          26,
+          25,
+          24,
+          23,
+          22,
+          23,
+          24,
+          25,
+          26,
+          72
+        ]
+      },
+      "stop_names": {
+        "1": "100 Church Street South",
+        "9": "300 George St",
+        "10": "333 Cedar",
+        "22": "Building 400",
+        "23": "Building 600",
+        "24": "Building 750",
+        "25": "Building 800",
+        "26": "Building 900",
+        "72": "LEPH / 60 College",
+        "122": "Union Station (S)",
+        "127": "West Haven Train Station"
+      },
+      "stop_coords": {
+        "1": {
+          "lat": 41.299671,
+          "lon": -72.929425
+        },
+        "9": {
+          "lat": 41.305166,
+          "lon": -72.930745
+        },
+        "10": {
+          "lat": 41.303254,
+          "lon": -72.934247
+        },
+        "22": {
+          "lat": 41.255793,
+          "lon": -72.993569
+        },
+        "23": {
+          "lat": 41.256341,
+          "lon": -72.99019
+        },
+        "24": {
+          "lat": 41.256796,
+          "lon": -72.988118
+        },
+        "25": {
+          "lat": 41.257929,
+          "lon": -72.989021
+        },
+        "26": {
+          "lat": 41.260015,
+          "lon": -72.986981
+        },
+        "72": {
+          "lat": 41.303422,
+          "lon": -72.931698
+        },
+        "122": {
+          "lat": 41.297929,
+          "lon": -72.926912
+        },
+        "127": {
+          "lat": 41.271172,
+          "lon": -72.963517
+        }
+      },
+      "server_eta": {
+        "v": 2,
+        "at": 1792775900018,
+        "servedAt": 1792775901720,
+        "buses": [
+          [
+            "119",
+            "Red",
+            4,
+            {
+              "stopId": 30,
+              "standingSec": 60.114,
+              "approach": false
+            }
+          ],
+          [
+            "41",
+            "Blue Day",
+            24,
+            {
+              "stopId": 10,
+              "standingSec": 270.14,
+              "approach": false
+            }
+          ],
+          [
+            "300",
+            "Brown",
+            5,
+            {
+              "stopId": 121,
+              "standingSec": 225.148,
+              "approach": false
+            }
+          ],
+          [
+            "324",
+            "Pink",
+            0,
+            {
+              "stopId": 149,
+              "standingSec": 275.15,
+              "approach": false
+            }
+          ],
+          [
+            "310",
+            "Pink",
+            7,
+            {
+              "stopId": 125,
+              "standingSec": 465.136,
+              "approach": false
+            }
+          ],
+          [
+            "302",
+            "Green",
+            14,
+            {
+              "stopId": 22,
+              "standingSec": 65.15,
+              "approach": false
+            }
+          ],
+          [
+            "325",
+            "Green",
+            1,
+            {
+              "stopId": 84,
+              "standingSec": 130.154,
+              "approach": false
+            }
+          ],
+          [
+            "307",
+            "Gold",
+            0,
+            {
+              "stopId": 10,
+              "standingSec": 450.135,
+              "approach": false
+            }
+          ],
+          [
+            "43",
+            "Blue Day",
+            15,
+            null
+          ],
+          [
+            "308",
+            "Purple",
+            8,
+            {
+              "stopId": 22,
+              "standingSec": 25.129,
+              "approach": false
+            }
+          ],
+          [
+            "44",
+            "Blue Day",
+            1,
+            {
+              "stopId": 34,
+              "standingSec": 70.027,
+              "approach": false
+            }
+          ],
+          [
+            "317",
+            "Red",
+            1,
+            {
+              "stopId": 115,
+              "standingSec": 80.073,
+              "approach": true
+            }
+          ],
+          [
+            "330",
+            "Purple",
+            2,
+            null
+          ],
+          [
+            "57",
+            "Orange Day",
+            27,
+            {
+              "stopId": 20,
+              "standingSec": 40.047,
+              "approach": true
+            }
+          ],
+          [
+            "332",
+            "Green",
+            7,
+            null
+          ],
+          [
+            "326",
+            "Purple",
+            13,
+            {
+              "stopId": 26,
+              "standingSec": 30.109,
+              "approach": false
+            }
+          ]
+        ],
+        "travel": [
+          4,
+          24,
+          5,
+          0,
+          7,
+          14,
+          1,
+          0,
+          15,
+          8,
+          1,
+          1,
+          2,
+          27,
+          7,
+          13
+        ]
+      }
+    }
+  }
+}

@@ -909,6 +909,53 @@ test('a destination receipt survives a busy UI read and keeps its processing clo
  await h.receive(arrivalGap.middle);await h.receive(arrivalGap.after);release('Red #317 has moved on');await tick;
  const run=h.watcher.status().run;assert.equal(run.phase,'arrived');assert.equal(run.arrivedAt,new Date(arrivalGap.middle.receivedAt).toISOString());assert(Date.parse(run.arrivalProcessedAt)>=Date.parse(run.arrivedAt));
  const samples=(await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert(samples.at(-1).feedAgeMs>=0);
+ assert.equal(run.arrivalTextContext.feedStableDuringTextRead,false);
+ assert.equal(run.arrivalTextContext.matchesArrivalResponse,false);
+ assert.equal(run.arrivalTextContext.feedResponse.id,samples.at(-1).feedResponse.id);
+});
+
+test('Purple308 arrival text keeps its earlier screen response when arrival lands41ms later',async()=>{
+ const f=JSON.parse(await fs.readFile(new URL('./__fixtures__/purple-308-arrival-screen-20261023.json',import.meta.url),'utf8'));
+ const raw=Buffer.from(JSON.stringify(f.before.feed));
+ const h=current=await harness(f.before.feed,f.run.trip,{initialRun:f.run,initialLine:f.run.line,text:f.before.text,
+  at:f.before.sampleAt,initialFeedAgeMs:Date.parse(f.before.sampleAt)-f.before.receivedAt,initialResponse:rawResponse(raw)});
+ let delivered=false;
+ const response={...rawResponse(raw),body:async()=>{
+  if(!delivered){delivered=true;vi.setSystemTime(f.arrival.receivedAt);await h.handlers.response(rawResponse(Buffer.from(JSON.stringify(f.arrival.feed))));}
+  return raw;
+ }};
+ vi.setSystemTime(f.before.receivedAt);await h.handlers.response(response);vi.setSystemTime(Date.parse(f.before.sampleAt));
+ await h.watcher.tick();const run=h.watcher.status().run;
+ assert.equal(run.phase,'arrived');assert.equal(run.arrivedAt,new Date(f.arrival.receivedAt).toISOString());
+ assert.equal(run.arrivalText,f.before.text);assert.ok(run.arrivalTextContext);
+ assert.equal(run.arrivalTextContext.sampledAt,f.before.sampleAt);
+ assert.equal(run.arrivalTextContext.feedReceivedAt,new Date(f.before.receivedAt).toISOString());
+ assert.equal(run.arrivalTextContext.feedStableDuringTextRead,true);
+ assert.equal(run.arrivalTextContext.matchesArrivalResponse,false);
+ const records=(await fs.readFile(path.join(h.dir,run.arrivalTextContext.feedResponse.file),'utf8')).trim().split('\n').map(JSON.parse);
+ const screen=records.find(r=>r.id===run.arrivalTextContext.feedResponse.id),arrival=records.find(r=>r.id===run.arrivalObservation.feedResponse.id);
+ assert.deepEqual(JSON.parse(verifyFeedResponseRecord(screen)),f.before.feed);
+ assert.deepEqual(JSON.parse(verifyFeedResponseRecord(arrival)),f.arrival.feed);
+ const samples=(await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal(run.arrivalTextContext.feedResponse.id,samples.at(-1).feedResponse.id);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.deepEqual(events.find(e=>e.kind==='arrived').detail.screen,run.arrivalTextContext);
+ assert.deepEqual(JSON.parse(await fs.readFile(path.join(h.dir,'resume.json'),'utf8')).run.arrivalTextContext,run.arrivalTextContext);
+});
+
+test('arrival text identifies a matching receipt only when both captured identities match',async()=>{
+ const h=await arrivalRider();await h.receive(arrivalGap.middle);await h.watcher.tick();const run=h.watcher.status().run;
+ assert.equal(run.phase,'arrived');assert.equal(run.arrivalTextContext.matchesArrivalResponse,true);
+ assert.equal(run.arrivalTextContext.feedResponse.id,run.arrivalObservation.feedResponse.id);
+});
+
+test('unavailable screen and arrival bodies keep their match unknown',async()=>{
+ const h=await arrivalRider();vi.setSystemTime(arrivalGap.middle.receivedAt);
+ await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>arrivalFeed([arrivalGap.middle.bus])});
+ await h.watcher.tick();const run=h.watcher.status().run;assert.equal(run.phase,'arrived');
+ assert.equal(run.arrivalObservation.feedResponse.state,'unavailable');
+ assert.equal(run.arrivalTextContext.feedResponse.state,'unavailable');
+ assert.equal(run.arrivalTextContext.matchesArrivalResponse,null);
 });
 
 

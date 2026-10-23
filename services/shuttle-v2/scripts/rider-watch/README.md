@@ -111,11 +111,22 @@ receipt. Unreceived positions and crossings between positions are not inferred.
 The next fresh tick consumes that receipt even if a later response has moved
 the bus away. It saves the original bus, target coordinates, receipt time,
 distance and criterion in `arrivalObservation`; `arrivalProcessedAt` records
-when that observation was processed. The UI text is the later tick’s sample;
-it does not attest the screen at the earlier receipt. Geolocation moves to the
-received position.
-The arrival event carries the same observation. Stale-feed pauses and resumed
-journey accuracy exclusions still apply.
+when that observation was processed. `arrivalTextContext` identifies the screen
+sample’s clock, associated feed receipt and whether that feed stayed unchanged
+during the text read. `matchesArrivalResponse` compares captured receipt IDs;
+it is `null` if either receipt is unavailable. A stable feed reference does not
+prove an atomic React render. The screen text can precede or follow the first
+arrival response, and it does not attest the screen at that response or the
+later screenshot. All references reuse already captured bodies without polling.
+Geolocation moves to the received position. The arrival event carries the same
+observation and screen context. Stale-feed pauses and resumed journey accuracy
+exclusions still apply.
+
+On October 23, Purple #308’s qualifying arrival response reached the rider
+41 ms after its saved “next stop” text sample. The arrival screenshot already
+showed “Get off here.” Its regression retains the distinct sample and arrival
+receipts; neither text-sample time nor screenshot filename measures exact
+render latency. The underlying GPS rule and app alerts are unchanged.
 
 The October 16 Red #317 timeout has a recorded 15.84 m producer position
 between retained rider samples at 46.31 m and 59.98 m from LEPH / 60 College.
