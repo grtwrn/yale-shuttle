@@ -189,7 +189,7 @@ export function residual(d: Dist, r: number): (u: number) => number {
     logAtRest = logs[lo]! + (logs[hi]! - logs[lo]!) * ((rr - xs[lo]!) / (xs[hi]! - xs[lo]!));
   }
   return (u) => {
-    if (u <= 0) return 0;
+    if (u <= 0) return Math.max(0, xs[0]! - rr);
     const target = logAtRest + logFraction(u);
     if (target >= logs[0]!) return Math.max(0, xs[0]! - rr);
     if (target <= logs[last]!) return Math.max(0, xs[last]! - rr + (logs[last]! - target) / tailHazard);
