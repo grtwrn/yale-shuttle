@@ -129,6 +129,15 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
   if(!metrics.liveBusesOf(feed,line).length){await status({note:'No suitable live trip currently available'});return false;}
   return true;
  };
+ // Read the product's selected stop-service state. This rider cannot place a
+ // Dispatch request; proximity or a modeled pass must not imply one.
+ const requestOnlyPickup=async(lineLabel,stopId)=>{
+  const rows=await page.locator('tbody[data-pickup-service="on-demand"]').evaluateAll(elements=>elements.map(el=>({
+   routeLabel:el.dataset.route,stopId:Number(el.dataset.pickup),text:el.innerText
+  })));
+  return rows.find(row=>row.routeLabel===lineLabel&&Number.isSafeInteger(row.stopId)
+   &&(stopId==null||row.stopId===stopId));
+ };
  const select=async()=>{
   // One page, one journey at a time. Normal UI interactions test lookup too.
   const order=metrics.CANARY_LINES.map((_,i)=>(cursor+i+1)%metrics.CANARY_LINES.length);
@@ -180,6 +189,10 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    // focused trip card itself; its keyboard handler opens the trip view.
    await row.focus();await page.keyboard.press('Enter');
    if(!await selectionReady(line))return;
+   const requested=await requestOnlyPickup(line.label);
+   if(requested){unavailableUntil[line.label]=clockNow()+SELECTION_BACKOFF_MS;
+    await event('selection-on-demand-request-required',{line:line.label,trip:picked,service:requested});
+    await status({note:'Choose a scheduled pickup; this rider cannot request Dispatch service'});continue;}
    await begin(picked,line);return;
   }
   await status({note:'No suitable live trip currently available'});
@@ -225,6 +238,11 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    for(const alert of pauses.alerts){await event('candidate-map-pause',alert);await capture('candidate-map-pause');}
    if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
+    const requestedBoard=transferRead?.boardStopId??labeledStopId(text,'BOARD',sampledFeed.stop_names);
+    const requested=feedStable&&requestedBoard!==null?await requestOnlyPickup(run.line.label,requestedBoard):null;
+    if(requested){run.excludeAccuracy=true;run.excludeAccuracyReason='Published pickup requires a Dispatch request; automated rider cannot arrange service';
+     await event('on-demand-request-required',{service:requested});
+     await finish('on-demand-request-required-excluded');await status();return;}
     // The direct-card count check reads literal direct-card text. Transfer
     // metadata is used only for boarding identity/occurrence checks below.
     const checked=confirmConflict(run.countConflict,run.transfer?null:pickupCountConflict(text,feed,run.line.busRouteIds,now),now);

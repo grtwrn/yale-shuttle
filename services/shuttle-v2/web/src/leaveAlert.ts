@@ -19,6 +19,7 @@ import { liveEtaAvailable, liveBusAvailable } from "./etaSource";
 import type { BusData } from "./map-data";
 import type { LivePickupSelection } from "./livePickupSelection";
 import { ROUTE_LISTS } from "./routes";
+import { pickupRequestFor } from './pickupService';
 
 /** Safety margin added to the walk time — leave a little before you must. */
 export const LEAVE_BUFFER_SEC = 30;
@@ -187,6 +188,7 @@ export function liveReminderInput(
     || !liveEtaAvailable(buses, nowMs, routeLabel)) return null;
   const o = findReminderOption(options, routeLabel);
   if (!o || !Number.isFinite(o.walkToSec) || o.walkToSec < 0
+    || pickupRequestFor(routeLabel, o.boardStopId, new Date(nowMs))
     || (context.boardStopId != null && context.boardStopId !== o.boardStopId)
     || (context.alightStopId != null && context.alightStopId !== o.alightStopId)) return null;
   const selected = o.livePickupSelection;

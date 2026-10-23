@@ -1,0 +1,13 @@
+{
+  "recordedSampleAt": "2026-10-23T19:20:38.703Z",
+  "sourceResponseReceiptID": "f2c79299f5f4435bacca98237455de1f4c31fb0b95aa257ee4c05a0f679c58d7",
+  "decodedBytes": 323688,
+  "decodedSHA256": "bacd17b38dd89133374d8af000a27c1f63ca6011db888bfc888190c2ad34b602",
+  "fixtureIsExactOriginalDecodedBody": true,
+  "incidentRunId": "1792783230624",
+  "fixturePurpose": "Reproduce a sub-minute scheduled pickup promise at the published request-only Purple Union Station stop after noon.",
+  "policySource": "https://your.yale.edu/campus-essentials/getting-around-campus/using-the-shuttle/west-campus-shuttle",
+  "dispatchSource": "https://your.yale.edu/campus-essentials/getting-around-campus/using-the-shuttle/contact-us",
+  "officialSourcesVerifiedOn": "2026-10-23",
+  "browserControls": "Receipt clocks may be shifted to test noon and device timezones; those controls are not historical morning observations or ETA accuracy measurements."
+}

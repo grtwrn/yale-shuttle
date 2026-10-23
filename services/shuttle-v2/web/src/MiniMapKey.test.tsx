@@ -20,6 +20,17 @@ function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {
 afterEach(() => vi.restoreAllMocks());
 
 describe('route option arrival times', () => {
+  it('keeps a request-only pickup visible with dispatch instructions and no passing-bus times', () => {
+    const html = renderToStaticMarkup(<MiniMapKey rows={[{ ...rows[0]!, option: { ...option,
+      routeLabel: 'Purple', boardStopId: 122,
+      pickupRequest: { kind: 'call-dispatch', stopName: 'Union Station', message: 'Call Dispatch to request this stop.' } },
+    }]} destination="Building 400" onSelectOption={()=>{}} />);
+    expect(html).toContain('data-pickup-service="on-demand"');
+    expect(html).toContain('On request'); expect(html).toContain('tel:+12032815470');
+    expect(html).toContain('option 1'); expect(html).toContain('View Purple trip details');
+    expect(html).not.toContain('pickup-range'); expect(html).not.toContain('route-next-arrival');
+    expect(html).not.toContain('data-testid="destination-arrival"');
+  });
   it('keeps an untimed closest pickup and a distinct farther action without an earlier-arrival claim', () => {
     const html=renderToStaticMarkup(<MiniMapKey rows={[
       {option:{...option,boardStopId:100,etaUnavailable:true,pickupPreference:'closest-stop'},pickupName:'Prospect/Canner',status:'Unavailable'},

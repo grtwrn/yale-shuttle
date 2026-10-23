@@ -4,6 +4,7 @@ import type { TripOption } from './planner';
 import { fmtMin, fmtWalk } from './format';
 import { estimatedGap } from './arrivalDetails';
 import { EarlyPickupNotice, type EarlyPickupForecast } from './EarlyPickupNotice';
+import { PickupRequestNotice } from './PickupRequestNotice';
 
 /** Choose the stronger text contrast on the canonical six-digit route color. */
 function routePillTextColor(color: string): '#000' | '#fff' {
@@ -55,6 +56,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
     {rows.map(({ option, pickup, status, note, warning, pickupName, earlyPickup }) => <tbody
       key={`${option.routeLabel}:${option.boardStopId}:${option.alightStopId}`} data-route={option.routeLabel} data-pickup={option.boardStopId}
       data-mode={option.mode} data-alight={option.alightStopId} data-pickup-choice={option.pickupPreference}
+      data-pickup-service={option.pickupRequest ? 'on-demand' : 'scheduled'}
       data-board-bus={pickup?.busName} data-board-stops-ahead={pickup?.stopsAway}
       data-countdown-bus={option.mode === 'shuttle' ? option.busName : undefined}
       onClick={canSelect ? () => select(option) : undefined}
@@ -69,26 +71,30 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
           </button> : <RoutePill option={option} />}
         </th>
         <td style={{ padding: '0 6px' }}>
-          {pickup ? <ArrivalDetails {...pickup} variant="table" /> : <span style={{ display: 'block', padding: '12px 0' }}>{status}</span>}
+          {option.pickupRequest ? <PickupRequestNotice request={option.pickupRequest} compact />
+            : pickup ? <ArrivalDetails {...pickup} variant="table" /> : <span style={{ display: 'block', padding: '12px 0' }}>{status}</span>}
           {note && <span role="note" style={{ display: 'block', fontSize: 11, color: '#795000', paddingBottom: 6 }}>{note}</span>}
         </td>
         <td style={{ padding: '6px' }}>
           {/* nextSec is the already-live following arrival from now, not the gap after Board in. */}
-          {option.mode === 'shuttle' && !option.departed && !option.etaUnavailable && pickup
+          {option.mode === 'shuttle' && !option.pickupRequest && !option.departed && !option.etaUnavailable && pickup
             && estimatedGap(pickup.etaSec, pickup.nextSec) !== null && pickup.nextSec! >= 0
             ? <span data-testid="route-next-arrival">{pickup.nextSec! < 60 ? '<1 min' : '~' + fmtMin(pickup.nextSec!)}</span>
             : <span aria-label="Following arrival unavailable">—</span>}
         </td>
         <td style={{ padding: '6px', textAlign: 'right' }}>
-          {option.departed || option.etaUnavailable ? <span aria-label="Destination arrival unavailable">—</span>
+          {option.pickupRequest || option.departed || option.etaUnavailable ? <span aria-label="Destination arrival unavailable">—</span>
             : <DestinationArrival compact option={option} destination={destination} departureMs={departureMs} />}
         </td>
       </tr>
+      {option.pickupRequest && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
+        <PickupRequestNotice request={option.pickupRequest} />
+      </td></tr>}
       {pickupName && <tr><td colSpan={4} style={{ padding: '0 6px 4px', fontSize: 12 }}>
         <span id={`pickup-${option.routeLabel.replace(/\s/g, '-')}-${option.boardStopId}-${option.alightStopId}`} data-testid="pickup-choice-name" style={{ fontWeight: 600 }}>{pickupName}</span>
         {option.pickupPreference && <span style={{ color: '#5f6368' }}> · {option.pickupPreference === 'closest-stop' ? 'Closest stop' : option.pickupPreference === 'arrive-sooner' ? 'Arrive sooner' : 'More walking'}</span>}
       </td></tr>}
-      {earlyPickup && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
+      {earlyPickup && !option.pickupRequest && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
         <EarlyPickupNotice arrival={earlyPickup} walkSec={option.walkToSec} />
       </td></tr>}
       {warning && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
