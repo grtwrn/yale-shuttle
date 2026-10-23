@@ -61,7 +61,10 @@ describe("collector.calibrated names the lap fit's own cost", () => {
     bundle = openDb(path.join(tmpDir, "test.db"));
     migrate(bundle.db, { migrationsFolder: "./drizzle" });
     lines = [];
-    collector = await Collector.create(bundle, { upstream: new StubUpstream(), logger });
+    // These cases deliberately inject blocking cache getters to measure the
+    // inline timing contract. Background execution has separate real-worker
+    // source/lifecycle and responsiveness regressions.
+    collector = await Collector.create(bundle, { upstream: new StubUpstream(), logger, calibrationMode: 'inline' });
     await collector.start();
   });
 

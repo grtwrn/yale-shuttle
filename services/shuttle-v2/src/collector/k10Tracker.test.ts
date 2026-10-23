@@ -102,8 +102,10 @@ it('restores through the real collector query without inserting historical event
   type Inner = { runPoll(): Promise<void>; refreshStaticIfNeeded(force: boolean): Promise<void> };
   vi.useFakeTimers(); vi.setSystemTime(current.collectedAt);
   try {
-    collector = await Collector.create(bundle, { upstream: new Stub() });
+    // The retained observations and calibration share this replay's clock.
+    collector = await Collector.create(bundle, { upstream: new Stub(), calibrationMode: 'inline' });
     await (collector as unknown as Inner).refreshStaticIfNeeded(true);
+    expect(collector.calibrationSource()!.main.asOf).toBe(current.collectedAt);
     await (collector as unknown as Inner).runPoll();
     const expected = replay([...history,current]).snapshot(current.collectedAt);
     expect(expected.size).toBe(1);

@@ -378,7 +378,7 @@ describe("/api/buses with the flag off", () => {
       const first = get(true);
       expect(first).not.toContain('calibration');
       clock.mockReturnValue(at + 1200);
-      (collector as unknown as { runCalibrate(): void }).runCalibrate();
+      await (collector as unknown as { runCalibrate(): void | Promise<void> }).runCalibrate();
       const nextSource = collector.calibrationSource()!;
       expect(nextSource.main.id).not.toBe(source.main.id);
       get(true);

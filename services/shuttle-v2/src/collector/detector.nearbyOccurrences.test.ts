@@ -38,13 +38,15 @@ async function replayCollector(restartAt: number | null) {
   type Inner = { runPoll(): Promise<void>; refreshStaticIfNeeded(force: boolean): Promise<void> };
   const positions: Array<{ at: number; buses: ReturnType<Collector['getLiveBuses']> }> = [];
   const errors: unknown[] = [];
-  const options = { upstream: new Stub(), upstreamEta: false, etaSampler: false,
+  // Preserve the explicit historical clock across calibration and collection.
+  const options = { upstream: new Stub(), upstreamEta: false, etaSampler: false, calibrationMode: 'inline' as const,
     logger: { info() {}, warn() {}, error(message: string, meta?: unknown) { errors.push({ message, meta }); } } };
   vi.useFakeTimers();
   try {
     vi.setSystemTime(latest.collectedAt);
     collector = await Collector.create(bundle, options);
     await (collector as unknown as Inner).refreshStaticIfNeeded(true);
+    expect(collector.calibrationSource()!.main.asOf).toBe(latest.collectedAt);
     for (const obs of observations) {
       latest = obs; vi.setSystemTime(obs.collectedAt);
       if (obs.collectedAt === restartAt) {

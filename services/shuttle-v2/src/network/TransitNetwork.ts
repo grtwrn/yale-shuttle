@@ -284,6 +284,12 @@ export class TransitNetwork {
       routeStopPositions: this.routeStopPositions, legMeters: this.legMeters };
   }
 
+  /** Restore an already prepared geometry snapshot in an isolated worker.
+   * Keep the exact road lengths and repeated stop slots used by its producer. */
+  static fromObservationTopology(topology: ReturnType<TransitNetwork['observationTopology']>): TransitNetwork {
+    return new TransitNetwork(topology);
+  }
+
   private constructor(args: {
     stops: ReadonlyMap<number, Stop>;
     routes: ReadonlyMap<number, Route>;
@@ -412,6 +418,16 @@ export class TransitNetwork {
     for (const [k, v] of dwells) this.dwellStats.set(k, v);
     this.paceStats.clear();
     for (const [k, v] of pace) this.paceStats.set(k, v);
+  }
+
+  /** Transfer a completed calibration without exposing the mutable map
+   * containers owned by this network. Worker messages clone their values. */
+  calibrationTables() {
+    return {
+      segments: new Map(this.segmentStats),
+      dwells: new Map(this.dwellStats),
+      pace: new Map(this.paceStats),
+    };
   }
 
   // -- Queries ---------------------------------------------------------------
