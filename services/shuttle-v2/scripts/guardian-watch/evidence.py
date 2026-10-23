@@ -1,5 +1,7 @@
 """Private incident snapshots. Routine rider storage remains independently rolling."""
 import contextlib
+import base64
+from datetime import datetime
 import errno
 import gzip
 import hashlib
@@ -11,11 +13,120 @@ import shutil
 import stat
 import time
 import uuid
+import zlib
 
 MIB = 1024 * 1024
 DAY = 86400
 MAX_SELECTED_BYTES = 64 * MIB
 MAX_BUNDLE_BYTES = 32 * MIB
+MAX_FEED_CONTEXT_BYTES = 8 * MIB
+FEED_HEADERS = {"date", "content-type", "content-length", "content-encoding", "etag", "x-shuttle-snapshot"}
+
+
+def verify_feed_response(record):
+    """The exact decoded bytes retained by rider-watch/feed-evidence.mjs."""
+    if (not isinstance(record, dict) or type(record.get("v")) is not int or record["v"] != 1 or not isinstance(record.get("runId"), str)
+            or not re.fullmatch(r"\d{1,20}", record["runId"])
+            or record.get("route") != "/api/buses" or record.get("encoding") != "gzip/base64"
+            or record.get("sourceKind") not in ["page-response", "bootstrap-request"]
+            or type(record.get("receivedAt")) is not int or not 0 <= record["receivedAt"] <= 9007199254740991
+            or type(record.get("status")) is not int or not 200 <= record["status"] < 300
+            or type(record.get("decodedBytes")) is not int or not 0 <= record["decodedBytes"] <= 8 * MIB
+            or type(record.get("gzipBytes")) is not int or not 0 <= record["gzipBytes"] <= MIB
+            or not isinstance(record.get("headers"), dict)
+            or any(k not in FEED_HEADERS or not isinstance(v, str) or len(v) > 1024 for k, v in record["headers"].items())
+            or not isinstance(record.get("body"), str) or len(record["body"]) > 4 * ((MIB + 2) // 3)):
+        raise ValueError("Invalid feed response record")
+    compressed = base64.b64decode(record["body"], validate=True)
+    if len(compressed) != record["gzipBytes"] or digest(compressed) != record["gzipSHA256"]:
+        raise ValueError("Feed response gzip checksum mismatch")
+    decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    raw = decoder.decompress(compressed, 8 * MIB + 1)
+    if (not decoder.eof or decoder.unused_data or len(raw) != record["decodedBytes"]
+            or digest(raw) != record["decodedSHA256"]):
+        raise ValueError("Feed response body checksum mismatch")
+    keys = ["v", "runId", "route", "sourceKind", "receivedAt", "status", "headers", "decodedBytes", "decodedSHA256", "gzipBytes", "gzipSHA256"]
+    metadata = {key: record[key] for key in keys}
+    if digest(json.dumps(metadata, ensure_ascii=False, separators=(",", ":")).encode()) != record["id"]:
+        raise ValueError("Feed response receipt identity mismatch")
+    return raw
+
+
+def feed_response_context(watch, run, references, event, budget):
+    """Keep first/latest/event-nearest/arrival context, with explicit limits."""
+    valid, gaps = {}, []
+    def gap(message):
+        if message not in gaps and len(gaps) < 32:
+            gaps.append(message)
+    unavailable = sum(r.get("state") != "captured" for r in references)
+    for ref in references:
+        if ref.get("state") != "captured":
+            continue
+        if (ref.get("runId") != run or ref.get("file") != "feed-responses/" + str(run) + ".jsonl"
+                or not re.fullmatch(r"[a-f0-9]{64}", str(ref.get("id", "")))
+                or type(ref.get("receivedAt")) is not int):
+            gap("Invalid feed response reference")
+            continue
+        valid[ref["id"]] = ref
+    ordered = sorted(valid.values(), key=lambda r: (r["receivedAt"], r["id"]))
+    selected = set()
+    if ordered:
+        selected.update([ordered[0]["id"], ordered[-1]["id"]])
+        try:
+            at = datetime.fromisoformat(event["at"].replace("Z", "+00:00")).timestamp() * 1000
+            selected.add(min(ordered, key=lambda r: abs(r["receivedAt"] - at))["id"])
+        except (KeyError, ValueError, TypeError):
+            pass
+        arrival = [r for r in ordered if r.get("arrivalContext") is True]
+        if arrival:
+            selected.add(arrival[-1]["id"])
+    rows, found, used, omitted = [], set(), 0, 0
+    if selected:
+        try:
+            file = checked_file(watch, "feed-responses/" + str(run) + ".jsonl")
+            if file.stat().st_size > 512 * MIB:
+                raise ValueError("Feed journal exceeds its read bound")
+            with file.open("rb") as handle:
+                while True:
+                    line = handle.readline(2 * MIB + 1)
+                    if not line:
+                        break
+                    if not line.endswith(b"\n") or len(line) > 2 * MIB:
+                        gap("Oversized or incomplete feed response record")
+                        while line and not line.endswith(b"\n"):
+                            line = handle.readline(2 * MIB + 1)
+                        continue
+                    try:
+                        record = json.loads(line)
+                        if not isinstance(record, dict):
+                            gap("Invalid feed response record")
+                            continue
+                        identity = record.get("id")
+                        if identity not in selected or identity in found:
+                            continue
+                        verify_feed_response(record)
+                        ref = valid[identity]
+                        if any(record.get(k) != ref.get(k) for k in ["runId", "sourceKind", "receivedAt", "decodedBytes", "decodedSHA256", "gzipBytes", "gzipSHA256"]):
+                            raise ValueError("Feed response differs from its sample reference")
+                        if used + len(line) > budget:
+                            omitted += 1
+                            found.add(identity)
+                            continue
+                        rows.append(line); used += len(line); found.add(identity)
+                    except (ValueError, TypeError, KeyError, zlib.error) as error:
+                        gap("Unavailable feed response: " + str(error))
+        except (ValueError, OSError) as error:
+            gap("Unavailable feed response journal: " + str(error))
+    missing = sorted(selected - found)
+    if missing:
+        gap("Missing referenced feed response bodies: " + str(len(missing)))
+    coverage = {"uniqueCapturedReferences": len(valid), "unavailableReferences": unavailable,
+                "contextReferences": len(selected), "retainedBodies": len(rows), "missingContextIDs": missing,
+                "omittedByContextSelection": len(valid) - len(selected), "omittedByByteBudget": omitted,
+                "contextComplete": bool(selected) and not missing and not omitted and not gaps,
+                "fullTripBodiesRetained": bool(valid) and len(rows) == len(valid) and unavailable == 0 and not gaps,
+                "scope": "Selected original decoded HTTP bodies only; all context omissions remain explicit. No physical service or ETA accuracy claim."}
+    return rows, gaps, coverage
 
 
 def digest(data):
@@ -127,7 +238,7 @@ def capture_bundle(store, incident_id, event, evidence, allowed_watchers):
     staging.mkdir(mode=0o700)
     files, sources, gaps = [], [], []
     selected_bytes, malformed, partial = 0, 0, 0
-    counts, last_journey = {}, None
+    counts, last_journey, feed_references = {}, None, []
     try:
         def save(name, data):
             path = staging / name
@@ -174,9 +285,15 @@ def capture_bundle(store, incident_id, event, evidence, allowed_watchers):
                             if selected_bytes > MAX_SELECTED_BYTES:
                                 raise ValueError("Incident selected logs exceed 64 MiB; capture must retry")
                             lines.append(raw)
+                            if kind == "samples" and isinstance(row.get("feedResponse"), dict):
+                                feed_references.append(row["feedResponse"])
                             matched += 1
                             if kind == "journeys":
                                 last_journey = row
+                                arrival = row.get("arrivalObservation")
+                                ref = arrival.get("feedResponse") if isinstance(arrival, dict) else None
+                                if isinstance(ref, dict):
+                                    feed_references.append({**ref, "arrivalContext": True})
                     if matched:
                         sources.append({"file": str(source), "rows": matched})
                 counts[kind] = len(lines)
@@ -216,10 +333,16 @@ def capture_bundle(store, incident_id, event, evidence, allowed_watchers):
                     gaps.append("Unavailable screenshot: " + name)
                     continue
                 save("images/" + name, source.read_bytes())
+            budget = max(0, min(MAX_FEED_CONTEXT_BYTES, MAX_BUNDLE_BYTES - sum(i["bytes"] for i in files) - 65536))
+            body_rows, body_gaps, body_coverage = feed_response_context(watch, run, feed_references, event, budget)
+            gaps.extend(body_gaps)
+            if body_rows:
+                save("feed-responses.jsonl.gz", gzip.compress(b"".join(body_rows), mtime=0))
         expected = last_journey.get("samples") if last_journey else None
         complete = isinstance(expected, int) and counts["samples"] == expected and not malformed and not partial
         manifest = {"v": 1, "incidentId": incident_id, "capturedAt": time.time(), "event": event,
                     "watcher": str(watch), "runId": run, "sources": sources, "files": files,
+                    "feedResponseCoverage": body_coverage,
                     "sampleCoverage": {"rows": counts["samples"], "expectedFromJourney": expected,
                                        "complete": complete, "malformedSourceRows": malformed,
                                        "partialSourceRows": partial}, "counts": counts, "gaps": gaps,

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {attach} from './runner.mjs';
 import {haversineM} from '../canary-metrics.mjs';
+import {verifyFeedResponseRecord} from './feed-evidence.mjs';
 
 // Replays of recorded 2026-10-01 waiting runs through the real tick loop.
 const line={label:'Purple',busRouteIds:[10]};
@@ -16,7 +17,7 @@ const dwelling="🚌 20 min\nBOARD🚌Union Station (S)⏸ 0:29\nWest Haven Trai
 const at126={bus_name:'#126',route_id:10,lat:41.297912,lon:-72.926694,at_stop_id:122,stationary:true};
 const near126={bus_name:'#126',route_id:10,lat:41.296923,lon:-72.927685,stationary:false};
 
-async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0,fakeTimeouts=false}={}){
+async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0,initialResponse,fakeTimeouts=false}={}){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval',...(fakeTimeouts?['setTimeout','clearTimeout']:[])]});
  vi.setSystemTime(Date.parse(at));
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
@@ -26,7 +27,7 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
  const ctx={setGeolocation:async g=>{h.geo=g;}};
- h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,initialFeedAt:Date.now()-initialFeedAgeMs,outputDir:dir});
+ h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,initialFeedAt:Date.now()-initialFeedAgeMs,initialResponse,outputDir:dir});
  // The runner's own 10 s interval drives each poll; wait for it to settle.
  // receiptDelayMs models delivery within the existing 10 s poll interval;
  // recorded vehicle timestamps are unchanged, and no historical HTTP receipt is inferred.
@@ -41,6 +42,32 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
 }
 let current;
 afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)await fs.rm(current.dir,{recursive:true,force:true});current=undefined;});
+
+function rawResponse(raw){return {url:()=> 'https://example.test/api/buses',ok:()=>true,status:()=>200,
+ headers:()=>({'content-type':'application/json','set-cookie':'DO_NOT_RETAIN'}),json:async()=>JSON.parse(raw),body:async()=>Buffer.from(raw)};}
+test('a saved UI sample is bound to the exact initial response bytes',async()=>{
+ const initial=feedWith([near126]),raw=Buffer.from('\n'+JSON.stringify(initial,null,2)+'\n');
+ const h=current=await harness(initial,trip,{initialResponse:rawResponse(raw),initialFeedAgeMs:1000});
+ await h.watcher.tick();
+ const sample=JSON.parse((await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').at(-1));
+ assert.equal(sample.feedResponse.state,'captured');assert.equal(sample.feedResponse.receivedAt,Date.now()-1000);
+ assert.equal(sample.feedResponse.sourceKind,'bootstrap-request');
+ const record=JSON.parse((await fs.readFile(path.join(h.dir,sample.feedResponse.file),'utf8')).trim().split('\n').at(-1));
+ assert.equal(record.id,sample.feedResponse.id);assert.deepEqual(verifyFeedResponseRecord(record),raw);
+ assert.equal(h.watcher.status().feedEvidence.captured,1);
+});
+test('a feed change during a text read cannot bind the sample to the replacement response',async()=>{
+ const first=feedWith([near126]),rawA=Buffer.from(JSON.stringify(first)),second=feedWith([at126]),rawB=Buffer.from(JSON.stringify(second));
+ const h=current=await harness(first,trip,{initialResponse:rawResponse(rawA)});let changed=false;
+ h.page.locator=()=>({innerText:async()=>{if(!changed){changed=true;await h.handlers.response(rawResponse(rawB));}return approaching;},evaluateAll:async()=>[]});
+ await h.watcher.tick();
+ const samples=(await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal(samples.length,2);const sample=samples.at(-1);
+ assert.equal(sample.mapPauseAudit.feedStableDuringRead,false);assert.deepEqual(sample.buses,first.buses);
+ const records=(await fs.readFile(path.join(h.dir,sample.feedResponse.file),'utf8')).trim().split('\n').map(JSON.parse);
+ const record=records.find(r=>r.id===sample.feedResponse.id);assert.deepEqual(verifyFeedResponseRecord(record),rawA);
+ assert.notEqual(record.decodedSHA256,(await import('node:crypto')).createHash('sha256').update(rawB).digest('hex'));
+});
 
 test('the real rider loop raises one candidate for a sustained report-142 stop-count contradiction',async()=>{
  const capture=JSON.parse(await fs.readFile(new URL('../../web/src/__fixtures__/red-winchester-report-142.json',import.meta.url),'utf8'));
@@ -817,7 +844,7 @@ async function arrivalRider(){
  const h=current=await harness(arrivalFeed([red317]),from,{initialLine:{label:'Red',busRouteIds:[3]},feedOf:arrivalFeed,text:'🚌 #317 · 1 stop away\nBOARDDivision/Prospect\nGET OFFLEPH/60 College',at:new Date(Date.parse(arrivalGap.boardedAt)-10000).toISOString()});
  await h.poll('🚌 14 min\nBOARD🚌Division/Prospect⏸ 0:21\nGET OFFLEPH/60 College',[{...red317,...red.stop_coords[48],stationary:true,at_stop_id:48}]);
  assert.equal(h.watcher.status().run.phase,'riding');
- h.receive=async(frame,bus=frame.bus)=>{vi.setSystemTime(frame.receivedAt);await h.handlers.response({url:()=>'https://example.test/api/buses',ok:()=>true,json:async()=>arrivalFeed([bus])});};
+ h.receive=async(frame,bus=frame.bus)=>{vi.setSystemTime(frame.receivedAt);await h.handlers.response(rawResponse(Buffer.from(JSON.stringify(arrivalFeed([bus])))));};
  return h;
 }
 test('a qualifying arrival received between rider ticks survives a later moving feed',async()=>{
@@ -826,6 +853,12 @@ test('a qualifying arrival received between rider ticks survives a later moving 
  const run=h.watcher.status().run;assert.equal(run.phase,'arrived');assert.equal(run.arrivedAt,new Date(arrivalGap.middle.receivedAt).toISOString());
  assert.equal(run.arrivalObservation.bus.observed_at,arrivalGap.middle.bus.observed_at);assert.equal(run.arrivalObservation.bus.bus_id,67807);assert.equal(run.arrivalObservation.stopId,72);assert(run.arrivalObservation.distanceM<16);assert.equal(run.arrivalCriterion,'GPS-within-45m');
  assert.deepEqual(h.geo,{latitude:arrivalGap.middle.bus.lat,longitude:arrivalGap.middle.bus.lon});
+ assert.equal(run.arrivalObservation.feedResponse.state,'captured');
+ assert.equal(run.arrivalObservation.feedResponse.receivedAt,arrivalGap.middle.receivedAt);
+ assert.equal(run.arrivalObservation.feedResponse.sourceKind,'page-response');
+ const bodyRows=(await fs.readFile(path.join(h.dir,run.arrivalObservation.feedResponse.file),'utf8')).trim().split('\n').map(JSON.parse);
+ const arrivalBody=bodyRows.find(row=>row.id===run.arrivalObservation.feedResponse.id);
+ assert.deepEqual(JSON.parse(verifyFeedResponseRecord(arrivalBody)).buses,[arrivalGap.middle.bus]);
  const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);const arrived=events.filter(e=>e.kind==='arrived');assert.equal(arrived.length,1);assert.deepEqual(arrived[0].detail.observation,run.arrivalObservation);
 });
 test.each(['not-delivered','other-bus','other-route','early','invalid','stale-observation','future-observation','invalid-board-clock'])('the receipt buffer does not infer arrival from %s',async mode=>{

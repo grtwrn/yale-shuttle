@@ -5,6 +5,7 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { MiB, atomicJson, readJson, maintainImages, maintainRiderLogs, withStorageLock } from './storage.mjs';
 import { maintainLearning } from './learning.mjs';
+import { maintainFeedResponses } from '../rider-watch/feed-evidence.mjs';
 
 export async function rotateOutput(file, { maxBytes = 10 * MiB, maxBackups = 3, dryRun = false } = {}) {
   const stat = await fs.stat(file).catch(e => { if (e.code === 'ENOENT') return null; throw e; });
@@ -37,7 +38,8 @@ async function maintainUnlocked(service, { dryRun = false, learningRoot = path.j
     const resume = await readJson(path.join(root, 'resume.json'), null);
     const status = await readJson(path.join(root, 'status.json'), {});
     const activeRunId = resume?.run?.id ?? (status.startedAt ? String(Date.parse(status.startedAt)) : undefined);
-    result.riders[name] = { images: await maintainImages(root, { activeRunId, dryRun }), logs: await maintainRiderLogs(root, { dryRun }) };
+    result.riders[name] = { images: await maintainImages(root, { activeRunId, dryRun }), logs: await maintainRiderLogs(root, { dryRun }),
+      feedResponses:await maintainFeedResponses(root,{activeRunId,dryRun}) };
     result.outputs.push(await rotateOutput(path.join(root, 'dashboard.log'), { dryRun }));
   }
   result.learning = await maintainLearning(learningRoot, { dryRun });
