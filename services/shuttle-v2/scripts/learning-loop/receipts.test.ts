@@ -6,6 +6,7 @@ import { resetModelParams } from '../../web/src/eta/params';
 import { registerRoutePaths } from '../../web/src/anchor';
 import { horizonOf } from '../reestimate-lib.mjs';
 import { observe, recordForecast } from './lib.mjs';
+import { haversineM } from '../canary-metrics.mjs';
 
 afterEach(() => { resetModelParams(); registerRoutePaths(null); });
 async function* asynchronously(records: any[]) { for (const record of records) { await Promise.resolve(); yield record; } }
@@ -49,6 +50,35 @@ describe('original seed and exact-input receipt verification', () => {
   it('verifies all source observations even when a sampled HTTP view contains no new frame', async () => {
     const f = fixture(), expected = verifyExactReceipts(f.state, [f.row], f.records, f.f.seed); expect(expected).toMatchObject({ framesVerified: 3, sampledCursorsVerified: 1 });
     expect(await verifyExactReceiptsAsync(f.state, [f.row], asynchronously(f.records), f.f.seed)).toEqual(expected);
+  });
+  it('refuses a forecast attributed to a catchup response even if the control matches', async () => {
+    const f = fixture(), receipt = f.records.at(-1)!;
+    receipt.input.source.frames = structuredClone(f.records[2]!.input.source.frames);
+    receipt.raw = JSON.stringify(receipt.input); f.row.inputHash = digest(receipt.raw);
+    expect(() => verifyExactReceipts(f.state, [f.row], f.records, f.f.seed)).toThrow('caught-up live');
+    await expect(verifyExactReceiptsAsync(f.state, [f.row], asynchronously(f.records), f.f.seed)).rejects.toThrow('caught-up live');
+  });
+  it('refuses an actual engine forecast from a snapshot already showing its target curb', async () => {
+    const f = fixture(), input = f.records.at(-1)!.input;
+    const sampled = f.f.stream.sample(input.source.feed, input.receivedAt);
+    const p = sampled.champion.find(p => p.bus.stationary === true && p.bus.at_stop_id === p.stop && p.eta === 0
+      && haversineM(p.bus, input.source.feed.stop_coords[p.stop]) <= 75)!;
+    expect(p).toBeDefined();
+    const b = sampled.challenger.find(b => b.bus.bus_id === p.bus.bus_id && b.stop === p.stop)!;
+    const row = { ...f.row, r: p.bus.route_id, busId: p.bus.bus_id, busName: p.bus.bus_name, stop: p.stop,
+      h: horizonOf(p.eta, 1800), champion: p, challenger: b };
+    expect(() => verifyExactReceipts(f.state, [row], f.records, f.f.seed)).toThrow('curb evidence');
+    await expect(verifyExactReceiptsAsync(f.state, [row], asynchronously(f.records), f.f.seed)).rejects.toThrow('curb evidence');
+  });
+  it('refuses a known-curb forecast even when its claimed first-arrival receipt is later', async () => {
+    const f = matchedFixture(), forecast = f.records.find(r => digest(r.raw) === f.row.inputHash)!;
+    const bus = forecast.input.source.feed.buses.find((b: any) => b.bus_id === f.row.busId && b.bus_name === f.row.busName);
+    Object.assign(bus, forecast.input.source.feed.stop_coords[f.row.stop], {
+      stationary: true, at_stop_id: f.row.stop, observed_at: forecast.input.receivedAt });
+    forecast.raw = JSON.stringify(forecast.input); f.row.inputHash = digest(forecast.raw);
+    expect(f.row.arrivalInputHash).not.toBe(f.row.inputHash);
+    expect(() => verifyExactReceipts(f.state, [f.row], f.records, f.f.seed)).toThrow('curb evidence');
+    await expect(verifyExactReceiptsAsync(f.state, [f.row], asynchronously(f.records), f.f.seed)).rejects.toThrow('curb evidence');
   });
   it('refuses a claimed arrival supported only by an unrelated retained forecast receipt', async () => {
     const f = fixture();

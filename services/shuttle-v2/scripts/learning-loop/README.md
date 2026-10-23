@@ -107,6 +107,10 @@ champion horizon; the original route, support, tail and proper-score gates stay.
 
 Sampling is one forecast per `(route, bus id, bus name, target stop, future
 visit ordinal, champion horizon)`. Identity is allocated before the outcome.
+The first qualifying curb snapshot prevents new sampled promises for that
+visit, even while its confirmation is pending; earlier promises stay in the
+cohort. Receipt verification independently rejects forecasts from catchup
+responses or snapshots already containing curb evidence for their target.
 Both models are scored on the same samples and reference horizons; an absent
 challenger prediction is retained as missing, not removed from its cohort.
 A curb-service outcome requires two fresh stationary observations at the

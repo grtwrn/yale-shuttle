@@ -92,7 +92,9 @@ export function recordForecast(state, bus, stop, at, champion, challenger, phase
  const h=horizonOf(champion.eta,1800);
  if(!h||champion.eta<0||!['calibration','test'].includes(phase))return;
  const base=keyOf(bus,stop),visit=state.visits[base]??={ordinal:0,latched:false};
- if(visit.latched)return;
+ // The confirmation may arrive later, but its arrival time is the first
+ // qualifying curb snapshot. Never create promises from already seen arrivals.
+ if(visit.latched||visit.candidate)return;
  const id=`${base}|${visit.ordinal+1}|${h}`;
  if(state.pending[id])return;
  state.pending[id]={id,visitId:`${base}|${visit.ordinal+1}`,base,h,phase,day:etDay(at),r:bus.route_id,busId:bus.bus_id,busName:bus.bus_name,stop,at,inputHash,champion,challenger};
