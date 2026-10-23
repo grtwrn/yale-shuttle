@@ -23,7 +23,7 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
  const h={text,clicks:[],handlers:{}};
  const button=name=>({isVisible:async()=>name==="🚌 I'm on it",click:async()=>h.clicks.push(name)});
- const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:()=>({innerText:async()=>h.text,evaluateAll:async()=>h.maps??[]}),
+ const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},locator:selector=>({innerText:async()=>h.text,evaluateAll:async()=>selector==='tbody[data-pickup-service="on-demand"]'?h.requestStops??[]:h.maps??[]}),
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
  const ctx={setGeolocation:async g=>{h.geo=g;}};
@@ -41,6 +41,22 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
  h.dir=dir;h.page=page;return h;
 }
 let current;
+test('a pickup that changes to request-only service is retained as excluded instead of timing out or boarding',async()=>{
+ current=await harness(feedWith([near126]));
+ current.requestStops=[{routeLabel:'Purple',stopId:122,text:'On request. Call Dispatch to request Union Station.'}];
+ await current.poll(approaching,[near126]);
+ const [journey]=await current.journeys();
+ assert.equal(journey.result,'on-demand-request-required-excluded');assert.equal(journey.excludeAccuracy,true);
+ assert.equal(journey.boardedAt,undefined);assert.deepEqual(current.clicks,[]);
+ const events=(await fs.readFile(path.join(current.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert(events.some(e=>e.kind==='on-demand-request-required'&&e.detail.service.stopId===122));
+});
+test('another route request notice cannot exclude the current scheduled pickup',async()=>{
+ current=await harness(feedWith([near126]));
+ current.requestStops=[{routeLabel:'Red',stopId:122,text:'Unrelated row'}];
+ await current.poll(approaching,[near126]);
+ assert.equal(current.watcher.status().run.phase,'waiting');assert.deepEqual(current.clicks,[]);
+});
 afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)await fs.rm(current.dir,{recursive:true,force:true});current=undefined;});
 
 function rawResponse(raw){return {url:()=> 'https://example.test/api/buses',ok:()=>true,status:()=>200,
@@ -482,12 +498,12 @@ test('the same expired waiting cap still closes a run when the bus cannot board'
  assert.equal(journey.boardedAt,undefined);assert.deepEqual(h.clicks,[]);
  assert.equal(h.watcher.status().run,null);
 });
-async function fixedRed(initialFeed,initialFeedAgeMs=0){
+async function fixedRed(initialFeed,initialFeedAgeMs=0,{requestStops=[]}={}){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval']});
  vi.setSystemTime(Date.parse('2026-10-01T15:00:00Z'));
- const h={dir:await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-')),geo:[],opened:[],handlers:{},rowShown:true};
+ const h={dir:await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-')),geo:[],opened:[],handlers:{},rowShown:true,requestStops};
  const page={on:(k,f)=>{h.handlers[k]=f;},off:()=>{},reload:async()=>{},screenshot:async()=>Buffer.from('jpg'),
-  locator:()=>({innerText:async()=>''}),keyboard:{press:async k=>h.opened.push(k)},waitForFunction:async()=>{},
+  locator:()=>({innerText:async()=>'',evaluateAll:async()=>h.requestStops??[]}),keyboard:{press:async k=>h.opened.push(k)},waitForFunction:async()=>{},
   evaluate:async()=>({toLL:{lat:ysph.lat,lon:ysph.lon}}),
   getByPlaceholder:()=>({fill:async()=>{},press:async()=>{}}),
   getByRole:(_,{name})=>({isVisible:async()=>h.rowShown&&name==='View Red trip details',click:async()=>{},focus:async()=>h.opened.push(name)})};
@@ -508,6 +524,16 @@ test('fresh empty service publishes feed freshness without inventing a journey',
  assert.equal(status.running,true);assert.equal(status.phase,'selecting');
  assert.deepEqual(await h.events(),[]);assert.deepEqual(h.geo,[]);
  assert.equal((await fs.readFile(path.join(h.dir,'journeys.jsonl'),'utf8')).trim(),'');
+});
+
+test('a selected request-only pickup is skipped without starting a simulated scheduled journey',async()=>{
+ const h=current=await fixedRed({...red,buses:[red317]},0,
+  {requestStops:[{routeLabel:'Red',stopId:48,text:'Constructed request-only selection control'}]});
+ await h.watcher.tick();
+ assert.equal(h.watcher.status().run,null);
+ const events=await h.events();
+ assert.equal(events.filter(event=>event.kind==='selection-on-demand-request-required').length,1);
+ assert.equal(events.filter(event=>event.kind==='journey-started').length,0);
 });
 
 test('an aged startup feed cannot start a trip and raises only one idle stale diagnostic',async()=>{

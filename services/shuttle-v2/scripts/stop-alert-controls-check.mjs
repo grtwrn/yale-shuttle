@@ -33,6 +33,12 @@ try {
   await ctx.addInitScript(({permission})=>{
    localStorage.setItem('listView','map');
    window.notificationRequests=0;window.notifications=[];
+   // Delivery awaits an asynchronous registration lookup before using the
+   // mocked page notification. Exercise that path instead of assuming the
+   // promise settles inside poll's 100 ms render wait.
+   Object.defineProperty(navigator.serviceWorker,'getRegistration',{configurable:true,value:async()=>{
+    await new Promise(resolve=>setTimeout(resolve,2000));return undefined;
+   }});
    if(permission==='unsupported')Object.defineProperty(window,'Notification',{value:undefined,configurable:true});
    else Object.defineProperty(window,'Notification',{value:class {
     static permission=permission;
@@ -127,8 +133,13 @@ try {
   feed.buses=buses;feed.server_eta=wire;
   for(const row of wire.rows)if(row[0]===0&&row[1]===48){row[2]=120;row[3]=60;row[4]=180;row[5]=2;}
   wire.rows.sort((a,b)=>a[2]-b[2]);await poll();
-  if(permission==='granted')assert.equal(await page.evaluate(()=>window.notifications.length),1);
+  if(permission==='granted'){
+   await page.waitForFunction(()=>window.notifications.length===1);
+   assert.equal(await page.evaluate(()=>window.notifications.length),1);
+  }
   else {const banner=page.getByTitle('Dismiss',{exact:true});await banner.waitFor();assert((await banner.innerText()).includes(stop));assert.match(await banner.innerText(),/Red/);}
+  await poll();
+  assert.equal(await page.evaluate(()=>window.notifications.length),permission==='granted'?1:0,'a repeat poll must not duplicate the notification');
   state.checks.push('Armed state survives tab changes; stale/missing/failed forecasts and empty fleet do not fire; recovered live threshold uses OS or in-app fallback for all four permission states');
   assert.deepEqual(report.errors,[]);
   await page.close();page=null;await ctx.close();ctx=null;
@@ -138,5 +149,6 @@ try {
  if(!report.completed&&page)report.failureSnapshot=await page.locator('body').ariaSnapshot().catch(()=>null);
  if(page)await page.close();if(ctx)await ctx.close();await browser.close();report.resourcesClosed=true;
  await fs.writeFile(out+'/stop-alert-controls.json',JSON.stringify(report,null,2));
+ if(!report.completed)console.error(JSON.stringify(report,null,2));
 }
 console.log(JSON.stringify(report,null,2));

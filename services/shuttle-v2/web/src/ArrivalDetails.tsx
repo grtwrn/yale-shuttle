@@ -4,6 +4,8 @@ import { ArrivalPlot } from './ArrivalPlot';
 import { ArrivalHistory } from './ArrivalHistory';
 import { fmtMin, remainingSec } from './format';
 import { arrivalSummary, estimatedGap } from './arrivalDetails';
+import { pickupRequestFor } from './pickupService';
+import { PickupRequestNotice } from './PickupRequestNotice';
 
 export interface ArrivalDetailsProps {
   routeLabel: string;
@@ -41,6 +43,8 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
   const extent = Math.max(60, etaSec, band?.highSec ?? 0);
   const position = (sec: number) => `${Math.max(0, Math.min(100, 100 * sec / extent))}%`;
   const valueStyle = { margin: 0, fontWeight: 600, textAlign: 'right' as const };
+  const request = stopId === undefined ? undefined : pickupRequestFor(routeLabel, stopId, new Date(now));
+  if (request) return <PickupRequestNotice request={request} compact={table} />;
   // In the route table the arrival is plain text: tapping it falls through to
   // the row, which opens that route's details rather than an arrival chart.
   if (table) return <span data-testid="route-pickup" style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: '4px 0', boxSizing: 'border-box', fontSize: 12, fontWeight: 600, color: '#374151' }}>

@@ -1,4 +1,6 @@
-import { pickupFallback, unavailablePickup, labelPickupChoices, recoveredPickupCatalog } from "./planner";
+import { pickupFallback, unavailablePickup, labelPickupChoices, recoveredPickupCatalog, applyPickupServicePolicy } from "./planner";
+import { pickupRequestFor } from './pickupService';
+import { PickupRequestNotice } from './PickupRequestNotice';
 import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGES_MAX_DATA_URL_LENGTH } from "./reportAttachments";
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
 import L from "leaflet";
@@ -2238,7 +2240,8 @@ const TripPlanner: FC<{
       const catalog = (pickupChoices?.plan === stableOptions ? pickupChoices.catalogs?.get(initial.routeLabel) : undefined)
         ?? [initial, ...(initial.pickupAlternatives ?? [])];
       const refreshed = [selected, ...catalog.filter(o => !sameTripPickup(o, selected))]
-        .map(o => refreshOption({ ...o, pickupAlternatives: undefined }));
+        .map(o => applyPickupServicePolicy(refreshOption({ ...o, pickupAlternatives: undefined }),
+          isFutureMode ? targetDate! : new Date()));
       const [primary, ...alternatives] = initial.mode === 'shuttle' ? labelPickupChoices(refreshed) : refreshed;
       return { ...primary!, pickupAlternatives: alternatives };
     });
@@ -2258,7 +2261,8 @@ const TripPlanner: FC<{
     });
     const recoveries = stableOptions.flatMap(initial => {
       if (pickupChoices?.plan === stableOptions && pickupChoices.catalogs?.has(initial.routeLabel)) return [];
-      const catalog = recoveredPickupCatalog(initial, fresh.find(o => o.routeLabel === initial.routeLabel));
+      const catalog = recoveredPickupCatalog(initial, fresh.find(o => o.routeLabel === initial.routeLabel),
+        options.find(o => o.routeLabel === initial.routeLabel));
       return catalog ? [[initial.routeLabel, catalog] as const] : [];
     });
     if (!replacements.length && !recoveries.length) return;
@@ -5176,7 +5180,7 @@ const StopList: FC<{
 
     const live = alertArrivals = computeUpcomingArrivals(
       targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
-    );
+    ).filter(arrival => !pickupRequestFor(arrival.routeLabel, arrival.stopId, new Date(nowMs)));
     // Sorted by eta ascending, so the first entry for a (line, stop) is this
     // lap and any later one is the same vehicle coming round again. A card row
     // wants the former.
@@ -5332,6 +5336,7 @@ const StopList: FC<{
         const schedule = routeDiscontinuedAt(cfg.label, new Date()) ? "Milford service discontinued Sep 19, 2026"
           : off ? `${hoursText} · ${off.partner ? "not this weekend" : "not running today"}` : hoursText;
         const routeNote = groceryServiceNotice(cfg.label) ?? ROUTE_CALENDAR[cfg.label]?.note ?? null;
+        const requestNotice = stops.map(stopId => pickupRequestFor(cfg.label, stopId, new Date())).find(Boolean);
         const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
           + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
 
@@ -5341,6 +5346,7 @@ const StopList: FC<{
         // favourite in both.
         const stopRow = (stopId: number, key: string) => {
           const name = stopNames[stopId] ?? `Stop ${stopId}`;
+          const request = pickupRequestFor(cfg.label, stopId, new Date());
           const bus = busMap[stopId];
           const isNext = nextSet.has(stopId);
           const isSaved = savedStops.has(stopId);
@@ -5379,6 +5385,7 @@ const StopList: FC<{
             <Fragment key={key}>
             <div
               onClick={() => onToggleSavedStop(stopId)}
+              data-service-stop={stopId}
               title={isSaved ? "Remove from saved stops" : "Save this stop"}
               style={{
                 display: "flex", alignItems: "center", gap: 8,
@@ -5429,10 +5436,11 @@ const StopList: FC<{
                   arrives — including the case the anchor and the rest disagree
                   about (a layover taken short of the marker puts the rest one
                   stop ahead of the lead leg). One claim per row. */}
-              {etaAtStop[stopId] && !bus && !restHere && (() => {
+              {request && <PickupRequestNotice request={request} compact />}
+              {!request && etaAtStop[stopId] && !bus && !restHere && (() => {
                 const e = etaAtStop[stopId]!;
                 return (
-                  <span style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
+                  <span data-testid="route-stop-eta" style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
                     <span style={{ fontSize: 12, color: cfg.color, fontWeight: 700, opacity: e.estimated ? 0.5 : 1 }}>
                       {(() => {
                         const label = mapArrivalLabel(e);
@@ -5500,7 +5508,7 @@ const StopList: FC<{
                   the whole thing is rendered only when the page shell handed
                   down an arm callback (so the favourites list, which does not,
                   is untouched). */}
-              {onArmStopAlert && (
+              {onArmStopAlert && (!request || armedAlert) && (
                 <button
                   id={`${chooserId}-trigger`}
                   onClick={(e) => {
@@ -5552,7 +5560,7 @@ const StopList: FC<{
                 Three choices, because the useful question is "how much warning
                 do you want" and five buttons is a menu. The second line is the
                 honest limit of phase 1 — the ping needs this page alive. */}
-            {chooserOpen && !armedAlert && (
+            {chooserOpen && !armedAlert && !request && (
               <div
                 id={chooserId}
                 role="group"
@@ -5730,6 +5738,7 @@ const StopList: FC<{
               </div>
             )}
 
+            {requestNotice && <div style={{ padding: '0 10px 6px' }}><PickupRequestNotice request={requestNotice} /></div>}
             {isolated ? (
               <>
                 {/* The real map for the one route the rider asked for. */}
@@ -6672,7 +6681,7 @@ const TransitMap: FC = () => {
     const targets = [...new Set(live.map((a) => a.stopId))];
     const arrivals = computeUpcomingArrivals(
       targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
-    );
+    ).filter(arrival => !pickupRequestFor(arrival.routeLabel, arrival.stopId, new Date(nowMs)));
     // Which pings fire and what is left armed: stopAlerts.ts, pure, and the
     // same function the recorded-pass replay runs.
     const step = stepStopAlerts(live, arrivals, nowMs);

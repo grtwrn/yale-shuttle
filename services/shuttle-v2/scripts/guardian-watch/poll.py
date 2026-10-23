@@ -25,7 +25,8 @@ SEVERITY = {"candidate-stale-alert": "high", "candidate-page-error": "high",
 # bus-left-feed / bus-off-route: the runner only ends these when the app correctly showed
 # "Looking for your bus…" (upstream feed drop, end-of-service deadhead); every one triaged so
 # far was expected. Garrett OK'd dropping them from the queue 2026-10-03.
-JOURNEY_OK = {"completed", "no-service-excluded", "bus-left-feed-excluded", "bus-off-route-excluded"}
+JOURNEY_OK = {"completed", "no-service-excluded", "bus-left-feed-excluded", "bus-off-route-excluded",
+              "on-demand-request-required-excluded"}
 TEXT_MAX = 1500
 EVIDENCE = f"{STATE}/evidence-bundles"
 CAPTURE_ERRORS = []

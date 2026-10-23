@@ -54,6 +54,15 @@ class RiderEventLineTests(unittest.TestCase):
                 calls, _ = self.scan([self.event('candidate-transfer-screen', {}, line=value)], {'transfer1': 'Blue Day'})
                 self.assertEqual(calls[0].args[2], 'Blue Day')
 
+    def test_request_only_exclusion_is_neither_a_completed_pickup_nor_a_timeout_incident(self):
+        calls, watcher = self.scan([
+            self.event('journey-finished', 'on-demand-request-required-excluded', line='Purple'),
+            self.event('journey-finished', 'waiting-timeout-needs-review', line='Purple', runId='real-timeout'),
+        ])
+        self.assertEqual(len(calls), 1)
+        self.assertIn('waiting-timeout-needs-review', calls[0].args[4])
+        self.assertNotIn('transfer1', watcher.get('pickupAuditPending', {}))
+
 
 if __name__ == '__main__':
     unittest.main()

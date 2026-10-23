@@ -16,6 +16,7 @@ import type { PublishedWindow } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
 import { atStopJourneyBoard, journeyArrival, type JourneyArrival } from './journeyArrival';
 import type { LivePickupSelection } from './livePickupSelection';
+import { pickupRequestFor, type PickupRequest } from './pickupService';
 
 export type TripOption = {
   mode: "shuttle" | "walk";
@@ -78,6 +79,8 @@ export type TripOption = {
   /** Existing countdown and selected boarding evidence, independent of destination availability. */
   livePickupSelection?: LivePickupSelection;
   etaUnavailable?: boolean;
+  /** Published request-only pickup; a forecasted pass does not arrange service. */
+  pickupRequest?: PickupRequest;
 };
 
 /** Bound untimed/future rides; a live forward visit supplies its own limit. */
@@ -599,7 +602,7 @@ export function planTrip(
   // render time so one can't masquerade as the recommendation — that was
   // report #15: a 2-min ride wrapped in 29 min of walking totalled MORE
   // than the direct walk yet read like the top pick.
-  const viable = options;
+  const viable = options.map(option => applyPickupServicePolicy(option, targetDate ?? new Date(now)));
   // Keep the closest pickup, even when the next bus takes longer.
   // A meaningfully earlier pickup remains a separate choice on the line.
   const byRoute = new Map<string, TripOption[]>();
@@ -1153,6 +1156,19 @@ export function unavailablePickup(option: TripOption): TripOption {
     busLowSec: undefined, busHighSec: undefined, busBoardHops: undefined, computedAtMs: undefined };
 }
 
+/** Retain the pickup geometry and alternatives, without presenting an
+ * unrequested stop as an ordinary scheduled boarding opportunity. Also
+ * account for a planned walk/wait that puts pickup after noon. */
+export function applyPickupServicePolicy(option: TripOption, at: Date): TripOption {
+  if (option.mode !== 'shuttle') return option;
+  const delay = Math.max(option.walkToSec, option.busEtaSec ?? option.walkToSec + option.waitSec);
+  const request = pickupRequestFor(option.routeLabel, option.boardStopId, at)
+    ?? (Number.isFinite(delay) && delay >= 0
+      ? pickupRequestFor(option.routeLabel, option.boardStopId, new Date(at.getTime() + delay * 1000)) : undefined);
+  return request ? { ...unavailablePickup(option), pickupRequest: request }
+    : { ...option, pickupRequest: undefined };
+}
+
 /** Refresh the wording without moving the selected pickup. Unknown timing
  * cannot justify an "Arrive sooner" comparison against the closest stop. */
 export function labelPickupChoices(group: readonly TripOption[]): TripOption[] {
@@ -1165,10 +1181,11 @@ export function labelPickupChoices(group: readonly TripOption[]): TripOption[] {
       && option.totalSec <= closest.totalSec - 180 ? 'arrive-sooner' : 'more-walking' }));
 }
 
-/** Discover alternatives once an initially untimed line gains forecasts.
- * Keep the original pickup/exit pair so recovery never redirects a rider. */
-export function recoveredPickupCatalog(initial: TripOption, fresh: TripOption | undefined): TripOption[] | undefined {
-  if (!initial.etaUnavailable || !fresh || fresh.routeLabel !== initial.routeLabel) return undefined;
+/** Discover alternatives once an initially untimed line gains forecasts, or
+ * its published pickup becomes request-only. Keep the original pickup/exit
+ * pair so this never redirects a rider, including across the noon boundary. */
+export function recoveredPickupCatalog(initial: TripOption, fresh: TripOption | undefined, current?: TripOption): TripOption[] | undefined {
+  if ((!initial.etaUnavailable && !current?.pickupRequest) || !fresh || fresh.routeLabel !== initial.routeLabel) return undefined;
   const live = [fresh, ...(fresh.pickupAlternatives ?? [])];
   if (!live.some(o => !o.etaUnavailable && !o.departed)) return undefined;
   const catalog = [initial, ...(initial.pickupAlternatives ?? [])];
