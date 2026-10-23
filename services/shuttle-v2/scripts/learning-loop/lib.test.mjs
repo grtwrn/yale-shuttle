@@ -26,6 +26,26 @@ describe('prospective visit sampling and causal outcomes',()=>{
   expect(rows[0].availableAt).toBe(at+42000);
   record(s,at+50000);expect(Object.values(s.pending)).toHaveLength(0);
  });
+ it('retains earlier promises but creates no new horizon after first curb evidence',()=>{
+  const s=state();record(s);
+  observe(s,feed(at+30000),at+31000,'arrival');
+  const later={eta:250,low:200,high:300};
+  recordForecast(s,bus,1,at+32000,later,later,'test','later-forecast');
+  expect(Object.values(s.pending)).toHaveLength(1);
+  const rows=observe(s,feed(at+40000),at+42000,'confirmation');
+  expect(rows).toHaveLength(1);expect(rows[0].at).toBe(at);expect(rows[0].det).toBe(30);
+ });
+ it('does not turn already received curb evidence into a future promise when clocks differ',()=>{
+  const s=state();observe(s,feed(at+1000),at,'arrival');record(s,at);
+  expect(Object.values(s.pending)).toHaveLength(0);
+  expect(observe(s,feed(at+11000),at+10000,'confirmation')).toEqual([]);
+ });
+ it('continues sampling other future target stops while the current curb is unconfirmed',()=>{
+  const s=state();observe(s,feed(at),at,'arrival');
+  record(s,at);recordForecast(s,bus,2,at,estimate,estimate,'test','future-stop');
+  expect(Object.values(s.pending)).toHaveLength(1);
+  expect(Object.values(s.pending)[0].stop).toBe(2);
+ });
  it('ignores a wrong curb, a nearby moving bus and stale payloads',()=>{
   const s=state();record(s);
   observe(s,feed(at+30000,{at_stop_id:2}),at+31000);
