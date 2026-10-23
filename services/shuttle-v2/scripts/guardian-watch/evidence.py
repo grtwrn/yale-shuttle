@@ -53,7 +53,7 @@ def verify_feed_response(record):
 
 
 def feed_response_context(watch, run, references, event, budget):
-    """Keep first/latest/event-nearest/arrival context, with explicit limits."""
+    """Keep first/latest/event-nearest/arrival/boarding context within limits."""
     valid, gaps = {}, []
     def gap(message):
         if message not in gaps and len(gaps) < 32:
@@ -67,7 +67,9 @@ def feed_response_context(watch, run, references, event, budget):
                 or type(ref.get("receivedAt")) is not int):
             gap("Invalid feed response reference")
             continue
-        valid[ref["id"]] = ref
+        prior = valid.get(ref["id"], {})
+        valid[ref["id"]] = {**ref, "arrivalContext": prior.get("arrivalContext") is True or ref.get("arrivalContext") is True,
+                            "boardingContext": prior.get("boardingContext") is True or ref.get("boardingContext") is True}
     ordered = sorted(valid.values(), key=lambda r: (r["receivedAt"], r["id"]))
     selected = set()
     if ordered:
@@ -80,6 +82,7 @@ def feed_response_context(watch, run, references, event, budget):
         arrival = [r for r in ordered if r.get("arrivalContext") is True]
         if arrival:
             selected.add(arrival[-1]["id"])
+        selected.update(r["id"] for r in ordered if r.get("boardingContext") is True)
     rows, found, used, omitted = [], set(), 0, 0
     if selected:
         try:
@@ -121,12 +124,28 @@ def feed_response_context(watch, run, references, event, budget):
     if missing:
         gap("Missing referenced feed response bodies: " + str(len(missing)))
     coverage = {"uniqueCapturedReferences": len(valid), "unavailableReferences": unavailable,
+                "boardingContextReferences": sum(r.get("boardingContext") is True for r in valid.values()),
+                "unavailableBoardingReferences": sum(r.get("boardingContext") is True and r.get("state") != "captured" for r in references),
                 "contextReferences": len(selected), "retainedBodies": len(rows), "missingContextIDs": missing,
                 "omittedByContextSelection": len(valid) - len(selected), "omittedByByteBudget": omitted,
-                "contextComplete": bool(selected) and not missing and not omitted and not gaps,
+                "contextComplete": bool(selected) and unavailable == 0 and not missing and not omitted and not gaps,
                 "fullTripBodiesRetained": bool(valid) and len(rows) == len(valid) and unavailable == 0 and not gaps,
                 "scope": "Selected original decoded HTTP bodies only; all context omissions remain explicit. No physical service or ETA accuracy claim."}
     return rows, gaps, coverage
+
+
+def boarding_feed_references(kind, row):
+    """Read only the versioned boarding schema; legacy records stay readable."""
+    observation = row.get("boardingObservation") if kind == "journeys" else None
+    if kind == "events" and isinstance(row.get("detail"), dict):
+        observation = row["detail"] if row.get("kind") == "boarding-checks" else row["detail"].get("boardingObservation")
+    if not isinstance(observation, dict) or observation.get("v") != 1:
+        return []
+    checks = observation.get("checks")
+    containers = list(checks) if isinstance(checks, list) else []
+    containers.append(observation.get("sample"))
+    return [{**item["feedResponse"], "boardingContext": True} for item in containers
+            if isinstance(item, dict) and isinstance(item.get("feedResponse"), dict)]
 
 
 def digest(data):
@@ -287,6 +306,7 @@ def capture_bundle(store, incident_id, event, evidence, allowed_watchers):
                             lines.append(raw)
                             if kind == "samples" and isinstance(row.get("feedResponse"), dict):
                                 feed_references.append(row["feedResponse"])
+                            feed_references.extend(boarding_feed_references(kind, row))
                             matched += 1
                             if kind == "journeys":
                                 last_journey = row
