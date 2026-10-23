@@ -1,7 +1,7 @@
 import { BoardingEvidenceUnavailable, BoardingMissed, boardSelectedRide } from './boarding.mjs';
 import { auditPauseMaps, confirmPauseMaps, pauseReadDelay, readPauseMaps } from './map-pause.mjs';
 import { completeArrival } from './complete-arrival.mjs';
-import { confirmConflict, pickupCountConflict } from './screen-consistency.mjs';
+import { confirmConflict, pickupCountConflict, rideCountConflict } from './screen-consistency.mjs';
 import { confirmExitInstruction, offPoleExitInstruction } from './exit-instruction.mjs';
 import { boardedTransferMatches, completedLegRecord, nextTransferStage, readTransferSections, riderLineAllowed, sameTransferLeg, selectTransferTrip, transferLegTrip, transferWaitingContext } from './transfer-journey.mjs';
 import fs from 'node:fs/promises';
@@ -346,6 +346,11 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     }
     if(run.phase==='waiting'&&now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
    }else if(run.phase==='riding'){
+    const rideCount=confirmConflict(run.rideCountConflict,feedStable
+     ?rideCountConflict(text,sampledFeed,run,now):null,now);
+    run.rideCountConflict=rideCount.state;
+    if(rideCount.alert){await event('candidate-ride-stop-count',{...rideCount.alert,text,
+     scope:'Sustained screen/served-travel contradiction; not physical arrival or ETA accuracy.'});await capture('candidate-ride-stop-count');}
     const instruction=confirmExitInstruction(run.exitInstructionConflict,feedStable
      ?offPoleExitInstruction(text,sampledFeed,run,now,now-sampledFeedAt):null,now);
     run.exitInstructionConflict=instruction.state;

@@ -17,7 +17,7 @@ const dwelling="🚌 20 min\nBOARD🚌Union Station (S)⏸ 0:29\nWest Haven Trai
 const at126={bus_name:'#126',route_id:10,lat:41.297912,lon:-72.926694,at_stop_id:122,stationary:true};
 const near126={bus_name:'#126',route_id:10,lat:41.296923,lon:-72.927685,stationary:false};
 
-async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0,initialResponse,fakeTimeouts=false}={}){
+async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=feedWith,text=approaching,at='2026-10-01T11:00:00Z',initialFeedAgeMs=0,initialResponse,initialRun,fakeTimeouts=false}={}){
  vi.useFakeTimers({toFake:['Date','setInterval','clearInterval',...(fakeTimeouts?['setTimeout','clearTimeout']:[])]});
  vi.setSystemTime(Date.parse(at));
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'rider-watch-'));
@@ -27,7 +27,7 @@ async function harness(initialFeed,initialTrip=trip,{initialLine=line,feedOf=fee
   getByRole:(_,{name})=>button(name),screenshot:async()=>Buffer.from('jpg'),
   evaluate:async()=>({}),waitForFunction:async()=>{}};
  const ctx={setGeolocation:async g=>{h.geo=g;}};
- h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,initialFeedAt:Date.now()-initialFeedAgeMs,initialResponse,outputDir:dir});
+ h.watcher=await attach({page,ctx,initialTrip,initialLine,initialFeed,initialFeedAt:Date.now()-initialFeedAgeMs,initialResponse,initialRun,outputDir:dir});
  // The runner's own 10 s interval drives each poll; wait for it to settle.
  // receiptDelayMs models delivery within the existing 10 s poll interval;
  // recorded vehicle timestamps are unchanged, and no historical HTTP receipt is inferred.
@@ -83,6 +83,28 @@ test('the real rider loop raises one candidate for a sustained report-142 stop-c
  assert.equal(h.watcher.status().run.phase,'waiting');
  await h.poll(screen.replace('11 stops','3 stops'),capture.feed.buses);
  assert.equal(h.watcher.status().run.countConflict,null);
+});
+
+test.each([true,false])('the rider detects the actual Pink wrong count before GPS arrival (bad screen=%s)',async bad=>{
+ const fixture=JSON.parse(await fs.readFile(new URL('../../web/src/__fixtures__/pink-standing-travel-20261023.json',import.meta.url),'utf8'));
+ const [first,second]=fixture.snapshots.slice(1,3);
+ const feedOf=c=>({buses:[c.bus],routes:c.routeStops,stop_names:c.stopNames,stop_coords:c.stopCoords,server_eta:c.wire});
+ const run={id:fixture.runId,phase:'riding',line:{label:'Pink',busRouteIds:[8]},busName:'#324',boardStopId:149,exitStopId:123,
+  boardedAt:'2026-10-23T15:18:08.671Z',boardedStorage:fixture.boardedStorage,
+  trip:{origin:{label:'York / Cedar',...first.stopCoords[149],stopId:149},destination:{display_name:'VA Entrance Inbound',...first.stopCoords[123],stopId:123}}};
+ const text=bad?'Your stop is 10 stops away\nPink #324 → VA Entrance Inbound\n10 stops · holding at VA Entrance Outbound'
+  :'Get off at the next stop\nPink #324 → VA Entrance Inbound\nGet off NEXT stop! · holding at VA Entrance Outbound';
+ const initial=feedOf(first);
+ const h=current=await harness(initial,run.trip,{initialRun:run,initialLine:run.line,at:first.sampleAt,text,initialResponse:rawResponse(Buffer.from(JSON.stringify(initial)))});
+ const events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal((await events()).filter(e=>e.kind==='candidate-ride-stop-count').length,0);
+ vi.setSystemTime(Date.parse(second.sampleAt));await h.handlers.response(rawResponse(Buffer.from(JSON.stringify(feedOf(second)))));
+ await h.watcher.tick();
+ const alerts=(await events()).filter(e=>e.kind==='candidate-ride-stop-count');assert.equal(alerts.length,bad?1:0);
+ if(bad){assert.equal(alerts[0].detail.expected,1);assert.equal(alerts[0].detail.actual,10);}
+ const samples=(await fs.readFile(path.join(h.dir,'samples.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal(samples.at(-1).feedResponse.state,'captured');assert.equal(h.watcher.status().feedEvidence.unavailable,0);
+ assert.equal(h.watcher.status().run.phase,'arrived');
 });
 
 test('Purple #126 dwelling 18 m from the stop is boarded, not an invalid sample',async()=>{
