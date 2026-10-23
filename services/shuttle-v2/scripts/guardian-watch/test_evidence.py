@@ -97,6 +97,68 @@ class IncidentEvidenceTests(unittest.TestCase):
         self.assertEqual(coverage["omittedByByteBudget"], 1)
         self.assertEqual(coverage["retainedBodies"], 0)
 
+    def boarding_feed_fixture(self, *, event_only=False, unavailable=False):
+        module = Path(__file__).resolve().parent.parent / "rider-watch/feed-evidence.mjs"
+        source = ("import {retainFeedResponse} from " + json.dumps(module.as_uri()) + ";"
+                  "const refs=[];for(let i=0;i<3;i++)refs.push(await retainFeedResponse(" + json.dumps(str(self.watch)) + ","
+                  "{runId:'1234',body:Buffer.from(' '+JSON.stringify({buses:[],control:i})+'\\n'),receivedAt:1234+i*1000}));"
+                  "process.stdout.write(JSON.stringify(refs));")
+        refs = json.loads(subprocess.check_output(["node", "--input-type=module", "-e", source]))
+        self.event = {**self.event, "runId": "1234"}
+        self.refs = {**self.refs, "runId": "1234"}
+        self.rows(self.watch / "samples.jsonl", [{"runId": "1234", "feedResponse": refs[0]}, {"runId": "1234", "feedResponse": refs[2]}])
+        check_ref = {"state": "unavailable", "runId": "1234", "reason": "raw-feed-response-unavailable"} if unavailable else refs[1]
+        observation = {"v": 1, "sample": {"feedResponse": refs[0]}, "checks": [{"kind": "card-boards", "feedResponse": check_ref}]}
+        journey = {"id": "1234", "samples": 2}
+        events = [self.event]
+        if event_only:
+            events.append({**self.event, "kind": "boarding-checks", "detail": observation})
+        else:
+            journey["boardingObservation"] = observation
+            if not unavailable:
+                # The same body may serve two contexts; neither tag can erase
+                # the other when duplicate references are collected.
+                journey["arrivalObservation"] = {"feedResponse": refs[1]}
+            events.append({**self.event, "kind": "boarding-missed", "detail": {"boardingObservation": observation}})
+        self.rows(self.watch / "events.jsonl", events)
+        self.rows(self.watch / "journeys.jsonl", [journey])
+        return refs
+
+    def test_middle_boarding_recheck_body_survives_guardian_context_selection(self):
+        refs = self.boarding_feed_fixture()
+        receipt = self.capture()
+        manifest = self.manifest(receipt)
+        coverage = manifest["feedResponseCoverage"]
+        self.assertTrue(coverage["contextComplete"])
+        self.assertEqual(coverage["boardingContextReferences"], 2)
+        self.assertEqual(coverage["retainedBodies"], 3)
+        records = [json.loads(line) for line in gzip.decompress((Path(receipt["directory"]) / "feed-responses.jsonl.gz").read_bytes()).splitlines()]
+        middle = next(row for row in records if row["id"] == refs[1]["id"])
+        self.assertEqual(evidence.verify_feed_response(middle), b' {"buses":[],"control":1}\n')
+        shutil.rmtree(self.watch / "feed-responses")
+        self.assertEqual(evidence.verify_bundle(receipt["directory"]), receipt)
+
+    def test_retry_event_preserves_checks_absent_from_latest_journey(self):
+        self.boarding_feed_fixture(event_only=True)
+        coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertTrue(coverage["contextComplete"])
+        self.assertEqual(coverage["retainedBodies"], 3)
+
+    def test_boarding_context_uses_existing_byte_limit_and_reports_omissions(self):
+        self.boarding_feed_fixture()
+        with patch.object(evidence, "MAX_FEED_CONTEXT_BYTES", 1):
+            coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertFalse(coverage["contextComplete"])
+        self.assertEqual(coverage["omittedByByteBudget"], 3)
+        self.assertEqual(coverage["retainedBodies"], 0)
+
+    def test_unavailable_boarding_receipt_prevents_complete_context_claim(self):
+        self.boarding_feed_fixture(unavailable=True)
+        coverage = self.manifest(self.capture())["feedResponseCoverage"]
+        self.assertFalse(coverage["contextComplete"])
+        self.assertGreater(coverage["unavailableBoardingReferences"], 0)
+        self.assertEqual(coverage["retainedBodies"], 2)
+
     def test_legacy_null_arrival_does_not_block_incident_capture(self):
         self.rows(self.watch / "journeys.jsonl", [{"id": "r1", "samples": 2, "arrivalObservation": None}])
         receipt = self.capture()

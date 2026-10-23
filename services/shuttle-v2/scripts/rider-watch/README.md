@@ -270,6 +270,22 @@ the bus away before the UI tick. The receipt can reconstruct available feed
 and prediction rows; it is not independent physical service truth. See the
 [rolling storage policy](../retention/README.md) for limits and incident copies.
 
+Boarding attempts retain `boardingObservation` in the run and the outcome
+event. Its `sample` identifies the earlier pickup screen; `checks` records each
+readiness/card decision and the final rejection diagnostic with its own clock,
+feed receipt, selected bus, distance and original `feedResponse`. The card check
+also records its text and whether the tester feed changed during that read;
+this flag does not prove an atomic app render. Repeated checks of one response
+share its retained body. Body capture starts without delaying the click checks
+and settles before the outcome is saved. A failed body capture stays unavailable
+and does not change the boarding decision. Retry diagnostics retain earlier
+attempts in events while the run carries its latest attempt.
+
+The October 23 Red #119 excluded boarding recorded a 62.75 m initial distance
+and a later 134.00 m rejection diagnostic, but the later original response was
+not retained. This change preserves future check responses; it cannot recover
+that historical body or prove physical boarding or service.
+
 On-bus added-pass counts are checked separately from off-pole exit instructions.
 For a single route with a unique published list, an explicit served `travel`
 slot that differs from the physical marker's slot identifies an added pass.

@@ -32,6 +32,14 @@ stay explicit; a completed capture does not assert complete historical data.
 These GPS-correlated virtual records are not independent physical boarding or
 ETA accuracy evidence.
 
+Original response context includes each versioned boarding check's referenced
+body, including checks retained only in a retry event. These can differ from
+the earlier pickup screen and from the feed present when rejection is logged.
+Duplicate references preserve both boarding and arrival context. Existing
+8 MiB response-context and 32 MiB bundle bounds still apply; omitted or
+unavailable bodies remain explicit, and unavailable references prevent a
+complete-context claim. No missing historical response is reconstructed.
+
 Routine rider images and logs keep their existing rolling policies. Bundles
 referenced by pending incidents are protected. Once their incident leaves the
 pending queue, bundles roll by seven days from capture and a combined 256 MiB target.

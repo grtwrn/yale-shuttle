@@ -45,6 +45,91 @@ afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)
 
 function rawResponse(raw){return {url:()=> 'https://example.test/api/buses',ok:()=>true,status:()=>200,
  headers:()=>({'content-type':'application/json','set-cookie':'DO_NOT_RETAIN'}),json:async()=>JSON.parse(raw),body:async()=>Buffer.from(raw)};}
+
+// Constructed response-race controls, not a reconstruction of the missing
+// Red #119 boarding recheck body from 2026-10-23.
+async function boardingEvidenceHarness({missingBody=false,replaceDuringBody=false,missed=true}={}){
+ const h=current=await harness(feedWith([{...near126,observed_at:Date.parse('2026-10-01T11:00:00Z')}]));
+ vi.setSystemTime(Date.now()+10000);
+ const initial=feedWith([{...at126,observed_at:Date.now()}]);
+ const later=feedWith([{...at126,lat:union.lat+0.0013,at_stop_id:null,stationary:false,observed_at:Date.now()}]);
+ const replacement=feedWith([{...later.buses[0],lat:union.lat+0.002}]);
+ const rawA=Buffer.from('\n'+JSON.stringify(initial,null,2)+'\n'),rawB=Buffer.from(' '+JSON.stringify(later)+'\n'),rawC=Buffer.from(JSON.stringify(replacement));
+ const responseB=rawResponse(rawB);
+ if(missingBody)responseB.body=async()=>{throw Error('response body unavailable');};
+ if(replaceDuringBody)responseB.body=async()=>{await h.handlers.response(rawResponse(rawC));return rawB;};
+ let replaced=false;
+ h.page.screenshot=async()=>{if(missed&&!replaced){replaced=true;await h.handlers.response(responseB);}return Buffer.from('jpg');};
+ h.page.evaluate=async()=>null;
+ h.text=dwelling;
+ await h.handlers.response(rawResponse(rawA));
+ await h.watcher.tick();
+ h.evidence={initial,later,replacement,rawA,rawB,rawC};
+ return h;
+}
+test('boarding rechecks retain the newer decision response separately from the pickup screen',async()=>{
+ const h=await boardingEvidenceHarness(),[journey]=await h.journeys();
+ assert.equal(journey.result,'boarding-missed-excluded');assert.equal(journey.excludeAccuracy,true);assert.equal(journey.boardedAt,undefined);
+ const observation=journey.boardingObservation;
+ assert.equal(observation.outcome,'boarding-missed-excluded');
+ assert.deepEqual(observation.routeIds,[10]);assert.deepEqual(observation.riderCoords,union);
+ assert.deepEqual(observation.checks.map(c=>c.kind),['pickup-eligible','observation-ready','card-boards','boarding-missed']);
+ assert.deepEqual(observation.checks.map(c=>c.allowed),[true,true,false,false]);
+ const rows=(await fs.readFile(path.join(h.dir,observation.checks[0].feedResponse.file),'utf8')).trim().split('\n').map(JSON.parse);
+ const byId=new Map(rows.map(r=>[r.id,r]));
+ assert.deepEqual(verifyFeedResponseRecord(byId.get(observation.sample.feedResponse.id)),h.evidence.rawA);
+ assert.deepEqual(observation.checks[0].bus,h.evidence.initial.buses[0]);
+ for(const check of observation.checks.slice(1)){
+  assert.deepEqual(check.bus,h.evidence.later.buses[0]);assert.deepEqual(verifyFeedResponseRecord(byId.get(check.feedResponse.id)),h.evidence.rawB);
+  assert.equal(check.distanceM,haversineM(check.bus,observation.stopCoords));
+ }
+ assert.notEqual(observation.sample.feedResponse.id,observation.checks[1].feedResponse.id);
+ assert.equal(rows.filter(r=>r.id===observation.checks[1].feedResponse.id).length,1);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ const missed=events.find(e=>e.kind==='boarding-missed');assert.deepEqual(missed.detail.boardingObservation,observation);
+ assert.equal(missed.detail.distanceNowM,observation.checks.at(-1).distanceM);
+});
+test('boarding rechecks keep their own response when body capture delivers another poll',async()=>{
+ const h=await boardingEvidenceHarness({replaceDuringBody:true}),[journey]=await h.journeys();
+ const checks=journey.boardingObservation.checks,first=checks[1];
+ const rows=(await fs.readFile(path.join(h.dir,first.feedResponse.file),'utf8')).trim().split('\n').map(JSON.parse),byId=new Map(rows.map(r=>[r.id,r]));
+ assert.deepEqual(first.bus,h.evidence.later.buses[0]);assert.deepEqual(verifyFeedResponseRecord(byId.get(first.feedResponse.id)),h.evidence.rawB);
+ assert.deepEqual(checks.at(-1).bus,h.evidence.replacement.buses[0]);assert.deepEqual(verifyFeedResponseRecord(byId.get(checks.at(-1).feedResponse.id)),h.evidence.rawC);
+});
+test('boarding rechecks report an unavailable body without inventing a receipt',async()=>{
+ const h=await boardingEvidenceHarness({missingBody:true}),[journey]=await h.journeys();
+ assert.equal(journey.result,'boarding-missed-excluded');
+ assert.equal(journey.boardingObservation.checks[0].feedResponse.state,'captured');
+ for(const check of journey.boardingObservation.checks.slice(1)){assert.equal(check.feedResponse.state,'unavailable');assert.equal(check.feedResponse.reason,'feed-evidence-capture-failed');}
+ assert.deepEqual(h.clicks,[]);
+});
+test('successful boarding rechecks share one retained response and survive checkpointing',async()=>{
+ const h=await boardingEvidenceHarness({missed:false}),run=h.watcher.status().run;
+ assert.equal(run.phase,'riding');assert.equal(run.boardingObservation.outcome,'boarded');
+ assert.equal(run.boardingObservation.checks.length,6);assert(run.boardingObservation.checks.every(c=>c.allowed));
+ const refs=run.boardingObservation.checks.map(c=>c.feedResponse);assert.equal(new Set(refs.map(r=>r.id)).size,1);assert(refs.every(r=>r.state==='captured'));
+ const rows=(await fs.readFile(path.join(h.dir,refs[0].file),'utf8')).trim().split('\n').map(JSON.parse);
+ assert.equal(rows.filter(r=>r.id===refs[0].id).length,1);assert.deepEqual(verifyFeedResponseRecord(rows.find(r=>r.id===refs[0].id)),h.evidence.rawA);
+ const checkpoint=JSON.parse(await fs.readFile(path.join(h.dir,'resume.json'),'utf8'));assert.deepEqual(checkpoint.run.boardingObservation,run.boardingObservation);
+});
+test('boarding rechecks do not wait for body storage before the confirmation click',async()=>{
+ const h=current=await harness(feedWith([{...near126,observed_at:Date.parse('2026-10-01T11:00:00Z')}]));
+ vi.setSystemTime(Date.now()+10000);
+ const first=feedWith([{...at126,observed_at:Date.now()}]),next=feedWith([{...at126,heading:1,observed_at:Date.now()}]);
+ const raw=Buffer.from(JSON.stringify(next)),response=rawResponse(raw);let release;
+ response.body=()=>new Promise(resolve=>{release=()=>resolve(raw);});
+ let changed=false;h.page.screenshot=async()=>{if(!changed){changed=true;await h.handlers.response(response);}return Buffer.from('jpg');};
+ let clicked,timer;const confirmation=new Promise(resolve=>{clicked=resolve;});
+ h.page.getByRole=(_,{name})=>({isVisible:async()=>name==="🚌 I'm on it",click:async()=>{h.clicks.push(name);clicked();}});
+ h.text=dwelling;await h.handlers.response(rawResponse(Buffer.from(JSON.stringify(first))));
+ const tick=h.watcher.tick();
+ try{
+  await Promise.race([confirmation,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('confirmation waited for body retention')),2000);})]);
+  assert.deepEqual(h.clicks,["🚌 I'm on it"]);assert.equal(h.watcher.status().busy,true);assert.equal(typeof release,'function');
+ }finally{clearTimeout(timer);release?.();await tick;}
+ assert.equal(h.watcher.status().run.phase,'riding');
+ assert(h.watcher.status().run.boardingObservation.checks.every(c=>c.feedResponse.state==='captured'));
+});
 test('a saved UI sample is bound to the exact initial response bytes',async()=>{
  const initial=feedWith([near126]),raw=Buffer.from('\n'+JSON.stringify(initial,null,2)+'\n');
  const h=current=await harness(initial,trip,{initialResponse:rawResponse(raw),initialFeedAgeMs:1000});

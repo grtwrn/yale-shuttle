@@ -266,8 +266,9 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
      await status();return;
     }
     run.boardStopId=board;run.exitStopId=exit;run.busName=name;
-    const bus=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
-    const coord=feed.stop_coords[run.boardStopId];
+    const pickupFeed=feed,pickupFeedAt=feedAt;
+    const bus=pickupFeed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+    const coord=pickupFeed.stop_coords[run.boardStopId];
     if(bus&&coord){
      const distance=metrics.haversineM(bus,coord);run.lastBoardDistanceM=distance;
      // If the planner picks a nearby alternate stop, simulate walking there
@@ -293,8 +294,29 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
      if(opposite){run.oppositeCurbSamples=(run.oppositeCurbSamples??0)+1;if(!run.oppositeCurbReported){run.oppositeCurbReported=true;await event('waiting-bus-opposite-curb',{bus:name,stop:boardLabel,distanceM:distance,atStopId:bus.at_stop_id});}}
      const other=distance<=BOARD_M&&otherPickupOccurrence(bus,run.boardStopId,assessmentText,feed,now);
      if(other){run.otherOccurrenceSamples=(run.otherOccurrenceSamples??0)+1;if(!run.otherOccurrenceReported){run.otherOccurrenceReported=true;await event('waiting-bus-other-occurrence',{...other,distanceM:distance});}}
+     const eligibilityAt=clockNow(),eligibilityFeedAt=feedAt,stablePickup=feed===pickupFeed&&feedAt===pickupFeedAt;
      if(observationFresh(bus,feedAt)&&observationFresh(bus,now)&&((distance<=BOARD_M&&!past&&!opposite)||atStop)&&!other&&now>=run.walkUntil){
       await capture('pickup-'+run.line.label);run.pickupText=text;
+      const boardingObservation=run.boardingObservation={v:1,attemptedAt:new Date(clockNow()).toISOString(),busName:name,
+       routeIds:[...run.line.busRouteIds],stopId:run.boardStopId,stopCoords:structuredClone(coord),riderCoords:structuredClone(at),
+       sample:{sampledAt:sample.at,feedReceivedAt:new Date(sampledFeedAt).toISOString(),feedStableDuringTextRead:feedStable,feedResponse:sample.feedResponse},checks:[]};
+      const pendingChecks=[];
+      // Snapshot every decision before starting asynchronous body retention.
+      // Retention never delays a click's observation check; settle the receipts
+      // before saving the outcome so a later poll cannot replace their source.
+      const recordCheck=(kind,currentFeed,currentAt,checkedAt,allowed,detail={})=>{
+       const current=currentFeed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+       const check={kind,checkedAt:new Date(checkedAt).toISOString(),feedReceivedAt:new Date(currentAt).toISOString(),allowed,
+        bus:current?structuredClone(current):null,distanceM:current&&[current.lat,current.lon,coord.lat,coord.lon].every(Number.isFinite)?metrics.haversineM(current,coord):null,
+        ...detail,feedResponse:{v:1,state:'pending',receivedAt:currentAt}};
+       boardingObservation.checks.push(check);
+       pendingChecks.push(retainFeed(currentFeed,run.id).then(receipt=>{check.feedResponse=receipt;}));
+       return check;
+      };
+      const settleChecks=async outcome=>{boardingObservation.outcome=outcome;boardingObservation.outcomeAt=new Date(clockNow()).toISOString();await Promise.all(pendingChecks);return boardingObservation;};
+      recordCheck('pickup-eligible',pickupFeed,pickupFeedAt,eligibilityAt,true,{text:assessmentText,feedStableFromSelection:stablePickup,
+       gpsFreshnessClock:new Date(now).toISOString(),freshnessFeedReceivedAt:new Date(eligibilityFeedAt).toISOString(),
+       atStop,past,opposite,otherOccurrence:other,walkUntil:new Date(run.walkUntil).toISOString()});
       // A ride the app started on another bus replaces the trip card, so
       // waiting on only reaches the 45 min cap (wrongbusboard20261002: it
       // stored Green #331 while #122 pulled in). No ride stored: retry as
@@ -305,13 +327,17 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
       // and waiting on would time the next one (riderpromptmiss20261004:
       // #317, boarded 15 min after #330 stood at the stop, ended "completed").
       const boardingReady=async()=>{
-       const current=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
-       return !!current&&!feedStatus().feedStale&&observationFresh(current,feedAt)&&observationFresh(current,clockNow());
+       const currentFeed=feed,currentAt=feedAt,checkedAt=clockNow();
+       const current=currentFeed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+       const allowed=!!current&&checkedAt-currentAt<=MAX_FEED_AGE_MS&&observationFresh(current,currentAt)&&observationFresh(current,checkedAt);
+       return recordCheck('observation-ready',currentFeed,currentAt,checkedAt,allowed).allowed;
       };
       const unavailableBoarding=async()=>{
-       const current=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+       const currentFeed=feed,currentAt=feedAt,checkedAt=clockNow();
+       const current=currentFeed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
+       recordCheck('boarding-observation-unavailable',currentFeed,currentAt,checkedAt,false);
        run.excludeAccuracy=true;
-       await event('boarding-observation-unavailable',{bus:name,observedAt:current?.observed_at??null,feedReceivedAt:new Date(feedAt).toISOString()});
+       await event('boarding-observation-unavailable',{bus:name,observedAt:current?.observed_at??null,feedReceivedAt:new Date(currentAt).toISOString(),boardingObservation:await settleChecks('boarding-observation-unavailable-excluded')});
        await finish('boarding-observation-unavailable-excluded');await status();
       };
       try{await boardSelectedRide(page,name,{
@@ -321,27 +347,31 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
        if(run.transfer){
         const currentFeed=feed,currentAt=feedAt,currentRead=transferWaitingContext(await readTransferSections(page),run.transfer.legs[run.transfer.stage],currentFeed);
         const current=currentFeed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
-        return feed===currentFeed&&feedAt===currentAt&&!!currentRead&&currentRead.busName===name&&!!currentRead.buttonName&&!!current
-         &&!otherPickupOccurrence(current,run.boardStopId,currentRead.assessmentText,currentFeed,clockNow());
+        const checkedAt=clockNow(),stable=feed===currentFeed&&feedAt===currentAt;
+        const allowed=stable&&!!currentRead&&currentRead.busName===name&&!!currentRead.buttonName&&!!current
+         &&!otherPickupOccurrence(current,run.boardStopId,currentRead.assessmentText,currentFeed,checkedAt);
+        return recordCheck('card-boards',currentFeed,currentAt,checkedAt,allowed,{text:currentRead?.assessmentText??null,
+         card:currentRead?{busName:currentRead.busName,buttonName:currentRead.buttonName}:null,feedStableDuringTextRead:stable}).allowed;
        }
-       const currentText=await page.locator('body').innerText(),latest=feed;
+       const readFeed=feed,readAt=feedAt,currentText=await page.locator('body').innerText(),latest=feed,latestAt=feedAt,checkedAt=clockNow();
        const current=latest.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
-       return !!current&&cardBoardsBus(latest.buses,run.line.busRouteIds,at,name)
-        &&!otherPickupOccurrence(current,run.boardStopId,currentText,latest,clockNow());
+       const allowed=!!current&&cardBoardsBus(latest.buses,run.line.busRouteIds,at,name)
+        &&!otherPickupOccurrence(current,run.boardStopId,currentText,latest,checkedAt);
+       return recordCheck('card-boards',latest,latestAt,checkedAt,allowed,{text:currentText,feedStableDuringTextRead:latest===readFeed&&latestAt===readAt}).allowed;
       }});}catch(e){
        if(e instanceof BoardingEvidenceUnavailable){await unavailableBoarding();return;}
        const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null')?.busName??null);
-       if(!stored&&e instanceof BoardingMissed){const left=feed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));run.excludeAccuracy=true;await event('boarding-missed',{bus:name,stop:boardLabel,observedDistanceM:distance,distanceNowM:left?metrics.haversineM(left,coord):null});await finish('boarding-missed-excluded');await status();return;}
-       if(!stored)throw e;
-       if(stored.replace(/^#/,'')!==name.replace(/^#/,'')){run.excludeAccuracy=true;await event('wrong-bus-boarded',{bus:name,stored,stop:boardLabel,observedDistanceM:distance});await finish('wrong-bus-boarded-excluded');await status();return;}
+       if(!stored&&e instanceof BoardingMissed){const check=recordCheck('boarding-missed',feed,feedAt,clockNow(),false);run.excludeAccuracy=true;await event('boarding-missed',{bus:name,stop:boardLabel,observedDistanceM:distance,distanceNowM:check.distanceM,boardingObservation:await settleChecks('boarding-missed-excluded')});await finish('boarding-missed-excluded');await status();return;}
+       if(!stored){await event('boarding-checks',await settleChecks('harness-error'));throw e;}
+       if(stored.replace(/^#/,'')!==name.replace(/^#/,'')){recordCheck('wrong-bus-boarded',feed,feedAt,clockNow(),false);run.excludeAccuracy=true;await event('wrong-bus-boarded',{bus:name,stored,stop:boardLabel,observedDistanceM:distance,boardingObservation:await settleChecks('wrong-bus-boarded-excluded')});await finish('wrong-bus-boarded-excluded');await status();return;}
       }
       // Matching storage can recover a delayed confirmation, but cannot
       // restore vehicle evidence that went unavailable during that wait.
       if(!await boardingReady()){await unavailableBoarding();return;}
       run.boardedAt=new Date(clockNow()).toISOString();run.phase='riding';
       run.boardedStorage=await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage).filter(([k])=>/board/i.test(k))));
-      if(run.transfer){const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null'));if(!boardedTransferMatches(stored,run.transfer)){await event('candidate-transfer-boarded-state',{stage:run.transfer.stage+1,expected:run.transfer.legs,stored});await finish('wrong-transfer-state-excluded');await status();return;}}
-      await event('boarded',{bus:name,stop:boardLabel,observedDistanceM:distance});
+      if(run.transfer){const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('shuttle-boarded-ride')||'null'));if(!boardedTransferMatches(stored,run.transfer)){await event('candidate-transfer-boarded-state',{stage:run.transfer.stage+1,expected:run.transfer.legs,stored,boardingObservation:await settleChecks('wrong-transfer-state-excluded')});await finish('wrong-transfer-state-excluded');await status();return;}}
+      await event('boarded',{bus:name,stop:boardLabel,observedDistanceM:distance,boardingObservation:await settleChecks('boarded')});
      }
     }
     if(run.phase==='waiting'&&now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
