@@ -361,9 +361,17 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
      if(pendingArrivalEvidence?.runId===run.id)await pendingArrivalEvidence.promise;
      await locate({latitude:arrival.bus.lat,longitude:arrival.bus.lon});run.lastExitDistanceM=arrival.distanceM;
      run.arrivalCriterion=arrival.criterion;run.arrivedAt=arrival.receivedAt;
-     run.arrivalProcessedAt=new Date(clockNow()).toISOString();run.arrivalText=text;run.phase='arrived';
+     run.arrivalProcessedAt=new Date(clockNow()).toISOString();run.arrivalText=text;
+     // A newer arrival can land while this tick retains its earlier screen
+     // sample. Keep both receipt identities and clocks; text does not attest
+     // the screen at the first-arrival response or at the later screenshot.
+     run.arrivalTextContext={sampledAt:sample.at,feedReceivedAt:new Date(sampledFeedAt).toISOString(),
+      feedStableDuringTextRead:feedStable,feedResponse:sample.feedResponse,
+      matchesArrivalResponse:sample.feedResponse.state==='captured'&&arrival.feedResponse?.state==='captured'
+       ?sample.feedResponse.id===arrival.feedResponse.id:null};
+     run.phase='arrived';
      await event('arrived',{bus:run.busName,stop:arrival.stopName,
-      rideSeconds:(Date.parse(run.arrivedAt)-Date.parse(run.boardedAt))/1000,observation:arrival});
+      rideSeconds:(Date.parse(run.arrivedAt)-Date.parse(run.boardedAt))/1000,observation:arrival,screen:run.arrivalTextContext});
     }else{
     const bus=feed.buses.find(b=>b.bus_name===run.busName&&run.line.busRouteIds.includes(b.route_id));
     const coord=feed.stop_coords[run.exitStopId];
