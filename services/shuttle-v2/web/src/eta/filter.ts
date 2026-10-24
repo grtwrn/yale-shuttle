@@ -216,6 +216,8 @@ export interface Belief {
   /** The payload object last observed (identity only): a second call with the same object is a query. */
   lastObs: object | null;
   lastFix: LatLon | null;
+  /** Previous distinct fix, for closing along a curved approach rather than its final chord. */
+  previousFix?: LatLon | null;
   /** Client-side clock: when `lastFix` was first reported (ms). */
   fixAt: number;
   /** Where the bus came to rest and when (the collector's rule); the server clock overrides `restSince` when served. */
@@ -861,6 +863,10 @@ export function incomingAtPublishedCurb(b: Belief, ring: Ring, lead: number): bo
     const dx = (b.lastFix.lon - b.leadTopFix.lon) * kx;
     const dy = b.lastFix.lat - b.leadTopFix.lat;
     const toward = (b.lastFix.lon - curb.lon) * kx * dx + (b.lastFix.lat - curb.lat) * dy < 0;
+    // The chord from the last lead fix can already point past the curb while
+    // the next observed step still closes on it around a bend. Compare the
+    // consecutive distinct fixes as well; movement away keeps its release.
+    const closingStep = b.previousFix != null && distance < haversineMeters(b.previousFix, curb);
     const atRest = b.rested && b.restStop === s && !b.restApproach;
     let standing = 0, moving = 0;
     for (let c = 0; c < ring.C; c++) {
@@ -869,7 +875,7 @@ export function incomingAtPublishedCurb(b: Belief, ring: Ring, lead: number): bo
     }
     const stillAtIncomingRest = atRest && distance <= haversineMeters(b.restPoint, curb);
     if (projectedOffset >= LEAD_OFF_LINE_CLOSING_M && distance <= NEAR_STOP_M
-      && closed >= LEAD_OFF_LINE_CLOSING_M && (toward || stillAtIncomingRest)
+      && closed >= LEAD_OFF_LINE_CLOSING_M && (toward || closingStep || stillAtIncomingRest)
       && !(standing > 0 && standing >= moving)) return true;
   }
   return false;
@@ -1231,6 +1237,7 @@ export function stepBelief(
   const b: Belief = {
     ringKey: ring.key, p: q, seenAt: now, lastObs: bus,
     lastFix: fresh ? { lat: bus.lat, lon: bus.lon } : prev.lastFix,
+    previousFix: fresh ? prev.lastFix : (prev.previousFix ?? null),
     fixAt: fresh ? now : prev.fixAt,
     restPoint: moved || closedIn ? { lat: bus.lat, lon: bus.lon } : prev.restPoint,
     // The rest's clock is its EARLIEST known origin: the server's clock
