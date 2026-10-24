@@ -2739,11 +2739,14 @@ const TripPlanner: FC<{
     // current pickup is never hidden or moved.
     // A return withheld from boarding can still show why this may be the
     // last bus. Use its timing only for that caution, never for Next in.
+    // At the observed curb the current visit has zero hops, even if its
+    // forecast row is absent. The same bus's later row is still following.
     const warningNext = busEtaLive !== null && !o.departed
       ? nextArrivalAfterPinned(
           (serverArrivalsForServiceWarning(buses, [o.boardStopId], Date.now()) ?? [])
             .filter(a => a.routeLabel === o.routeLabel),
-          o.busName, busEtaLive, countdown?.source === 'forecast' ? countdown.stopsAhead : undefined,
+          o.busName, busEtaLive, countdown?.source === 'forecast' ? countdown.stopsAhead
+            : countdown?.source === 'raw-at-stop' ? 0 : undefined,
         ) ?? nextArrLive
       : nextArrLive;
     const lastBus = shuttleCtx
