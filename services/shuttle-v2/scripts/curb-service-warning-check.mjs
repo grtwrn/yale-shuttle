@@ -100,17 +100,26 @@ export async function checkCurbServiceWarning({browser, production = false, out,
         else await page.clock.runFor(5200);
         await (await response).finished();
         const receipt = receipts.findLast(row => row.seq === active.seq); assert(receipt);
-        await page.waitForFunction(receivedAt => {
+        // The route interceptor and the app can receive the same body on
+        // different browser-clock ticks. Bind to the actual committed source
+        // and its own receipt instead of requiring those clocks to be equal.
+        const source = JSON.parse(active.raw);
+        await page.clock.runFor(800);
+        const committed = await page.waitForFunction(expected => {
           const root = document.getElementById('root'), key = root && Object.keys(root).find(k => k.startsWith('__reactContainer$'));
           const host = key && root[key], start = host?.stateNode?.current ?? host, pending = start ? [start] : [];
           while (pending.length) {
             const fiber = pending.pop(), props = fiber.memoizedProps;
-            if (props && Array.isArray(props.buses) && props.lastBusUpdateAt === receivedAt) return true;
+            if (props && Array.isArray(props.buses)
+              && props.reportingSnapshot?.serverAt === expected.servedAt
+              && JSON.stringify(props.reportingSnapshot.buses) === expected.rawBuses
+              && props.lastBusUpdateAt === props.reportingSnapshot.at
+              && props.lastBusUpdateAt >= expected.interceptedAt) return props.lastBusUpdateAt;
             if (fiber.child) pending.push(fiber.child); if (fiber.sibling) pending.push(fiber.sibling);
           }
           return false;
-        }, receipt.receivedAt);
-        await page.clock.runFor(800);
+        }, {servedAt: source.server_eta.servedAt, rawBuses: JSON.stringify(source.buses), interceptedAt: receipt.receivedAt});
+        const committedAt = await committed.jsonValue(); await committed.dispose();
         const row = page.locator(`tbody[data-route="${fixture.route}"][data-pickup="${fixture.pickupStop}"][data-alight="${fixture.destinationStop}"]`);
         await row.waitFor();
         const text = await row.innerText();
@@ -127,7 +136,7 @@ export async function checkCurbServiceWarning({browser, production = false, out,
         assert.deepEqual(errors, []);
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         views.push({mode, width, seq: active.seq, derivedEarlierBusControl: active.derived,
-          bodySHA256: active.sha256, sourceCommitted: true, receipt, cautionVisible: shouldWarn,
+          bodySHA256: active.sha256, sourceCommitted: true, committedAt, receipt, cautionVisible: shouldWarn,
           currentPickupRetained: true, summary: text, screen, pageErrors: [...errors]});
       }
     } catch (error) {
