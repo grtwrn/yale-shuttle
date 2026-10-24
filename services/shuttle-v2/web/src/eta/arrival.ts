@@ -851,7 +851,7 @@ export function priceRoute(
       // Mixing those different traversals into the point can reverse stop
       // ordering and select the wrong pass on a folded route.
       const pointHops = (((cur - c.leg) % N + N) % N || N) + o * N;
-      let point = bufs[i]!;
+      let point: Float64Array = bufs[i]!;
       if (hc !== pointHops && h > 0) {
         point = pointBufs.get(c) ?? new Float64Array(K);
         pointBufs.set(c, point);
