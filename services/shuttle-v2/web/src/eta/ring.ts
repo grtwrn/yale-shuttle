@@ -58,6 +58,8 @@ export interface Ring {
   frac: Float32Array;
   /** First cell of each leg — the cell ON stop i. */
   stopCell: Int32Array;
+  /** Published stop coordinates, before projection onto the route's line. */
+  stopCoords?: readonly LatLon[];
   /** Road metres of each leg. */
   legM: Float64Array;
   /** Per cell: the stop (leg start or leg end) within NEAR_STOP_M, else -1. */
@@ -276,6 +278,7 @@ export function buildRing(
     lat: Float64Array.from(lat), lon: Float64Array.from(lon), metre: Float64Array.from(metre),
     leg: Int32Array.from(leg), frac: Float32Array.from(frac),
     stopCell: Int32Array.from(stopCell), legM: Float64Array.from(legM),
+    stopCoords: ringCoords.slice(0, N),
     nearStop, approachOf, bridged: legs.some((l) => l.bridged),
     stops: ringStops, order, repaired,
     legSpeed: new Float64Array(N).fill(DEFAULT_DRIVE_M_S),
