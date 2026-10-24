@@ -11,7 +11,10 @@ export function PickupReminderControls({ bus, stopName, walkToSec, activeTiming,
 }) {
   const id = useId(), trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [timing, setTiming] = useState<ReminderTiming>(activeTiming ?? DEFAULT_REMINDER_TIMING);
+  const [draftTiming, setTiming] = useState<ReminderTiming>(activeTiming ?? DEFAULT_REMINDER_TIMING);
+  // Live walking progress can remove the leave-time option while editing.
+  // Use the same available choice for the controls, explanation and saved arm.
+  const timing = draftTiming.mode === 'leave' && walkToSec < AT_STOP_WALK_SEC ? DEFAULT_REMINDER_TIMING : draftTiming;
   const close = () => { setOpen(false); trigger.current?.focus(); };
   const edit = () => { setTiming(activeTiming ?? timing); setOpen(true); };
   const controlStyle = { boxSizing: 'border-box' as const, minWidth: 0, minHeight: 44, fontSize: 16, fontFamily: 'inherit', border: '1px solid #dadce0', borderRadius: 6, padding: '0 8px', width: '100%' };

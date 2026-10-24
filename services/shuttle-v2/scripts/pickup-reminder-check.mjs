@@ -22,8 +22,18 @@ try {
       await seedTestId(ctx);
       await ctx.addInitScript(({ feed, now }) => {
         localStorage.setItem('listView', 'trip');
-        sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({ fromText: '517 Prospect Street', fromLL: feed.from, toText: 'Rosenkranz Hall', toLL: feed.to, tripTime: '', expandedKey: null, savedAt: now }));
+        sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({ fromText: 'Current location', fromLL: feed.from, toText: 'Rosenkranz Hall', toLL: feed.to, tripTime: '', expandedKey: null, savedAt: now }));
         window.permissionRequests = 0; window.reminderBuzzes = 0;
+        let position = feed.from, nextWatch = 0;
+        const watches = new Map();
+        const fix = () => ({ coords: { latitude: position.lat, longitude: position.lon, accuracy: 10,
+          altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
+        Object.defineProperty(navigator, 'geolocation', { configurable: true, value: {
+          getCurrentPosition(ok) { queueMicrotask(() => ok(fix())); },
+          watchPosition(ok) { const id = ++nextWatch; watches.set(id, ok); queueMicrotask(() => ok(fix())); return id; },
+          clearWatch(id) { watches.delete(id); },
+        } });
+        window.__pickupReminderMove = next => { position = next; for (const ok of watches.values()) ok(fix()); };
         Object.defineProperty(window, 'Notification', { configurable: true, value: class {
           static permission = 'default';
           static async requestPermission() { window.permissionRequests++; this.permission = 'denied'; return 'denied'; }
@@ -160,12 +170,32 @@ try {
       await resetThreshold(); let before = await buzzes(); await armTiming('stops'); feedMode = 'http-failed'; await advance(6500); await waiting.waitFor();
       await waiting.getByRole('button', { name: 'Cancel pickup reminder', exact: true }).click(); await advance(1100); assert.equal(await waiting.count(), 0);
       row[5] = 3; feedMode = 'fresh'; await advance(6500); assert.equal(await buzzes(), before, 'a canceled pending reminder must not resume');
+      // GPS can remove leave-time mode while its editor remains open. The
+      // displayed minutes, amount control, explanation and saved arm must agree.
+      await resetThreshold();
+      await trigger.click(); await mode.selectOption('leave');
+      await page.evaluate(point => window.__pickupReminderMove(point), feed.stop_coords[100]);
+      await advance(1100);
+      assert.equal(await mode.inputValue(), 'minutes');
+      assert.equal(await minutes().inputValue(), '5');
+      assert.equal(await mode.locator('option[value="leave"]').count(), 0);
+      assert.match(await settings.innerText(), /Uses the early end of the live pickup window/);
+      await settings.screenshot({ path: `${out}/arrived-while-editing-${width}.png` });
+      const arrivalBefore = await buzzes();
+      await settings.getByRole('button', { name: 'Set reminder', exact: true }).click();
+      await advance(1100);
+      await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).waitFor();
+      assert.match(await page.locator('body').innerText(), /Blue Day #48 could arrive in .*your pickup reminder/);
+      assert.equal(await buzzes(), arrivalBefore + 1, 'the displayed minute reminder fires at pickup; an ineligible leave arm would stay silent');
+      await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
+      await advance(1100); assert.equal(await buzzes(), arrivalBefore + 1, 'arrival reminder fires once');
+      await page.evaluate(point => window.__pickupReminderMove(point), feed.from); await advance(1100);
       await resetThreshold(); before = await buzzes(); await armTiming('stops'); feedMode = 'http-failed'; await advance(6500); await waiting.waitFor();
       await page.getByTitle('Back to all routes', { exact: true }).first().click();
       await page.getByRole('button', { name: 'Swap start and destination', exact: true }).click(); await advance(1100);
       assert.equal(await waiting.count(), 0, 'changing the trip must cancel the old reminder');
       row[5] = 3; feedMode = 'fresh'; await advance(6500); assert.equal(await buzzes(), before, 'the old trip must not notify after recovery');
-      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false, recoveryCases, leavePingHistoryPreserved: true, canceledPendingNeverResumed: true, changedTripNeverResumed: true });
+      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false, recoveryCases, leavePingHistoryPreserved: true, canceledPendingNeverResumed: true, changedTripNeverResumed: true, arrivalDuringEditingSavesDisplayedTiming: true });
     } catch (error) {
       const page = ctx.pages()[0];
       report.failure = { width, message: error.message, body: await page.locator('body').ariaSnapshot().catch(() => null) };
