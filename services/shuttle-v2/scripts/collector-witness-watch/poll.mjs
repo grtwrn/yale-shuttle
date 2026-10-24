@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { performance } from 'node:perf_hooks';
 import { witnessSHA } from '../../src/collector/witnessCodec.ts';
 import { atomicJson, withStorageLock } from '../retention/storage.mjs';
 import { rotateOutput } from '../retention/maintain.mjs';
@@ -61,7 +62,7 @@ export async function getJSON(url, token, fetcher = monitorFetch, maxBytes = 20 
 
 /** Read-only production requests. No fitting, source-row edits, publication,
  * report replies or service-status inference. Gaps are explicit boundaries. */
-export async function pollWitnesses({ store, base = 'https://yale-shuttle.fly.dev', token, fetcher = monitorFetch, now = Date.now(), maxPages = 8 } = {}) {
+export async function pollWitnesses({ store, base = 'https://yale-shuttle.fly.dev', token, fetcher = monitorFetch, now = Date.now(), monotonicStartedAt = performance.now(), maxPages = 8 } = {}) {
   const origin = new URL(base);
   if (origin.username || origin.password || (origin.protocol !== 'https:' && !(origin.protocol === 'http:' && ['localhost','127.0.0.1','[::1]'].includes(origin.hostname)))) throw Error('Invalid witness app origin');
   if (!Number.isSafeInteger(maxPages) || maxPages < 1 || maxPages > 16 || typeof token !== 'string' || !token) throw Error('Invalid witness poll configuration');
@@ -104,10 +105,13 @@ export async function pollWitnesses({ store, base = 'https://yale-shuttle.fly.de
   const retention = store.maintain({ now });
   // Empty successful polls also produce witnesses. A fresh HTTP head alone
   // cannot hide a stalled collector or upstream failure before capture begins.
+  // Requests can take longer than the permitted source-clock skew. Compare
+  // source freshness to the end of this poll, preserving its original clocks.
+  const checkedAt = now + Math.max(0, Math.floor(performance.now() - monotonicStartedAt));
   const lastSourceAt = cp.at >= 0 ? cp.at : cp.beganAt ?? 0;
-  const sourceStale = now - lastSourceAt > 120000 || lastSourceAt - now > 5000;
+  const sourceStale = checkedAt - lastSourceAt > 120000 || lastSourceAt - checkedAt > 5000;
   const sourceCaptureUnavailable = store.get('capture-run') !== null;
-  return { checkedAt: new Date(now).toISOString(), ok: reportsOK && head.unavailable === null && !sourceStale && !sourceCaptureUnavailable && !retention.cleanupUncertain,
+  return { checkedAt: new Date(checkedAt).toISOString(), pollStartedAt: new Date(now).toISOString(), ok: reportsOK && head.unavailable === null && !sourceStale && !sourceCaptureUnavailable && !retention.cleanupUncertain,
     epoch: cp.epoch, build: cp.build, cursor: cp.after, latest: head.latest, pages, frames, leads, boundary,
     sourceUnavailable: head.unavailable !== null, sourceStale, sourceCaptureUnavailable, lastSourceAt, reportsOK, reportError, retention,
     anchorProgress: anchorProgressSummary(store.get('anchor-progress')),
@@ -119,6 +123,7 @@ export async function runOnce({ dir = process.env.COLLECTOR_WITNESS_DIR ?? path.
   tokenFile = process.env.SHUTTLE_ADMIN_TOKEN_FILE ?? path.join(os.homedir(), '.config/yale-shuttle/admin-token'),
   incidents = process.env.COLLECTOR_WITNESS_INCIDENTS ?? path.join(os.homedir(), 'projects/yale-shuttle-guardian-bot/state/pending'),
   policyFile = null, fetcher = monitorFetch, now = Date.now() } = {}) {
+  const monotonicStartedAt = performance.now();
   return withStorageLock(dir, async () => {
     let store, result;
     try {
@@ -126,7 +131,7 @@ export async function runOnce({ dir = process.env.COLLECTOR_WITNESS_DIR ?? path.
       const policy = await readStoragePolicy(policyFile);
       const token = (await fs.readFile(tokenFile, 'utf8')).trim();
       store = new WitnessStore(dir, { policy });
-      result = await pollWitnesses({ store, base, token, fetcher, now });
+      result = await pollWitnesses({ store, base, token, fetcher, now, monotonicStartedAt });
     } catch (error) {
       // Fixed text: network exception messages can contain URLs or headers.
       let cursor = null;

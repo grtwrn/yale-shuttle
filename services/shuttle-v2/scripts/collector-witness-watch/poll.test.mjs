@@ -1,13 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { fixture, association } from './testFixtures.mjs';
 import { WitnessStore, DEFAULT_POLICY } from './storage.mjs';
 import { pollWitnesses, getJSON, runOnce, readStoragePolicy } from './poll.mjs';
 
 const roots = [], stores = [];
-afterEach(() => { for (const s of stores.splice(0)) s.close(); for (const r of roots.splice(0)) fs.rmSync(r,{recursive:true,force:true}); });
+afterEach(() => { vi.restoreAllMocks(); for (const s of stores.splice(0)) s.close(); for (const r of roots.splice(0)) fs.rmSync(r,{recursive:true,force:true}); });
 const json = (v,status=200) => new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
 function setup() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(),'collector-poll-test-')); roots.push(root);
@@ -25,7 +26,7 @@ function setup() {
     return json(page);
   };
   const poll=()=>pollWitnesses({store,fetcher,token:'test-secret',now:f.at});
-  return{f,store,requests,poll,setModel:v=>model=v,setCorrupt:v=>corrupt=v,setReportFailure:v=>reportFailure=v};
+  return{f,store,requests,poll,fetcher,setModel:v=>model=v,setCorrupt:v=>corrupt=v,setReportFailure:v=>reportFailure=v};
 }
 describe('read-only collector witness watcher',()=>{
   it('defaults when the optional policy is absent and accepts partial local limits',async()=>{
@@ -113,6 +114,45 @@ describe('read-only collector witness watcher',()=>{
     const a=setup();a.f.add();await a.poll();a.f.advance(120001);
     expect(await a.poll()).toMatchObject({ok:false,sourceStale:true,frames:0});
     a.f.add();expect(await a.poll()).toMatchObject({ok:true,sourceStale:false,frames:1});
+  });
+  it.each([
+    {name:'fresh frame during a slow response',sourceOffset:5210,elapsed:5894,stale:false},
+    {name:'frame that becomes stale during the requests',sourceOffset:0,elapsed:120001,stale:true},
+    {name:'frame still too far in the future at receipt',sourceOffset:12000,elapsed:5894,stale:true},
+  ])('uses poll completion for $name without changing original source clocks',async({sourceOffset,elapsed,stale})=>{
+    const a=setup();a.f.add();const began=a.f.at;let spent=0;
+    vi.spyOn(performance,'now').mockImplementation(()=>spent);
+    if(sourceOffset){a.f.advance(sourceOffset-5000);a.f.add();}
+    const original=a.f.page().frames;
+    const fetcher=async(url,options)=>{
+      const response=await a.fetcher(url,options);
+      if(new URL(url).search)spent=elapsed;
+      return response;
+    };
+    const result=await pollWitnesses({store:a.store,fetcher,token:'test-secret',now:began});
+    expect(result).toMatchObject({ok:!stale,sourceStale:stale,lastSourceAt:began+sourceOffset,
+      pollStartedAt:new Date(began).toISOString(),checkedAt:new Date(began+elapsed).toISOString()});
+    expect(a.store.checkpoint().at).toBe(began+sourceOffset);
+    expect(a.store.readChunk(a.store.get('activeChunk')).frames).toEqual(original);
+  });
+  it('includes run preparation in the completion clock used by the actual one-shot command',async()=>{
+    const root=fs.mkdtempSync(path.join(os.tmpdir(),'collector-poll-clock-run-'));roots.push(root);
+    const tokenFile=path.join(root,'token');fs.writeFileSync(tokenFile,'secret');
+    const f=fixture(),began=f.at;f.advance(2000);f.add();let spent=0;
+    vi.spyOn(performance,'now').mockImplementation(()=>spent);
+    const readFile=fs.promises.readFile;
+    vi.spyOn(fs.promises,'readFile').mockImplementation(async(...args)=>{
+      const value=await readFile(...args);if(args[0]===tokenFile)spent=7500;return value;
+    });
+    const fetcher=async url=>{
+      url=new URL(url);
+      if(url.pathname==='/api/reports')return json({reports:[]});
+      if(!url.search)return json(f.head());
+      spent=8100;return json(f.page());
+    };
+    expect(await runOnce({dir:path.join(root,'store'),tokenFile,incidents:path.join(root,'pending'),fetcher,now:began}))
+      .toMatchObject({ok:true,sourceStale:false,lastSourceAt:began+7000,
+        pollStartedAt:new Date(began).toISOString(),checkedAt:new Date(began+8100).toISOString()});
   });
   it('bounds the initial no-input grace period without inferring that service is absent',async()=>{
     const a=setup();expect(await a.poll()).toMatchObject({ok:true,sourceStale:false,cursor:0});
