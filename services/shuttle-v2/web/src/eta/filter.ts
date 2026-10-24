@@ -819,6 +819,7 @@ export function shortOfNextStop(b: Belief, ring: Ring, lead: number): boolean {
   if (lead < 0 || lead >= N || ring.stops.length !== N || !b.lastFix || !b.leadTopFix) return false;
   if (ring.stops[lead] !== b.lastStopId) return false;
   const s = (lead + 1) % N;
+  if (incomingAtPublishedCurb(b, ring, lead)) return true;
   if (ring.stops.filter((id) => id === ring.stops[s]).length > 1) return false;
   if (b.rested && b.restStop === s) return false;
   const at = stopPoint(ring, s);
@@ -834,6 +835,44 @@ export function shortOfNextStop(b: Belief, ring: Ring, lead: number): boolean {
   }
   if (onNext < 0 || onLead < 0 || !(dist[onNext]! < dist[onLead]!)) return false;
   return !(dist[onNext]! <= offLineM(ring) && alongRing(ring, onNext, b.leadTopFix, b.lastFix) >= SHORT_OF_STOP_HEADING);
+}
+
+/** A current approach whose projected route marker precedes its published curb.
+ * Shared by pricing and the physical marker; travel still identifies the last
+ * cleared call when the ring inserted an extra pass. */
+export function incomingAtPublishedCurb(b: Belief, ring: Ring, lead: number): boolean {
+  const N = ring.N;
+  if (lead < 0 || lead >= N || ring.stops.length !== N || !b.lastFix || !b.leadTopFix) return false;
+  if (ring.stops[lead] !== b.lastStopId) return false;
+  const s = (lead + 1) % N;
+  // A route's projected marker can precede the published curb. Preserve the
+  // incoming traversal while a warm, uniquely anchored approach is still
+  // closing on that curb, even after crossing the projected stop cell.
+  // A repair can insert the same published call twice; distinct published
+  // calls at a shared curb remain ambiguous and retain the existing gate.
+  const curb = ring.stopCoords?.[s];
+  if (curb && ring.stops.filter(id => id === ring.stops[lead]).length === 1
+    && new Set(ring.stops.flatMap((id, i) => id === ring.stops[s] ? [ring.order[i]!] : [])).size === 1
+    && !(b.leftStop === s && b.leftAt >= b.leadMassAt)) {
+    const distance = haversineMeters(b.lastFix, curb);
+    const closed = haversineMeters(b.leadTopFix, curb) - distance;
+    const projectedOffset = haversineMeters(stopPoint(ring, s), curb);
+    const kx = Math.cos(curb.lat * Math.PI / 180);
+    const dx = (b.lastFix.lon - b.leadTopFix.lon) * kx;
+    const dy = b.lastFix.lat - b.leadTopFix.lat;
+    const toward = (b.lastFix.lon - curb.lon) * kx * dx + (b.lastFix.lat - curb.lat) * dy < 0;
+    const atRest = b.rested && b.restStop === s && !b.restApproach;
+    let standing = 0, moving = 0;
+    for (let c = 0; c < ring.C; c++) {
+      if (b.standLeg[c] === s && b.zoneKey[c] === s) standing += b.p[c]!;
+      if (ring.leg[c] === s) moving += b.p[ring.C + c]!;
+    }
+    const stillAtIncomingRest = atRest && distance <= haversineMeters(b.restPoint, curb);
+    if (projectedOffset >= LEAD_OFF_LINE_CLOSING_M && distance <= NEAR_STOP_M
+      && closed >= LEAD_OFF_LINE_CLOSING_M && (toward || stillAtIncomingRest)
+      && !(standing > 0 && standing >= moving)) return true;
+  }
+  return false;
 }
 
 /** Past this distance from a line, the line's Gaussian is below the stray weight (~100 m). */

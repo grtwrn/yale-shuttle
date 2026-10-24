@@ -29,7 +29,7 @@
  * what the replay harnesses and the pure tests depend on.
  */
 import { beliefFor, ringForBus, type AnchorStore } from "./eta";
-import { lastStopReading, LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass, otherCallOfStand, pricedLeg, situations, standingSec, type Belief, type FilterBus } from "./eta/filter";
+import { incomingAtPublishedCurb, lastStopReading, LEAD_FOLLOW_LEGS, LEAD_SWITCH_MASS, legMass, otherCallOfStand, pricedLeg, situations, standingSec, type Belief, type FilterBus } from "./eta/filter";
 import type { Ring } from "./eta/ring";
 import { haversineMeters, type LatLon } from "./geo";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
@@ -140,6 +140,11 @@ export function resolveAnchorIndex(
  * count, and none goes from within two stops of it to six off.
  */
 export function anchorLeg(b: Belief, ring: Ring): number {
+  // At a displaced curb the bus can already occupy the next stop's zone
+  // while its arrival is still being priced on the incoming traversal.
+  // Keep the physical stop name; travelSlot retains the last cleared call.
+  const next = (b.lead + 1) % ring.N;
+  if (incomingAtPublishedCurb(b, ring, b.lead) && legMass(b, ring)[next]! >= LEAD_SWITCH_MASS) return next;
   const priced = pricedLeg(b, situations(b, ring));
   if (priced === b.lead) return b.lead;
   return lastStopReading(b, ring, priced) === "confirms" && !otherCallOfStand(b, ring, b.lead, priced) ? priced : b.lead;
