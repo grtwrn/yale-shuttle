@@ -11,10 +11,23 @@ override production, training inputs, and the output directory.
 This replaces the historical automatic-promotion path whose evidence was
 unverifiable. The historical replay remains diagnostic and keeps its refusals.
 `served-control-v2` uses an independent production ETA engine for each arm.
-After training, an authenticated `/api/evaluation/seed` read captures the
-producer's complete past belief/observation graph, before the cycle starts.
-Both arms inherit that same past once and independently compute subsequent
-forecasts. Neither takes its predictions from the champion's served answer.
+After training, a frozen statistical trial retains its candidate, champion,
+training receipts and original calibration calendar. Each exact execution
+context obtains an authenticated `/api/evaluation/seed`, capturing the producer's
+complete past belief/observation graph. Both arms inherit the same past and
+independently compute subsequent forecasts. Neither takes predictions from the
+champion's served answer. A producer restart forks both arms from its new common
+past; the pooled trial does not claim one uninterrupted challenger trajectory.
+A process restart within the same context restores that pair's own checkpoint.
+
+Eligible UI release handovers keep the trial, candidate model version,
+calibration/test calendar, visit ordinals, latches and closed forecast identities.
+Pending promises close once as unknown at the old boundary and remain in the
+original denominator. Every context keeps its own seed, source, chain, runtime
+and input journals, joined by exact immutable closed-state links. Reading,
+calibration and evaluation verification cover the entire linked cohort. Legacy
+cycles without a trial descriptor are not retroactively pooled. A genuine
+execution or champion change starts a new trial and preserves the previous one.
 
 `/api/evaluation/inputs` supplies immutable, checksummed inputs for every
 production model observation, with an epoch and contiguous cursor. It includes
@@ -75,14 +88,40 @@ Code bytes, parameter sets, training receipts and live input snapshots are saved
 `canary-metrics.mjs` helper used to match curb outcomes. An independent test
 traverses the actual observer entry's literal relative imports to catch omitted
 dependencies. Source checks re-enumerate files as well as comparing their bytes,
-so changed, added or deleted executable files refuse the cycle. Older frozen
+so changed, added or deleted executable files refuse execution in that context. Older frozen
 snapshots retain their original declared-file scope; missing helper bytes are
-never retroactively attested. This inventory does not attest remote services,
-dynamic filesystem reads or installed dependency bytes.
+never retroactively attested. Legacy inventories do not attest remote services,
+dynamic filesystem reads or installed dependency bytes. New trials also freeze
+a separate execution identity: backend/observer membership, the observer's
+literal shared-web import closure, configuration/lockfiles, actual installed
+dependency and Node binary bytes, runtime versions, arguments and timezone.
+The authenticated producer head and seed independently fingerprint the runtime
+image's backend/shared model source, migrations/configuration, installed
+dependencies, Node binary and runtime settings. Browser assets are separate
+from the shared model source copied into the runtime image. Production computes
+its fingerprint once before serving. Equal fingerprints across a handover only
+establish eligibility: the new context still needs an actual positive post-seed
+served-control match before publication. They do not certify physical accuracy
+or replace retained dynamic inputs.
+
+Boundary responses live in checksummed `source-event-*` files. An epoch refusal
+or changed-build response must agree with the original confirming head and next
+seed, including the request/cursor and availability clocks. These responses are
+separate from valid model-input journals; arbitrary bad frames are never skipped.
+Missing prior journals, conflicting context links, unconfirmed changes and
+original source/protocol failures refuse continuation.
 
 Source identity is also checked before a source-recovery or refused-source
 wait, which bypasses normal maintenance. A change exits for supervised reload;
 the original refusal, failed predictions and frozen candidate remain intact.
+
+Rolling retention protects every context of the active trial and every context
+supporting the currently published trial. The closed-store cap does not authorize
+deleting linked active prefixes. The learning watcher tracks stable trial and
+context progress separately from process health, including repeated unchanged
+candidate/training restarts that postpone calibration. Its bounded history
+cannot authorize publication. The native CLI, stream and receipt verifier also
+have a dedicated `tsc` scope in `npm run typecheck`.
 
 Sampling waits for each arm's first actual post-seed computation rather than
 an arbitrary cold-start delay. Calibration uses the next two full ET dates to fit

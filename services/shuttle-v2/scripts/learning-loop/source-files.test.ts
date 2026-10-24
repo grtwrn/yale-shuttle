@@ -15,7 +15,7 @@ function sandbox(){
  const write=(file:string,text='export const value=1;')=>{const target=path.join(folder,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,text);};
  for(const file of ['src/engine.ts','web/src/model.ts','scripts/learning-loop/start.ts',
   'scripts/reestimate-lib.mjs','scripts/reestimate-validation.mjs','scripts/archive-files.mjs',
-  'scripts/canary-metrics.mjs','package-lock.json'])write(file);
+  'scripts/canary-metrics.mjs','package.json','package-lock.json','tsconfig.json','web/package.json','web/package-lock.json','web/tsconfig.json'])write(file);
  const key=()=>identityHash(fileIdentity(learningSourceFiles(folder)));
  return{folder,write,key};
 }

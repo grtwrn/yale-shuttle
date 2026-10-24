@@ -97,7 +97,8 @@ export function recordForecast(state, bus, stop, at, champion, challenger, phase
  if(visit.latched||visit.candidate)return;
  const id=`${base}|${visit.ordinal+1}|${h}`;
  if(state.pending[id])return;
- state.pending[id]={id,visitId:`${base}|${visit.ordinal+1}`,base,h,phase,day:etDay(at),r:bus.route_id,busId:bus.bus_id,busName:bus.bus_name,stop,at,inputHash,champion,challenger};
+ state.pending[id]={id,visitId:`${base}|${visit.ordinal+1}`,base,h,phase,day:etDay(at),r:bus.route_id,busId:bus.bus_id,busName:bus.bus_name,stop,at,inputHash,champion,challenger,
+  ...(state.trial?{sourceContextId:state.id}:{})};
 }
 
 /** Arrival is a new, twice-observed stationary service at the named curb,
@@ -196,13 +197,14 @@ export function clusteredImprovement(rows, conformal) {
 export function evaluate(state, rows, closedDays) {
  const test=rows.filter(p=>p.phase==='test'&&closedDays.includes(p.day));
  const ids=new Set();const reasons=[];
+ if(state.trial&&(!state.contextQualifiedAt||!state.contextQualification))reasons.push('Current producer context has no positive served-control qualification.');
  if(state.protocolFailures?.count)reasons.push('Observed production-control protocol failures remain in this cycle.');
  for(const p of test){
   if(ids.has(p.id))reasons.push('Duplicate forecast visit/horizon identity.');ids.add(p.id);
-  if(![p.at,p.availableAt].every(Number.isFinite)||p.at<state.calibratedAt||p.at<state.startedAt||p.availableAt<p.at||!p.inputHash)reasons.push('Invalid prospective evidence clocks or missing input receipt.');
+  if(![p.at,p.availableAt].every(Number.isFinite)||p.at<state.calibratedAt||p.at<(state.trial?.startedAt??state.startedAt)||p.availableAt<p.at||!p.inputHash)reasons.push('Invalid prospective evidence clocks or missing input receipt.');
   if(!productionControlValid(p))reasons.push('Production-control parity is missing or mismatched.');
  }
- if(!(state.champion.publishedAt<state.startedAt))reasons.push('Champion vintage does not precede prospective collection.');
+ if(!(state.champion.publishedAt<(state.trial?.startedAt??state.startedAt)))reasons.push('Champion vintage does not precede prospective collection.');
  if(!state.calibratedAt||state.calibratedAt>=Math.min(...test.map(p=>p.at)))reasons.push('Final candidate was not frozen before test predictions.');
  const perDay=closedDays.map(day=>{
   const daily=test.filter(p=>p.day===day);
@@ -215,5 +217,5 @@ export function evaluate(state, rows, closedDays) {
  for(const route of state.requiredRoutes)if(!decision.totals.challenger[`${route}|all`]?.scored)reasons.push(`Route ${route}: no untouched test support.`);
  const uncertainty=clusteredImprovement(test,state.candidate.params.CONFORMAL);
  if(!uncertainty.pass)reasons.push(uncertainty.reason??'Pooled WIS improvement is not supported by clustered uncertainty.');
- return {...decision,distributionDiagnostic:distributionDiagnostics(test,productionControlValid),promote:decision.promote&&!reasons.length,reasons:[...new Set([...decision.reasons,...reasons])],uncertainty,evidenceKey:identityHash({cycle:state.id,closedDays,ids:[...ids]})};
+ return {...decision,distributionDiagnostic:distributionDiagnostics(test,productionControlValid),promote:decision.promote&&!reasons.length,reasons:[...new Set([...decision.reasons,...reasons])],uncertainty,evidenceKey:identityHash({cycle:state.id,trial:state.trialSHA256??null,contexts:state.priorContexts??[],closedDays,ids:[...ids]})};
 }

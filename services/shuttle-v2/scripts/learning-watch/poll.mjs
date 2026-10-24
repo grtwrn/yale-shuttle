@@ -10,6 +10,7 @@ import { atomicJson, readJson, withStorageLock, MiB } from '../retention/storage
 import { rotateOutput } from '../retention/maintain.mjs';
 import { identityHash } from '../reestimate-validation.mjs';
 import { collectPlatform } from './platform.mjs';
+import { advanceTrialProgress } from './progress.mjs';
 
 const exec = promisify(execFile);
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -42,6 +43,9 @@ export function inspect({ state, status, frozen, observer }, now = Date.now()) {
       || !Number.isSafeInteger(live.cursor) || live.cursor < source.seedCursor || !hash(live.chain))
       add('source-protocol', 'The exact input cursor and frozen seed identity are missing or inconsistent.');
   }
+  if(state?.trial&&(frozen?.trialSHA256!==state.trialSHA256||status?.trial?.id!==state.trial.id
+    ||status?.trial?.sha256!==state.trialSHA256||status?.trial?.contexts!==(state.priorContexts?.length??0)+1))
+    add('trial-protocol','The stable statistical trial and exact execution context history are inconsistent.');
   const idle = state?.forecastProtocol === 'served-control-v2' && status?.idleService === true
     && status?.forecasts?.champion === 0 && status?.forecasts?.challenger === 0;
   if (state?.protocolFailures?.count > 0 || status?.protocolFailures?.count > 0
@@ -152,6 +156,8 @@ const stateIdentity = state => state && ({ id: state.id, version: state.version,
   sourceKey: state.sourceKey, championVersion: state.champion?.version,
   championSHA256: identityHash(state.champion ?? null), protocolFailures: state.protocolFailures ?? null,
   sourceRefusal: state.sourceRefusal ?? null,
+  ...(state.trial?{trial:{id:state.trial.id,startedAt:state.trial.startedAt,sha256:state.trialSHA256,
+    contexts:(state.priorContexts?.length??0)+1,contextQualifiedAt:state.contextQualifiedAt??null}}:{}),
   source: state.source ? { epoch: state.source.epoch, seedSha256: state.source.seedSha256,
     seedCursor: state.source.seedCursor, runtime: state.source.runtime } : null });
 
@@ -234,12 +240,14 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
         current.issue.platformEvidence = { confirmations };
       }
     }
+    const progress=advanceTrialProgress(prior?.trialProgress,state,now);
+    const progressNext=advance(prior?.trialProgressIncidents,'trial-progress',progress?.issues??[],now);
     const next = advance(prior, cycleId(state), issues, now), emitted = [];
     let incidentError = null;
     let diagnosticSnapshot;
-    for (const [scope, alert] of [...next.alerts.map(a => [next.cycle, a]), ...(platformNext?.alerts ?? []).map(a => [platformNext.cycle, a])]) {
+    for (const [scope, alert] of [...next.alerts.map(a => [next.cycle, a]), ...(platformNext?.alerts ?? []).map(a => [platformNext.cycle, a]), ...progressNext.alerts.map(a=>['trial-progress',a])]) {
       diagnosticSnapshot ??= snapshotDiagnostics({ status, stateIdentity: stateIdentity(state),
-        frozenIdentity: stateIdentity(frozen), observer, readErrors,
+        frozenIdentity: stateIdentity(frozen), observer, readErrors, ...(progress?{trialProgress:progress}:{}),
         ...(collectorStatusFile ? { collectorCapture } : {}),
         ...(historyStatusFile ? { timingHistory } : {}),
         platform: { configured: platform.configured, enabled: platform.enabled, state: platform.state,
@@ -251,11 +259,13 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
     const recent = [...(prior?.recent ?? []).filter(r => !emitted.includes(r.id)),
       ...emitted.map(id => ({ id, at: new Date(now).toISOString(), cycle: next.cycle }))].slice(-100);
     await atomicJson(path.join(directory, 'state.json'), { ...next, alerts: undefined,
-      ...(platformNext ? { platform: { ...platformNext, alerts: undefined } } : {}), recent });
+      ...(platformNext ? { platform: { ...platformNext, alerts: undefined } } : {}),
+      ...(progress?{trialProgress:progress}:{}),trialProgressIncidents:{...progressNext,alerts:undefined},recent });
     const activePlatform = platform.state === 'throttled' ? Object.values(platformNext?.observations ?? {}) : [];
-    const result = { checkedAt: new Date(now).toISOString(), ok: issues.length === 0 && platform.state !== 'throttled' && !incidentError,
+    const result = { checkedAt: new Date(now).toISOString(), ok: issues.length === 0 && !progress?.issues.length && platform.state !== 'throttled' && !incidentError,
       cycle: next.cycle, phase: status?.phase ?? null, observerPid: observer?.pid ?? null,
-      issues: [...Object.values(next.observations), ...activePlatform].map(o => ({ code: o.issue.code, summary: o.issue.summary, consecutiveChecks: o.count, reported: o.reported })),
+      issues: [...Object.values(next.observations), ...activePlatform,...Object.values(progressNext.observations)].map(o => ({ code: o.issue.code, summary: o.issue.summary, consecutiveChecks: o.count, reported: o.reported })),
+      ...(progress?{trialProgress:progress}:{}),
       productionControl: status?.productionControl ?? null, protocolFailures: state?.protocolFailures ?? status?.protocolFailures ?? null,
       feedReceivedAt: status?.feedReceivedAt ?? null, lastInputAt: status?.lastInputAt ?? null,
       collectorCapture: collectorStatusFile ? { ok: collectorCapture?.ok === true,

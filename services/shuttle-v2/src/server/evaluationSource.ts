@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto';
 import { EvaluationInputError, EvaluationInputs } from './evaluationInputs.js';
 import type { ServerEta } from './serverEta.js';
+import type { ProductionExecutionIdentity } from './executionIdentity.js';
 
 /** Admin-only causal history/input access. Public arrival computation and its
  * cache remain authoritative; these methods do not change model parameters. */
 export class EvaluationSource {
   constructor(private readonly engine: ServerEta | null, private readonly getPublicJson: () => string,
-    readonly inputs: EvaluationInputs, private readonly build: () => string, private readonly clock = Date.now) {}
+    readonly inputs: EvaluationInputs, private readonly build: () => string, private readonly clock = Date.now,
+    private readonly execution?: () => ProductionExecutionIdentity) {}
 
   private current() {
     if (!this.engine || this.inputs.stats().failed) throw new EvaluationInputError('unavailable', 'Evaluation source unavailable');
@@ -20,7 +22,8 @@ export class EvaluationSource {
 
   head() {
     const { feed, head } = this.current();
-    return { v: 1 as const, build: this.build(), ...head, responseAt: this.clock(), feed };
+    return { v: 1 as const, build: this.build(), ...head, responseAt: this.clock(), feed,
+      ...(this.execution?{execution:this.execution()}: {}) };
   }
 
   seed() {
@@ -30,6 +33,7 @@ export class EvaluationSource {
       || (!idle && JSON.stringify(snapshot.modelParams ?? null) !== JSON.stringify(feed.model_params ?? null)))
       throw new EvaluationInputError('unavailable', 'No coherent current model history');
     return { v: 1 as const, build: this.build(), ...head, responseAt: this.clock(), idle,
+      ...(this.execution?{execution:this.execution()}: {}),
       modelParams: feed.model_params ?? null, pastModelParams: snapshot.modelParams,
       servedRoutes: engine.servedRoutes(), history: { encoding: 'v8-base64', bytes: snapshot.bytes.byteLength,
         sha256: createHash('sha256').update(snapshot.bytes).digest('hex'), data: Buffer.from(snapshot.bytes).toString('base64') }, feed };

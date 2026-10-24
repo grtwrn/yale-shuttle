@@ -8,7 +8,7 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ServerEta } from '../../src/server/serverEta';
-import { EvaluationInputs } from '../../src/server/evaluationInputs';
+import { EvaluationInputError,EvaluationInputs } from '../../src/server/evaluationInputs';
 import { EvaluationSource } from '../../src/server/evaluationSource';
 import { ROUTE_LISTS } from '../../web/src/routes';
 import { COMPILED_MODEL_PARAMS, resetModelParams } from '../../web/src/eta/params';
@@ -17,6 +17,8 @@ import { fileIdentity, identityHash } from '../reestimate-validation.mjs';
 import { ExactForecastStream, digest } from './stream';
 import { etDay, nextDay } from './lib.mjs';
 import { learningSourceFiles } from './source-files.mjs';
+import {fixtureProducerExecution} from './__fixtures__/execution-identity';
+import {readTrialPairs,trialContexts,verifyContextTransitions} from './trial-evidence.mjs';
 
 const service = fileURLToPath(new URL('../..', import.meta.url));
 const cap = JSON.parse(fs.readFileSync(new URL('../../src/server/__fixtures__/live-frames.json', import.meta.url), 'utf8'));
@@ -24,7 +26,7 @@ const temporary: string[] = [];
 afterEach(() => { for (const p of temporary.splice(0)) fs.rmSync(p, { recursive: true, force: true }); resetModelParams(); registerRoutePaths(null); });
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 const read = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
-async function fixture(isolatedSource = false) {
+async function fixture(isolatedSource = false, statisticalTrial = false) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'exact-observer-cli-')); temporary.push(root);
   // A source-change regression mutates only this private runtime copy. Other
   // tests and the installed observer keep their own source bytes untouched.
@@ -49,23 +51,25 @@ async function fixture(isolatedSource = false) {
   const champion = { version: 'fixture-champion', accepted: true, publishedAt: initial - 86400000, params: structuredClone(COMPILED_MODEL_PARAMS) };
   const params = structuredClone(champion.params); params.P_REPEAT_STAND = .75; params.CONFORMAL = { '0-2': 1, '2-5': 1, '5-10': 1, '10-30': 1 };
   const producer = new ServerEta({ routes: ROUTE_LISTS.map(r => r.label) }); producer.useK10Trial(() => new Map());
-  const inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let version = 0, payload: any, mode = 'healthy';
+  let inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let version = 0, payload: any, mode = 'healthy',build='fixture-build',restarts=0;
+  let producerExecution=fixtureProducerExecution();
   const publish = (at = serverNow()) => {
-    const since = new Date(initial - 60000).toISOString();
+    const since = new Date((statisticalTrial?at:initial) - 60000).toISOString();
     payload = { ...cap.static, model_params: champion, buses: structuredClone(cap.frames[4].buses).map((b: any) => {
       b.observed_at = at; for (const field of ['at_stop_since', 'stationary_since', 'last_moved_at']) if (b[field]) b[field] = since; return b;
     }) };
     const wire = producer.contribute(payload, ++version, at, true);
     inputs.append(version, at, JSON.stringify({ ...payload, ...(wire ? { server_eta: wire } : {}) }), producer.evaluationContext()!);
   };
-  const source = new EvaluationSource(producer, () => {
+  const makeSource = () => new EvaluationSource(producer, () => {
     const current=mode==='idle'?{...payload,buses:[]}:mode==='expired-fleet'?structuredClone(payload):payload;
     if (mode === 'expired-fleet') current.buses = [
       ...current.buses.map((b: any) => ({ ...b, observed_at: serverNow() - 60000 })),
       { ...current.buses[0], bus_name: '#unmodeled', bus_id: -1, observed_at: serverNow() },
     ];
     const wire = producer.evaluationWire(current.buses, serverNow()); return JSON.stringify({ ...current, ...(wire ? { server_eta: wire } : {}) });
-  }, inputs, () => 'fixture-build', serverNow);
+  }, inputs, () => build, serverNow,statisticalTrial?()=>producerExecution:undefined);
+  let source=makeSource();
   for (let i = 0; i < 5; i++) publish(initial + i * 5000);
   const seed = source.seed(), seedReceivedAt = serverNow(), startedAt = serverNow(), id = `cycle-${startedAt}`;
   const candidate = { params, n: {}, issues: [] }, stream = new ExactForecastStream('fixture-build', sourceKey, champion, { version: id, publishedAt: startedAt, params });
@@ -103,7 +107,9 @@ async function fixture(isolatedSource = false) {
       if(mode==='malformed'){response.end('null');return;}
       if (mode === 'gap') { response.statusCode = 409; response.end(JSON.stringify({ error: 'evaluation_gap' })); return; }
       if (!sent && (mode === 'corrupt' || mode === 'advance')) { publish(); sent = true; }
-      const packet: any = structuredClone(source.read(url.searchParams.get('epoch')!, Number(url.searchParams.get('after'))));
+      let packet:any;
+      try{packet=structuredClone(source.read(url.searchParams.get('epoch')!,Number(url.searchParams.get('after'))));}
+      catch(error){if(error instanceof EvaluationInputError){response.statusCode=error.code==='cursor'?400:409;response.end(JSON.stringify({error:'evaluation_'+error.code}));return;}throw error;}
       if(mode==='changed-build'||mode==='unconfirmed-build')packet.build='replacement-build';
       if (mode === 'corrupt' && packet.frames.length) {
         const frame = packet.frames[0], body = JSON.parse(frame.json); body.server_eta.rows[0][2] += 100;
@@ -119,11 +125,11 @@ async function fixture(isolatedSource = false) {
     const clock = path.join(root, 'clock.mjs');
     // Explicit local clock simulation lets the real CLI reach its next-day
     // calibration phase. It changes no OS, production or test-runner clock.
-    fs.writeFileSync(clock, `const NativeDate=Date,offset=${clockBase + offset};globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[NativeDate.now()+offset]));}static now(){return NativeDate.now()+offset;}};`);
+    fs.writeFileSync(clock, `const NativeDate=Date,offset=Number(process.env.YALE_FIXTURE_CLOCK_OFFSET);globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[NativeDate.now()+offset]));}static now(){return NativeDate.now()+offset;}};`);
     let log = '';
     const child = spawn(process.execPath, ['--import', path.join(service, 'node_modules/tsx/dist/loader.mjs'), '--import', clock,
       path.join(runtimeService, 'scripts/learning-loop/start.ts'), ...(once ? ['--once'] : [])], {
-      cwd: runtimeService, env: { ...process.env, TZ: 'America/New_York', LEARNING_PUBLISH: '1', LEARNING_DIR: root,
+      cwd: runtimeService, env: { ...process.env, YALE_FIXTURE_CLOCK_OFFSET:String(clockBase+offset),TZ: 'America/New_York', LEARNING_PUBLISH: '1', LEARNING_DIR: root,
         ARCHIVE_DIR: path.join(root, 'archives'), BOT_BASE_URL: `http://127.0.0.1:${port}`, SHUTTLE_ADMIN_TOKEN: 'fixture-only-token' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -135,6 +141,24 @@ async function fixture(isolatedSource = false) {
   return { root, service: runtimeService, directory, id, state, stream, seed, requests, sourceKey, launch,
     mode: (value: string) => { mode = value; sent = false; },
     tomorrow: () => { offset = 86400000; },
+    advance: (ms=5000) => { offset+=ms;publish(); },
+    restart: (differentExecution=false,epochChange=true,buildChange=true) => {
+      restarts++;if(buildChange)build=`replacement-build-${restarts}`;if(epochChange)inputs=new EvaluationInputs({epoch:`replacement-epoch-${restarts}`});
+      if(differentExecution)producerExecution=fixtureProducerExecution(10+restarts);
+      source=makeSource();publish();
+    },
+    prepareTrial: () => {
+      fs.unlinkSync(path.join(root,'state.json'));
+      for(let i=1;i<=7;i++){
+        const day=new Date(startedAt-i*86400000).toISOString().slice(0,10),folder=path.join(root,'archives',day);fs.mkdirSync(folder);
+        const at=new Date(startedAt-86400000).toISOString(),manifest:any={ok:true,generatedAt:at,tables:{}};
+        for(const table of ['raw_positions','stop_visits']){
+          const bytes=gzipSync(''),file=table+'.jsonl.gz';fs.writeFileSync(path.join(folder,file),bytes);
+          manifest.tables[table]={complete:true,file,sha256:digest(bytes),capturedAt:at};
+        }
+        fs.writeFileSync(path.join(folder,'manifest.json'),JSON.stringify(manifest));
+      }
+    },
     close: () => new Promise<void>(resolve => server.close(() => resolve())) };
 }
 async function ready(f: Awaited<ReturnType<typeof fixture>>, predicate: (s: any) => boolean) {
@@ -285,4 +309,72 @@ describe('actual exact-source observer command', () => {
       expect(f.requests.some(r => r.method === 'POST' || r.path === '/api/evaluation/seed')).toBe(false);
     } finally { if (run && run.child.exitCode === null) { run.child.kill('SIGKILL'); await run.exit; } await f.close(); }
   }, 30000);
+});
+
+
+describe('actual frozen trial continuity across producer contexts',()=>{
+ async function initialize(){
+  const f=await fixture(true,true);f.prepareTrial();
+  try{
+   const run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const initial=read(path.join(f.root,'state.json'));expect(initial.trial.id).toBe(initial.id);expect(initial.trainingDays).toHaveLength(7);
+   return {f,initial};
+  }catch(error){await f.close();throw error;}
+ }
+ it.each(['epoch','build'])('preserves calibration and the full unknown cohort after a real %s change across an ET date',async kind=>{
+  const {f,initial}=await initialize();
+  try{
+   f.advance(86400000);let run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const before=read(path.join(f.root,'state.json'));expect(Object.values(before.pending).some((p:any)=>!p.closed)).toBe(true);
+   f.restart(false,kind==='epoch',kind==='build');run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const after=read(path.join(f.root,'state.json'));expect(after.id).not.toBe(initial.id);expect(after.trial.id).toBe(initial.id);
+   expect(after.calibrationDays).toEqual(initial.calibrationDays);expect(after.candidate).toEqual(initial.candidate);expect(after.trainingInputs).toEqual(initial.trainingInputs);
+   expect(after.priorContexts.map((c:any)=>c.id)).toEqual([initial.id]);expect(after.contextQualifiedAt).toBeNull();
+   const rows=readTrialPairs(f.root,after);expect(rows.length).toBeGreaterThan(0);expect(rows.every((p:any)=>p.det===null)).toBe(true);
+   expect(rows.every((p:any)=>p.sourceContextId===initial.id)).toBe(true);verifyContextTransitions(f.root,trialContexts(f.root,after));
+   f.advance(10000);run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const qualified=read(path.join(f.root,'state.json'));expect(qualified.contextQualifiedAt).toBeGreaterThan(qualified.startedAt);
+   expect(qualified.contextQualification.source.epoch).toBe(qualified.source.epoch);
+   expect(qualified.trial.id).toBe(initial.id);expect(f.requests.some(r=>r.method==='POST')).toBe(false);
+  }finally{await f.close();}
+ },60000);
+ it('preserves the original trial after a local UI edit and restores its own current-context checkpoint',async()=>{
+  const {f,initial}=await initialize();
+  try{
+   fs.appendFileSync(path.join(f.service,'web/src/PickupReminderControls.tsx'),'\n// fixture UI change\n');
+   let run=f.launch();expect(await run.exit,run.log()).toBe(0);const after=read(path.join(f.root,'state.json'));
+   expect(after.trial.id).toBe(initial.id);expect(after.sourceKey).not.toBe(initial.sourceKey);expect(after.calibrationDays).toEqual(initial.calibrationDays);
+   expect(after.executionIdentity.sha256).toBe(initial.executionIdentity.sha256);verifyContextTransitions(f.root,trialContexts(f.root,after));
+   const seedRequests=f.requests.filter(r=>r.path==='/api/evaluation/seed').length;
+   run=f.launch();expect(await run.exit,run.log()).toBe(0);const resumed=read(path.join(f.root,'state.json'));
+   expect(resumed.id).toBe(after.id);expect(resumed.trial.id).toBe(initial.id);
+   expect(f.requests.filter(r=>r.path==='/api/evaluation/seed')).toHaveLength(seedRequests);
+  }finally{await f.close();}
+ },60000);
+ it('starts a separate trial for genuinely changed producer execution bytes',async()=>{
+  const {f,initial}=await initialize();try{
+   f.restart(true);const run=f.launch();expect(await run.exit,run.log()).toBe(0);const after=read(path.join(f.root,'state.json'));
+   expect(after.trial.id).not.toBe(initial.trial.id);expect(after.priorContexts).toEqual([]);
+   expect(after.trial.producerExecutionSHA256).not.toBe(initial.trial.producerExecutionSHA256);
+   expect(fs.existsSync(path.join(f.root,initial.id,'closed-state.json'))).toBe(true);
+  }finally{await f.close();}
+ },60000);
+ it('refuses a missing linked prior journal during current-context process recovery',async()=>{
+  const {f,initial}=await initialize();try{
+   f.advance(5000);let run=f.launch();expect(await run.exit,run.log()).toBe(0);f.restart();run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const after=read(path.join(f.root,'state.json')),closed=read(path.join(f.root,initial.id,'closed-state.json'));
+   const file=Object.keys(closed.source.inputFiles)[0]!;fs.unlinkSync(path.join(f.root,initial.id,file));
+   run=f.launch();expect(await run.exit,run.log()).toBe(1);const refused=read(path.join(f.root,'state.json'));
+   expect(refused.id).toBe(after.id);expect(refused.sourceRefusal).toBeTruthy();expect(refused.protocolFailures.count).toBeGreaterThan(0);
+  }finally{await f.close();}
+ },60000);
+ it('keeps a prior source refusal after a compatible UI source reload',async()=>{
+  const {f,initial}=await initialize();try{
+   f.mode('corrupt');let run=f.launch();expect(await run.exit,run.log()).toBe(1);const refused=read(path.join(f.root,'state.json'));
+   f.mode('healthy');fs.appendFileSync(path.join(f.service,'web/src/PickupReminderControls.tsx'),'\n// compatible fixture repaint\n');
+   run=f.launch();expect(await run.exit,run.log()).toBe(1);const after=read(path.join(f.root,'state.json'));
+   expect(after.id).toBe(initial.id);expect(after.sourceRefusal).toEqual(refused.sourceRefusal);expect(after.protocolFailures).toEqual(refused.protocolFailures);
+   expect(f.requests.some(r=>r.method==='POST')).toBe(false);
+  }finally{await f.close();}
+ },60000);
 });

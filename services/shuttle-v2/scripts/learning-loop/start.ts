@@ -12,6 +12,10 @@ import { assembleCandidate, conformalFit, estimateEmissions, estimateVisitRates,
   sameParams, tracksByName, zoneTester } from '../reestimate-lib.mjs';
 import { fileHash, fileIdentity, identityHash } from '../reestimate-validation.mjs';
 import { assertLearningSourceUnchanged, learningSourceFiles } from './source-files.mjs';
+import { learningExecutionIdentity } from './execution-files.mjs';
+import { continueTrial, freezeTrial, handoverDecision } from './trial-context.mjs';
+import { readTrialPairs, retainSourceEvent, trialContexts, verifyContextTransitions } from './trial-evidence.mjs';
+import { validProductionExecutionIdentity } from '../../src/server/executionIdentity';
 import { calibrationObservation, dayStart, etDay, evaluate, excludePending, keyOf, nextDay, observe,
   phaseAt, productionControlInputValid, productionControlValid, recordForecast, SETTLE_MS, UNIT } from './lib.mjs';
 
@@ -40,14 +44,19 @@ const stateFile=path.join(root,'state.json');
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 function atomic(file:string,value:unknown){fs.writeFileSync(file+'.partial',JSON.stringify(value,null,2));fs.renameSync(file+'.partial',file);}
 const event=(kind:string,detail:unknown)=>{const row={at:new Date().toISOString(),kind,detail};fs.appendFileSync(path.join(root,'events.jsonl'),JSON.stringify(row)+'\n');console.log(JSON.stringify(row));};
-async function api(route:string,body?:unknown){
+async function apiExchange(route:string,body?:unknown){
  const token=process.env.SHUTTLE_ADMIN_TOKEN??fs.readFileSync(tokenFile,'utf8').trim();
  const res=await fetch(base+route,{headers:{'x-admin-token':token,...(body?{'content-type':'application/json'}:{})},method:body?'POST':'GET',...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(30000)});
- if(!res.ok){const detail:any=await res.json().catch(()=>null);const error:any=new Error(`${route}: HTTP ${res.status}`);error.code=detail?.error;error.status=res.status;error.response=detail;throw error;}
- return res.json();
+ const raw=await res.text(),receivedAt=Date.now(),receipt={route,status:res.status,receivedAt,raw};
+ let value:any;try{value=JSON.parse(raw);}catch{const error:any=new Error(`${route}: invalid JSON`);error.receipt=receipt;throw error;}
+ if(!res.ok){const error:any=new Error(`${route}: HTTP ${res.status}`);error.code=value?.error;error.status=res.status;error.response=value;error.receipt=receipt;throw error;}
+ return {value,receipt};
 }
+async function api(route:string,body?:unknown){return (await apiExchange(route,body)).value;}
 const files=learningSourceFiles(service), sourceKey=identityHash(fileIdentity(files));
-const candidateModel=()=>({version:state.id,publishedAt:state.startedAt,params:state.candidate.params});
+const executionIdentity=learningExecutionIdentity(service);
+const sourceInventory=files.map(file=>({file:path.relative(service,file),sha256:fileHash(file)}));
+const candidateModel=()=>({version:state.trial?.id??state.id,publishedAt:state.trial?.startedAt??state.startedAt,params:state.candidate.params});
 function checkpoint(){
  if(exact&&state?.forecastProtocol==='served-control-v2'&&state.source?.seedSha256===exact.seedSha256){
   exact.setModels(state.champion,candidateModel());
@@ -64,55 +73,92 @@ function flushOutbox(){
  state.outbox=[];checkpoint();
 }
 function commit(rows:any[]){state.outbox=rows;checkpoint();flushOutbox();}
-function readPairs(){
- const seen=new Map();
- for(const name of fs.readdirSync(path.join(root,state.id)).filter(n=>/^pairs-.*\.jsonl$/.test(n))){
-  const text=fs.readFileSync(path.join(root,state.id,name),'utf8');
-  for(const line of text.split('\n').filter(Boolean)){
-   const row=JSON.parse(line),previous=seen.get(row.id);
-   if(previous&&identityHash(previous)!==identityHash(row))throw Error('Conflicting forecast journal receipts');
-   seen.set(row.id,row);
-  }
- }
- return [...seen.values()];
-}
-function readSeed(){
- const receipt=state.source?.seedFile;
+function readPairs(){return readTrialPairs(root,state);}
+function readSeed(context=state){
+ const receipt=context.source?.seedFile;
  if(!receipt||receipt.file!=='source-seed.json.gz'||!Number.isSafeInteger(receipt.bytes)||receipt.bytes>6*1024*1024)
   throw Error('Invalid frozen source seed receipt');
- const bytes=fs.readFileSync(path.join(root,state.id,receipt.file));
+ const bytes=fs.readFileSync(path.join(root,context.id,receipt.file));
  if(bytes.length!==receipt.bytes||digest(bytes)!==receipt.sha256)throw Error('Frozen source seed file checksum mismatch');
  const raw=zlib.gunzipSync(bytes,{maxOutputLength:8*1024*1024});
- if(digest(raw)!==receipt.rawSha256||digest(raw)!==state.source.seedSha256)throw Error('Frozen source seed content checksum mismatch');
+ if(digest(raw)!==receipt.rawSha256||digest(raw)!==context.source.seedSha256)throw Error('Frozen source seed content checksum mismatch');
  return JSON.parse(raw.toString());
 }
-function verifyFrozen(){
- const file=path.join(root,state.id,'frozen-candidate.json');
- if(fileHash(file)!==state.frozenCandidateSha256)throw Error('Frozen candidate checksum mismatch');
+function verifyFrozen(context=state,current=true){
+ const directory=path.join(root,context.id),file=path.join(directory,'frozen-candidate.json');
+ if(fileHash(file)!==context.frozenCandidateSha256)throw Error('Frozen candidate checksum mismatch');
  const frozen=JSON.parse(fs.readFileSync(file,'utf8'));
  const core=(params:any)=>{const copy={...params};delete copy.CONFORMAL;return identityHash(copy);};
- if(frozen.id!==state.id||frozen.startedAt!==state.startedAt||frozen.sourceKey!==state.sourceKey||frozen.productionBuild!==state.productionBuild
-  ||modelKey(frozen.champion)!==modelKey(state.champion)||core(frozen.candidate.params)!==core(state.candidate.params)
-  ||identityHash(frozen.trainingInputs)!==identityHash(state.trainingInputs)||identityHash(frozen.requiredRoutes)!==identityHash(state.requiredRoutes)
-  ||identityHash(frozen.trainingDays)!==identityHash(state.trainingDays)
-  ||identityHash(frozen.calibrationDays)!==identityHash(state.calibrationDays.slice(0,frozen.calibrationDays.length))
-  ||frozen.source.seedSha256!==state.source.seedSha256||identityHash(frozen.source.seedFile)!==identityHash(state.source.seedFile))
+ if(frozen.id!==context.id||frozen.startedAt!==context.startedAt||frozen.sourceKey!==context.sourceKey||frozen.productionBuild!==context.productionBuild
+  ||modelKey(frozen.champion)!==modelKey(context.champion)||core(frozen.candidate.params)!==core(context.candidate.params)
+  ||identityHash(frozen.trainingInputs)!==identityHash(context.trainingInputs)||identityHash(frozen.requiredRoutes)!==identityHash(context.requiredRoutes)
+  ||identityHash(frozen.trainingDays)!==identityHash(context.trainingDays)
+  ||identityHash(frozen.calibrationDays)!==identityHash(context.calibrationDays.slice(0,frozen.calibrationDays.length))
+  ||frozen.source.seedSha256!==context.source.seedSha256||identityHash(frozen.source.seedFile)!==identityHash(context.source.seedFile))
   throw Error('Live candidate differs from frozen model/source/training identity');
- for(const original of files){
-  const saved=path.join(root,state.id,'source',path.relative(service,original));
-  if(fileHash(saved)!==fileHash(original))throw Error('Frozen estimator source bytes are missing or changed');
+ if(context.trial){
+  if(Boolean(context.contextQualifiedAt)!==Boolean(context.contextQualification)
+   ||context.contextQualification&&(!Number.isSafeInteger(context.contextQualification.at)
+    ||context.contextQualification.at!==context.contextQualifiedAt||context.contextQualification.at<context.startedAt))
+   throw Error('Context qualification clock/receipt is inconsistent');
+  const descriptor=path.join(directory,'trial-frozen.json');
+  if(frozen.trialSHA256!==context.trialSHA256||identityHash(context.trial)!==context.trialSHA256
+   ||identityHash(frozen.trial)!==context.trialSHA256||fileHash(descriptor)!==context.trialFileSHA256
+   ||frozen.trialFileSHA256!==context.trialFileSHA256
+   ||identityHash(JSON.parse(fs.readFileSync(descriptor,'utf8')))!==context.trialSHA256
+   ||identityHash(frozen.executionIdentity)!==identityHash(context.executionIdentity)
+   ||context.executionIdentity.sha256!==context.trial.executionSHA256
+   ||!validProductionExecutionIdentity(context.producerExecution)||context.producerExecution.sha256!==context.trial.producerExecutionSHA256
+   ||identityHash(frozen.producerExecution)!==identityHash(context.producerExecution))
+   throw Error('Original statistical trial or execution descriptor changed');
+  const execution=context.executionIdentity;
+  if(digest(JSON.stringify({v:1,nativeRuntime:execution.nativeRuntime,runtimeBytes:execution.runtimeBytes,files:execution.files}))!==execution.sha256)
+   throw Error('Execution descriptor checksum mismatch');
+  if(identityHash(frozen.sourceInventory)!==identityHash(context.sourceInventory)
+   ||!Array.isArray(context.sourceInventory)||!context.sourceInventory.length)
+   throw Error('Original context source inventory changed');
+  const members=new Map<string,string>();
+  for(const row of context.sourceInventory){
+   if(typeof row.file!=='string'||path.isAbsolute(row.file)||row.file.split('/').includes('..')
+    ||path.normalize(row.file)!==row.file||members.has(row.file)||!/^[a-f0-9]{64}$/.test(row.sha256))
+    throw Error('Invalid context source inventory member');
+   if(fileHash(path.join(directory,'source',row.file))!==row.sha256)throw Error('Frozen context source bytes changed');
+   members.set(row.file,row.sha256);
+  }
+  if(identityHash([...members].map(([name,hash]):[string,string]=>[path.join(service,name),hash]).sort(([a],[b])=>a<b?-1:a>b?1:0))!==context.sourceKey)
+   throw Error('Frozen context source key differs from original members');
+  if(execution.files.some(([name,hash]:[string,string])=>members.get(name)!==hash))
+   throw Error('Execution identity is not covered by original source custody');
+  if(current&&(context.sourceKey!==sourceKey||identityHash(context.sourceInventory)!==identityHash(sourceInventory)))
+   throw Error('Current context does not match actual installed source membership/bytes');
+ }else{
+  if(!current||context.sourceKey!==sourceKey)throw Error('Legacy source cannot be pooled across contexts');
+  for(const original of files){
+   if(fileHash(path.join(directory,'source',path.relative(service,original)))!==fileHash(original))
+    throw Error('Frozen estimator source bytes are missing or changed');
+  }
  }
- if(state.calibratedAt){
-  const calibrated=path.join(root,state.id,'calibrated-candidate.json');
-  if(fileHash(calibrated)!==state.calibratedCandidateSha256||identityHash(JSON.parse(fs.readFileSync(calibrated,'utf8')))!==identityHash(state.candidate))
+ if(context.calibratedAt){
+  const calibrated=path.join(directory,'calibrated-candidate.json');
+  if(fileHash(calibrated)!==context.calibratedCandidateSha256||identityHash(JSON.parse(fs.readFileSync(calibrated,'utf8')))!==identityHash(context.candidate))
    throw Error('Frozen calibrated candidate is missing or changed');
  }
- readSeed();
- verifyInputFiles(path.join(root,state.id),state.source.inputFiles,state.source.runtime.cursor>state.source.seedCursor);
+ readSeed(context);
+ verifyInputFiles(directory,context.source.inputFiles,context.source.runtime.cursor>context.source.seedCursor);
 }
 async function verifyInputs(rows:any[]){
  if(state.forecastProtocol==='served-control-v2'){
-  try{return await verifyExactReceiptsAsync(state,rows,readInputRecords(path.join(root,state.id)),readSeed());}
+  try{
+   const contexts=trialContexts(root,state);verifyContextTransitions(root,contexts);
+   if(state.trial&&rows.some((row:any)=>!contexts.some((context:any)=>context.id===row.sourceContextId)))throw Error('Missing forecast context');
+   const reviews=[];
+   for(const context of contexts){
+    verifyFrozen(context,context.id===state.id&&context.sourceKey===sourceKey);
+    const selected=state.trial?rows.filter((row:any)=>row.sourceContextId===context.id):rows;
+    reviews.push(await verifyExactReceiptsAsync(context,selected,readInputRecords(path.join(root,context.id)),readSeed(context)));
+   }
+   return reviews;
+  }
   catch(error){holdSource(Date.now(),state.source.seedSha256,'Retained evaluation evidence failed: '+String(error));throw error;}
  }
  const needed=new Set<string>();
@@ -138,61 +184,88 @@ async function verifyInputs(rows:any[]){
  }
  if(needed.size)throw Error(`Missing ${needed.size} retained forecast/outcome inputs`);
 }
-async function begin(feed:any,health:any){
+async function begin(feed:any,health:any,confirmation?:any,trigger?:any){
  if(state?.publishingVersion===feed.model_params?.version&&!state.promotedAt){state.promotedAt=Date.now();event('publication-observed',{version:state.publishingVersion});}
+ const current=(await api('/api/stats/model-params')).current;
+ if(!current?.accepted||!Number.isFinite(current.publishedAt)||current.publishedAt>=Date.now())throw Error('No verifiable current champion');
+ const plan=handoverDecision(state,state?.trial,executionIdentity,current,confirmation?.execution);
+ if(plan.kind==='refuse'){holdSource(Date.now(),state.source.seedSha256,plan.reason);throw Error(plan.reason);}
+ const carrying=plan.kind==='continue-trial',oldTrial=carrying?state.trial:null;
+ let calibratedBytes:Buffer|undefined,descriptorBytes:Buffer|undefined;
+ if(carrying){
+  verifyFrozen(state,state.sourceKey===sourceKey);
+  await verifyInputs(readPairs());
+  descriptorBytes=fs.readFileSync(path.join(root,state.id,'trial-frozen.json'));
+  if(state.calibratedAt)calibratedBytes=fs.readFileSync(path.join(root,state.id,'calibrated-candidate.json'));
+ }
  if(state&&!state.invalidatedAt){
+  if(state.trial&&confirmation?._httpReceipt){
+   const receipt=retainSourceEvent(path.join(root,state.id),state.source,{kind:'context-head',exchange:confirmation._httpReceipt});
+   state.transition={confirmation:receipt,trigger:trigger??null,nextSourceKey:sourceKey,executionSHA256:executionIdentity.sha256};
+  }
   state.invalidatedAt=Date.now();
   commit(excludePending(state,Date.now(),'cycle-invalidated'));
   await sealInputs();
   atomic(path.join(root,state.id,'closed-state.json'),state);
  }
+ const closedBytes=carrying?fs.readFileSync(path.join(root,state.id,'closed-state.json')):undefined;
  exact=undefined;
- const current=(await api('/api/stats/model-params')).current;
- if(!current?.accepted||!Number.isFinite(current.publishedAt)||current.publishedAt>=Date.now())throw Error('No verifiable current champion');
- const cutoff=Date.now(),positions:any[]=[],visits:any[]=[],inputs:any[]=[],days:string[]=[];
- for(const day of fs.readdirSync(archive).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse()){
-  const folder=path.join(archive,day),manifestFile=path.join(folder,'manifest.json');
-  let m:any;try{m=JSON.parse(fs.readFileSync(manifestFile,'utf8'));}catch{continue;}
-  if(!m.ok)continue;
-  const tables=['raw_positions','stop_visits'];
-  if(tables.some(table=>!m.tables?.[table]?.complete||!fs.existsSync(archiveTableFile(folder,table,m))))continue;
-  const receipts=tables.map(table=>({table,file:archiveTableFile(folder,table,m),availableAt:Date.parse(m.tables[table].capturedAt??m.generatedAt),expected:m.tables[table].sha256}));
-  if(receipts.some(r=>!Number.isFinite(r.availableAt)||r.availableAt>=cutoff))continue;
-  for(const r of receipts){const sha256=fileHash(r.file);if(r.expected&&r.expected!==sha256)throw Error(`Archive checksum mismatch: ${day}/${r.table}`);inputs.push({...r,sha256});}
-  inputs.push({file:manifestFile,sha256:fileHash(manifestFile)});
-  for(const r of readArchiveTable(folder,'raw_positions',m))if(r.collected_at<cutoff)positions.push(r);
-  for(const r of readArchiveTable(folder,'stop_visits',m))if(Number.isFinite(r.departed_at)&&r.departed_at<cutoff)visits.push(r);
-  days.push(day);if(days.length===14)break;
+ let candidate:any,trainingDays:string[],trainingInputs:any[],requiredRoutes:number[],fits:any={};
+ if(carrying){
+  candidate=structuredClone(state.candidate);trainingDays=state.trainingDays;trainingInputs=state.trainingInputs;requiredRoutes=state.requiredRoutes;
+ }else{
+  const cutoff=Date.now(),positions:any[]=[],visits:any[]=[],inputs:any[]=[],days:string[]=[];
+  for(const day of fs.readdirSync(archive).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse()){
+   const folder=path.join(archive,day),manifestFile=path.join(folder,'manifest.json');
+   let m:any;try{m=JSON.parse(fs.readFileSync(manifestFile,'utf8'));}catch{continue;}
+   if(!m.ok)continue;
+   const tables=['raw_positions','stop_visits'];
+   if(tables.some(table=>!m.tables?.[table]?.complete||!fs.existsSync(archiveTableFile(folder,table,m))))continue;
+   const receipts=tables.map(table=>({table,file:archiveTableFile(folder,table,m),availableAt:Date.parse(m.tables[table].capturedAt??m.generatedAt),expected:m.tables[table].sha256}));
+   if(receipts.some(r=>!Number.isFinite(r.availableAt)||r.availableAt>=cutoff))continue;
+   for(const r of receipts){const sha256=fileHash(r.file);if(r.expected&&r.expected!==sha256)throw Error(`Archive checksum mismatch: ${day}/${r.table}`);inputs.push({...r,sha256});}
+   inputs.push({file:manifestFile,sha256:fileHash(manifestFile)});
+   for(const r of readArchiveTable(folder,'raw_positions',m))if(r.collected_at<cutoff)positions.push(r);
+   for(const r of readArchiveTable(folder,'stop_visits',m))if(Number.isFinite(r.departed_at)&&r.departed_at<cutoff)visits.push(r);
+   days.push(day);if(days.length===14)break;
+  }
+  if(days.length<7)throw Error(`Need seven archived training dates; found ${days.length}`);
+  const routes=Object.entries(feed.routes).map(([id,stops])=>({id:Number(id),stops}));
+  fits={...estimateEmissions(tracksByName(positions),zoneTester(routes,feed.stop_coords)),...estimateVisitRates(visits)};
+  candidate=assembleCandidate(fits,null,current.params);candidate.params.CONFORMAL={...UNIT};
+  trainingDays=days.sort();trainingInputs=inputs;requiredRoutes=[...new Set<number>(positions.map(r=>r.route_id))].sort((a,b)=>a-b);
  }
- if(days.length<7)throw Error(`Need seven archived training dates; found ${days.length}`);
- const routes=Object.entries(feed.routes).map(([id,stops])=>({id:Number(id),stops}));
- const fits={...estimateEmissions(tracksByName(positions),zoneTester(routes,feed.stop_coords)),...estimateVisitRates(visits)};
- const candidate=assembleCandidate(fits,null,current.params);
- candidate.params.CONFORMAL={...UNIT};
- const seed=await api('/api/evaluation/seed'),seedReceivedAt=Date.now();
- if(seed.build!==health.build)throw new SourceContextChanged('build','Production build changed while fitting');
+ const seedExchange=await apiExchange('/api/evaluation/seed'),seed=seedExchange.value,seedReceivedAt=seedExchange.receipt.receivedAt;
+ if(!validProductionExecutionIdentity(seed.execution)||!validProductionExecutionIdentity(confirmation?.execution))throw Error('Missing production execution identity');
+ if(seed.execution.sha256!==confirmation.execution.sha256)throw new SourceContextChanged('build','Production execution changed while seeding');
+ if(seed.build!==health.build||confirmation&&seed.epoch!==confirmation.epoch)throw new SourceContextChanged('build','Production context changed while seeding');
  if(modelKey(seed.modelParams)!==modelKey(current))throw new SourceContextChanged('champion','Champion changed while fitting');
- const startedAt=Date.now(),first=nextDay(etDay(startedAt));
- const id=`cycle-${startedAt}`;
+ const startedAt=Date.now(),first=nextDay(etDay(startedAt)),id=`cycle-${startedAt}`;
  const directory=path.join(root,id);fs.mkdirSync(directory);
- const next=new ExactForecastStream(health.build,sourceKey,current,{version:id,publishedAt:startedAt,params:candidate.params});
+ const next=new ExactForecastStream(health.build,sourceKey,current,{version:oldTrial?.id??id,publishedAt:oldTrial?.startedAt??startedAt,params:candidate.params});
  next.seed(seed,seedReceivedAt);
  const seedRaw=Buffer.from(JSON.stringify(seed)),seedBytes=zlib.gzipSync(seedRaw);
  const seedFile={file:'source-seed.json.gz',sha256:digest(seedBytes),rawSha256:digest(seedRaw),bytes:seedBytes.length};
  fs.writeFileSync(path.join(directory,seedFile.file),seedBytes);
+ const source:any={epoch:next.epoch,seedSha256:next.seedSha256,seedFile,seedReceivedAt,seedAt:seed.at,seedCursor:seed.cursor,initialChain:next.chain,inputFiles:{}};
+ source.seedHTTPReceipt=retainSourceEvent(directory,source,{kind:'context-seed',exchange:seedExchange.receipt});
+ const nextIdentity={id,startedAt,sourceKey,productionBuild:health.build,source,producerExecution:seed.execution};
+ state=carrying?continueTrial(closedBytes,oldTrial,executionIdentity,nextIdentity):{
+  version:2,forecastProtocol:'served-control-v2',...nextIdentity,champion:current,candidate,
+  trainingDays,trainingInputs,requiredRoutes,calibrationDays:[first,nextDay(first)],pending:{},visits:{},outbox:[],archiveLastDay:trainingDays.at(-1),lastOutcomeAt:null};
+ state.executionIdentity=executionIdentity;state.sourceInventory=sourceInventory;
+ if(!carrying){state.trial=freezeTrial(state,executionIdentity);state.trialSHA256=identityHash(state.trial);state.priorContexts=[];}
+ if(descriptorBytes)fs.writeFileSync(path.join(directory,'trial-frozen.json'),descriptorBytes);
+ else atomic(path.join(directory,'trial-frozen.json'),state.trial);
+ state.trialFileSHA256=fileHash(path.join(directory,'trial-frozen.json'));
+ if(calibratedBytes)fs.writeFileSync(path.join(directory,'calibrated-candidate.json'),calibratedBytes);
  assertLearningSourceUnchanged(service,sourceKey);
- // Preserve the code bytes used by both arms, not only their git identifier.
  for(const file of files){const dest=path.join(directory,'source',path.relative(service,file));fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(file,dest);}
  assertLearningSourceUnchanged(service,sourceKey);
- state={version:2,forecastProtocol:'served-control-v2',id,startedAt,sourceKey,productionBuild:health.build,champion:current,candidate,
-  source:{epoch:next.epoch,seedSha256:next.seedSha256,seedFile,seedReceivedAt,seedAt:seed.at,seedCursor:seed.cursor,initialChain:next.chain,inputFiles:{}},
-  trainingDays:days.sort(),trainingInputs:inputs,requiredRoutes:[...new Set(positions.map(r=>r.route_id))].sort((a,b)=>a-b),
-  calibrationDays:[first,nextDay(first)],pending:{},visits:{},outbox:[],archiveLastDay:days.at(-1),lastOutcomeAt:null};
- atomic(path.join(directory,'frozen-candidate.json'),state);
- state.frozenCandidateSha256=fileHash(path.join(directory,'frozen-candidate.json'));
+ atomic(path.join(directory,'frozen-candidate.json'),state);state.frozenCandidateSha256=fileHash(path.join(directory,'frozen-candidate.json'));
  exact=next;lastInputKey=null;lastInputAt=0;
  lastForecasts={champion:[],challenger:[],productionControl:null};checkpoint();
- event('candidate-frozen',{id,trainingDays:state.trainingDays,championVersion:current.version,calibrationDays:state.calibrationDays,scalarChanges:Object.keys(fits).filter(k=>candidate.params[k]!==current.params[k]),issues:candidate.issues});
+ event(carrying?'context-frozen':'candidate-frozen',{id,trial:state.trial.id,contexts:state.priorContexts.length+1,trainingDays:state.trainingDays,championVersion:current.version,calibrationDays:state.calibrationDays,scalarChanges:Object.keys(fits).filter(k=>candidate.params[k]!==current.params[k]),issues:candidate.issues});
 }
 let inputStream:zlib.Gzip|undefined,inputSink:fs.WriteStream|undefined,inputFile='',lastMaintenance=0;
 const execution=Date.now();
@@ -210,8 +283,8 @@ async function captureInput(feed:any,receivedAt:number,source?:unknown){
   inputStream=zlib.createGzip();inputSink=fs.createWriteStream(file,{flags:'a'});inputStream.pipe(inputSink);inputFile=file;
  }
  inputStream!.write(raw+'\n');
- await new Promise<void>((resolve,reject)=>inputStream!.flush(zlib.constants.Z_SYNC_FLUSH,err=>err?reject(err):resolve()));
- await new Promise<void>((resolve,reject)=>inputSink!.write('',err=>err?reject(err):resolve()));
+ await new Promise<void>((resolve,reject)=>inputStream!.flush(zlib.constants.Z_SYNC_FLUSH,(err?:Error|null)=>err?reject(err):resolve()));
+ await new Promise<void>((resolve,reject)=>inputSink!.write('',(err?:Error|null)=>err?reject(err):resolve()));
  recordInputFile(state.source,path.basename(file),fs.statSync(file).size);
  return createHash('sha256').update(raw).digest('hex');
 }
@@ -252,7 +325,9 @@ async function maintain(now:number){
  const rows=readPairs();
  const days=[...new Set(rows.filter(p=>p.phase==='test').map(p=>p.day))].filter(d=>dayStart(nextDay(d))+SETTLE_MS<=now).sort();
  if(days.length<3)return;
- const key=days.join(',');if(state.evaluatedDays===key)return;
+ const key=state.trial?state.id+':'+days.join(','):days.join(',');if(state.evaluatedDays===key)return;
+ if(state.trial&&(!state.contextQualifiedAt||!state.contextQualification)){state.contextQualificationPending=true;checkpoint();return;}
+ state.contextQualificationPending=false;
  await sealInputs();await verifyInputs(rows.filter(p=>p.phase==='test'&&days.includes(p.day)));
  const decision=evaluate(state,rows,days);state.evaluatedDays=key;state.decision=decision;checkpoint();
  atomic(path.join(root,state.id,'validation.json'),decision);atomic(path.join(root,'latest-validation.json'),{id:state.id,...decision});
@@ -260,11 +335,12 @@ async function maintain(now:number){
  if(!decision.promote||sameParams(state.candidate.params,state.champion.params)||!publish)return;
  const current=(await api('/api/stats/model-params')).current;
  if(current.version!==state.champion.version||identityHash(current.params)!==identityHash(state.champion.params))throw Error('Champion changed before publication');
- const version=`prospective-${state.startedAt}`;state.publishingVersion=version;checkpoint();
+ const version=`prospective-${state.trial?.startedAt??state.startedAt}`;state.publishingVersion=version;checkpoint();
  const submission={params:state.candidate.params,n:state.candidate.n,
   window:{from:state.trainingDays[0],to:days.at(-1),days:state.trainingDays.length+state.calibrationDays.length+days.length},
   version,accepted:true,note:'Passed prospective paired visit sampling, route/tail gates and day/bus clustered WIS comparison.',
-  decision:{sourceKey,cycle:state.id,calibrationDays:state.calibrationDays,testDays:days,evidenceKey:decision.evidenceKey,uncertainty:decision.uncertainty}};
+  decision:{sourceKey,cycle:state.id,...(state.trial?{trial:state.trialSHA256,trialId:state.trial.id,
+   contextCount:state.priorContexts.length+1,contextLineageSHA256:identityHash(state.priorContexts)}:{}),calibrationDays:state.calibrationDays,testDays:days,evidenceKey:decision.evidenceKey,uncertainty:decision.uncertainty}};
  atomic(path.join(root,state.id,'submission.json'),submission);
  const result=await api('/api/model-params',submission);state.promotedAt=Date.now();state.publishedId=result.id;checkpoint();event('promoted',{version,id:result.id});
 }
@@ -281,12 +357,18 @@ function holdSource(at:number,inputHash:string,reason:string){
  if(!state.sourceRefusal){
   state.sourceRefusal={at,inputHash,reason};refuseProtocol(at,inputHash,reason);
   commit(excludePending(state,at,'source-protocol-refusal'));
+  const receipt={at,context:state.id,trial:state.trialSHA256??null,sourceKey:state.sourceKey,
+   refusal:state.sourceRefusal,protocolFailures:state.protocolFailures,sourceEvents:state.source.events??{},inputFiles:state.source.inputFiles??{}};
+  const bytes=Buffer.from(JSON.stringify(receipt,null,2)),file=path.join(root,state.id,`source-refusal-${digest(bytes)}.json`);
+  if(!fs.existsSync(file))fs.writeFileSync(file,bytes,{flag:'wx'});
  }
 }
 function status(error=lastError,terminal=false){
  atomic(path.join(root,'status.json'),{updatedAt:new Date().toISOString(),running:!one&&!terminal,
   publicationEnabled:publish,...(error?{error}:{}),phase:state?phaseAt(state,Date.now()):'starting',
   cycle:state?.id,forecastProtocol:state?.forecastProtocol,champion:state?.champion?.version,
+  trial:state?.trial?{id:state.trial.id,startedAt:state.trial.startedAt,sha256:state.trialSHA256,contexts:state.priorContexts.length+1,
+   executionSHA256:state.trial.executionSHA256,currentContextQualifiedAt:state.contextQualifiedAt??null}:null,
   trainingDays:state?.trainingDays,calibrationDays:state?.calibrationDays,calibratedAt:state?.calibratedAt??null,
   lastOutcomeAt:state?.lastOutcomeAt??null,pending:Object.values(state?.pending??{}).filter((p:any)=>!p.closed).length,
   forecasts:{champion:lastForecasts.champion.length,challenger:lastForecasts.challenger.length},
@@ -298,32 +380,55 @@ function status(error=lastError,terminal=false){
   calibrationRefusal:state?.calibrationRefusal??null,decision:state?.decision?{promote:state.decision.promote,reasons:state.decision.reasons}:null});
 }
 async function readSource(){
- try{return await api('/api/evaluation/inputs?epoch='+encodeURIComponent(exact!.epoch)+'&after='+exact!.cursor);}
+ try{return await apiExchange('/api/evaluation/inputs?epoch='+encodeURIComponent(exact!.epoch)+'&after='+exact!.cursor);}
  catch(error:any){
   if(['evaluation_epoch','evaluation_gap','evaluation_cursor'].includes(error.code)){
+   if(state.trial&&error.code==='evaluation_epoch'){
+    const receipt=retainSourceEvent(path.join(root,state.id),state.source,{kind:'context-trigger',exchange:error.receipt});checkpoint();
+    const changed:any=new SourceContextChanged('epoch','Production observation epoch changed');changed.trigger=receipt;changed.inputHash=receipt.sha256;throw changed;
+   }
    const at=Date.now(),hash=await captureInput(null,at,{request:{epoch:exact!.epoch,after:exact!.cursor},response:{status:error.status,body:error.response}});
    if(error.code==='evaluation_epoch'){const changed:any=new SourceContextChanged('epoch','Production observation epoch changed');changed.inputHash=hash;throw changed;}
    holdSource(at,hash,'Exact source refused required history: '+error.code);
+  }
+  if(state.trial&&error.receipt?.status===200){
+   const receipt=retainSourceEvent(path.join(root,state.id),state.source,{kind:'invalid-source-json',exchange:error.receipt});
+   holdSource(error.receipt.receivedAt,receipt.sha256,'Invalid exact-source JSON response');
   }
   throw error;
  }
 }
 async function readHead(){
- const head:any=await api('/api/evaluation/inputs');
+ const exchange=await apiExchange('/api/evaluation/inputs'),head:any=exchange.value;
  if(!head||head.v!==1||typeof head.build!=='string'||!head.build.length||typeof head.epoch!=='string'||!head.epoch.length
   ||!Number.isSafeInteger(head.cursor)||head.cursor<1||!Number.isSafeInteger(head.at)||head.at<0
   ||!Array.isArray(head.feed?.buses)||!head.feed.routes||!head.feed.stop_coords||!head.feed.segments||!head.feed.dwells
-  ||typeof head.feed.model_params?.version!=='string'||!head.feed.model_params.params){
-  if(state){const at=Date.now(),hash=await captureInput(null,at,{head});holdSource(at,hash,'Malformed exact source head');}
+  ||typeof head.feed.model_params?.version!=='string'||!head.feed.model_params.params
+  ||state?.trial&&!validProductionExecutionIdentity(head.execution)){
+  if(state){
+   if(state.trial){const receipt=retainSourceEvent(path.join(root,state.id),state.source,{kind:'invalid-source-head',exchange:exchange.receipt});holdSource(exchange.receipt.receivedAt,receipt.sha256,'Malformed exact source head/execution identity');}
+   else{const at=Date.now(),hash=await captureInput(null,at,{head});holdSource(at,hash,'Malformed exact source head');}
+  }
   throw Error('Malformed exact source head');
  }
+ Object.defineProperty(head,'_httpReceipt',{value:exchange.receipt,enumerable:false});
  return head;
 }
 async function collect(){
  while(!stopping){
-  const packet:any=await readSource(),receivedAt=Date.now();
+  const exchange=await readSource(),packet:any=exchange.value,receivedAt=exchange.receipt.receivedAt;
   if(!packet||typeof packet!=='object'){
    const hash=await captureInput(null,receivedAt,packet);holdSource(receivedAt,hash,'Malformed exact source response');throw Error(state.sourceRefusal.reason);
+  }
+  if(state.trial){
+   try{exact!.checkHeader(packet);}
+   catch(error){
+    if(error instanceof SourceContextChanged){
+     const receipt=retainSourceEvent(path.join(root,state.id),state.source,{kind:'context-trigger',exchange:exchange.receipt});checkpoint();
+     (error as any).trigger=receipt;(error as any).inputHash=receipt.sha256;throw error;
+    }
+    const hash=await captureInput(null,receivedAt,packet);holdSource(receivedAt,hash,String(error));throw error;
+   }
   }
   const hasFrames=Array.isArray(packet.frames)&&packet.frames.length>0;
   const feed=packet.feed,signature=feed?observationKey(feed):null;
@@ -351,9 +456,11 @@ async function collect(){
 }
 try{
  state=JSON.parse(fs.readFileSync(stateFile,'utf8'));
- if(state.forecastProtocol==='served-control-v2'&&state.sourceKey===sourceKey&&!state.invalidatedAt&&!state.sourceRefusal){
+ if(state.forecastProtocol==='served-control-v2'&&state.sourceKey===sourceKey&&!state.invalidatedAt&&!state.sourceRefusal
+  &&(!state.trial||state.trial.executionSHA256===executionIdentity.sha256)){
   try{
-   verifyFrozen();exact=new ExactForecastStream(state.productionBuild,sourceKey,state.champion,candidateModel());
+   for(const context of trialContexts(root,state))verifyFrozen(context,context.id===state.id);
+   exact=new ExactForecastStream(state.productionBuild,sourceKey,state.champion,candidateModel());
    exact.recover(path.join(root,state.id),state.source.runtime,state.source.seedSha256);
   }catch(error){exact=undefined;holdSource(Date.now(),state.source?.seedSha256??'',String(error));}
  }
@@ -370,9 +477,10 @@ while(!stopping){
    const head=await readHead();
    const changed=state?.source&&head.epoch!==state.source.epoch||state&&head.build!==state.productionBuild
     ||state&&modelKey(head.feed?.model_params)!==modelKey(state.champion);
-   if(!state||state.sourceKey!==sourceKey||state.promotedAt||state.invalidatedAt||changed||state.forecastProtocol!=='served-control-v2'){
+   if(!state||state.sourceKey!==sourceKey||state.promotedAt||state.invalidatedAt||changed||state.forecastProtocol!=='served-control-v2'
+    ||state.trial&&state.trial.executionSHA256!==executionIdentity.sha256){
     event('cycle-start-context',{previous:state?.id,reason:changed?'Production context changed':'Initial/source cycle'});
-    await begin(head.feed,{build:head.build});lastMaintenance=Date.now();
+    await begin(head.feed,{build:head.build},head);lastMaintenance=Date.now();
    }
    if(state.sourceRefusal){lastError=state.sourceRefusal.reason;status();if(one){process.exitCode=1;break;}await sleep(10000);continue;}
    if(!exact)throw Error('Missing exact runtime; source recovery was not completed');
@@ -386,7 +494,7 @@ while(!stopping){
     holdSource(Date.now(),(error as any).inputHash??state.source.seedSha256,'Unconfirmed production context change: '+error.message);
     throw Error(state.sourceRefusal.reason);
    }
-   await begin(head.feed,{build:head.build});lastMaintenance=Date.now();collected=await collect();
+   await begin(head.feed,{build:head.build},head,(error as any).trigger);lastMaintenance=Date.now();collected=await collect();
   }
   if(!collected)break;
   const {feed,receivedAt,signature,processed}=collected;
@@ -403,6 +511,12 @@ while(!stopping){
    catch(error){holdSource(receivedAt,inputHash,String(error));throw error;}
    if(forecasts.productionControl&&(forecasts.productionControl.mismatched||forecasts.productionControl.missing)){
     holdSource(receivedAt,inputHash,'Sampled control differs from actual served forecasts');throw Error(state.sourceRefusal.reason);
+   }
+   const control=forecasts.productionControl;
+   if(state.trial&&!state.contextQualifiedAt&&exact!.canSample()&&control&&typeof control.compared==='number'&&control.compared>0
+    &&control.matched===control.compared&&control.missing===0&&control.mismatched===0){
+    state.contextQualifiedAt=receivedAt;
+    state.contextQualification={at:receivedAt,inputHash,source:exact!.receipt(),productionControl:control};
    }
    const challenger=new Map(forecasts.challenger.map((p:any)=>[keyOf(p.bus,p.stop),p]));
    const phase=phaseAt(state,receivedAt);

@@ -92,13 +92,17 @@ export class ExactForecastStream {
       && this.computedModels.challenger === modelKey(this.challenger);
   }
 
-  advance(packet: any): number {
+  checkHeader(packet: any): void {
     if (!packet || packet.v !== 1 || typeof packet.build !== 'string' || !packet.build.length
       || typeof packet.epoch !== 'string' || !packet.epoch.length) throw Error('Malformed exact source header');
     if (!integer(packet.responseAt) || packet.responseAt < this.at || packet.responseAt > Date.now() + 5000)
       throw Error('Invalid exact source response clock');
     if (packet?.build !== this.build) throw new SourceContextChanged('build', 'Production build changed');
     if (packet?.epoch !== this.epoch) throw new SourceContextChanged('epoch', 'Production observation epoch changed');
+  }
+
+  advance(packet: any): number {
+    this.checkHeader(packet);
     if (packet.v !== 1 || !integer(packet.cursor) || !integer(packet.latest) || packet.cursor < this.cursor
       || packet.latest < packet.cursor || packet.hasMore !== (packet.cursor < packet.latest)
       || !Array.isArray(packet.frames) || packet.frames.length > 16 || packet.cursor !== this.cursor + packet.frames.length

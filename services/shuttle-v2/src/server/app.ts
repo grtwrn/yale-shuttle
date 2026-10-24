@@ -52,6 +52,7 @@ import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { EvaluationInputError, EvaluationInputs } from './evaluationInputs.js';
 import { EvaluationSource } from './evaluationSource.js';
+import { defaultProductionExecutionIdentity,type ProductionExecutionIdentity } from './executionIdentity.js';
 import { WitnessReadError } from '../collector/witnessJournal.js';
 import { FeedbackEvidence, type FeedbackEvidenceReceipt } from './feedbackEvidence.js';
 import { buildLiveSnapshot } from "./snapshot.js";
@@ -193,6 +194,8 @@ export interface AppOptions {
   bundle: DbBundle;
   /** Used by /healthz and a few other endpoints; injectable for tests. */
   now?: () => number;
+  /** Fixed execution provenance for the authenticated source; injectable in tests. */
+  evaluationExecutionIdentity?: () => ProductionExecutionIdentity;
   /**
    * Optional directory of pre-built frontend assets to serve. When set, the
    * app falls back to `index.html` for unknown GET paths (SPA routing).
@@ -313,7 +316,9 @@ export function buildApp(opts: AppOptions): Hono {
       try { if (at === null || context === null) evaluationInputs.fail('Production model observation/context failed'); else evaluationInputs.append(version, at, json, context); }
       catch { evaluationInputs.fail('Production observation capture failed'); }
     });
-  const evaluationSource = new EvaluationSource(serverEta, () => busesJson(true), evaluationInputs, resolveEstimatorVersion, now);
+  const executionIdentity=opts.evaluationExecutionIdentity??defaultProductionExecutionIdentity;
+  if(process.env.NODE_ENV==='production')executionIdentity();
+  const evaluationSource = new EvaluationSource(serverEta, () => busesJson(true), evaluationInputs, resolveEstimatorVersion, now,executionIdentity);
   const feedbackEvidence = opts.feedbackEvidence ?? new FeedbackEvidence({
     dir: path.join(path.dirname(opts.bundle.sqlite.name), 'report-evidence'), now,
     protectedHashes: () => {

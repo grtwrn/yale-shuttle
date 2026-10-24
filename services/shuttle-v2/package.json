@@ -11,7 +11,7 @@
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p web && tsc --noEmit -p scripts/display-audit && tsc --noEmit -p scripts/eta-replay",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web && tsc --noEmit -p scripts/display-audit && tsc --noEmit -p scripts/eta-replay && tsc --noEmit -p scripts/learning-loop",
     "mapbot": "node scripts/map-bot.mjs",
     "mapbot:visual": "node scripts/map-bot-visual.mjs",
     "db:generate": "drizzle-kit generate",
