@@ -115,7 +115,7 @@ import {
   BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { lastBusVerdict } from "./lastBus";
-import { fmtSchedule, fmtWindows, groceryServiceNotice, isBusInService, routeDiscontinuedAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
+import { fmtSchedule, fmtWindows, groceryServiceNotice, isBusInService, isRouteScheduledAt, routeDiscontinuedAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
 import { stopRowHighlight } from "./stopRow";
 import type { PublishedWindow } from "./schedule";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imagesFromTransfer } from "./screenshot";
@@ -2715,6 +2715,11 @@ const TripPlanner: FC<{
     // must never masquerade as the next shuttle.
     const selection = o.livePickupSelection;
     const countdown = selection?.countdown;
+    // Resolve service hours on the source clock, independent of phone skew.
+    const serviceNow = reportingSnapshot
+      ? reportingSnapshot.serverAt + Math.max(0, Date.now() - reportingSnapshot.at) : Date.now();
+    // A raw current curb is visit zero even if only its next lap is forecast.
+    // Do not use that later lap to skip a real following bus.
     const nextArrLive = busEtaLive !== null && !o.departed
       ? nextArrivalAfterPinned(
           computeUpcomingArrivals(
@@ -2722,10 +2727,17 @@ const TripPlanner: FC<{
             // the waiting inside a segment, and hoisting this call must
             // not quietly drop that argument.
             [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
-          ).filter((a) => a.routeLabel === o.routeLabel),
+          ).filter((a) => a.routeLabel === o.routeLabel
+            // The decoder keeps a vehicle's first modeled visit after closing.
+            // A raw current curb proves its other visits are returns, even when
+            // the current forecast row is absent and the return is unmarked.
+            && (countdown?.source !== 'raw-at-stop' || a.stopsAhead === 0
+              || a.busName.replace(/^#/, '') !== countdown.busName
+              || isRouteScheduledAt(a.routeLabel, new Date(serviceNow + a.eta * 1000)))),
           o.busName,
           busEtaLive,
-          countdown?.source === 'forecast' ? countdown.stopsAhead : undefined,
+          countdown?.source === 'forecast' ? countdown.stopsAhead
+            : countdown?.source === 'raw-at-stop' ? 0 : undefined,
         )
       : null;
 
