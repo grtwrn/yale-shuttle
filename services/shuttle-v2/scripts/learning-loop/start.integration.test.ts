@@ -105,6 +105,7 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
       }
       if(mode==='changed-epoch'){response.statusCode=409;response.end(JSON.stringify({error:'evaluation_epoch'}));return;}
       if(mode==='malformed'){response.end('null');return;}
+      if(mode==='invalid-json'){response.end('invalid json');return;}
       if (mode === 'gap') { response.statusCode = 409; response.end(JSON.stringify({ error: 'evaluation_gap' })); return; }
       if (!sent && (mode === 'corrupt' || mode === 'advance')) { publish(); sent = true; }
       let packet:any;
@@ -146,6 +147,22 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
       restarts++;if(buildChange)build=`replacement-build-${restarts}`;if(epochChange)inputs=new EvaluationInputs({epoch:`replacement-epoch-${restarts}`});
       if(differentExecution)producerExecution=fixtureProducerExecution(10+restarts);
       source=makeSource();publish();
+    },
+    breakExecution:()=>{producerExecution={...producerExecution,sha256:'0'.repeat(64)};},
+    freezeSyntheticIntervals:()=>{
+      // Protocol setup only: this supplied artifact does not claim measured
+      // calibration support. Real support/publication gates remain in force.
+      const current=read(path.join(root,'state.json')),folder=path.join(root,current.id);
+      const own=new ExactForecastStream(current.productionBuild,current.sourceKey,current.champion,
+        {version:current.trial.id,publishedAt:current.trial.startedAt,params:current.candidate.params});
+      own.recover(folder,current.source.runtime,current.source.seedSha256);
+      current.candidate=structuredClone(current.candidate);current.candidate.params.CONFORMAL['2-5']=1.5;
+      current.calibratedAt=serverNow();current.testStartDay=etDay(current.calibratedAt);
+      own.setModels(current.champion,{version:current.trial.id,publishedAt:current.trial.startedAt,params:current.candidate.params});
+      current.source.previousRuntime=current.source.runtime;current.source.runtime=own.persist(folder);
+      const bytes=Buffer.from(JSON.stringify(current.candidate));fs.writeFileSync(path.join(folder,'calibrated-candidate.json'),bytes);
+      current.calibratedCandidateSha256=digest(bytes);fs.writeFileSync(path.join(root,'state.json'),JSON.stringify(current));
+      return current;
     },
     prepareTrial: () => {
       fs.unlinkSync(path.join(root,'state.json'));
@@ -366,6 +383,42 @@ describe('actual frozen trial continuity across producer contexts',()=>{
    const file=Object.keys(closed.source.inputFiles)[0]!;fs.unlinkSync(path.join(f.root,initial.id,file));
    run=f.launch();expect(await run.exit,run.log()).toBe(1);const refused=read(path.join(f.root,'state.json'));
    expect(refused.id).toBe(after.id);expect(refused.sourceRefusal).toBeTruthy();expect(refused.protocolFailures.count).toBeGreaterThan(0);
+  }finally{await f.close();}
+ },60000);
+ it('preserves a supplied calibrated artifact and complete evidence over three actual producer contexts',async()=>{
+  const {f,initial}=await initialize();try{
+   f.advance(86400000);let run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   // Move Thursday's unqualified cohort to Monday, then supply the frozen
+   // artifact on Tuesday so the retained daytime buses stay in weekday hours.
+   f.advance(4*86400000);run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   f.advance(86400000);const supplied=f.freezeSyntheticIntervals();f.advance(5000);
+   run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   for(let i=0;i<2;i++){
+    f.restart();run=f.launch();expect(await run.exit,run.log()).toBe(0);
+    const current=read(path.join(f.root,'state.json'));expect(current.trial.id).toBe(initial.id);expect(current.priorContexts).toHaveLength(i+1);
+    expect(current.candidate).toEqual(supplied.candidate);expect(current.calibratedAt).toBe(supplied.calibratedAt);
+    expect(current.testStartDay).toBe(supplied.testStartDay);expect(current.contextQualifiedAt).toBeNull();
+    verifyContextTransitions(f.root,trialContexts(f.root,current));
+    f.advance(10000);run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   }
+   const final=read(path.join(f.root,'state.json'));expect(final.contextQualifiedAt).toBeGreaterThan(final.startedAt);
+   expect(final.calibratedCandidateSha256).toBe(supplied.calibratedCandidateSha256);
+   expect(f.requests.some(r=>r.method==='POST')).toBe(false);
+  }finally{await f.close();}
+ },90000);
+ it.each(['gap','unconfirmed-build','malformed','invalid-json'])('retains a real trial refusal for %s without inventing another clean cohort',async mode=>{
+  const {f,initial}=await initialize();try{
+   f.mode(mode);const run=f.launch();expect(await run.exit,run.log()).toBe(1);
+   const current=read(path.join(f.root,'state.json'));expect(current.trial.id).toBe(initial.id);expect(current.sourceRefusal).toBeTruthy();
+   expect(current.protocolFailures.count).toBeGreaterThan(0);expect(f.requests.some(r=>r.method==='POST')).toBe(false);
+   if(mode==='invalid-json')expect(Object.values(current.source.events).some((r:any)=>read(path.join(f.root,current.id,r.file)).exchange?.raw==='invalid json')).toBe(true);
+  }finally{await f.close();}
+ },60000);
+ it('refuses a producer head whose execution attestation is malformed after restart',async()=>{
+  const {f,initial}=await initialize();try{
+   f.restart();f.breakExecution();const run=f.launch();expect(await run.exit,run.log()).toBe(1);
+   const current=read(path.join(f.root,'state.json'));expect(current.id).toBe(initial.id);expect(current.sourceRefusal.reason).toContain('execution identity');
+   expect(f.requests.some(r=>r.method==='POST')).toBe(false);
   }finally{await f.close();}
  },60000);
  it('keeps a prior source refusal after a compatible UI source reload',async()=>{
