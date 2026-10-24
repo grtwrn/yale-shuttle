@@ -39,6 +39,20 @@ describe('a projected marker before its published curb', () => {
     expect(shortOfNextStop(belief, ring, 0)).toBe(false);
   });
 
+  it('retains an approach curving toward the curb after its long chord turns sideways', () => {
+    const { ring, belief } = fixture();
+    belief.lastFix = at(940, 20);
+    expect(shortOfNextStop(belief, ring, 0)).toBe(false);
+    belief.previousFix = at(905);
+    expect(shortOfNextStop(belief, ring, 0)).toBe(true);
+  });
+
+  it('does not retain the curved approach after a distinct fix moves farther from the curb', () => {
+    const { ring, belief } = fixture();
+    belief.lastFix = at(940, 20); belief.previousFix = at(940, 10);
+    expect(shortOfNextStop(belief, ring, 0)).toBe(false);
+  });
+
   it('requires meaningful closing rather than a GPS wobble', () => {
     const { ring, belief } = fixture(); belief.leadTopFix = at(900);
     expect(shortOfNextStop(belief, ring, 0)).toBe(false);
