@@ -7,6 +7,7 @@ import gzip
 import json
 import math
 import re
+import zlib
 from datetime import datetime
 from pathlib import Path
 from evidence import verify_bundle, verify_feed_response
@@ -258,6 +259,146 @@ def analyze(journey, samples, coverage, boarding_records=None):
     return result
 
 
+def updated_window_audit(journey, samples, first, records):
+    """Later literal windows, separate from the unchanged first-window metric.
+
+    Samples can nominate a pair. Original quote and pickup response bytes are
+    required before confirming it; a missing source never becomes a pass.
+    """
+    scope = ('Shared-feed virtual pickup-window update diagnostic; not physical '
+             'boarding, independent ETA accuracy or model promotion.')
+    def outcome(state, **detail):
+        return {'v': 1, 'state': state, **detail, 'scope': scope}
+    if first.get('state') not in ('early-window', 'late-window', 'within-diagnostic-tolerance'):
+        return outcome('unknown', reason='pickup-observation-unqualified')
+    pickup = first['pickupObservation']
+    pickup_at, first_at = timestamp(pickup['at']), timestamp(first['firstQuote']['at'])
+    route_id, name = first['routeId'], first['busName']
+    provider_id = pickup['bus']['bus_id']
+    pending, pair, reviewed = None, None, 0
+    gaps = {}
+    def unassessed(reason):
+        gaps[reason] = gaps.get(reason, 0)+1
+    for sample in sorted(samples, key=lambda row: str(row.get('at', ''))):
+        at = timestamp(sample.get('at'))
+        if at is None or not first_at < at < pickup_at:
+            continue
+        if sample.get('phase') != 'waiting':
+            pending = None; unassessed('phase-change'); continue
+        if (sample.get('mapPauseAudit') or {}).get('feedStableDuringRead') is not True:
+            pending = None; unassessed('screen-feed-race'); continue
+        quotes = re.findall(r'(?:^|\n)(Arrival: About (<1|\d{1,4}) min · Likely (~1|<1|\d{1,4})(?:[–-](\d{1,4}))? min)(?=\n|$)', sample.get('text', ''))
+        if len(quotes) != 1:
+            pending = None; unassessed('unique-window-unavailable'); continue
+        displayed = re.findall(r'(?:^|\n)#([A-Za-z0-9-]{1,24}) · Recent speed[^\n]*(?=\n|$)', sample['text'])
+        if displayed != [name]:
+            pending = None; unassessed('displayed-vehicle-unbound'); continue
+        raw, _, low, high = quotes[0]
+        lo = 0 if low in ('<1', '~1') else int(low)*60
+        hi = int(high)*60 if high else 60 if low in ('<1', '~1') else int(low)*60
+        if not 0 <= lo <= hi <= 24*3600:
+            pending = None; unassessed('invalid-window'); continue
+        ref, wire = sample.get('feedResponse') or {}, sample.get('server_eta') or {}
+        buses = [b for b in sample.get('buses', []) if bus_name(b.get('bus_name')) == name and b.get('route_id') == route_id]
+        if (len(buses) != 1 or buses[0].get('bus_id') != provider_id
+                or not number(buses[0].get('observed_at'))
+                or not -5 <= at-buses[0]['observed_at']/1000 <= 30
+                or not number(sample.get('feedAgeMs')) or not 0 <= sample['feedAgeMs'] <= 30000
+                or ref.get('state') != 'captured' or ref.get('runId') != journey['id']
+                or ref.get('file') != 'feed-responses/'+journey['id']+'.jsonl'
+                or not re.fullmatch(r'[a-f0-9]{64}', str(ref.get('id', '')))
+                or not number(ref.get('receivedAt')) or not 0 <= at-ref['receivedAt']/1000 <= 30
+                or abs(at*1000-ref['receivedAt']-sample['feedAgeMs']) > 1
+                or wire.get('v') != 2 or not number(wire.get('at')) or not number(wire.get('servedAt'))
+                or not 0 <= wire['servedAt']-wire['at'] < 30000
+                or not -5 <= at-wire['at']/1000 <= 30):
+            pending = None; unassessed('fresh-source-identity-unavailable'); continue
+        reviewed += 1
+        wait = pickup_at-at
+        late, early = wait-hi, lo-wait
+        tail = 'late-window' if late > MISS_SECONDS else 'early-window' if early > MISS_SECONDS else None
+        if tail is None:
+            pending = None
+            continue
+        quote = {'at': sample['at'], 'text': raw, 'loSec': lo, 'hiSec': hi,
+                 'remainingToGPSPickupSec': wait, 'lateBeyondWindowSec': late,
+                 'earlyBeforeWindowSec': early, 'sourceModelAt': wire['at'],
+                 'observedAt': buses[0]['observed_at'], 'feedResponse': ref}
+        if pending is not None:
+            previous_tail, previous, previous_sample = pending
+            gap = at-timestamp(previous['at'])
+            same = previous_tail == tail and 0 <= gap <= 30
+            advances = (ref['receivedAt']-previous['feedResponse']['receivedAt'],
+                        wire['at']-previous['sourceModelAt'],
+                        buses[0]['observed_at']-previous['observedAt'])
+            if any(delta < 0 for delta in advances):
+                pending = None; unassessed('source-clock-regression'); continue
+            continuous = all(delta <= 30000 for delta in advances)
+            fresh = (gap >= 5 and continuous and ref['id'] != previous['feedResponse']['id']
+                     and all(delta >= 5000 for delta in advances))
+            if same and fresh and pair is None:
+                pair = (tail, [(previous, previous_sample), (quote, sample)])
+            if same and continuous and not fresh:
+                continue  # Cached/repeated views cannot confirm or move the first witness.
+        pending = (tail, quote, sample)
+    coverage = {'candidateScanQuotes': reviewed, 'unassessedQuotes': gaps,
+                'allUpdatedForecastAccuracyAssessed': False}
+    if pair is None:
+        return outcome('no-confirmed-miss' if reviewed else 'unknown', **coverage,
+                       reason='no-confirmed-pair-in-recorded-quotes' if reviewed else 'no-eligible-updated-window')
+    tail, witnesses = pair
+    pickup_rows = [s for s in samples if s.get('at') == pickup['at']]
+    pickup_sample = pickup_rows[0] if len(pickup_rows) == 1 else None
+    pickup_ref = pickup.get('feedResponse') or (pickup_sample or {}).get('feedResponse')
+    if (not isinstance(pickup_ref, dict) or pickup_ref.get('state') != 'captured'
+            or pickup_ref.get('runId') != journey['id']
+            or pickup_ref.get('file') != 'feed-responses/'+journey['id']+'.jsonl'
+            or not re.fullmatch(r'[a-f0-9]{64}', str(pickup_ref.get('id', '')))):
+        return outcome('unknown', **coverage, reason='pickup-original-source-unavailable')
+    bindings = [(q['feedResponse'], s, None) for q, s in witnesses]+[(pickup_ref, pickup_sample, pickup['bus'])]
+    references = list({ref['id']: ref for ref, _, _ in bindings}.values())
+    detail = {**coverage, 'runId': journey['id'], 'busName': name, 'routeId': route_id,
+              'boardStopId': first['boardStopId'], 'tail': tail,
+              'confirmationQuotes': [q for q, _ in witnesses],
+              'pickupObservation': {**pickup, 'feedResponse': pickup_ref},
+              'contextReferences': references}
+    originals = {}
+    for record in records or []:
+        if not isinstance(record, dict):
+            return outcome('unknown', **detail, reason='malformed-original-source-record')
+        if record.get('id') in originals:
+            return outcome('unknown', **detail, reason='duplicate-original-source')
+        originals[record.get('id')] = record
+    if any(ref['id'] not in originals for ref in references):
+        return outcome('needs-source-evidence', **detail, reason='quote-or-pickup-bodies-not-retained')
+    try:
+        for ref, sample, expected_bus in bindings:
+            original = originals[ref['id']]
+            raw = verify_feed_response(original)
+            keys = ('v', 'runId', 'route', 'sourceKind', 'receivedAt', 'status', 'headers', 'decodedBytes', 'decodedSHA256', 'gzipBytes', 'gzipSHA256')
+            if (any(ref.get(k) != original[k] for k in keys) or ref.get('runId') != journey['id']
+                    or ref.get('file') != 'feed-responses/'+journey['id']+'.jsonl'):
+                raise ValueError('Original response reference differs')
+            feed = json.loads(raw)
+            at = timestamp(sample['at']) if sample is not None else pickup_at
+            age = sample.get('feedAgeMs') if sample is not None else pickup.get('feedAgeMs')
+            if (at is None or not number(age) or not 0 <= at-original['receivedAt']/1000 <= 30
+                    or abs(at*1000-original['receivedAt']-age) > 1):
+                raise ValueError('Original response clock differs')
+            if sample is not None:
+                if (sample.get('buses') != feed.get('buses')
+                        or not all(v == (feed.get('server_eta') or {}).get(k) for k, v in sample.get('server_eta', {}).items())):
+                    raise ValueError('Saved source fleet or model differs')
+            matches = [b for b in feed.get('buses', []) if bus_name(b.get('bus_name')) == name and b.get('route_id') == route_id]
+            if len(matches) != 1 or matches[0].get('bus_id') != provider_id or (expected_bus is not None and matches[0] != expected_bus):
+                raise ValueError('Pickup vehicle source differs')
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, zlib.error):
+        return outcome('unknown', **detail, reason='original-updated-window-source-mismatch')
+    detail['sourceVerifiedConfirmationQuotes'] = 2
+    detail['sourceVerifiedPickupObservation'] = True
+    return outcome(tail, **detail)
+
+
 def audit_bundle(receipt):
     verified = verify_bundle(receipt['directory'])
     if verified['manifestSha256'] != receipt['manifestSha256']:
@@ -270,4 +411,7 @@ def audit_bundle(receipt):
     if len(journeys) != 1:
         return {'state': 'unknown', 'reason': 'missing-or-duplicate-journey'}
     originals = rows('feed-responses.jsonl.gz') if (directory/'feed-responses.jsonl.gz').is_file() else None
-    return analyze(journeys[0], rows('samples.jsonl.gz'), verified['sampleCoverage'], originals)
+    samples = rows('samples.jsonl.gz')
+    result = analyze(journeys[0], samples, verified['sampleCoverage'], originals)
+    result['updatedWindowAudit'] = updated_window_audit(journeys[0], samples, result, originals)
+    return result

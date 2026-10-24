@@ -211,22 +211,45 @@ def check_completed_pickups(st, ws, watch):
             refs = {"watcherDir": watch, "runId": run, "screenshots": []}
             receipt = capture_bundle(EVIDENCE, "pickup-audit-" + identity, event, refs, [WATCH, WATCH_RED])
             result = audit_bundle(receipt)
+            updated = result.get("updatedWindowAudit", {})
+            if updated.get("state") == "needs-source-evidence":
+                selected = {**refs, "pickupWindowReferences": updated["contextReferences"]}
+                enriched = capture_bundle(EVIDENCE, "pickup-audit-" + identity, event, selected, [WATCH, WATCH_RED])
+                result = audit_bundle(enriched)
+                result["initialBundle"] = receipt
+                receipt = enriched
+                updated = result.get("updatedWindowAudit", {})
+                if updated.get("state") == "needs-source-evidence":
+                    updated.update({"state": "unknown", "reason": "original-updated-window-context-unavailable"})
             result.update({"checkedAt": iso(now()), "bundle": receipt})
-            if result["state"] in ("late-window", "early-window"):
+            first_miss = result["state"] in ("late-window", "early-window")
+            update_miss = updated.get("state") in ("late-window", "early-window")
+            if update_miss:
+                refs = {**refs, "pickupWindowReferences": updated["contextReferences"]}
+            if first_miss or update_miss:
                 prior = pickup_already_reported(watch, run)
                 if not prior:
                     at = parse(event["at"])
                     line = event.get("line") or ws.get("runs", {}).get(run)
-                    early = result["state"] == "early-window"
-                    miss = result["earlyBeforeWindowSec"] if early else result["lateBeyondWindowSec"]
+                    primary = result if first_miss else updated
+                    early = primary["state"] == "early-window"
+                    if first_miss:
+                        miss = result["earlyBeforeWindowSec"] if early else result["lateBeyondWindowSec"]
+                    else:
+                        field = "earlyBeforeWindowSec" if early else "lateBeyondWindowSec"
+                        miss = min(quote[field] for quote in updated["confirmationQuotes"])
                     relation = "before" if early else "beyond"
+                    windows = "the first displayed window" if first_miss else "two later displayed windows"
                     summary = (f"{line or 'Shuttle'} #{result['busName']} pickup observation was "
-                               f"{round(miss/60)} min {relation} the first displayed window; "
+                               f"{round(miss/60)} min {relation} {windows}; "
                                "GPS-correlated virtual rider diagnostic needs review")
                     raise_incident(st, "rider-pickup-window-miss", line, at, summary,
-                                   {"event": event, "pickupAudit": result}, refs, capture_event=event)
+                                   {"event": event, "pickupAudit": result,
+                                    "pickupWindowMetric": "first-window" if first_miss else "updated-windows-v1"},
+                                   refs, capture_event=event)
                 result["reported"] = True
                 result["alreadyRetainedIncident"] = prior
+                result["reportedMetric"] = "first-window" if first_miss else "updated-windows-v1"
             audits[run] = result
             del pending[run]
         except Exception as error:
@@ -357,6 +380,15 @@ def rotate_monitor_log():
             temporary.unlink()
 
 
+def pickup_audit_status(ws):
+    audits = ws.get("pickupAudits", {})
+    return {"retained": len(audits), "pending": len(ws.get("pickupAuditPending", {})),
+            "states": {kind: sum(r.get("state") == kind for r in audits.values())
+                       for kind in ["early-window", "late-window", "within-diagnostic-tolerance", "unknown"]},
+            "updatedStates": {kind: sum(r.get("updatedWindowAudit", {}).get("state", "unknown") == kind for r in audits.values())
+                              for kind in ["early-window", "late-window", "no-confirmed-miss", "unknown"]}}
+
+
 def run_once():
     rotate_monitor_log()
     CAPTURE_ERRORS.clear()
@@ -383,13 +415,8 @@ def run_once():
         CAPTURE_ERRORS.append({"stage": "evidence-retention", "error": str(error)[:300]})
     healthy = not CAPTURE_ERRORS and not storage.get("protectedOverageBytes", 0)
     status = {"checkedAt": iso(now()), "ok": healthy, "errors": CAPTURE_ERRORS,
-              "storage": storage, "pickupAudits": {
-                  "general": {"retained": len(st.get("pickupAudits", {})), "pending": len(st.get("pickupAuditPending", {})),
-                              "states": {kind: sum(r.get("state") == kind for r in st.get("pickupAudits", {}).values())
-                                         for kind in ["early-window", "late-window", "within-diagnostic-tolerance", "unknown"]}},
-                  "red": {"retained": len(st["red"].get("pickupAudits", {})), "pending": len(st["red"].get("pickupAuditPending", {})),
-                          "states": {kind: sum(r.get("state") == kind for r in st["red"].get("pickupAudits", {}).values())
-                                     for kind in ["early-window", "late-window", "within-diagnostic-tolerance", "unknown"]}}},
+              "storage": storage, "pickupAudits": {"general": pickup_audit_status(st),
+                                                     "red": pickup_audit_status(st["red"])},
               "scope": "Incident evidence and virtual pickup-window diagnostics, not independent physical arrival or model accuracy"}
     dump(f"{STATE}/evidence-status.json", status)
     st["evidence"] = status

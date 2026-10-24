@@ -71,7 +71,8 @@ def feed_response_context(watch, run, references, event, budget):
         valid[ref["id"]] = {**ref, "arrivalContext": prior.get("arrivalContext") is True or ref.get("arrivalContext") is True,
                             "arrivalTextContext": prior.get("arrivalTextContext") is True or ref.get("arrivalTextContext") is True,
                             "boardingContext": prior.get("boardingContext") is True or ref.get("boardingContext") is True,
-                            "pickupServiceContext": prior.get("pickupServiceContext") is True or ref.get("pickupServiceContext") is True}
+                            "pickupServiceContext": prior.get("pickupServiceContext") is True or ref.get("pickupServiceContext") is True,
+                            "pickupWindowContext": prior.get("pickupWindowContext") is True or ref.get("pickupWindowContext") is True}
     ordered = sorted(valid.values(), key=lambda r: (r["receivedAt"], r["id"]))
     selected = set()
     if ordered:
@@ -84,7 +85,7 @@ def feed_response_context(watch, run, references, event, budget):
         arrival = [r for r in ordered if r.get("arrivalContext") is True]
         if arrival:
             selected.add(arrival[-1]["id"])
-        selected.update(r["id"] for r in ordered if r.get("boardingContext") is True or r.get("arrivalTextContext") is True or r.get("pickupServiceContext") is True)
+        selected.update(r["id"] for r in ordered if r.get("boardingContext") is True or r.get("arrivalTextContext") is True or r.get("pickupServiceContext") is True or r.get("pickupWindowContext") is True)
     rows, found, used, omitted = [], set(), 0, 0
     if selected:
         try:
@@ -132,6 +133,8 @@ def feed_response_context(watch, run, references, event, budget):
                 "unavailableArrivalTextReferences": sum(r.get("arrivalTextContext") is True and r.get("state") != "captured" for r in references),
                 "pickupServiceContextReferences": sum(r.get("pickupServiceContext") is True for r in valid.values()),
                 "unavailablePickupServiceReferences": sum(r.get("pickupServiceContext") is True and r.get("state") != "captured" for r in references),
+                "pickupWindowContextReferences": sum(r.get("pickupWindowContext") is True for r in valid.values()),
+                "unavailablePickupWindowReferences": sum(r.get("pickupWindowContext") is True and r.get("state") != "captured" for r in references),
                 "contextReferences": len(selected), "retainedBodies": len(rows), "missingContextIDs": missing,
                 "omittedByContextSelection": len(valid) - len(selected), "omittedByByteBudget": omitted,
                 "contextComplete": bool(selected) and unavailable == 0 and not missing and not omitted and not gaps,
@@ -280,7 +283,16 @@ def capture_bundle(store, incident_id, event, evidence, allowed_watchers):
     if watch not in {Path(p).absolute() for p in allowed_watchers} or watch.is_symlink():
         raise ValueError("Unrecognized rider evidence source")
     run = evidence.get("runId")
-    key = digest(encoded({"watcher": str(watch), "run": run, "event": event}))[:24]
+    extra = evidence.get("pickupWindowReferences", [])
+    if (not isinstance(extra, list) or len(extra) > 3 or any(
+            not isinstance(ref, dict) or ref.get("state") != "captured" or ref.get("runId") != run
+            or ref.get("file") != "feed-responses/" + str(run) + ".jsonl"
+            or not re.fullmatch(r"[a-f0-9]{64}", str(ref.get("id", ""))) for ref in extra)):
+        raise ValueError("Invalid pickup window source selection")
+    capture_identity = {"watcher": str(watch), "run": run, "event": event}
+    if extra:
+        capture_identity["pickupWindowContext"] = {"v": 1, "responseIds": sorted({ref["id"] for ref in extra})}
+    key = digest(encoded(capture_identity))[:24]
     parent = Path(store) / incident_id
     parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     target = parent / key
@@ -290,7 +302,8 @@ def capture_bundle(store, incident_id, event, evidence, allowed_watchers):
     staging.mkdir(mode=0o700)
     files, sources, gaps = [], [], []
     selected_bytes, malformed, partial = 0, 0, 0
-    counts, last_journey, feed_references = {}, None, []
+    counts, last_journey = {}, None
+    feed_references = [{**ref, "pickupWindowContext": True} for ref in extra]
     try:
         def save(name, data):
             path = staging / name
@@ -398,6 +411,8 @@ def capture_bundle(store, incident_id, event, evidence, allowed_watchers):
                                        "complete": complete, "malformedSourceRows": malformed,
                                        "partialSourceRows": partial}, "counts": counts, "gaps": gaps,
                     "scope": "Available original virtual-rider records only. Missing historical data is not reconstructed. No physical boarding or independent ETA accuracy claim."}
+        if extra:
+            manifest["pickupWindowContext"] = capture_identity["pickupWindowContext"]
         atomic_json(staging / "manifest.json", manifest)
         os.rename(staging, target)
         return verify_bundle(target)
