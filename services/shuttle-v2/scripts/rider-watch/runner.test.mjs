@@ -62,6 +62,41 @@ afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)
 function rawResponse(raw){return {url:()=> 'https://example.test/api/buses',ok:()=>true,status:()=>200,
  headers:()=>({'content-type':'application/json','set-cookie':'DO_NOT_RETAIN'}),json:async()=>JSON.parse(raw),body:async()=>Buffer.from(raw)};}
 
+test('the recorded Blue Weekend recheck keeps waiting when it confirms an earlier pickup visit',async()=>{
+ const recorded=JSON.parse(await fs.readFile(new URL('./__fixtures__/blue-weekend-46-pickup-recheck-20261024.json',import.meta.url),'utf8'));
+ const rawBootstrap=verifyFeedResponseRecord(recorded.bootstrap.response),rawA=verifyFeedResponseRecord(recorded.selection.response),rawB=verifyFeedResponseRecord(recorded.recheck.response);
+ // Reconstruct a waiting rider at the selected pole; both response bodies
+ // and the before/after screen text are original, independently retained data.
+ const h=current=await harness(JSON.parse(rawBootstrap),recorded.trip,{initialLine:recorded.line,text:recorded.bootstrap.text,
+  at:recorded.sampledAt,initialFeedAgeMs:Date.parse(recorded.sampledAt)-recorded.bootstrap.response.receivedAt,initialResponse:rawResponse(rawBootstrap)});
+ vi.setSystemTime(recorded.selection.response.receivedAt);await h.handlers.response(rawResponse(rawA));
+ vi.setSystemTime(Date.parse(recorded.selection.sampledAt));h.text=recorded.selection.text;
+ let replaced=false;
+ h.page.screenshot=async()=>{
+  if(!replaced){replaced=true;vi.setSystemTime(recorded.recheck.response.receivedAt);h.text=recorded.recheck.text;await h.handlers.response(rawResponse(rawB));vi.setSystemTime(Date.parse(recorded.recheck.checkedAt));}
+  return Buffer.from('jpg');
+ };
+ h.page.evaluate=async()=>null;
+ await h.watcher.tick();
+ const run=h.watcher.status().run;
+ assert.equal(run?.phase,'waiting');assert.equal(run.boardedAt,undefined);assert.notEqual(run.excludeAccuracy,true);
+ assert.equal((await h.journeys()).length,0);assert.deepEqual(h.clicks,[]);
+ const observation=run.boardingObservation;
+ assert.equal(observation.outcome,'waiting-other-pickup-occurrence');
+ const decision=observation.checks.find(c=>c.kind==='card-boards');
+ assert.equal(decision.allowed,false);assert.equal(decision.otherOccurrence.pickupStop,53);
+ assert.equal(decision.otherOccurrence.standingStop,21);assert.equal(decision.otherOccurrence.stopsAway,2);
+ const retained=(await fs.readFile(path.join(h.dir,decision.feedResponse.file),'utf8')).trim().split('\n').map(JSON.parse);
+ const byId=new Map(retained.map(r=>[r.id,r]));
+ assert.deepEqual(verifyFeedResponseRecord(byId.get(observation.checks[0].feedResponse.id)),rawA);
+ assert.deepEqual(verifyFeedResponseRecord(byId.get(decision.feedResponse.id)),rawB);
+ const events=(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ assert(events.some(e=>e.kind==='boarding-deferred-other-occurrence'));
+ assert(!events.some(e=>e.kind==='boarding-missed'||e.kind==='journey-finished'||e.kind==='boarded'));
+ const checkpoint=JSON.parse(await fs.readFile(path.join(h.dir,'resume.json'),'utf8'));
+ assert.equal(checkpoint.run.phase,'waiting');assert.deepEqual(checkpoint.run.boardingObservation,observation);
+});
+
 // Constructed response-race controls, not a reconstruction of the missing
 // Red #119 boarding recheck body from 2026-10-23.
 async function boardingEvidenceHarness({missingBody=false,replaceDuringBody=false,missed=true}={}){
