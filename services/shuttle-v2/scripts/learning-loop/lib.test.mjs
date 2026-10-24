@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clusteredImprovement, dayStart, evaluate, excludePending, nextDay,
-  observe, phaseAt, recordForecast, scoreEstimate, calibrationObservation, productionControlValid, productionControlInputValid, SETTLE_MS, UNIT } from './lib.mjs';
+  observe, phaseAt, qualificationUsesFinalIntervals,recordForecast, scoreEstimate, calibrationObservation, productionControlValid, productionControlInputValid, SETTLE_MS, UNIT } from './lib.mjs';
 import { validationCells } from '../reestimate-validation.mjs';
 
 const at=Date.parse('2026-10-14T12:00:00Z');
@@ -76,6 +76,19 @@ describe('prospective visit sampling and causal outcomes',()=>{
 });
 
 describe('chronological phases and paired quality gates',()=>{
+ it('keeps an extended calibration date unscored after interval freeze',()=>{
+  const frozenAt=Date.parse('2026-10-27T15:00:00Z'),s={calibrationDays:['2026-10-25','2026-10-26','2026-10-27'],calibratedAt:frozenAt,testStartDay:'2026-10-28'};
+  expect(phaseAt(s,frozenAt-1)).toBe('calibration');expect(phaseAt(s,frozenAt)).toBe('settling-calibration');
+  expect(phaseAt(s,frozenAt+1)).toBe('settling-calibration');expect(phaseAt(s,dayStart('2026-10-28'))).toBe('test');expect(s.calibrationDays).toHaveLength(3);
+ });
+ it('uses the explicit computation ordering when qualification and freezing share a clock tick',()=>{
+  const s={calibratedAt:at};expect(qualificationUsesFinalIntervals(s,{at,intervalsFrozenAt:null})).toBe(false);
+  expect(qualificationUsesFinalIntervals(s,{at,intervalsFrozenAt:at})).toBe(true);
+  expect(qualificationUsesFinalIntervals(s,{at:at+1,intervalsFrozenAt:at})).toBe(true);
+ });
+ it.each([{at},{at,intervalsFrozenAt:at+1},{at:at+1,intervalsFrozenAt:null}])('refuses a missing/inconsistent interval ordering receipt: %j',receipt=>{
+  expect(()=>qualificationUsesFinalIntervals({calibratedAt:at},receipt)).toThrow();
+ });
  it('handles DST day starts and waits for frozen intervals before testing',()=>{
   expect(new Date(dayStart('2026-11-02')).toISOString()).toBe('2026-11-02T05:00:00.000Z');
   expect(nextDay('2026-10-31')).toBe('2026-11-01');
@@ -100,11 +113,18 @@ describe('chronological phases and paired quality gates',()=>{
  });
  it('keeps the original prospective clocks and requires a current-context qualification receipt',()=>{
   const s=frozen();s.trial={id:'original-trial',startedAt:s.startedAt};s.startedAt=at+3*86400000;
+  s.calibrationDays=['2026-10-12','2026-10-13'];s.testStartDay='2026-10-14';
   expect(evaluate(s,rows(),days).promote).toBe(false);
   s.contextQualifiedAt=s.startedAt+1000;expect(evaluate(s,rows(),days).promote).toBe(false);
   // Source/HTTP binding is verified separately before this policy function.
   s.contextQualification={at:s.contextQualifiedAt};
   const decision=evaluate(s,rows(),days);expect(decision.promote).toBe(true);expect(decision.reasons).toEqual([]);
+  expect(decision.totals.challenger['13|all'].n).toBe(120);
+ });
+ it('rejects reuse of a calibration date even when later forecasts otherwise pass every paired gate',()=>{
+  const s=frozen();s.trial={id:'trial',startedAt:s.startedAt};s.calibrationDays=['2026-10-12','2026-10-14'];s.testStartDay='2026-10-14';
+  s.contextQualifiedAt=at+1;s.contextQualification={at:at+1};const decision=evaluate(s,rows(),days);
+  expect(decision.promote).toBe(false);expect(decision.reasons.join(' ')).toContain('Untouched test dates overlap');
   expect(decision.totals.challenger['13|all'].n).toBe(120);
  });
  it('refuses unverified controls and a cycle with an observed protocol failure without dropping rows',()=>{

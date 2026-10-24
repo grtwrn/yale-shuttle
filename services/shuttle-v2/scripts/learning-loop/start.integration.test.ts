@@ -51,11 +51,12 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
   const champion = { version: 'fixture-champion', accepted: true, publishedAt: initial - 86400000, params: structuredClone(COMPILED_MODEL_PARAMS) };
   const params = structuredClone(champion.params); params.P_REPEAT_STAND = .75; params.CONFORMAL = { '0-2': 1, '2-5': 1, '5-10': 1, '10-30': 1 };
   const producer = new ServerEta({ routes: ROUTE_LISTS.map(r => r.label) }); producer.useK10Trial(() => new Map());
-  let inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let version = 0, payload: any, mode = 'healthy',build='fixture-build',restarts=0;
+  let inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let version = 0, payload: any, mode = 'healthy',build='fixture-build',restarts=0,fleetGeneration=0;
   let producerExecution=fixtureProducerExecution();
   const publish = (at = serverNow()) => {
     const since = new Date((statisticalTrial?at:initial) - 60000).toISOString();
     payload = { ...cap.static, model_params: champion, buses: structuredClone(cap.frames[4].buses).map((b: any) => {
+      if(fleetGeneration){b.bus_id+=100000*fleetGeneration;b.bus_name+=`-replacement-${fleetGeneration}`;}
       b.observed_at = at; for (const field of ['at_stop_since', 'stationary_since', 'last_moved_at']) if (b[field]) b[field] = since; return b;
     }) };
     const wire = producer.contribute(payload, ++version, at, true);
@@ -143,13 +144,14 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
     mode: (value: string) => { mode = value; sent = false; },
     tomorrow: () => { offset = 86400000; },
     advance: (ms=5000) => { offset+=ms;publish(); },
+    replaceFleet:()=>{fleetGeneration++;publish();},
     restart: (differentExecution=false,epochChange=true,buildChange=true) => {
       restarts++;if(buildChange)build=`replacement-build-${restarts}`;if(epochChange)inputs=new EvaluationInputs({epoch:`replacement-epoch-${restarts}`});
       if(differentExecution)producerExecution=fixtureProducerExecution(10+restarts);
       source=makeSource();publish();
     },
     breakExecution:()=>{producerExecution={...producerExecution,sha256:'0'.repeat(64)};},
-    freezeSyntheticIntervals:()=>{
+    freezeSyntheticIntervals:(atOverride?:number)=>{
       // Protocol setup only: this supplied artifact does not claim measured
       // calibration support. Real support/publication gates remain in force.
       const current=read(path.join(root,'state.json')),folder=path.join(root,current.id);
@@ -157,7 +159,8 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
         {version:current.trial.id,publishedAt:current.trial.startedAt,params:current.candidate.params});
       own.recover(folder,current.source.runtime,current.source.seedSha256);
       current.candidate=structuredClone(current.candidate);current.candidate.params.CONFORMAL['2-5']=1.5;
-      current.calibratedAt=serverNow();current.testStartDay=etDay(current.calibratedAt);
+      current.calibratedAt=atOverride??serverNow();const day=etDay(current.calibratedAt);
+      current.testStartDay=current.calibrationDays.includes(day)?nextDay(day):day;
       own.setModels(current.champion,{version:current.trial.id,publishedAt:current.trial.startedAt,params:current.candidate.params});
       current.source.previousRuntime=current.source.runtime;current.source.runtime=own.persist(folder);
       const bytes=Buffer.from(JSON.stringify(current.candidate));fs.writeFileSync(path.join(folder,'calibrated-candidate.json'),bytes);
@@ -404,6 +407,30 @@ describe('actual frozen trial continuity across producer contexts',()=>{
    const final=read(path.join(f.root,'state.json'));expect(final.contextQualifiedAt).toBeGreaterThan(final.startedAt);
    expect(final.calibratedCandidateSha256).toBe(supplied.calibratedCandidateSha256);
    expect(f.requests.some(r=>r.method==='POST')).toBe(false);
+  }finally{await f.close();}
+ },90000);
+ it('keeps pre-fit qualification at the freeze timestamp and waits for a date untouched by extended calibration',async()=>{
+  const {f,initial}=await initialize();try{
+   f.advance(5*86400000);let run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const qualified=read(path.join(f.root,'state.json'));expect(qualified.contextQualification.intervalsFrozenAt).toBeNull();
+   expect(qualified.calibrationDays).toContain(etDay(qualified.contextQualifiedAt));
+   const supplied=f.freezeSyntheticIntervals(qualified.contextQualifiedAt);f.advance(5000);
+   run=f.launch();expect(await run.exit,run.log()).toBe(0);const tested=read(path.join(f.root,'state.json'));
+   expect(readTrialPairs(f.root,tested).some((row:any)=>row.phase==='test')).toBe(false);
+   expect(read(path.join(f.root,'status.json')).phase).toBe('settling-calibration');
+   expect(tested.contextQualification.at).toBe(tested.calibratedAt);expect(tested.contextQualification.intervalsFrozenAt).toBeNull();
+   // The previous fleet's closed visit/horizon identities remain retained.
+   // Introduce new buses through the real producer to obtain new prospective
+   // forecasts; an unchanged fixture cannot manufacture another visit.
+   f.advance(86400000);f.replaceFleet();run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const untouched=read(path.join(f.root,'state.json')),pending=Object.values(untouched.pending).filter((row:any)=>row.phase==='test');
+   expect(pending.length).toBeGreaterThan(0);expect(pending.every((row:any)=>!untouched.calibrationDays.includes(row.day))).toBe(true);
+   expect(read(path.join(f.root,'status.json')).phase).toBe('test');
+   f.restart();run=f.launch();expect(await run.exit,run.log()).toBe(0);const carried=read(path.join(f.root,'state.json'));
+   const rows=readTrialPairs(f.root,carried).filter((row:any)=>row.phase==='test');
+   expect(rows.length).toBe(pending.length);expect(rows.every((row:any)=>!carried.calibrationDays.includes(row.day)&&row.det===null)).toBe(true);
+   expect(carried.trial.id).toBe(initial.id);expect(carried.calibratedCandidateSha256).toBe(supplied.calibratedCandidateSha256);
+   expect(carried.sourceRefusal).toBeUndefined();verifyContextTransitions(f.root,trialContexts(f.root,carried));
   }finally{await f.close();}
  },90000);
  it.each(['gap','unconfirmed-build','malformed','invalid-json'])('retains a real trial refusal for %s without inventing another clean cohort',async mode=>{

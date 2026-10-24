@@ -144,10 +144,30 @@ export function excludePending(state, now, reason) {
 
 export function phaseAt(state, at) {
  const day=etDay(at);
+ if(state.calibratedAt!=null){
+  const frozenDay=etDay(state.calibratedAt),testDay=state.testStartDay??(state.calibrationDays.includes(frozenDay)?nextDay(frozenDay):frozenDay);
+  if(at>state.calibratedAt)return day>=testDay?'test':'settling-calibration';
+  if(at===state.calibratedAt)return 'settling-calibration';
+ }
  if(day<state.calibrationDays[0])return 'warming';
  if(state.calibrationDays.includes(day))return 'calibration';
  if(!state.calibratedAt||at<state.calibratedAt)return 'settling-calibration';
  return 'test';
+}
+
+/** Qualification precedes maintenance in a poll. Equal millisecond clocks
+ * cannot tell whether the interval artifact existed when engines computed. */
+export function qualificationUsesFinalIntervals(state, qualification){
+ if(!qualification||!Number.isSafeInteger(qualification.at)||!Object.hasOwn(qualification,'intervalsFrozenAt'))
+  throw Error('Missing qualification interval-freeze ordering receipt');
+ const frozenAt=qualification.intervalsFrozenAt;
+ if(frozenAt===null){
+  if(state.calibratedAt!=null&&qualification.at>state.calibratedAt)throw Error('Pre-fit qualification follows interval freeze');
+  return false;
+ }
+ if(!Number.isSafeInteger(frozenAt)||frozenAt!==state.calibratedAt||frozenAt>qualification.at)
+  throw Error('Qualification interval-freeze clock is inconsistent');
+ return true;
 }
 
 /** Resample paired day/bus service blocks, rather than correlated stop rows.
@@ -197,6 +217,9 @@ export function clusteredImprovement(rows, conformal) {
 export function evaluate(state, rows, closedDays) {
  const test=rows.filter(p=>p.phase==='test'&&closedDays.includes(p.day));
  const ids=new Set();const reasons=[];
+ if(state.trial&&(!state.testStartDay||!Array.isArray(state.calibrationDays)
+   ||closedDays.some(day=>day<state.testStartDay||state.calibrationDays.includes(day))))
+  reasons.push('Untouched test dates overlap calibration or precede the frozen test window.');
  if(state.trial&&(!state.contextQualifiedAt||!state.contextQualification))reasons.push('Current producer context has no positive served-control qualification.');
  if(state.protocolFailures?.count)reasons.push('Observed production-control protocol failures remain in this cycle.');
  for(const p of test){

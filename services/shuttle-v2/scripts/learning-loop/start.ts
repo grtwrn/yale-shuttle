@@ -17,7 +17,7 @@ import { continueTrial, freezeTrial, handoverDecision } from './trial-context.mj
 import { readTrialPairs, retainSourceEvent, trialContexts, verifyContextTransitions } from './trial-evidence.mjs';
 import { validProductionExecutionIdentity } from '../../src/server/executionIdentity';
 import { calibrationObservation, dayStart, etDay, evaluate, excludePending, keyOf, nextDay, observe,
-  phaseAt, productionControlInputValid, productionControlValid, recordForecast, SETTLE_MS, UNIT } from './lib.mjs';
+  phaseAt, productionControlInputValid, productionControlValid, qualificationUsesFinalIntervals,recordForecast, SETTLE_MS, UNIT } from './lib.mjs';
 
 const service=path.resolve(path.dirname(new URL(import.meta.url).pathname),'../..');
 const one=process.argv.includes('--once');
@@ -97,6 +97,7 @@ function verifyFrozen(context=state,current=true){
   ||frozen.source.seedSha256!==context.source.seedSha256||identityHash(frozen.source.seedFile)!==identityHash(context.source.seedFile))
   throw Error('Live candidate differs from frozen model/source/training identity');
  if(context.trial){
+  if(context.contextQualification)qualificationUsesFinalIntervals(context,context.contextQualification);
   if(Boolean(context.contextQualifiedAt)!==Boolean(context.contextQualification)
    ||context.contextQualification&&(!Number.isSafeInteger(context.contextQualification.at)
     ||context.contextQualification.at!==context.contextQualifiedAt||context.contextQualification.at<context.startedAt))
@@ -318,7 +319,8 @@ async function maintain(now:number){
   }
   if(!fs.existsSync(calibrated))atomic(calibrated,candidate);
   state.candidate=candidate;state.calibratedCandidateSha256=fileHash(calibrated);
-  state.calibratedAt=now;state.testStartDay=etDay(now);state.conformalFit=fit;checkpoint();
+  state.calibratedAt=now;const today=etDay(now);
+  state.testStartDay=state.calibrationDays.includes(today)?nextDay(today):today;state.conformalFit=fit;checkpoint();
   event('intervals-frozen',{id:state.id,calibratedAt:now,fit});
  }
  if(!state.calibratedAt)return;
@@ -516,7 +518,7 @@ while(!stopping){
    if(state.trial&&!state.contextQualifiedAt&&exact!.canSample()&&control&&typeof control.compared==='number'&&control.compared>0
     &&control.matched===control.compared&&control.missing===0&&control.mismatched===0){
     state.contextQualifiedAt=receivedAt;
-    state.contextQualification={at:receivedAt,inputHash,source:exact!.receipt(),productionControl:control};
+    state.contextQualification={at:receivedAt,intervalsFrozenAt:state.calibratedAt??null,inputHash,source:exact!.receipt(),productionControl:control};
    }
    const challenger=new Map(forecasts.challenger.map((p:any)=>[keyOf(p.bus,p.stop),p]));
    const phase=phaseAt(state,receivedAt);

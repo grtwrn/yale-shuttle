@@ -1,5 +1,5 @@
 import { digest, initialSourceChain, modelKey, nextSourceChain, validateExactFrame } from './stream';
-import { MATCH_MS, productionControlInputValid, UNIT } from './lib.mjs';
+import { MATCH_MS, productionControlInputValid, qualificationUsesFinalIntervals,UNIT } from './lib.mjs';
 import { haversineM } from '../canary-metrics.mjs';
 
 type CurbEvidence = { observedAt: number; receivedAt: number };
@@ -108,7 +108,7 @@ function exactReceiptVerifier(state: any, rows: any[], seed: any) {
     if (inputs.size || controls.size) throw Error('Required exact forecast/outcome HTTP inputs are missing');
     if(qualification){
       const s=qualification.source,recorded=chains.get(s.cursor);
-      const final=state.calibratedAt&&qualification.at>=state.calibratedAt;
+      const final=qualificationUsesFinalIntervals(state,qualification);
       const candidate={version:state.trial?.id??state.id,params:{...state.candidate.params,CONFORMAL:final?state.candidate.params.CONFORMAL:UNIT}};
       if(!qualificationInput||!recorded||s.seedSha256!==seedSha256||s.epoch!==seed.epoch||s.build!==seed.build||s.sourceKey!==state.sourceKey
         ||Object.entries(recorded).some(([key,value])=>s[key]!==value)||s.championModel!==modelKey(state.champion)
