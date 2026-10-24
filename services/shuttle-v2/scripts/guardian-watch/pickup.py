@@ -9,7 +9,7 @@ import math
 import re
 from datetime import datetime
 from pathlib import Path
-from evidence import verify_bundle
+from evidence import verify_bundle, verify_feed_response
 
 # Same five-minute diagnostic tolerance as canary-metrics.firstSightMissSec.
 MISS_SECONDS = 300
@@ -45,7 +45,102 @@ def distance(a, b):
     return 6371000 * 2 * math.atan2(math.sqrt(h), math.sqrt(max(0, 1-h)))
 
 
-def analyze(journey, samples, coverage):
+def boarding_pickup(journey, rows, records, provider_id):
+    """A between-sample GPS observation, tied to the selected pickup card.
+
+    Only verified original response bytes can supply it. An earlier sampled
+    opportunity is handled by analyze first and can never be overridden here.
+    """
+    try:
+        observation = journey.get('boardingObservation')
+        if (not isinstance(observation, dict) or type(observation.get('v')) is not int or observation['v'] != 1
+                or observation.get('outcome') != 'boarded'
+                or observation.get('busName') != journey['busName']
+                or observation.get('routeIds') != journey['line']['busRouteIds']
+                or observation.get('stopId') != journey['boardStopId']):
+            return None
+        boarded, attempted = timestamp(journey['boardedAt']), timestamp(observation.get('attemptedAt'))
+        outcome = timestamp(observation.get('outcomeAt'))
+        screen = observation.get('sample') or {}
+        sampled = timestamp(screen.get('sampledAt'))
+        if (None in (boarded, attempted, outcome, sampled)
+                or not 0 <= attempted-sampled <= 5 or not 0 <= boarded-attempted <= 15
+                or not 0 <= outcome-boarded <= 1 or screen.get('feedStableDuringTextRead') is not True):
+            return None
+        selected = [s for s in rows if s.get('phase') == 'waiting' and s.get('at') == screen.get('sampledAt')]
+        if len(selected) != 1:
+            return None
+        selected = selected[0]
+        if ((selected.get('mapPauseAudit') or {}).get('feedStableDuringRead') is not True
+                or screen.get('feedResponse') != selected.get('feedResponse')):
+            return None
+        stored = json.loads(journey['boardedStorage']['shuttle-boarded-ride'])
+        if (stored.get('routeLabel') != journey['line']['label']
+                or bus_name(stored.get('busName')) != bus_name(journey['busName'])
+                or stored.get('boardStopId') != journey['boardStopId']
+                or stored.get('alightStopId') != journey['exitStopId']):
+            return None
+        point = journey['trip']['origin']
+        if any(distance(point, observation.get(k) or {}) != 0 for k in ('stopCoords', 'riderCoords')):
+            return None
+        checks = observation.get('checks')
+        if not isinstance(checks, list) or not 2 <= len(checks) <= 32:
+            return None
+        first = checks[0]
+        if (first.get('kind') != 'pickup-eligible' or first.get('allowed') is not True
+                or first.get('atStop') is not True or first.get('feedStableFromSelection') is not True
+                or any(first.get(k) is not False for k in ('past', 'opposite', 'otherOccurrence'))
+                or first.get('text') != selected['text']
+                or not re.search(r'(?:^|\n)BOARD🚌', first['text'])
+                or first.get('feedResponse') != selected.get('feedResponse')):
+            return None
+        if not isinstance(records, list) or not records or len(records) > 128:
+            return None
+        originals = {}
+        for record in records:
+            raw = verify_feed_response(record)
+            if record['id'] in originals:
+                return None
+            originals[record['id']] = (record, json.loads(raw))
+        candidate, previous_at = None, sampled
+        for index, check in enumerate(checks):
+            if (not isinstance(check, dict) or check.get('allowed') is not True
+                    or check.get('kind') != ('pickup-eligible' if index == 0 else 'observation-ready')):
+                return None
+            at = timestamp(check.get('checkedAt'))
+            if at is None or not previous_at <= at <= outcome or (index > 0 and at < attempted):
+                return None
+            previous_at = at
+            ref = check.get('feedResponse') or {}
+            if ref.get('state') != 'captured' or ref.get('runId') != journey['id'] or ref.get('file') != 'feed-responses/'+journey['id']+'.jsonl':
+                return None
+            original, feed = originals[ref['id']]
+            keys = ('v', 'runId', 'route', 'sourceKind', 'receivedAt', 'status', 'headers', 'decodedBytes', 'decodedSHA256', 'gzipBytes', 'gzipSHA256')
+            if any(ref.get(k) != original[k] for k in keys) or not -5 <= at-original['receivedAt']/1000 <= 30:
+                return None
+            matches = [b for b in feed.get('buses', []) if bus_name(b.get('bus_name')) == bus_name(journey['busName'])
+                       and b.get('route_id') == journey['line']['busRouteIds'][0]]
+            if len(matches) != 1:
+                return None
+            bus = matches[0]
+            if (bus != check.get('bus') or bus.get('bus_id') != provider_id
+                    or not number(bus.get('observed_at')) or not -5 <= at-bus['observed_at']/1000 <= 30):
+                return None
+            metres = distance(bus, point)
+            if metres is None or not number(check.get('distanceM')) or abs(metres-check['distanceM']) > 1e-6:
+                return None
+            qualifies = metres <= 45 or (metres <= 60 and bus.get('stationary') is True and bus.get('at_stop_id') == journey['boardStopId'])
+            if index > 0 and at <= boarded and qualifies and candidate is None:
+                candidate = {'at': check['checkedAt'], 'distanceM': metres, 'bus': bus,
+                             'feedAgeMs': at*1000-original['receivedAt'], 'screenFeedStable': True,
+                             'cardAtPickup': True, 'source': 'verified-boarding-check',
+                             'feedResponse': ref, 'pickupScreenAt': selected['at']}
+        return candidate
+    except (KeyError, TypeError, ValueError, AttributeError, OverflowError):
+        return None
+
+
+def analyze(journey, samples, coverage, boarding_records=None):
     def unknown(reason):
         return {'state': 'unknown', 'reason': reason}
     if not isinstance(journey, dict) or journey.get('result') != 'completed':
@@ -140,6 +235,8 @@ def analyze(journey, samples, coverage):
                            'feedAgeMs': sample['feedAgeMs'],
                            'screenFeedStable': (sample.get('mapPauseAudit') or {}).get('feedStableDuringRead') is True,
                            'cardAtPickup': re.search(r'(?:^|\n)BOARD🚌', sample['text']) is not None}
+    if arrival is None and boarding_records is not None:
+        arrival = boarding_pickup(journey, rows, boarding_records, provider_id)
     if arrival is None:
         return unknown('no-qualifying-pickup-observation')
     arrival_at = timestamp(arrival['at'])
@@ -172,4 +269,5 @@ def audit_bundle(receipt):
     journeys = rows('journeys.jsonl.gz')
     if len(journeys) != 1:
         return {'state': 'unknown', 'reason': 'missing-or-duplicate-journey'}
-    return analyze(journeys[0], rows('samples.jsonl.gz'), verified['sampleCoverage'])
+    originals = rows('feed-responses.jsonl.gz') if (directory/'feed-responses.jsonl.gz').is_file() else None
+    return analyze(journeys[0], rows('samples.jsonl.gz'), verified['sampleCoverage'], originals)

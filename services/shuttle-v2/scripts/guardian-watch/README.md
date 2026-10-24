@@ -116,6 +116,16 @@ position must agree with the at-pickup card and precede the boarding action by
 at most 15 seconds. An earlier close pass stays unknown. Resumed, excluded,
 transfer, ambiguous, missing and changed-vehicle records remain unknown.
 
+A pickup between the ten-second waiting samples can instead use the original
+versioned boarding checks. Both the selected card and each check must bind to
+verified saved response bytes, the same pickup and stored ride, and the same
+provider. The selected card must show the bus at pickup and remain stable; the
+first qualifying ready check uses the existing 45 m / stationary 60 m rule,
+freshness limits and 15-second boarding fence. Missing bodies, failed checks
+and changed identities stay unknown. An earlier sampled opportunity still
+takes precedence, including one whose card is unconfirmed. This adds a saved
+observation to the GPS diagnostic; it does not infer an intermediate position.
+
 A pickup observed more than five minutes before the first window's lower
 bound or beyond its upper bound raises
 `rider-pickup-window-miss` for review, even when the journey completed. This is
