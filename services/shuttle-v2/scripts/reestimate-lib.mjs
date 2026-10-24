@@ -198,6 +198,7 @@ export function tracksByName(positions) {
  * `inZone(sample)` says whether a sample is within ZONE_M of a stop of its
  * route (null = no zone split). Returns {key: {value, n, ...counts}}.
  */
+/** @param {any} tracks @param {((sample: any) => boolean) | null} [inZone] */
 export function estimateEmissions(tracks, inZone = null) {
   let standPairs = 0, standFrozen = 0, movePairs = 0, moveFrozen = 0, zonePairs = 0, zoneFrozen = 0;
   let toStand = 0, toMove = 0, moveSec = 0, standSec = 0;

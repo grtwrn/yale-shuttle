@@ -93,3 +93,27 @@ test.each(['legacy','served-control-v2'])('learning cleanup preserves active cal
   expect(await fs.readFile(path.join(dir, champion, 'feed-2026-10-12-14-123.jsonl.gz'), 'utf8')).toBe('raw');
   expect(await fs.readFile(path.join(dir, retired, 'frozen-candidate.json'), 'utf8')).toContain('startedAt');
 });
+test('learning cleanup protects every linked active trial prefix across the closed-store cap and age limit',async()=>{
+ const dir=await root(),now=Date.parse('2026-10-24T12:00:00Z');
+ await atomicJson(path.join(dir,'state.json'),{id:'cycle-200',trial:{id:'cycle-100'},priorContexts:[{id:'cycle-100'}],forecastProtocol:'served-control-v2'});
+ for(const id of ['cycle-100','cycle-200','cycle-50']){
+  const folder=path.join(dir,id);await fs.mkdir(folder);await atomicJson(path.join(folder,'frozen-candidate.json'),{startedAt:Number(id.slice(6))});
+  await fs.writeFile(path.join(folder,'feed-2026-10-01-00-123.jsonl.gz'),'original');
+ }
+ const result=await maintainLearning(dir,{now,closedMaxBytes:1});
+ expect(result.activeContexts.sort()).toEqual(['cycle-100','cycle-200']);expect(result.removed).toHaveLength(1);expect(result.removed[0].cycle).toBe('cycle-50');
+ for(const id of ['cycle-100','cycle-200'])expect(await fs.readFile(path.join(dir,id,'feed-2026-10-01-00-123.jsonl.gz'),'utf8')).toBe('original');
+});
+test('published champion evidence protects all contexts sharing its original trial vintage',async()=>{
+ const dir=await root(),now=Date.parse('2026-10-24T12:00:00Z');
+ await atomicJson(path.join(dir,'state.json'),{id:'cycle-300',forecastProtocol:'served-control-v2',champion:{version:'prospective-100'}});
+ for(const id of ['cycle-100','cycle-200']){
+  const folder=path.join(dir,id);await fs.mkdir(folder);await atomicJson(path.join(folder,'frozen-candidate.json'),{startedAt:Number(id.slice(6)),trial:{startedAt:100}});
+  await fs.writeFile(path.join(folder,'feed-2026-10-01-00-123.jsonl.gz'),'original');
+ }
+ const result=await maintainLearning(dir,{now,closedMaxBytes:1});expect(result.deletedFiles).toBe(0);expect(result.protectedInputBytes).toBe(16);
+});
+test('malformed active trial links refuse deletion',async()=>{
+ const dir=await root();await atomicJson(path.join(dir,'state.json'),{id:'cycle-300',priorContexts:[{id:'../escape'}]});
+ expect((await maintainLearning(dir)).skipped).toContain('Invalid active trial');
+});

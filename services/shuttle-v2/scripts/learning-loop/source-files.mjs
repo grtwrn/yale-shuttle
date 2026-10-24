@@ -11,7 +11,8 @@ export function learningSourceFiles(service){
   else if(/\.(ts|tsx|mjs|json)$/.test(file)&&!/(\.test\.|__fixtures__)/.test(file))files.push(file);
  }};
  for(const folder of ['src','web/src','scripts/learning-loop'])walk(path.join(service,folder));
- for(const name of ['scripts/reestimate-lib.mjs','scripts/reestimate-validation.mjs','scripts/archive-files.mjs','scripts/canary-metrics.mjs','package-lock.json'])files.push(path.join(service,name));
+ for(const name of ['scripts/reestimate-lib.mjs','scripts/reestimate-validation.mjs','scripts/archive-files.mjs','scripts/canary-metrics.mjs',
+  'package.json','package-lock.json','tsconfig.json','web/package.json','web/package-lock.json','web/tsconfig.json'])files.push(path.join(service,name));
  return files;
 }
 

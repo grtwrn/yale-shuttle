@@ -15,6 +15,14 @@ export async function maintainLearning(root, { now = Date.now(), dryRun = false,
   closedMaxBytes = 256 * MiB, closedMaxAgeMs = 7 * DAY } = {}) {
   const state = await readJson(path.join(root, 'state.json'), null);
   if (!state || !/^cycle-\d+$/.test(state.id)) return { skipped: 'No valid current cycle; no evaluation evidence deleted' };
+  const contexts=state.priorContexts??[];
+  if(!Array.isArray(contexts)||contexts.some(c=>!/^cycle-\d+$/.test(c?.id??''))
+    ||new Set(contexts.map(c=>c.id)).size!==contexts.length)
+    return {skipped:'Invalid active trial context links; no evaluation evidence deleted'};
+  const activeContexts=new Set([state.id,...contexts.map(c=>c.id)]);
+  if(state.trial?.id){
+    if(!/^cycle-\d+$/.test(state.trial.id)||!activeContexts.has(state.trial.id))return {skipped:'Original trial context is missing; no evaluation evidence deleted'};
+  }
   const retainedHours = new Set([hour(now), hour(now - 3600000)]);
   for (const p of Object.values(state.pending ?? {})) if (!p.closed && Number.isFinite(p.at)) retainedHours.add(hour(p.at));
   for (const v of Object.values(state.visits ?? {})) if (Number.isFinite(v.candidate?.receivedAt)) retainedHours.add(hour(v.candidate.receivedAt));
@@ -27,16 +35,16 @@ export async function maintainLearning(root, { now = Date.now(), dryRun = false,
     if (!entry.isDirectory() || !/^cycle-\d+$/.test(entry.name)) continue;
     const directory = path.join(root, entry.name);
     const frozen = await readJson(path.join(directory, 'frozen-candidate.json'), null);
-    const championEvidence = frozen && state.champion?.version === `prospective-${frozen.startedAt}`;
+    const championEvidence = frozen && state.champion?.version === `prospective-${frozen.trial?.startedAt??frozen.startedAt}`;
     for (const file of await fs.readdir(directory, { withFileTypes: true })) {
       const h = feedHour(file.name); if (!file.isFile() || !h) continue;
       const name = path.join(directory, file.name), stat = await fs.stat(name);
       const item = { file: name, bytes: stat.size, cycle: entry.name, time: Number(entry.name.slice(6)), reason: 'superseded-cycle' };
-      if (entry.name !== state.id && !championEvidence) closed.push(item);
+      if (!activeContexts.has(entry.name) && !championEvidence) closed.push(item);
       else {
         activeBytes += stat.size;
         const end = Date.parse(h.slice(0, 10) + 'T' + h.slice(11) + ':00:00Z') + 3600000;
-        if (entry.name === state.id && state.forecastProtocol !== 'served-control-v2' && warmingCutoff !== null && end < warmingCutoff
+        if (activeContexts.has(entry.name) && state.forecastProtocol !== 'served-control-v2' && warmingCutoff !== null && end < warmingCutoff
           && !retainedHours.has(h) && stat.mtimeMs < now - 60000) warming.push({ ...item, reason: 'unreferenced-warming-input' });
       }
     }
@@ -53,7 +61,7 @@ export async function maintainLearning(root, { now = Date.now(), dryRun = false,
   const current = await readJson(path.join(root, 'state.json'), null);
   if (current?.id !== state.id) return { skipped: 'Cycle changed during retention planning' };
   if (!dryRun) for (const item of removed) await fs.unlink(item.file);
-  const result = { updatedAt: new Date(now).toISOString(), activeCycle: state.id, dryRun,
+  const result = { updatedAt: new Date(now).toISOString(), activeCycle: state.id, activeContexts:[...activeContexts], dryRun,
     deletedFiles: removed.length, freedBytes: removed.reduce((sum, item) => sum + item.bytes, 0),
     protectedInputBytes: activeBytes - warming.reduce((sum, item) => sum + item.bytes, 0),
     retainedSupersededBytes: closedBytes,

@@ -27,10 +27,21 @@ function exactReceiptVerifier(state: any, rows: any[], seed: any) {
     || modelKey(seed.modelParams) !== modelKey(state.champion)) throw Error('Original source seed identity is missing or changed');
   let cursor = seed.cursor, at = seed.at, version = seed.observationVersion, chain = initialSourceChain(seed, seedSha256, state.sourceKey);
   if (chain !== state.source.initialChain) throw Error('Original source chain changed');
+  const qualification=state.contextQualification;
+  if(state.trial&&(Boolean(state.contextQualifiedAt)!==Boolean(qualification)
+    ||qualification&&(!Number.isSafeInteger(qualification.at)||qualification.at!==state.contextQualifiedAt||qualification.at<state.startedAt)))
+    throw Error('Context qualification clock/receipt is inconsistent');
+  if(state.trial&&rows.length&&!qualification)throw Error('Forecast context lacks positive served-control qualification');
   const needed = new Set(rows.map(r => r.champion?.control?.source?.cursor)), chains = new Map<number, any>();
+  if(qualification)needed.add(qualification.source?.cursor);
   const recent = new Map<number, string>(), controls = new Map<string, any[]>(), inputs = new Set<string>();
   const curbs = new Map<string, { row: any; kind: 'arrival' | 'outcome' }[]>();
   const evidence = new Map<any, Partial<Record<'arrival' | 'outcome', CurbEvidence>>>();
+  let qualificationInput=false;
+  if(qualification){
+    if(!qualification.inputHash)throw Error('Missing context qualification input');
+    inputs.add(qualification.inputHash);
+  }
   for (const row of rows) {
     if (!row.inputHash) throw Error('Missing exact forecast input receipt');
     const group = controls.get(row.inputHash) ?? []; group.push(row); controls.set(row.inputHash, group); inputs.add(row.inputHash);
@@ -44,6 +55,17 @@ function exactReceiptVerifier(state: any, rows: any[], seed: any) {
   }
   function accept({ raw, input }: any) {
     const hash = digest(raw);
+    if(qualification&&hash===qualification.inputHash){
+      const packet=input.source,control=qualification.productionControl;
+      if(input.receivedAt!==qualification.at||state.contextQualifiedAt!==qualification.at||qualification.at<state.startedAt
+        ||packet?.frames?.length!==0||packet.hasMore!==false||packet.cursor!==packet.latest
+        ||packet.cursor!==qualification.source.cursor||packet.feed?.server_eta?.at!==qualification.source.at
+        ||!Array.isArray(packet.feed?.server_eta?.rows)||!packet.feed.server_eta.rows.length
+        ||!Number.isSafeInteger(control?.compared)||control.compared<=0||control.matched!==control.compared
+        ||control.missing!==0||control.mismatched!==0||control.modelAt!==qualification.source.at)
+        throw Error('Context qualification differs from its positive caught-up served control');
+      qualificationInput=true;
+    }
     if (controls.has(hash)) {
       for (const row of controls.get(hash)!) {
         if (!productionControlInputValid(row, input)) throw Error('Exact control differs from its retained HTTP input');
@@ -84,6 +106,14 @@ function exactReceiptVerifier(state: any, rows: any[], seed: any) {
   }
   function finish() {
     if (inputs.size || controls.size) throw Error('Required exact forecast/outcome HTTP inputs are missing');
+    if(qualification){
+      const s=qualification.source,recorded=chains.get(s.cursor);
+      const final=state.calibratedAt&&qualification.at>=state.calibratedAt;
+      const candidate={version:state.trial?.id??state.id,params:{...state.candidate.params,CONFORMAL:final?state.candidate.params.CONFORMAL:UNIT}};
+      if(!qualificationInput||!recorded||s.seedSha256!==seedSha256||s.epoch!==seed.epoch||s.build!==seed.build||s.sourceKey!==state.sourceKey
+        ||Object.entries(recorded).some(([key,value])=>s[key]!==value)||s.championModel!==modelKey(state.champion)
+        ||s.challengerModel!==modelKey(candidate))throw Error('Context qualification is not bound to its original exact source chain/models');
+    }
     for (const row of rows) {
       if (row.det !== null) {
         const { arrival, outcome } = evidence.get(row) ?? {};
@@ -95,7 +125,7 @@ function exactReceiptVerifier(state: any, rows: any[], seed: any) {
           throw Error('Scored curb outcome differs from its two prospective retained observations');
       }
       const s = row.champion?.control?.source, recorded = s && chains.get(s.cursor);
-      const candidate = { version: state.id, params: { ...state.candidate.params, CONFORMAL: row.phase === 'calibration' ? UNIT : state.candidate.params.CONFORMAL } };
+      const candidate = { version: state.trial?.id ?? state.id, params: { ...state.candidate.params, CONFORMAL: row.phase === 'calibration' ? UNIT : state.candidate.params.CONFORMAL } };
       if (!recorded || s.seedSha256 !== seedSha256 || s.epoch !== seed.epoch || s.build !== seed.build || s.sourceKey !== state.sourceKey
         || Object.entries(recorded).some(([key, value]) => s[key] !== value)
         || s.championModel !== modelKey(state.champion) || s.challengerModel !== modelKey(candidate)

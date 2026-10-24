@@ -98,6 +98,15 @@ describe('chronological phases and paired quality gates',()=>{
   expect(decision.promote).toBe(true);expect(decision.reasons).toEqual([]);
   expect(decision.uncertainty.clusters).toBe(120);
  });
+ it('keeps the original prospective clocks and requires a current-context qualification receipt',()=>{
+  const s=frozen();s.trial={id:'original-trial',startedAt:s.startedAt};s.startedAt=at+3*86400000;
+  expect(evaluate(s,rows(),days).promote).toBe(false);
+  s.contextQualifiedAt=s.startedAt+1000;expect(evaluate(s,rows(),days).promote).toBe(false);
+  // Source/HTTP binding is verified separately before this policy function.
+  s.contextQualification={at:s.contextQualifiedAt};
+  const decision=evaluate(s,rows(),days);expect(decision.promote).toBe(true);expect(decision.reasons).toEqual([]);
+  expect(decision.totals.challenger['13|all'].n).toBe(120);
+ });
  it('refuses unverified controls and a cycle with an observed protocol failure without dropping rows',()=>{
   const bad=rows();delete bad[0].champion.control;
   const noReceipt=evaluate(frozen(),bad,days);expect(noReceipt.promote).toBe(false);
