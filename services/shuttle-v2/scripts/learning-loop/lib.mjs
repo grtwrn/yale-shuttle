@@ -143,11 +143,12 @@ export function excludePending(state, now, reason) {
 }
 
 export function phaseAt(state, at) {
+ const day=etDay(at);
  if(state.calibratedAt!=null){
-  if(at>state.calibratedAt)return 'test';
+  const frozenDay=etDay(state.calibratedAt),testDay=state.testStartDay??(state.calibrationDays.includes(frozenDay)?nextDay(frozenDay):frozenDay);
+  if(at>state.calibratedAt)return day>=testDay?'test':'settling-calibration';
   if(at===state.calibratedAt)return 'settling-calibration';
  }
- const day=etDay(at);
  if(day<state.calibrationDays[0])return 'warming';
  if(state.calibrationDays.includes(day))return 'calibration';
  if(!state.calibratedAt||at<state.calibratedAt)return 'settling-calibration';
@@ -216,6 +217,9 @@ export function clusteredImprovement(rows, conformal) {
 export function evaluate(state, rows, closedDays) {
  const test=rows.filter(p=>p.phase==='test'&&closedDays.includes(p.day));
  const ids=new Set();const reasons=[];
+ if(state.trial&&(!state.testStartDay||!Array.isArray(state.calibrationDays)
+   ||closedDays.some(day=>day<state.testStartDay||state.calibrationDays.includes(day))))
+  reasons.push('Untouched test dates overlap calibration or precede the frozen test window.');
  if(state.trial&&(!state.contextQualifiedAt||!state.contextQualification))reasons.push('Current producer context has no positive served-control qualification.');
  if(state.protocolFailures?.count)reasons.push('Observed production-control protocol failures remain in this cycle.');
  for(const p of test){

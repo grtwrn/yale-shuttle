@@ -319,7 +319,8 @@ async function maintain(now:number){
   }
   if(!fs.existsSync(calibrated))atomic(calibrated,candidate);
   state.candidate=candidate;state.calibratedCandidateSha256=fileHash(calibrated);
-  state.calibratedAt=now;state.testStartDay=etDay(now);state.conformalFit=fit;checkpoint();
+  state.calibratedAt=now;const today=etDay(now);
+  state.testStartDay=state.calibrationDays.includes(today)?nextDay(today):today;state.conformalFit=fit;checkpoint();
   event('intervals-frozen',{id:state.id,calibratedAt:now,fit});
  }
  if(!state.calibratedAt)return;

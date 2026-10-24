@@ -133,9 +133,10 @@ freezing, only later observations enter the untouched test phase.
 Qualification records whether the interval artifact already existed at its
 computation. A qualifier captured before maintenance can share the same
 millisecond as the subsequent freeze, so clock equality cannot substitute for
-that ordering receipt. Once factors freeze, later predictions enter test even
-when the current date was previously appended as a calibration extension.
-The exact freeze timestamp itself supplies no new test prediction.
+that ordering receipt. Once factors freeze on an extended calibration date,
+the rest of that date stays unscored and test begins on the next untouched ET
+date. The exact freeze timestamp itself supplies no new test prediction. The
+publication gate independently refuses test dates allocated to calibration.
 
 Interval fitting uses model-time quantiles and converts the observed outcome
 to that same origin. Only calibration intervals whose two bounds are affected
