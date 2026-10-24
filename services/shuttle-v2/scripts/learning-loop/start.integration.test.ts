@@ -51,11 +51,12 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
   const champion = { version: 'fixture-champion', accepted: true, publishedAt: initial - 86400000, params: structuredClone(COMPILED_MODEL_PARAMS) };
   const params = structuredClone(champion.params); params.P_REPEAT_STAND = .75; params.CONFORMAL = { '0-2': 1, '2-5': 1, '5-10': 1, '10-30': 1 };
   const producer = new ServerEta({ routes: ROUTE_LISTS.map(r => r.label) }); producer.useK10Trial(() => new Map());
-  let inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let version = 0, payload: any, mode = 'healthy',build='fixture-build',restarts=0;
+  let inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let version = 0, payload: any, mode = 'healthy',build='fixture-build',restarts=0,fleetGeneration=0;
   let producerExecution=fixtureProducerExecution();
   const publish = (at = serverNow()) => {
     const since = new Date((statisticalTrial?at:initial) - 60000).toISOString();
     payload = { ...cap.static, model_params: champion, buses: structuredClone(cap.frames[4].buses).map((b: any) => {
+      if(fleetGeneration){b.bus_id+=100000*fleetGeneration;b.bus_name+=`-replacement-${fleetGeneration}`;}
       b.observed_at = at; for (const field of ['at_stop_since', 'stationary_since', 'last_moved_at']) if (b[field]) b[field] = since; return b;
     }) };
     const wire = producer.contribute(payload, ++version, at, true);
@@ -143,6 +144,7 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
     mode: (value: string) => { mode = value; sent = false; },
     tomorrow: () => { offset = 86400000; },
     advance: (ms=5000) => { offset+=ms;publish(); },
+    replaceFleet:()=>{fleetGeneration++;publish();},
     restart: (differentExecution=false,epochChange=true,buildChange=true) => {
       restarts++;if(buildChange)build=`replacement-build-${restarts}`;if(epochChange)inputs=new EvaluationInputs({epoch:`replacement-epoch-${restarts}`});
       if(differentExecution)producerExecution=fixtureProducerExecution(10+restarts);
@@ -417,10 +419,16 @@ describe('actual frozen trial continuity across producer contexts',()=>{
    expect(readTrialPairs(f.root,tested).some((row:any)=>row.phase==='test')).toBe(false);
    expect(read(path.join(f.root,'status.json')).phase).toBe('settling-calibration');
    expect(tested.contextQualification.at).toBe(tested.calibratedAt);expect(tested.contextQualification.intervalsFrozenAt).toBeNull();
-   f.advance(86400000);run=f.launch();expect(await run.exit,run.log()).toBe(0);
-   const untouched=read(path.join(f.root,'state.json')),rows=readTrialPairs(f.root,untouched).filter((row:any)=>row.phase==='test');
-   expect(rows.length).toBeGreaterThan(0);expect(rows.every((row:any)=>!untouched.calibrationDays.includes(row.day))).toBe(true);
+   // The previous fleet's closed visit/horizon identities remain retained.
+   // Introduce new buses through the real producer to obtain new prospective
+   // forecasts; an unchanged fixture cannot manufacture another visit.
+   f.advance(86400000);f.replaceFleet();run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const untouched=read(path.join(f.root,'state.json')),pending=Object.values(untouched.pending).filter((row:any)=>row.phase==='test');
+   expect(pending.length).toBeGreaterThan(0);expect(pending.every((row:any)=>!untouched.calibrationDays.includes(row.day))).toBe(true);
+   expect(read(path.join(f.root,'status.json')).phase).toBe('test');
    f.restart();run=f.launch();expect(await run.exit,run.log()).toBe(0);const carried=read(path.join(f.root,'state.json'));
+   const rows=readTrialPairs(f.root,carried).filter((row:any)=>row.phase==='test');
+   expect(rows.length).toBe(pending.length);expect(rows.every((row:any)=>!carried.calibrationDays.includes(row.day)&&row.det===null)).toBe(true);
    expect(carried.trial.id).toBe(initial.id);expect(carried.calibratedCandidateSha256).toBe(supplied.calibratedCandidateSha256);
    expect(carried.sourceRefusal).toBeUndefined();verifyContextTransitions(f.root,trialContexts(f.root,carried));
   }finally{await f.close();}
