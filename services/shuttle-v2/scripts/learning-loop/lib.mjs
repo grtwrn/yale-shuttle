@@ -143,11 +143,30 @@ export function excludePending(state, now, reason) {
 }
 
 export function phaseAt(state, at) {
+ if(state.calibratedAt!=null){
+  if(at>state.calibratedAt)return 'test';
+  if(at===state.calibratedAt)return 'settling-calibration';
+ }
  const day=etDay(at);
  if(day<state.calibrationDays[0])return 'warming';
  if(state.calibrationDays.includes(day))return 'calibration';
  if(!state.calibratedAt||at<state.calibratedAt)return 'settling-calibration';
  return 'test';
+}
+
+/** Qualification precedes maintenance in a poll. Equal millisecond clocks
+ * cannot tell whether the interval artifact existed when engines computed. */
+export function qualificationUsesFinalIntervals(state, qualification){
+ if(!qualification||!Number.isSafeInteger(qualification.at)||!Object.hasOwn(qualification,'intervalsFrozenAt'))
+  throw Error('Missing qualification interval-freeze ordering receipt');
+ const frozenAt=qualification.intervalsFrozenAt;
+ if(frozenAt===null){
+  if(state.calibratedAt!=null&&qualification.at>state.calibratedAt)throw Error('Pre-fit qualification follows interval freeze');
+  return false;
+ }
+ if(!Number.isSafeInteger(frozenAt)||frozenAt!==state.calibratedAt||frozenAt>qualification.at)
+  throw Error('Qualification interval-freeze clock is inconsistent');
+ return true;
 }
 
 /** Resample paired day/bus service blocks, rather than correlated stop rows.

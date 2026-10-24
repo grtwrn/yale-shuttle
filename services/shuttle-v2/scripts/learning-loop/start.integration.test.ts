@@ -149,7 +149,7 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
       source=makeSource();publish();
     },
     breakExecution:()=>{producerExecution={...producerExecution,sha256:'0'.repeat(64)};},
-    freezeSyntheticIntervals:()=>{
+    freezeSyntheticIntervals:(atOverride?:number)=>{
       // Protocol setup only: this supplied artifact does not claim measured
       // calibration support. Real support/publication gates remain in force.
       const current=read(path.join(root,'state.json')),folder=path.join(root,current.id);
@@ -157,7 +157,7 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
         {version:current.trial.id,publishedAt:current.trial.startedAt,params:current.candidate.params});
       own.recover(folder,current.source.runtime,current.source.seedSha256);
       current.candidate=structuredClone(current.candidate);current.candidate.params.CONFORMAL['2-5']=1.5;
-      current.calibratedAt=serverNow();current.testStartDay=etDay(current.calibratedAt);
+      current.calibratedAt=atOverride??serverNow();current.testStartDay=etDay(current.calibratedAt);
       own.setModels(current.champion,{version:current.trial.id,publishedAt:current.trial.startedAt,params:current.candidate.params});
       current.source.previousRuntime=current.source.runtime;current.source.runtime=own.persist(folder);
       const bytes=Buffer.from(JSON.stringify(current.candidate));fs.writeFileSync(path.join(folder,'calibrated-candidate.json'),bytes);
@@ -404,6 +404,20 @@ describe('actual frozen trial continuity across producer contexts',()=>{
    const final=read(path.join(f.root,'state.json'));expect(final.contextQualifiedAt).toBeGreaterThan(final.startedAt);
    expect(final.calibratedCandidateSha256).toBe(supplied.calibratedCandidateSha256);
    expect(f.requests.some(r=>r.method==='POST')).toBe(false);
+  }finally{await f.close();}
+ },90000);
+ it('keeps pre-fit qualification at the freeze timestamp and starts testing on an extended calibration date',async()=>{
+  const {f,initial}=await initialize();try{
+   f.advance(5*86400000);let run=f.launch();expect(await run.exit,run.log()).toBe(0);
+   const qualified=read(path.join(f.root,'state.json'));expect(qualified.contextQualification.intervalsFrozenAt).toBeNull();
+   expect(qualified.calibrationDays).toContain(etDay(qualified.contextQualifiedAt));
+   const supplied=f.freezeSyntheticIntervals(qualified.contextQualifiedAt);f.advance(5000);
+   run=f.launch();expect(await run.exit,run.log()).toBe(0);const tested=read(path.join(f.root,'state.json'));
+   expect(readTrialPairs(f.root,tested).some((row:any)=>row.phase==='test')).toBe(true);
+   expect(tested.contextQualification.at).toBe(tested.calibratedAt);expect(tested.contextQualification.intervalsFrozenAt).toBeNull();
+   f.restart();run=f.launch();expect(await run.exit,run.log()).toBe(0);const carried=read(path.join(f.root,'state.json'));
+   expect(carried.trial.id).toBe(initial.id);expect(carried.calibratedCandidateSha256).toBe(supplied.calibratedCandidateSha256);
+   expect(carried.sourceRefusal).toBeUndefined();verifyContextTransitions(f.root,trialContexts(f.root,carried));
   }finally{await f.close();}
  },90000);
  it.each(['gap','unconfirmed-build','malformed','invalid-json'])('retains a real trial refusal for %s without inventing another clean cohort',async mode=>{

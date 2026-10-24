@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clusteredImprovement, dayStart, evaluate, excludePending, nextDay,
-  observe, phaseAt, recordForecast, scoreEstimate, calibrationObservation, productionControlValid, productionControlInputValid, SETTLE_MS, UNIT } from './lib.mjs';
+  observe, phaseAt, qualificationUsesFinalIntervals,recordForecast, scoreEstimate, calibrationObservation, productionControlValid, productionControlInputValid, SETTLE_MS, UNIT } from './lib.mjs';
 import { validationCells } from '../reestimate-validation.mjs';
 
 const at=Date.parse('2026-10-14T12:00:00Z');
@@ -76,6 +76,19 @@ describe('prospective visit sampling and causal outcomes',()=>{
 });
 
 describe('chronological phases and paired quality gates',()=>{
+ it('starts untouched test predictions after freezing on an extended calibration date',()=>{
+  const frozenAt=Date.parse('2026-10-27T15:00:00Z'),s={calibrationDays:['2026-10-25','2026-10-26','2026-10-27'],calibratedAt:frozenAt};
+  expect(phaseAt(s,frozenAt-1)).toBe('calibration');expect(phaseAt(s,frozenAt)).toBe('settling-calibration');
+  expect(phaseAt(s,frozenAt+1)).toBe('test');expect(s.calibrationDays).toHaveLength(3);
+ });
+ it('uses the explicit computation ordering when qualification and freezing share a clock tick',()=>{
+  const s={calibratedAt:at};expect(qualificationUsesFinalIntervals(s,{at,intervalsFrozenAt:null})).toBe(false);
+  expect(qualificationUsesFinalIntervals(s,{at,intervalsFrozenAt:at})).toBe(true);
+  expect(qualificationUsesFinalIntervals(s,{at:at+1,intervalsFrozenAt:at})).toBe(true);
+ });
+ it.each([{at},{at,intervalsFrozenAt:at+1},{at:at+1,intervalsFrozenAt:null}])('refuses a missing/inconsistent interval ordering receipt: %j',receipt=>{
+  expect(()=>qualificationUsesFinalIntervals({calibratedAt:at},receipt)).toThrow();
+ });
  it('handles DST day starts and waits for frozen intervals before testing',()=>{
   expect(new Date(dayStart('2026-11-02')).toISOString()).toBe('2026-11-02T05:00:00.000Z');
   expect(nextDay('2026-10-31')).toBe('2026-11-01');
