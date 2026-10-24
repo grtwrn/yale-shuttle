@@ -5,7 +5,7 @@ const ARRIVAL_MARGIN_SEC = 90;
 const COMMUTE_TIE_SEC = 60;
 
 export function optionTier(o: TripOption): number {
-  return o.departed || o.etaUnavailable ? 2 : slowerThanWalk(o) ? 1 : 0;
+  return o.departed || o.etaUnavailable || o.destinationEtaUnavailable ? 2 : slowerThanWalk(o) ? 1 : 0;
 }
 
 /** Full destination windows. Without one, pickup can only bound the earliest

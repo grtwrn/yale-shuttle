@@ -39,6 +39,7 @@ describe('route card destination arrival', () => {
   it('does not show a destination time for stale or departed shuttle options', () => {
     expect(destinationArrivalView({ ...option, etaUnavailable: true }, now)).toBeNull();
     expect(destinationArrivalView({ ...option, departed: true }, now)).toBeNull();
+    expect(destinationArrivalView({ ...option, destinationEtaUnavailable: true }, now)).toBeNull();
   });
   it('does not invent a window for walking, future departures or missing destination forecasts', () => {
     const walk = destinationArrivalView({ ...option, mode: 'walk' }, now)!;

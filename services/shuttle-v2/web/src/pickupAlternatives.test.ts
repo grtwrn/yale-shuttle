@@ -81,6 +81,13 @@ describe('walking versus earlier-arriving pickups on one line', () => {
     expect(choice.boardStopId).toBe(100);
     expect(choice.pickupAlternatives).toBeUndefined();
   });
+  it('uses actual pickup distance when nearby opposite curbs both have zero walking time', () => {
+    const nearest = { ...close, walkToSec: 0, walkToMeters: 0, destinationEtaUnavailable: true };
+    const acrossStreet = { ...farther, walkToSec: 0, walkToMeters: 28 };
+    const choice = routePickupChoices([acrossStreet, nearest]);
+    expect(choice.boardStopId).toBe(nearest.boardStopId);
+    expect(choice.pickupAlternatives).toEqual([{ ...acrossStreet, pickupPreference: 'more-walking' }]);
+  });
   it('keeps the sensible exit at the close pickup instead of taking an extra lap to save a few steps', () => {
     const extraLap = { ...close, alightStopId: 98, walkFromSec: 0, totalSec: close.totalSec + 900, rideSec: close.rideSec + 900 };
     const choice = routePickupChoices([extraLap, farther, close]);

@@ -67,7 +67,7 @@ describe('useful route rankings', () => {
   it('immediately demotes unavailable/departed routes and accepts roster changes', () => {
     const red = route('Red', 60, 300, 120, 1500), blue = route('Blue', 180, 600, 600, 1200);
     const first = stableTripOrder([red, blue], null, at);
-    for (const unavailable of [{ ...red, departed: true }, { ...red, etaUnavailable: true }]) {
+    for (const unavailable of [{ ...red, departed: true }, { ...red, etaUnavailable: true }, { ...red, destinationEtaUnavailable: true }]) {
       expect(labels(stableTripOrder([unavailable, blue], first.state, at + 1).options)).toEqual(['Blue', 'Red']);
     }
     expect(labels(stableTripOrder([blue], first.state, at + 1).options)).toEqual(['Blue']);

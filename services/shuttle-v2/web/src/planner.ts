@@ -23,6 +23,8 @@ export type TripOption = {
   routeLabel: string; color: string;
   boardStopId: number; alightStopId: number;
   walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
+  /** Preserve actual pickup proximity when several curbs fall inside the zero-walk radius. */
+  walkToMeters?: number;
   totalSec: number; busName: string;
   /** Route's ride duration at planning time, independent of live ETA differences. */
   plannedRideSec?: number;
@@ -79,6 +81,8 @@ export type TripOption = {
   /** Existing countdown and selected boarding evidence, independent of destination availability. */
   livePickupSelection?: LivePickupSelection;
   etaUnavailable?: boolean;
+  /** Pickup timing can remain usable when a long ride has no forward destination forecast. */
+  destinationEtaUnavailable?: boolean;
   /** Published request-only pickup; a forecasted pass does not arrange service. */
   pickupRequest?: PickupRequest;
 };
@@ -457,6 +461,7 @@ export function planTrip(
     const stops = mergedRouteStops(cfg, routeStops);
     if (stops.length < 2) continue;
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
+    const closestPickupDistance = Math.min(...stops.map(id => fromDist[id] ?? Infinity));
 
     for (let i = 0; i < stops.length; i++) {
       const b = stops[i];
@@ -572,7 +577,12 @@ export function planTrip(
             busName = next.busName;
           }
         }
-        if (cumRide > MAX_RIDE_SEC && !destination) continue;
+        const destinationEtaUnavailable = !destination && cumRide > MAX_RIDE_SEC;
+        // A missing onward forecast must not remove the rider's nearest
+        // pickup. Keep its geometry and independent pickup timing, without
+        // advertising an arrival based on a long historical ride. Future
+        // plans and farther untimed pickups retain the existing bound.
+        if (destinationEtaUnavailable && (futureMode || !tracked || fromDist[b] !== closestPickupDistance)) continue;
         const totalSec = destination ? (destination.pointMs - now) / 1000
           : walkToSec + waitSec + cumRide + walkFromSec;
         const rideSec = destination ? Math.max(0, totalSec - walkToSec - waitSec - walkFromSec) : cumRide;
@@ -583,9 +593,10 @@ export function planTrip(
           mode: "shuttle",
           routeLabel: cfg.label, color: cfg.color,
           boardStopId: b, alightStopId: cur,
-          walkToSec, waitSec, rideSec, plannedRideSec: cumRide, walkFromSec,
+          walkToSec, walkToMeters: fromDist[b], waitSec, rideSec, plannedRideSec: cumRide, walkFromSec,
           departed, journeyArrival: destination,
           ...(etaUnavailable ? { etaUnavailable } : {}),
+          ...(destinationEtaUnavailable ? { destinationEtaUnavailable } : {}),
           totalSec, busName,
           directWalkSec,
           busEtaSec,
@@ -893,7 +904,7 @@ export function commuteSec(o: TripOption): number {
  * agree with the row ordering about which options are worth offering.
  */
 export function slowerThanWalk(o: TripOption): boolean {
-  return o.mode === "shuttle" && !o.departed &&
+  return o.mode === "shuttle" && !o.departed && !o.destinationEtaUnavailable &&
     o.directWalkSec <= 3600 &&
     commuteSec(o) > o.directWalkSec;
 }
@@ -917,7 +928,7 @@ export function slowerThanWalk(o: TripOption): boolean {
 export function mostDirectOption(options: readonly TripOption[]): TripOption | undefined {
   let best: TripOption | undefined;
   for (const o of options) {
-    if (o.mode !== "shuttle" || o.departed || o.etaUnavailable || slowerThanWalk(o)) continue;
+    if (o.mode !== "shuttle" || o.departed || o.etaUnavailable || o.destinationEtaUnavailable || slowerThanWalk(o)) continue;
     if (!best) { best = o; continue; }
     const d = commuteSec(o) - commuteSec(best);
     // Geometry-only ties: a live ETA must not change which route is direct.
@@ -1105,7 +1116,7 @@ export function keptThirdLabel(visible: readonly TripOption[]): string | null {
 export function pickupFallback(current: TripOption, candidate: TripOption | undefined, protectedRoute = false): TripOption | undefined {
   if (protectedRoute || current.mode !== 'shuttle' || !candidate || candidate.mode !== 'shuttle'
     || candidate.routeLabel !== current.routeLabel || candidate.boardStopId === current.boardStopId
-    || candidate.departed || candidate.etaUnavailable || current.etaUnavailable
+    || candidate.departed || candidate.etaUnavailable || candidate.destinationEtaUnavailable || current.etaUnavailable
     || !Number.isFinite(candidate.totalSec) || candidate.walkToSec > current.walkToSec - 60) return undefined;
   if (current.journeyArrival && !candidate.journeyArrival) return undefined;
   return bestRoutePickup([current, candidate]) === candidate ? candidate : undefined;
@@ -1114,9 +1125,10 @@ export function pickupFallback(current: TripOption, candidate: TripOption | unde
 /** Shared initial/live per-route choice: catchable first, then least walking
  * among arrivals within three minutes of the best journey time. */
 export function bestRoutePickup(group: readonly TripOption[]): TripOption {
-  const available = group.filter(o => !o.departed && !o.etaUnavailable);
+  const available = group.filter(o => !o.departed && !o.etaUnavailable && !o.destinationEtaUnavailable);
+  const pickupTimed = group.filter(o => !o.departed && !o.etaUnavailable);
   const catchable = group.filter(o => !o.departed);
-  const candidates = available.length ? available : catchable.length ? catchable : group;
+  const candidates = available.length ? available : pickupTimed.length ? pickupTimed : catchable.length ? catchable : group;
   const minTotal = Math.min(...candidates.map(o => o.totalSec));
   const nearBest = candidates.filter(o => o.totalSec <= minTotal + 180);
   nearBest.sort((a, b) => (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
@@ -1136,14 +1148,15 @@ export function routePickupChoices(group: readonly TripOption[]): TripOption {
   // Retain the existing destination/ride tradeoff at each boarding stop.
   // An extra lap to save a few steps at the exit is not a better pickup.
   const closest = [...byStop.values()].map(bestRoutePickup).sort((a, b) =>
-    a.walkToSec - b.walkToSec || a.walkFromSec - b.walkFromSec || a.totalSec - b.totalSec)[0]!;
+    a.walkToSec - b.walkToSec || (a.walkToMeters ?? Infinity) - (b.walkToMeters ?? Infinity)
+    || a.walkFromSec - b.walkFromSec || a.totalSec - b.totalSec)[0]!;
   const faster = bestRoutePickup(group);
-  if (faster.boardStopId === closest.boardStopId || faster.departed || faster.etaUnavailable
-    || (!closest.etaUnavailable && !closest.departed && faster.totalSec > closest.totalSec - 180)) {
-    return closest.etaUnavailable ? { ...closest, pickupPreference: 'closest-stop' } : closest;
+  if (faster.boardStopId === closest.boardStopId || faster.departed || faster.etaUnavailable || faster.destinationEtaUnavailable
+    || (!closest.etaUnavailable && !closest.destinationEtaUnavailable && !closest.departed && faster.totalSec > closest.totalSec - 180)) {
+    return closest.etaUnavailable || closest.destinationEtaUnavailable ? { ...closest, pickupPreference: 'closest-stop' } : closest;
   }
   return { ...closest, pickupPreference: 'closest-stop',
-    pickupAlternatives: [{ ...faster, pickupPreference: closest.etaUnavailable || closest.departed ? 'more-walking' : 'arrive-sooner' }] };
+    pickupAlternatives: [{ ...faster, pickupPreference: closest.etaUnavailable || closest.destinationEtaUnavailable || closest.departed ? 'more-walking' : 'arrive-sooner' }] };
 }
 
 /** Missing evidence must not retain an old countdown or imply a departure. */
@@ -1174,10 +1187,12 @@ export function applyPickupServicePolicy(option: TripOption, at: Date): TripOpti
 export function labelPickupChoices(group: readonly TripOption[]): TripOption[] {
   if (!group.length) return [];
   const closest = [...group].sort((a, b) => a.walkToSec - b.walkToSec
+    || (a.walkToMeters ?? Infinity) - (b.walkToMeters ?? Infinity)
     || a.walkFromSec - b.walkFromSec || a.totalSec - b.totalSec)[0]!;
   return group.map(option => ({ ...option, pickupPreference: option === closest
-    ? (group.length > 1 || option.pickupPreference || option.etaUnavailable ? 'closest-stop' : undefined)
-    : !option.departed && !option.etaUnavailable && !closest.departed && !closest.etaUnavailable
+    ? (group.length > 1 || option.pickupPreference || option.etaUnavailable || option.destinationEtaUnavailable ? 'closest-stop' : undefined)
+    : !option.departed && !option.etaUnavailable && !option.destinationEtaUnavailable
+      && !closest.departed && !closest.etaUnavailable && !closest.destinationEtaUnavailable
       && option.totalSec <= closest.totalSec - 180 ? 'arrive-sooner' : 'more-walking' }));
 }
 

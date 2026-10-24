@@ -83,7 +83,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
             : <span aria-label="Following arrival unavailable">—</span>}
         </td>
         <td style={{ padding: '6px', textAlign: 'right' }}>
-          {option.pickupRequest || option.departed || option.etaUnavailable ? <span aria-label="Destination arrival unavailable">—</span>
+          {option.pickupRequest || option.departed || option.etaUnavailable || option.destinationEtaUnavailable ? <span aria-label="Destination arrival unavailable">—</span>
             : <DestinationArrival compact option={option} destination={destination} departureMs={departureMs} />}
         </td>
       </tr>
@@ -106,7 +106,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
           <span data-testid="journey-legs" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, flex: 1, minWidth: 0, fontSize: 12, color: '#5f6368' }}>
             {option.mode === 'walk' ? <span>🚶 {fmtWalk(option.totalSec)}</span> : <>
               {option.walkToSec > 0 && <><span style={{ whiteSpace: 'nowrap' }}>🚶 {fmtWalk(option.walkToSec)}</span><span aria-hidden="true">›</span></>}
-              <span style={{ whiteSpace: 'nowrap' }}>🚌 {fmtMin(option.rideSec)}</span>
+              <span>🚌 {option.destinationEtaUnavailable ? 'Ride time unavailable' : fmtMin(option.rideSec)}</span>
               {option.walkFromSec > 0 && <><span aria-hidden="true">›</span><span style={{ whiteSpace: 'nowrap' }}>🚶 {fmtWalk(option.walkFromSec)}</span></>}
             </>}
           </span>
