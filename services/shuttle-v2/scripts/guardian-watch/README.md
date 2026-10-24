@@ -140,6 +140,25 @@ record has a literal 4–12 min first window and a pickup-area observation 27 mi
 later; the retained Orange Night record instead changed vehicles and cannot
 be scored as the original vehicle's late arrival.
 
+A second verified boarding path handles a response arriving between the saved
+at-stop card and eligibility. The original selected body must independently
+show the same stationary named curb within the app’s 75 m observation radius;
+this is selection context, not the scored pickup. Every original check body
+must retain that vehicle, route and curb with fresh, monotone receipt, model
+and GPS clocks. The first qualifying check before boarding supplies the pickup
+clock under the existing 45 m / stationary-named-60 m criteria. A provider’s
+older zone-start clock never substitutes for that observation.
+
+This path also verifies the complete saved fleet and compact model, the declared
+pickup coordinates, stable at-stop text and the newly stored ride. An explicit
+null other-occurrence finding is allowed only in the within-45 m at-stop branch
+where the runner emits it; missing or positive findings remain unqualified.
+A manual card check needs its own stable at-stop text and original body. Missing
+sources, moving/non-at-stop transitions and earlier unbound opportunities stay
+unknown. The original same-response boarding path and existing known first-window
+results remain unchanged, and historical verdicts are never relabelled. These
+remain shared-feed virtual diagnostics, not physical arrival evidence.
+
 `updatedWindowAudit` separately reviews later literal pickup windows after a
 qualified first-window audit. Two stable later quotes must miss the same tail
 by more than the existing five-minute tolerance and name the watched vehicle
