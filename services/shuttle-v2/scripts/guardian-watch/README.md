@@ -140,6 +140,30 @@ record has a literal 4–12 min first window and a pickup-area observation 27 mi
 later; the retained Orange Night record instead changed vehicles and cannot
 be scored as the original vehicle's late arrival.
 
+`updatedWindowAudit` separately reviews later literal pickup windows after a
+qualified first-window audit. Two stable later quotes must miss the same tail
+by more than the existing five-minute tolerance and name the watched vehicle
+in the selected card. Their original response IDs
+must differ; receipt, model and GPS clocks must each advance 5–30 seconds.
+Cached views cannot confirm, and a race, unavailable window, clock regression
+or recovered quote resets confirmation. The first-window result stays intact.
+Neither a no-confirmed-miss scan nor an unknown result qualifies ETA accuracy.
+
+A later candidate must bind both original quote bodies and the qualified
+pickup observation body to the saved fleet and model fields. If the first
+bundle lacks that context, the bridge creates a second immutable bundle with
+up to three selected `pickupWindowReferences`. Its versioned context identity
+pins those response IDs; plain capture retains its original identity and
+never rewrites the first bundle. Missing or budget-omitted bodies remain
+unknown. Existing 8 MiB context and 32 MiB bundle limits still apply.
+
+Both first and later misses use the existing per-run incident deduplication,
+including processed incidents. The first-window miss takes alert priority if
+both fail. Pending incidents retain the confirming contexts; routine verdicts
+still roll at 200 per rider, and routine evidence keeps its existing limits.
+`evidence-status.json` reports `updatedStates` separately from first-window
+states. Existing verdicts and the historical backlog are not relabelled.
+
 Auditing starts with future completed events at first activation. It does not
 relabel old journeys or retrospectively emit alerts from an old backlog.
 At most two queued runs per rider are checked per poll. Capture failures leave
