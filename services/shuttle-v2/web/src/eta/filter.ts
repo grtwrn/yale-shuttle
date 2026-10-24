@@ -1299,7 +1299,7 @@ function advance(q: Float64Array, ring: Ring, c: number, m: number, kern: Float6
  * Situations: the posterior collapsed to (anchor leg, mode) with the
  * mass-weighted mean position within the leg. Prune below `minMass`, except
  * the held lead may survive down to the filter's propagation floor — and
- * below it while `leadOffItsLine` or `shortOfNextStop` holds.
+ * below it while the held approach remains supported by the route gate.
  */
 export interface Situation {
   leg: number;
@@ -1347,14 +1347,22 @@ export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
   // exclude numerical remnants of a physically disproven branch — unless
   // what disproved it was only the stray model (`leadOffItsLine`), or the
   // lead is held short of a stop the bus is still driving at
-  // (`shortOfNextStop`).
+  // (`shortOfNextStop`), including Green's two calls at the same curb.
   let leadFloor = PROPAGATE_MIN;
   const lead = b.lead;
   if (lead >= 0 && lead < N && Math.max(mass[2 * lead]!, mass[2 * lead + 1]!) < PROPAGATE_MIN) {
     let top = 0;
     for (let i = 1; i < N; i++) if (mass[2 * i]! + mass[2 * i + 1]! > mass[2 * top]! + mass[2 * top + 1]!) top = i;
     const ahead = (top - lead + N) % N;
-    if (leadOffItsLine(b, ring, top) || (ahead >= 1 && ahead <= LEAD_FOLLOW_LEGS && shortOfNextStop(b, ring, lead))) leadFloor = 0;
+    // A stand on Green's return call can sit beside the held outbound
+    // approach. Pruning the latter must not bypass the occurrence gate and
+    // briefly price the stop a lap away. Keep only its existing positive
+    // mass; the return-call alternative remains in the arrival mixture.
+    const restStop = b.rested ? b.restStop : -1;
+    const approachingOtherCall = restStop >= 0
+      && ring.stops[(lead + 1) % N] === ring.stops[restStop]
+      && otherCallOfStand(b, ring, restStop, lead);
+    if (leadOffItsLine(b, ring, top) || (ahead >= 1 && ahead <= LEAD_FOLLOW_LEGS && shortOfNextStop(b, ring, lead)) || approachingOtherCall) leadFloor = 0;
   }
   for (let k = 0; k < 2 * N; k++) {
     const m = mass[k]!;
