@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright-core';
 import {seedTestId} from './testId.mjs';
+import {checkCurbServiceWarning} from './curb-service-warning-check.mjs';
 
 const recorded=JSON.parse(await fs.readFile('web/src/__fixtures__/blue-hidden-feedback-2026-10-12.json','utf8'));
 const out=process.env.FOLLOWING_PICKUP_OUT??'pr-preview/following-pickup';
@@ -173,7 +174,8 @@ try {
   }catch(error){if(page){await fs.writeFile(`${out}/before-close-warning-failure-${width}.txt`,await page.locator('body').innerText());await page.screenshot({path:`${out}/before-close-warning-failure-${width}.png`,fullPage:true});}throw error;}
   finally{if(page)await page.unrouteAll({behavior:'wait'});await ctx.close();}
  }
- await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,feedCapturedAt:recorded.capturedAt,
+ const curbWarnings=await checkCurbServiceWarning({browser,production,out:out+'/curb-warning'});
+ await fs.writeFile(out+'/results.json',JSON.stringify({productionAssets:production,feedCapturedAt:recorded.capturedAt,curbWarnings,
   scope:'Recorded feed with controlled location and following-arrival availability updates; not an exact report108 replay, physical journey, or ETA accuracy evaluation',results},null,2)+'\n');
 }finally{await browser.close();}
 console.log('Next in follows the selected pickup visit, including a return by the same bus; live walking stays current. Later canonical returns beyond service hours are withheld while current pickups and before-close warnings stay visible.');
