@@ -2,13 +2,13 @@ import { Fragment } from 'react';
 import { fmtClock, fmtDate, sameCampusDay } from './format';
 import type { TripOption } from './planner';
 
-type ArrivalOption = Pick<TripOption, 'mode' | 'totalSec' | 'journeyArrival' | 'departed' | 'etaUnavailable' | 'pickupRequest'>;
+type ArrivalOption = Pick<TripOption, 'mode' | 'totalSec' | 'journeyArrival' | 'departed' | 'etaUnavailable' | 'destinationEtaUnavailable' | 'pickupRequest'>;
 
 /** Presentation only: the journey already joins the catchable pickup to its
  * forward destination visit and adds the final walk. Never add pickup and ride
  * bounds here, or substitute the countdown bus's window for this journey. */
 export function destinationArrivalView(option: ArrivalOption, now: number, departureMs?: number) {
-  if (option.pickupRequest || option.departed || option.etaUnavailable || !Number.isFinite(now)) return null;
+  if (option.pickupRequest || option.departed || option.etaUnavailable || option.destinationEtaUnavailable || !Number.isFinite(now)) return null;
   // New Haven's day and clock, whatever zone the phone is set to.
   const clock = (at: number) => (sameCampusDay(at, now) ? '' : `${fmtDate(at)}, `) + fmtClock(0, new Date(at));
   const arrival = option.mode === 'shuttle' && departureMs === undefined ? option.journeyArrival : undefined;

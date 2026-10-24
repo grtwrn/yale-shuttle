@@ -73,7 +73,7 @@ import {
 } from "./leaveAlert";
 import { computePickupReminder, pickupReminderMessage, reminderTimingLabel, type ReminderTiming } from './pickupReminder';
 import { PickupReminderControls } from './PickupReminderControls';
-import { alightComparison, topVisibleOptions, keptThirdLabel,
+import { alightComparison, topVisibleOptions, keptThirdLabel, MAX_RIDE_SEC,
   boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, sameTripPickup, type TripOption,
 } from "./planner";
 import { optionTier, stableTripOrder, type TripOrderState } from './tripRanking';
@@ -2155,7 +2155,8 @@ const TripPlanner: FC<{
         ? 0
         : (usingLive && Number.isFinite(distToBoard) ? walkSecFromMeters(distToBoard) : o.walkToSec);
 
-      const unavailable = () => unavailablePickup({ ...o, walkToSec: effectiveWalkToSec });
+      const walkToMeters = Number.isFinite(distToBoard) ? distToBoard : o.walkToMeters;
+      const unavailable = () => unavailablePickup({ ...o, walkToSec: effectiveWalkToSec, walkToMeters });
       if (!etaFresh || (!liveEtaAvailable(buses, nowMs, o.routeLabel)
         && !liveRouteTracked(buses, o.routeLabel, nowMs))) return unavailable();
       // Re-derive wait from current arrivals. Simpler than it used to
@@ -2190,10 +2191,11 @@ const TripPlanner: FC<{
         const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
           : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
-          ...o, etaUnavailable: false, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+          ...o, etaUnavailable: false, walkToSec: effectiveWalkToSec, walkToMeters, waitSec, totalSec,
           rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
           livePickupSelection: rawPickupSelection(hereBus.bus_name, o.boardStopId, nowMs),
           journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
+          destinationEtaUnavailable: !arrival && (o.plannedRideSec ?? o.rideSec) > MAX_RIDE_SEC,
           busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, busBoardHops: board && boardHops(board, visits, o.boardStopId, o.alightStopId), computedAtMs: nowMs,
         };
       }
@@ -2226,10 +2228,11 @@ const TripPlanner: FC<{
       const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
         : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
       return {
-        ...o, etaUnavailable: false, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+        ...o, etaUnavailable: false, walkToSec: effectiveWalkToSec, walkToMeters, waitSec, totalSec,
         rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - waitSec - o.walkFromSec) : o.rideSec,
         livePickupSelection: forecastPickupSelection(picked, nowMs),
         journeyArrival: arrival, busName: match.busName, departed, missedBus,
+        destinationEtaUnavailable: !arrival && (o.plannedRideSec ?? o.rideSec) > MAX_RIDE_SEC,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
         busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, busBoardHops: boardHops(match, visits, o.boardStopId, o.alightStopId), computedAtMs: nowMs,
@@ -4302,7 +4305,7 @@ const TripPlanner: FC<{
             // tags read like the app is broken.
             const _allShuttlesSlower =
               _sorted.some((o) => o.mode === "shuttle") &&
-              _sorted.every((o) => o.mode === "walk" || (!o.etaUnavailable && _tier(o) > 0));
+              _sorted.every((o) => o.mode === "walk" || (!o.etaUnavailable && !o.destinationEtaUnavailable && _tier(o) > 0));
             return <>
           {_allShuttlesSlower && !_detailOpen && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
