@@ -819,6 +819,32 @@ export function shortOfNextStop(b: Belief, ring: Ring, lead: number): boolean {
   if (lead < 0 || lead >= N || ring.stops.length !== N || !b.lastFix || !b.leadTopFix) return false;
   if (ring.stops[lead] !== b.lastStopId) return false;
   const s = (lead + 1) % N;
+  if (incomingAtPublishedCurb(b, ring, lead)) return true;
+  if (ring.stops.filter((id) => id === ring.stops[s]).length > 1) return false;
+  if (b.rested && b.restStop === s) return false;
+  const at = stopPoint(ring, s);
+  const d = haversineMeters(b.lastFix, at);
+  if (!(d > NEAR_STOP_M)) return false;
+  const closed = haversineMeters(b.leadTopFix, at) - d;
+  if (!(closed >= LEAD_OFF_LINE_CLOSING_M && closed >= SHORT_OF_STOP_HEADING * haversineMeters(b.lastFix, b.leadTopFix))) return false;
+  const dist = distancesTo(ring, b.lastFix);
+  let onNext = -1, onLead = -1;
+  for (let c = 0; c < ring.C; c++) {
+    if (ring.leg[c] === s && (onNext < 0 || dist[c]! < dist[onNext]!)) onNext = c;
+    if (ring.leg[c] === lead && (onLead < 0 || dist[c]! < dist[onLead]!)) onLead = c;
+  }
+  if (onNext < 0 || onLead < 0 || !(dist[onNext]! < dist[onLead]!)) return false;
+  return !(dist[onNext]! <= offLineM(ring) && alongRing(ring, onNext, b.leadTopFix, b.lastFix) >= SHORT_OF_STOP_HEADING);
+}
+
+/** A current approach whose projected route marker precedes its published curb.
+ * Shared by pricing and the physical marker; travel still identifies the last
+ * cleared call when the ring inserted an extra pass. */
+export function incomingAtPublishedCurb(b: Belief, ring: Ring, lead: number): boolean {
+  const N = ring.N;
+  if (lead < 0 || lead >= N || ring.stops.length !== N || !b.lastFix || !b.leadTopFix) return false;
+  if (ring.stops[lead] !== b.lastStopId) return false;
+  const s = (lead + 1) % N;
   // A route's projected marker can precede the published curb. Preserve the
   // incoming traversal while a warm, uniquely anchored approach is still
   // closing on that curb, even after crossing the projected stop cell.
@@ -846,21 +872,7 @@ export function shortOfNextStop(b: Belief, ring: Ring, lead: number): boolean {
       && closed >= LEAD_OFF_LINE_CLOSING_M && (toward || stillAtIncomingRest)
       && !(standing > 0 && standing >= moving)) return true;
   }
-  if (ring.stops.filter((id) => id === ring.stops[s]).length > 1) return false;
-  if (b.rested && b.restStop === s) return false;
-  const at = stopPoint(ring, s);
-  const d = haversineMeters(b.lastFix, at);
-  if (!(d > NEAR_STOP_M)) return false;
-  const closed = haversineMeters(b.leadTopFix, at) - d;
-  if (!(closed >= LEAD_OFF_LINE_CLOSING_M && closed >= SHORT_OF_STOP_HEADING * haversineMeters(b.lastFix, b.leadTopFix))) return false;
-  const dist = distancesTo(ring, b.lastFix);
-  let onNext = -1, onLead = -1;
-  for (let c = 0; c < ring.C; c++) {
-    if (ring.leg[c] === s && (onNext < 0 || dist[c]! < dist[onNext]!)) onNext = c;
-    if (ring.leg[c] === lead && (onLead < 0 || dist[c]! < dist[onLead]!)) onLead = c;
-  }
-  if (onNext < 0 || onLead < 0 || !(dist[onNext]! < dist[onLead]!)) return false;
-  return !(dist[onNext]! <= offLineM(ring) && alongRing(ring, onNext, b.leadTopFix, b.lastFix) >= SHORT_OF_STOP_HEADING);
+  return false;
 }
 
 /** Past this distance from a line, the line's Gaussian is below the stray weight (~100 m). */

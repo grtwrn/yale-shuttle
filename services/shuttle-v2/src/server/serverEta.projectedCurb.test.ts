@@ -32,6 +32,10 @@ it('keeps the West Haven approach current across the projected marker and the fi
       return bus[0] === name ? [{ row: row.slice(1), distribution: w.distributions![i] }] : [];
     });
     const current = rowsFor(wire, '332').filter(r => r.row[0] === 127);
+    const bi = wire.buses.findIndex(b => b[0] === '332' && b[1] === 'Green');
+    const oi = original.buses.findIndex((b: string[]) => b[0] === '332' && b[1] === 'Green');
+    expect(wire.buses[bi]![2]).toBe(original.buses[oi][2]);
+    expect(wire.travel![bi]).toBe(original.travel[oi]);
     originalPoints.push(Math.min(...rowsFor(original, '332').filter(r => r.row[0] === 127).map(r => r.row[1]!)));
     points.push(Math.min(...current.map(r => r.row[1]!)));
     for (const { row, distribution } of current) {
