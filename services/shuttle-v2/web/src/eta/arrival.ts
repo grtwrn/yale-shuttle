@@ -509,8 +509,9 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
   return { sit, start: samples, leg, measured, standingAt, restsNow: restsNow && !skipRest };
 }
 
-/** The chain's samples at the stop `h` hops on (h >= 1), into `out`. */
+/** The chain's samples at the stop `h` hops on. Zero is an arrival now. */
 function chainAt(c: Chain, pre: ChainPrefix, h: number, out: Float64Array, lap: LapCorrection | null): void {
+  if (h === 0) { out.fill(0); return; }
   if (c.sampled) { out.set(c.sampled[h]!); return; }
   const a = pre.prefix[c.leg + h]!, b = pre.prefix[c.leg + 1]!;
   const s = c.start;
@@ -780,18 +781,11 @@ export function priceRoute(
   // Walk the lead chain stop by stop; every other chain is read at the same
   // physical stop and occurrence, which may be a different number of hops on.
   const occ = new Map<number, number>();
-  // A bus standing AT a stop has arrived there: that stop's next arrival is
-  // now, not a lap later. The legacy path left this to the screen's
-  // `at_stop_id` check, which lags the belief by a 15 s dwell and a 75 m
-  // radius, so the row read "next lap" for the polls in between.
-  if (lead.standingAt >= 0) {
-    const sid = stops[lead.standingAt]!;
-    occ.set(lead.standingAt, 1);
-    if (targetStopIds.has(sid)) {
-      out.push({ ...(includeDistribution ? { distribution: DISTRIBUTION_QUANTILES.map(() => 0), intervalConformal: { low: false, high: false } } : {}), stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
-    }
-  }
-  for (let h = 1; h <= 2 * N; h++) {
+  // Standing at the target supplies its current arrival now, whichever
+  // conditional state is selected as the lead. Price it with the same
+  // mixture as every other visit; a different state may still be incoming
+  // or may have departed and need another circuit.
+  for (let h = lead.standingAt >= 0 ? 0 : 1; h <= 2 * N; h++) {
     const cur = (lead.leg + h) % N;
     const o = occ.get(cur) ?? 0;
     if (o >= MAX_OCCURRENCES) continue;
@@ -823,9 +817,11 @@ export function priceRoute(
     for (let i = 0; i < chains.length; i++) {
       const c = chains[i]!;
       if (c === lead) continue;
-      // Hops from this chain's leg to the same stop, same occurrence: a chain
-      // reaches its own leg's start stop only a lap on.
-      const first = ((cur - c.leg) % N + N) % N || N;
+      // Align the current and following arrival for each hypothesis. An
+      // at-target stand is arrival zero; a moving state on the outgoing
+      // leg has already departed and next reaches that slot a lap later.
+      // Compare ring slots, since a physical stop can occur twice per lap.
+      const first = c.standingAt === cur ? 0 : ((cur - c.leg) % N + N) % N || N;
       const hc = first + o * N;
       if (hc > 2 * N) continue;
       chainAt(c, pre, hc, bufs[i]!, lap);
@@ -890,7 +886,7 @@ export function priceRoute(
     let distribution = combined && query ? query.distribution.map(i => combined[i]!)
       : includeDistribution ? mixedQuantiles(fullMix ? all : parts, DISTRIBUTION_QUANTILES) : undefined;
     const key = chainKey(cur, o);
-    if (floors && clampAt >= 0 && currentRelease?.index !== clampAt) {
+    if (floors && h > 0 && clampAt >= 0 && currentRelease?.index !== clampAt) {
       const prev = floors.map.get(key);
       const held = prev !== undefined && prev.standingAt === clampAt && prev.since === clockSince ? prev : undefined;
       const cleared = standMass >= LEAD_SWITCH_MASS;
@@ -972,13 +968,14 @@ export function priceRoute(
     // actually shown, so it must scale the band about that number, after the
     // floor clamp has moved it. At the default 1.0 it returns [low, high]
     // itself, so the served defaults are byte-identical to no widening.
-    const rawUpper = currentRelease !== undefined;
+    const certainArrivalNow = h === 0 && chains.every(c => c.standingAt === cur);
+    const rawUpper = certainArrivalNow || currentRelease !== undefined;
     // Division's immediate pickup after a supported Winchester hold has its
     // own conditional release distribution. The older fleet-wide widening
     // pushes that lower tail toward zero. Keep its modeled q10, but retain
     // the legacy margin for other destinations and subsequent laps: those
     // journeys have not passed the same pickup validation.
-    const rawLower = currentRelease !== undefined && sid === 48 && o === 0
+    const rawLower = certainArrivalNow || currentRelease !== undefined && sid === 48 && o === 0
       && h <= (cur - currentRelease.index + N) % N;
     const widened = widenBand(eta, low, high);
     const wLow = rawLower ? low : widened[0];
