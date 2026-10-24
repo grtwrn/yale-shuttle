@@ -141,6 +141,135 @@ def boarding_pickup(journey, rows, records, provider_id):
         return None
 
 
+def boarding_at_stop_transition(journey, rows, records, provider_id):
+    """Bind an at-stop card and its newer same-curb boarding observations.
+
+    The selected screen and the eligibility check can use different original
+    responses. Both must independently establish the same stationary named
+    curb. This never substitutes a new response for the saved screen.
+    """
+    try:
+        observation = journey.get('boardingObservation') or {}
+        if (type(observation.get('v')) is not int or observation['v'] != 1 or observation.get('outcome') != 'boarded'
+                or observation.get('busName') != journey['busName']
+                or observation.get('routeIds') != journey['line']['busRouteIds']
+                or observation.get('stopId') != journey['boardStopId']):
+            return None
+        point, target = journey['trip']['origin'], journey['boardStopId']
+        name, route_id = bus_name(journey['busName']), journey['line']['busRouteIds'][0]
+        screen = observation.get('sample') or {}
+        sampled, attempted = timestamp(screen.get('sampledAt')), timestamp(observation.get('attemptedAt'))
+        boarded, outcome = timestamp(journey.get('boardedAt')), timestamp(observation.get('outcomeAt'))
+        if (None in (sampled, attempted, boarded, outcome)
+                or not 0 <= attempted-sampled <= 5 or not 0 <= boarded-attempted <= 15
+                or not 0 <= outcome-boarded <= 1 or screen.get('feedStableDuringTextRead') is not True
+                or any(distance(point, observation.get(k) or {}) != 0 for k in ('stopCoords', 'riderCoords'))):
+            return None
+        selected_rows = [s for s in rows if s.get('phase') == 'waiting' and s.get('at') == screen.get('sampledAt')]
+        if len(selected_rows) != 1:
+            return None
+        selected = selected_rows[0]
+        def at_stop_text(text):
+            labels = re.findall(r'(?:^|\n)BOARD🚌([^\n]+)', text or '')
+            counts = re.findall(r'(?:^|\n)🚌 #([A-Za-z0-9-]{1,24}) · (\d+) stops? away(?=\n|$)', text or '')
+            return (len(labels) == 1 and ''.join(labels[0].split('⏸')[0].split()).casefold() == ''.join(point['label'].split()).casefold()
+                    and re.findall(r'(?:^|\n)#([A-Za-z0-9-]{1,24}) · Recent speed[^\n]*(?=\n|$)', text or '') == [name]
+                    and (not counts or len(counts) == 1 and counts[0][0] == name and int(counts[0][1]) <= 1))
+        if ((selected.get('mapPauseAudit') or {}).get('feedStableDuringRead') is not True
+                or screen.get('feedResponse') != selected.get('feedResponse') or not at_stop_text(selected.get('text'))):
+            return None
+        stored = json.loads(journey['boardedStorage']['shuttle-boarded-ride'])
+        if (stored.get('routeLabel') != journey['line']['label'] or bus_name(stored.get('busName')) != name
+                or stored.get('boardStopId') != target or stored.get('alightStopId') != journey['exitStopId']
+                or not number(stored.get('startedAt')) or not 0 <= boarded-stored['startedAt']/1000 <= 1):
+            return None
+        checks = observation.get('checks')
+        if not isinstance(checks, list) or not 2 <= len(checks) <= 32 or not isinstance(records, list) or not 1 <= len(records) <= 128:
+            return None
+        originals = {}
+        for record in records:
+            raw = verify_feed_response(record)
+            if record['id'] in originals:
+                return None
+            originals[record['id']] = (record, json.loads(raw))
+        keys = ('v', 'runId', 'route', 'sourceKind', 'receivedAt', 'status', 'headers', 'decodedBytes', 'decodedSHA256', 'gzipBytes', 'gzipSHA256')
+        def snapshot(ref, at):
+            if (type(ref.get('v')) is not int or ref['v'] != 1 or ref.get('state') != 'captured'
+                    or ref.get('runId') != journey['id'] or ref.get('file') != 'feed-responses/'+journey['id']+'.jsonl'):
+                raise ValueError('Unbound boarding response')
+            original, feed = originals[ref['id']]
+            wire = feed.get('server_eta') or {}
+            header = json.loads(original['headers']['x-shuttle-snapshot'])
+            if (any(ref.get(k) != original[k] for k in keys) or not 0 <= at-original['receivedAt']/1000 <= 30
+                    or wire.get('v') != 2 or not number(wire.get('at')) or not number(wire.get('servedAt'))
+                    or not 0 <= wire['servedAt']-wire['at'] < 30000 or not -5 <= at-wire['at']/1000 <= 30
+                    or type(header.get('v')) is not int or header['v'] != 1 or header.get('sha256') != original['decodedSHA256'] or header.get('bytes') != original['decodedBytes']
+                    or header.get('modelAt') != wire['at'] or header.get('servedAt') != wire['servedAt']):
+                raise ValueError('Boarding source clock or header differs')
+            matches = [b for b in feed.get('buses', []) if bus_name(b.get('bus_name')) == name]
+            if len(matches) != 1:
+                raise ValueError('Ambiguous named vehicle')
+            bus = matches[0]
+            metres = distance(bus, point)
+            if (bus.get('bus_id') != provider_id or bus.get('route_id') != route_id
+                    or bus.get('stationary') is not True or bus.get('at_stop_id') != target
+                    or metres is None or metres > 75 or not number(bus.get('observed_at')) or not -5 <= at-bus['observed_at']/1000 <= 30
+                    or distance(point, (feed.get('stop_coords') or {}).get(str(target), (feed.get('stop_coords') or {}).get(target, {}))) != 0
+                    or target not in (feed.get('routes') or {}).get(str(route_id), [])):
+                raise ValueError('Stationary named curb is unbound')
+            identity = (header.get('build'), (header.get('evaluation') or {}).get('epoch'))
+            if not all(isinstance(value, str) and 0 < len(value) <= 128 for value in identity):
+                raise ValueError('Missing source identity')
+            return original, feed, bus, metres, (original['receivedAt'], wire['at'], bus['observed_at']), identity
+        old = snapshot(selected['feedResponse'], sampled)
+        saved_wire = selected.get('server_eta')
+        if (not isinstance(saved_wire, dict) or not {'v', 'at', 'servedAt', 'buses'}.issubset(saved_wire)
+                or selected.get('buses') != old[1].get('buses')
+                or not all(v == old[1]['server_eta'].get(k) for k, v in selected.get('server_eta', {}).items())
+                or not number(selected.get('feedAgeMs')) or abs(sampled*1000-old[0]['receivedAt']-selected['feedAgeMs']) > 1
+                or timestamp(screen.get('feedReceivedAt')) != old[0]['receivedAt']/1000):
+            return None
+        first = checks[0]
+        walk_until = timestamp(first.get('walkUntil'))
+        if (first.get('kind') != 'pickup-eligible' or first.get('atStop') is not True
+                or first.get('feedStableFromSelection') is not True or first.get('text') != selected['text']
+                or first.get('past') is not False or first.get('opposite') is not False
+                or 'otherOccurrence' not in first or not (first['otherOccurrence'] is False
+                    or first['otherOccurrence'] is None and number(first.get('distanceM')) and first['distanceM'] <= 45)
+                or walk_until is None):
+            return None
+        candidate, previous_at, previous = None, sampled, old
+        ready_seen, card_seen = False, False
+        for index, check in enumerate(checks):
+            at = timestamp(check.get('checkedAt'))
+            kind = check.get('kind')
+            if (check.get('allowed') is not True or at is None or not previous_at <= at <= outcome
+                    or index > 0 and at < attempted or index == 0 and (walk_until > at or at > attempted)
+                    or kind not in (('pickup-eligible',) if index == 0 else ('observation-ready', 'card-boards'))):
+                return None
+            if kind == 'card-boards':
+                if card_seen or not ready_seen or check.get('feedStableDuringTextRead') is not True or not at_stop_text(check.get('text')):
+                    return None
+                card_seen = True
+            ready_seen = ready_seen or kind == 'observation-ready'
+            ref = check.get('feedResponse') or {}
+            current = snapshot(ref, at)
+            if (current[2] != check.get('bus') or not number(check.get('distanceM')) or abs(current[3]-check['distanceM']) > 1e-6
+                    or timestamp(check.get('feedReceivedAt')) != current[0]['receivedAt']/1000 or current[5] != old[5]
+                    or any(b < a for a, b in zip(previous[4], current[4]))
+                    or current[2].get('lat') != previous[2].get('lat') and current[4][2] <= previous[4][2]
+                    or current[2].get('lon') != previous[2].get('lon') and current[4][2] <= previous[4][2]):
+                return None
+            if at <= boarded and current[3] <= 60 and candidate is None:
+                candidate = {'at': check['checkedAt'], 'distanceM': current[3], 'bus': current[2],
+                             'feedAgeMs': at*1000-current[0]['receivedAt'], 'screenFeedStable': True, 'cardAtPickup': True,
+                             'source': 'verified-at-stop-transition', 'feedResponse': ref, 'pickupScreenAt': selected['at']}
+            previous_at, previous = at, current
+        return candidate if ready_seen and checks[-1].get('kind') == 'observation-ready' else None
+    except (KeyError, TypeError, ValueError, AttributeError, OverflowError, OSError, zlib.error):
+        return None
+
+
 def analyze(journey, samples, coverage, boarding_records=None):
     def unknown(reason):
         return {'state': 'unknown', 'reason': reason}
@@ -238,6 +367,8 @@ def analyze(journey, samples, coverage, boarding_records=None):
                            'cardAtPickup': re.search(r'(?:^|\n)BOARD🚌', sample['text']) is not None}
     if arrival is None and boarding_records is not None:
         arrival = boarding_pickup(journey, rows, boarding_records, provider_id)
+        if arrival is None:
+            arrival = boarding_at_stop_transition(journey, rows, boarding_records, provider_id)
     if arrival is None:
         return unknown('no-qualifying-pickup-observation')
     arrival_at = timestamp(arrival['at'])
