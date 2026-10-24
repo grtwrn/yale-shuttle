@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { point } from './dist';
+import { fromQuantiles, point } from './dist';
 import { priceRoute } from './arrival';
 import { situations, stepBelief } from './filter';
 import { buildRing } from './ring';
@@ -21,6 +21,7 @@ afterEach(resetModelParams);
 
 function fixture(atTargetStanding: boolean, incomingIsLead = true, options: {
   sequence?: number[]; targetSlot?: number; alternativeSlot?: number; incomingMass?: number;
+  departedLead?: boolean; broadDrive?: boolean;
 } = {}) {
   const sequence = options.sequence ?? stops, targetSlot = options.targetSlot ?? 1;
   const alternativeSlot = options.alternativeSlot ?? targetSlot;
@@ -31,8 +32,8 @@ function fixture(atTargetStanding: boolean, incomingIsLead = true, options: {
   expect(ring.stops).toEqual(sequence);
   const tables = buildTables(sequence, coords, {}, {}, ring);
   for (const stop of tables.stops) { stop.stand = point(0); stop.layover = false; }
-  for (const hop of tables.hops) { hop.drive = point(100); hop.includesStand = false; }
-  const incoming = (ring.stopCell[targetSlot]! - 1 + ring.C) % ring.C, target = ring.stopCell[alternativeSlot]!;
+  for (const hop of tables.hops) { hop.drive = options.broadDrive ? fromQuantiles([40,60,70,80,100,120,140,160,180,220]) : point(100); hop.includesStand = false; }
+  const incoming = (ring.stopCell[targetSlot]! + (options.departedLead ? 1 : -1) + ring.C) % ring.C, target = ring.stopCell[alternativeSlot]!;
   const belief = stepBelief(undefined, ring, { lat: ring.lat[incoming]!, lon: ring.lon[incoming]! }, 600000, sequence);
   const incomingMass = options.incomingMass ?? (incomingIsLead ? .75 : .25);
   belief.p.fill(0); belief.p[ring.C + incoming] = incomingMass;
@@ -40,7 +41,7 @@ function fixture(atTargetStanding: boolean, incomingIsLead = true, options: {
   // These are explicit conditional states, including distinct visits to a
   // shared physical curb, independently of the synthetic GPS prior.
   if (atTargetStanding) { belief.standLeg[target] = alternativeSlot; belief.zoneKey[target] = alternativeSlot; }
-  belief.lead = incomingIsLead ? (targetSlot + ring.N - 1) % ring.N : alternativeSlot;
+  belief.lead = incomingIsLead ? (options.departedLead ? targetSlot : (targetSlot + ring.N - 1) % ring.N) : alternativeSlot;
   belief.rested = false; belief.restStop = -1;
   const before = structuredClone(belief);
   const states = situations(belief, ring);
@@ -83,6 +84,13 @@ describe('arrival occurrence alignment across conditional bus states', () => {
     expect(first.high).toBeGreaterThanOrEqual(400);
     expect(Math.max(...first.distribution!)).toBeGreaterThanOrEqual(400);
     expect(following.high).toBeGreaterThanOrEqual(800);
+  });
+  it('pins a departed lead countdown to its return while retaining an at-curb alternative in the range', () => {
+    const { first, following } = fixture(true, true, { departedLead: true, broadDrive: true });
+    expect(first.stopsAhead).toBe(4); expect(first.low).toBe(0);
+    expect(first.eta).toBeGreaterThan(first.distribution![24]!);
+    expect(first.eta).toBeGreaterThan(300);
+    expect(following.stopsAhead).toBe(8); expect(following.eta).toBeGreaterThan(first.eta);
   });
   it('keeps current and following arrivals aligned across the end of the ring', () => {
     const { first, following, incomingWait } = fixture(true, true, { targetSlot: 0 });

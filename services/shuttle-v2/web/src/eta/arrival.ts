@@ -775,6 +775,7 @@ export function priceRoute(
   const clampAt = lead.standingAt;
   const scale = routeScale(ring.routeId);
   const bufs = chains.map(() => new Float64Array(K));
+  const pointBufs = new Map<Chain, Float64Array>();
   const leadBuf = new Float64Array(K);
   const nowBuf = new Float64Array(K);
   const anyMeasured = tables.hops.some((x) => x.measured);
@@ -797,7 +798,9 @@ export function priceRoute(
     const leadMedian = leadBuf[K >> 1]!;
     if (leadMedian > MAX_ETA_SEC) break;
     const parts: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
+    const visitParts: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
     const all: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
+    let distinctVisitPricing = false;
     // The lead cluster's parts priced as the rest at `clampAt` continuing —
     // the standing variant (and a repositioning one): what the ceiling is
     // armed from, and whose mass gates the arming.
@@ -842,24 +845,38 @@ export function priceRoute(
       // departure poll. The flapping it was meant to cure came from the
       // served clock switching source, fixed in filter.ts `clockOrigin`.)
       if (c.sit.leg !== lead.sit.leg) continue;
-      parts.push({ s: bufs[i]!, w: c.sit.mass });
+      // The countdown remains pinned to the lead's traversal. A standing
+      // alternative at this curb can contribute "now" to the next-arrival
+      // range, while this departing lead's countdown is for its return.
+      // Mixing those different traversals into the point can reverse stop
+      // ordering and select the wrong pass on a folded route.
+      const pointHops = (((cur - c.leg) % N + N) % N || N) + o * N;
+      let point = bufs[i]!;
+      if (hc !== pointHops && h > 0) {
+        point = pointBufs.get(c) ?? new Float64Array(K);
+        pointBufs.set(c, point);
+        chainAt(c, pre, pointHops, point, lap); point.sort();
+        distinctVisitPricing = true;
+      }
+      parts.push({ s: point, w: c.sit.mass });
+      visitParts.push({ s: bufs[i]!, w: c.sit.mass });
       mass += c.sit.mass;
-      if (standParts !== null && c.standingAt === clampAt) { standParts.push({ s: bufs[i]!, w: c.sit.mass }); standMass += c.sit.mass; }
+      if (standParts !== null && c.standingAt === clampAt) { standParts.push({ s: point, w: c.sit.mass }); standMass += c.sit.mass; }
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
     // the RANGE is honest about the rest: while alternatives still hold a
     // fifth of the mass, low and high come from the full mixture, so a
     // 50/50 fold does not read as "17 s [13-23]" (the review's finding 7).
     const fullMix = mass < LEAD_SWITCH_MASS && all.length > parts.length;
-    const combinedLead = query && !fullMix ? mixedQuantiles(parts, query.probabilities) : null;
+    const combinedLead = query && !fullMix && !distinctVisitPricing ? mixedQuantiles(parts, query.probabilities) : null;
     const [q10, qt, q90] = (combinedLead && query
       ? query.display.map(i => combinedLead[i]!)
       : mixedQuantiles(parts, [0.1, tau, 0.9])) as [number, number, number];
-    let eta = qt, low = q10, high = q90;
+    let eta = h === 0 ? 0 : qt, low = q10, high = q90;
     // The lead cluster's own chain, minus the rest in progress. It follows the
     // LEAD only — an alternative situation on another leg is not what the rider
     // is watching pull out — and it is deliberately outside the clamp below.
-    let departNow = qt;
+    let departNow = h === 0 ? 0 : qt;
     // The band's floor (`lowFloor`, reported only): the rest-less chain at
     // the band's own quantile. NaN while the lead is not resting.
     let nowLow = NaN;
@@ -873,18 +890,19 @@ export function priceRoute(
     // an alternative may put the bus AHEAD of the lead's stand — its q10 can
     // honestly sit below the lead's own drive, so the floor stands down.
     let combinedFull: number[] | null = null;
-    if (fullMix) {
-      combinedFull = query ? mixedQuantiles(all, query.probabilities) : null;
+    if (fullMix || distinctVisitPricing) {
+      const rangeParts = fullMix ? all : visitParts;
+      combinedFull = query ? mixedQuantiles(rangeParts, query.probabilities) : null;
       const [f10, f90] = (combinedFull && query
         ? [combinedFull[query.display[0]!]!, combinedFull[query.display[2]!]!]
-        : mixedQuantiles(all, [0.1, 0.9])) as [number, number];
+        : mixedQuantiles(rangeParts, [0.1, 0.9])) as [number, number];
       low = Math.min(low, f10); high = Math.max(high, f90);
     }
     // Read the actual mixture while the chain samples are still available.
     // This is optional for server transport; it never changes ETA arithmetic.
     const combined = combinedFull ?? combinedLead;
     let distribution = combined && query ? query.distribution.map(i => combined[i]!)
-      : includeDistribution ? mixedQuantiles(fullMix ? all : parts, DISTRIBUTION_QUANTILES) : undefined;
+      : includeDistribution ? mixedQuantiles(fullMix ? all : visitParts, DISTRIBUTION_QUANTILES) : undefined;
     const key = chainKey(cur, o);
     if (floors && h > 0 && clampAt >= 0 && currentRelease?.index !== clampAt) {
       const prev = floors.map.get(key);
