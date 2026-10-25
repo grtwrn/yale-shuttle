@@ -39,6 +39,8 @@ import { releaseDist, releaseResidual, releaseModelEnabled, type ReleasePin } fr
 import { lapAt, lapFactor } from "./lap";
 import { clockOrigin, LEAD_SWITCH_MASS, pricedLeg, situations, standingSec, type Belief, type Situation } from "./filter";
 import { applyHorizonBias, applyRouteScale, routeScale, widenBand } from "./params";
+import { haversineMeters } from "../geo";
+import { NEAR_STOP_M } from "./ring";
 import type { Ring } from "./ring";
 import type { RouteTables } from "./tables";
 
@@ -782,11 +784,25 @@ export function priceRoute(
   // Walk the lead chain stop by stop; every other chain is read at the same
   // physical stop and occurrence, which may be a different number of hops on.
   const occ = new Map<number, number>();
+  // A rest can continue billing its stop while the vehicle has already
+  // left that curb. A repeated road coordinate must not reopen arrival zero.
+  // Keep the posterior/hold clock intact; the next call to this completed
+  // ordinary, unambiguous curb is its return around the ring.
+  const restPoint = ring.stopCoords?.[belief.restStop];
+  const observed = belief.lastObs as { last_stop_id?: number | null } | null;
+  const closedCurb = lead.standingAt === belief.restStop && belief.rested && !belief.restApproach
+    && belief.lead === belief.restStop && !tables.stops[belief.restStop]?.layover
+    && stops.filter(id => id === stops[belief.restStop]).length === 1
+    && observed?.last_stop_id === stops[belief.restStop]
+    && belief.fixAt > belief.restSince && restPoint && belief.lastFix
+    && haversineMeters(restPoint, belief.restPoint) <= NEAR_STOP_M
+    && haversineMeters(restPoint, belief.lastFix) > NEAR_STOP_M;
   // Standing at the target supplies its current arrival now, whichever
   // conditional state is selected as the lead. Price it with the same
   // mixture as every other visit; a different state may still be incoming
   // or may have departed and need another circuit.
   for (let h = lead.standingAt >= 0 ? 0 : 1; h <= 2 * N; h++) {
+    if (h === 0 && closedCurb) continue;
     const cur = (lead.leg + h) % N;
     const o = occ.get(cur) ?? 0;
     if (o >= MAX_OCCURRENCES) continue;
@@ -904,7 +920,10 @@ export function priceRoute(
     let distribution = combined && query ? query.distribution.map(i => combined[i]!)
       : includeDistribution ? mixedQuantiles(fullMix ? all : visitParts, DISTRIBUTION_QUANTILES) : undefined;
     const key = chainKey(cur, o);
-    if (floors && h > 0 && clampAt >= 0 && currentRelease?.index !== clampAt) {
+    // These returns follow a completed visit; its old occurrence ceilings
+    // cannot price either future circuit. Other stops keep their ceilings.
+    if (floors && h > 0 && clampAt >= 0 && currentRelease?.index !== clampAt
+      && !(closedCurb && cur === lead.leg)) {
       const prev = floors.map.get(key);
       const held = prev !== undefined && prev.standingAt === clampAt && prev.since === clockSince ? prev : undefined;
       const cleared = standMass >= LEAD_SWITCH_MASS;
