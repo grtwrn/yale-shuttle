@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-25T10:20:34.707386+00:00",
+  "source": "Recorded production frame74on2026-10-25T09:34:48.386Z, Purple#332at155.9mfrom300GeorgeSt. Original native/common-seed replay verified before any code change.",
+  "viewport": "390x844",
+  "fixtureClock": 1792920888386,
+  "originalBuild": "cc060e03b012",
+  "screenshots": [
+    {
+      "file": "before-phone.png",
+      "sha256": "ac0392871f8b9bbb802953d5b4237dfd0a69cdc6923547f3011790cf4c2d9dbc"
+    },
+    {
+      "file": "after-phone.png",
+      "sha256": "bbe21a705c050fa6c70c371686bebc83000012d02e7ca5ff9187fb28e199c94c"
+    }
+  ],
+  "pageErrors": [],
+  "expectedVisibleDifference": {
+    "at": "2026-10-25T10:19:51.438894+00:00",
+    "ok": true,
+    "originalRecordedSequence": 74,
+    "recordedAt": 1792920888386,
+    "rawDistanceFromCurbMeters": 155.91798960219506,
+    "before": "Purplecard highlights300GeorgeStwithbus332ascurrent.",
+    "after": "Completed300GeorgeStcall removed; next100ChurchStreetSouth2minandlaterstopsretained.",
+    "phoneScreenshotsVisuallyInspected": true,
+    "pageErrors": 0,
+    "fixtureReplayNotLiveProduction": true,
+    "noPhysicalArrivalAccuracyClaim": true
+  },
+  "scope": "Actualreleasebundlewithoriginalrecordedpayloadandindependentlycomputedcandidatewire;historicalrenderedreplay,notliveproductionorphysicalboardingproof."
+}
