@@ -1,9 +1,50 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
-import { confirmConflict, pickupCountConflict, rideCountConflict } from './screen-consistency.mjs';
+import { confirmConflict, pickupCountConflict, rideCountConflict, rideTrackingConflict } from './screen-consistency.mjs';
+import { verifyFeedResponseRecord } from './feed-evidence.mjs';
 const capture = JSON.parse(fs.readFileSync(new URL('../../web/src/__fixtures__/red-winchester-report-142.json', import.meta.url), 'utf8'));
 const text = '🚌 #317 · 11 stops away\nBOARDDivision/Prospect\nGET OFF130 Prospect Street (S)';
 const conflict = () => pickupCountConflict(text, structuredClone(capture.feed), [3], capture.receivedAt);
+const positionFixture = JSON.parse(fs.readFileSync(new URL('../../web/src/__fixtures__/ride-position-without-eta-20261025.json', import.meta.url), 'utf8'));
+function positionInput(index = 0) {
+  const s = positionFixture.snapshots[index], ride = positionFixture.ride;
+  return { text: s.text, now: Date.parse(s.sampledAt), feed: JSON.parse(verifyFeedResponseRecord(s.response)),
+    run: { id: positionFixture.runId, phase: 'riding', line: structuredClone(positionFixture.line), busName: ride.busName,
+      boardStopId: ride.boardStopId, exitStopId: ride.alightStopId, boardedStorage: structuredClone(positionFixture.boardedStorage) } };
+}
+describe('independent ride tracking status', () => {
+  it('detects the two original GPS-present screens without relying on a forecast or route filter', () => {
+    for (const index of [0, 1]) {
+      const p = positionInput(index);
+      expect(rideTrackingConflict(p.text, p.feed, p.run, p.now)).toMatchObject({ bus: '#44', expected: 'bus-position-available', actual: 'looking-for-bus' });
+      const corrected = p.text.replace('Looking for your bus…', 'Bus location available · arrival estimate unavailable');
+      expect(rideTrackingConflict(corrected, p.feed, p.run, p.now)).toBeNull();
+    }
+  });
+  it.each(['waiting', 'wrong storage', 'wrong caption', 'old GPS', 'future GPS', 'wrong bus', 'wrong route', 'duplicate GPS', 'invalid GPS'])(
+    'declines %s evidence', reason => {
+      const p = positionInput(), bus = p.feed.buses.find(b => b.bus_name === '#44');
+      if (reason === 'waiting') p.run.phase = 'waiting';
+      if (reason === 'wrong storage') p.run.boardedStorage['shuttle-boarded-ride'] = '{}';
+      if (reason === 'wrong caption') p.text = p.text.replace('#44 →', '#54 →');
+      if (reason === 'old GPS') bus.observed_at = p.now - 30000;
+      if (reason === 'future GPS') bus.observed_at = p.now + 5001;
+      if (reason === 'wrong bus') bus.bus_name = '#55';
+      if (reason === 'wrong route') bus.route_id = 3;
+      if (reason === 'duplicate GPS') p.feed.buses.push({ ...bus });
+      if (reason === 'invalid GPS') bus.lat = NaN;
+      expect(rideTrackingConflict(p.text, p.feed, p.run, p.now)).toBeNull();
+    });
+  it('confirms distinct original observations, and clears a corrected or raced screen', () => {
+    const a = positionInput(), b = positionInput(1);
+    const first = confirmConflict(null, rideTrackingConflict(a.text, a.feed, a.run, a.now), a.now);
+    expect(first.alert).toBeNull();
+    expect(confirmConflict(first.state, rideTrackingConflict(a.text, a.feed, a.run, a.now), b.now).alert).toBeNull();
+    const second = confirmConflict(first.state, rideTrackingConflict(b.text, b.feed, b.run, b.now), b.now);
+    expect(second.alert).toMatchObject({ bus: '#44' });
+    expect(confirmConflict(second.state, null, b.now).state).toBeNull();
+  });
+});
 describe('independent rider screen count', () => {
   it('detects the reported 11-versus-3 contradiction and accepts the fixed screen', () => {
     expect(conflict()).toMatchObject({ bus: '#317', standingStop: 11, boardStop: 48, actual: 11, expected: 3 });

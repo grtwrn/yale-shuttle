@@ -81,6 +81,31 @@ export function rideCountConflict(text, feed, run, now) {
     exitStopId: run.exitStopId, travelIndex: travel, expected, actual, observedAt: bus.observed_at};
 }
 
+// A bus can lose its route forecast while still reporting its position.
+// This checks the saved ride identity and raw GPS, without the app's route
+// filter or ETA helpers. It makes no claim about arrival or route progress.
+export function rideTrackingConflict(text, feed, run, now) {
+  const bare = value => String(value).trim().replace(/^#/, '');
+  if (run?.phase !== 'riding' || !run.id || !run.busName || !Array.isArray(run.line?.busRouteIds)
+    || !/(?:^|\n)Looking for your bus…(?:\n|$)/.test(String(text))) return null;
+  let stored;
+  try { stored = JSON.parse(run.boardedStorage?.['shuttle-boarded-ride']); } catch { return null; }
+  if (!stored || bare(stored.busName) !== bare(run.busName) || stored.routeLabel !== run.line.label
+    || stored.boardStopId !== run.boardStopId || stored.alightStopId !== run.exitStopId) return null;
+  const captions = [...String(text).matchAll(/(?:^|\n)(?:🚌\s*)?([^\n]+?)\s+#([\w-]+)\s*→\s*([^\n]+)(?=\n|$)/g)];
+  const norm = value => String(value).replace(/\s/g, '').toLowerCase();
+  if (!captions.length || captions.some(m => norm(m[1]) !== norm(run.line.label)
+    || bare(m[2]) !== bare(run.busName) || norm(m[3]) !== norm(feed.stop_names?.[run.exitStopId]))) return null;
+  const buses = (feed.buses ?? []).filter(b => bare(b.bus_name) === bare(run.busName) && run.line.busRouteIds.includes(b.route_id));
+  if (buses.length !== 1) return null;
+  const bus = buses[0];
+  if (![now, bus.observed_at, bus.lat, bus.lon].every(Number.isFinite)
+    || now - bus.observed_at >= 30000 || bus.observed_at > now + 5000
+    || !bus.lat || Math.abs(bus.lat) > 90 || !bus.lon || Math.abs(bus.lon) > 180) return null;
+  return { runId: run.id, bus: bus.bus_name, routeId: bus.route_id, observedAt: bus.observed_at,
+    expected: 'bus-position-available', actual: 'looking-for-bus' };
+}
+
 // Distinct observations must agree; cached polls, feed/UI races and a
 // one-poll glitch are not sustained contradictions. State belongs to a run.
 export function confirmConflict(previous, conflict, now) {

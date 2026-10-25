@@ -1,4 +1,22 @@
 import { rideExitNearby } from "./rideAlert";
+import type { ReportingSnapshot } from "./busReporting";
+import { LIVE_UPDATE_STALE_MS } from "./liveUpdates";
+
+/** Position reporting does not establish that a bus has a usable route ETA. */
+export function ridePositionAvailable(
+  snapshot: ReportingSnapshot | null, busName: string, routeIds: readonly number[], now: number,
+): boolean {
+  if (!snapshot || ![snapshot.at, snapshot.serverAt, now].every(Number.isFinite)
+    || now - snapshot.at >= LIVE_UPDATE_STALE_MS || snapshot.at > now + 5000) return false;
+  const name = (value: string) => value.trim().replace(/^#/, "");
+  const matches = snapshot.buses.filter(bus => name(bus.bus_name) === name(busName) && routeIds.includes(bus.route_id));
+  if (matches.length !== 1) return false;
+  const bus = matches[0]!;
+  return Number.isFinite(bus.observed_at) && snapshot.serverAt - bus.observed_at! >= -5000
+    && snapshot.serverAt - bus.observed_at! < LIVE_UPDATE_STALE_MS
+    && Number.isFinite(bus.lat) && Math.abs(bus.lat) <= 90 && bus.lat !== 0
+    && Number.isFinite(bus.lon) && Math.abs(bus.lon) <= 180 && bus.lon !== 0;
+}
 
 /** An index in the display list cannot distinguish repeated outbound/inbound stops. */
 export function isUnambiguousRideArrival(
@@ -97,6 +115,7 @@ export function rideLappedExit(p: {
  * takes the countdown's place; a lapped exit replaces the stop count. */
 export function rideHeadline(s: {
   busFound: boolean;
+  positionAvailable?: boolean;
   stopsRemaining: number | null;
   alightName: string;
   etaStr: string | null;
@@ -104,6 +123,9 @@ export function rideHeadline(s: {
   alightPassed: boolean;
   exitMeters?: number | null;
 }): string {
+  if ((!s.busFound || s.stopsRemaining === null) && s.positionAvailable) {
+    return "Bus location available · arrival estimate unavailable";
+  }
   if (!s.busFound) return "Looking for your bus…";
   if (s.stopsRemaining === null) return "Tracking your ride";
   if (s.alightPassed) return `May have passed ${s.alightName}${s.etaStr ? ` · back in ${s.etaStr}` : ""}`;

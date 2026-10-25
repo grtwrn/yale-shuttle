@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { advanceUntilResponse, waitForResponseBody } from './browser-response.mjs';
 import { createRequire } from 'node:module';
+import { gunzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 const service = process.cwd(), out = process.env.OUT, probe = process.env.PROBE === '1';
 if (!out) throw new Error('Set OUT to a fresh evidence directory');
 await fs.mkdir(out, { recursive: true });
@@ -26,6 +28,7 @@ const report = { scope: 'Actual built SPA, persisted physical ride and synthetic
 const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
 let context, page;
 try {
+  await checkPositionWithoutForecast();
   context = await browser.newContext({ viewport: { width: process.env.DESKTOP ? 1280 : 390, height: 844 }, isMobile: !process.env.DESKTOP, hasTouch: !process.env.DESKTOP, timezoneId: 'America/New_York', serviceWorkers: 'block' });
   await seedTestId(context);
   await context.addInitScript(({ ride }) => {
@@ -188,3 +191,92 @@ try {
   await fs.writeFile(out + '/ride-recovery.json', JSON.stringify(report, null, 2));
 }
 console.log(JSON.stringify({ completed: report.completed, resourcesClosed: report.resourcesClosed, checks: report.checks, errors: report.errors }, null, 2));
+
+async function checkPositionWithoutForecast() {
+  const fixture = JSON.parse(await fs.readFile(service + '/web/src/__fixtures__/ride-position-without-eta-20261025.json', 'utf8'));
+  const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+  const original = fixture.snapshots.map(snapshot => {
+    const r = snapshot.response, packed = Buffer.from(r.body, 'base64'), raw = gunzipSync(packed);
+    assert.equal(packed.length, r.gzipBytes); assert.equal(digest(packed), r.gzipSHA256);
+    assert.equal(raw.length, r.decodedBytes); assert.equal(digest(raw), r.decodedSHA256);
+    const keys = ['v', 'runId', 'route', 'sourceKind', 'receivedAt', 'status', 'headers', 'decodedBytes', 'decodedSHA256', 'gzipBytes', 'gzipSHA256'];
+    assert.equal(digest(JSON.stringify(Object.fromEntries(keys.map(k => [k, r[k]])))), r.id);
+    const header = JSON.parse(r.headers['x-shuttle-snapshot']);
+    assert.equal(header.sha256, digest(raw)); assert.equal(header.bytes, raw.length);
+    return { ...snapshot, raw, feed: JSON.parse(raw) };
+  });
+  const expected = 'Bus location available · arrival estimate unavailable';
+  for (const mode of ['original-gps-only', 'second-original-gps-only', 'missing-gps', 'old-gps', 'future-gps', 'wrong-route', 'whole-eta-missing', 'expired-position']) {
+    const initial = original[mode === 'second-original-gps-only' ? 1 : 0];
+    let current = initial, failed = false;
+    const ctx = await browser.newContext({ viewport: { width: process.env.DESKTOP ? 1280 : 390, height: 844 },
+      isMobile: !process.env.DESKTOP, hasTouch: !process.env.DESKTOP, timezoneId: 'America/New_York', serviceWorkers: 'block' });
+    let p;
+    try {
+      await seedTestId(ctx);
+      await ctx.addInitScript(ride => {
+        localStorage.setItem('shuttle-boarded-ride', JSON.stringify(ride));
+        window.testNotifications = [];
+        window.Notification = class { static permission = 'granted'; constructor(title) { window.testNotifications.push(title); } };
+        navigator.vibrate = () => true;
+      }, fixture.ride);
+      p = await ctx.newPage(); p.setDefaultTimeout(8000);
+      p.on('pageerror', e => report.errors.push(e.message));
+      await p.clock.install({ time: new Date(initial.response.receivedAt) });
+      await p.route('**/*', async route => {
+        const url = new URL(route.request().url());
+        if (url.hostname !== 'position.test') return route.abort();
+        if (url.pathname === '/api/buses') {
+          if (failed) return route.fulfill({ status: 503 });
+          let raw = current.raw;
+          if (current === initial && !mode.includes('original') && mode !== 'expired-position') {
+            const feed = structuredClone(current.feed), bus = feed.buses.find(b => b.bus_name === '#44');
+            if (mode === 'missing-gps') feed.buses = feed.buses.filter(b => b !== bus);
+            if (mode === 'old-gps') bus.observed_at = feed.server_eta.servedAt - 45000;
+            if (mode === 'future-gps') bus.observed_at = feed.server_eta.servedAt + 5001;
+            if (mode === 'wrong-route') bus.route_id = 3;
+            if (mode === 'whole-eta-missing') { Object.assign(bus, feed.stop_coords[106]); delete feed.server_eta; }
+            raw = Buffer.from(JSON.stringify(feed));
+          }
+          return route.fulfill({ body: raw, contentType: 'application/json' });
+        }
+        if (url.pathname === '/api/weather') return route.fulfill({ status: 204 });
+        if (url.pathname.startsWith('/api/')) return route.fulfill({ json: { reports: [], results: [], routes: [] } });
+        const name = url.pathname === '/' ? '/index.html' : url.pathname;
+        try { return route.fulfill({ body: await fs.readFile(service + '/web/dist' + name), contentType: name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : 'text/html' }); }
+        catch { return route.fulfill({ status: 404 }); }
+      });
+      await p.goto('https://position.test'); await p.getByRole('button', { name: 'Done', exact: true }).waitFor();
+      await p.clock.runFor(100);
+      if (mode === 'expired-position') { failed = true; await p.clock.runFor(46000); }
+      const text = await p.locator('body').innerText();
+      report.states.push({ name: 'position-' + mode, body: text, originalResponseID: initial.response.id,
+        sourceClockUnmodified: true, syntheticVariation: !mode.includes('original') });
+      if (mode === 'original-gps-only') await p.screenshot({ path: out + '/position-without-forecast.png' });
+      const available = mode.includes('original') || mode === 'whole-eta-missing';
+      if (!probe) assert(text.includes(available ? expected : 'Looking for your bus…'), mode + ': ' + text.split('\n')[0]);
+      assert(!/Get off NEXT|Get off in 2|Arriving at |Get off here/.test(text));
+      assert.equal(await p.getByRole('alertdialog').count(), 0);
+      assert.deepEqual(await p.evaluate(() => window.testNotifications), []);
+      assert(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      if (mode === 'original-gps-only') {
+        if (!process.env.DESKTOP) {
+          for (const width of [320, 360, 430]) {
+            await p.setViewportSize({ width, height: 844 });
+            assert(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            const doneBox = await p.getByRole('button', { name: 'Done', exact: true }).boundingBox();
+            assert(doneBox.width >= 44 && doneBox.height >= 44);
+            if (width === 320) await p.screenshot({ path: out + '/position-without-forecast-320.png' });
+          }
+        }
+        current = original[2]; await p.clock.setFixedTime(new Date(current.response.receivedAt));
+        const response = p.waitForResponse(r => new URL(r.url()).pathname === '/api/buses');
+        await p.clock.runFor(5100); await waitForResponseBody(p, await response); await p.clock.runFor(100);
+        const recovered = await p.locator('body').innerText();
+        assert(recovered.includes('8 stops · 14 min')); assert(!recovered.includes(expected));
+        report.states.push({ name: 'position-original-recovery', body: recovered, originalResponseID: current.response.id, sourceClockUnmodified: true });
+      }
+    } finally { if (p) await p.close(); await ctx.close(); }
+  }
+  report.checks.push('Original Blue Night GPS-only bodies distinguish position from ETA loss; a later original body restores8stops. Missing/stale/future/wrong-route/expired GPS never claims a current position; no missing ETA state instructs getting off.');
+}

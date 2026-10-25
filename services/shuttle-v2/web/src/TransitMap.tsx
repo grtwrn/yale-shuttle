@@ -100,7 +100,7 @@ import { RideFinish } from "./RideFinish";
 import { loadBoardedRide, saveBoardedRide, type BoardedRide } from "./boardedRide";
 import { OnwardTransfer } from "./OnwardTransfer";
 import { loadTransferHandoff, saveTransferHandoff, saveTransferSelection, type TransferHandoff } from "./transferState";
-import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, type RideEvidence } from "./rideArrival";
+import { isUnambiguousRideArrival, rideEvidence, rideHeadline, rideLappedExit, ridePositionAvailable, type RideEvidence } from "./rideArrival";
 import { getOffAlertDue, getOffAlertTitle, getOffPromptTitle, rideBoarded, rideExitNearby } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { nextRouteStop } from './nextRouteStop';
@@ -6232,13 +6232,15 @@ const RideStopList: FC<{
 const OnBusBanner: FC<{
   ride: BoardedRide;
   buses: BusData[];
+  reportingSnapshot: ReportingSnapshot | null;
+  reportingAvailable: boolean;
   stopNames: Record<number, string>;
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   onEnd: () => void;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, onEnd }) => {
+}> = ({ ride, buses, reportingSnapshot, reportingAvailable, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, onEnd }) => {
   const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
   const alightName = (stopNames[ride.alightStopId] ?? `Stop ${ride.alightStopId}`).replace(/\s*\/\s*/g, "/");
   const normBus = (s: string) => s.replace(/^#/, "");
@@ -6381,6 +6383,7 @@ const OnBusBanner: FC<{
   const etaStr = etaSec !== null ? formatRideEta(etaSec) : null;
   const headline = rideHeadline({
     busFound: bus !== undefined, stopsRemaining, alightName, etaStr, holdText, alightPassed, exitMeters,
+    positionAvailable: reportingAvailable && ridePositionAvailable(reportingSnapshot, ride.busName, cfg?.busRouteIds ?? [], Date.now()),
   });
 
   return (
@@ -7487,6 +7490,8 @@ const TransitMap: FC = () => {
         <OnBusBanner
           ride={boardedRide}
           buses={buses}
+          reportingSnapshot={reportingSnapshot}
+          reportingAvailable={busStatus === "ready"}
           stopNames={stopNames}
           stopCoords={stopCoords}
           routeStops={routeStops}
