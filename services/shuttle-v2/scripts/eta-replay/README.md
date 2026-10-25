@@ -169,6 +169,15 @@ text the trip card would have shown each of them until their bus reached the
 curb. The unit of output is a WAIT, not a transition. Findings and the
 acceptance record are in `docs/rider-sim.md`.
 
+Arrival-dependent scores use correlated GPS/upstream proxy labels. Each wait's
+`outcomeEvidence` retains the visit source (`curb`, `curb-only`, or unbounded
+`feed` fallback), same-time raw witnesses, route agreement, and distance to the
+supplied replay stop coordinate. Missing and conflicting evidence stays
+explicit. JSON/console summaries count both waits and distinct arrival labels,
+including missing evidence in old files. These diagnostics leave the original
+outcomes, scores and cohorts intact; they do not verify physical boarding or
+historical stop geometry. See `docs/rider-sim.md` for the audit limitations.
+
 ```bash
 cd services/shuttle-v2
 # default: Red focus (uniform every 10 min + targeted at departures/last bus),

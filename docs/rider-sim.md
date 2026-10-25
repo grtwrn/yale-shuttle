@@ -13,6 +13,39 @@ overstated by an unknown amount on any line with (N)/(S) twins; sequences,
 drifts and reversals are unaffected. Re-run rather than compare across that
 boundary.
 
+### Arrival-label evidence (2026-10-25)
+
+Arrival-dependent metrics use **correlated GPS/feed proxy labels**, not
+independent physical boarding evidence. The unmatched `last_stop_id` fallback
+selects the nearest recorded point in the preceding five minutes with **no
+maximum distance**. A label can therefore say “arrived” with GPS far from the
+supplied stop. Neither near GPS nor feed agreement verifies that a bus opened
+its doors, and late-captured topology cannot verify historical stop identities.
+
+Each new `.waits.jsonl` row includes additive `outcomeEvidence`: visit source,
+all matching visits, same-time raw witnesses, route agreement, stop coordinate,
+and distance bands. Conflicting raw fixes/identities have no selected distance;
+identical duplicates in the parsed capture remain counted (including overlapping
+files); estimator/scoring deduplication is unchanged. Missing visits, raw points and coordinates
+are explicit. A wait without an arrival claim retains that fact and its
+`busAtStopOnArrival` context. Historical rows without metadata stay unknown.
+
+JSON and console summaries report waits **and distinct arrival-label events**
+(stop, time, bus name), plus per-route evidence counts. Multiple waits sharing
+one event are correlated. Conflicting evidence for one event is reported
+separately. These diagnostics do not remove or rescore any outcomes, change
+population membership, or qualify physical timing accuracy. `--compare` keeps
+the existing paired scores and warns about their proxy-label scope.
+
+The retained Oct 3/14 audit covered 13,965 paired waits and 1,573 distinct
+arrival labels. Of those events, 201 used the feed fallback and 64 were over
+1 km from the retained replay stop coordinate (463 waits shared those labels).
+The replay used topology captured Oct 17: these are conditional diagnostic
+distances. The Red stop 30 label at Oct 14 20:46:19.628Z was 2,012 m away;
+its original −881 s miss remains recorded but is not a qualified physical miss.
+The separate Red stop 75/39 countdown jumps remain open. This audit does not
+change the native learning matcher's stricter fresh stationary GPS rule.
+
 The operator's ask, verbatim:
 
 > "like the canary rider, but we should be able to do expedited simulations

@@ -99,6 +99,7 @@ import {
 import { distanceMeters } from "../../../src/network/geo.js";
 import { applyModelParams, activeModelParams } from "../../../web/src/eta/params.js";
 import { PACE_KEY, paceCarrier, type PaceEntry } from "../../../src/server/v1compat.js";
+import { createOutcomeEvidenceLookup } from "./outcome-evidence.js";
 import {
   aggregate,
   chainSummary,
@@ -274,7 +275,6 @@ for (const f of captureFiles) {
 }
 const rows = dedupeAndSort(raw);
 if (!rows.length) throw new Error('No positions parsed from CAPTURE; use positions JSONL, not watcher screenshots.');
-raw = [];
 const polls = groupPolls(rows);
 const dataStart = rows[0]!.t;
 const dataEnd = rows[rows.length - 1]!.t;
@@ -403,6 +403,10 @@ if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.va
 
 // truth
 const visits = stopVisits(rows, (rid) => (cfgByRouteId.get(rid) ? stopsOf(cfgByRouteId.get(rid)!.label) : []), net.stopCoords);
+// Diagnose the original parsed capture, including overlapping duplicates and
+// conflicting fixes. The estimator/truth still use the unchanged deduped rows.
+const outcomeEvidenceFor = createOutcomeEvidenceLookup(raw, visits, net.stopCoords);
+raw = [];
 log(`stop visits computed for ${visits.size} stops`);
 
 // -- pass 1: the detector alone, for the targeted population ---------------------
@@ -707,6 +711,7 @@ function finish(a: Active, outcome: WaitResult["outcome"]) {
   const r = scoreWait(a.spec, a.ticks, a.truth, detectorArrival(a.truth.kind === "arrived" ? a.truth.busName : null, a.spec.boardStopId, a.spec.t0), outcome, { sampleMs: SAMPLE_MS }, a.busAtStopOnArrival, bv);
   const c = scoreWait(a.spec, a.ticks, a.truth, r.detectorArrivedAt, outcome, { sampleMs: CANARY_MS }, a.busAtStopOnArrival, bv);
   (r as any).canary = { readings: c.readings, worstDriftSec: c.worstDriftSec, catastrophic: c.catastrophic, reversals: c.reversals, strand: c.strand, sequence: c.sequence, droppedApproaching: c.droppedApproaching, droppedDeclined: c.droppedDeclined, droppedRepriced: c.droppedRepriced };
+  r.outcomeEvidence = outcomeEvidenceFor(r, cfgByLabel.get(r.label)?.busRouteIds ?? []);
   results.push(r);
 }
 
