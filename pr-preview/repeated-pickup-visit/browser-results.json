@@ -1,0 +1,233 @@
+{
+  "ok": true,
+  "images": [
+    {
+      "arm": "baseline",
+      "route": "Green",
+      "seq": 1151,
+      "file": "before-green.png",
+      "originalFile": "browser03-baseline-green-1151.png",
+      "sha256": "673df33626f475fb587e855f23035cb7623ed69820a3c5e8119ccf5ca465670c"
+    },
+    {
+      "arm": "candidate",
+      "route": "Green",
+      "seq": 1151,
+      "file": "after-green.png",
+      "originalFile": "browser03-candidate-green-1151.png",
+      "sha256": "28520aeaa38458b168f7d14a12ca41b4c12ea3d1dd0bc987d7421141cbb8650e"
+    },
+    {
+      "arm": "baseline",
+      "route": "Purple",
+      "seq": 1185,
+      "file": "before-purple.png",
+      "originalFile": "browser03-baseline-purple-1185.png",
+      "sha256": "e1db6620029d47b7fae05f40a171737ffd249966aaf99dfc79c0bb12e1ca27c6"
+    },
+    {
+      "arm": "candidate",
+      "route": "Purple",
+      "seq": 1185,
+      "file": "after-purple.png",
+      "originalFile": "browser03-candidate-purple-1185.png",
+      "sha256": "c9c9f06212ab865fa2bb454603c5517c5355dced5ed140356b03d25956f59feb"
+    }
+  ],
+  "results": [
+    {
+      "arm": "baseline",
+      "route": "Green",
+      "samples": [
+        {
+          "text": "Green\t\nAt stop\n\t~3 min\t11:58a \u2013 12:12p\n\n\ud83d\ude8c 7 min\n\u203a",
+          "boardBus": "332",
+          "countdownBus": "332",
+          "stopsAhead": "0",
+          "autoBoardOfferBeforeUserDismissal": true,
+          "seq": 1151,
+          "at": 1792857273343,
+          "feedReads": 1
+        },
+        {
+          "text": "Green\t\n~3 (1 \u2013 14)\n\t~23 min\t11:58a \u2013 12:12p\n\n\ud83d\ude8c 3 min\n\u203a",
+          "boardBus": "332",
+          "countdownBus": "332",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1152,
+          "at": 1792857278544,
+          "feedReads": 2
+        },
+        {
+          "text": "Green\t\nAt stop\n\t~3 min\t11:58a \u2013 12:12p\n\n\ud83d\ude8c 7 min\n\u203a",
+          "boardBus": "332",
+          "countdownBus": "332",
+          "stopsAhead": "0",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1153,
+          "at": 1792857283302,
+          "feedReads": 3
+        }
+      ],
+      "fullPage": {
+        "file": "browser03-baseline-green-page.png",
+        "sha256": "0c90ef2a83b82ccba90b4d33e0f8d4974bed04de8f4a9e75121b069b35f4bbf5"
+      },
+      "pageErrors": [],
+      "externalRequestsAllBlocked": 7
+    },
+    {
+      "arm": "baseline",
+      "route": "Purple",
+      "samples": [
+        {
+          "text": "Purple\t\n~4 (1 \u2013 17)\n\t~16 min\t12:02p \u2013 12:16p\n\n\ud83d\ude8c 3 min\n\u203a\n\n",
+          "boardBus": "326",
+          "countdownBus": "326",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1184,
+          "at": 1792857438294,
+          "feedReads": 1
+        },
+        {
+          "text": "Purple\t\nAt stop\n\t~4 min\t12:02p \u2013 12:16p\n\n\ud83d\ude8c 7 min\n\u203a\n\n",
+          "boardBus": "326",
+          "countdownBus": "326",
+          "stopsAhead": "0",
+          "autoBoardOfferBeforeUserDismissal": true,
+          "seq": 1185,
+          "at": 1792857443421,
+          "feedReads": 2
+        },
+        {
+          "text": "Purple\t\n~4 (1 \u2013 17)\n\t~15 min\t12:02p \u2013 12:16p\n\n\ud83d\ude8c 3 min\n\u203a\n\n",
+          "boardBus": "326",
+          "countdownBus": "326",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1186,
+          "at": 1792857448338,
+          "feedReads": 3
+        }
+      ],
+      "fullPage": {
+        "file": "browser03-baseline-purple-page.png",
+        "sha256": "d97eea548091861559ee4d36f8086bb87e9941116c70b4dff836db02337d1e9b"
+      },
+      "pageErrors": [],
+      "externalRequestsAllBlocked": 7
+    },
+    {
+      "arm": "candidate",
+      "route": "Green",
+      "samples": [
+        {
+          "text": "Green\t\n~3 (1 \u2013 14)\n\t~23 min\t11:58a \u2013 12:12p\n\n\ud83d\ude8c 3 min\n\u203a",
+          "boardBus": "332",
+          "countdownBus": "332",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1151,
+          "at": 1792857273343,
+          "feedReads": 1
+        },
+        {
+          "text": "Green\t\n~3 (1 \u2013 14)\n\t~23 min\t11:58a \u2013 12:12p\n\n\ud83d\ude8c 3 min\n\u203a",
+          "boardBus": "332",
+          "countdownBus": "332",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1152,
+          "at": 1792857278544,
+          "feedReads": 2
+        },
+        {
+          "text": "Green\t\n~3 (1 \u2013 13)\n\t~23 min\t11:58a \u2013 12:12p\n\n\ud83d\ude8c 3 min\n\u203a",
+          "boardBus": "332",
+          "countdownBus": "332",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1153,
+          "at": 1792857283302,
+          "feedReads": 3
+        }
+      ],
+      "fullPage": {
+        "file": "browser03-candidate-green-page.png",
+        "sha256": "97c3026951aa2d0084077090757958a332932e1d2ab168250bdc87933b1b59f9"
+      },
+      "pageErrors": [],
+      "externalRequestsAllBlocked": 7
+    },
+    {
+      "arm": "candidate",
+      "route": "Purple",
+      "samples": [
+        {
+          "text": "Purple\t\n~4 (1 \u2013 17)\n\t~16 min\t12:02p \u2013 12:16p\n\n\ud83d\ude8c 3 min\n\u203a\n\n",
+          "boardBus": "326",
+          "countdownBus": "326",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1184,
+          "at": 1792857438294,
+          "feedReads": 1
+        },
+        {
+          "text": "Purple\t\n~4 (1 \u2013 17)\n\t~15 min\t12:02p \u2013 12:16p\n\n\ud83d\ude8c 3 min\n\u203a\n\n",
+          "boardBus": "326",
+          "countdownBus": "326",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1185,
+          "at": 1792857443421,
+          "feedReads": 2
+        },
+        {
+          "text": "Purple\t\n~4 (1 \u2013 17)\n\t~15 min\t12:02p \u2013 12:16p\n\n\ud83d\ude8c 3 min\n\u203a\n\n",
+          "boardBus": "326",
+          "countdownBus": "326",
+          "stopsAhead": "2",
+          "autoBoardOfferBeforeUserDismissal": false,
+          "seq": 1186,
+          "at": 1792857448338,
+          "feedReads": 3
+        }
+      ],
+      "fullPage": {
+        "file": "browser03-candidate-purple-page.png",
+        "sha256": "8fe926c65269a4b83d28ad36c6c64e1a8eb9a57db4e0a10b791b1062e602cd52"
+      },
+      "pageErrors": [],
+      "externalRequestsAllBlocked": 7
+    }
+  ],
+  "distReceipts": [
+    {
+      "arm": "baseline",
+      "route": "Green",
+      "indexSHA256": "d60b905eed41a4a54542d0cc990e76bde1ffc9bb0f8b90ac7a91f5e626bd6e7c"
+    },
+    {
+      "arm": "baseline",
+      "route": "Purple",
+      "indexSHA256": "d60b905eed41a4a54542d0cc990e76bde1ffc9bb0f8b90ac7a91f5e626bd6e7c"
+    },
+    {
+      "arm": "candidate",
+      "route": "Green",
+      "indexSHA256": "67ee7079ba97d0c07fb4b24e903c51fc5090c2cf4af941b3862630725e56ec48"
+    },
+    {
+      "arm": "candidate",
+      "route": "Purple",
+      "indexSHA256": "67ee7079ba97d0c07fb4b24e903c51fc5090c2cf4af941b3862630725e56ec48"
+    }
+  ],
+  "candidateSourceCommit": "6c20e2ce",
+  "scope": "Actual baseline/candidate built React UI and recorded original poll sequence with original fixed Date.now per phase. All nonlocal browser traffic blocked. Local test server only; not a production live-control qualification.",
+  "noProductionRequests": true,
+  "rawSourceFixture": "services/shuttle-v2/web/src/__fixtures__/repeated-pickup-raw-override-20261024.json"
+}
