@@ -2,7 +2,8 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "../..",
+    "allowJs": true,
     "noEmit": true
   },
-  "include": ["model-patch.ts", "split-patch.ts"]
+  "include": ["model-patch.ts", "split-patch.ts", "rider-sim/outcome-evidence.ts"]
 }

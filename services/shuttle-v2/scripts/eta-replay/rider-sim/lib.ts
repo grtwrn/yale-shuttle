@@ -21,6 +21,8 @@ import {
 } from "../../canary-metrics.mjs";
 
 import { minCrossingMatching } from "./served-matching";
+import { summarizeOutcomeEvidence } from "./outcome-evidence.js";
+import type { OutcomeEvidence, OutcomeEvidenceSummary } from "./outcome-evidence.js";
 
 // -- positions ----------------------------------------------------------------
 
@@ -505,6 +507,8 @@ export interface Tick {
 }
 
 export interface Transition {
+  /** Supplied by the canary scorer; omitted by older saved transitions. */
+  leader?: boolean;
   atMs: number;
   dtSec: number;
   driftSec: number;
@@ -520,6 +524,8 @@ export interface Transition {
 }
 
 export interface WaitResult {
+  /** Additive GPS/feed label diagnostics; absent in historical output. Does not change scoring. */
+  outcomeEvidence?: OutcomeEvidence;
   id: string;
   label: string;
   boardStopId: number;
@@ -537,7 +543,7 @@ export interface WaitResult {
    * separately.
    */
   busAtStopOnArrival: string | null;
-  /** Bus that reached the stop (curb rule), and when. */
+  /** GPS/feed proxy arrival label. See outcomeEvidence for support and limitations. */
   arrivedAt: number | null;
   arrivedBus: string | null;
   /** The detector's own arrival event for that bus at that stop, if any. */
@@ -697,10 +703,11 @@ export interface ScoreOpts {
 
 /** A second-slot drop has no second-arrival truth in this instrument. */
 export function strandAttribution(t: Transition, arrivedAt: number | null, arrivedBus: string | null): "none" | "secondary" | "unmatched" | "confirmed" {
+  // Preserve the historical scorer's parsed-bucket contract and runtime behavior.
   if (!Number.isFinite(t.atMs) || !Number.isFinite(t.driftSec)
     || arrivedAt === null || !Number.isFinite(arrivedAt)) return "none";
   const after = parseBusEtaText(t.to);
-  if (!after || t.driftSec > -STRAND_MIN_DROP_SEC || -t.driftSec <= after.first[1]!
+  if (!after || t.driftSec > -STRAND_MIN_DROP_SEC || -t.driftSec <= after.first![1]!
     || arrivedAt === null || arrivedAt < t.atMs || arrivedAt - t.atMs > STRAND_ARRIVE_WITHIN_SEC * 1000) return "none";
   if (!t.leader) return "secondary";
   const norm = (bus: string | null | undefined) => bus?.replace(/^#/, "");
@@ -762,7 +769,7 @@ export function scoreWait(
   for (let i = 0; i < ticks.length; i++) {
     const s = samples[i]!;
     if (s.eta) {
-      firstSight = { atMs: s.atMs, raw: s.eta.raw, lo: s.eta.first[0]!, hi: s.eta.first[1]! };
+      firstSight = { atMs: s.atMs, raw: s.eta.raw, lo: s.eta.first![0]!, hi: s.eta.first![1]! };
       const tk = ticks[i]!;
       if (tk.lowSec != null && tk.highSec != null && arrivedAt !== null) {
         const lo = s.atMs + tk.lowSec * 1000, hi = s.atMs + tk.highSec * 1000;
@@ -807,7 +814,7 @@ export function scoreWait(
     const after = parseBusEtaText(t.to);
     const before = parseBusEtaText(t.from);
     if (after && before) {
-      const beforeLo = before.first[0]!;
+      const beforeLo = before.first![0]!;
       const attribution = strandAttribution(t, arrivedAt, arrivedBus);
       if (attribution === "confirmed") strand = true;
       if (attribution === "secondary" || attribution === "unmatched") unattributedStrand = true;
@@ -925,6 +932,7 @@ export interface GroupSummary {
 }
 
 export interface Summary {
+  outcomeEvidence: OutcomeEvidenceSummary;
   all: GroupSummary;
   byRoute: Record<string, GroupSummary>;
   worstStops: Array<{ key: string; label: string; stopId: number; waits: number; pctJump180: number; pctStrand: number }>;
@@ -1016,7 +1024,7 @@ export function aggregate(waits: readonly WaitResult[]): Summary {
     .sort((a, b) => b.worstDriftSec - a.worstDriftSec)
     .slice(0, 10)
     .map((w) => ({ id: w.id, label: w.label, stopId: w.boardStopId, worstDriftSec: w.worstDriftSec, strand: w.strand, outcome: w.outcome, sequence: w.sequence }));
-  return { all: summarise(waits), byRoute, worstStops, worstWaits };
+  return { all: summarise(waits), byRoute, worstStops, worstWaits, outcomeEvidence: summarizeOutcomeEvidence(waits) };
 }
 
 const padR = (s: unknown, n: number) => String(s).padEnd(n);
@@ -1160,6 +1168,13 @@ export function renderSummary(title: string, s: Summary): string {
   const out: string[] = [];
   const g = s.all;
   out.push(`${title}`);
+  const e = s.outcomeEvidence;
+  if (e) {
+    out.push(`  outcome evidence: ${e.scope}; original scores and cohorts unchanged`);
+    for (const [unit, c] of [["waits", e.waits], ["distinct arrival labels", e.distinctArrivals]] as const) {
+      out.push(`  ${unit} ${c.total}: curb ${c.visitSources.curb}, curb-only ${c.visitSources["curb-only"]}, feed fallback ${c.visitSources.feed}, missing/ambiguous visit ${c.visitSources.missing}/${c.visitSources.ambiguous}; GPS >1km ${c.distanceBands[">1000m"]}, unknown distance ${c.distanceBands.unknown}; raw missing/duplicate/ambiguous ${c.rawMatches.missing}/${c.rawMatches.duplicate}/${c.rawMatches.ambiguous}; route disagreement ${c.routeDisagreements}; missing metadata ${c.missingMetadata}, conflicting event evidence ${c.conflictingEvidence}, no arrival claim ${c.noClaimedArrival}`);
+    }
+  } else out.push("  outcome evidence unavailable in this historical summary; physical boarding is unverified");
   out.push(`  waits ${g.waits}: arrived ${g.arrived}, gave up ${g.gaveUp}, data ended ${g.dataEnded}, boarded on arrival ${g.boardedOnArrival}; scored ${g.scored}`);
   out.push(`  wait median ${g.medianWaitMin} min, p90 ${g.p90WaitMin} min; first promise |miss| median ${g.firstSight.medianAbsSec} s, p90 ${g.firstSight.p90AbsSec} s (early>60 s ${g.firstSight.earlyOver60Pct}%, late>60 s ${g.firstSight.lateOver60Pct}%)`);
   if (g.interval.n) out.push(`  estimator interval at first sight (n ${g.interval.n}, median width ${g.interval.medianWidthSec} s): inside ${g.interval.insidePct}%, bus earlier ${g.interval.earlyPct}%, later ${g.interval.latePct}%`);
@@ -1181,6 +1196,7 @@ export function renderSummary(title: string, s: Summary): string {
 export function renderCompare(c: Compare, nameA: string, nameB: string): string {
   const q = (x: { both: number; onlyA: number; onlyB: number; neither: number }) => `both ${x.both}, only ${nameA} ${x.onlyA}, only ${nameB} ${x.onlyB}, neither ${x.neither}`;
   return [
+    "Outcome-dependent comparisons use GPS/feed proxy labels, not independent physical boarding evidence; scores and cohorts are unchanged.",
     `paired waits ${c.paired} (only ${nameA} ${c.onlyA}, only ${nameB} ${c.onlyB})`,
     `  jump>=180 s: ${q(c.jump180)}`,
     `  strand:      ${q(c.strand)}`,
