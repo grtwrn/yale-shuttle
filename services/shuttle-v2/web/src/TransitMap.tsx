@@ -20,6 +20,7 @@ import { liveAnchorStore } from "./eta";
 import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach, rideCallIndex, rideCalls, rideStopsToExit } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
+import { nextArrivalForPickup } from './followingPickup';
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
@@ -2721,7 +2722,7 @@ const TripPlanner: FC<{
     // A raw current curb is visit zero even if only its next lap is forecast.
     // Do not use that later lap to skip a real following bus.
     const nextArrLive = busEtaLive !== null && !o.departed
-      ? nextArrivalAfterPinned(
+      ? nextArrivalForPickup(
           computeUpcomingArrivals(
             // dwellTimes matters here: #32 made a dwell able to cancel
             // the waiting inside a segment, and hoisting this call must
@@ -2738,6 +2739,7 @@ const TripPlanner: FC<{
           busEtaLive,
           countdown?.source === 'forecast' ? countdown.stopsAhead
             : countdown?.source === 'raw-at-stop' ? 0 : undefined,
+          countdown?.source === 'raw-at-stop',
         )
       : null;
 
@@ -2754,11 +2756,12 @@ const TripPlanner: FC<{
     // At the observed curb the current visit has zero hops, even if its
     // forecast row is absent. The same bus's later row is still following.
     const warningNext = busEtaLive !== null && !o.departed
-      ? nextArrivalAfterPinned(
+      ? nextArrivalForPickup(
           (serverArrivalsForServiceWarning(buses, [o.boardStopId], Date.now()) ?? [])
             .filter(a => a.routeLabel === o.routeLabel),
           o.busName, busEtaLive, countdown?.source === 'forecast' ? countdown.stopsAhead
             : countdown?.source === 'raw-at-stop' ? 0 : undefined,
+          countdown?.source === 'raw-at-stop',
         ) ?? nextArrLive
       : nextArrLive;
     const lastBus = shuttleCtx
