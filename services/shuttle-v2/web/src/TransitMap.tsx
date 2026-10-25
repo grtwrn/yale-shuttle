@@ -5393,9 +5393,13 @@ const StopList: FC<{
           const dwellLabel = typicalStand && typicalStand.sec >= 180
             ? `~${Math.round(typicalStand.sec / 60)} min`
             : null;
-          // A bus RESTING here, by the belief rather than by `at_stop_id` — so
-          // a layover taken short of the marker still shows its clock (#102).
-          const restHere = restAtStop[stopId] ?? null;
+          // A bus badge and its pause clock must describe the same vehicle.
+          // Another bus can name this curb while the displayed bus has a
+          // different rest, or no rest at all.
+          const busRest = bus ? restForBus[normBusName(bus.bus_name)] : null;
+          const restHere = bus
+            ? (busRest?.stopId === stopId ? busRest : null)
+            : restAtStop[stopId] ?? null;
           const restChip = standChipFor(restHere, routeDwells, dwellTimes);
           // The 🔔's own state for this row: armed, and whether this row's
           // lead-time chooser is the open one.

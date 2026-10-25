@@ -1,0 +1,199 @@
+{
+  "at": "2026-10-25T11:41:58.498Z",
+  "ok": true,
+  "results": [
+    {
+      "phase": "before",
+      "seq": 290,
+      "sourceBodySHA256": "08cb230bbede217ed33fa172f054e673f42c1056819023615c2500c21e617b6b",
+      "sourceContextSHA256": "667d1698bd96df2dbfeab5036b5297ed8db8a04550e5df18d1208f5cccce420c",
+      "recordedAt": 1792926663750,
+      "rowText": "Building 900\n\u23f8 0:45 \u00b7 leaving any moment\n330\n\ud83d\udd14",
+      "pageErrors": [],
+      "screenshot": "before-290-phone.png",
+      "text": "before-290-phone.txt",
+      "viewport": "390x844"
+    },
+    {
+      "phase": "after",
+      "seq": 290,
+      "sourceBodySHA256": "08cb230bbede217ed33fa172f054e673f42c1056819023615c2500c21e617b6b",
+      "sourceContextSHA256": "667d1698bd96df2dbfeab5036b5297ed8db8a04550e5df18d1208f5cccce420c",
+      "recordedAt": 1792926663750,
+      "rowText": "Building 900\n\u23f8 0:15 \u00b7 leaving any moment\n330\n\ud83d\udd14",
+      "pageErrors": [],
+      "screenshot": "after-290-phone.png",
+      "text": "after-290-phone.txt",
+      "viewport": "390x844"
+    },
+    {
+      "phase": "before",
+      "seq": 299,
+      "sourceBodySHA256": "1153ba4515cfb8f1928487813af01eb4b54be4c051280d3cf688398bff10b7c0",
+      "sourceContextSHA256": "41725aed120d39e8e6e20030b093bdb8edc474010a9c0b9a7b485adde85b71be",
+      "recordedAt": 1792926708719,
+      "rowText": "Building 900\n\u23f8 1:00 \u00b7 leaving any moment\n308\n\ud83d\udd14",
+      "pageErrors": [],
+      "screenshot": "before-299-phone.png",
+      "text": "before-299-phone.txt",
+      "viewport": "390x844"
+    },
+    {
+      "phase": "after",
+      "seq": 299,
+      "sourceBodySHA256": "1153ba4515cfb8f1928487813af01eb4b54be4c051280d3cf688398bff10b7c0",
+      "sourceContextSHA256": "41725aed120d39e8e6e20030b093bdb8edc474010a9c0b9a7b485adde85b71be",
+      "recordedAt": 1792926708719,
+      "rowText": "Building 900\n308\n\ud83d\udd14",
+      "pageErrors": [],
+      "screenshot": "after-299-phone.png",
+      "text": "after-299-phone.txt",
+      "viewport": "390x844"
+    }
+  ],
+  "requests": [
+    {
+      "phase": "before",
+      "seq": 290,
+      "path": "/"
+    },
+    {
+      "phase": "before",
+      "seq": 290,
+      "path": "/assets/rider-f4udq9A_.js"
+    },
+    {
+      "phase": "before",
+      "seq": 290,
+      "path": "/assets/rider-BfFrT9EB.css"
+    },
+    {
+      "phase": "before",
+      "seq": 290,
+      "path": "/assets/routes--YXhBk7l.js"
+    },
+    {
+      "phase": "before",
+      "seq": 290,
+      "path": "/assets/pullToRefresh-DX1iMfdw.js"
+    },
+    {
+      "phase": "before",
+      "seq": 290,
+      "path": "/api/my-reports"
+    },
+    {
+      "phase": "before",
+      "seq": 290,
+      "path": "/api/buses"
+    },
+    {
+      "phase": "after",
+      "seq": 290,
+      "path": "/"
+    },
+    {
+      "phase": "after",
+      "seq": 290,
+      "path": "/assets/rider-Jp3FjVYC.js"
+    },
+    {
+      "phase": "after",
+      "seq": 290,
+      "path": "/assets/rider-BfFrT9EB.css"
+    },
+    {
+      "phase": "after",
+      "seq": 290,
+      "path": "/assets/routes--YXhBk7l.js"
+    },
+    {
+      "phase": "after",
+      "seq": 290,
+      "path": "/assets/pullToRefresh-DX1iMfdw.js"
+    },
+    {
+      "phase": "after",
+      "seq": 290,
+      "path": "/api/my-reports"
+    },
+    {
+      "phase": "after",
+      "seq": 290,
+      "path": "/api/buses"
+    },
+    {
+      "phase": "before",
+      "seq": 299,
+      "path": "/"
+    },
+    {
+      "phase": "before",
+      "seq": 299,
+      "path": "/assets/rider-f4udq9A_.js"
+    },
+    {
+      "phase": "before",
+      "seq": 299,
+      "path": "/assets/rider-BfFrT9EB.css"
+    },
+    {
+      "phase": "before",
+      "seq": 299,
+      "path": "/assets/routes--YXhBk7l.js"
+    },
+    {
+      "phase": "before",
+      "seq": 299,
+      "path": "/assets/pullToRefresh-DX1iMfdw.js"
+    },
+    {
+      "phase": "before",
+      "seq": 299,
+      "path": "/api/my-reports"
+    },
+    {
+      "phase": "before",
+      "seq": 299,
+      "path": "/api/buses"
+    },
+    {
+      "phase": "after",
+      "seq": 299,
+      "path": "/"
+    },
+    {
+      "phase": "after",
+      "seq": 299,
+      "path": "/assets/rider-Jp3FjVYC.js"
+    },
+    {
+      "phase": "after",
+      "seq": 299,
+      "path": "/assets/rider-BfFrT9EB.css"
+    },
+    {
+      "phase": "after",
+      "seq": 299,
+      "path": "/assets/routes--YXhBk7l.js"
+    },
+    {
+      "phase": "after",
+      "seq": 299,
+      "path": "/assets/pullToRefresh-DX1iMfdw.js"
+    },
+    {
+      "phase": "after",
+      "seq": 299,
+      "path": "/api/my-reports"
+    },
+    {
+      "phase": "after",
+      "seq": 299,
+      "path": "/api/buses"
+    }
+  ],
+  "scope": "Same original public production payloads and clocks rendered in the actual shipped baseline bundle and the built correction. Browser display attribution only; no estimator, independent physical ETA, or model-promotion claim.",
+  "productionRequests": 0,
+  "phoneScreenshotsVisuallyInspected": true
+}
