@@ -47,6 +47,25 @@ boarding at or after the waiting deadline does not also emit a waiting timeout.
 An unboardable bus still uses the existing quoted wait limit. Boarding and
 arrival evidence requirements and historical journey outcomes stay unchanged.
 
+A fresh page response near the selected pickup also prompts a local check
+between the ordinary ten-second heartbeats. The observer reuses that completed
+response, retains its original body, and waits up to 1.5 seconds for the app's
+`data-feedback-source` identity to match its snapshot, checksum and model clocks.
+Only the latest response for the same waiting run can then reach the existing
+boarding checks. A replaced response, unavailable body, stale vehicle position
+or unmatched render cannot produce a retrospective boarding. Pending reads
+coalesce, and stopping cancels them. Missing source metadata leaves the ordinary
+heartbeat in place. This adds no polling request and changes no eligibility
+radius, visit rule or model parameter.
+
+The October 25 Green timeout retained 69 m and 6.6 m observations around an
+intermediate producer frame at 34 m. The actual app offers #330 on that unchanged
+intermediate payload, and a controlled response/render replay reproduces the
+old observer missing its short pickup window. Whether the original browser
+received that intermediate frame was not retained. The original timeout and
+unknown physical boarding remain unchanged; this correction establishes
+observer responsiveness, not a historical service or ETA-accuracy verdict.
+
 For simulated boarding, a supplied `observed_at` must be no more than 30 seconds
 old or five seconds ahead of both the response-receipt and decision clocks.
 A fresh HTTP receipt does not refresh an old vehicle position, and processing
