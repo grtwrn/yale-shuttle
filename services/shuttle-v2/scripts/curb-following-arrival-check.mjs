@@ -11,7 +11,9 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
  * Keep real following buses between that curb and the modeled next lap. */
 export async function checkCurbFollowingArrival({browser, production = false, out, assetDirectory = 'web/dist'}) {
   await fs.mkdir(out, {recursive:true});
-  const fixture = JSON.parse(await fs.readFile('web/src/__fixtures__/orange-night-curb-following-20261024.json','utf8'));
+  const fixtures = await Promise.all(['orange-night-curb-following-20261024.json', 'blue-night-curb-following-20261025.json']
+    .map(file => fs.readFile('web/src/__fixtures__/'+file,'utf8').then(JSON.parse)));
+  const fixture = {frames:fixtures.flatMap(f=>f.frames),scenarios:fixtures.flatMap(f=>f.scenarios)};
   const frames = new Map(fixture.frames.map(frame => {
     const raw = gunzipSync(Buffer.from(frame.jsonGzipBase64,'base64'));
     assert.equal(hash(raw),frame.sha256);
@@ -101,7 +103,7 @@ export async function checkCurbFollowingArrival({browser, production = false, ou
       }
     }
   }
-  assert.equal(results.length,40);assert.equal(results.filter(r=>r.screen).length,24);
+  assert.equal(results.length,48);assert.equal(results.filter(r=>r.screen).length,32);
   await fs.writeFile(path.join(out,'results.json'),JSON.stringify({productionAssets:production,results,
     literalSnapshots:[...frames.values()].map(({seq,sha256})=>({seq,sha256})),literalSourceClocksPreserved:true,
     scope:'Recorded current-curb following arrival UI regression, including real moving later-visit controls; no physical ETA accuracy claim.'},null,2)+'\n');
