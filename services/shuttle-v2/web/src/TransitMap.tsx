@@ -2178,7 +2178,8 @@ const TripPlanner: FC<{
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
       const busesAtBoard = cfg
-        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && liveBusAvailable(b, cfg.label, nowMs) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, visits))
+        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && liveBusAvailable(b, cfg.label, nowMs) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, visits,
+          { bus: b, routeLabel: cfg.label, stops: mergedRouteStops(cfg, routeStops), now: nowMs }))
         : [];
       const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
       if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {
@@ -2419,7 +2420,8 @@ const TripPlanner: FC<{
         segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel);
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
-        && liveBusAvailable(b, cfg.label, Date.now()) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
+        && liveBusAvailable(b, cfg.label, Date.now()) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, arrivals,
+          { bus: b, routeLabel: cfg.label, stops: mergedRouteStops(cfg, routeStops), now: Date.now() })
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
