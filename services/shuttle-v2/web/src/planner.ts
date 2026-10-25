@@ -2,7 +2,7 @@
 // for the walk model, which now matches the server (see walk.ts).
 
 import { computeUpcomingArrivals } from "./liveArrivals";
-import { ETA_MAX_AGE_MS, liveEtaAvailable, liveBusAvailable, liveRouteTracked } from './etaSource';
+import { ETA_MAX_AGE_MS, liveEtaAvailable, liveBusAvailable, liveRouteTracked, serverTrack } from './etaSource';
 import type { AnchorStore } from "./eta";
 import type { DwellTimes, SegmentTimes, UpcomingArrival } from "./arrivals";
 import { haversineMeters } from "./geo";
@@ -362,7 +362,7 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
 
 /** Positive evidence that this visit returns to pickup before reaching the
  * destination. Missing destination/horizon data is unknown, not rejection. */
-export function boardingVisitConflict(board: UpcomingArrival, arrivals: readonly UpcomingArrival[], alightStopId: number) {
+export function boardingVisitConflict(board: Pick<UpcomingArrival, 'busName' | 'routeLabel' | 'stopId' | 'stopsAhead' | 'eta'>, arrivals: readonly UpcomingArrival[], alightStopId: number) {
   const ahead = arrivals.filter(a => a.busName === board.busName && a.routeLabel === board.routeLabel && a.stopsAhead > board.stopsAhead);
   const destination = ahead.filter(a => a.stopId === alightStopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
   const nextPickup = ahead.filter(a => a.stopId === board.stopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
@@ -418,8 +418,33 @@ export function atStopLaterPass(busName: string, boardStopId: number, alightStop
     && pickup.stopsAhead < destination.stopsAhead && destination.eta >= pickup.eta;
 }
 
+export interface RawAtStopContext {
+  bus: BusData;
+  routeLabel: string;
+  /** Canonical published calls, including repeated stops. */
+  stops: readonly number[];
+  now: number;
+}
+
 /** Whether a bus flagged at the board stop may be offered as boardable now. */
-export function rawAtStopBoardable(busName: string, boardStopId: number, alightStopId: number, arrivals: readonly UpcomingArrival[]): boolean {
+export function rawAtStopBoardable(busName: string, boardStopId: number, alightStopId: number, arrivals: readonly UpcomingArrival[], current?: RawAtStopContext): boolean {
+  const norm = (name: string) => name.replace(/^#/, '');
+  const track = current && serverTrack(current.bus, current.routeLabel, current.now);
+  // On a folded route a moving conditional state may omit the current-call
+  // forecast. The raw override still names that current visit, not the first
+  // forecast pickup (which can be a short return after another stop). Use the
+  // fresh served stand and canonical travel call to compare the current visit
+  // with the destination. This gates the existing raw override; it adds no ETA.
+  if (current && track && norm(current.bus.bus_name) === norm(busName)
+    && current.bus.stationary === true && current.bus.at_stop_id === boardStopId
+    && track.standing?.stopId === boardStopId && !track.standing.approach
+    && current.stops[track.index] === boardStopId && current.stops[track.travel] === boardStopId
+    && current.stops.filter(id => id === boardStopId).length > 1) {
+    const pickup = arrivals.find(a => norm(a.busName) === norm(busName)
+      && a.routeLabel === current.routeLabel && a.stopId === boardStopId);
+    if (pickup) return !boardingVisitConflict({ busName: pickup.busName, routeLabel: pickup.routeLabel,
+      stopId: boardStopId, stopsAhead: 0, eta: 0 }, arrivals, alightStopId);
+  }
   return boardingVisitAllowed(busName, boardStopId, alightStopId, arrivals)
     && !atStopLaterPass(busName, boardStopId, alightStopId, arrivals);
 }
@@ -541,7 +566,8 @@ export function planTrip(
           // fastest route entirely (report #28: bus parked 13 m from the
           // board stop, every pair boarding there discarded).
           const arrivals = rideBoardArrivals(boardArrivals, b, cur);
-          if (hereBus && rawAtStopBoardable(hereBus.bus_name, b, cur, boardArrivals) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
+          if (hereBus && rawAtStopBoardable(hereBus.bus_name, b, cur, boardArrivals,
+            { bus: hereBus, routeLabel: cfg.label, stops, now }) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
             waitSec = 0;
             busEtaSec = 0; // it is AT the stop
             busDepartNowSec = 0;
