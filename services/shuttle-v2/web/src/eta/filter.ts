@@ -252,6 +252,8 @@ export interface Belief {
   leftStop: number;
   leftSince: number;
   leftAt: number;
+  /** Observed origin of that ended rest; absent on older checkpoints. */
+  leftPoint?: LatLon | null | undefined;
   /** Cells within REST_RADIUS_M of the rest point (1) — the stand's extent. */
   restMask: Uint8Array;
   /** Server clock origin (ms) when served, else null. */
@@ -534,7 +536,7 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
     ringKey: ring.key, p, seenAt: now, lastObs: bus, lastFix: { lat: bus.lat, lon: bus.lon },
     fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: since ?? now,
     rested: standing, restStop: -1, restApproach: false, restMask,
-    leftStop: -1, leftSince: 0, leftAt: 0,
+    leftStop: -1, leftSince: 0, leftAt: 0, leftPoint: null,
     serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, leadMassAt: now, leadMassFix: { lat: bus.lat, lon: bus.lon }, leadTopFix: { lat: bus.lat, lon: bus.lon }, fresh: true,
     standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
   };
@@ -1257,6 +1259,7 @@ export function stepBelief(
     leftStop: moved && prev.restStop >= 0 && !prev.restApproach ? prev.restStop : prev.leftStop,
     leftSince: moved && prev.restStop >= 0 && !prev.restApproach ? prev.restSince : prev.leftSince,
     leftAt: moved && prev.restStop >= 0 && !prev.restApproach ? now : prev.leftAt,
+    leftPoint: moved && prev.restStop >= 0 && !prev.restApproach ? prev.restPoint : prev.leftPoint,
     restMask: moved || closedIn ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
     lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, leadMassAt: prev.leadMassAt, leadMassFix: prev.leadMassFix, leadTopFix: prev.leadTopFix, fresh,

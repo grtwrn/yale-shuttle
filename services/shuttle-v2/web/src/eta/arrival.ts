@@ -788,15 +788,25 @@ export function priceRoute(
   // left that curb. A repeated road coordinate must not reopen arrival zero.
   // Keep the posterior/hold clock intact; the next call to this completed
   // ordinary, unambiguous curb is its return around the ring.
-  const restPoint = ring.stopCoords?.[belief.restStop];
+  const curb = lead.standingAt;
+  const restPoint = ring.stopCoords?.[curb];
   const observed = belief.lastObs as { last_stop_id?: number | null } | null;
-  const closedCurb = lead.standingAt === belief.restStop && belief.rested && !belief.restApproach
-    && belief.lead === belief.restStop && !tables.stops[belief.restStop]?.layover
-    && stops.filter(id => id === stops[belief.restStop]).length === 1
-    && observed?.last_stop_id === stops[belief.restStop]
+  const passedCurrentRest = curb === belief.restStop && belief.rested && !belief.restApproach
+    && belief.lead === belief.restStop && observed?.last_stop_id === stops[belief.restStop]
     && belief.fixAt > belief.restSince && restPoint && belief.lastFix
     && haversineMeters(restPoint, belief.restPoint) <= NEAR_STOP_M
     && haversineMeters(restPoint, belief.lastFix) > NEAR_STOP_M;
+  // Naming another road pause must not reopen a curb the belief already
+  // left. Keep the observed origin with its departure: a stop inferred for
+  // an off-curb rest is not evidence that this curb was visited. Older
+  // checkpoints gain this evidence on their next observed departure.
+  const passedDepartedRest = curb === belief.leftStop && belief.leftAt > 0
+    && belief.fixAt >= belief.leftAt && restPoint && belief.leftPoint && belief.lastFix
+    && haversineMeters(restPoint, belief.leftPoint) <= NEAR_STOP_M
+    && haversineMeters(restPoint, belief.lastFix) > NEAR_STOP_M;
+  const closedCurb = curb >= 0 && !tables.stops[curb]?.layover
+    && stops.filter(id => id === stops[curb]).length === 1
+    && (passedCurrentRest || passedDepartedRest);
   // Standing at the target supplies its current arrival now, whichever
   // conditional state is selected as the lead. Price it with the same
   // mixture as every other visit; a different state may still be incoming
