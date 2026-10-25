@@ -62,6 +62,43 @@ afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)
 function rawResponse(raw){return {url:()=> 'https://example.test/api/buses',ok:()=>true,status:()=>200,
  headers:()=>({'content-type':'application/json','set-cookie':'DO_NOT_RETAIN'}),json:async()=>JSON.parse(raw),body:async()=>Buffer.from(raw)};}
 
+const positionFixture=JSON.parse(await fs.readFile(new URL('../../web/src/__fixtures__/ride-position-without-eta-20261025.json',import.meta.url),'utf8'));
+async function positionHarness(corrected=false){
+ const first=positionFixture.snapshots[0],ride=positionFixture.ride,raw=verifyFeedResponseRecord(first.response),feed=JSON.parse(raw);
+ const trip={kind:'fixed',origin:{label:feed.stop_names[ride.boardStopId],...feed.stop_coords[ride.boardStopId],stopId:ride.boardStopId},
+  destination:{display_name:feed.stop_names[ride.alightStopId],...feed.stop_coords[ride.alightStopId],stopId:ride.alightStopId}};
+ const text=corrected?first.text.replace('Looking for your bus…','Bus location available · arrival estimate unavailable'):first.text;
+ const h=current=await harness(feed,trip,{initialLine:positionFixture.line,text,at:first.sampledAt,
+  initialFeedAgeMs:Date.parse(first.sampledAt)-first.response.receivedAt,initialResponse:rawResponse(raw),
+  initialRun:{id:positionFixture.runId,phase:'riding',line:positionFixture.line,trip,busName:ride.busName,boardStopId:ride.boardStopId,
+   exitStopId:ride.alightStopId,boardedAt:new Date(ride.startedAt).toISOString(),startedAt:new Date(ride.startedAt).toISOString(),
+   boardedStorage:positionFixture.boardedStorage}});
+ h.events=async()=>(await fs.readFile(path.join(h.dir,'events.jsonl'),'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
+ return h;
+}
+test('the real rider reports a sustained GPS-present looking-for-bus message once',async()=>{
+ const h=await positionHarness();assert.equal((await h.events()).filter(e=>e.kind==='candidate-ride-tracking-status').length,0);
+ const s=positionFixture.snapshots[1];vi.setSystemTime(s.response.receivedAt);await h.handlers.response(rawResponse(verifyFeedResponseRecord(s.response)));
+ vi.setSystemTime(Date.parse(s.sampledAt));h.text=s.text;await h.watcher.tick();await h.watcher.tick();
+ const events=(await h.events()).filter(e=>e.kind==='candidate-ride-tracking-status');assert.equal(events.length,1);
+ assert.equal(events[0].detail.bus,'#44');assert.equal(events[0].detail.feedResponse.state,'captured');
+ assert.equal(h.watcher.status().run.phase,'riding');assert.equal(h.watcher.status().run.harnessErrors,undefined);
+});
+test('the rider accepts the corrected position-known status without creating a candidate',async()=>{
+ const h=await positionHarness(true),s=positionFixture.snapshots[1];vi.setSystemTime(s.response.receivedAt);
+ await h.handlers.response(rawResponse(verifyFeedResponseRecord(s.response)));vi.setSystemTime(Date.parse(s.sampledAt));
+ h.text=s.text.replace('Looking for your bus…','Bus location available · arrival estimate unavailable');await h.watcher.tick();
+ assert.equal((await h.events()).filter(e=>e.kind==='candidate-ride-tracking-status').length,0);assert.equal(h.watcher.status().run.phase,'riding');
+});
+test('a feed replaced while reading tracking copy resets the pending contradiction',async()=>{
+ const h=await positionHarness(),s=positionFixture.snapshots[1],locator=h.page.locator;
+ h.page.locator=()=>({innerText:async()=>{await h.handlers.response(rawResponse(verifyFeedResponseRecord(s.response)));return s.text;}});
+ vi.setSystemTime(Date.parse(s.sampledAt));await h.watcher.tick();h.page.locator=locator;
+ assert.equal(h.watcher.status().run.rideTrackingConflict,null);
+ assert.equal((await h.events()).filter(e=>e.kind==='candidate-ride-tracking-status').length,0);
+ assert.equal(h.watcher.status().run.harnessErrors,undefined);
+});
+
 test('the recorded Blue Weekend recheck keeps waiting when it confirms an earlier pickup visit',async()=>{
  const recorded=JSON.parse(await fs.readFile(new URL('./__fixtures__/blue-weekend-46-pickup-recheck-20261024.json',import.meta.url),'utf8'));
  const rawBootstrap=verifyFeedResponseRecord(recorded.bootstrap.response),rawA=verifyFeedResponseRecord(recorded.selection.response),rawB=verifyFeedResponseRecord(recorded.recheck.response);
@@ -451,11 +488,12 @@ async function boardPink324(){
  return h;
 }
 const recorded=at=>pink324.riding.find(p=>p[0].startsWith(at));
-test('replay: a boarded bus off its route for 10 min, with the app looking for it, ends the ride',async()=>{
+test.each(['legacy', 'position-known'])('replay: a boarded bus off its route for 10 min with unavailable route tracking ends the ride (%s)',async(wording)=>{
  const h=await boardPink324();
  assert.equal(h.watcher.status().run.boardedAt,'2026-10-02T22:29:48.333Z');
  for(const [at,...p] of pink324.riding){
-  await h.ride(at,pink324At(p),pink324.headlines[p[4]]+"\n🚌 Pink #324 → VA Entrance Inbound");
+  const headline=pink324.headlines[p[4]].replace('Looking for your bus…',wording==='legacy'?'Looking for your bus…':'Bus location available · arrival estimate unavailable');
+  await h.ride(at,pink324At(p),headline+"\n🚌 Pink #324 → VA Entrance Inbound");
   if(!h.watcher.status().run)break;
  }
  const [journey]=await h.journeys();

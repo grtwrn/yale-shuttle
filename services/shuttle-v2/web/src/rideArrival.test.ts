@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  isUnambiguousRideArrival, rideEvidence, rideHeadline, rideInWindow, rideLappedExit, rideStopPassed, type RideEvidence,
+  isUnambiguousRideArrival, rideEvidence, rideHeadline, rideInWindow, rideLappedExit, ridePositionAvailable, rideStopPassed, type RideEvidence,
 } from "./rideArrival";
+import type { ReportingSnapshot } from "./busReporting";
 
 // Raw sequences from the September 10 feed, retaining both West Campus passes.
 const GREEN = [78,84,89,77,94,143,144,133,88,92,81,26,25,23,22,23,24,25,127,26,80,91,87];
@@ -157,6 +158,13 @@ describe("rideHeadline — the on-bus banner", () => {
     busFound: true, stopsRemaining: 5, alightName: "Rosenkranz Hall", etaStr: "7 min",
     holdText: null, alightPassed: false, exitMeters: 0, ...o,
   });
+  it("distinguishes a reporting position from an unavailable route estimate", () => {
+    const message = "Bus location available · arrival estimate unavailable";
+    expect(h({ busFound: false, positionAvailable: true, stopsRemaining: null })).toBe(message);
+    expect(h({ positionAvailable: true, stopsRemaining: null })).toBe(message);
+    expect(h({ busFound: false, positionAvailable: false })).toBe("Looking for your bus…");
+    expect(h({ positionAvailable: true, stopsRemaining: 2 })).toBe("Get off in 2 stops! · 7 min");
+  });
   it("labels a zero-count approach without claiming arrival at a distant marker", () => {
     for (const exitMeters of [185.4276196, 135.7331690, null, undefined, NaN]) {
       expect(h({ stopsRemaining: 0, exitMeters })).toBe("Watch for Rosenkranz Hall");
@@ -184,6 +192,33 @@ describe("rideHeadline — the on-bus banner", () => {
     expect(h({ alightPassed: true, stopsRemaining: 21, etaStr: "50 min" }))
       .toBe("May have passed Rosenkranz Hall · back in 50 min");
     expect(h({ alightPassed: true, stopsRemaining: 21, etaStr: null })).toBe("May have passed Rosenkranz Hall");
+  });
+});
+
+describe("ride position reporting", () => {
+  const now = Date.parse("2026-10-25T01:16:48.531Z");
+  const snapshot = (): ReportingSnapshot => ({ at: now, serverAt: now - 5000, buses: [{
+    bus_name: "#44", bus_id: 68173, route_id: 13, lat: 41.325069, lon: -72.923035,
+    heading: 15, last_stop_id: 106, observed_at: now - 7000,
+  }] });
+  it("retains a known fresh position even without any forecast", () => {
+    expect(ridePositionAvailable(snapshot(), "44", [13], now)).toBe(true);
+    expect(ridePositionAvailable(null, "44", [13], now)).toBe(false);
+  });
+  it.each(["expired poll", "future poll", "old GPS", "future GPS", "unknown GPS clock", "wrong bus",
+    "wrong route", "duplicate bus", "invalid coordinates", "missing coordinates"])("declines %s", reason => {
+    const s = snapshot(), b = s.buses[0]!;
+    if (reason === "expired poll") s.at = now - 45000;
+    if (reason === "future poll") s.at = now + 5001;
+    if (reason === "old GPS") b.observed_at = s.serverAt - 45000;
+    if (reason === "future GPS") b.observed_at = s.serverAt + 5001;
+    if (reason === "unknown GPS clock") delete b.observed_at;
+    if (reason === "wrong bus") b.bus_name = "#54";
+    if (reason === "wrong route") b.route_id = 3;
+    if (reason === "duplicate bus") s.buses = [...s.buses, { ...b }];
+    if (reason === "invalid coordinates") b.lat = 100;
+    if (reason === "missing coordinates") b.lon = NaN;
+    expect(ridePositionAvailable(s, "44", [13], now)).toBe(false);
   });
 });
 

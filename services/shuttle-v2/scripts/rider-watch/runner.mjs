@@ -2,7 +2,7 @@ import { BoardingEvidenceUnavailable, BoardingMissed, boardSelectedRide } from '
 import { auditPauseMaps, confirmPauseMaps, pauseReadDelay, readPauseMaps } from './map-pause.mjs';
 import { completeArrival } from './complete-arrival.mjs';
 import { auditPickupDisclosure, confirmPickupDisclosure, publishedPickupRequirement } from './service-disclosure.mjs';
-import { confirmConflict, pickupCountConflict, rideCountConflict } from './screen-consistency.mjs';
+import { confirmConflict, pickupCountConflict, rideCountConflict, rideTrackingConflict } from './screen-consistency.mjs';
 import { confirmExitInstruction, offPoleExitInstruction } from './exit-instruction.mjs';
 import { boardedTransferMatches, completedLegRecord, nextTransferStage, readTransferSections, riderLineAllowed, sameTransferLeg, selectTransferTrip, transferLegTrip, transferWaitingContext } from './transfer-journey.mjs';
 import fs from 'node:fs/promises';
@@ -27,7 +27,7 @@ const MAX_FEED_AGE_MS=30000;
 // existing arrival-observation bounds, independently of HTTP receipt age.
 const observationFresh=(bus,at)=>Number.isFinite(at)&&(bus.observed_at===undefined
  ||Number.isFinite(bus.observed_at)&&bus.observed_at<=at+5000&&at-bus.observed_at<=MAX_FEED_AGE_MS);
-const LOOKING_FOR_BUS=/(?:^|\n)Looking for your bus…(?:\n|$)/;
+const ROUTE_TRACKING_UNAVAILABLE=/(?:^|\n)(?:Looking for your bus…|Bus location available · arrival estimate unavailable)(?:\n|$)/;
 export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,initialTrip,initialLine,initialTransfer,initialFeed,initialFeedAt=clockNow(),initialResponse,initialRun,outputDir,allowedLabels,fixedTrip,randomLines=false}) {
  if (!outputDir) throw new Error('outputDir is required');
  if (!Array.isArray(initialFeed?.buses) || !Number.isFinite(initialFeedAt)) throw new Error('A valid initial feed and receipt time are required');
@@ -261,7 +261,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     feedResponse:await retainFeed(sampledFeed,run.id)};
    await appendRolling(ROOT,'samples',sample);run.samples++;
    for(const alert of pauses.alerts){await event('candidate-map-pause',alert);await capture('candidate-map-pause');}
-   if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
+   if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;run.rideTrackingConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
    if(run.phase==='waiting'){
     const requestedBoard=transferRead?.boardStopId??labeledStopId(text,'BOARD',sampledFeed.stop_names);
     const expected=publishedPickupRequirement(run.line.label,requestedBoard,now);
@@ -456,6 +456,11 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     }
     if(run.phase==='waiting'&&now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
    }else if(run.phase==='riding'){
+    const tracking=confirmConflict(run.rideTrackingConflict,feedStable
+     ?rideTrackingConflict(text,sampledFeed,run,now):null,now);
+    run.rideTrackingConflict=tracking.state;
+    if(tracking.alert){await event('candidate-ride-tracking-status',{...tracking.alert,text,feedResponse:sample.feedResponse,
+     scope:'Sustained tracking-message/raw-position contradiction; not route progress, physical arrival or ETA accuracy.'});await capture('candidate-ride-tracking-status');}
     const rideCount=confirmConflict(run.rideCountConflict,feedStable
      ?rideCountConflict(text,sampledFeed,run,now):null,now);
     run.rideCountConflict=rideCount.state;
@@ -492,13 +497,14 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     else if(now-Date.parse(run.busLastSeenAt??run.boardedAt)>BUS_GONE_MS){run.excludeAccuracy=true;await event('bus-left-feed',{bus:run.busName,lastSeenAt:run.busLastSeenAt??run.boardedAt,lastExitDistanceM:run.lastExitDistanceM});await finish('bus-left-feed-excluded');await status();return;}
     // The boarded bus is in the feed but off its route (an end-of-service
     // deadhead: Pink #324 drove 7 km north after its last loop, run
-    // 1790978871687), so the app shows "Looking for your bus…" and no ride
-    // end fires. Only sustained agreement counts: a poll with the bus back on
+    // 1790978871687), so the app has no route estimate (older builds said
+    // "Looking for your bus…") and no ride end fires. Only sustained
+    // agreement counts: a poll with the bus back on
     // its route, or with the app tracking it, resets the clock, so a detour or
     // a GPS jump is ridden through and an app that loses an on-route bus is
     // still ridden to the cap for review. Polls without the bus don't reset it.
     if(bus){
-     if(!metrics.busOnRoute(feed,bus,run.line)&&LOOKING_FOR_BUS.test(text)){
+     if(!metrics.busOnRoute(feed,bus,run.line)&&ROUTE_TRACKING_UNAVAILABLE.test(text)){
       if(!run.offRouteSince){run.offRouteSince=new Date(now).toISOString();run.offRouteFrom={lat:bus.lat,lon:bus.lon};}
       if(now-Date.parse(run.offRouteSince)>BUS_OFF_ROUTE_MS){run.excludeAccuracy=true;await event('bus-off-route',{bus:run.busName,offRouteSince:run.offRouteSince,from:run.offRouteFrom,at:{lat:bus.lat,lon:bus.lon},exitDistanceM:coord?metrics.haversineM(bus,coord):null});await finish('bus-off-route-excluded');await status();return;}
      }else{run.offRouteSince=undefined;run.offRouteFrom=undefined;}
