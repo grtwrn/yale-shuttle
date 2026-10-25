@@ -37,6 +37,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
  let idleStale=false,pendingInitialTrip=initialRun?null:initialTrip;
  let journeySelections=0;
  let restartRequested;
+ let ready=false,pickupTimer,pickupPromise,pendingPickup=null,pickupChecking=false;
  const feedSources=new WeakMap();
  feedSources.set(initialFeed,{response:initialResponse,receivedAt:initialFeedAt,sourceKind:'bootstrap-request',byRun:new Map()});
  const feedEvidence={state:'initializing',captured:0,unavailable:0,consecutiveFailures:0};
@@ -103,9 +104,49 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    bus:structuredClone(bus),distanceM,criterion,feedResponse:{v:1,state:'pending',receivedAt}};
    pendingArrivalEvidence={runId:run.id,promise:retainFeed(next,run.id).then(receipt=>{observation.feedResponse=receipt;})};}
  };
+ // A five-second pickup can fall entirely between ten-second heartbeats.
+ // Reuse the response already fetched by the page and require its exact
+ // body identity to be committed by the product before reading/clicking.
+ // Only near-stop waiting responses wake this check; polling is unchanged.
+ const pickupCurrent=request=>!stopped&&run?.phase==='waiting'&&run.id===request.runId
+  &&feed===request.feed&&feedAt===request.receivedAt;
+ const schedulePickup=()=>{
+  if(!ready||!autoTick||stopped||busy||pickupChecking||pickupTimer||!pendingPickup)return;
+  pickupTimer=setTimeout(()=>{
+   pickupTimer=undefined;
+   if(stopped||busy||!pendingPickup)return;
+   const request=pendingPickup;pendingPickup=null;pickupChecking=true;
+   pickupPromise=(async()=>{
+    if(!pickupCurrent(request))return;
+    const receipt=await retainFeed(request.feed,request.runId);
+    if(!pickupCurrent(request)||receipt.state!=='captured'||receipt.decodedSHA256!==request.source.sha256)return;
+    try{
+     await page.waitForFunction(source=>{
+      const element=document.querySelector('[data-feedback-source]');
+      let rendered;try{rendered=JSON.parse(element?.getAttribute('data-feedback-source')??'null');}catch{return false;}
+      return rendered?.snapshotId===source.snapshotId&&rendered?.sha256===source.sha256
+       &&rendered?.modelAt===source.modelAt&&rendered?.servedAt===source.servedAt;
+     },request.source,{timeout:1500});
+    }catch{return;}
+    if(pickupCurrent(request)&&!busy)await tick();
+   })().catch(async error=>{if(!stopped)await event('pickup-response-check-unavailable',{message:error.message}).catch(()=>{});})
+    .finally(()=>{pickupChecking=false;pickupPromise=undefined;schedulePickup();});
+  },0);
+ };
+ const observePickup=async(next,receivedAt,response)=>{
+  if(!autoTick||run?.phase!=='waiting'||!Number.isSafeInteger(run.boardStopId))return;
+  const coord=next.stop_coords?.[run.boardStopId];
+  if(!coord||!next.buses.some(bus=>run.line.busRouteIds.includes(bus.route_id)&&observationFresh(bus,receivedAt)
+   &&(metrics.haversineM(bus,coord)<=BOARD_M||observedAtStop(bus,run.boardStopId,next.stop_coords))))return;
+  let source;try{source=JSON.parse((await response.headers())['x-shuttle-snapshot']??'null');}catch{return;}
+  if(!source||!/^([a-f0-9]{64})$/.test(source.snapshotId??'')||!/^([a-f0-9]{64})$/.test(source.sha256??'')
+   ||source.modelAt!==(next.server_eta?.at??null)||source.servedAt!==(next.server_eta?.servedAt??null))return;
+  if(feed!==next||feedAt!==receivedAt||run?.phase!=='waiting')return;
+  pendingPickup={feed:next,receivedAt,source,runId:run.id};schedulePickup();
+ };
  const onResponse=async r=>{if(new URL(r.url()).pathname==='/api/buses'&&r.ok())try{
   const receiving=run?.phase==='riding'?run:null,next=await r.json();
-  if(Array.isArray(next?.buses)){feed=next;feedAt=clockNow();feedSources.set(next,{response:r,receivedAt:feedAt,sourceKind:'page-response',byRun:new Map()});if(receiving&&run===receiving)rememberArrival(next,feedAt);}
+  if(Array.isArray(next?.buses)){feed=next;feedAt=clockNow();feedSources.set(next,{response:r,receivedAt:feedAt,sourceKind:'page-response',byRun:new Map()});if(receiving&&run===receiving)rememberArrival(next,feedAt);await observePickup(next,feedAt,r);}
  }catch{}};
  page.on('response',onResponse);
  const onPageError=e=>event('candidate-page-error',e.message).catch(()=>{});
@@ -531,9 +572,10 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    if(run&&(lastPhase!==run.phase||now-lastImage>=60000)){await capture(run.phase+'-'+run.line.label);lastPhase=run.phase;}
    await status();
   }catch(e){await event('harness-error',{message:e.message,stack:e.stack});if(run){run.harnessErrors=(run.harnessErrors??0)+1;if(run.harnessErrors>=3)await finish('harness-failed-excluded');}await status({error:e.message});}
-  finally{busy=false;}
+  finally{busy=false;schedulePickup();}
  };
  if(initialRun){run={...initialRun,instrumentVersion:initialRun.transfer?'transfer-v1':'inputs-v2',instrumentHandoverAt:new Date(clockNow()).toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; resumed journey excluded from accuracy scoring');await status();}
- if(autoTick)timer=setInterval(()=>tick(),10000);await tick();
- return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt,restartRequested,feedEvidence}),capture,stop:async()=>{stopped=true;clearInterval(timer);removeListeners();await pendingArrivalEvidence?.promise;await status();},tick, detach:()=>{stopped=true;clearInterval(timer);removeListeners();return run;}};
+ ready=true;if(autoTick)timer=setInterval(()=>tick(),10000);await tick();
+ const cancelPickup=()=>{clearTimeout(pickupTimer);pickupTimer=undefined;pendingPickup=null;};
+ return {status:()=>({running:!stopped,busy,run,imageBytes,feedAt,restartRequested,feedEvidence,pickupCheckPending:!!(pendingPickup||pickupTimer||pickupChecking)}),capture,stop:async()=>{stopped=true;clearInterval(timer);cancelPickup();removeListeners();await pickupPromise;await pendingArrivalEvidence?.promise;await status();},tick, detach:()=>{stopped=true;clearInterval(timer);cancelPickup();removeListeners();return run;}};
 }

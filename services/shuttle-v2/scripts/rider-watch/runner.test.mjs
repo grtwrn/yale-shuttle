@@ -6,6 +6,8 @@ import path from 'node:path';
 import {attach} from './runner.mjs';
 import {haversineM} from '../canary-metrics.mjs';
 import {verifyFeedResponseRecord} from './feed-evidence.mjs';
+import {brotliDecompressSync} from 'node:zlib';
+import {createHash} from 'node:crypto';
 
 // Replays of recorded 2026-10-01 waiting runs through the real tick loop.
 const line={label:'Purple',busRouteIds:[10]};
@@ -61,6 +63,75 @@ afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)
 
 function rawResponse(raw){return {url:()=> 'https://example.test/api/buses',ok:()=>true,status:()=>200,
  headers:()=>({'content-type':'application/json','set-cookie':'DO_NOT_RETAIN'}),json:async()=>JSON.parse(raw),body:async()=>Buffer.from(raw)};}
+
+async function shortPickup(){
+ const capsule=JSON.parse(await fs.readFile(new URL('./__fixtures__/green-short-pickup-20261025.json',import.meta.url),'utf8'));
+ const hash=b=>createHash('sha256').update(b).digest('hex'),compressed=Buffer.from(capsule.data,'base64');
+ assert.equal(compressed.length,capsule.bytes);assert.equal(hash(compressed),capsule.sha256);
+ const raw=brotliDecompressSync(compressed);assert.equal(raw.length,capsule.rawBytes);assert.equal(hash(raw),capsule.rawSHA256);
+ const {frames}=JSON.parse(raw);for(const f of frames){assert.equal(hash(f.json),f.sha256);assert.equal(hash(f.contextJson),f.contextSha256);}
+ const [before,near,after]=frames,first=JSON.parse(before.json);
+ const text=name=>`🚌 6 min\n🚌 ${name} · 1 stop away\nBOARDOrange/Avon\nGET OFFOrange/Pearl (S)`;
+ const trip={kind:'fixed',origin:{label:first.stop_names[77],...first.stop_coords[77],stopId:77},destination:{display_name:first.stop_names[92],...first.stop_coords[92],stopId:92}};
+ // These are explicitly local response/render stamps around unchanged
+ // producer bodies, not reconstructed historical browser HTTP receipts.
+ const response=f=>{const source={v:1,snapshotId:f.sha256,sha256:f.sha256,bytes:Buffer.byteLength(f.json),build:'98d328081462',modelAt:f.at,servedAt:f.at};
+  return {...rawResponse(f.json),headers:()=>({'content-type':'application/json','x-shuttle-snapshot':JSON.stringify(source)}),localRenderSource:source};};
+ const h=current=await harness(first,trip,{initialLine:{label:'Green',busRouteIds:[9]},text:text('#330'),at:new Date(before.at+1000).toISOString(),initialResponse:response(before)});
+ h.textOf=text;h.frames={before,near,after};h.responseOf=response;h.renderedSource=response(before).localRenderSource;
+ h.page.waitForFunction=async(_predicate,arg)=>{if(arg&&typeof arg==='object'&&arg.sha256)assert.equal(h.renderedSource.sha256,arg.sha256);};
+ h.response=async f=>{vi.setSystemTime(f.at+1000);h.text=text(f.seq===559?'#308':'#330');h.renderedSource=response(f).localRenderSource;await h.handlers.response(response(f));};
+ h.settle=async()=>{do await new Promise(r=>setImmediate(r));while(h.watcher.status().busy||h.watcher.status().pickupCheckPending);};
+ return h;
+}
+test('a short pickup response is checked before the ten-second heartbeat',async()=>{
+ const h=await shortPickup();assert.equal(h.watcher.status().run.boardStopId,77);
+ await h.response(h.frames.near);await h.settle();
+ const run=h.watcher.status().run;
+ assert.equal(run.phase,'riding');assert.equal(run.busName,'#330');
+ assert.equal(run.boardedAt,new Date(h.frames.near.at+1000).toISOString());
+ assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+ assert.equal(run.boardingObservation.outcome,'boarded');
+ const eligible=run.boardingObservation.checks[0];assert(eligible.distanceM<45);assert.equal(eligible.bus.observed_at,JSON.parse(h.frames.near.json).buses.find(b=>b.bus_name==='#330').observed_at);
+ assert(Date.parse(run.boardedAt)-Date.parse(run.startedAt)<10000);
+});
+test('a short pickup response replaced before its matching render cannot board retrospectively',async()=>{
+ const h=await shortPickup();let release,started;
+ const waiting=new Promise(resolve=>started=resolve),held=new Promise(resolve=>release=resolve);
+ h.page.waitForFunction=async(_predicate,arg)=>{if(arg&&typeof arg==='object'&&arg.sha256){started();await held;}};
+ await h.response(h.frames.near);
+ // Require the pending render read to have actually started; no heartbeat runs.
+ await waiting;
+ await h.response(h.frames.after);release();await h.settle();
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.equal(h.watcher.status().run.boardedAt,undefined);assert.deepEqual(h.clicks,[]);
+});
+test('a short pickup with a different rendered source keeps waiting',async()=>{
+ const h=await shortPickup();
+ vi.setSystemTime(h.frames.near.at+1000);h.text=h.textOf('#330');
+ await h.handlers.response(h.responseOf(h.frames.near));await h.settle();
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+});
+test('a short pickup with stale vehicle observations cannot trigger a boarding check',async()=>{
+ const h=await shortPickup();vi.setSystemTime(h.frames.near.at+31000);h.text=h.textOf('#330');h.renderedSource=h.responseOf(h.frames.near).localRenderSource;
+ await h.handlers.response(h.responseOf(h.frames.near));await h.settle();
+ assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+});
+test('coalesced short pickup responses board once using the latest receipt',async()=>{
+ const h=await shortPickup();let release,started;
+ const waiting=new Promise(resolve=>started=resolve),held=new Promise(resolve=>release=resolve);let checks=0;
+ h.page.waitForFunction=async(_predicate,arg)=>{if(arg&&typeof arg==='object'&&arg.sha256&&++checks===1){started();await held;}};
+ await h.response(h.frames.near);await waiting;
+ await h.response(h.frames.near);release();await h.settle();
+ assert.equal(h.watcher.status().run.phase,'riding');assert.deepEqual(h.clicks,["🚌 I'm on it"]);
+});
+test('stopping during a short pickup render check prevents a later click',async()=>{
+ const h=await shortPickup();let release,started;
+ const waiting=new Promise(resolve=>started=resolve),held=new Promise(resolve=>release=resolve);
+ h.page.waitForFunction=async(_predicate,arg)=>{if(arg&&typeof arg==='object'&&arg.sha256){started();await held;}};
+ await h.response(h.frames.near);await waiting;
+ const stopping=h.watcher.stop();release();await stopping;
+ assert.equal(h.watcher.status().running,false);assert.equal(h.watcher.status().run.phase,'waiting');assert.deepEqual(h.clicks,[]);
+});
 
 const positionFixture=JSON.parse(await fs.readFile(new URL('../../web/src/__fixtures__/ride-position-without-eta-20261025.json',import.meta.url),'utf8'));
 async function positionHarness(corrected=false){
