@@ -27,7 +27,10 @@ export async function collectHistory({store,learningRoot=path.join(service,'scri
  for(const cycle of cycles){const frozen=read(path.join(learningRoot,cycle,'frozen-candidate.json'));if(frozen.id!==cycle||!hash(frozen.sourceKey))throw Error('Invalid frozen source identity');if(cycle===live.id&&witnessSHA(fs.readFileSync(path.join(learningRoot,cycle,'frozen-candidate.json')))!==live.frozenCandidateSha256)throw Error('Frozen native identity differs');
   for(const file of inputFiles(learningRoot,cycle,fromAt,throughAt,before.prefixes))files.push({file,cycle,sourceKey:frozen.sourceKey,build:frozen.productionBuild,stat:fs.lstatSync(file)});
  }
- if(!files.length||files.length>8||files.reduce((s,x)=>s+x.stat.size,0)>512*MiB)throw new HistoryHold('Native history read bound exceeded');
+ // A trial handover can leave no native files in a past outage interval.
+ // Commit the explicit source gap below and keep catching up; only original
+ // current evidence may satisfy the fresh-coverage checks.
+ if(!files.length&&!catchingUp||files.length>8||files.reduce((s,x)=>s+x.stat.size,0)>512*MiB)throw new HistoryHold('Native history read bound exceeded');
  let inputLines=0,unchangedFiles=0;
  for(const spec of files){const prior=before.prefixes?.[spec.file];if(prior&&(prior.throughAt??before.throughAt??before.checkedAt??-Infinity)>=throughAt&&await verifyUnchanged(spec.file,prior)){prefixes[spec.file]=prior;unchangedFiles++;
    if(posterior?.matches(spec.cycle,spec.sourceKey))for await(const item of nativeRecords(spec.file,{previous:prior,captureBytes:spec.stat.size,expectedFile:spec.stat})){if(item.record)posterior.observe(item.record.source,{cycle:spec.cycle,sourceKey:spec.sourceKey});}
