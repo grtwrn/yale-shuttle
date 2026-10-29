@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs/promises';
+import { probeContainerObserver } from '../learning-runtime/owner.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -127,6 +128,8 @@ export function advance(prior, cycle, issues, now = Date.now()) {
 }
 
 export async function probeObserver(root, script) {
+  const container = await probeContainerObserver(root, script);
+  if (container) return container;
   const pid = Number(await fs.readFile(path.join(root, 'observer.lock'), 'utf8').catch(() => ''));
   if (!Number.isSafeInteger(pid) || pid <= 0) return { pid: null, alive: false, expectedCommand: false };
   try {
@@ -292,7 +295,7 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
       ...(progress?{trialProgress:progress}:{}),trialProgressIncidents:{...progressNext,alerts:undefined},recent });
     const activePlatform = platform.state === 'throttled' ? Object.values(platformNext?.observations ?? {}) : [];
     const result = { checkedAt: new Date(now).toISOString(), ok: issues.length === 0 && !progress?.issues.length && platform.state !== 'throttled' && !incidentError,
-      cycle: next.cycle, phase: status?.phase ?? null, observerPid: observer?.pid ?? null,
+      cycle: next.cycle, phase: status?.phase ?? null, observerPid: observer?.pid ?? null, observerProcess: observer,
       issues: [...Object.values(next.observations), ...activePlatform,...Object.values(progressNext.observations)].map(o => ({ code: o.issue.code, summary: o.issue.summary, consecutiveChecks: o.count, reported: o.reported })),
       ...(progress?{trialProgress:progress}:{}),
       productionControl: status?.productionControl ?? null, protocolFailures: state?.protocolFailures ?? status?.protocolFailures ?? null,

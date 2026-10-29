@@ -1,9 +1,20 @@
 # Prospective automatic learning
 
-Run `TZ=America/New_York LEARNING_PUBLISH=1 node node_modules/tsx/dist/cli.mjs scripts/learning-loop/start.ts`.
+Run the supervised prospective observer with
+`LEARNING_PUBLISH=1 python3 scripts/learning-runtime/start-host.py` after
+[preparing the Linux runtime](../learning-runtime/README.md).
+The actual Node binary, version, platform, architecture and time zone must
+match `runtime-policy.json`, and the current producer must attest that same
+runtime. The controller must own its declared container before acquiring the
+observer lock. A runtime change starts a genuine new trial and retains the
+refused original trial separately.
+
 `--once` probes one poll in a separate cache directory and cannot publish;
+it remains available directly through `node node_modules/tsx/dist/cli.mjs
+scripts/learning-loop/start.ts --once` for diagnostics on other runtimes.
 `LEARNING_PUBLISH` must be `1` to publish after validation. A PID lock prevents
-two observers writing to the same artifact directory.
+two observers in one namespace from writing to the same artifact directory;
+the host supervisor also holds an exclusive kernel lease across containers.
 The default admin credential is `~/.config/yale-shuttle/admin-token`; override with
 `SHUTTLE_ADMIN_TOKEN_FILE`. `BOT_BASE_URL`, `ARCHIVE_DIR`, and `LEARNING_DIR`
 override production, training inputs, and the output directory.

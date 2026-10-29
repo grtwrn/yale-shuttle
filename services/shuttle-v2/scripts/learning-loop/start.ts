@@ -13,6 +13,7 @@ import { assembleCandidate, conformalFit, estimateEmissions, estimateVisitRates,
 import { fileHash, fileIdentity, identityHash } from '../reestimate-validation.mjs';
 import { assertLearningSourceUnchanged, learningSourceFiles } from './source-files.mjs';
 import { learningExecutionIdentity } from './execution-files.mjs';
+import { assertForecastRuntime, assertManagedForecastOwner } from './runtime-policy.mjs';
 import { continueTrial, freezeTrial, handoverDecision } from './trial-context.mjs';
 import { readTrialPairs, retainSourceEvent, trialContexts, verifyContextTransitions } from './trial-evidence.mjs';
 import { validProductionExecutionIdentity } from '../../src/server/executionIdentity';
@@ -27,6 +28,7 @@ const tokenFile=process.env.SHUTTLE_ADMIN_TOKEN_FILE??path.join(process.env.HOME
 const base=process.env.BOT_BASE_URL??'https://yale-shuttle.fly.dev';
 const publish=!one&&process.env.LEARNING_PUBLISH==='1';
 fs.mkdirSync(root,{recursive:true});
+if(!one)assertManagedForecastOwner(root,path.resolve(new URL(import.meta.url).pathname));
 const lock=path.join(root,'observer.lock');
 try{fs.writeFileSync(lock,String(process.pid),{flag:'wx'});}catch(e:any){
  if(e.code!=='EEXIST')throw e;
@@ -55,6 +57,7 @@ async function apiExchange(route:string,body?:unknown){
 async function api(route:string,body?:unknown){return (await apiExchange(route,body)).value;}
 const files=learningSourceFiles(service), sourceKey=identityHash(fileIdentity(files));
 const executionIdentity=learningExecutionIdentity(service);
+if(!one)assertForecastRuntime(executionIdentity);
 const sourceInventory=files.map(file=>({file:path.relative(service,file),sha256:fileHash(file)}));
 const candidateModel=()=>({version:state.trial?.id??state.id,publishedAt:state.trial?.startedAt??state.startedAt,params:state.candidate.params});
 function checkpoint(){
@@ -186,6 +189,7 @@ async function verifyInputs(rows:any[]){
  if(needed.size)throw Error(`Missing ${needed.size} retained forecast/outcome inputs`);
 }
 async function begin(feed:any,health:any,confirmation?:any,trigger?:any){
+ if(!one)assertForecastRuntime(confirmation?.execution,true);
  if(state?.publishingVersion===feed.model_params?.version&&!state.promotedAt){state.promotedAt=Date.now();event('publication-observed',{version:state.publishingVersion});}
  const current=(await api('/api/stats/model-params')).current;
  if(!current?.accepted||!Number.isFinite(current.publishedAt)||current.publishedAt>=Date.now())throw Error('No verifiable current champion');
@@ -238,6 +242,7 @@ async function begin(feed:any,health:any,confirmation?:any,trigger?:any){
  }
  const seedExchange=await apiExchange('/api/evaluation/seed'),seed=seedExchange.value,seedReceivedAt=seedExchange.receipt.receivedAt;
  if(!validProductionExecutionIdentity(seed.execution)||!validProductionExecutionIdentity(confirmation?.execution))throw Error('Missing production execution identity');
+ if(!one)assertForecastRuntime(seed.execution,true);
  if(seed.execution.sha256!==confirmation.execution.sha256)throw new SourceContextChanged('build','Production execution changed while seeding');
  if(seed.build!==health.build||confirmation&&seed.epoch!==confirmation.epoch)throw new SourceContextChanged('build','Production context changed while seeding');
  if(modelKey(seed.modelParams)!==modelKey(current))throw new SourceContextChanged('champion','Champion changed while fitting');
