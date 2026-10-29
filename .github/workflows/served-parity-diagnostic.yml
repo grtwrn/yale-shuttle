@@ -1,0 +1,28 @@
+name: served-parity-diagnostic
+on:
+  push:
+    branches: [diagnostic/learning-parity-20261029]
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: npm
+          cache-dependency-path: services/shuttle-v2/package-lock.json
+      - run: npm ci --prefix services/shuttle-v2
+      - name: Replay original Purple history on production Node version
+        run: node --import ./services/shuttle-v2/node_modules/tsx/dist/loader.mjs .github/diagnostics/served-parity-20261029/replay.mts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: served-parity-diagnostic
+          path: |
+            .github/diagnostics/served-parity-20261029/result.json
+            .github/diagnostics/served-parity-20261029/before-32830.v8.gz
+          retention-days: 7
