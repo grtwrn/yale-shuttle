@@ -1,0 +1,28 @@
+name: learning-own-recovery-diagnostic
+on:
+  push:
+    branches: [diagnostic/linux-own-recovery-20261029]
+jobs:
+  own-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TZ: America/New_York
+    defaults:
+      run:
+        working-directory: services/shuttle-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: npm
+          cache-dependency-path: services/shuttle-v2/package-lock.json
+      - run: npm ci --include=dev
+      - run: node scripts/learning-runtime/run-recovery-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: own-recovery-original-results
+          path: services/shuttle-v2/recovery-diagnostic-output
+          retention-days: 3

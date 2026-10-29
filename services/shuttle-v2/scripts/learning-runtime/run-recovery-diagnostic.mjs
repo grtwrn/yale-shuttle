@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+const output=path.resolve('recovery-diagnostic-output');fs.mkdirSync(output,{recursive:false});
+const helper=fileURLToPath(new URL('./recovery-diagnostic.mjs',import.meta.url));
+const startedAt=Date.now();
+const child=spawnSync(process.execPath,['--max-old-space-size=768','--import',path.resolve('node_modules/tsx/dist/loader.mjs'),helper],{env:{...process.env,RECOVERY_DIAGNOSTIC_OUTPUT:output},encoding:'utf8',timeout:60000,maxBuffer:1024*1024});
+fs.writeFileSync(output+'/child.stdout',child.stdout??'');fs.writeFileSync(output+'/child.stderr',child.stderr??'');
+const result={startedAt,endedAt:Date.now(),elapsedMs:Date.now()-startedAt,timeoutMs:60000,actualExitCode:child.status,signal:child.signal,error:child.error?{code:child.error.code,message:child.error.message}:null,originalEmulatorMainRemainsFailed:true,noNewProductionRequests:true};
+fs.writeFileSync(output+'/actual-child-terminal.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));
+process.exitCode=child.status===0&&!child.error?0:1;
