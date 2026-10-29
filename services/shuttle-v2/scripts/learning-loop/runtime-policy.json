@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "managedContainer": true,
+  "image": "registry.fly.io/yale-shuttle@sha256:c19d162d98fa582e23dade662781d1385730e5e185fca7884c0009216a53b4ae",
+  "node": "v22.23.4",
+  "platform": "linux",
+  "arch": "x64",
+  "timezone": "America/New_York",
+  "nodeBinarySHA256": "94efd062ed066c1a0b332e18249859c905e920eeada5df55d24c99b919629a90"
+}

@@ -26,7 +26,7 @@ const temporary: string[] = [];
 afterEach(() => { for (const p of temporary.splice(0)) fs.rmSync(p, { recursive: true, force: true }); resetModelParams(); registerRoutePaths(null); });
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 const read = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'));
-async function fixture(isolatedSource = false, statisticalTrial = false) {
+async function fixture(isolatedSource = true, statisticalTrial = false) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'exact-observer-cli-')); temporary.push(root);
   // A source-change regression mutates only this private runtime copy. Other
   // tests and the installed observer keep their own source bytes untouched.
@@ -39,6 +39,14 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
     fs.copyFileSync(path.join(service,'package.json'),path.join(runtimeService,'package.json'));
     fs.symlinkSync(path.join(service,'node_modules'),path.join(runtimeService,'node_modules'),'dir');
     fs.symlinkSync(path.join(service,'web/node_modules'),path.join(runtimeService,'web/node_modules'),'dir');
+    // This private protocol simulator has an artificial producer on the
+    // test runner's runtime. Change only its copied policy data; the actual
+    // validator and the installed production policy remain unchanged.
+    const policyFile=path.join(runtimeService,'scripts/learning-loop/runtime-policy.json');
+    const policy=JSON.parse(fs.readFileSync(policyFile,'utf8'));
+    Object.assign(policy,{managedContainer:false,node:process.version,platform:process.platform,arch:process.arch,
+      timezone:'America/New_York',nodeBinarySHA256:digest(fs.readFileSync(process.execPath))});
+    fs.writeFileSync(policyFile,JSON.stringify(policy,null,2)+'\n');
   }
 
   // These retained daytime buses need a weekday service clock. Real wall time
@@ -52,7 +60,13 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
   const params = structuredClone(champion.params); params.P_REPEAT_STAND = .75; params.CONFORMAL = { '0-2': 1, '2-5': 1, '5-10': 1, '10-30': 1 };
   const producer = new ServerEta({ routes: ROUTE_LISTS.map(r => r.label) }); producer.useK10Trial(() => new Map());
   let inputs = new EvaluationInputs({ epoch: 'fixture-epoch' }); let version = 0, payload: any, mode = 'healthy',build='fixture-build',restarts=0,fleetGeneration=0;
-  let producerExecution=fixtureProducerExecution();
+  const fixtureExecution=(n=1)=>{
+    const core:any=fixtureProducerExecution(n);delete core.sha256;
+    Object.assign(core,{nodeBinarySHA256:digest(fs.readFileSync(process.execPath)),
+      runtime:{...core.runtime,node:process.version,platform:process.platform,arch:process.arch}});
+    return {...core,sha256:identityHash(core)};
+  };
+  let producerExecution=fixtureExecution();
   const publish = (at = serverNow()) => {
     const since = new Date((statisticalTrial?at:initial) - 60000).toISOString();
     payload = { ...cap.static, model_params: champion, buses: structuredClone(cap.frames[4].buses).map((b: any) => {
@@ -147,7 +161,7 @@ async function fixture(isolatedSource = false, statisticalTrial = false) {
     replaceFleet:()=>{fleetGeneration++;publish();},
     restart: (differentExecution=false,epochChange=true,buildChange=true) => {
       restarts++;if(buildChange)build=`replacement-build-${restarts}`;if(epochChange)inputs=new EvaluationInputs({epoch:`replacement-epoch-${restarts}`});
-      if(differentExecution)producerExecution=fixtureProducerExecution(10+restarts);
+      if(differentExecution)producerExecution=fixtureExecution(10+restarts);
       source=makeSource();publish();
     },
     breakExecution:()=>{producerExecution={...producerExecution,sha256:'0'.repeat(64)};},
@@ -195,6 +209,19 @@ function candidateRuntime(f: Awaited<ReturnType<typeof fixture>>) {
   return deserialize(outer.arms.challenger.bytes);
 }
 describe('actual exact-source observer command', () => {
+  it('refuses an unmanaged prospective process before touching the original checkpoint or fetching inputs', async () => {
+    const f=await fixture();
+    try{
+      const policyFile=path.join(f.service,'scripts/learning-loop/runtime-policy.json'),policy=read(policyFile);
+      policy.managedContainer=true;fs.writeFileSync(policyFile,JSON.stringify(policy));
+      const before=fs.readFileSync(path.join(f.root,'state.json'));
+      const run=f.launch(false);expect(await run.exit,run.log()).toBe(1);
+      expect(run.log()).toContain('verified Linux container supervisor');
+      expect(fs.readFileSync(path.join(f.root,'state.json'))).toEqual(before);
+      expect(fs.existsSync(path.join(f.root,'observer.lock'))).toBe(false);
+      expect(f.requests).toEqual([]);
+    }finally{await f.close();}
+  });
   it('runs one real poll with publication disabled even when the environment enables it', async () => {
     const f = await fixture();
     try {
