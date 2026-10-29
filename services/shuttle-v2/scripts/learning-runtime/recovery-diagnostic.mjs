@@ -30,18 +30,23 @@ const rowsFile=output+'/all-own-cdfs.jsonl.gz';
 let found=false,futurePackets=0,futureFrames=0,totalFrames=0,compressedBytes=0;
 const cdfRows={champion:0,challenger:0},withoutCDF={champion:0,challenger:0};
 const digest=createHash('sha256');
+const storedRows=new Set();
+function retain(raw){const encoded=gzipSync(raw,{level:1});compressedBytes+=encoded.length;assert(compressedBytes<=192*1024*1024);fs.appendFileSync(rowsFile,encoded);}
 function compare(boundary){
- const result={cursor:fresh.cursor,at:fresh.at,boundary,arms:{}};
+ const sample={kind:'sample',cursor:fresh.cursor,at:fresh.at,boundary,arms:{}};
  for(const name of ['champion','challenger']){
   const a=fresh.stores[name].engine.evaluationForecasts(),b=restored.stores[name].engine.evaluationForecasts();
-  result.arms[name]={fresh:a,restored:b};
+  const aJSON=JSON.stringify(a),bJSON=JSON.stringify(b),aSHA=sha(aJSON),bSHA=sha(bJSON);
+  for(const [body,h]of [[aJSON,aSHA],[bJSON,bSHA]])if(!storedRows.has(h)){
+   retain('{"kind":"rows","sha256":'+JSON.stringify(h)+',"rows":'+body+'}\n');storedRows.add(h);
+  }
+  sample.arms[name]={freshSHA256:aSHA,restoredSHA256:bSHA};
   for(const row of a){if(row.distribution){assert.equal(row.distribution.length,50);cdfRows[name]++;}else withoutCDF[name]++;}
+  assert.equal(aSHA,bSHA,name+' full own CDF rows');
  }
- const raw=JSON.stringify(result)+'\n',encoded=gzipSync(raw,{level:1});compressedBytes+=encoded.length;
- assert(compressedBytes<=192*1024*1024);fs.appendFileSync(rowsFile,encoded);
- for(const name of ['champion','challenger'])assert.equal(sha(JSON.stringify(result.arms[name].fresh)),sha(JSON.stringify(result.arms[name].restored)),name+' full own CDF rows');
- digest.update(raw);
+ const raw=JSON.stringify(sample)+'\n';retain(raw);digest.update(raw);
 }
+
 for await(const line of readline.createInterface({input:fs.createReadStream(fixture+'/inputs.jsonl.gz').pipe(createGunzip()),crlfDelay:Infinity})){
  const packet=JSON.parse(line).source;
  totalFrames+=fresh.advance(packet);
@@ -53,6 +58,6 @@ assert(found);assert.equal(totalFrames,manifest.originalLiveFrames);
 assert.equal(futurePackets,manifest.futurePackets);assert.equal(futurePackets,expected.length);
 assert.equal(futureFrames,manifest.futureFrames);assert(futureFrames>=177);
 assert(cdfRows.champion>0&&cdfRows.challenger>0);
-const result={at:new Date().toISOString(),ok:true,node:process.version,platform:process.platform,arch:process.arch,nodeBinarySHA256:manifest.nodeBinarySHA256,totalFrames,futureFrames,futurePackets,cdfRows,withoutCDF,quantilesPerCDF:50,checkpointCursor:receipt.cursor,lastCursor:fresh.cursor,rowsFile:path.basename(rowsFile),rowsBytes:fs.statSync(rowsFile).size,rowsSHA256:sha(fs.readFileSync(rowsFile)),allOwnCDFsSHA256:digest.digest('hex'),sourceFilesVerified:Object.keys(manifest.sourceInventory).length,originalMainActualExitCode:1,noNewProductionRequests:true,originalMainNeverRerun:true,scope:manifest.scope};
+const result={at:new Date().toISOString(),ok:true,node:process.version,platform:process.platform,arch:process.arch,nodeBinarySHA256:manifest.nodeBinarySHA256,totalFrames,futureFrames,futurePackets,cdfRows,withoutCDF,quantilesPerCDF:50,checkpointCursor:receipt.cursor,lastCursor:fresh.cursor,rowsFile:path.basename(rowsFile),rowsBytes:fs.statSync(rowsFile).size,rowsSHA256:sha(fs.readFileSync(rowsFile)),allOwnCDFsSHA256:digest.digest('hex'),losslessDistinctRows:storedRows.size,sourceFilesVerified:Object.keys(manifest.sourceInventory).length,originalMainActualExitCode:1,noNewProductionRequests:true,originalMainNeverRerun:true,scope:manifest.scope};
 fs.writeFileSync(output+'/result.json',JSON.stringify(result,null,2)+'\n');
 console.log(JSON.stringify(result));
