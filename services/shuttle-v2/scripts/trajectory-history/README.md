@@ -41,6 +41,9 @@ file is rescanned when that frontier moves, so those frames are not skipped.
 Collector queries and projections use the same upper time frontier. Historical
 source holes are explicit `history-source-gap` records and reset the affected
 derived clocks. They never become invented movement or departure evidence.
+This includes past outage intervals with no native input files after a trial
+handover. Catch-up records the missing coverage and proceeds to later original
+inputs; a current interval without native files still fails capture.
 Current missing sources still fail capture. Pending associations expire against
 the inspected historical interval, rather than being discarded immediately
 because a backfill runs hours later.
