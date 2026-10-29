@@ -38,6 +38,14 @@ An active evaluation can exceed the retired-input budget; retention must not
 invalidate it by deleting its evidence. Cleanup does not restart the learning
 observer or change its source fingerprint.
 
+A closed context with a source refusal or protocol failure also protects its
+input journals, including every context with the same frozen trial checksum.
+Starting a fresh scientific trial does not release that failed cohort into
+ordinary rolling deletion. Retention reports `refusedTrialContexts` and
+`refusedInputBytes` separately from active trial identities; a conflicting
+frozen/closed trial identity refuses cleanup. This protection preserves only
+files that remain available and cannot recover earlier deleted journals.
+
 Riders checkpoint their journey and tester browser state to private
 `resume.json`. A restart within five minutes restores tracking and marks the
 resumed journey excluded from accuracy scoring. Session restoration is applied

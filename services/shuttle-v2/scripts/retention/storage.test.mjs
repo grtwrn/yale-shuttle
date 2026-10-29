@@ -117,3 +117,25 @@ test('malformed active trial links refuse deletion',async()=>{
  const dir=await root();await atomicJson(path.join(dir,'state.json'),{id:'cycle-300',priorContexts:[{id:'../escape'}]});
  expect((await maintainLearning(dir)).skipped).toContain('Invalid active trial');
 });
+test.each(['sourceRefusal','protocolFailures'])('closed %s evidence protects every original trial context while routine history still rolls',async failure=>{
+ const dir=await root(),now=Date.parse('2026-10-29T12:00:00Z'),trial='a'.repeat(64);
+ await atomicJson(path.join(dir,'state.json'),{id:'cycle-400',trial:{id:'cycle-400'},forecastProtocol:'served-control-v2'});
+ for(const id of ['cycle-100','cycle-200','cycle-300','cycle-400']){
+  const folder=path.join(dir,id);await fs.mkdir(folder);await atomicJson(path.join(folder,'frozen-candidate.json'),{id,trialSHA256:id==='cycle-300'?'b'.repeat(64):id==='cycle-400'?'c'.repeat(64):trial});
+  await fs.writeFile(path.join(folder,'feed-2026-10-01-00-123.jsonl.gz'),'original');
+ }
+ await atomicJson(path.join(dir,'cycle-200/closed-state.json'),{id:'cycle-200',trialSHA256:trial,[failure]:failure==='sourceRefusal'?{reason:'Exact control differs'}:{count:1}});
+ const result=await maintainLearning(dir,{now,closedMaxBytes:1});
+ expect(result.refusedTrialContexts.sort()).toEqual(['cycle-100','cycle-200']);expect(result.refusedInputBytes).toBe(16);
+ expect(result.activeContexts).toEqual(['cycle-400']);expect(result.removed.map(r=>r.cycle)).toEqual(['cycle-300']);
+ for(const id of ['cycle-100','cycle-200','cycle-400'])expect(await fs.readFile(path.join(dir,id,'feed-2026-10-01-00-123.jsonl.gz'),'utf8')).toBe('original');
+});
+test('ambiguous refused trial identity stops cleanup before deleting any journal',async()=>{
+ const dir=await root();await atomicJson(path.join(dir,'state.json'),{id:'cycle-300'});
+ for(const id of ['cycle-100','cycle-200']){
+  const folder=path.join(dir,id);await fs.mkdir(folder);await atomicJson(path.join(folder,'frozen-candidate.json'),{trialSHA256:'a'.repeat(64)});await fs.writeFile(path.join(folder,'feed-2026-10-01-00-123.jsonl.gz'),'original');
+ }
+ await atomicJson(path.join(dir,'cycle-200/closed-state.json'),{trialSHA256:'b'.repeat(64),sourceRefusal:{reason:'Exact mismatch'}});
+ await expect(maintainLearning(dir,{closedMaxBytes:1})).rejects.toThrow('Refused learning trial identity differs');
+ for(const id of ['cycle-100','cycle-200'])expect(await fs.readFile(path.join(dir,id,'feed-2026-10-01-00-123.jsonl.gz'),'utf8')).toBe('original');
+});

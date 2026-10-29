@@ -29,22 +29,40 @@ export async function maintainLearning(root, { now = Date.now(), dryRun = false,
   // Forecasts only exist from the first calibration date. Preserve the
   // boundary hour too, plus candidate/pending receipts and the open writer.
   const warmingCutoff = state.calibrationDays?.[0] ? midnight(state.calibrationDays[0]) - 47 * 60000 : null;
-  const closed = [], warming = [];
-  let activeBytes = 0;
+  const closed = [], warming = [], cycles = [], refusedContexts = new Set(), refusedTrials = new Set();
   for (const entry of await fs.readdir(root, { withFileTypes: true })) {
     if (!entry.isDirectory() || !/^cycle-\d+$/.test(entry.name)) continue;
     const directory = path.join(root, entry.name);
     const frozen = await readJson(path.join(directory, 'frozen-candidate.json'), null);
+    const previous = await readJson(path.join(directory, 'closed-state.json'), null);
+    // A new scientific trial must not turn a refused cohort into disposable
+    // routine history. Preserve every context sharing that original trial.
+    if (previous?.sourceRefusal || previous?.protocolFailures?.count > 0) {
+      refusedContexts.add(entry.name);
+      if (frozen?.trialSHA256 != null || previous.trialSHA256 != null) {
+        if (!/^[a-f0-9]{64}$/.test(frozen.trialSHA256) || previous.trialSHA256 !== frozen.trialSHA256)
+          throw Error('Refused learning trial identity differs; no evaluation evidence deleted');
+        refusedTrials.add(frozen.trialSHA256);
+      }
+    }
+    cycles.push({ entry, directory, frozen });
+  }
+  let activeBytes = 0, refusedInputBytes = 0;
+  const refusedTrialContexts = [];
+  for (const { entry, directory, frozen } of cycles) {
+    const refusedEvidence = refusedContexts.has(entry.name) || refusedTrials.has(frozen?.trialSHA256);
+    if (refusedEvidence) refusedTrialContexts.push(entry.name);
     const championEvidence = frozen && state.champion?.version === `prospective-${frozen.trial?.startedAt??frozen.startedAt}`;
     for (const file of await fs.readdir(directory, { withFileTypes: true })) {
       const h = feedHour(file.name); if (!file.isFile() || !h) continue;
       const name = path.join(directory, file.name), stat = await fs.stat(name);
       const item = { file: name, bytes: stat.size, cycle: entry.name, time: Number(entry.name.slice(6)), reason: 'superseded-cycle' };
-      if (!activeContexts.has(entry.name) && !championEvidence) closed.push(item);
+      if (!activeContexts.has(entry.name) && !championEvidence && !refusedEvidence) closed.push(item);
       else {
         activeBytes += stat.size;
+        if (refusedEvidence) refusedInputBytes += stat.size;
         const end = Date.parse(h.slice(0, 10) + 'T' + h.slice(11) + ':00:00Z') + 3600000;
-        if (activeContexts.has(entry.name) && state.forecastProtocol !== 'served-control-v2' && warmingCutoff !== null && end < warmingCutoff
+        if (!refusedEvidence && activeContexts.has(entry.name) && state.forecastProtocol !== 'served-control-v2' && warmingCutoff !== null && end < warmingCutoff
           && !retainedHours.has(h) && stat.mtimeMs < now - 60000) warming.push({ ...item, reason: 'unreferenced-warming-input' });
       }
     }
@@ -62,6 +80,7 @@ export async function maintainLearning(root, { now = Date.now(), dryRun = false,
   if (current?.id !== state.id) return { skipped: 'Cycle changed during retention planning' };
   if (!dryRun) for (const item of removed) await fs.unlink(item.file);
   const result = { updatedAt: new Date(now).toISOString(), activeCycle: state.id, activeContexts:[...activeContexts], dryRun,
+    refusedTrialContexts, refusedInputBytes,
     deletedFiles: removed.length, freedBytes: removed.reduce((sum, item) => sum + item.bytes, 0),
     protectedInputBytes: activeBytes - warming.reduce((sum, item) => sum + item.bytes, 0),
     retainedSupersededBytes: closedBytes,
