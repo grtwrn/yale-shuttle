@@ -34,6 +34,18 @@ Catch-up uses original fifteen-minute intervals. Each verified interval commits
 its projections and cursor atomically before the next begins; a later failure
 preserves earlier progress. Native files are selected for that interval rather
 than rereading completed earlier hours into the same compressed-input budget.
+Every cryptographically linked context in the current native trial is inspected
+in its original chronology, including a context that both began and ended
+between archive polls. Closed-state byte hashes, exact predecessor links and
+each context's frozen source descriptor are checked before capture commits.
+Missing or conflicting intermediate links fail capture; they never authorize
+silently skipping available source files. A genuine cross-trial or legacy
+boundary still retains the previously captured endpoint's diagnostic history.
+Closed contexts outside the inspected interval do not carry old gzip prefixes
+into later read budgets; their exact links and frozen identities remain checked.
+All selected files across all contexts share the existing eight-file/512 MiB
+read budget. Historical observer refusals do not erase original published
+frames, while a refused or stale current observer cannot claim fresh capture.
 The recorder keeps the inspected time frontier separately from its current
 heartbeat. A prefix may contain later, unprocessed frames: an unchanged gzip
 file is rescanned when that frontier moves, so those frames are not skipped.
@@ -120,8 +132,9 @@ receipt. Posterior records use the same existing physical/age limits below;
 they have no separate unbounded store. The projection omits engine caches and
 is not a complete forecast runtime or an independent accuracy qualification.
 
-The archive records the hashes of its five implementation modules and the
-collector protocol/codec. Changes to that projection identity reset derived
+The archive records the hashes of its five implementation modules, the
+collector protocol/codec and the linked-context validation dependencies.
+Changes to that projection identity reset derived
 clock contexts and add an explicit archive boundary, while preserving earlier
 records and cursor provenance. The live estimator source identity is separate.
 

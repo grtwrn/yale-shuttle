@@ -5,6 +5,7 @@ import {nativeRecords,ModelProjection} from './native.mjs';import {collectorSnap
 import {inspectTimingHistory,advance} from '../learning-watch/poll.mjs';import {WitnessStore} from '../collector-witness-watch/storage.mjs';import {CollectorWitnessJournal} from '../../src/collector/witnessJournal.ts';import {witnessJSON,witnessSHA} from '../../src/collector/witnessCodec.ts';import {decodeWitness} from '../collector-witness-watch/protocol.mjs';
 import {setup as exactSource} from '../learning-loop/__fixtures__/exact-source.ts';
 import {resetModelParams} from '../../web/src/eta/params.ts';import {registerRoutePaths} from '../../web/src/anchor.ts';
+import {identityHash} from '../reestimate-validation.mjs';
 const dirs=[],stores=[],temporary=()=>{const p=fs.mkdtempSync(path.join(os.tmpdir(),'trajectory-history-test-'));dirs.push(p);return p;},h='a'.repeat(64),base=1792555200000;
 afterEach(()=>{resetModelParams();registerRoutePaths(null);for(const s of stores.splice(0))try{s.close();}catch{}for(const p of dirs.splice(0))fs.rmSync(p,{recursive:true,force:true});});
 function topology({stops=[1,2,1],publishedStops}={}){return CollectorWitnessJournal.topology({stops:new Map([[1,{id:1,lat:41.3,lon:-72.9}],[2,{id:2,lat:41.31,lon:-72.9}],[3,{id:3,lat:41.32,lon:-72.9}]]),routes:new Map([[10,{id:10,name:'Purple',stops,...(publishedStops?{publishedStops}:{}),path:[]}]]),segmentEdges:new Map(),walkTransfers:new Map(),routeStopIndex:new Map(),routeStopPositions:new Map(),legMeters:new Map()});}
@@ -24,6 +25,29 @@ function intervalFixture(times=[base+5000,base+905000,base+1805000,base+2705000]
  const f=collectorFixture(),originals=times.map(at=>f.add({at})),witness=new WitnessStore(temporary(),{policy:{minFreeBytes:0}});stores.push(witness);const head={...f.journal.head(f.at),build:'build',evaluationEpoch:'model',evaluationCursor:times.length};witness.updateReports([],{now:f.at});witness.beginEpoch(head,'test',f.at);witness.commitPage({...f.journal.read('collector',0,{now:f.at,limit:sourceLimit}),build:'build',evaluations:[]},{seenHead:head,now:f.at});
  const learningRoot=temporary(),cycle=path.join(learningRoot,'cycle-1');fs.mkdirSync(cycle);const frozen=JSON.stringify({id:'cycle-1',sourceKey:h,productionBuild:'build'});fs.writeFileSync(path.join(cycle,'frozen-candidate.json'),frozen);fs.writeFileSync(path.join(learningRoot,'state.json'),JSON.stringify({id:'cycle-1',forecastProtocol:'served-control-v2',sourceKey:h,frozenCandidateSha256:witnessSHA(frozen)}));
  const rows=originals.map((o,i)=>{const p=model(o.seq,i%2,{at:o.at,topo:f.t,head:{seq:o.seq,at:o.at,sha256:o.sha256}});if(o.seq===corruptCursor)p.frames[0].json+=' ';return JSON.stringify({receivedAt:o.at,source:p});}),file=path.join(cycle,'feed-2026-10-21-04-1.jsonl.gz');fs.writeFileSync(file,gzipSync(rows.join('\n')+'\n'));const setStatus=now=>fs.writeFileSync(path.join(learningRoot,'status.json'),JSON.stringify({cycle:'cycle-1',running:true,feedReceivedAt:new Date(now).toISOString()}));setStatus(times[0]);const store=history();return{store,learningRoot,collectorFile:witness.file,setStatus,times,file,cycle};
+}
+
+function linkedIntervalFixture(times=[base+5000,base+305000,base+605000,base+905000]){
+ const x=intervalFixture(times),packets=gunzipSync(fs.readFileSync(x.file)).toString().trim().split('\n').map(JSON.parse);
+ const trial={v:1,id:'cycle-1',startedAt:base,executionSHA256:'d'.repeat(64),producerExecutionSHA256:'e'.repeat(64)},trialSHA256=identityHash(trial);
+ const writeContext=(n,priorContexts)=>{
+  const id='cycle-'+n,directory=path.join(x.learningRoot,id);fs.mkdirSync(directory,{recursive:true});
+  const frozen={id,startedAt:base+[0,300000,900000][n-1],forecastProtocol:'served-control-v2',sourceKey:['a','b','c'][n-1].repeat(64),productionBuild:'build',trial,trialSHA256,priorContexts,source:{epoch:n===1?'model':'model-new',seedSha256:String(n).repeat(64)}};
+  const raw=JSON.stringify(frozen);fs.writeFileSync(path.join(directory,'frozen-candidate.json'),raw);
+  return{...frozen,frozenCandidateSha256:witnessSHA(raw),pending:{},outbox:[]};
+ };
+ const initial=writeContext(1,[]);fs.writeFileSync(x.file,gzipSync(JSON.stringify(packets[0])+'\n'));fs.writeFileSync(path.join(x.learningRoot,'state.json'),JSON.stringify(initial));
+ const link=(context,at)=>{const closed={...context,invalidatedAt:at},raw=JSON.stringify(closed);fs.writeFileSync(path.join(x.learningRoot,context.id,'closed-state.json'),raw);return{id:context.id,closedStateSHA256:witnessSHA(raw),sourceKey:context.sourceKey,productionBuild:context.productionBuild,seedSha256:context.source.seedSha256,epoch:context.source.epoch};};
+ const handover=({oldRefusal=false}={})=>{
+  const first=link(initial,base+299999),middle=writeContext(2,[first]);if(oldRefusal)middle.sourceRefusal={reason:'Synthetic old refusal retained for diagnostic capture'};
+  const second=link(middle,base+899999),live=writeContext(3,[first,second]);
+  for(const i of[1,2,3])packets[i].source.epoch='model-new';
+  const middleFile=path.join(x.learningRoot,'cycle-2','feed-2026-10-21-04-2.jsonl.gz'),lastFile=path.join(x.learningRoot,'cycle-3','feed-2026-10-21-04-3.jsonl.gz');
+  fs.writeFileSync(middleFile,gzipSync(packets.slice(1,3).map(JSON.stringify).join('\n')+'\n'));fs.writeFileSync(lastFile,gzipSync(JSON.stringify(packets[3])+'\n'));
+  fs.writeFileSync(path.join(x.learningRoot,'state.json'),JSON.stringify(live));fs.writeFileSync(path.join(x.learningRoot,'status.json'),JSON.stringify({cycle:live.id,running:true,feedReceivedAt:new Date(x.times[3]).toISOString()}));
+  return{live,middle,middleFile,lastFile,originals:new Map([x.file,middleFile,lastFile].map(f=>[f,fs.readFileSync(f)]))};
+ };
+ return{...x,handover,packets};
 }
 
 describe('bounded chronological archive catch-up',()=>{
@@ -54,6 +78,106 @@ describe('bounded chronological archive catch-up',()=>{
  it('retains the last verified interval when a later original frame fails its commitment',async()=>{const x=intervalFixture(undefined,{corruptCursor:3});await collectHistory({...x,now:x.times[0]});x.setStatus(x.times[3]);await expect(catchUpHistory({...x,now:x.times[3]})).rejects.toThrow('commitment');expect(x.store.state().throughAt).toBe(x.times[1]);expect(x.store.state().model.last.cursor).toBe(2);expect(x.store.state().collector.last.seq).toBe(2);});
  it('refuses to call a current missing source healthy after historical gap capture',async()=>{const x=intervalFixture(undefined,{sourceLimit:1});await collectHistory({...x,now:x.times[0]});x.setStatus(x.times[3]);await expect(catchUpHistory({...x,now:x.times[3]})).rejects.toThrow('capture interval');expect(x.store.state().throughAt).toBe(x.times[2]);expect(x.store.state().collector.last.seq).toBe(1);});
  it('enforces the interval and wall-clock budgets before attempting capture',async()=>{for(const options of[{maxIntervals:0},{maxIntervals:33},{budgetMs:-1},{budgetMs:120001}])await expect(catchUpHistory({...options,store:history()})).rejects.toThrow('budget');});
+});
+
+describe('linked native contexts between archive polls',()=>{
+ it('captures available original middle-context frames when both endpoint contexts changed between polls',async()=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),prior=x.store.db.prepare('SELECT id,raw_sha FROM chunks').all();
+  const result=await collectHistory({...x,now:x.times[3]});expect(result.ok).toBe(true);
+  const rows=x.store.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(c=>x.store.read(c.id).records),models=rows.filter(r=>r.kind==='model-projection');
+  expect(models.map(r=>[r.cycle,r.cursor])).toEqual([['cycle-1',1],['cycle-2',2],['cycle-2',3],['cycle-3',4]]);
+  expect(result).toMatchObject({caughtUp:true,nativeContextsRead:['cycle-1','cycle-2','cycle-3']});
+  expect(models.filter(r=>r.cycle==='cycle-2').map(r=>r.sha256)).toEqual(x.packets.slice(1,3).map(r=>r.source.frames[0].sha256));
+  expect(models.filter(r=>r.cycle==='cycle-2').every(r=>r.sourceKey==='b'.repeat(64))).toBe(true);
+  expect(rows.some(r=>r.kind==='history-source-gap')).toBe(false);expect(x.store.state().model.last.cycle).toBe('cycle-3');
+  for(const[file,bytes]of source.originals)expect(fs.readFileSync(file)).toEqual(bytes);for(const c of prior)expect(x.store.db.prepare('SELECT raw_sha FROM chunks WHERE id=?').get(c.id).raw_sha).toBe(c.raw_sha);
+ });
+ it('commits an actual intermediate frontier without a false native gap and resumes after reopening',async()=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});x.handover();
+  const partial=await collectHistory({...x,now:x.times[3],throughAt:x.times[1]});expect(partial).toMatchObject({ok:false,modelAt:x.times[1]});
+  let rows=x.store.db.prepare('SELECT id FROM chunks').all().flatMap(c=>x.store.read(c.id).records);expect(rows.some(r=>r.kind==='history-source-gap')).toBe(false);expect(x.store.state().model.last.cycle).toBe('cycle-2');
+  const directory=x.store.directory;x.store.close();stores.splice(stores.indexOf(x.store),1);x.store=new HistoryStore(directory,{policy:{minFreeBytes:0}});stores.push(x.store);
+  const done=await catchUpHistory({...x,now:x.times[3]});expect(done.ok).toBe(true);
+  rows=x.store.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(c=>x.store.read(c.id).records);expect(rows.filter(r=>r.kind==='model-projection').map(r=>r.cursor)).toEqual([1,2,3,4]);
+ });
+ it('keeps an actually unavailable intermediate journal unknown and still reaches later original current evidence',async()=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover();fs.unlinkSync(source.middleFile);
+  const partial=await collectHistory({...x,now:x.times[3],throughAt:x.times[1]});expect(partial.ok).toBe(false);
+  const rows=x.store.db.prepare('SELECT id FROM chunks').all().flatMap(c=>x.store.read(c.id).records),gap=rows.find(r=>r.kind==='history-source-gap');expect(gap.unavailableSources).toContain('native');expect(gap.lastKnownModelAt).toBe(x.times[0]);
+  const current=await collectHistory({...x,now:x.times[3]});expect(current.ok).toBe(true);expect(x.store.state().model.last.cycle).toBe('cycle-3');
+  const models=x.store.db.prepare('SELECT id FROM chunks').all().flatMap(c=>x.store.read(c.id).records).filter(r=>r.kind==='model-projection');expect(models.map(r=>r.cursor)).toEqual([1,4]);
+ });
+ it('does not read a future context into a historical interval or use that to bypass its later current-file failure',async()=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover();fs.truncateSync(source.lastFile,270*1024*1024);
+  const partial=await collectHistory({...x,now:x.times[3],throughAt:x.times[1]});expect(partial).toMatchObject({ok:false,modelAt:x.times[1],nativeContextsRead:['cycle-1','cycle-2']});const committed=x.store.state();
+  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow('Invalid native input file');expect(x.store.state()).toEqual(committed);
+ });
+ it.each(['missing','checksum','lineage','frozen-checksum','missing-frozen-reference'])('keeps the last cursor when an intermediate %s identity fails',async kind=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),before=x.store.state(),chunks=x.store.db.prepare('SELECT id,raw_sha FROM chunks').all(),closed=path.join(x.learningRoot,'cycle-2','closed-state.json');
+  if(kind==='missing')fs.unlinkSync(closed);
+  if(kind==='checksum')fs.appendFileSync(closed,' ');
+  if(kind==='frozen-checksum')fs.appendFileSync(path.join(x.learningRoot,'cycle-2','frozen-candidate.json'),' ');
+  if(kind==='lineage'||kind==='missing-frozen-reference'){
+   const value=JSON.parse(fs.readFileSync(closed));if(kind==='lineage')value.priorContexts[0].closedStateSHA256='f'.repeat(64);else delete value.frozenCandidateSha256;
+   const raw=JSON.stringify(value);fs.writeFileSync(closed,raw);source.live.priorContexts[1].closedStateSHA256=witnessSHA(raw);fs.writeFileSync(path.join(x.learningRoot,'state.json'),JSON.stringify(source.live));
+  }
+  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow();expect(x.store.state()).toEqual(before);expect(x.store.db.prepare('SELECT id,raw_sha FROM chunks').all()).toEqual(chunks);
+ });
+ it('rejects overlapping predecessor clocks even when all closed-link checksums are internally consistent',async()=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),before=x.store.state(),firstFile=path.join(x.learningRoot,'cycle-1','closed-state.json'),middleFile=path.join(x.learningRoot,'cycle-2','closed-state.json');
+  const first=JSON.parse(fs.readFileSync(firstFile));first.invalidatedAt=source.middle.startedAt+1;const firstRaw=JSON.stringify(first);fs.writeFileSync(firstFile,firstRaw);source.live.priorContexts[0].closedStateSHA256=witnessSHA(firstRaw);
+  const middle=JSON.parse(fs.readFileSync(middleFile));middle.priorContexts=source.live.priorContexts.slice(0,1);const middleRaw=JSON.stringify(middle);fs.writeFileSync(middleFile,middleRaw);source.live.priorContexts[1].closedStateSHA256=witnessSHA(middleRaw);fs.writeFileSync(path.join(x.learningRoot,'state.json'),JSON.stringify(source.live));
+  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow('Native context closure chronology differs');expect(x.store.state()).toEqual(before);
+ });
+ it.each(['epoch','seedSha256','sourceKey','productionBuild'])('rejects an omitted middle-context %s even when every present byte checksum matches',async field=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),before=x.store.state(),closedFile=path.join(x.learningRoot,'cycle-2','closed-state.json'),frozenFile=path.join(x.learningRoot,'cycle-2','frozen-candidate.json'),closed=JSON.parse(fs.readFileSync(closedFile));
+  if(field==='epoch'||field==='seedSha256'){
+   const frozen=JSON.parse(fs.readFileSync(frozenFile));delete frozen.source[field];delete closed.source[field];delete source.live.priorContexts[1][field];
+   const frozenRaw=JSON.stringify(frozen);fs.writeFileSync(frozenFile,frozenRaw);closed.frozenCandidateSha256=witnessSHA(frozenRaw);
+  }else{delete closed[field];delete source.live.priorContexts[1][field];}
+  const raw=JSON.stringify(closed);fs.writeFileSync(closedFile,raw);source.live.priorContexts[1].closedStateSHA256=witnessSHA(raw);fs.writeFileSync(path.join(x.learningRoot,'state.json'),JSON.stringify(source.live));
+  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow('Frozen native context differs from its exact descriptor');expect(x.store.state()).toEqual(before);
+ });
+ it('refuses a middle packet from a different epoch even when its original frame commitments remain valid',async()=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),before=x.store.state();
+  const rows=gunzipSync(fs.readFileSync(source.middleFile)).toString().trim().split('\n').map(JSON.parse);for(const r of rows)r.source.epoch='conflicting-epoch';fs.writeFileSync(source.middleFile,gzipSync(rows.map(JSON.stringify).join('\n')+'\n'));
+  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow('Native input epoch differs from frozen source');expect(x.store.state()).toEqual(before);
+ });
+ it('retains diagnostic published frames from a refused old context without treating them as current qualification',async()=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});x.handover({oldRefusal:true});
+  const result=await collectHistory({...x,now:x.times[3]});expect(result.ok).toBe(true);
+  const models=x.store.db.prepare('SELECT id FROM chunks').all().flatMap(c=>x.store.read(c.id).records).filter(r=>r.kind==='model-projection');expect(models.filter(r=>r.cycle==='cycle-2').map(r=>r.cursor)).toEqual([2,3]);
+ });
+ it.each(['source-refusal','status-refusal','protocol-failure','status-protocol-failure','invalid-heartbeat','stale-heartbeat','future-heartbeat'])('refuses a current %s before advancing the archive',async kind=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const{live}=x.handover(),before=x.store.state(),statusFile=path.join(x.learningRoot,'status.json'),status=JSON.parse(fs.readFileSync(statusFile));
+  if(kind==='source-refusal')live.sourceRefusal={reason:'Synthetic current refusal'};
+  if(kind==='status-refusal')status.sourceRefusal={reason:'Synthetic current refusal'};
+  if(kind==='protocol-failure')live.protocolFailures={count:1};
+  if(kind==='status-protocol-failure')status.protocolFailures={count:1};
+  if(kind==='invalid-heartbeat')status.feedReceivedAt='invalid';
+  if(kind==='stale-heartbeat')status.feedReceivedAt=new Date(x.times[3]-120001).toISOString();
+  if(kind==='future-heartbeat')status.feedReceivedAt=new Date(x.times[3]+5001).toISOString();
+  fs.writeFileSync(path.join(x.learningRoot,'state.json'),JSON.stringify(live));fs.writeFileSync(statusFile,JSON.stringify(status));
+  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow('Native source is not fresh or is refused');expect(x.store.state()).toEqual(before);
+ });
+ it.each(['file-count','compressed-bytes'])('retains the original combined %s bound across every linked context',async kind=>{
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),before=x.store.state();
+  if(kind==='file-count')for(let i=0;i<6;i++)fs.copyFileSync(source.middleFile,path.join(path.dirname(source.middleFile),`feed-2026-10-21-04-${100+i}.jsonl.gz`));
+  else fs.truncateSync(source.middleFile,513*1024*1024);
+  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow('Native history read bound exceeded');expect(x.store.state()).toEqual(before);
+ });
+ it('drops completed prior-context prefixes from later-hour reads while still verifying every frozen identity',async()=>{
+  const x=linkedIntervalFixture([base+5000,base+305000,base+605000,base+905000,base+3605000]);await collectHistory({...x,now:x.times[0]});const source=x.handover();await collectHistory({...x,now:x.times[3]});
+  expect(Object.keys(x.store.state().prefixes).some(f=>f.includes('/cycle-2/'))).toBe(true);
+  // Sparse synthetic old files would exhaust the existing combined read cap
+  // if completed contexts' fallback prefixes were selected forever.
+  fs.truncateSync(x.file,270*1024*1024);fs.truncateSync(source.middleFile,270*1024*1024);
+  const packet=x.packets[4];packet.source.epoch='model-new';fs.writeFileSync(path.join(x.learningRoot,'cycle-3','feed-2026-10-21-05-3.jsonl.gz'),gzipSync(JSON.stringify(packet)+'\n'));
+  fs.writeFileSync(path.join(x.learningRoot,'status.json'),JSON.stringify({cycle:'cycle-3',running:true,feedReceivedAt:new Date(x.times[4]).toISOString()}));
+  const later=await collectHistory({...x,now:x.times[4]});expect(later).toMatchObject({ok:true,modelAt:x.times[4],nativeContextsRead:['cycle-3']});expect(Object.keys(x.store.state().prefixes).every(f=>f.includes('/cycle-3/'))).toBe(true);
+  const committed=x.store.state();fs.appendFileSync(path.join(x.learningRoot,'cycle-2','frozen-candidate.json'),' ');
+  await expect(collectHistory({...x,now:x.times[4]})).rejects.toThrow('Frozen native identity differs');expect(x.store.state()).toEqual(committed);
+ });
 });
 
 describe('compact original model timing projections',()=>{
