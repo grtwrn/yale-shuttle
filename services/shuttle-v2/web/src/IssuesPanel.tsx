@@ -161,10 +161,12 @@ const IssuesPanel: React.FC<{
     const ownedFocus = replyComposerRef.current?.contains(document.activeElement);
     setActionError(null);
     setActionStatus(action.action === "followup" ? "Sending reply…" : "Saving…");
+    let completedStatus = "";
     try {
       await postReportAction(id, action);
       closeReply(id, ownedFocus);
-      setActionStatus(action.action === "followup" ? "Reply sent" : "Saved");
+      completedStatus = action.action === "followup" ? "Reply sent" : "Saved";
+      setActionStatus(completedStatus);
       await load();
     } catch (err) {
       setActionStatus("");
@@ -172,7 +174,9 @@ const IssuesPanel: React.FC<{
     } finally {
       pendingActions.current.delete(id);
       setBusyIds(new Set(pendingActions.current));
-      if (pendingActions.current.size) setActionStatus("Saving changes…");
+      // Another request may have replaced this action's confirmation while its
+      // refresh waited. The final action must settle the interim saving text.
+      setActionStatus(pendingActions.current.size ? "Saving changes…" : completedStatus);
     }
   };
 

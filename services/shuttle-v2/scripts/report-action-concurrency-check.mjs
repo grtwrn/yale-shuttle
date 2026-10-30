@@ -11,6 +11,7 @@ import { chromium } from 'playwright-core';
 import { seedTestId } from './testId.mjs';
 
 const service = process.cwd(), baseline = process.argv.includes('--baseline');
+const statusBaseline = process.argv.includes('--status-baseline');
 const published = process.env.REPORT_ACTIONS_PRODUCTION_ASSETS === '1';
 const base = published ? process.env.REPORT_ACTIONS_BASE_URL || 'https://yale-shuttle.fly.dev' : 'https://report-actions.test';
 const host = new URL(base).hostname;
@@ -18,7 +19,7 @@ const out = process.env.OUT || path.join(service, 'pr-preview/report-actions');
 await fs.mkdir(out, { recursive: true });
 const feed = JSON.parse(await fs.readFile('web/src/__fixtures__/buses-payload.json', 'utf8'));
 feed.buses = [];
-const result = { baseline, base, scope: 'Synthetic reports and delayed API responses. Every API request intercepted; no report writes reach production.', runs: [] };
+const result = { baseline, statusBaseline, base, scope: 'Synthetic reports and delayed API responses. Every API request intercepted; no report writes reach production.', runs: [] };
 if (published) {
   const response = await fetch(new URL('/healthz', base));
   const bytes = Buffer.from(await response.arrayBuffer()), health = JSON.parse(bytes);
@@ -114,6 +115,9 @@ try {
       assert.equal(run.checks.otherRequestStaysDisabled, true);
       await page.getByRole('alert').getByText('Didn’t go through — try again', { exact: true }).waitFor();
       assert.equal(await draft.inputValue(), 'Synthetic follow-up: keep this draft if the other action finishes.');
+      run.checks.failedReplyStatusText = await page.getByRole('status').allTextContents();
+      assert(!run.checks.failedReplyStatusText.some(text => /Saving|Sending/.test(text)),
+        'a final failed action should leave its retry alert, not a pending announcement');
       // Hold the reply refresh, then finish a second action and deliver its
       // newer list first. A late old list must not undo the newer result.
       holdLoads = true;
@@ -144,6 +148,35 @@ try {
       assert.equal(reports.find(x => x.id === 902).followups.length, 1);
       run.checks.failedDraftRetainedAndRetriedOnce = true;
       run.checks.lateOldRefreshDidNotUndoNewerAction = true;
+      // A has already saved, but its list refresh is still pending. B then
+      // fails. Finishing A last must replace the interim saving announcement.
+      const loadStart = loads.length;
+      await card(902).getByRole('button', { name: 'Reply', exact: true }).click();
+      await draft.fill('Synthetic failed reply while another report refreshes.');
+      await card(901).getByRole('button', { name: 'Archive', exact: true }).click();
+      await until(() => pending.filter(x => x.id === 901).length === 3);
+      pending.filter(x => x.id === 901).at(-1).resolve(200);
+      await until(() => loads.length === loadStart + 1);
+      await page.getByRole('button', { name: 'Send', exact: true }).click();
+      await page.getByRole('button', { name: 'Sending…', exact: true }).waitFor();
+      pending.filter(x => x.id === 902).at(-1).resolve(503);
+      await page.getByRole('alert').getByText('Didn’t go through — try again', { exact: true }).waitFor();
+      await until(async () => await page.getByRole('button', { name: 'Send', exact: true }).isEnabled());
+      loads[loadStart].resolve();
+      await page.getByRole('button', { name: /^(Show 1 archived|Hide archived)$/ }).waitFor();
+      // Wait for the final action's finally block, not just its list render.
+      if (await page.getByRole('button', { name: 'Show 1 archived', exact: true }).count())
+        await page.getByRole('button', { name: 'Show 1 archived', exact: true }).click();
+      await until(async () => await card(901).getByRole('button', { name: 'Unarchive', exact: true }).isEnabled());
+      run.checks.settledStatusText = await page.getByRole('status').allTextContents();
+      run.checks.statusSettledAfterOtherFailure = !run.checks.settledStatusText.some(text => /Saving|Sending/.test(text));
+      run.checks.otherFailedDraftStillRetained = await draft.inputValue() === 'Synthetic failed reply while another report refreshes.';
+      await page.screenshot({ path: path.join(out, `${statusBaseline ? 'before' : 'after'}-settled-${width}.png`), fullPage: true });
+      if (!statusBaseline) {
+        assert.equal(run.checks.statusSettledAfterOtherFailure, true);
+        assert(run.checks.settledStatusText.includes('Saved'), 'the completed successful action should retain its confirmation');
+      }
+      assert.equal(run.checks.otherFailedDraftStillRetained, true);
     }
     assert.deepEqual(run.errors, []);
     const retained = await Promise.allSettled(assets);
