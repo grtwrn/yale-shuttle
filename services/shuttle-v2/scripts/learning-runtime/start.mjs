@@ -7,6 +7,7 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { FORECAST_RUNTIME } from '../learning-loop/runtime-policy.mjs';
 import { DOCKER_CONTEXT, INSPECT_FORMAT, OWNER_FILE, OWNER_LABEL } from './owner.mjs';
+import { productionLaunchAdmission, launchSourceMatches } from './launch-admission.mjs';
 
 const execute=promisify(execFile);
 const wrapper=fileURLToPath(import.meta.url),service=path.resolve(path.dirname(wrapper),'../..');
@@ -19,6 +20,7 @@ const hostLock=path.join(root,'host-runtime.lock');
 const ownerFile=path.join(root,OWNER_FILE);
 const lockFile=path.join(root,'observer.lock');
 const historyFile=path.join(root,'runtime-lifecycle.jsonl');
+const launchStatusFile=path.join(root,'runtime-launch-status.json');
 const read=file=>{try{return fs.readFileSync(file,'utf8');}catch(e){if(e.code==='ENOENT')return null;throw e;}};
 const atomic=(file,value)=>{fs.writeFileSync(file+'.partial',JSON.stringify(value,null,2)+'\n',{mode:0o600});fs.renameSync(file+'.partial',file);};
 const history=value=>{
@@ -69,7 +71,7 @@ export function containerArguments({owner,service,root,archive,token,base,publis
     '--max-old-space-size=2048','--import',`${service}/node_modules/tsx/dist/loader.mjs`,observerScript];
 }
 
-export async function start(){
+export async function start({admission=productionLaunchAdmission,sourceMatches=launchSourceMatches}={}){
   fs.mkdirSync(root,{recursive:true});
   const id=randomUUID(),host={v:1,id,pid:process.pid,wrapper,startedAt:new Date().toISOString()};
   const leasePid=Number(process.env.LEARNING_HOST_LEASE_PID),lease=JSON.parse(read(hostLock)??'null');
@@ -77,32 +79,72 @@ export async function start(){
     ||lease.launcher!==path.join(path.dirname(wrapper),'start-host.py'))
     throw Error('Start the runtime with scripts/learning-runtime/start-host.py to hold its host-kernel lease');
   let owner,child,stopping=false;
-  const stop=()=>{stopping=true;if(owner?.containerId)void docker(['stop','--time','30',owner.containerId]).catch(e=>console.error(e.message));};
+  const cancellation=new AbortController();
+  const stop=()=>{stopping=true;cancellation.abort();if(owner?.containerId)void docker(['stop','--time','30',owner.containerId]).catch(e=>console.error(e.message));};
+  const launchStatus=(phase,reason,evidence={})=>{
+    const value={v:1,at:new Date().toISOString(),phase,reason,
+      localRevision:evidence.localRevision??null,productionBuild:evidence.productionBuild??null};
+    atomic(launchStatusFile,value);
+    history({kind:`launch-${phase}`,...value});
+  };
   process.on('SIGTERM',stop);process.on('SIGINT',stop);
   const leaseWatch=setInterval(()=>{if(!stopping&&process.ppid!==leasePid){history({kind:'host-lease-lost',host,leasePid});stop();}},10000);
   try{
     await execute('colima',['start','yale-shuttle-eval','--activate=false'],{timeout:240000,maxBuffer:65536});
-    await docker(['image','inspect','--format','{{.Id}}',FORECAST_RUNTIME.image]);
-    const previousRaw=read(ownerFile);let attach=false;
+    if(stopping)return;
+    const previousRaw=read(ownerFile),lockRaw=read(lockFile);let attach=false,predecessor,legacyPid;
     if(previousRaw!==null){
       const previous=JSON.parse(previousRaw),info=await inspect(previous.containerId);owned(previous,info);
       if(previous.hostPid!==process.pid&&await hostAlive(previous.hostPid))throw Error('Another host owns the observer container');
       if(info?.state?.Running){
         owner={...previous,hostPid:process.pid,hostLeasePid:leasePid,phase:previous.image===FORECAST_RUNTIME.image?'running':'draining',adoptedAt:new Date().toISOString()};
         attach=true;history({kind:'adopted-running-container',previousHostPid:previous.hostPid,owner});
+        launchStatus('reattached','verified-running-container');
       }else{
-        history({kind:'verified-previous-terminal',owner:previous,terminal:info?.state??null});
-        removeGuestLock(previous,info);
-        if(info)await docker(['rm',previous.containerId]);
+        predecessor=previous;
       }
-    }else if(read(lockFile)!==null){
-      const pid=Number(read(lockFile));if(!Number.isSafeInteger(pid)||pid<=0)throw Error('Invalid legacy observer lock');
-      try{process.kill(pid,0);throw Error('Legacy host observer is still running; wait for its natural source handover');}
+    }else if(lockRaw!==null){
+      legacyPid=Number(lockRaw);if(!Number.isSafeInteger(legacyPid)||legacyPid<=0)throw Error('Invalid legacy observer lock');
+      try{process.kill(legacyPid,0);throw Error('Legacy host observer is still running; wait for its natural source handover');}
       catch(error){if(error.code!=='ESRCH')throw error;}
-      history({kind:'verified-dead-legacy-observer',pid});fs.unlinkSync(lockFile);
     }
     if(stopping)return;
     if(!attach){
+      await docker(['image','inspect','--format','{{.Id}}',FORECAST_RUNTIME.image]);
+      if(stopping)return;
+      const evidence=await admission({cwd:service,base:process.env.BOT_BASE_URL??'https://yale-shuttle.fly.dev',signal:cancellation.signal});
+      if(stopping){launchStatus('deferred','controller-stopping',evidence);return;}
+      if(!evidence.allowed){launchStatus('deferred',evidence.reason,evidence);return;}
+      // The GET yielded control: do not reuse an old terminal observation or
+      // erase a receipt/lock replaced while production was being checked.
+      const info=predecessor?await inspect(predecessor.containerId):null;
+      if(stopping){launchStatus('deferred','controller-stopping',evidence);return;}
+      if(predecessor)owned(predecessor,info);
+      if(read(ownerFile)!==previousRaw||read(lockFile)!==lockRaw||info?.state?.Running){
+        launchStatus('deferred','runtime-ownership-changed',evidence);return;
+      }
+      if(legacyPid){
+        try{process.kill(legacyPid,0);launchStatus('deferred','legacy-observer-running',evidence);return;}
+        catch(error){if(error.code!=='ESRCH')throw error;}
+      }
+      if(predecessor&&lockRaw!==null&&Number(lockRaw)!==1)throw Error('Observer lock belongs to another namespace');
+      if(!sourceMatches(evidence,{cwd:service})){launchStatus('deferred','production-image-inputs-differ',evidence);return;}
+      if(predecessor){
+        history({kind:'verified-previous-terminal',owner:predecessor,terminal:info?.state??null});
+        if(info)await docker(['rm',predecessor.containerId]);
+      }
+      if(stopping){launchStatus('deferred','controller-stopping',evidence);return;}
+      if(read(ownerFile)!==previousRaw||read(lockFile)!==lockRaw){
+        launchStatus('deferred','runtime-ownership-changed',evidence);return;
+      }
+      // Preserve the original pre-GET HEAD and recheck dirty image inputs
+      // after awaited cleanup, immediately before creating the new container.
+      if(!sourceMatches(evidence,{cwd:service})){launchStatus('deferred','production-image-inputs-differ',evidence);return;}
+      if(predecessor)removeGuestLock(predecessor,info);
+      else if(legacyPid){
+        history({kind:'verified-dead-legacy-observer',pid:legacyPid});fs.unlinkSync(lockFile);
+      }
+      launchStatus('admitted','production-image-inputs-match',evidence);
       owner={v:1,kind:'linux-container',id,wrapper,script,root,hostPid:process.pid,hostLeasePid:leasePid,context:DOCKER_CONTEXT,
         image:FORECAST_RUNTIME.image,phase:'created',createdAt:new Date().toISOString()};
       owner.containerId=await docker(containerArguments({owner,service,root,archive,token,
