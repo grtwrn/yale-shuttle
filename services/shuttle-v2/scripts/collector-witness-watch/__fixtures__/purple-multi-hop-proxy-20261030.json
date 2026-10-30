@@ -1,0 +1,75 @@
+{
+  "source": {
+    "collectorEpoch": "b01ca27d-5526-444f-8873-733cf3690244",
+    "originalSequence": 78828,
+    "receiptAt": 1793325049291,
+    "frameSHA256": "adfbd550c70cfc255442c579f70f26dd55084ee06fb5e50c0852a76a8e2881ae",
+    "rowSHA256": "afd87e565f7fc9f06557d96aa9bdc48d9c48b5950c365849cb99b5c54f3e34bf",
+    "topologySHA256": "62772c05e0a8ac3b63025eb2a3b44dbb407ecd594d6047f7379276320815227d",
+    "retainedCaseManifestSHA256": "7de03e7f7b0a2d8b2fa9b823358560f6f349863ecb0c303e1157ad1d57dedbdf",
+    "scope": "Exact original committed row, stop poles and source fixes from a retained collector witness. Narrowed diagnostic fixture only; not complete original frames, delivered HTTP body custody or independent physical speed/service truth."
+  },
+  "stops": [
+    {
+      "id": 72,
+      "lat": 41.303422,
+      "lon": -72.931698,
+      "name": "LEPH / 60 College"
+    },
+    {
+      "id": 122,
+      "lat": 41.297929,
+      "lon": -72.926912,
+      "name": "Union Station (S)"
+    }
+  ],
+  "row": {
+    "arrived_at": 1793324999281,
+    "bus_id": 68411,
+    "bus_name": "#331",
+    "departed_at": 1793324994283,
+    "dow": 4,
+    "drive_sec": 4.998,
+    "from_index": 15,
+    "from_stop_id": 72,
+    "hold_sec": 0,
+    "holds": 0,
+    "hops": 4,
+    "hour": 21,
+    "id": 268508,
+    "leg_sec": 4.998,
+    "reached": 0,
+    "route_id": 10,
+    "to_index": 3,
+    "to_pinned_at": null,
+    "to_stop_id": 122
+  },
+  "departureFix": {
+    "seq": 78817,
+    "busId": 68411,
+    "busName": "#331",
+    "collectedAt": 1793324994283,
+    "heading": 21,
+    "lastStopId": 26,
+    "lat": 41.298094,
+    "lon": -72.915802,
+    "routeId": 10
+  },
+  "arrivalFix": {
+    "seq": 78818,
+    "busId": 68411,
+    "busName": "#331",
+    "collectedAt": 1793324999281,
+    "heading": 34,
+    "lastStopId": 26,
+    "lat": 41.299141,
+    "lon": -72.915013,
+    "routeId": 10
+  },
+  "endpointContext": {
+    "fromClosestM": 1455.688926956684,
+    "toClosestM": 1004.2487744570774,
+    "fromPinnedAt": null,
+    "toPinnedAt": null
+  }
+}
