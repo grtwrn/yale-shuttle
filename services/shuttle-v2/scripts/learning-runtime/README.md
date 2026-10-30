@@ -56,6 +56,28 @@ tree, actual Docker state and `/proc/1/cmdline`; it never probes guest PID 1 as
 a Mac process. Fresh status and real feed/control checks are still required.
 
 An owned orphan container can be reattached without restarting the candidate.
+Reattachment verifies its original ownership receipt and does not wait for a
+new deployment. Before creating a new container, the controller reads the
+public `/healthz` once with a 10-second headers/body deadline and 16 KiB body
+limit. It requires `ok: true`, a known production Git build, and matching local
+application image inputs through `deployment-scope.mjs`. Operator-only commits
+may be ahead; pending UI/backend changes, dirty runtime inputs, unknown history
+and unavailable/unhealthy production defer creation. The captured pre-request
+HEAD and current worktree are checked again just before container creation.
+This check does not freeze the mutable bind-mounted source; the existing
+observer source guard still applies.
+
+`runtime-launch-status.json` records `deferred`, `admitted` or `reattached` with
+bounded revision/build/reason metadata, and the operational lifecycle log
+records the transition. A deferred controller exits without retiring the
+previous owner receipt or guest/legacy lock; the launch agent's existing
+KeepAlive retries the public health/source check. After the request, ownership
+and terminal state are verified again before any predecessor cleanup. If
+source changes during awaited terminal container removal, creation is deferred
+again with the original receipt and lock retained; the terminal verification
+remains recorded. No existing guest is stopped by the admission check, and no
+publication, calibration or trial state is changed.
+
 Stale guest locks retire only after their original container is verified
 terminal or absent. Frozen state, refusals and source journals are never
 cleared by the controller. Operational lifecycle metadata rotates at 4 MiB
