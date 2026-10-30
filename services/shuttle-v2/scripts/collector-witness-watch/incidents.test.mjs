@@ -19,8 +19,8 @@ function setup(options = {}) {
   const store = new WitnessStore(root, { policy: { minFreeBytes: 0, maxAgeMs: 1000 } }); stores.push(store);
   const f = fixture(options); f.add(); store.updateReports([], { now: f.at }); store.beginEpoch(f.head(), 'test', f.at);
   const commit = () => store.commitPage(f.page(store.checkpoint().after), { seenHead: f.head(), now: f.at });
-  function lead() {
-    const afterJSON = witnessJSON({ id: 77, from_stop_id: 1, to_stop_id: 2, leg_sec: 5 });
+  function lead(fields = {}) {
+    const afterJSON = witnessJSON({ id: 77, from_stop_id: 1, to_stop_id: 2, leg_sec: 5, ...fields });
     f.add({ sourceWrites: [{ mutations: [{ table: 'legs', afterJSON, afterSHA256: witnessSHA(afterJSON) }] }] });
     return commit();
   }
@@ -36,6 +36,21 @@ describe('durable collector incident review delivery', () => {
     expect(value.note).toContain('Not independent physical service');
     expect(a.store.readChunk(saved.key)).toEqual(source);
     result = await dispatchIncidents(a); expect(result.delivered).toEqual([]); expect(fs.readdirSync(a.directory)).toEqual(names);
+  });
+  it.each([0, 1])('describes a multi-hop leg with reached=%s without dropping evidence or assuming a proxy endpoint', async reached => {
+    const a = setup(), saved = a.lead({ hops: 4, reached, from_index: 15, to_index: 3,
+      to_pinned_at: reached ? a.f.at : null });
+    const source = a.store.readChunk(saved.key), pins = a.store.db.prepare('SELECT * FROM incident_chunks ORDER BY incident,chunk').all();
+    expect(await dispatchIncidents(a)).toMatchObject({ ok: true, pending: 0 });
+    const [name] = fs.readdirSync(a.directory), value = JSON.parse(fs.readFileSync(path.join(a.directory, name)));
+    expect(value).toMatchObject({ kind: 'derived-leg-speed-review',
+      detail: { reviewClass: 'multi-hop-leg', calibrationOneHopSQL: { status: 'excluded' },
+        endpointQualification: { to: reached ? 'recorded-pin-clock' : 'unreached-unpinned-proxy' } } });
+    expect(value.summary).toContain('excluded from one-hop calibration');
+    expect(value.summary).not.toContain('proxy');
+    expect(a.store.readChunk(saved.key)).toEqual(source);
+    expect(a.store.db.prepare('SELECT * FROM incident_chunks ORDER BY incident,chunk').all()).toEqual(pins);
+    expect(pins.length).toBeGreaterThan(0);
   });
   it('retries a failed queue write after later polls, preserving old evidence and its delivery debt', async () => {
     const a = setup(), saved = a.lead(), bad = path.join(a.base, 'not-a-directory'); fs.writeFileSync(bad, 'preserve');
@@ -56,15 +71,20 @@ describe('durable collector incident review delivery', () => {
     expect(await dispatchIncidents({ store: reopened, directory: a.directory })).toMatchObject({ ok: true, pending: 0 });
     expect(fs.readdirSync(a.directory)).toEqual([]); expect(fs.readdirSync(processed)).toEqual([name]);
   });
-  it('preserves a v1 incident through a v2 metric revisit, lost acknowledgement and restart', async () => {
+  it.each(['v1', 'v2'])('preserves a prior %s incident through a metadata revisit, lost acknowledgement and restart', async metric => {
     const a = setup(), first = a.lead();
     const row = a.store.db.prepare('SELECT id,json FROM incidents').get(), current = JSON.parse(row.json);
     expect(current.metricVersion).toBe(2);
-    // Simulate the serialized v1 record already stored by the previous operator.
-    const legacy = { ...current, minimumDistanceM: current.stopPoleDistanceM,
-      lowerBoundMetresPerSec: current.stopPoleDistancePerLegSecond,
-      scope: 'Diagnostic lead only. Review raw GPS, topology, state and committed source rows; do not filter rows or infer physical service.' };
-    delete legacy.metricVersion; delete legacy.stopPoleDistanceM; delete legacy.stopPoleDistancePerLegSecond;
+    // Simulate the original serialized record before diagnostic context was
+    // added. Revisited input must preserve its original JSON and delivery.
+    const legacy = { ...current };
+    delete legacy.reviewClass; delete legacy.sourceLeg; delete legacy.endpointQualification; delete legacy.calibrationOneHopSQL;
+    if (metric === 'v1') {
+      Object.assign(legacy, { minimumDistanceM: current.stopPoleDistanceM,
+        lowerBoundMetresPerSec: current.stopPoleDistancePerLegSecond,
+        scope: 'Diagnostic lead only. Review raw GPS, topology, state and committed source rows; do not filter rows or infer physical service.' });
+      delete legacy.metricVersion; delete legacy.stopPoleDistanceM; delete legacy.stopPoleDistancePerLegSecond;
+    }
     const originalJSON = JSON.stringify(legacy);
     a.store.db.prepare('UPDATE incidents SET json=? WHERE id=?').run(originalJSON, row.id);
     a.store.db.exec("CREATE TRIGGER lost_metric_ack BEFORE INSERT ON meta WHEN NEW.key LIKE 'incident-delivery:%' BEGIN SELECT RAISE(ABORT,'lost acknowledgement'); END");

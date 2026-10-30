@@ -77,6 +77,24 @@ export function validatePage(page,checkpoint,topologies=new Map()) {
 }
 export const initialChain=epoch=>witnessSHA(witnessJSON(['collector-witness-v1',epoch]));
 
+function legReviewContext(leg) {
+  const knownHops=integer(leg.hops)&&leg.hops>=1;
+  const sourceLeg={hops:integer(leg.hops)?leg.hops:null,
+    reached:leg.reached===0||leg.reached===1?leg.reached:null,
+    fromIndex:integer(leg.from_index)?leg.from_index:null,toIndex:integer(leg.to_index)?leg.to_index:null,
+    departedAt:integer(leg.departed_at)?leg.departed_at:null,arrivedAt:integer(leg.arrived_at)?leg.arrived_at:null,
+    toPinnedAt:integer(leg.to_pinned_at)?leg.to_pinned_at:null};
+  // The committed leg does not attest the origin's curb/pin distance. A null
+  // pin plus reached=0 names an unpinned endpoint clock, not physical travel.
+  const to=sourceLeg.reached===1&&sourceLeg.toPinnedAt!==null?'recorded-pin-clock'
+    :sourceLeg.reached===0&&leg.to_pinned_at===null?'unreached-unpinned-proxy':'not-attested-by-leg-row';
+  return{reviewClass:knownHops?(leg.hops===1?'one-hop-leg':'multi-hop-leg'):'unknown-hop-leg',sourceLeg,
+    endpointQualification:{from:'not-attested-by-leg-row',to,
+      scope:'Recorded endpoint flags/clocks only; origin pin evidence is absent and physical service is not established.'},
+    calibrationOneHopSQL:{predicate:'hops = 1',status:knownHops?(leg.hops===1?'passes':'excluded'):'unknown',
+      scope:'Only the current one-hop SQL gate; time, duration, geometry and other calibration eligibility are not attested.'}};
+}
+
 /** A review lead, never a correction, exclusion or claim about actual speed. */
 export function derivedLegLeads(records) {
   const leads=[];
@@ -96,6 +114,7 @@ export function derivedLegLeads(records) {
       if(stopPoleDistancePerLegSecond>30)leads.push({kind:'derived-leg-speed-review',seq:frame.seq,at:frame.at,rowId:leg.id,
         rowSHA256:mutation.afterSHA256,fromStopId:leg.from_stop_id,toStopId:leg.to_stop_id,legSec:leg.leg_sec,
         metricVersion:2,stopPoleDistanceM,stopPoleDistancePerLegSecond,
+        ...legReviewContext(leg),
         scope:'Diagnostic stop-pole distance / recorded leg duration only; not measured speed or a speed lower bound. Pin/closest-approach endpoints differ from poles. Review raw GPS, topology, state and committed source rows; do not filter rows or infer physical service.'});
     }
   }

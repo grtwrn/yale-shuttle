@@ -4,6 +4,15 @@ import { decodeWitness, validatePage, validHead, initialChain, derivedLegLeads }
 import { fixture, association } from './testFixtures.mjs';
 import { distanceMeters } from '../../src/network/geo.ts';
 import overlappingPins from './__fixtures__/red-overlapping-pins-20261020.json';
+import multiHopProxy from './__fixtures__/purple-multi-hop-proxy-20261030.json';
+
+function narrowedLegRecord(row, stops, source = {}) {
+  const afterJSON = witnessJSON(row);
+  return { frame: { status: 'recorded', seq: source.originalSequence ?? 1, at: source.receiptAt ?? 1000 },
+    input: { pollResult: 'completed', sourceWriteEvidence: 'recorded', sourceWrites: [
+      { mutations: [{ table: 'legs', afterJSON, afterSHA256: witnessSHA(afterJSON) }] },
+    ] }, topology: { decoded: { stops: new Map(stops.map(s => [s.id, s])) } } };
+}
 
 describe('collector witness transport verification', () => {
   it('round-trips minus zero, one ULP, dates, maps, aliases and cycles', () => {
@@ -41,6 +50,9 @@ describe('collector witness transport verification', () => {
     const h = f.head(), p = f.page(), records = validatePage(p, { epoch: h.epoch, build: h.build, after: 0, chain: initialChain(h.epoch) });
     const leads = derivedLegLeads(records.frames);
     expect(leads).toHaveLength(1); expect(leads[0]).toMatchObject({ rowId: 5, legSec: 5 });
+    expect(leads[0]).toMatchObject({ reviewClass: 'unknown-hop-leg',
+      calibrationOneHopSQL: { predicate: 'hops = 1', status: 'unknown' },
+      endpointQualification: { from: 'not-attested-by-leg-row', to: 'not-attested-by-leg-row' } });
     expect(p.frames).toHaveLength(1); expect(leads[0].scope).toContain('do not filter');
     records.frames[0].input.pollResult = 'failed'; expect(derivedLegLeads(records.frames)).toEqual([]);
   });
@@ -61,12 +73,60 @@ describe('collector witness transport verification', () => {
     const leads = derivedLegLeads([record]);
     expect(leads).toHaveLength(1);
     expect(leads[0]).toMatchObject({ kind: 'derived-leg-speed-review', rowId: 220391,
-      rowSHA256: source.rowSHA256, legSec: 3.467, metricVersion: 2 });
+      rowSHA256: source.rowSHA256, legSec: 3.467, metricVersion: 2,
+      reviewClass: 'one-hop-leg', calibrationOneHopSQL: { predicate: 'hops = 1', status: 'passes' },
+      sourceLeg: { hops: 1, reached: 1, fromIndex: 14, toIndex: 15,
+        departedAt: row.departed_at, arrivedAt: row.arrived_at, toPinnedAt: row.to_pinned_at },
+      endpointQualification: { from: 'not-attested-by-leg-row', to: 'recorded-pin-clock' } });
     expect(leads[0].stopPoleDistanceM).toBeCloseTo(111.78644201751116, 7);
     expect(leads[0].stopPoleDistancePerLegSecond).toBeCloseTo(32.24298875613244, 7);
     expect(leads[0]).not.toHaveProperty('minimumDistanceM');
     expect(leads[0]).not.toHaveProperty('lowerBoundMetresPerSec');
     expect(leads[0].scope).toContain('not measured speed or a speed lower bound');
     expect(witnessJSON(record)).toBe(original);
+  });
+  it('marks the original unpinned four-hop proxy separately while retaining its diagnostic and capture', () => {
+    const { row, stops, source, departureFix, arrivalFix } = multiHopProxy;
+    expect(witnessSHA(witnessJSON(row))).toBe(source.rowSHA256);
+    const record = narrowedLegRecord(row, stops, source), original = witnessJSON(record);
+    const leads = derivedLegLeads([record]);
+    expect(leads).toHaveLength(1);
+    expect(leads[0]).toMatchObject({ kind: 'derived-leg-speed-review', rowId: 268508,
+      rowSHA256: source.rowSHA256, reviewClass: 'multi-hop-leg',
+      sourceLeg: { hops: 4, reached: 0, fromIndex: 15, toIndex: 3,
+        departedAt: row.departed_at, arrivedAt: row.arrived_at, toPinnedAt: null },
+      calibrationOneHopSQL: { predicate: 'hops = 1', status: 'excluded' },
+      endpointQualification: { from: 'not-attested-by-leg-row', to: 'unreached-unpinned-proxy' } });
+    expect(leads[0].stopPoleDistanceM).toBeCloseTo(730.0077097228894, 7);
+    expect(leads[0].stopPoleDistancePerLegSecond).toBeGreaterThan(146);
+    expect(distanceMeters(departureFix, arrivalFix) / row.leg_sec).toBeLessThan(27);
+    expect(leads[0].calibrationOneHopSQL.scope).toContain('other calibration eligibility are not attested');
+    expect(witnessJSON(record)).toBe(original);
+  });
+  it('keeps a pinned reached multi-hop aggregate distinct from an unpinned endpoint proxy', () => {
+    // Synthetic aggregate isolates hop eligibility from endpoint qualification.
+    const row = { ...multiHopProxy.row, reached: 1, to_pinned_at: multiHopProxy.row.arrived_at };
+    const record = narrowedLegRecord(row, multiHopProxy.stops), original = witnessJSON(record);
+    const [lead] = derivedLegLeads([record]);
+    expect(lead).toMatchObject({ reviewClass: 'multi-hop-leg', sourceLeg: { hops: 4, reached: 1,
+      toPinnedAt: row.to_pinned_at }, calibrationOneHopSQL: { status: 'excluded' },
+      endpointQualification: { from: 'not-attested-by-leg-row', to: 'recorded-pin-clock' } });
+    expect(lead.endpointQualification.to).not.toContain('proxy');
+    expect(witnessJSON(record)).toBe(original);
+  });
+  it('does not suppress an unreached one-hop counterpart or infer its full calibration eligibility', () => {
+    // Synthetic counterpart tests the predicate independently of reached=0;
+    // this is deliberately not relabelled as the original four-hop row.
+    const row = { ...multiHopProxy.row, hops: 1 }, record = narrowedLegRecord(row, multiHopProxy.stops);
+    const [lead] = derivedLegLeads([record]);
+    expect(lead).toMatchObject({ reviewClass: 'one-hop-leg', sourceLeg: { hops: 1, reached: 0 },
+      calibrationOneHopSQL: { status: 'passes' } });
+    expect(lead.calibrationOneHopSQL.scope).toContain('Only the current one-hop SQL gate');
+  });
+  it.each([undefined, null, 0, -1, 1.5])('keeps the review alarm when hop qualification is unavailable (%s)', hops => {
+    const row = { ...multiHopProxy.row, hops }, record = narrowedLegRecord(row, multiHopProxy.stops);
+    const [lead] = derivedLegLeads([record]);
+    expect(lead).toMatchObject({ kind: 'derived-leg-speed-review', reviewClass: 'unknown-hop-leg',
+      calibrationOneHopSQL: { status: 'unknown' } });
   });
 });
