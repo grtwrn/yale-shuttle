@@ -935,6 +935,13 @@ export function slowerThanWalk(o: TripOption): boolean {
     commuteSec(o) > o.directWalkSec;
 }
 
+/** A route's unavailable/departed ranking tier is not evidence that its
+ * typical walks and ride take longer. This notice only compares usable trips. */
+export function allShuttlesSlowerThanWalk(options: readonly TripOption[]): boolean {
+  return options.some(o => o.mode === 'shuttle')
+    && options.every(o => o.mode === 'walk' || (!o.etaUnavailable && slowerThanWalk(o)));
+}
+
 /**
  * The most DIRECT usable shuttle: the one with the least `commuteSec`.
  *

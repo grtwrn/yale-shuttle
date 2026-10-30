@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { topVisibleOptions, type TripOption } from './planner';
+import { allShuttlesSlowerThanWalk, topVisibleOptions, type TripOption } from './planner';
 
 function shuttle(label: string, to: number, ride: number, from: number, direct: number, wait = 0): TripOption {
   return { mode:'shuttle',routeLabel:label,color:'#000',boardStopId:1,alightStopId:2,
@@ -7,6 +7,27 @@ function shuttle(label: string, to: number, ride: number, from: number, direct: 
     totalSec:(to+wait+ride+from)*60,directWalkSec:direct*60,busName:'test' };
 }
 const walk = (minutes: number): TripOption => ({ ...shuttle('Walk',0,0,0,minutes),mode:'walk',totalSec:minutes*60 });
+
+it('does not call walking quicker because a short shuttle ride has departed', () => {
+  const fast = { ...shuttle('Red',0,5,0,20), departed:true };
+  const slow = shuttle('Blue Day',0,25,0,20);
+  for (const all of [[fast,walk(20)], [slow,fast,walk(20)]]) {
+    const before = JSON.stringify(all);
+    expect(allShuttlesSlowerThanWalk(all)).toBe(false);
+    expect(JSON.stringify(all)).toBe(before); // The notice cannot remove any Show all route.
+  }
+});
+
+it('requires usable slower trips for the typical-travel walking comparison', () => {
+  const slow = shuttle('Red',0,25,0,20);
+  expect(allShuttlesSlowerThanWalk([slow,walk(20)])).toBe(true);
+  for (const unavailable of [{departed:true}, {etaUnavailable:true}, {destinationEtaUnavailable:true}]) {
+    expect(allShuttlesSlowerThanWalk([{...slow,...unavailable},walk(20)])).toBe(false);
+  }
+  expect(allShuttlesSlowerThanWalk([shuttle('Red',0,5,0,20),walk(20)])).toBe(false);
+  expect(allShuttlesSlowerThanWalk([walk(20)])).toBe(false);
+  expect(allShuttlesSlowerThanWalk([])).toBe(false);
+});
 it('keeps the walking-heavy Green report out of both overview slots and direct promotion', () => {
   const blue=shuttle('Blue Day',2,22,2,33,4),green=shuttle('Green',8,5,16,33,3),red=shuttle('Red',3,11,2,33,26);
   const all=[blue,green,walk(33),red];

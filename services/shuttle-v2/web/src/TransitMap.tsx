@@ -74,10 +74,10 @@ import {
 } from "./leaveAlert";
 import { computePickupReminder, pickupReminderMessage, reminderTimingLabel, type ReminderTiming } from './pickupReminder';
 import { PickupReminderControls } from './PickupReminderControls';
-import { alightComparison, topVisibleOptions, keptThirdLabel, MAX_RIDE_SEC,
+import { alightComparison, allShuttlesSlowerThanWalk, topVisibleOptions, keptThirdLabel, MAX_RIDE_SEC,
   boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, sameTripPickup, type TripOption,
 } from "./planner";
-import { optionTier, stableTripOrder, type TripOrderState } from './tripRanking';
+import { stableTripOrder, type TripOrderState } from './tripRanking';
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 // "Tell me when Red gets to 344 Winchester" — every rule (arm, expire, the fire
@@ -4295,7 +4295,6 @@ const TripPlanner: FC<{
             // only judged when walking is a real alternative — the walk
             // card itself is suppressed >60 min.
             // Shorter walks/rides among overlapping arrival windows; see orderedOptions.
-            const _tier = optionTier;
             const _sorted = orderedOptions ?? [];
             // Shuttles-plus-walk visibility rule — see topVisibleOptions.
             const _visibleBase = showAllOptions ? _sorted : (visibleOptions ?? []);
@@ -4320,12 +4319,9 @@ const TripPlanner: FC<{
             // sheet; tapping a row swaps the list for that route's details
             // view (← All routes restores the list).
             const _detailOpen = _visible.some((v) => v.routeLabel === expandedKey);
-            // Reassure rather than confuse: when every shuttle option got
-            // demoted below walking, say so up front — otherwise the grey
-            // tags read like the app is broken.
-            const _allShuttlesSlower =
-              _sorted.some((o) => o.mode === "shuttle") &&
-              _sorted.every((o) => o.mode === "walk" || (!o.etaUnavailable && !o.destinationEtaUnavailable && _tier(o) > 0));
+            // A departed/unavailable ranking tier cannot establish that
+            // typical travel is slower. Compare the actual planned legs.
+            const _allShuttlesSlower = allShuttlesSlowerThanWalk(_sorted);
             return <>
           {_allShuttlesSlower && !_detailOpen && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
