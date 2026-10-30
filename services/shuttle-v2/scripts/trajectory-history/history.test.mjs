@@ -82,7 +82,7 @@ describe('bounded chronological archive catch-up',()=>{
 
 describe('linked native contexts between archive polls',()=>{
  it('captures available original middle-context frames when both endpoint contexts changed between polls',async()=>{
-  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),prior=x.store.db.prepare('SELECT id,raw_sha FROM chunks').all();
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),prior=x.store.db.prepare('SELECT id,raw_sha FROM chunks ORDER BY at,id').all();
   const result=await collectHistory({...x,now:x.times[3]});expect(result.ok).toBe(true);
   const rows=x.store.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(c=>x.store.read(c.id).records),models=rows.filter(r=>r.kind==='model-projection');
   expect(models.map(r=>[r.cycle,r.cursor])).toEqual([['cycle-1',1],['cycle-2',2],['cycle-2',3],['cycle-3',4]]);
@@ -95,7 +95,7 @@ describe('linked native contexts between archive polls',()=>{
  it('commits an actual intermediate frontier without a false native gap and resumes after reopening',async()=>{
   const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});x.handover();
   const partial=await collectHistory({...x,now:x.times[3],throughAt:x.times[1]});expect(partial).toMatchObject({ok:false,modelAt:x.times[1]});
-  let rows=x.store.db.prepare('SELECT id FROM chunks').all().flatMap(c=>x.store.read(c.id).records);expect(rows.some(r=>r.kind==='history-source-gap')).toBe(false);expect(x.store.state().model.last.cycle).toBe('cycle-2');
+  let rows=x.store.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(c=>x.store.read(c.id).records);expect(rows.some(r=>r.kind==='history-source-gap')).toBe(false);expect(x.store.state().model.last.cycle).toBe('cycle-2');
   const directory=x.store.directory;x.store.close();stores.splice(stores.indexOf(x.store),1);x.store=new HistoryStore(directory,{policy:{minFreeBytes:0}});stores.push(x.store);
   const done=await catchUpHistory({...x,now:x.times[3]});expect(done.ok).toBe(true);
   rows=x.store.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(c=>x.store.read(c.id).records);expect(rows.filter(r=>r.kind==='model-projection').map(r=>r.cursor)).toEqual([1,2,3,4]);
@@ -103,9 +103,18 @@ describe('linked native contexts between archive polls',()=>{
  it('keeps an actually unavailable intermediate journal unknown and still reaches later original current evidence',async()=>{
   const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover();fs.unlinkSync(source.middleFile);
   const partial=await collectHistory({...x,now:x.times[3],throughAt:x.times[1]});expect(partial.ok).toBe(false);
-  const rows=x.store.db.prepare('SELECT id FROM chunks').all().flatMap(c=>x.store.read(c.id).records),gap=rows.find(r=>r.kind==='history-source-gap');expect(gap.unavailableSources).toContain('native');expect(gap.lastKnownModelAt).toBe(x.times[0]);
+  const rows=x.store.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(c=>x.store.read(c.id).records),gap=rows.find(r=>r.kind==='history-source-gap');expect(gap.unavailableSources).toContain('native');expect(gap.lastKnownModelAt).toBe(x.times[0]);
   const current=await collectHistory({...x,now:x.times[3]});expect(current.ok).toBe(true);expect(x.store.state().model.last.cycle).toBe('cycle-3');
-  const models=x.store.db.prepare('SELECT id FROM chunks').all().flatMap(c=>x.store.read(c.id).records).filter(r=>r.kind==='model-projection');expect(models.map(r=>r.cursor)).toEqual([1,4]);
+  // Hash-derived chunk IDs are not chronological. Exercise both directions
+  // on the same fixture so removing ORDER BY fails regardless of random paths.
+  const cursorOrders=[];
+  for(const reversed of['ON','OFF']){
+   x.store.db.exec('PRAGMA reverse_unordered_selects='+reversed);
+   const models=x.store.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(c=>x.store.read(c.id).records).filter(r=>r.kind==='model-projection');cursorOrders.push(models.map(r=>r.cursor));
+  }
+  expect(cursorOrders).toEqual([[1,4],[1,4]]);
+  expect(fs.existsSync(source.middleFile)).toBe(false);
+  for(const[file,bytes]of source.originals)if(file!==source.middleFile)expect(fs.readFileSync(file)).toEqual(bytes);
  });
  it('does not read a future context into a historical interval or use that to bypass its later current-file failure',async()=>{
   const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover();fs.truncateSync(source.lastFile,270*1024*1024);
@@ -113,7 +122,7 @@ describe('linked native contexts between archive polls',()=>{
   await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow('Invalid native input file');expect(x.store.state()).toEqual(committed);
  });
  it.each(['missing','checksum','lineage','frozen-checksum','missing-frozen-reference'])('keeps the last cursor when an intermediate %s identity fails',async kind=>{
-  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),before=x.store.state(),chunks=x.store.db.prepare('SELECT id,raw_sha FROM chunks').all(),closed=path.join(x.learningRoot,'cycle-2','closed-state.json');
+  const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),before=x.store.state(),chunks=x.store.db.prepare('SELECT id,raw_sha FROM chunks ORDER BY at,id').all(),closed=path.join(x.learningRoot,'cycle-2','closed-state.json');
   if(kind==='missing')fs.unlinkSync(closed);
   if(kind==='checksum')fs.appendFileSync(closed,' ');
   if(kind==='frozen-checksum')fs.appendFileSync(path.join(x.learningRoot,'cycle-2','frozen-candidate.json'),' ');
@@ -121,7 +130,7 @@ describe('linked native contexts between archive polls',()=>{
    const value=JSON.parse(fs.readFileSync(closed));if(kind==='lineage')value.priorContexts[0].closedStateSHA256='f'.repeat(64);else delete value.frozenCandidateSha256;
    const raw=JSON.stringify(value);fs.writeFileSync(closed,raw);source.live.priorContexts[1].closedStateSHA256=witnessSHA(raw);fs.writeFileSync(path.join(x.learningRoot,'state.json'),JSON.stringify(source.live));
   }
-  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow();expect(x.store.state()).toEqual(before);expect(x.store.db.prepare('SELECT id,raw_sha FROM chunks').all()).toEqual(chunks);
+  await expect(collectHistory({...x,now:x.times[3]})).rejects.toThrow();expect(x.store.state()).toEqual(before);expect(x.store.db.prepare('SELECT id,raw_sha FROM chunks ORDER BY at,id').all()).toEqual(chunks);
  });
  it('rejects overlapping predecessor clocks even when all closed-link checksums are internally consistent',async()=>{
   const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const source=x.handover(),before=x.store.state(),firstFile=path.join(x.learningRoot,'cycle-1','closed-state.json'),middleFile=path.join(x.learningRoot,'cycle-2','closed-state.json');
@@ -146,7 +155,7 @@ describe('linked native contexts between archive polls',()=>{
  it('retains diagnostic published frames from a refused old context without treating them as current qualification',async()=>{
   const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});x.handover({oldRefusal:true});
   const result=await collectHistory({...x,now:x.times[3]});expect(result.ok).toBe(true);
-  const models=x.store.db.prepare('SELECT id FROM chunks').all().flatMap(c=>x.store.read(c.id).records).filter(r=>r.kind==='model-projection');expect(models.filter(r=>r.cycle==='cycle-2').map(r=>r.cursor)).toEqual([2,3]);
+  const models=x.store.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(c=>x.store.read(c.id).records).filter(r=>r.kind==='model-projection');expect(models.filter(r=>r.cycle==='cycle-2').map(r=>r.cursor)).toEqual([2,3]);
  });
  it.each(['source-refusal','status-refusal','protocol-failure','status-protocol-failure','invalid-heartbeat','stale-heartbeat','future-heartbeat'])('refuses a current %s before advancing the archive',async kind=>{
   const x=linkedIntervalFixture();await collectHistory({...x,now:x.times[0]});const{live}=x.handover(),before=x.store.state(),statusFile=path.join(x.learningRoot,'status.json'),status=JSON.parse(fs.readFileSync(statusFile));
@@ -288,7 +297,7 @@ describe('independent rolling history storage and supervision',()=>{
   const packet=(frame,lead,extra={})=>model(frame.seq,lead,{at:frame.at,topo:f.t,head:{seq:frame.seq,at:frame.at,sha256:frame.sha256,...extra}});
   const file=path.join(cycle,'feed-2026-10-21-04-1.jsonl.gz');fs.writeFileSync(file,gzipSync([packet(first,0),packet(second,1)].map(source=>JSON.stringify({source})).join('\n')+'\n'));
   const s=history(),rawSource=fs.readFileSync(file),collectorSHA=witnessSHA(fs.readFileSync(witness.file));const result=await collectHistory({store:s,learningRoot:learning,collectorFile:witness.file,now:f.at});expect(result.ok).toBe(true);expect(result.pendingSourceAssociations).toBe(0);expect(s.state().model.last.cursor).toBe(2);expect(fs.readFileSync(file)).toEqual(rawSource);expect(witnessSHA(fs.readFileSync(witness.file))).toBe(collectorSHA);
-  const chunks=s.db.prepare('SELECT id FROM chunks').all().flatMap(r=>s.read(r.id).records),models=chunks.filter(r=>r.kind==='model-projection');expect(models[1].buses[0].entry.previousCursor).toBe(1);expect(models[1].buses[0].forecasts[0].quantiles).toHaveLength(50);expect((await collectHistory({store:s,learningRoot:learning,collectorFile:witness.file,now:f.at})).unchangedFiles).toBe(1);
+  const chunks=s.db.prepare('SELECT id FROM chunks ORDER BY at,id').all().flatMap(r=>s.read(r.id).records),models=chunks.filter(r=>r.kind==='model-projection');expect(models[1].buses[0].entry.previousCursor).toBe(1);expect(models[1].buses[0].forecasts[0].quantiles).toHaveLength(50);expect((await collectHistory({store:s,learningRoot:learning,collectorFile:witness.file,now:f.at})).unchangedFiles).toBe(1);
   const prior=s.state();s.db.prepare("UPDATE meta SET json=? WHERE key='state'").run(JSON.stringify({...prior,archiveSourceKey:h}));await collectHistory({store:s,learningRoot:learning,collectorFile:witness.file,now:f.at});expect(s.state().model.tracks).toEqual({});expect(s.state().archiveSourceKey).not.toBe(h);expect(s.db.prepare('SELECT id FROM chunks').all().flatMap(r=>s.read(r.id).records).some(r=>r.kind==='history-boundary')).toBe(true);
   const third=f.add();witness.commitPage(f.page(2),{seenHead:head(),now:f.at});status();fs.appendFileSync(file,gzipSync(JSON.stringify({source:packet(third,2,{sha256:'b'.repeat(64)})})+'\n'));const saved=s.state();await expect(collectHistory({store:s,learningRoot:learning,collectorFile:witness.file,now:f.at})).rejects.toThrow('Named collector');expect(s.state()).toEqual(saved);
  });
