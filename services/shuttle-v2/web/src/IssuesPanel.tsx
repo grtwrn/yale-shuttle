@@ -52,12 +52,16 @@ const IssuesPanel: React.FC<{
   const [loadError, setLoadError] = useState(false);
   // Which report has its reply box open, and its draft text.
   const [replyFor, setReplyFor] = useState<number | null>(null);
+  const replyForRef = useRef(replyFor);
+  replyForRef.current = replyFor;
   const replyFileRef = useRef<HTMLInputElement | null>(null);
   const replyAttachRef = useRef<HTMLButtonElement | null>(null);
   const replyComposerRef = useRef<HTMLDivElement | null>(null);
   const replyButtons = useRef(new Map<number, HTMLButtonElement>());
   const pendingReplyFocus = useRef<number | null>(null);
   const closeReply = (id: number, ownedFocus = replyComposerRef.current?.contains(document.activeElement)) => {
+    // An action on another card may finish while this draft is open.
+    if (replyForRef.current !== id) return;
     if (ownedFocus) pendingReplyFocus.current = id;
     setReplyFor(null);
     setReplyText("");
@@ -85,15 +89,17 @@ const IssuesPanel: React.FC<{
     });
   };
   const [replyText, setReplyText] = useState("");
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const pendingActions = useRef(new Set<number>());
+  const [busyIds, setBusyIds] = useState<ReadonlySet<number>>(() => new Set());
   useEffect(() => {
     // The Reply button stays disabled until the follow-up refresh finishes.
     // Restore focus after that render, without stealing it from another action.
-    if (replyFor !== null || busyId !== null) return;
+    if (replyFor !== null) return;
     const id = pendingReplyFocus.current;
+    if (id !== null && busyIds.has(id)) return;
     pendingReplyFocus.current = null;
     if (id !== null && document.activeElement === document.body) replyButtons.current.get(id)?.focus();
-  }, [replyFor, busyId]);
+  }, [replyFor, busyIds]);
   // Which row's action failed, and what to say about it — a 429 needs
   // different advice from a dropped connection (report #51).
   const [actionError, setActionError] = useState<{ id: number; text: string } | null>(null);
@@ -109,18 +115,23 @@ const IssuesPanel: React.FC<{
   // mount effect doesn't refetch in a loop.
   const onAllSeenRef = useRef(onAllSeen);
   onAllSeenRef.current = onAllSeen;
+  const loadSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     setLoadError(false);
     try {
       const fetched = await fetchMyReports();
+      // Concurrent actions each refresh the list. A slower older response must
+      // not put an already-archived card or an older conversation back on screen.
+      if (sequence !== loadSequence.current) return;
       setReports(fetched);
       // Opening this tab is what "seeing" means: record every current status
       // so the banner and tab dot go quiet until something changes again.
       saveSeenStatuses(markAllSeen(fetched));
       onAllSeenRef.current();
     } catch {
-      setLoadError(true);
+      if (sequence === loadSequence.current) setLoadError(true);
     }
   }, []);
 
@@ -139,10 +150,15 @@ const IssuesPanel: React.FC<{
       | { action: "unarchive" }
       | { action: "set_priority"; priority: "urgent" | "normal" | "nice_to_have" },
   ) => {
+    // A second card can save independently, but the same report cannot submit
+    // again before its write and refresh finish. The ref closes the gap before
+    // React renders the disabled controls.
+    if (pendingActions.current.has(id)) return;
+    pendingActions.current.add(id);
+    setBusyIds(new Set(pendingActions.current));
     // Disabling Send may blur it before the request returns. Remember ownership
     // now; the closing effect still checks for focus moved elsewhere meanwhile.
     const ownedFocus = replyComposerRef.current?.contains(document.activeElement);
-    setBusyId(id);
     setActionError(null);
     setActionStatus(action.action === "followup" ? "Sending reply…" : "Saving…");
     try {
@@ -154,7 +170,9 @@ const IssuesPanel: React.FC<{
       setActionStatus("");
       setActionError({ id, text: actionErrorText(err) });
     } finally {
-      setBusyId(null);
+      pendingActions.current.delete(id);
+      setBusyIds(new Set(pendingActions.current));
+      if (pendingActions.current.size) setActionStatus("Saving changes…");
     }
   };
 
@@ -197,7 +215,7 @@ const IssuesPanel: React.FC<{
         )}
         {reports.filter((r) => showArchived ? true : !r.archived).map((r) => {
           const chip = statusChip(r.status);
-          const busy = busyId === r.id;
+          const busy = busyIds.has(r.id);
           return (
             <div key={r.id} style={CARD}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
