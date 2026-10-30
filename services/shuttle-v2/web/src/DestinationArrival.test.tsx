@@ -48,9 +48,36 @@ describe('route card destination arrival', () => {
     const future = destinationArrivalView(option, now, now + 3600_000)!;
     expect(future).toMatchObject({ kind: 'point', text: '~11:12a' });
     expect(future.description).toContain('planned departure');
-    expect(destinationArrivalView({ ...option, journeyArrival: undefined }, now)).toMatchObject({ kind: 'point', text: '~10:12a' });
+    expect(destinationArrivalView({ ...option, journeyArrival: undefined }, now)).toMatchObject({ kind: 'unavailable', text: 'Arrival unavailable' });
     // Keep the existing point clock's minute bucket in sync with the map.
     expect(destinationArrivalView({ ...option, mode: 'walk', totalSec: 759 }, now)?.text).toBe('~10:12a');
+  });
+  it('does not turn a cached live ride into a new clock while the destination join is missing', () => {
+    const originalAt = Date.parse('2026-10-30T09:07:13.627-04:00');
+    const missing = { ...option, journeyArrival: undefined, rideSec: 1368, totalSec: 1368 };
+    // The recorded Red124 replay retains this old ride duration when its
+    // current pickup row is absent. A later render cannot refresh that price.
+    for (const at of [originalAt + 4894, originalAt + 60000, originalAt + 120000]) {
+      const view = destinationArrivalView(missing, at)!;
+      expect(view).toMatchObject({ kind: 'unavailable', text: 'Arrival unavailable' });
+      expect(view.text).not.toMatch(/\d:\d|~/);
+    }
+    const html = renderToStaticMarkup(<DestinationArrival option={missing} destination="344 Winchester" now={originalAt + 4894} compact />);
+    expect(html).toContain('Arrival unavailable');
+    expect(html).toContain('Arrival time at 344 Winchester unavailable');
+    expect(html).not.toContain('~9:30');
+  });
+  it('withholds an expired joined live arrival instead of rolling the old total forward', () => {
+    expect(destinationArrivalView(option, option.journeyArrival!.pointMs + 1)).toMatchObject({ kind: 'unavailable' });
+  });
+  it('keeps walking and planned-departure point clocks visible without a live journey window', () => {
+    const walk = renderToStaticMarkup(<DestinationArrival option={{ ...option, mode: 'walk', journeyArrival: undefined }} destination="Class" now={now} compact />);
+    const future = renderToStaticMarkup(<DestinationArrival option={{ ...option, journeyArrival: undefined }} destination="Class" now={now} departureMs={now + 3600_000} compact />);
+    expect(walk).toContain('data-kind="point"');
+    expect(walk).toContain('~10:12a');
+    expect(future).toContain('data-kind="point"');
+    expect(future).toContain('~11:12a');
+    expect(walk + future).not.toContain('Arrival unavailable');
   });
   it('retains catch and limited-data cautions without claiming absolute arrival limits', () => {
     const view = destinationArrivalView({ ...option, journeyArrival: { ...option.journeyArrival!, catchRisk: true, estimated: true } }, now)!;

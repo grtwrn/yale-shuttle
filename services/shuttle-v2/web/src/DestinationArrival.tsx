@@ -22,6 +22,14 @@ export function destinationArrivalView(option: ArrivalOption, now: number, depar
       description: `Estimated arrival window, including the final walk, if you catch shuttle #${arrival.busName.replace(/^#/, '')}. Arrival can be earlier or later.${arrival.catchRisk ? ' The shuttle could reach pickup before you.' : ''}${arrival.estimated ? ' Limited trip data; allow extra time.' : ''}`,
     };
   }
+  // A live trip's total can retain its original planned ride duration while
+  // its current pickup/destination join is missing. Rolling that duration
+  // forward from now does not establish a new destination arrival time.
+  if (option.mode === 'shuttle' && departureMs === undefined) return {
+    text: 'Arrival unavailable',
+    kind: 'unavailable' as const,
+    description: 'A live arrival estimate is unavailable for this trip. Pickup information is shown separately.',
+  };
   const point = (departureMs ?? now) + option.totalSec * 1000;
   if (!Number.isFinite(point) || !Number.isFinite(option.totalSec) || option.totalSec < 0) return null;
   return {
@@ -39,15 +47,17 @@ export function DestinationArrival({ option, destination, departureMs, now = Dat
   const view = destinationArrivalView(option, now, departureMs);
   if (!view) return null;
   return <span data-testid="destination-arrival" data-kind={view.kind}
-    aria-label={`Estimated arrival at ${destination}: ${view.text}. ${view.description}`}
+    aria-label={view.kind === 'unavailable' ? `Arrival time at ${destination} unavailable. ${view.description}`
+      : `Estimated arrival at ${destination}: ${view.text}. ${view.description}`}
     title={view.description}
     style={{ flexShrink: 0, maxWidth: compact ? undefined : '60%', textAlign: 'right', color: '#202124', fontSize: compact ? 12 : 16, fontWeight: 600 }}>
     {!compact && <span style={{ display: 'block', fontSize: 11, fontWeight: 400, color: '#5f6368' }}>At destination</span>}
-    <span style={{ display: compact ? 'inline' : 'block', fontVariantNumeric: 'tabular-nums' }}>{view.text.split('–').map((endpoint, i) => {
+    {view.kind === 'unavailable' ? <span style={{ display: 'block', whiteSpace: 'normal', fontSize: compact ? 11 : 13, fontWeight: 500, lineHeight: 1.3 }}>{view.text}</span>
+      : <span style={{ display: compact ? 'inline' : 'block', fontVariantNumeric: 'tabular-nums' }}>{view.text.split('–').map((endpoint, i) => {
       // A date can wrap above its clock; the digits of a clock (and its
       // " ET" on a phone in another zone) stay together.
       const timeAt = Math.max(0, endpoint.search(/~?\d{1,2}:\d{2}/));
       return <Fragment key={i}>{i > 0 && <> – <wbr /></>}{endpoint.slice(0, timeAt)}<span style={{ whiteSpace: 'nowrap' }}>{endpoint.slice(timeAt)}</span></Fragment>;
-    })}</span>
+    })}</span>}
   </span>;
 }
