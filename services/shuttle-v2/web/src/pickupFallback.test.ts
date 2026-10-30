@@ -65,14 +65,17 @@ describe('live pickup fallback: 517 Prospect to Rosenkranz (#134)', () => {
   it('cannot prefer a cheap uncatchable pickup over a real boarding opportunity', () => {
     const candidate = blue(plan(feed()));
     const missed = { ...candidate, boardStopId: 129, departed: true, totalSec: 1 };
-    expect(bestRoutePickup([missed, candidate])).toBe(candidate);
+    expect(bestRoutePickup([missed, candidate], 'live')).toBe(candidate);
   });
 
   it('rejects an unreachable alternative and small ETA fluctuations', () => {
     const current = refreshFrozen(blue(plan(feed(true))).pickupAlternatives![0]!, feed());
     const candidate = blue(plan(feed()));
     expect(pickupFallback(current, { ...candidate, departed: true })).toBeUndefined();
-    expect(pickupFallback(current, { ...candidate, totalSec: current.totalSec + 240 })).toBeUndefined();
+    const later = current.totalSec + 240;
+    expect(pickupFallback(current, { ...candidate, totalSec: later, computedAtMs: now,
+      journeyArrival: { ...candidate.journeyArrival!, pointMs: now + later * 1000,
+        lowMs: now + (later - 60) * 1000, highMs: now + (later + 60) * 1000 } })).toBeUndefined();
     expect(pickupFallback({ ...current, etaUnavailable: true }, candidate)).toBeUndefined();
   });
 });

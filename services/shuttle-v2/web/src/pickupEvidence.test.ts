@@ -68,12 +68,15 @@ describe('pickup evidence recovery',()=>{
     expect(stale.busEtaSec).toBe(2520);expect(stale.departed).toBe(true);
   });
   it('labels an available farther choice without comparing it to an unknown arrival',()=>{
+    const live=(option:TripOption):TripOption=>({...option,computedAtMs:now,journeyArrival:{busName:option.busName,
+      pointMs:now+option.totalSec*1000,lowMs:now+(option.totalSec-60)*1000,highMs:now+(option.totalSec+60)*1000,
+      catchRisk:false,estimated:false}});
     const selected=unavailablePickup(close);
-    expect(labelPickupChoices([farther,selected]).map(o=>[o.boardStopId,o.pickupPreference]))
+    expect(labelPickupChoices([live(farther),selected], 'live').map(o=>[o.boardStopId,o.pickupPreference]))
       .toEqual([[129,'more-walking'],[100,'closest-stop']]);
-    expect(labelPickupChoices([farther,close]).map(o=>o.pickupPreference)).toEqual(['arrive-sooner','closest-stop']);
-    expect(labelPickupChoices([farther,{...close,totalSec:900}])[0]!.pickupPreference).toBe('more-walking');
-    expect(labelPickupChoices([farther,{...close,departed:true}])[0]!.pickupPreference).toBe('more-walking');
+    expect(labelPickupChoices([live(farther),live(close)], 'live').map(o=>o.pickupPreference)).toEqual(['arrive-sooner','closest-stop']);
+    expect(labelPickupChoices([live(farther),live({...close,totalSec:900})], 'live')[0]!.pickupPreference).toBe('more-walking');
+    expect(labelPickupChoices([live(farther),live({...close,departed:true})], 'live')[0]!.pickupPreference).toBe('more-walking');
   });
   it('discovers recovered alternatives without replacing the original pickup or exit',()=>{
     const initial=unavailablePickup(close),fresh={...close,alightStopId:98,pickupAlternatives:[farther]};

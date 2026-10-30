@@ -650,7 +650,7 @@ export function planTrip(
   }
   const bestPerRoute = new Map<string, TripOption>();
   for (const [label, group] of byRoute) {
-    bestPerRoute.set(label, routePickupChoices(group));
+    bestPerRoute.set(label, routePickupChoices(group, futureMode ? 'planned' : 'live'));
   }
   // Untimed geometry cannot displace a forecast-backed route at the limit.
   const dedup = [...bestPerRoute.values()]
@@ -935,6 +935,13 @@ export function slowerThanWalk(o: TripOption): boolean {
     commuteSec(o) > o.directWalkSec;
 }
 
+/** A route's unavailable/departed ranking tier is not evidence that its
+ * typical walks and ride take longer. This notice only compares usable trips. */
+export function allShuttlesSlowerThanWalk(options: readonly TripOption[]): boolean {
+  return options.some(o => o.mode === 'shuttle')
+    && options.every(o => o.mode === 'walk' || (!o.etaUnavailable && slowerThanWalk(o)));
+}
+
 /**
  * The most DIRECT usable shuttle: the one with the least `commuteSec`.
  *
@@ -1145,27 +1152,44 @@ export function pickupFallback(current: TripOption, candidate: TripOption | unde
     || candidate.departed || candidate.etaUnavailable || candidate.destinationEtaUnavailable || current.etaUnavailable
     || !Number.isFinite(candidate.totalSec) || candidate.walkToSec > current.walkToSec - 60) return undefined;
   if (current.journeyArrival && !candidate.journeyArrival) return undefined;
-  return bestRoutePickup([current, candidate]) === candidate ? candidate : undefined;
+  return bestRoutePickup([current, candidate], 'live') === candidate ? candidate : undefined;
+}
+
+export type PickupTimingMode = 'live' | 'planned';
+
+/** A cached live total cannot establish an arrival advantage. Future plans
+ * deliberately use their planned totals; current trips need the joined visit. */
+function pickupJourneySec(option: TripOption, timing: PickupTimingMode): number | undefined {
+  if (timing === 'planned') return Number.isFinite(option.totalSec) && option.totalSec >= 0 ? option.totalSec : undefined;
+  const arrival = option.journeyArrival, at = option.computedAtMs;
+  if (!arrival || at === undefined || ![at, arrival.pointMs, arrival.lowMs, arrival.highMs].every(Number.isFinite)
+    || arrival.lowMs > arrival.highMs || arrival.pointMs < at) return undefined;
+  return (arrival.pointMs - at) / 1000;
 }
 
 /** Shared initial/live per-route choice: catchable first, then least walking
- * among arrivals within three minutes of the best journey time. */
-export function bestRoutePickup(group: readonly TripOption[]): TripOption {
-  const available = group.filter(o => !o.departed && !o.etaUnavailable && !o.destinationEtaUnavailable);
+ * among arrivals within three minutes of the best supported journey time.
+ * Without journey timing, compare the walking and planned riding geometry. */
+export function bestRoutePickup(group: readonly TripOption[], timing: PickupTimingMode): TripOption {
+  const available = group.filter(o => !o.departed && !o.etaUnavailable && !o.destinationEtaUnavailable
+    && pickupJourneySec(o, timing) !== undefined);
   const pickupTimed = group.filter(o => !o.departed && !o.etaUnavailable);
   const catchable = group.filter(o => !o.departed);
   const candidates = available.length ? available : pickupTimed.length ? pickupTimed : catchable.length ? catchable : group;
-  const minTotal = Math.min(...candidates.map(o => o.totalSec));
-  const nearBest = candidates.filter(o => o.totalSec <= minTotal + 180);
+  const minTotal = available.length ? Math.min(...available.map(o => pickupJourneySec(o, timing)!)) : undefined;
+  const nearBest = minTotal === undefined ? [...candidates]
+    : candidates.filter(o => pickupJourneySec(o, timing)! <= minTotal + 180);
   nearBest.sort((a, b) => (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
-    || (a.plannedRideSec ?? a.rideSec) - (b.plannedRideSec ?? b.rideSec) || a.totalSec - b.totalSec);
+    || (a.plannedRideSec ?? a.rideSec) - (b.plannedRideSec ?? b.rideSec)
+    || (pickupJourneySec(a, timing) !== undefined && pickupJourneySec(b, timing) !== undefined
+      ? pickupJourneySec(a, timing)! - pickupJourneySec(b, timing)! : 0));
   return nearBest[0]!;
 }
 
 /** Waiting for the next bus must not erase the closest pickup.
  * Retain an earlier-arriving pickup when it saves at least three minutes,
  * so a long wait at the close stop does not hide the faster alternative. */
-export function routePickupChoices(group: readonly TripOption[]): TripOption {
+export function routePickupChoices(group: readonly TripOption[], timing: PickupTimingMode): TripOption {
   const byStop = new Map<number, TripOption[]>();
   for (const option of group) {
     const choices = byStop.get(option.boardStopId) ?? [];
@@ -1173,16 +1197,18 @@ export function routePickupChoices(group: readonly TripOption[]): TripOption {
   }
   // Retain the existing destination/ride tradeoff at each boarding stop.
   // An extra lap to save a few steps at the exit is not a better pickup.
-  const closest = [...byStop.values()].map(bestRoutePickup).sort((a, b) =>
+  const closest = [...byStop.values()].map(choices => bestRoutePickup(choices, timing)).sort((a, b) =>
     a.walkToSec - b.walkToSec || (a.walkToMeters ?? Infinity) - (b.walkToMeters ?? Infinity)
-    || a.walkFromSec - b.walkFromSec || a.totalSec - b.totalSec)[0]!;
-  const faster = bestRoutePickup(group);
+    || a.walkFromSec - b.walkFromSec || commuteSec(a) - commuteSec(b))[0]!;
+  const faster = bestRoutePickup(group, timing);
+  const closestTime = pickupJourneySec(closest, timing), fasterTime = pickupJourneySec(faster, timing);
+  const knownComparison = closestTime !== undefined && fasterTime !== undefined;
   if (faster.boardStopId === closest.boardStopId || faster.departed || faster.etaUnavailable || faster.destinationEtaUnavailable
-    || (!closest.etaUnavailable && !closest.destinationEtaUnavailable && !closest.departed && faster.totalSec > closest.totalSec - 180)) {
+    || (!closest.etaUnavailable && !closest.destinationEtaUnavailable && !closest.departed && knownComparison && fasterTime > closestTime - 180)) {
     return closest.etaUnavailable || closest.destinationEtaUnavailable ? { ...closest, pickupPreference: 'closest-stop' } : closest;
   }
   return { ...closest, pickupPreference: 'closest-stop',
-    pickupAlternatives: [{ ...faster, pickupPreference: closest.etaUnavailable || closest.destinationEtaUnavailable || closest.departed ? 'more-walking' : 'arrive-sooner' }] };
+    pickupAlternatives: [{ ...faster, pickupPreference: closest.etaUnavailable || closest.destinationEtaUnavailable || closest.departed || !knownComparison ? 'more-walking' : 'arrive-sooner' }] };
 }
 
 /** Missing evidence must not retain an old countdown or imply a departure. */
@@ -1210,16 +1236,18 @@ export function applyPickupServicePolicy(option: TripOption, at: Date): TripOpti
 
 /** Refresh the wording without moving the selected pickup. Unknown timing
  * cannot justify an "Arrive sooner" comparison against the closest stop. */
-export function labelPickupChoices(group: readonly TripOption[]): TripOption[] {
+export function labelPickupChoices(group: readonly TripOption[], timing: PickupTimingMode): TripOption[] {
   if (!group.length) return [];
   const closest = [...group].sort((a, b) => a.walkToSec - b.walkToSec
     || (a.walkToMeters ?? Infinity) - (b.walkToMeters ?? Infinity)
-    || a.walkFromSec - b.walkFromSec || a.totalSec - b.totalSec)[0]!;
+    || a.walkFromSec - b.walkFromSec || commuteSec(a) - commuteSec(b))[0]!;
+  const closestTime = pickupJourneySec(closest, timing);
   return group.map(option => ({ ...option, pickupPreference: option === closest
     ? (group.length > 1 || option.pickupPreference || option.etaUnavailable || option.destinationEtaUnavailable ? 'closest-stop' : undefined)
     : !option.departed && !option.etaUnavailable && !option.destinationEtaUnavailable
       && !closest.departed && !closest.etaUnavailable && !closest.destinationEtaUnavailable
-      && option.totalSec <= closest.totalSec - 180 ? 'arrive-sooner' : 'more-walking' }));
+      && closestTime !== undefined && pickupJourneySec(option, timing) !== undefined
+      && pickupJourneySec(option, timing)! <= closestTime - 180 ? 'arrive-sooner' : 'more-walking' }));
 }
 
 /** Discover alternatives once an initially untimed line gains forecasts, or
