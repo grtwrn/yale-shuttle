@@ -2247,7 +2247,7 @@ const TripPlanner: FC<{
       const refreshed = [selected, ...catalog.filter(o => !sameTripPickup(o, selected))]
         .map(o => applyPickupServicePolicy(refreshOption({ ...o, pickupAlternatives: undefined }),
           isFutureMode ? targetDate! : new Date()));
-      const [primary, ...alternatives] = initial.mode === 'shuttle' ? labelPickupChoices(refreshed) : refreshed;
+      const [primary, ...alternatives] = initial.mode === 'shuttle' ? labelPickupChoices(refreshed, isFutureMode ? 'planned' : 'live') : refreshed;
       return { ...primary!, pickupAlternatives: alternatives };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4329,7 +4329,7 @@ const TripPlanner: FC<{
             return <>
           {_allShuttlesSlower && !_detailOpen && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
-              Walking wins right now — every shuttle is slower, but the routes are listed in case you'd rather ride.
+              Based on typical walking and riding times, walking directly takes less time. These routes are listed if you'd rather ride.
             </div>
           )}
           {_detailOpen && <div data-testid="trip-detail-panel" style={{

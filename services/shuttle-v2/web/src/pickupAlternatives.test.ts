@@ -40,21 +40,29 @@ describe('one bus and one onward destination (report #143)', () => {
     expect(option.journeyArrival).toBeUndefined();
   });
   it('does not suppress a real earlier visit just because the vehicle name is the same', () => {
-    const option = routePickupChoices([close, {...farther, busName: close.busName}]);
+    const option = routePickupChoices([close, {...farther, busName: close.busName}], 'live');
     expect(option.pickupAlternatives?.[0]).toMatchObject({boardStopId: 129, busName: close.busName, pickupPreference: 'arrive-sooner'});
   });
 });
 
-const close: TripOption = { mode: 'shuttle', routeLabel: 'Blue Day', color: '#1565c0',
+const at = 1793365638521;
+function withJourney(option: TripOption): TripOption {
+  return { ...option, computedAtMs: at, journeyArrival: {
+    busName: option.busName, pointMs: at + option.totalSec * 1000,
+    lowMs: at + (option.totalSec - 60) * 1000, highMs: at + (option.totalSec + 60) * 1000,
+    catchRisk: false, estimated: false,
+  } };
+}
+const close: TripOption = withJourney({ mode: 'shuttle', routeLabel: 'Blue Day', color: '#1565c0',
   boardStopId: 100, alightStopId: 97, walkToSec: 120, walkFromSec: 60,
   waitSec: 2400, rideSec: 600, plannedRideSec: 600, totalSec: 3180,
-  directWalkSec: 1800, busName: '44', busEtaSec: 2520, departed: false };
-const farther: TripOption = { ...close, boardStopId: 129, walkToSec: 480,
-  waitSec: 0, rideSec: 300, plannedRideSec: 300, totalSec: 840, busName: '48', busEtaSec: 480 };
+  directWalkSec: 1800, busName: '44', busEtaSec: 2520, departed: false });
+const farther: TripOption = withJourney({ ...close, boardStopId: 129, walkToSec: 480,
+  waitSec: 0, rideSec: 300, plannedRideSec: 300, totalSec: 840, busName: '48', busEtaSec: 480 });
 
 describe('walking versus earlier-arriving pickups on one line', () => {
   it('keeps the close stop and its long wait while offering the earlier bus separately', () => {
-    const choice = routePickupChoices([farther, close]);
+    const choice = routePickupChoices([farther, close], 'live');
     expect(choice.boardStopId).toBe(100);
     expect(choice.waitSec).toBe(2400);
     expect(choice.busName).toBe('44');
@@ -62,35 +70,35 @@ describe('walking versus earlier-arriving pickups on one line', () => {
   });
   it('does not let a changing wait replace the close pickup', () => {
     for (const waitSec of [0, 600, 3600]) {
-      expect(routePickupChoices([farther, { ...close, waitSec, totalSec: waitSec + 780 }]).boardStopId).toBe(100);
+      expect(routePickupChoices([farther, withJourney({ ...close, waitSec, totalSec: waitSec + 780 })], 'live').boardStopId).toBe(100);
     }
   });
   it('does not present an uncatchable farther bus as an earlier arrival', () => {
-    const choice = routePickupChoices([close, { ...farther, departed: true }]);
+    const choice = routePickupChoices([close, { ...farther, departed: true }], 'live');
     expect(choice.boardStopId).toBe(100);
     expect(choice.pickupAlternatives).toBeUndefined();
   });
   it('keeps the closest stop visible without claiming a departed bus is catchable', () => {
-    const choice = routePickupChoices([{ ...close, departed: true }, farther]);
+    const choice = routePickupChoices([{ ...close, departed: true }, farther], 'live');
     expect(choice.boardStopId).toBe(100);
     expect(choice.departed).toBe(true);
     expect(choice.pickupAlternatives?.[0]?.departed).toBe(false);
   });
   it('avoids duplicate choices when the closest trip also arrives first', () => {
-    const choice = routePickupChoices([{ ...close, totalSec: 780, waitSec: 0 }, farther]);
+    const choice = routePickupChoices([withJourney({ ...close, totalSec: 780, waitSec: 0 }), farther], 'live');
     expect(choice.boardStopId).toBe(100);
     expect(choice.pickupAlternatives).toBeUndefined();
   });
   it('uses actual pickup distance when nearby opposite curbs both have zero walking time', () => {
     const nearest = { ...close, walkToSec: 0, walkToMeters: 0, destinationEtaUnavailable: true };
     const acrossStreet = { ...farther, walkToSec: 0, walkToMeters: 28 };
-    const choice = routePickupChoices([acrossStreet, nearest]);
+    const choice = routePickupChoices([acrossStreet, nearest], 'live');
     expect(choice.boardStopId).toBe(nearest.boardStopId);
     expect(choice.pickupAlternatives).toEqual([{ ...acrossStreet, pickupPreference: 'more-walking' }]);
   });
   it('keeps the sensible exit at the close pickup instead of taking an extra lap to save a few steps', () => {
-    const extraLap = { ...close, alightStopId: 98, walkFromSec: 0, totalSec: close.totalSec + 900, rideSec: close.rideSec + 900 };
-    const choice = routePickupChoices([extraLap, farther, close]);
+    const extraLap = withJourney({ ...close, alightStopId: 98, walkFromSec: 0, totalSec: close.totalSec + 900, rideSec: close.rideSec + 900 });
+    const choice = routePickupChoices([extraLap, farther, close], 'live');
     expect(choice.boardStopId).toBe(100);
     expect(choice.alightStopId).toBe(97);
     expect(choice.pickupAlternatives?.[0]?.boardStopId).toBe(129);

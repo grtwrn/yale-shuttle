@@ -1,5 +1,5 @@
 import { ArrivalDetails, type ArrivalDetailsProps } from './ArrivalDetails';
-import { DestinationArrival } from './DestinationArrival';
+import { DestinationArrival, destinationArrivalView } from './DestinationArrival';
 import type { TripOption } from './planner';
 import { fmtMin, fmtWalk } from './format';
 import { estimatedGap } from './arrivalDetails';
@@ -23,6 +23,15 @@ function RoutePill({ option }: { option: TripOption }) {
     background: option.mode === 'walk' ? 'transparent' : option.color,
     color: option.mode === 'walk' ? '#5f6368' : routePillTextColor(option.color),
     border: option.mode === 'walk' ? '1px solid #dadce0' : undefined }}>{option.routeLabel}</span>;
+}
+
+/** The last live ride duration is not a new estimate when its destination
+ * visit cannot be joined. Keep useful route travel times clearly qualified. */
+function rideDuration(option: TripOption, departureMs?: number): string {
+  if (option.destinationEtaUnavailable) return 'Ride time unavailable';
+  if (departureMs !== undefined || destinationArrivalView(option, Date.now())?.kind === 'window') return fmtMin(option.rideSec);
+  return option.plannedRideSec !== undefined && Number.isFinite(option.plannedRideSec) && option.plannedRideSec >= 0
+    ? `Typical ride ~${fmtMin(option.plannedRideSec)}` : 'Ride time unavailable';
 }
 
 export interface TimingRow {
@@ -106,7 +115,7 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
           <span data-testid="journey-legs" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, flex: 1, minWidth: 0, fontSize: 12, color: '#5f6368' }}>
             {option.mode === 'walk' ? <span>🚶 {fmtWalk(option.totalSec)}</span> : <>
               {option.walkToSec > 0 && <><span style={{ whiteSpace: 'nowrap' }}>🚶 {fmtWalk(option.walkToSec)}</span><span aria-hidden="true">›</span></>}
-              <span>🚌 {option.destinationEtaUnavailable ? 'Ride time unavailable' : fmtMin(option.rideSec)}</span>
+              <span data-testid="ride-duration">🚌 {rideDuration(option, departureMs)}</span>
               {option.walkFromSec > 0 && <><span aria-hidden="true">›</span><span style={{ whiteSpace: 'nowrap' }}>🚶 {fmtWalk(option.walkFromSec)}</span></>}
             </>}
           </span>

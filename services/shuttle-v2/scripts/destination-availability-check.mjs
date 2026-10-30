@@ -40,6 +40,12 @@ try{
    sessionStorage.setItem('shuttle-trip-draft',JSON.stringify({fromText:plan.pickupStopName,fromLL:plan.fromLL,toText:plan.destinationName,toLL:plan.toLL,tripTime:'',expandedKey:null,savedAt:now}));
   },{plan:fixture.plan,now:at});
   const page=activePage=await context.newPage(),assets=[];page.setDefaultTimeout(12000);
+  const retainAsset=(bytes,source,pathname)=>{
+   if(pathname!=='/'&&!pathname.startsWith('/assets/'))return;
+   const sha256=digest(bytes),file=sha256+(pathname.endsWith('.js')?'.js':pathname.endsWith('.css')?'.css':'.html');
+   run.assets.push({url:source,bytes:bytes.length,sha256,file});
+   assets.push(fs.writeFile(path.join(out,'assets',file),bytes,{flag:'wx'}).catch(async error=>{if(error.code!=='EEXIST')throw error;assert.equal(digest(await fs.readFile(path.join(out,'assets',file))),sha256);}));
+  };
   page.on('pageerror',error=>run.errors.push(error.message));
   await page.clock.setFixedTime(at);
   await page.route('**/*',async route=>{
@@ -54,15 +60,11 @@ try{
    if(request.method()!=='GET')return route.abort();
    if(production){
     const source='https://yale-shuttle.fly.dev'+url.pathname+url.search,response=await route.fetch({url:source}),bytes=await response.body();
-    if(url.pathname==='/'||url.pathname.startsWith('/assets/')){
-     const sha256=digest(bytes),file=sha256+(url.pathname.endsWith('.js')?'.js':url.pathname.endsWith('.css')?'.css':'.html');
-     run.assets.push({url:source,bytes:bytes.length,sha256,file});
-     assets.push(fs.writeFile(path.join(out,'assets',file),bytes,{flag:'wx'}).catch(async error=>{if(error.code!=='EEXIST')throw error;assert.equal(digest(await fs.readFile(path.join(out,'assets',file))),sha256);}));
-    }
+    retainAsset(bytes,source,url.pathname);
     return route.fulfill({response,body:bytes});
    }
    const file=url.pathname==='/'?'/index.html':url.pathname;
-   try{return route.fulfill({body:await fs.readFile(service+'/web/dist'+file),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});}
+   try{const bytes=await fs.readFile(service+'/web/dist'+file);retainAsset(bytes,service+'/web/dist'+file,url.pathname);return route.fulfill({body:bytes,contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});}
    catch{return route.fulfill({status:404});}
   });
   await page.goto('https://'+host,{waitUntil:'domcontentloaded'});
@@ -74,12 +76,13 @@ try{
    const snapshot={seq:frames[phase].seq,at:frames[phase].at,browserClock:await page.evaluate(()=>Date.now()),stage,
     payloadSHA256:frames[phase].payloadSHA256,kind:await destination.getAttribute('data-kind'),text:await destination.innerText(),
     description:await destination.getAttribute('aria-label'),row:await row.innerText(),boardBus:await row.getAttribute('data-board-bus'),
+    rideDuration:(await row.getByTestId('journey-legs').locator('span').allTextContents()).find(text=>text.startsWith('🚌 '))??null,
     countdownBus:await row.getAttribute('data-countdown-bus'),stopsAhead:await row.getAttribute('data-board-stops-ahead'),
     alerts:await page.locator('[data-testid="bus-reporting-alerts"]').allTextContents(),
     noHorizontalOverflow:await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)};
    run.snapshots.push(snapshot);assert.equal(snapshot.browserClock,at);assert.equal(snapshot.boardBus,'124');assert.equal(snapshot.countdownBus,'124');assert.equal(snapshot.stopsAhead,'0');assert.match(snapshot.row,/At stop/);assert.equal(snapshot.alerts.length,0);assert(snapshot.noHorizontalOverflow);
    const expected=frames[phase].seq===69277||frames[phase].seq===69282?'window':'unavailable';
-   if(!baseline){assert.equal(snapshot.kind,expected);if(expected==='unavailable'){assert.equal(snapshot.text,'Arrival unavailable');assert(!/[~\d]:?\d/.test(snapshot.text),'unsupported destination must not show a clock');}}
+   if(!baseline){assert.equal(snapshot.kind,expected);if(expected==='unavailable'){assert.equal(snapshot.text,'Arrival unavailable');assert(!/[~\d]:?\d/.test(snapshot.text),'unsupported destination must not show a clock');assert.equal(snapshot.rideDuration,'🚌 Typical ride ~20 min');assert(!snapshot.row.includes('🚌 22 min'),'a missing live journey must not reuse its previous live ride duration');}else{assert.equal(snapshot.rideDuration,'🚌 22 min');}}
    await fs.writeFile(path.join(out,`${width}-${run.scenario}-${snapshot.seq}-${stage}.json`),JSON.stringify(snapshot,null,2)+'\n');
    if([69277,69278,69282].includes(snapshot.seq)||stage==='after-clock-advance')await page.screenshot({path:path.join(out,`${width}-${run.scenario}-${snapshot.seq}-${stage}.png`),fullPage:true});
   };
