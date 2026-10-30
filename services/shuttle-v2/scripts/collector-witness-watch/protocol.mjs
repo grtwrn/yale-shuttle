@@ -88,7 +88,7 @@ function legReviewContext(leg) {
   // pin plus reached=0 names an unpinned endpoint clock, not physical travel.
   const to=sourceLeg.reached===1&&sourceLeg.toPinnedAt!==null?'recorded-pin-clock'
     :sourceLeg.reached===0&&leg.to_pinned_at===null?'unreached-unpinned-proxy':'not-attested-by-leg-row';
-  return{reviewClass:knownHops?(leg.hops===1?'one-hop-leg':'multi-hop-proxy'):'unknown-hop-leg',sourceLeg,
+  return{reviewClass:knownHops?(leg.hops===1?'one-hop-leg':'multi-hop-leg'):'unknown-hop-leg',sourceLeg,
     endpointQualification:{from:'not-attested-by-leg-row',to,
       scope:'Recorded endpoint flags/clocks only; origin pin evidence is absent and physical service is not established.'},
     calibrationOneHopSQL:{predicate:'hops = 1',status:knownHops?(leg.hops===1?'passes':'excluded'):'unknown',

@@ -92,7 +92,7 @@ describe('collector witness transport verification', () => {
     const leads = derivedLegLeads([record]);
     expect(leads).toHaveLength(1);
     expect(leads[0]).toMatchObject({ kind: 'derived-leg-speed-review', rowId: 268508,
-      rowSHA256: source.rowSHA256, reviewClass: 'multi-hop-proxy',
+      rowSHA256: source.rowSHA256, reviewClass: 'multi-hop-leg',
       sourceLeg: { hops: 4, reached: 0, fromIndex: 15, toIndex: 3,
         departedAt: row.departed_at, arrivedAt: row.arrived_at, toPinnedAt: null },
       calibrationOneHopSQL: { predicate: 'hops = 1', status: 'excluded' },
@@ -101,6 +101,17 @@ describe('collector witness transport verification', () => {
     expect(leads[0].stopPoleDistancePerLegSecond).toBeGreaterThan(146);
     expect(distanceMeters(departureFix, arrivalFix) / row.leg_sec).toBeLessThan(27);
     expect(leads[0].calibrationOneHopSQL.scope).toContain('other calibration eligibility are not attested');
+    expect(witnessJSON(record)).toBe(original);
+  });
+  it('keeps a pinned reached multi-hop aggregate distinct from an unpinned endpoint proxy', () => {
+    // Synthetic aggregate isolates hop eligibility from endpoint qualification.
+    const row = { ...multiHopProxy.row, reached: 1, to_pinned_at: multiHopProxy.row.arrived_at };
+    const record = narrowedLegRecord(row, multiHopProxy.stops), original = witnessJSON(record);
+    const [lead] = derivedLegLeads([record]);
+    expect(lead).toMatchObject({ reviewClass: 'multi-hop-leg', sourceLeg: { hops: 4, reached: 1,
+      toPinnedAt: row.to_pinned_at }, calibrationOneHopSQL: { status: 'excluded' },
+      endpointQualification: { from: 'not-attested-by-leg-row', to: 'recorded-pin-clock' } });
+    expect(lead.endpointQualification.to).not.toContain('proxy');
     expect(witnessJSON(record)).toBe(original);
   });
   it('does not suppress an unreached one-hop counterpart or infer its full calibration eligibility', () => {

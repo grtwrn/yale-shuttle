@@ -37,14 +37,17 @@ describe('durable collector incident review delivery', () => {
     expect(a.store.readChunk(saved.key)).toEqual(source);
     result = await dispatchIncidents(a); expect(result.delivered).toEqual([]); expect(fs.readdirSync(a.directory)).toEqual(names);
   });
-  it('describes a known multi-hop proxy without dropping its incident, source capture or pins', async () => {
-    const a = setup(), saved = a.lead({ hops: 4, reached: 0, from_index: 15, to_index: 3, to_pinned_at: null });
+  it.each([0, 1])('describes a multi-hop leg with reached=%s without dropping evidence or assuming a proxy endpoint', async reached => {
+    const a = setup(), saved = a.lead({ hops: 4, reached, from_index: 15, to_index: 3,
+      to_pinned_at: reached ? a.f.at : null });
     const source = a.store.readChunk(saved.key), pins = a.store.db.prepare('SELECT * FROM incident_chunks ORDER BY incident,chunk').all();
     expect(await dispatchIncidents(a)).toMatchObject({ ok: true, pending: 0 });
     const [name] = fs.readdirSync(a.directory), value = JSON.parse(fs.readFileSync(path.join(a.directory, name)));
     expect(value).toMatchObject({ kind: 'derived-leg-speed-review',
-      detail: { reviewClass: 'multi-hop-proxy', calibrationOneHopSQL: { status: 'excluded' } } });
+      detail: { reviewClass: 'multi-hop-leg', calibrationOneHopSQL: { status: 'excluded' },
+        endpointQualification: { to: reached ? 'recorded-pin-clock' : 'unreached-unpinned-proxy' } } });
     expect(value.summary).toContain('excluded from one-hop calibration');
+    expect(value.summary).not.toContain('proxy');
     expect(a.store.readChunk(saved.key)).toEqual(source);
     expect(a.store.db.prepare('SELECT * FROM incident_chunks ORDER BY incident,chunk').all()).toEqual(pins);
     expect(pins.length).toBeGreaterThan(0);

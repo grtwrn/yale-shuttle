@@ -69,7 +69,7 @@ export async function dispatchIncidents({ store, directory, now = Date.now(), li
         summary: gap ? 'Collector evidence continuity was lost; the retained boundary needs review.'
           : unavailable ? 'A collector poll has incomplete capture or source-write evidence; review its retained diagnostic frames.'
           : progress ? 'A route anchor advanced at an unchanged GPS fix despite a competitive prior stop; review the captured state and geometry.'
-          : lead.reviewClass === 'multi-hop-proxy' ? 'A multi-hop collector proxy has a short endpoint-clock duration; its row is excluded from one-hop calibration. Review the captured input.'
+          : lead.reviewClass === 'multi-hop-leg' ? 'A multi-hop collector leg has a short endpoint-clock duration; its row is excluded from one-hop calibration. Review its endpoint qualification and captured input.'
           : 'A committed derived leg has an unusually short duration for its stop endpoints; review the captured input.',
         detail: lead, evidence: { database: store.file, incidentID: row.id,
           sourcePins: 'incident_chunks retains the source page and available surrounding history/topology; query by incidentID.' },
