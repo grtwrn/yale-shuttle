@@ -16,8 +16,31 @@ const inputName = value => /^feed-\d{4}-\d\d-\d\d-\d\d-\d+\.jsonl\.gz$/.test(val
 const codeFiles = ['detector.mjs', 'projection.mjs', 'storage.mjs', 'poll.mjs',
   '../canary-metrics.mjs', '../trajectory-history/native.mjs', '../../src/collector/witnessCodec.ts',
   '../retention/storage.mjs', '../retention/maintain.mjs'];
-const codeSHA256 = sha(JSON.stringify(codeFiles.map(name =>
+export const COUNTDOWN_CODE_SHA256 = sha(JSON.stringify(codeFiles.map(name =>
   [name, sha(fs.readFileSync(new URL(name, import.meta.url)))])));
+const codeSHA256 = COUNTDOWN_CODE_SHA256;
+export const DEFAULT_READ_BOUNDS = Object.freeze({ maxFiles: 2, maxBytes: 512 * MiB });
+
+/** Take an oldest-first prefix, never a newer window selected to look fresh.
+ * Every budget stays within the original eight-file/512 MiB read ceiling.
+ * Each native file retains its compressed/decompressed/line bounds. */
+export function boundedFiles(files, bounds = DEFAULT_READ_BOUNDS) {
+  if (!bounds || Object.keys(bounds).some(k => !['maxFiles', 'maxBytes'].includes(k))
+    || !Number.isSafeInteger(bounds.maxFiles) || bounds.maxFiles < 2 || bounds.maxFiles > 8
+    || !Number.isSafeInteger(bounds.maxBytes) || bounds.maxBytes < 1 || bounds.maxBytes > 512 * MiB)
+    throw Error('Invalid countdown read bounds');
+  const selected = []; let bytes = 0;
+  for (const file of files) {
+    if (selected.length >= bounds.maxFiles || bytes + file.bytes > bounds.maxBytes) break;
+    selected.push(file); bytes += file.bytes;
+  }
+  if (!selected.length) throw Error('Native countdown read interval exceeds bound or is unavailable');
+  // Once a frontier is completely verified, its next file must fit alongside
+  // it or a one-file batch would repeatedly commit the same frontier forever.
+  if (selected.length === 1 && files.length > 1)
+    throw Error('Native countdown frontier and next file exceed read bound');
+  return selected;
+}
 
 function canonical(file) {
   let base = path.resolve(file); const suffix = [];
@@ -31,7 +54,7 @@ const identity = state => ({ cycle: state.id, sourceKey: state.sourceKey,
  * It makes no HTTP requests, executes no estimator, and never updates reports,
  * model parameters, publication gates, evaluator state or another process. */
 export async function capture({ directory, learningRoot, now = Date.now(), policy = DEFAULT_POLICY,
-  coldStartLookbackMs = 120000 } = {}) {
+  coldStartLookbackMs = 120000, readBounds = DEFAULT_READ_BOUNDS } = {}) {
   const before = await readBounded(path.join(directory, 'state.json'), policy.maxStateBytes, null);
   if (before && (before.version !== 1 || before.codeSHA256 !== codeSHA256))
     throw Error('Countdown checkpoint requires explicit source migration');
@@ -53,12 +76,13 @@ export async function capture({ directory, learningRoot, now = Date.now(), polic
   const projection = new CountdownProjection(before?.projection);
   const initialHour = new Date(now - coldStartLookbackMs).toISOString().slice(0, 13).replace('T', '-');
   const frontier = sameSource ? before.frontier : null;
-  const files = Object.entries(live.source.inputFiles).map(([name, bytes]) => {
+  const available = Object.entries(live.source.inputFiles).map(([name, bytes]) => {
     if (!inputName(name) || !Number.isSafeInteger(bytes) || bytes <= 0) throw Error('Invalid native input manifest');
     return { name, bytes };
   }).filter(f => frontier ? f.name >= frontier : f.name.slice(5, 18) >= initialHour).sort((a, b) => a.name.localeCompare(b.name));
-  if (!files.length || files.length > 8 || files.reduce((sum, f) => sum + f.bytes, 0) > 512 * MiB)
-    throw Error('Native countdown read interval exceeds bound or is unavailable');
+  if (frontier && (!before.prefixes?.[frontier] || !available.some(f => f.name === frontier)))
+    throw Error('Native countdown frontier is unavailable');
+  const files = boundedFiles(available, readBounds), pendingFiles = available.length - files.length;
   const prefixes = {}; let inputLines = 0, skippedColdLines = 0;
   for (const spec of files) {
     const file = path.join(cycle, spec.name), previous = sameSource ? before.prefixes?.[spec.name] : null;
@@ -69,11 +93,13 @@ export async function capture({ directory, learningRoot, now = Date.now(), polic
       if (!sameSource && item.record.receivedAt < now - coldStartLookbackMs) { skippedColdLines++; continue; }
       projection.consume(item.record, source, { file: spec.name, line: item.line, rawSHA256: item.rawSHA256 });
     }
+    if (prefixes[spec.name]?.partialTail && spec.name !== available.at(-1).name)
+      throw Error('Historical native countdown record is incomplete');
   }
   const latest = projection.state.feedReceipt?.forecastAvailable === false
     ? Math.max(projection.state.last?.at ?? -Infinity, projection.state.feedReceipt.receivedAt)
     : projection.state.last?.at;
-  if (!Number.isSafeInteger(latest) || now - latest > 120000 || latest > now + 5000)
+  if (!Number.isSafeInteger(latest) || latest > now + 5000 || (!pendingFiles && now - latest > 120000))
     throw Error('Countdown capture did not reach a fresh source record');
   const after = await readBounded(path.join(learningRoot, 'state.json'), 64 * MiB, null);
   if (JSON.stringify(identity(after)) !== JSON.stringify(source)) throw Error('Native context changed during capture');
@@ -85,18 +111,23 @@ export async function capture({ directory, learningRoot, now = Date.now(), polic
     frontier: files.at(-1).name, prefixes: { [files.at(-1).name]: prefixes[files.at(-1).name] },
     coverageBoundaries: [...(before?.coverageBoundaries ?? []), ...projection.boundaries].slice(-32) };
   await atomicState(path.join(directory, 'state.json'), next, policy.maxStateBytes);
-  return { checkedAt: new Date(now).toISOString(), ok: true, codeSHA256, source,
+  return { checkedAt: new Date(now).toISOString(), ok: !pendingFiles, caughtUp: !pendingFiles,
+    ...(pendingFiles ? { errorCode: 'backfill_pending',
+      reason: 'Verified historical countdown inputs committed; fresh coverage is still pending.' } : {}),
+    codeSHA256, source,
     lastFrame: projection.state.last, feedReceipt: projection.state.feedReceipt,
     newFrames: projection.newFrames, totalFrames: projection.state.totalFrames,
     totalStopLevelCandidates: projection.state.totalEvents, newFindingParts: saved,
     inputLines, skippedColdLines, boundaries: projection.boundaries, storage,
+    read: { files: files.length, bytes: files.reduce((sum, f) => sum + f.bytes, 0),
+      pendingFiles, frontier: files.at(-1).name, bounds: readBounds },
     noProductionRequests: true, physicalETAAccuracyQualified: false, scope: WATCH_SCOPE };
 }
 
 export async function runOnce({ directory = process.env.COUNTDOWN_WATCH_DIR
   ?? path.join(service, 'scripts/.bot-artifacts/countdown-watch'),
   learningRoot = process.env.COUNTDOWN_WATCH_ROOT ?? path.join(service, 'scripts/.learning-loop'),
-  now = Date.now(), policy: options = {}, coldStartLookbackMs } = {}) {
+  now = Date.now(), policy: options = {}, coldStartLookbackMs, readBounds } = {}) {
   const output = canonical(directory), input = canonical(learningRoot);
   if (output === input || output.startsWith(input + path.sep) || input.startsWith(output + path.sep))
     throw Error('Countdown output must be separate from native evidence');
@@ -108,7 +139,7 @@ export async function runOnce({ directory = process.env.COUNTDOWN_WATCH_DIR
     let result;
     try {
       await rotateOutput(path.join(directory, 'watcher.log'), { maxBytes: MiB, maxBackups: 1 });
-      result = await capture({ directory, learningRoot, now, policy, coldStartLookbackMs });
+      result = await capture({ directory, learningRoot, now, policy, coldStartLookbackMs, readBounds });
     } catch (error) {
       result = { checkedAt: new Date(now).toISOString(), ok: false,
         reason: String(error.message ?? error).slice(0, 300),

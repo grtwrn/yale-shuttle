@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { CountdownProjection, sha } from './projection.mjs';
-import { runOnce } from './poll.mjs';
+import { runOnce, boundedFiles, COUNTDOWN_CODE_SHA256 } from './poll.mjs';
+import { migrateCheckpoint, PRE_BATCH_CODE_SHA256 } from './migrate.mjs';
 import { maintainFindings, DEFAULT_POLICY } from './storage.mjs';
 
 const directories = [];
@@ -50,6 +51,19 @@ function fixture(records) {
     run(options = {}) { return runOnce({ learningRoot, directory, now, ...options }); },
     state() { return fs.readFileSync(path.join(directory, 'state.json')); },
     findings() { return fs.readdirSync(path.join(directory, 'findings')).filter(n => n.endsWith('.json.gz')); } };
+}
+
+function addHour(x, hour, records, rawBytes) {
+  const stamp = new Date(base + hour * 3600000).toISOString().slice(0, 13).replace('T', '-');
+  const name = `feed-${stamp}-1.jsonl.gz`, file = path.join(x.learningRoot, source.cycle, name);
+  if (records.length) fs.appendFileSync(file, gzipSync(records.map(r => JSON.stringify(r)).join('\n') + '\n'));
+  if (rawBytes) fs.appendFileSync(file, rawBytes);
+  const liveFile = path.join(x.learningRoot, 'state.json'), live = JSON.parse(fs.readFileSync(liveFile));
+  live.source.inputFiles[name] = fs.statSync(file).size;
+  fs.writeFileSync(liveFile, JSON.stringify(live));
+  if (records.length) fs.writeFileSync(path.join(x.learningRoot, 'status.json'), JSON.stringify({
+    cycle: source.cycle, running: true, feedReceivedAt: new Date(records.at(-1).receivedAt).toISOString() }));
+  return file;
 }
 
 describe('durable original-offer projection', () => {
@@ -180,4 +194,182 @@ describe('read-only local polling and protected rolling evidence', () => {
     await expect(runOnce({ directory: path.join(x.learningRoot, 'bad-output'), learningRoot: x.learningRoot, now: x.now })).rejects.toThrow('separate');
     expect(fs.existsSync(path.join(x.learningRoot, 'bad-output'))).toBe(false);
   });
+});
+
+describe('bounded chronological countdown catch-up', () => {
+  it('bounds an oldest-first prefix even when the original backlog exceeds eight files and 512 MiB', () => {
+    const MiB = 1024 * 1024;
+    const files = Array.from({ length: 12 }, (_, i) => ({ name: String(i), bytes: 200 * MiB }));
+    expect(boundedFiles(files)).toEqual(files.slice(0, 2));
+    expect(boundedFiles(files, { maxFiles: 8, maxBytes: 512 * MiB })).toEqual(files.slice(0, 2));
+    expect(() => boundedFiles(files, { maxFiles: 9, maxBytes: 512 * MiB })).toThrow('bounds');
+    expect(() => boundedFiles(files, { maxFiles: 8, maxBytes: 513 * MiB })).toThrow('bounds');
+    expect(() => boundedFiles(files, { maxFiles: 2, maxBytes: 100 * MiB })).toThrow('bound');
+  });
+  it('commits historical progress across more than eight original files and resumes after every batch', async () => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true);
+    const originals = new Map([[x.file, fs.readFileSync(x.file)]]);
+    let last;
+    for (let hour = 1; hour < 12; hour++) {
+      const records = [180, 3022, 170].map((eta, i) => record(hour * 3 + i - 1, eta,
+        { at: base + hour * 3600000 + i * 5000 }));
+      last = records.at(-1); const file = addHour(x, hour, records); originals.set(file, fs.readFileSync(file));
+    }
+    const frontiers = []; let result;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      result = await x.run({ now: last.receivedAt });
+      frontiers.push(JSON.parse(x.state()).frontier);
+      expect(result.read.files).toBe(2);
+      if (result.ok) break;
+      expect(result.errorCode).toBe('backfill_pending');
+      expect(result.caughtUp).toBe(false);
+      expect(result.lastFrame.at).toBeLessThan(last.receivedAt - 120000);
+      expect(JSON.parse(x.state()).checkedAt).toBe(last.receivedAt);
+    }
+    expect(result.ok).toBe(true); expect(result.caughtUp).toBe(true);
+    expect(result.read.pendingFiles).toBe(0); expect(result.totalFrames).toBe(34);
+    expect(new Set(frontiers).size).toBe(11); expect(x.findings()).toHaveLength(11);
+    const repeated = await x.run({ now: last.receivedAt });
+    expect(repeated.ok).toBe(true); expect(repeated.newFrames).toBe(0); expect(x.findings()).toHaveLength(11);
+    for (const [file, bytes] of originals) expect(fs.readFileSync(file)).toEqual(bytes);
+  });
+  it('keeps the exact pending comparison across a batch and finds the original reversal after restart', async () => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true);
+    const records = [record(2, 180, { at: base + 2 * 3600000 - 5000 }),
+      record(3, 3022, { at: base + 2 * 3600000 }),
+      record(4, 170, { at: base + 2 * 3600000 + 5000 })];
+    addHour(x, 1, records.slice(0, 1)); addHour(x, 2, records.slice(1));
+    const partial = await x.run({ now: records.at(-1).receivedAt });
+    expect(partial.ok).toBe(false); expect(partial.errorCode).toBe('backfill_pending');
+    expect(partial.lastFrame.seq).toBe(2); expect(x.findings()).toHaveLength(0);
+    const recovered = await x.run({ now: records.at(-1).receivedAt });
+    expect(recovered.ok).toBe(true); expect(recovered.newFrames).toBe(2); expect(x.findings()).toHaveLength(1);
+    const finding = JSON.parse(gunzipSync(fs.readFileSync(path.join(x.directory, 'findings', x.findings()[0]))));
+    expect(finding.events[0].before.seq).toBe(2); expect(finding.events[0].returned.seq).toBe(4);
+    for (const r of records) expect(finding.frames[r.source.frames[0].sha256].frame).toEqual(r.source.frames[0]);
+  });
+  it('honors the compressed byte budget on actual original files, then resumes with the same byte budget', async () => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true);
+    const next = record(2, 175, { at: base + 3600000 }), last = record(3, 170, { at: base + 2 * 3600000 });
+    const second = addHour(x, 1, [next]), third = addHour(x, 2, [last]);
+    const sizes = [x.file, second, third].map(file => fs.statSync(file).size);
+    const readBounds = { maxFiles: 8, maxBytes: Math.max(sizes[0] + sizes[1], sizes[1] + sizes[2]) + 1 };
+    expect(sizes.reduce((a, b) => a + b)).toBeGreaterThan(readBounds.maxBytes);
+    const progress = await x.run({ now: last.receivedAt, readBounds });
+    expect(progress.errorCode).toBe('backfill_pending'); expect(progress.read.files).toBe(2);
+    expect(progress.read.bytes).toBeLessThanOrEqual(readBounds.maxBytes); expect(progress.lastFrame.seq).toBe(2);
+    const recovered = await x.run({ now: last.receivedAt, readBounds });
+    expect(recovered.ok).toBe(true); expect(recovered.read.files).toBe(2);
+    expect(recovered.read.bytes).toBeLessThanOrEqual(readBounds.maxBytes); expect(recovered.lastFrame.seq).toBe(3);
+  });
+  it('keeps a current stale journal unhealthy even when the native status heartbeat is fresh', async () => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true); const prior = x.state();
+    const now = x.now + 180000;
+    fs.writeFileSync(path.join(x.learningRoot, 'status.json'), JSON.stringify({ cycle: source.cycle,
+      running: true, feedReceivedAt: new Date(now).toISOString() }));
+    const result = await x.run({ now }); expect(result.ok).toBe(false);
+    expect(result.reason).toContain('fresh source'); expect(x.state()).toEqual(prior);
+  });
+  it('retains committed historical progress when the final interval still lacks current original source', async () => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true);
+    addHour(x, 1, [record(2, 175, { at: base + 3600000 })]);
+    addHour(x, 2, [record(3, 170, { at: base + 2 * 3600000 })]);
+    const now = base + 3 * 3600000;
+    fs.writeFileSync(path.join(x.learningRoot, 'status.json'), JSON.stringify({ cycle: source.cycle,
+      running: true, feedReceivedAt: new Date(now).toISOString() }));
+    const partial = await x.run({ now }); expect(partial.errorCode).toBe('backfill_pending');
+    expect(partial.lastFrame.seq).toBe(2); const committed = x.state();
+    const blocked = await x.run({ now }); expect(blocked.ok).toBe(false);
+    expect(blocked.reason).toContain('fresh source'); expect(x.state()).toEqual(committed);
+    expect(JSON.parse(committed).projection.last.seq).toBe(2);
+  });
+  it.each(['missing', 'shortened', 'changed'])('does not skip a %s original frontier to newer files', async kind => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true); const prior = x.state();
+    const next = record(2, 170, { at: base + 3600000 }); addHour(x, 1, [next]);
+    if (kind === 'missing') {
+      const file = path.join(x.learningRoot, 'state.json'), state = JSON.parse(fs.readFileSync(file));
+      delete state.source.inputFiles[path.basename(x.file)]; fs.writeFileSync(file, JSON.stringify(state));
+    } else if (kind === 'shortened') fs.truncateSync(x.file, 20);
+    else { const bytes = fs.readFileSync(x.file); bytes[15] ^= 1; fs.writeFileSync(x.file, bytes); }
+    const result = await x.run({ now: next.receivedAt });
+    expect(result.ok).toBe(false); expect(x.state()).toEqual(prior); expect(x.findings()).toHaveLength(0);
+  });
+  it('never advances beyond an incomplete historical gzip/JSON record into a later file', async () => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true); const prior = x.state();
+    const second = record(2, 3022), bytes = gzipSync(JSON.stringify(second) + '\n');
+    x.update([], { rawBytes: bytes.subarray(0, Math.floor(bytes.length / 2)) });
+    const next = record(3, 170, { at: base + 3600000 }); addHour(x, 1, [next]);
+    const result = await x.run({ now: next.receivedAt });
+    expect(result.ok).toBe(false); expect(result.reason).toContain('Historical native countdown record is incomplete');
+    expect(x.state()).toEqual(prior); expect(x.findings()).toHaveLength(0);
+  });
+  it('leaves the historical cursor unchanged on storage failure, then resumes normally with retained findings', async () => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true); const prior = x.state();
+    const at = base + 3600000;
+    addHour(x, 1, [record(2, 180, { at }), record(3, 3022, { at: at + 5000 }), record(4, 170, { at: at + 10000 })]);
+    const next = record(5, 165, { at: base + 2 * 3600000 }); addHour(x, 2, [next]);
+    const original = path.join(x.directory, 'findings', 'orphan.partial'); fs.writeFileSync(original, 'protected');
+    const failed = await x.run({ now: next.receivedAt, policy: { maxOpenBytes: 1 } });
+    expect(failed.ok).toBe(false); expect(x.state()).toEqual(prior); expect(fs.readFileSync(original, 'utf8')).toBe('protected');
+    const progress = await x.run({ now: next.receivedAt }); expect(progress.errorCode).toBe('backfill_pending');
+    expect(x.findings()).toHaveLength(1); expect(fs.readFileSync(original, 'utf8')).toBe('protected');
+    expect((await x.run({ now: next.receivedAt })).ok).toBe(true); expect(x.findings()).toHaveLength(1);
+  });
+});
+
+describe('explicit reviewed reader migration', () => {
+  function legacy(x) {
+    const file = path.join(x.directory, 'state.json'), state = JSON.parse(x.state());
+    state.codeSHA256 = PRE_BATCH_CODE_SHA256;
+    const bytes = Buffer.from(JSON.stringify(state, null, 3) + '\n'); fs.writeFileSync(file, bytes);
+    return { bytes, state };
+  }
+  it('preserves the exact original checkpoint and all pending comparisons, source identity, prefixes and clocks', async () => {
+    const x = fixture([record(1, 180), record(2, 3022)]); expect((await x.run()).ok).toBe(true);
+    const before = legacy(x);
+    expect((await x.run()).reason).toContain('explicit source migration'); expect(x.state()).toEqual(before.bytes);
+    const receipt = await migrateCheckpoint({ directory: x.directory,
+      expectedCheckpointSHA256: sha(before.bytes), reviewedTargetCodeSHA256: COUNTDOWN_CODE_SHA256,
+      note: 'Synthetic reviewed control for the bounded reader; no actual rider outcome.' });
+    const after = JSON.parse(x.state());
+    expect(after).toEqual({ ...before.state, codeSHA256: COUNTDOWN_CODE_SHA256 });
+    expect(fs.readFileSync(path.join(x.directory, 'migrations', receipt.originalCheckpointFile))).toEqual(before.bytes);
+    expect(sha(fs.readFileSync(receipt.receiptFile))).toBe(receipt.receiptSHA256);
+    x.update([record(3, 170)]); expect((await x.run()).ok).toBe(true); expect(x.findings()).toHaveLength(1);
+    const body = JSON.parse(gunzipSync(fs.readFileSync(path.join(x.directory, 'findings', x.findings()[0]))));
+    expect(body.events[0].before.seq).toBe(1); expect(body.events[0].returned.seq).toBe(3);
+  });
+  it.each(['checkpoint', 'target', 'source', 'review'])('refuses an unreviewed %s without changing the checkpoint', async kind => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true);
+    const before = legacy(x);
+    if (kind === 'source') {
+      before.state.codeSHA256 = 'f'.repeat(64);
+      before.bytes = Buffer.from(JSON.stringify(before.state)); fs.writeFileSync(path.join(x.directory, 'state.json'), before.bytes);
+    }
+    await expect(migrateCheckpoint({ directory: x.directory,
+      expectedCheckpointSHA256: kind === 'checkpoint' ? '0'.repeat(64) : sha(before.bytes),
+      reviewedTargetCodeSHA256: kind === 'target' ? '0'.repeat(64) : COUNTDOWN_CODE_SHA256,
+      note: kind === 'review' ? '' : 'Synthetic migration review.' })).rejects.toThrow();
+    expect(x.state()).toEqual(before.bytes); expect(fs.existsSync(path.join(x.directory, 'migrations'))).toBe(false);
+  });
+  it.each(['different bytes', 'symlink'])('does not overwrite original migration custody with %s', async kind => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true); const before = legacy(x);
+    const custody = path.join(x.directory, 'migrations'); fs.mkdirSync(custody);
+    const original = path.join(custody, sha(before.bytes) + '.state.json');
+    if (kind === 'symlink') fs.symlinkSync(path.join(x.directory, 'state.json'), original);
+    else fs.writeFileSync(original, 'previous immutable custody');
+    await expect(migrateCheckpoint({ directory: x.directory, expectedCheckpointSHA256: sha(before.bytes),
+      reviewedTargetCodeSHA256: COUNTDOWN_CODE_SHA256, note: 'Synthetic migration custody control.' })).rejects.toThrow('custody');
+    expect(x.state()).toEqual(before.bytes);
+    if (kind === 'symlink') expect(fs.lstatSync(original).isSymbolicLink()).toBe(true);
+    else expect(fs.readFileSync(original, 'utf8')).toBe('previous immutable custody');
+  });
+  it('refuses to migrate while the countdown storage lock has a live owner', async () => {
+    const x = fixture([record(1, 180)]); expect((await x.run()).ok).toBe(true); const before = legacy(x);
+    const lock = path.join(x.directory, 'storage.lock'); fs.writeFileSync(lock, String(process.pid));
+    await expect(migrateCheckpoint({ directory: x.directory, expectedCheckpointSHA256: sha(before.bytes),
+      reviewedTargetCodeSHA256: COUNTDOWN_CODE_SHA256, note: 'Synthetic migration lock control.' })).rejects.toThrow('busy');
+    expect(x.state()).toEqual(before.bytes); expect(fs.readFileSync(lock, 'utf8')).toBe(String(process.pid));
+    expect(fs.existsSync(path.join(x.directory, 'migrations'))).toBe(false);
+  }, 15000);
 });

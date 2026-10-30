@@ -21,6 +21,17 @@ gaps break comparisons explicitly. A cold start covers the latest two minutes
 of available journals; it does not claim earlier coverage. Missing forecasts
 and fresh empty feeds remain distinct from physical service outcomes.
 
+After an interruption, each poll reads the oldest remaining input prefix: by
+default at most two files and 512 MiB in total, with each file still subject to
+the native reader's 256 MiB compressed and 4 GiB decompressed limits. A verified historical
+batch saves its findings and commits its own cursor, then reports
+`ok: false`, `caughtUp: false`, `errorCode: "backfill_pending"`. The next normal
+poll resumes there. A fresh heartbeat does not make historical coverage healthy;
+the final batch must reach a fresh original source record. The last committed
+frontier must remain present and unchanged, and an incomplete historical JSON
+record cannot be skipped to reach a newer file. These cases retain the existing
+checkpoint and report failure. No alternate clock or cursor reset is needed.
+
 Run from `services/shuttle-v2`, using the same Node/tsx environment as the
 local observer:
 
@@ -44,6 +55,30 @@ after a checkpoint failure reuse the original bytes. Unreviewed and orphaned
 evidence is protected up to 256 MiB. Saturation leaves the committed cursor
 unchanged and reports failure, rather than discarding evidence. Checkpoints
 are bounded to 64 MiB and individual findings to 8 MiB compressed/64 MiB raw.
+
+Changing the reader source requires a separate reviewed migration; polling never
+migrates or clears a checkpoint automatically. For the pre-batch reader with
+code SHA `47ba5fd777abb58043c63f1793d21ad5d81a7b70724e988d2e958a41e9b20d4d`,
+`migrateCheckpoint` in `migrate.mjs` requires the exact original checkpoint SHA,
+the reviewed target `COUNTDOWN_CODE_SHA256` exported by `poll.mjs`, and a review
+note. With the watcher inactive, call it from an operator script:
+
+```js
+import { migrateCheckpoint } from './scripts/countdown-watch/migrate.mjs';
+const receipt = await migrateCheckpoint({
+  directory: '/absolute/path/to/countdown-watch',
+  expectedCheckpointSHA256: '<reviewed SHA-256 of original state.json bytes>',
+  reviewedTargetCodeSHA256: '<reviewed target reader code SHA-256>',
+  note: '<review of reader compatibility and original checkpoint custody>',
+});
+```
+
+The migration acquires the same countdown storage lock. It retains the exact
+original `state.json` bytes and an immutable receipt in `migrations/`, then changes
+only the code SHA in the live checkpoint. It preserves the source namespace,
+detector, pending comparisons, frame bytes, cursor, prefixes and original clocks.
+An unsupported source version, mismatched SHA or busy storage lock fails closed.
+The migration does not review findings or increase their storage allowance.
 
 After reviewing a finding, write a separate `reviews/<id>.json` receipt:
 
