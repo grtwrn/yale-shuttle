@@ -37,6 +37,54 @@ async function manifest(dir,id){
 }
 
 describe('report source and client asset preservation',()=>{
+ it('keeps only public navigation facts and the optional validated click-time source receipt',()=>{
+  const source={v:1,snapshotId:'a'.repeat(64),sha256:'b'.repeat(64),bytes:120,build:'public-build',modelAt:1000,servedAt:1100,
+   evaluation:{epoch:'public-epoch',cursor:7,at:1000,sha256:'c'.repeat(64)}};
+  const intent={provider:'google-maps',mode:'walking',publicStopId:77,walkLabel:' 3  min ',requestedAt:1200,
+   url:'https://private.test/directions',address:'Private house',userLatLon:{lat:41.31,lon:-72.91},token:'secret',
+   source:{...source,receivedAt:1150,token:'secret',evaluation:{...source.evaluation,url:'https://private.test'}}};
+  const before=JSON.stringify(intent),screen=reportScreenFacts({navigationIntent:intent});
+  expect(screen.navigationIntent).toEqual({provider:'google-maps',mode:'walking',publicStopId:77,walkLabel:'3 min',requestedAt:1200,source});
+  expect(JSON.stringify(screen)).not.toMatch(/private\.test|Private house|userLatLon|secret|receivedAt/);
+  expect(JSON.stringify(intent)).toBe(before);
+  expect(reportScreenFacts({navigationIntent:{...intent,walkLabel:'',source:undefined}}).navigationIntent.walkLabel).toBe('');
+  for(const invalid of [{provider:'other'},{mode:'driving'},{publicStopId:0},{publicStopId:2_147_483_648},
+   {publicStopId:1.5},{publicStopId:'77'},{walkLabel:'https://private.test'},{walkLabel:'0 min'},
+   {walkLabel:3},{requestedAt:-1},{requestedAt:NaN}]){
+   expect(reportScreenFacts({navigationIntent:{...intent,...invalid}})).not.toHaveProperty('navigationIntent');
+  }
+  for(const invalid of [{v:2},{snapshotId:'invalid'},{bytes:2*1024*1024+1},{build:'https://private.test'},
+   {modelAt:1200},{evaluation:{...source.evaluation,cursor:0}},
+   {evaluation:{...source.evaluation,at:999}},{evaluation:{...source.evaluation,epoch:'private/address'}}]){
+   const projected=reportScreenFacts({navigationIntent:{...intent,source:{...source,...invalid}}}).navigationIntent;
+   expect(projected).toEqual({provider:'google-maps',mode:'walking',publicStopId:77,walkLabel:'3 min',requestedAt:1200});
+  }
+ });
+ it('leaves the projected bytes and evidence version unchanged for clients without a valid intent',()=>{
+  const input={v:1,capturedAt:1793490000000,build:'6aed223edaec',view:'trip',tripDetail:true,rows:[],assets:[],sourceScope:'public-input-for-render'};
+  const expected='{"v":1,"capturedAt":1793490000000,"build":"6aed223edaec","view":"trip","tripDetail":true,"rows":[],"truncated":false,"sourceScope":"public-input-for-render","assets":[]}';
+  const saved={status:'unavailable',reason:'source-not-supplied'};
+  for(const screen of [reportScreenFacts(input),... [undefined,null,{},[]].map(navigationIntent=>reportScreenFacts({...input,navigationIntent}))]){
+   expect(screen).not.toHaveProperty('navigationIntent');expect(JSON.stringify(screen)).toBe(expected);
+   expect(hash(JSON.stringify({screen,saved}))).toBe('275bdd5dd9f42d3d1c921a62b379da96f2223bca47ad8558398bb779c3e59924');
+  }
+ });
+ it('creates immutable evidence versions for intent-only changes without fetching a click-time source',async()=>{
+  const dir=await makeDir(),f=fixture(142,[]),screen={v:1,capturedAt:f.now,build:'fixture-bundle',view:'trip',assets:[]};
+  const report=navigationIntent=>({...f.report,context:JSON.stringify({screen:{...screen,...(navigationIntent?{navigationIntent}:{})}})});
+  const options={dir,base:'https://shuttle.test',token:'test-only-admin',fetcher:f.fetcher};
+  await preserveReportEvidence({...options,reports:[report()],now:f.now});const legacy=await manifest(dir,142);
+  const first={provider:'google-maps',mode:'walking',publicStopId:77,walkLabel:'3 min',requestedAt:f.now-1000,source:f.bundle.source};
+  await preserveReportEvidence({...options,reports:[report(first)],now:f.now+60000});const before=await manifest(dir,142);
+  const second={...first,publicStopId:98,walkLabel:'7 min'};
+  await preserveReportEvidence({...options,reports:[report(second)],now:f.now+120000});const after=await manifest(dir,142);
+  expect(legacy.value.screen).not.toHaveProperty('navigationIntent');
+  expect(before.value.screen.navigationIntent).toEqual(first);expect(after.value.screen.navigationIntent).toEqual(second);
+  expect(before.value.version).not.toBe(legacy.value.version);expect(after.value.version).not.toBe(before.value.version);
+  expect(after.file).not.toBe(before.file);expect(await fs.readFile(before.file)).toEqual(before.bytes);
+  expect(await fs.readFile(legacy.file)).toEqual(legacy.bytes);
+  expect(after.value.source).toEqual({status:'unavailable',reason:'source-not-supplied'});expect(f.calls).toEqual([]);
+ });
  it('verifies exact server source bytes and saves reported assets without sending the admin credential to them',async()=>{
   const dir=await makeDir(),f=fixture(142,['/assets/rider-fixture.js','/assets/older-bundle.js']);
   const result=await preserveReportEvidence({dir,reports:[f.report],base:'https://shuttle.test',token:'test-only-admin',fetcher:f.fetcher,now:f.now});
