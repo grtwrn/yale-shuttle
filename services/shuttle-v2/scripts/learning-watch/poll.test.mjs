@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { advance, inspect, inspectCollectorCapture, pollLearning, probeObserver, snapshotDiagnostics } from './poll.mjs';
+import { advance, describeObserverReadiness, inspect, inspectCollectorCapture, pollLearning, probeObserver, snapshotDiagnostics } from './poll.mjs';
 import { collectPlatform } from './platform.mjs';
 
 const now = Date.parse('2026-10-17T12:00:00Z');
@@ -113,6 +113,74 @@ async function fixture() {
 }
 const read = async file => JSON.parse(await fs.readFile(file, 'utf8'));
 const digest = async file => createHash('sha256').update(await fs.readFile(file)).digest('hex');
+function verifiedContainer(startedAt = now - 60000) {
+  return { pid:123,alive:true,expectedCommand:true,runtimeKind:'linux-container',runtimeOwner:'fixture-owner',
+    containerId:'a'.repeat(64),ownerCreatedAt:new Date(now-61000).toISOString(),
+    containerStartedAt:new Date(startedAt).toISOString(),containerStatus:'running' };
+}
+describe('verified process startup and current status are separate evidence', () => {
+  it('attributes a stopped previous context to its original runtime while preserving every health failure', async () => {
+    const f=await fixture();f.x.observer=verifiedContainer();f.x.status.running=false;
+    f.x.status.error='Original source changed; restart required';await f.write(now-300000);
+    const files=['state.json','status.json',f.x.state.id+'/frozen-candidate.json'].map(n=>path.join(f.root,n));
+    const before=await Promise.all(files.map(digest)),expectedCodes=inspect(f.x,now).map(x=>x.code);
+    const result=await pollLearning({...f,now});
+    expect(result.ok).toBe(false);expect(result.phase).toBe('awaiting-current-status');
+    expect(result.observerReadiness).toMatchObject({state:'awaiting-current-status',processVerified:true,
+      statusAssociation:'previous-runtime',readiness:'unverified',verificationProgress:'unknown',
+      priorRuntimeStatus:{updatedAt:new Date(now-300000).toISOString(),cycle:f.x.state.id,running:false,
+        error:'Original source changed; restart required'}});
+    expect(result.issues.map(x=>x.code)).toEqual(expectedCodes);
+    expect(result.issues.some(x=>x.code==='observer-process')).toBe(false);
+    expect(await Promise.all(files.map(digest))).toEqual(before);
+  });
+  it('does not let a fresh healthy status from the previous process certify the new process',async()=>{
+    const f=await fixture();f.x.observer=verifiedContainer(now-1000);await f.write(now-2000);
+    expect(inspect(f.x,now)).toEqual([]);
+    const result=await pollLearning({...f,now});
+    expect(result.ok).toBe(false);expect(result.phase).toBe('awaiting-current-status');
+    expect(result.issues).toEqual([]);expect(result.observerReadiness.readiness).toBe('unverified');
+  });
+  it('keeps a current failed status current and applies the existing health checks',async()=>{
+    const f=await fixture();f.x.observer=verifiedContainer();f.x.status.error='Current retained-input refusal';await f.write(now);
+    const result=await pollLearning({...f,now});
+    expect(result.ok).toBe(false);expect(result.phase).toBe('warming');
+    expect(result.observerReadiness.state).toBe('current-status');
+    expect(result.observerReadiness.priorRuntimeStatus).toBeUndefined();
+    expect(result.issues.map(x=>x.code)).toEqual(['observer-error']);
+    delete f.x.status.error;await f.write(now);
+    expect((await pollLearning({...f,now})).ok).toBe(true);
+  });
+  it.each([{alive:false,expectedCommand:true},{alive:true,expectedCommand:false}])('does not infer startup from an unverified process %j',patch=>{
+    const x=healthy();x.observer={...verifiedContainer(),...patch};x.status.updatedAt=new Date(now-300000).toISOString();
+    expect(describeObserverReadiness(x,now)).toMatchObject({state:'unverified',processVerified:false,readiness:'unverified'});
+    expect(codes(x)).toContain('observer-process');
+  });
+  it.each([
+    ['equal status/start',new Date(now-60000).toISOString(),new Date(now-60000).toISOString(),'current-status'],
+    ['five-second clock allowance',new Date(now+5000).toISOString(),new Date(now-60000).toISOString(),'awaiting-current-status'],
+    ['future start beyond allowance',new Date(now+5001).toISOString(),new Date(now-60000).toISOString(),'unverified'],
+    ['future status beyond allowance',new Date(now-60000).toISOString(),new Date(now+5001).toISOString(),'unverified'],
+    ['missing start',null,new Date(now).toISOString(),'unverified'],
+    ['invalid start','invalid',new Date(now).toISOString(),'unverified'],
+    ['invalid status',new Date(now-60000).toISOString(),'invalid','unverified'],
+  ])('handles %s without inventing current status or green health',async(_name,startedAt,statusAt,expected)=>{
+    const f=await fixture();f.x.observer={...verifiedContainer(),containerStartedAt:startedAt};await f.write(now);
+    f.x.status.updatedAt=statusAt;await fs.writeFile(path.join(f.root,'status.json'),JSON.stringify(f.x.status));
+    const result=await pollLearning({...f,now});
+    expect(result.observerReadiness.state).toBe(expected);
+    expect(result.ok).toBe(expected==='current-status');
+  });
+  it('preserves the existing host-process fallback without claiming container status association',async()=>{
+    const f=await fixture();await f.write(now);const result=await pollLearning({...f,now});
+    expect(result.observerReadiness.statusAssociation).toBe('unknown');expect(result.ok).toBe(true);
+  });
+  it('reports a missing status without inventing prior runtime or verification progress',()=>{
+    expect(describeObserverReadiness({observer:verifiedContainer(),status:null},now)).toMatchObject({
+      state:'awaiting-current-status',statusAssociation:'missing',priorRuntimeStatus:null,
+      readiness:'unverified',verificationProgress:'unknown'});
+  });
+});
 function decodeDiagnostics(snapshot) {
   expect(snapshot.v).toBe(1); expect(snapshot.encoding).toBe('diagnostic-json');
   expect(snapshot.bytes).toBe(Buffer.byteLength(snapshot.json));

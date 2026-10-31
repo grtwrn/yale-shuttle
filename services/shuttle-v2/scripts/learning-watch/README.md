@@ -45,6 +45,16 @@ parameter accuracy, complete source-byte parity or independently observed
 boarding. It never changes learner evidence, parameters or cycles, and never
 starts, stops or restarts the observer.
 
+A verified running container can still be awaiting its first current status
+while startup checks retained inputs. `observerReadiness` keeps that fresh
+process observation separate from the previous runtime's status and terminal
+error. The phase is `awaiting-current-status` and `ok` stays false, even when
+the previous status is recent. Verification progress stays unknown and readiness
+unverified; this neither creates a new context nor supplies positive controls.
+Missing or invalid container/status timestamps also keep `ok` false. Timestamp
+association alone never certifies health: once status belongs to the current
+process, all existing health checks apply. The host-process fallback is unchanged.
+
 Private `status.json` and `state.json` live in
 `scripts/.bot-artifacts/learning-watch/`; recent incident receipts keep the
 latest 100 entries. Output logs retain approximately 1 MiB live plus one compressed

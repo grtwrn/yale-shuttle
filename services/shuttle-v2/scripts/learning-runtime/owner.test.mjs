@@ -11,8 +11,9 @@ async function fixture() {
   const script = '/fixture/services/shuttle-v2/scripts/learning-loop/start.ts';
   const wrapper = '/fixture/services/shuttle-v2/scripts/learning-runtime/start.mjs';
   const owner = {v:1,kind:'linux-container',id:'01234567-0123-0123-0123-012345678901',wrapper,script,root,
-    hostPid:43210,hostLeasePid:43100,context:DOCKER_CONTEXT,containerId:'a'.repeat(64),image:FORECAST_RUNTIME.image,phase:'running'};
-  const info = {state:{Running:true,Paused:false,Dead:false,Pid:123},image:FORECAST_RUNTIME.image.split('@')[1],
+    hostPid:43210,hostLeasePid:43100,context:DOCKER_CONTEXT,containerId:'a'.repeat(64),image:FORECAST_RUNTIME.image,phase:'running',
+    createdAt:'2026-10-31T05:00:50.286Z'};
+  const info = {state:{Running:true,Paused:false,Dead:false,Pid:123,Status:'running',StartedAt:'2026-10-31T05:00:50.764Z'},image:FORECAST_RUNTIME.image.split('@')[1],
     labels:{[OWNER_LABEL]:owner.id},entrypoint:['node'],args:['--import','loader.mjs',script]};
   let hostCommand = `node ${wrapper}`, guestCommand = `node\0${script}\0`, containerError = false;
   const kills = [], calls = [];
@@ -29,9 +30,16 @@ async function fixture() {
 }
 it('verifies the host supervisor, actual container identity and guest command in their separate PID namespaces', async () => {
   const f=await fixture(), result=await f.probe();
-  expect(result).toMatchObject({pid:43210,guestPid:1,containerPid:123,alive:true,expectedCommand:true});
+  expect(result).toMatchObject({pid:43210,guestPid:1,containerPid:123,alive:true,expectedCommand:true,
+    ownerCreatedAt:f.owner.createdAt,containerStartedAt:f.info.state.StartedAt,containerStatus:'running'});
   expect(f.kills).toEqual([[43210,0],[43100,0]]); // Never process.kill(1) on the Mac.
   expect(f.calls.some(([file,args])=>file==='docker'&&args.includes('/proc/1/cmdline'))).toBe(true);
+});
+it('exposes the actual running state even when the original owner receipt still says created',async()=>{
+  const f=await fixture();f.owner.phase='created';await f.save();
+  expect(await f.probe()).toMatchObject({alive:true,expectedCommand:true,containerStatus:'running',
+    ownerCreatedAt:f.owner.createdAt,containerStartedAt:f.info.state.StartedAt});
+  expect(JSON.parse(await fs.readFile(path.join(f.root,OWNER_FILE),'utf8')).phase).toBe('created');
 });
 it('rejects a reused host PID before inspecting any container',async()=>{
   const f=await fixture();f.host('node unrelated.mjs');

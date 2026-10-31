@@ -53,6 +53,8 @@ export async function probeContainerObserver(root, script, { exec = execute, kil
     const args = guest.stdout.split('\0').filter(Boolean);
     if (!args.includes(script) || args.includes('--once')) return failed('Container PID 1 is not the prospective observer');
     return { pid: owner.hostPid, alive: true, expectedCommand: true, runtimeKind: 'linux-container', guestPid: 1,
-      containerPid: info.state.Pid, containerId: owner.containerId, runtimeOwner: owner.id, hostLeasePid:owner.hostLeasePid };
+      containerPid: info.state.Pid, containerId: owner.containerId, runtimeOwner: owner.id, hostLeasePid:owner.hostLeasePid,
+      ownerCreatedAt: owner.createdAt ?? null, containerStartedAt: info.state.StartedAt ?? null,
+      containerStatus: info.state.Status ?? null };
   } catch (error) { return failed(String(error.message ?? error).slice(0, 160)); }
 }
