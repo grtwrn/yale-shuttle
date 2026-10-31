@@ -678,7 +678,22 @@ function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
   const suffixes = new Set(["st", "street", "ave", "avenue", "rd", "road", "dr", "drive", "ln", "lane", "blvd", "boulevard", "pl", "place", "ct", "court"]);
   const words = parts[2]!.split(" ");
   const suffixAt = words.findIndex((word, index) => index > 0 && suffixes.has(word));
-  const street = suffixAt < 0 ? words : words.slice(0, suffixAt);
+  let street = suffixAt < 0 ? words : words.slice(0, suffixAt);
+  // Without a comma, "71 Ivy Circle West Haven" carries its town after
+  // Circle. Keep that street type in the match, and only separate the town
+  // when it appears in the hit's locality, not merely in its street name.
+  const circleAt = words.findIndex((word, index) => index > 0 && longStreetWord(word) === "circle");
+  if (suffixAt < 0 && circleAt > 0 && circleAt < words.length - 1) {
+    const lines = hit.display_name.split(",").map(normalizeName);
+    const numberAt = lines.findIndex((line, index) => index < 2
+      && (line === parts[1]! || line.startsWith(`${parts[1]} `)));
+    if (numberAt < 0) return false;
+    // Nominatim separates the number and street; Photon keeps them together.
+    const localityAt = numberAt + (lines[numberAt] === parts[1] ? 2 : 1);
+    const locality = ` ${lines.slice(localityAt).join(" ")} `;
+    if (!locality.includes(` ${words.slice(circleAt + 1).join(" ")} `)) return false;
+    street = words.slice(0, circleAt + 1);
+  }
   if (street.length === 0) return false;
   // Nominatim starts with "517, Prospect Street"; Photon usually starts
   // with "517 Prospect Street". Named buildings may put the address second.
