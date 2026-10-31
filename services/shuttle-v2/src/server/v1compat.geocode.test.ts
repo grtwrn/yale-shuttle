@@ -654,6 +654,8 @@ describe("rankExternal", () => {
       "71 Ivy Circle, West Haven",
       "71 Ivy Cir, West Haven",
       "71 Ivy Cir., West Haven, CT",
+      "71 Ivy Circle West Haven",
+      "71 Ivy Cir West Haven",
     ])("keeps the house for %j", (q) => {
       expect(rankExternal(network, [ivyCircle], q)).toEqual([ivyCircle]);
     });
@@ -661,7 +663,43 @@ describe("rankExternal", () => {
     it("still tells the street types apart", () => {
       expect(rankExternal(network, [ivyStreet], "71 Ivy Circle, West Haven")).toEqual([]);
       expect(rankExternal(network, [ivyStreet], "71 Ivy Cir")).toEqual([]);
+      expect(rankExternal(network, [ivyStreet], "71 Ivy Cir West Haven")).toEqual([]);
       expect(rankExternal(network, [ivyCircle], "71 Ivy St, West Haven")).toEqual([ivyCircle]);
+    });
+
+    it("keeps the requested town when it follows Circle without a comma", () => {
+      expect(rankExternal(network, [ivyCircle], "71 Ivy Circle New Haven")).toEqual([]);
+      const otherTown = { ...ivyCircle, display_name: "71 Ivy Circle, New Haven" };
+      expect(rankExternal(network, [otherTown], "71 Ivy Cir West Haven")).toEqual([]);
+      // A street named for the town is not evidence that the house is there.
+      const townInStreet = { ...ivyCircle, display_name: "71 West Haven Circle, New Haven" };
+      expect(rankExternal(network, [townInStreet], "71 West Haven Circle West Haven")).toEqual([]);
+    });
+
+    it.each(["71 Ivy Circle New Haven", "71 Ivy Cir New Haven"])("does not read a county as the town in %j", (q) => {
+      const westHaven = { ...ivyCircle, display_name: "71, Ivy Circle, Savin Rock, West Haven, New Haven County, Connecticut" };
+      expect(rankExternal(network, [westHaven], q)).toEqual([]);
+      expect(rankExternal(network, [westHaven], "71 Ivy Cir West Haven")).toEqual([westHaven]);
+      const newHaven = { ...ivyCircle, display_name: "71, Ivy Circle, New Haven, New Haven County, Connecticut" };
+      expect(rankExternal(network, [newHaven], q)).toEqual([newHaven]);
+    });
+
+    it.each([
+      "71 Ivy Circle, West Haven",
+      "Ivy House, 71 Ivy Circle, West Haven",
+    ])("finds a comma-less town after the numbered address line in %j", (display_name) => {
+      const house = { ...ivyCircle, display_name };
+      expect(rankExternal(network, [house], "71 Ivy Cir West Haven")).toEqual([house]);
+    });
+
+    it("keeps Circle when it is part of a longer street name", () => {
+      const house = { ...ivyCircle, display_name: "71, Ivy Circle Road, West Haven" };
+      expect(rankExternal(network, [house], "71 Ivy Circle Road West Haven")).toEqual([house]);
+    });
+
+    it.each(["71 Ivy Circle Way", "71 Ivy Cir Way West Haven"])("preserves the full street in %j", (q) => {
+      const house = { ...ivyCircle, display_name: "71, Ivy Circle Way, West Haven" };
+      expect(rankExternal(network, [house], q)).toEqual([house]);
     });
 
     it.each([
@@ -1095,6 +1133,24 @@ describe("a street address with a suffix (operator, 2026-09-03)", () => {
       geocoder: createExternalGeocoder({ fetchImpl, now: clock.now, sleep: clock.sleep }),
     };
   };
+
+  it.each([
+    ["71 Ivy Circle West Haven", "Ivy Street", "West Haven"],
+    ["71 Ivy Cir West Haven", "Ivy Circle", "New Haven"],
+  ])("falls back and keeps the requested house for %s", async (query, street, city) => {
+    const wrong = () => json({ features: [
+      photonFeature({ housenumber: "71", street, city, type: "house" }, -72.9656382, 41.2527014),
+    ] });
+    const right = () => json([{
+      lat: "41.2757598", lon: "-72.9578653",
+      display_name: "71, Ivy Circle, Savin Rock, West Haven, Connecticut, 06516, United States",
+      type: "house", class: "place",
+    }]);
+    const { geocoder, calls } = geocoderFor(wrong, right);
+    const results = await geocodeV1(network, query, geocoder);
+    expect(calls.some(url => url.includes("nominatim"))).toBe(true);
+    expect(results).toEqual([expect.objectContaining({ display_name: "71, Ivy Circle, Savin Rock, West Haven, Connecticut, 06516, United States" })]);
+  });
 
   it("asks the other provider when an address query comes back with no address", async () => {
     const { geocoder, calls } = geocoderFor(photonNoHouse, nominatimHouse);
