@@ -676,6 +676,14 @@ describe("rankExternal", () => {
       expect(rankExternal(network, [townInStreet], "71 West Haven Circle West Haven")).toEqual([]);
     });
 
+    it.each(["71 Ivy Circle New Haven", "71 Ivy Cir New Haven"])("does not read a county as the town in %j", (q) => {
+      const westHaven = { ...ivyCircle, display_name: "71, Ivy Circle, Savin Rock, West Haven, New Haven County, Connecticut" };
+      expect(rankExternal(network, [westHaven], q)).toEqual([]);
+      expect(rankExternal(network, [westHaven], "71 Ivy Cir West Haven")).toEqual([westHaven]);
+      const newHaven = { ...ivyCircle, display_name: "71, Ivy Circle, New Haven, New Haven County, Connecticut" };
+      expect(rankExternal(network, [newHaven], q)).toEqual([newHaven]);
+    });
+
     it.each([
       "71 Ivy Circle, West Haven",
       "Ivy House, 71 Ivy Circle, West Haven",
@@ -687,6 +695,11 @@ describe("rankExternal", () => {
     it("keeps Circle when it is part of a longer street name", () => {
       const house = { ...ivyCircle, display_name: "71, Ivy Circle Road, West Haven" };
       expect(rankExternal(network, [house], "71 Ivy Circle Road West Haven")).toEqual([house]);
+    });
+
+    it.each(["71 Ivy Circle Way", "71 Ivy Cir Way West Haven"])("preserves the full street in %j", (q) => {
+      const house = { ...ivyCircle, display_name: "71, Ivy Circle Way, West Haven" };
+      expect(rankExternal(network, [house], q)).toEqual([house]);
     });
 
     it.each([

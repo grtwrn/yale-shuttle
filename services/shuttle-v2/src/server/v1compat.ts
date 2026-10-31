@@ -680,8 +680,8 @@ function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
   const suffixAt = words.findIndex((word, index) => index > 0 && suffixes.has(word));
   let street = suffixAt < 0 ? words : words.slice(0, suffixAt);
   // Without a comma, "71 Ivy Circle West Haven" carries its town after
-  // Circle. Keep that street type in the match, and only separate the town
-  // when it appears in the hit's locality, not merely in its street name.
+  // Circle. Match the provider's full street first so names such as Circle
+  // Way remain intact, then match any town as a whole locality component.
   const circleAt = words.findIndex((word, index) => index > 0 && longStreetWord(word) === "circle");
   if (suffixAt < 0 && circleAt > 0 && circleAt < words.length - 1) {
     const lines = hit.display_name.split(",").map(normalizeName);
@@ -690,9 +690,16 @@ function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
     if (numberAt < 0) return false;
     // Nominatim separates the number and street; Photon keeps them together.
     const localityAt = numberAt + (lines[numberAt] === parts[1] ? 2 : 1);
-    const locality = ` ${lines.slice(localityAt).join(" ")} `;
-    if (!locality.includes(` ${words.slice(circleAt + 1).join(" ")} `)) return false;
-    street = words.slice(0, circleAt + 1);
+    const streetLine = lines[numberAt] === parts[1]
+      ? lines[numberAt + 1] : lines[numberAt]!.slice(parts[1]!.length).trim();
+    if (!streetLine) return false;
+    const providerStreet = streetLine.split(" ").map(longStreetWord);
+    const requested = words.map(longStreetWord);
+    if (providerStreet.some((word, index) => requested[index] !== word)) return false;
+    const town = requested.slice(providerStreet.length).join(" ");
+    // "New Haven County" does not establish that a house is in New Haven.
+    if (town && !lines.slice(localityAt).includes(town)) return false;
+    street = words.slice(0, providerStreet.length);
   }
   if (street.length === 0) return false;
   // Nominatim starts with "517, Prospect Street"; Photon usually starts
