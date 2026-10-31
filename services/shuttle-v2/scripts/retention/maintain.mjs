@@ -42,7 +42,22 @@ async function maintainUnlocked(service, { dryRun = false, learningRoot = path.j
       feedResponses:await maintainFeedResponses(root,{activeRunId,dryRun}) };
     result.outputs.push(await rotateOutput(path.join(root, 'dashboard.log'), { dryRun }));
   }
-  result.learning = await maintainLearning(learningRoot, { dryRun });
+  // The normal service lock is already held. A relocated learning store has
+  // its own sibling lock, which its custody-control writer also uses. Keep
+  // the fixed service -> custom order and avoid reacquiring a canonical alias
+  // of the lock already held by this process.
+  let canonicalLearning;
+  try { canonicalLearning = await fs.realpath(learningRoot); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (!canonicalLearning) result.learning = await maintainLearning(learningRoot, { dryRun });
+  else {
+    const held = await fs.realpath(path.join(service, 'scripts/.storage'));
+    const sibling = path.join(path.dirname(canonicalLearning), '.storage');
+    const canonicalStorage = await fs.realpath(sibling).catch(error => { if (error.code === 'ENOENT') return sibling; throw error; });
+    result.learning = canonicalStorage === held
+      ? await maintainLearning(canonicalLearning, { dryRun })
+      : await withStorageLock(canonicalStorage, () => maintainLearning(canonicalLearning, { dryRun }));
+  }
   for (const name of ['watcher.log', 'watcher-red.log', 'learning.log', 'storage.log']) result.outputs.push(await rotateOutput(path.join(service, 'scripts', name), { dryRun }));
   if (!dryRun) {
     const dir = path.join(service, 'scripts/.storage'); await fs.mkdir(dir, { recursive: true });

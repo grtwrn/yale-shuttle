@@ -83,7 +83,7 @@ export function ArrivalHistory({ route, stopId, etaSec, busName }: { route: stri
       <details style={{ fontSize: 12, color: '#5f6368', lineHeight: 1.5 }}>
         <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>About these records ▾</summary>
         <p>Up to 100 connected journeys among the latest 240 starting-stop visits in 30 days, on the same route and direction, within two hours of this time and the same weekday/weekend category. Only GPS-detected journeys that stopped at both endpoints are shown; skipped stops and recording gaps leave trips out. These observations are context for the live estimate.</p>
-        <p>The date range uses trip starts in New Haven. Table times and the capture time use your device’s local time.</p>
+        <p>The date range uses trip starts in New Haven. Table times and the capture time use Eastern Time (ET).</p>
         <p>The typical past trip is a median with more weight on recent trips; weight halves every {HISTORY_HALF_LIFE_DAYS} days. Every dot stays at its measured time. Recency affects its emphasis and the historical median. The median is shown only when the weighted sample is equivalent to at least five equally weighted trips. This is a summary of past trips, not the live forecast.</p>
       </details>
     </>}

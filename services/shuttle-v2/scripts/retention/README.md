@@ -25,7 +25,7 @@ objects (`chunkBytes`, `maxFiles`, `maxAgeMs`). Defaults:
 | Journey summaries | 6 × 5 MiB chunks / 90 days |
 | Original rider feed responses | 256 MiB / 7 days per rider; separate per-trip journals |
 | launchd output logs | 10 MiB live + 3 compressed backups |
-| Superseded learning inputs | 256 MiB / 7 days |
+| Eligible superseded learning inputs | 256 MiB / 7 days from the recorded hour's end |
 
 Active served-control-v2 inputs remain protected from their original seed,
 including warming: later verification needs the complete source chain.
@@ -45,6 +45,85 @@ ordinary rolling deletion. Retention reports `refusedTrialContexts` and
 `refusedInputBytes` separately from active trial identities; a conflicting
 frozen/closed trial identity refuses cleanup. This protection preserves only
 files that remain available and cannot recover earlier deleted journals.
+
+Completed quality decisions protect every context of their original trial too,
+including an ordinary rejection for failing to improve the score. These are
+reported as `completedTrialContexts` and `completedInputBytes`; they do not
+create a source refusal or change the recorded decision. A daily training
+database archive is not a complete copy of these original inputs.
+
+An operator may also pin a trial in `custody-pins.json` in the learning root:
+
+```json
+{"v":1,"trials":[{"trialSHA256":"<64 lowercase hex>","contextId":"cycle-<timestamp>","frozenSHA256":"<SHA256 of the original frozen-candidate.json bytes>","reason":"Original inputs still required by the source evaluation."}]}
+```
+
+The pin is anchored to the original frozen context and protects every context
+sharing its trial checksum. A malformed or conflicting record stops learning
+cleanup before deletion. Pins have no automatic expiry.
+
+Publish pin and release controls through `writeLearningCustodyControl` from
+`control-snapshot.mjs`, which shares the storage maintenance lock and syncs
+the atomic replacement. For example, from the service directory:
+
+```sh
+node --input-type=module - LEARNING_ROOT custody-pins.json CONTROL_RECORD_JSON <<'JS'
+import fs from 'node:fs/promises';
+import {writeLearningCustodyControl} from './scripts/retention/control-snapshot.mjs';
+const [root, name, file] = process.argv.slice(2);
+console.log(await writeLearningCustodyControl(root, name, JSON.parse(await fs.readFile(file))));
+JS
+```
+
+Use the named `custody-releases/TRIAL_SHA256.json` path to publish a release
+record with the same helper. Direct manual writes do not share the lock;
+retention also rechecks control identities and active/trial/champion scope
+immediately before deletion and aborts if it observes a concurrent change.
+
+To archive a completed, fully retired cohort, run:
+
+```sh
+node scripts/retention/archive-cohort.mjs LEARNING_ROOT TRIAL_SHA256 NEW_ARCHIVE_DIRECTORY
+```
+
+The destination must be a new directory in a separate tree from the learning
+store, with an existing parent. The exporter copies every context file, including complete
+original compressed journals, source snapshots, runtime checkpoints, paired
+outcomes and decisions. It verifies the copies, rechecks all original bytes
+and membership, syncs the archive files and directory hierarchy, and writes a
+synced sealed manifest last. Membership must match the original trial identity
+and every ordered, checksummed prior context link in its frozen and closed
+descriptors. A surviving subset cannot be archived as a complete cohort.
+Missing declared inputs, contexts, links, changing evidence or a live trial
+refuse export. Default limits are
+16 GiB, 16,384 files and a 20 GiB free-space reserve; a failed export remains
+unsealed. Exporting does not release originals or change any scientific gate.
+Every explicitly declared seed, source event, runtime checkpoint and frozen
+source member must be present with its original checksum too. External
+training archives retain their separate 180-day policy; this exporter copies
+the native trial's context files and does not certify indefinite training-data
+availability or physical ETA accuracy.
+
+After reviewing the complete archive, an operator can write
+`custody-releases/TRIAL_SHA256.json` in the learning root:
+
+```json
+{"v":1,"trialSHA256":"<trial checksum>","reviewedAt":"<ISO timestamp>","note":"<review basis>","manifestFile":"<absolute manifest path from exporter>","manifestSHA256":"<manifest checksum from exporter>"}
+```
+
+Retention independently checks that the archive and learning store are
+separate trees, validates the full original lineage, and verifies every
+archived byte and all original context files before accepting the first
+release. It syncs the archived bytes and writes a separate durable acceptance receipt before
+any removal so later runs can distinguish already expired journals from
+originals missing before custody was established. It verifies the archived
+bytes again on later runs. A valid release makes completed inputs eligible for
+the ordinary rolling budget; it never overrides active, champion, refused or
+pinned protection. `archivedTrialContexts` reports verified released cohorts.
+`--dry-run` checks the same evidence without writing acceptance receipts or
+removing inputs. Keep the archive while its release remains in use; missing or
+corrupt archives stop further learning cleanup. No existing missing evidence
+can be recovered or certified by creating a release record.
 
 Riders checkpoint their journey and tester browser state to private
 `resume.json`. A restart within five minutes restores tracking and marks the

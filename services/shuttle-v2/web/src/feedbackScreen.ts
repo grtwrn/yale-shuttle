@@ -56,6 +56,11 @@ export interface FeedbackScreenRow {
   pickupChoice?: string;
   board: string; next: string; arrive: string; legs: string; approaching: string;
 }
+export interface FeedbackNavigationIntent {
+  provider: 'google-maps'; mode: 'walking'; publicStopId: number;
+  walkLabel: string; requestedAt: number;
+  source?: FeedbackSourceReceipt;
+}
 export interface FeedbackScreen {
   v: 1; capturedAt: number; build: string; view: string; tripDetail: boolean;
   rows: FeedbackScreenRow[]; truncated: boolean;
@@ -63,12 +68,49 @@ export interface FeedbackScreen {
   sourceScope: 'public-input-for-render';
   sourceUnavailable?: 'not-supplied' | 'invalid';
   assets: string[];
+  navigationIntent?: FeedbackNavigationIntent;
 }
 
 const text = (value: unknown, max = 160) => typeof value === 'string'
   ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 const integer = (value: unknown, minimum: number) => typeof value === 'number'
   && Number.isSafeInteger(value) && value >= minimum && value <= 2_147_483_647 ? value : undefined;
+
+/** Only public pickup facts, never a URL, planner object, address or rider fix.
+ * This describes a requested action; it cannot attest that another app opened. */
+export function feedbackNavigationIntent(input: unknown): FeedbackNavigationIntent | undefined {
+  if (!record(input) || input.provider !== 'google-maps' || input.mode !== 'walking'
+    || !clock(input.requestedAt)) return undefined;
+  const publicStopId = integer(input.publicStopId, 1), walkLabel = text(input.walkLabel, 24);
+  // fmtWalk's displayed text, or empty when the UI shows no initial walk leg.
+  if (publicStopId === undefined || typeof input.walkLabel !== 'string' || !/^(?:[1-9]\d{0,4} min)?$/.test(walkLabel)) return undefined;
+  const source = feedbackSourceReceipt(input.source);
+  return { provider: 'google-maps', mode: 'walking', publicStopId, walkLabel, requestedAt: input.requestedAt,
+    ...(source ? { source } : {}) };
+}
+
+// A single page-memory value. No request, timer or persistence happens on click.
+let latestNavigationIntent: FeedbackNavigationIntent | undefined;
+export function latestFeedbackNavigationIntent(): FeedbackNavigationIntent | undefined {
+  return feedbackNavigationIntent(latestNavigationIntent);
+}
+/** Test/page-lifetime seam; does not change an already captured report draft. */
+export function resetFeedbackNavigationIntent(): void { latestNavigationIntent = undefined; }
+
+/** Capture phase also sees the berth link, whose bubble handler stops propagation.
+ * Merely observing the matching anchor leaves href/default navigation untouched. */
+export function noteFeedbackDirectionsClick(target: EventTarget | null, href: string | null,
+  input: { publicStopId: number; walkLabel: string; source?: unknown }, requestedAt = Date.now()): boolean {
+  try {
+    const link = (target as Element | null)?.closest?.('a');
+    if (!href || link?.getAttribute('href') !== href) return false;
+    const intent = feedbackNavigationIntent({ ...input, provider: 'google-maps', mode: 'walking', requestedAt });
+    if (!intent) return false;
+    latestNavigationIntent = intent;
+    return true;
+  } catch { return false; } // Diagnostic capture must never prevent navigation.
+}
+
 export function feedbackAssetPaths(input: unknown): string[] {
   return Array.isArray(input) ? [...new Set(input.filter((value): value is string => typeof value === 'string'
     && /^\/assets\/[A-Za-z0-9._-]{1,150}\.(?:js|css)$/.test(value)))].slice(0, 8) : [];
@@ -93,13 +135,15 @@ export function feedbackScreenRow(input: Record<string, unknown>): FeedbackScree
 }
 
 export function feedbackScreenFromRows(rows: readonly Record<string, unknown>[],
-  meta: { capturedAt: number; build: string; view: string; tripDetail: boolean; source?: unknown; assets?: unknown }): FeedbackScreen {
+  meta: { capturedAt: number; build: string; view: string; tripDetail: boolean; source?: unknown; assets?: unknown; navigationIntent?: unknown }): FeedbackScreen {
   const valid = rows.map(feedbackScreenRow).filter((row): row is FeedbackScreenRow => row !== null);
   const source = feedbackSourceReceipt(meta.source), receivedAt = record(meta.source) ? meta.source.receivedAt : undefined;
   const bound = source && clock(receivedAt) ? { ...source, receivedAt } : undefined;
+  const navigationIntent = feedbackNavigationIntent(meta.navigationIntent);
   return {v: 1, capturedAt: meta.capturedAt, build: text(meta.build, 24), view: text(meta.view, 24),
     tripDetail: meta.tripDetail, rows: valid.slice(0, FEEDBACK_SCREEN_MAX_ROWS), truncated: valid.length > FEEDBACK_SCREEN_MAX_ROWS,
     assets: feedbackAssetPaths(meta.assets),
+    ...(navigationIntent ? { navigationIntent } : {}),
     sourceScope: 'public-input-for-render', ...(bound ? { source: bound }
       : { sourceUnavailable: meta.source === undefined || (record(meta.source) && meta.source.unavailable === 'not-supplied')
         ? 'not-supplied' : 'invalid' })};
@@ -155,6 +199,6 @@ export function captureFeedbackScreen(view: string,
       } catch { return []; }
     });
     return feedbackScreenFromRows(rows, {capturedAt: now, build: clientBuild(), view,
-      tripDetail: !!detail?.getClientRects().length, source, assets});
+      tripDetail: !!detail?.getClientRects().length, source, assets, navigationIntent: latestFeedbackNavigationIntent()});
   } catch { return undefined; } // Diagnostic capture must never prevent feedback.
 }

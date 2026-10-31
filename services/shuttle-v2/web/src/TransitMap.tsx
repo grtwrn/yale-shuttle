@@ -34,7 +34,7 @@ import {
 // module scope — see shownLog.ts. Deliberately NOT a hook: it adds no state,
 // no effect and no dependency array to this component.
 import { noteShown } from "./shownLog";
-import { bindFeedbackSource, captureFeedbackScreen, feedbackSourceMetadata, type FeedbackScreen } from './feedbackScreen';
+import { bindFeedbackSource, captureFeedbackScreen, feedbackSourceMetadata, noteFeedbackDirectionsClick, type FeedbackScreen } from './feedbackScreen';
 // What a STANDING bus is allowed to promise — the chip's words and the
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
@@ -4504,7 +4504,11 @@ const TripPlanner: FC<{
                         </p>
                       )}
                       <div className="trip-actions" role="group" aria-label="Trip actions">
-                        <div>
+                        <div onClickCapture={(e) => { noteFeedbackDirectionsClick(e.target, navHref, {
+                          publicStopId: o.boardStopId,
+                          walkLabel: o.walkToSec > 0 ? fmtWalk(o.walkToSec) : '',
+                          source: feedbackSourceMetadata(buses),
+                        }); }}>
                           {berth ? (
                             <BerthDisclosure
                               berth={berth}
