@@ -57,6 +57,28 @@ export function inspect({ state, status, frozen, observer }, now = Date.now()) {
   return issues;
 }
 
+/** Associate status with an independently verified process, without inferring
+ * retained-input progress, a new context, controls or operational health. */
+export function describeObserverReadiness({ observer, status }, now = Date.now()) {
+  const processVerified = observer?.alive === true && observer.expectedCommand === true;
+  const observation = { checkedAt: new Date(now).toISOString(), processVerified };
+  const unknown = { ...observation, state: 'unverified', statusAssociation: 'unknown', readiness: 'unverified' };
+  if (!processVerified || observer.runtimeKind !== 'linux-container') return unknown;
+  const metadata = { ...observation, runtimeOwner: observer.runtimeOwner, containerId: observer.containerId,
+    ownerCreatedAt: observer.ownerCreatedAt ?? null, containerStartedAt: observer.containerStartedAt ?? null,
+    containerStatus: observer.containerStatus ?? null };
+  const startedAt = stamp(observer.containerStartedAt), statusAt = stamp(status?.updatedAt);
+  if (observer.containerStatus !== 'running' || startedAt <= 0 || !fresh(startedAt, now, Infinity))
+    return { ...unknown, ...metadata };
+  if (status && (statusAt < 0 || !fresh(statusAt, now, Infinity))) return { ...unknown, ...metadata };
+  if (status && statusAt >= startedAt)
+    return { ...metadata, state: 'current-status', statusAssociation: 'current-runtime' };
+  return { ...metadata, state: 'awaiting-current-status', statusAssociation: status ? 'previous-runtime' : 'missing',
+    readiness: 'unverified', verificationProgress: 'unknown',
+    priorRuntimeStatus: status ? { updatedAt: status.updatedAt, cycle: status.cycle ?? null,
+      phase: status.phase ?? null, running: status.running ?? null, error: status.error ?? null } : null };
+}
+
 /** Optional until the collector recorder is deployed and supervised. This
  * independent monitor also notices a dead worker that cannot report itself. */
 export function inspectCollectorCapture(status, now = Date.now()) {
@@ -232,6 +254,7 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
     } catch (error) { readFailure = true; readErrors.learning = readError(error); }
     const issues = readFailure ? [{ code: 'unreadable-evidence', summary: 'Learning state, status or frozen evidence cannot be read; original files are preserved.' }]
       : inspect({ state, status, frozen, observer }, now);
+    const observerReadiness = describeObserverReadiness({ observer, status }, now);
     let collectorCapture = null;
     if (collectorStatusFile) {
       try { collectorCapture = await readJson(collectorStatusFile, null); } catch (error) { readErrors.collector = readError(error); }
@@ -278,7 +301,7 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
     let diagnosticSnapshot;
     for (const [scope, alert] of [...next.alerts.map(a => [next.cycle, a]), ...(platformNext?.alerts ?? []).map(a => [platformNext.cycle, a]), ...progressNext.alerts.map(a=>['trial-progress',a])]) {
       diagnosticSnapshot ??= snapshotDiagnostics({ status, stateIdentity: stateIdentity(state),
-        frozenIdentity: stateIdentity(frozen), observer, readErrors, ...(progress?{trialProgress:progress}:{}),
+        frozenIdentity: stateIdentity(frozen), observer, observerReadiness, readErrors, ...(progress?{trialProgress:progress}:{}),
         ...(collectorStatusFile ? { collectorCapture } : {}),
         ...(historyStatusFile ? { timingHistory } : {}),
         ...(countdownStatusFile ? { countdownCapture } : {}),
@@ -294,8 +317,11 @@ export async function pollLearning({ root = process.env.LEARNING_WATCH_ROOT ?? p
       ...(platformNext ? { platform: { ...platformNext, alerts: undefined } } : {}),
       ...(progress?{trialProgress:progress}:{}),trialProgressIncidents:{...progressNext,alerts:undefined},recent });
     const activePlatform = platform.state === 'throttled' ? Object.values(platformNext?.observations ?? {}) : [];
-    const result = { checkedAt: new Date(now).toISOString(), ok: issues.length === 0 && !progress?.issues.length && platform.state !== 'throttled' && !incidentError,
-      cycle: next.cycle, phase: status?.phase ?? null, observerPid: observer?.pid ?? null, observerProcess: observer,
+    const awaitingStatus = observerReadiness.state === 'awaiting-current-status';
+    const unverifiedContainerStatus = observer?.runtimeKind === 'linux-container' && observerReadiness.statusAssociation !== 'current-runtime';
+    const result = { checkedAt: new Date(now).toISOString(), ok: !unverifiedContainerStatus && issues.length === 0 && !progress?.issues.length && platform.state !== 'throttled' && !incidentError,
+      cycle: next.cycle, phase: awaitingStatus ? 'awaiting-current-status' : unverifiedContainerStatus ? 'unverified' : status?.phase ?? null,
+      observerPid: observer?.pid ?? null, observerProcess: observer, observerReadiness,
       issues: [...Object.values(next.observations), ...activePlatform,...Object.values(progressNext.observations)].map(o => ({ code: o.issue.code, summary: o.issue.summary, consecutiveChecks: o.count, reported: o.reported })),
       ...(progress?{trialProgress:progress}:{}),
       productionControl: status?.productionControl ?? null, protocolFailures: state?.protocolFailures ?? status?.protocolFailures ?? null,
