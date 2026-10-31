@@ -74,11 +74,11 @@ describe("standWait — the chip's words", () => {
   it("writes the tooltip as a sentence, not the chip's shorthand", () => {
     // Reusing `leftText` here once produced "About leaving any moment to go".
     const kerbView = standWaitView({ elapsedSec: 10, stand: kerb })!;
-    expect(kerbView.chipTitle).toBe("Standing 0:10 (usually ~0:25 here). It can pull out at any moment, and about 1 min more at the outside.");
+    expect(kerbView.chipTitle).toBe("Standing 0:10 (usually ~0:25 here). It can pull out at any moment or wait about 1 min more, possibly longer. This wait estimate assumes the current pause continues. Use your pickup or stop arrival window for timing.");
     const late = viewAt(540);
     expect(late.chipTitle).toContain("already past the ~4:43 it usually holds");
     const early = standWaitView({ elapsedSec: 0, stand: standAt(0) })!;
-    expect(early.chipTitle).toContain("About 1-9 min still to go, and it can pull out sooner.");
+    expect(early.chipTitle).toContain("About 1-9 min still to go; it can pull out sooner or wait longer.");
   });
 
   it("says nothing for a stand that is not a remainder", () => {
@@ -106,7 +106,7 @@ describe("standWaitFor — composed from what a render site already holds", () =
   const KERB: DwellStat = { med: 30, sd: 20, n: 40, q: [0, 12, 15, 18, 22, 26, 31, 40, 55, 90], qn: 40 };
   const ROUTE: Record<string, DwellStat> = { "11": WINCHESTER, "27": KERB };
 
-  it("reads the stand through shownStandSec — the one source the countdown is billed from", () => {
+  it("reads the conditional pause estimate through shownStandSec", () => {
     const stand = shownStandSec(WINCHESTER, 540, ROUTE)!;
     expect(stand.soonSec).toBeDefined();
     expect(stand.lateSec).toBeDefined();
@@ -156,19 +156,20 @@ describe("the one adjacent pair that reads wrong", () => {
  *   wait leg           "⏳ now-6 min"
  *   expanded stop list "344 Winchester  3:08 · <1-8 min left"
  *
- * All four came from ONE belief and all four were right — the stand's remainder
+ * In this historical fixture, the stand's remainder
  * is q10/q50/q90 = 56/241/487 s and the model's own drive floor to the board
  * stop is 72 s, so the row's 2-9 IS the chip's <1-8 plus the drive. Two
  * quantities, an arrival and a departure, and nothing on screen said which was
- * which. That is what these tests pin: the arithmetic that ties them, and the
- * words that tell them apart.
+ * which. These tests retain that historical arithmetic and the words that
+ * tell the estimates apart. A current published arrival window need not use
+ * the conditional pause assumption or equal the pause range plus drive time.
  *
  * The Map tab's route cards were a different matter — a genuine second
  * arithmetic, `dwell.med ± sd` for the hold and a bare point for the arrival —
  * which is why both stop lists now compose through `standChipFor` and
  * `stopEtaText` and neither builds its own string.
  */
-describe("the 2026-09-11 Red card — one belief, four surfaces", () => {
+describe("the 2026-09-11 Red card — historical ranges, four surfaces", () => {
   const CASE = RED_STAND as {
     standingStopId: number; boardStopId: number; standingSec: number;
     etaSec: number; departNowSec: number;
@@ -197,7 +198,7 @@ describe("the 2026-09-11 Red card — one belief, four surfaces", () => {
     expect(stopEtaText(rest, arrival(), CASE.dwells, undefined)).toBe(CASE.shown.bubble);
     expect(standChipFor(rest, CASE.dwells, undefined)!.clock).toBe("3:10");
     // The words the chip carries NOW. The reported string was "<1-8 min left".
-    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe(CASE.shown.chip);
+    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe(`If still paused: ${CASE.shown.chip}`);
     // What the operator actually read, kept so the report is legible from here.
     expect(CASE.shown.reportedChip).toBe("<1-8 min left");
     expect(Math.round(v.soonSec)).toBe(56);
@@ -219,7 +220,7 @@ describe("the 2026-09-11 Red card — one belief, four surfaces", () => {
     const chip = standChipFor(rest, CASE.dwells, undefined)!;
     // The one word that separates them. "left" was read as "left until it gets
     // here", which is the row's quantity, not this one.
-    expect(chip.text).toMatch(/^(leaves in |leaving )/);
+    expect(chip.text).toMatch(/^If still paused: (leaves in |leaving )/);
     expect(chip.text).not.toMatch(/left$/);
     // ...and no surface that means ARRIVAL borrows the departure's words.
     for (const s of [
@@ -240,7 +241,7 @@ describe("the 2026-09-11 Red card — one belief, four surfaces", () => {
     // the trip card's row builds its view WITH a countdown and a drive floor,
     // the chip builds one without, and the two must still say the same thing.
     const withEta = standWaitFor(rest, CASE.dwells, undefined)!;
-    expect(trip.text).toBe(withEta.leftText);
+    expect(trip.text).toBe(`If still paused: ${withEta.leftText}`);
     expect(trip.overdue).toBe(withEta.overdue);
     expect(trip.title).toBe(withEta.chipTitle);
   });
@@ -306,7 +307,7 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
   const busEtaLive = CASE.etaSec;
 
   it("reads, top to bottom, as a departure and then an arrival", () => {
-    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe("leaves in <1-8 min");
+    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe("If still paused: leaves in <1-8 min");
     expect(boardArrivalText(leadBand, busEtaLive)).toBe("arrives in 2-9 min");
     expect(fmtBusLine({ leadSec: busEtaLive, leadBand })).toBe(CASE.shown.row);
   });
