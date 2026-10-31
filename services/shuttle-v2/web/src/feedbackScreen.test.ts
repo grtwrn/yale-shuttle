@@ -1,6 +1,7 @@
-import {describe,expect,it} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {bindFeedbackSource,captureFeedbackScreen,feedbackAssetPaths,feedbackScreenFromRows,feedbackScreenRow,feedbackSourceForBuses,
-  feedbackSourceReceipt,FEEDBACK_SCREEN_MAX_ROWS} from './feedbackScreen';
+  feedbackSourceReceipt,FEEDBACK_SCREEN_MAX_ROWS,feedbackNavigationIntent,latestFeedbackNavigationIntent,
+  noteFeedbackDirectionsClick,resetFeedbackNavigationIntent} from './feedbackScreen';
 
 const meta={capturedAt:1_700_000_000_000,build:'bundle-1234',view:'trip',tripDetail:false};
 const row={mode:'shuttle',route:'Blue Day',boardStopId:100,alightStopId:117,busName:'44',countdownBusName:'48',stopsAhead:11,
@@ -96,5 +97,94 @@ describe('feedback screen evidence',()=>{
     expect(feedbackAssetPaths(Array.from({length:20},(_,i)=>`/assets/chunk-${i}.js`))).toHaveLength(8);
     const captured=feedbackScreenFromRows([row],{...meta,assets:values});
     expect(captured.assets).toHaveLength(3);expect(JSON.stringify(captured)).not.toContain('private');
+  });
+});
+
+// Injectable DOM surfaces, as in pullToRefresh.test.ts; no React/model engine,
+// browser, external Maps navigation or production request runs in these tests.
+function directionLink(href: string) {
+  const attributes = { href, target: '_blank', rel: 'noreferrer' };
+  const anchor = { getAttribute: (name: string) => attributes[name as keyof typeof attributes] ?? null };
+  const child = { closest: (selector: string) => selector === 'a' ? anchor : null };
+  return { attributes, target: child as unknown as EventTarget };
+}
+function screenDocument(input: typeof row[] = [row]): Document {
+  const rows = input.map(value => ({
+    getClientRects: () => [{}],
+    getAttribute: (name: string) => ({ 'data-mode': value.mode, 'data-route': value.route,
+      'data-pickup': String(value.boardStopId), 'data-alight': String(value.alightStopId),
+      'data-board-bus': value.busName, 'data-countdown-bus': value.countdownBusName,
+      'data-board-stops-ahead': String(value.stopsAhead), 'data-pickup-choice': value.pickupChoice } as Record<string, string>)[name] ?? null,
+    querySelectorAll: () => [value.board, value.next, value.arrive].map(innerText => ({ innerText })),
+    querySelector: (selector: string) => ({ innerText: selector.includes('journey-legs') ? value.legs : value.approaching }),
+  }));
+  return { baseURI: 'https://shuttle.example/',
+    querySelectorAll: (selector: string) => selector.includes('route-timing-table') ? rows : [],
+    querySelector: () => null,
+  } as unknown as Document;
+}
+
+describe('feedback navigation intent', () => {
+  const hrefA = 'https://www.google.com/maps/dir/?api=1&destination=41.31,-72.92&travelmode=walking';
+  const hrefB = 'https://www.google.com/maps/dir/?api=1&destination=41.32,-72.93&travelmode=walking';
+  beforeEach(() => resetFeedbackNavigationIntent());
+  afterEach(() => { resetFeedbackNavigationIntent(); vi.unstubAllGlobals(); });
+
+  it('keeps only the latest clicked public pickup, rather than list position', () => {
+    const a = directionLink(hrefA), b = directionLink(hrefB);
+    expect(noteFeedbackDirectionsClick(a.target, hrefA, {publicStopId:100,walkLabel:'4 min',source},1000)).toBe(true);
+    expect(latestFeedbackNavigationIntent()).toMatchObject({publicStopId:100,walkLabel:'4 min',requestedAt:1000});
+    expect(noteFeedbackDirectionsClick(b.target, hrefB, {publicStopId:129,walkLabel:'7 min'},2000)).toBe(true);
+    expect(latestFeedbackNavigationIntent()).toEqual({provider:'google-maps',mode:'walking',publicStopId:129,walkLabel:'7 min',requestedAt:2000});
+  });
+  it('freezes a deep clone when a draft opens, through later polls, reordering and retries', () => {
+    const link = directionLink(hrefA),mutableSource=structuredClone(source);
+    noteFeedbackDirectionsClick(link.target,hrefA,{publicStopId:100,walkLabel:'4 min',source:mutableSource},1000);
+    const draft=captureFeedbackScreen('trip',screenDocument(),1100)!;
+    const firstSubmission=JSON.stringify({screen:draft});
+    mutableSource.evaluation.epoch='changed-after-click';
+    const exposed=latestFeedbackNavigationIntent()!;exposed.publicStopId=500;exposed.source!.evaluation!.epoch='changed-getter-copy';
+    noteFeedbackDirectionsClick(directionLink(hrefB).target,hrefB,{publicStopId:129,walkLabel:'7 min'},2000);
+    const later=captureFeedbackScreen('trip',screenDocument([{...row,boardStopId:129},row]),2100)!;
+    expect(later.navigationIntent?.publicStopId).toBe(129);
+    expect(JSON.stringify({screen:draft})).toBe(firstSubmission); // same draft on retry
+    expect(draft.navigationIntent).toMatchObject({publicStopId:100,requestedAt:1000,source:{evaluation:{epoch:'producer-epoch'}}});
+  });
+  it('whitelists public facts and source receipt without retaining private or arbitrary input', () => {
+    const intent=feedbackNavigationIntent({provider:'google-maps',mode:'walking',publicStopId:100,walkLabel:'4 min',requestedAt:1000,
+      origin:{lat:41.311234,lon:-72.912345},userLatLon:{lat:41.311234},address:'Private home',
+      url:hrefA,option:{fromLat:41.311234},nativeHandoffSucceeded:true,
+      source:{...source,origin:'Private home',evaluation:{...source.evaluation,address:'Private home'}}});
+    expect(intent).toEqual({provider:'google-maps',mode:'walking',publicStopId:100,walkLabel:'4 min',requestedAt:1000,source});
+    expect(JSON.stringify(intent)).not.toMatch(/41\.311234|72\.912345|Private|origin|address|url|option|Handoff|Succeeded/);
+  });
+  it('rejects malformed intent and address-like walk labels, while retaining no-walk display honestly', () => {
+    const valid={provider:'google-maps',mode:'walking',publicStopId:100,walkLabel:'4 min',requestedAt:1000};
+    for(const patch of [{provider:'other'},{mode:'driving'},{publicStopId:0},{publicStopId:NaN},{requestedAt:-1},
+      {walkLabel:'Private home address'},{walkLabel:123}])expect(feedbackNavigationIntent({...valid,...patch})).toBeUndefined();
+    expect(feedbackNavigationIntent({...valid,walkLabel:''})?.walkLabel).toBe('');
+    expect(feedbackNavigationIntent({...valid,source:{...source,sha256:'invalid'}})?.source).toBeUndefined();
+  });
+  it('observes the matching anchor without changing href, target, rel or navigation', () => {
+    const link=directionLink(hrefA),before={...link.attributes};
+    expect(noteFeedbackDirectionsClick(link.target,hrefA,{publicStopId:100,walkLabel:'4 min'},1000)).toBe(true);
+    expect(link.attributes).toEqual(before);
+    expect(noteFeedbackDirectionsClick(link.target,hrefB,{publicStopId:129,walkLabel:'7 min'},2000)).toBe(false);
+    expect(latestFeedbackNavigationIntent()?.publicStopId).toBe(100);
+  });
+  it('ignores the berth disclosure toggle and malformed targets without blocking the action', () => {
+    const toggle={closest:()=>null} as unknown as EventTarget;
+    expect(noteFeedbackDirectionsClick(toggle,hrefA,{publicStopId:100,walkLabel:'4 min'},1000)).toBe(false);
+    expect(noteFeedbackDirectionsClick(null,hrefA,{publicStopId:100,walkLabel:'4 min'},1000)).toBe(false);
+    expect(noteFeedbackDirectionsClick({closest:()=>{throw Error('detached')}} as unknown as EventTarget,hrefA,{publicStopId:100,walkLabel:'4 min'},1000)).toBe(false);
+    expect(latestFeedbackNavigationIntent()).toBeUndefined();
+  });
+  it('clicking and discarding a feedback draft make no report request or persistent write', () => {
+    const fetch=vi.fn(),setItem=vi.fn();vi.stubGlobal('fetch',fetch);vi.stubGlobal('localStorage',{setItem});
+    noteFeedbackDirectionsClick(directionLink(hrefA).target,hrefA,{publicStopId:100,walkLabel:'4 min'},1000);
+    let draft=captureFeedbackScreen('trip',screenDocument(),1100);
+    expect(draft?.navigationIntent?.publicStopId).toBe(100);
+    draft=undefined; // closeFeedback discards the captured draft instead of submitting it
+    expect(draft).toBeUndefined();expect(fetch).not.toHaveBeenCalled();expect(setItem).not.toHaveBeenCalled();
   });
 });
