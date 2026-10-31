@@ -2878,31 +2878,17 @@ const TripPlanner: FC<{
     // Dwell readouts: the typical hold at a stop, plus the live
     // elapsed while the bus is parked at its current stop.
     const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
-    // The hold SHOWN must be the hold BILLED — see shownStandSec
-    // (report #73: "it says arrive in 8 but expected dwell is
-    // 10", which was the median on screen and a low quantile in
-    // the arithmetic).
-    //
-    // So this reads the same records computeUpcomingArrivals
-    // prices from, through the same predicates, and nothing else.
-    // Two ways it has drifted before:
-    //
-    //  - It used to prefer a per-bus dwell (dwellsByBus, n >= 5)
-    //    while the arithmetic only ever read the ROUTE dwell:
-    //    "held 5 min of ~5" beside a countdown charging a
-    //    different ~5. It could not fire only because the server
-    //    hardcodes dwells_by_bus to {} (src/server/v1compat.ts)
-    //    — a latent trap, not a working feature.
-    //  - Once the stand/drive split went live (Red, Blue Day)
-    //    the chip kept quoting `dwell.med`, the arrival-to-
-    //    arrival median that CONTAINS DRIVE TIME, while the
-    //    countdown priced the conditional standing quantiles:
-    //    "⏸ 3 min / ~10 min" beside "5 min" (2026-09-04).
-    //
-    // If per-bus dwells are ever really served, thread them into
-    // computeUpcomingArrivals FIRST; display follows billing.
-    // The chip reads the model's own stand table (see
-    // shownStandSec), the one the countdown is billed from.
+    // Both pause chips use the route table through shownStandSec.
+    // Historical guards behind that choice (report #73):
+    //  - A per-bus dwell preference could disagree with the route
+    //    table used for arrivals. Per-bus data was not actually served;
+    //    do not select it without an explicit shared dwell contract.
+    //  - After the stand/drive split, `dwell.med` still contained drive
+    //    time. The pause chip must use standing quantiles instead of
+    //    subtracting its clock from an arrival-to-arrival total.
+    // The current chip assumes the pause continues. The separately
+    // published server arrival window can use a different assumption;
+    // its range need not equal this pause range plus drive time.
     const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
     /**
      * M:SS for the live pause chip, so a hold keeps its seconds
@@ -5487,8 +5473,9 @@ const StopList: FC<{
                 /**
                  * THE HOLD, AND WHAT IS LEFT OF IT — the same string the trip
                  * card's stop list prints for the same bus at the same instant
-                 * (`standWaitFor` -> `leftText`), because it is the same belief
-                 * and the same stand table.
+                 * (`standChipFor`), from the same conditional pause estimate
+                 * and stand table. Its pause assumption can differ from the
+                 * separately published arrival window used for pickup timing.
                  *
                  * It used to be `elapsed / ~dwell.med±sd`, i.e. a clock the
                  * payload published beside a total that contains drive time,

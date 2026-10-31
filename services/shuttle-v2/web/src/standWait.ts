@@ -1,5 +1,6 @@
 // What a rider is told while a bus is STANDING at a stop — the pause chip's
-// words, and the ONE composition every stop list reads the countdown through.
+// words, shared by both stop lists. This estimate assumes the pause continues;
+// the separately published arrival window is what riders use for pickup timing.
 //
 // THE CASE THIS EXISTS FOR (operator, 2026-09-07). A Red bus stood at
 // 344 Winchester for 9:16. The stop's served stand table is
@@ -43,15 +44,14 @@
 //     the bus stood. It is now the estimator's own 10-90 band, printed with
 //     its median on every row, standing or moving (etaBand.ts; the operator:
 //     "it only shows a range for red when its at the dwell stop but earlier
-//     might be helpful"). For a STANDING bus that band's low end is floored
-//     at departNow + the shortest stand still left (`standingLowFloor`) —
-//     the low end this module used to print — and `arrivalBand` below is the
-//     one place the two are put together, so the row, the minimap chip, the
-//     Map tab's stop rows and the wait leg cannot disagree.
+//     might be helpful"). `arrivalBand` below shares that arrival band across
+//     the row, minimap chip, Map tab's stop rows and wait leg. It does not add
+//     this conditional pause range to a drive time or floor the arrival by it.
 //
-// The quantiles are the model's own — `shownStandSec` reads the same stand
-// table, through the same pools, at the same clock the countdown is billed
-// under (arrivals.ts). Nothing here estimates anything; it decides wording.
+// `shownStandSec` reads the dwell tables at the observed pause clock
+// (arrivals.ts). That conditional stop wait and the server's arrival window
+// can differ: the arrival need not assume the current pause continues.
+// This module composes their words without changing either estimate.
 
 import { fmtMin } from "./format";
 import { chipCountdownText, displayBand, type EtaBand } from "./etaBand";
@@ -128,14 +128,16 @@ function bare(s: string): string {
  * "<1-8 min left", which sat in the expanded card's stop list twelve pixels
  * under a row reading "in 2-9 min" and a map bubble reading "(R) 2-9 min" —
  * "im seeing different estimates in the route list and the minimap … look down
- * at the stop list it had different numbers". Both numbers were right and they
- * came from one belief: reproduced from production (#310 standing at 344
+ * at the stop list it had different numbers". In that historical example,
+ * reproduced from production (#310 standing at 344
  * Winchester, 08:26:47 ET) the stand's remainder is q10/q50/q90 = 56/241/487 s
  * and the model's own drive floor to the board stop is 72 s, so 2-9 IS
  * (<1-8) + the drive. What the chip never said is what the 8 minutes were
  * eight minutes OF. "left" reads as "left until it gets here" in a list of
  * stops; "leaves in" cannot. The row's "in …" is an arrival, this is a
- * departure, and the two are now distinguishable at a glance.
+ * departure. This fixture's arithmetic is not a rule for every live arrival:
+ * the published arrival window can account for the pause ending. The chip
+ * qualifies its own assumption so riders can distinguish the two estimates.
  */
 export function standLeftText(soonSec: number, lateSec: number): string {
   const high = fmtMin(lateSec);
@@ -155,7 +157,7 @@ export function standLeftText(soonSec: number, lateSec: number): string {
 }
 
 /**
- * The chip's words and the countdown's range for a bus that is standing.
+ * The conditional pause estimate and tooltip for a bus that is standing.
  * Returns null for anything that is not a live remainder.
  */
 export function standWaitView(input: StandWaitInput): StandWaitView | null {
@@ -179,19 +181,18 @@ export function standWaitView(input: StandWaitInput): StandWaitView | null {
   const toGo = lateSec < IMMINENT_SEC
     ? "It can pull out at any moment."
     : soonSec < IMMINENT_SEC
-      ? `It can pull out at any moment, and about ${fmtMin(lateSec)} more at the outside.`
-      : `About ${bare(fmtMin(soonSec))}-${fmtMin(lateSec)} still to go, and it can pull out sooner.`;
-  const chipTitle = `Standing ${mmss(elapsedSec)}${typicalPart}. ${toGo}`;
+      ? `It can pull out at any moment or wait about ${fmtMin(lateSec)} more, possibly longer.`
+      : `About ${bare(fmtMin(soonSec))}-${fmtMin(lateSec)} still to go; it can pull out sooner or wait longer.`;
+  const chipTitle = `Standing ${mmss(elapsedSec)}${typicalPart}. ${toGo} This wait estimate assumes the current pause continues. Use your pickup or stop arrival window for timing.`;
 
   return { elapsedSec, overdue, remainingSec, soonSec, lateSec, leftText, chipTitle };
 }
 
 /**
- * The same answer straight from what a render site already holds: the standing
- * stop the PRICE resolved (liveAnchor.ts `resolveStandingStop`) and the route's
- * dwell tables. Reading the stand through `shownStandSec` is the point — it is
- * the one source the countdown is billed from, so the chip and the range
- * cannot drift from the number beside them.
+ * The conditional pause estimate from what a render site already holds: the
+ * standing stop (liveAnchor.ts `resolveStandingStop`) and the route's dwell
+ * tables. Both pause chips use `shownStandSec`; the independently published
+ * arrival window can make a different assumption about the pause continuing.
  */
 export function standWaitFor(
   standing: { stopId: number; standingSec: number } | null,
@@ -232,7 +233,7 @@ export function standChipFor(
   if (!view) return null;
   return {
     clock: mmss(standing.standingSec),
-    text: view.leftText,
+    text: `If still paused: ${view.leftText}`,
     title: (standing.approach
       ? "Waiting for this stop, holding just short of the marker. "
       : "") + view.chipTitle,
