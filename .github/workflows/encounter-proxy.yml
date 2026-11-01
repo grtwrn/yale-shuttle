@@ -1,0 +1,38 @@
+name: encounter-proxy
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'services/shuttle-v2/scripts/encounter-proxy/**'
+      - '.github/workflows/encounter-proxy.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'services/shuttle-v2/scripts/encounter-proxy/**'
+      - '.github/workflows/encounter-proxy.yml'
+permissions:
+  contents: read
+concurrency:
+  group: encounter-proxy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  independent-proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/shuttle-v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/shuttle-v2/package-lock.json
+      - run: npm ci
+      - name: Record the actual computation runtime
+        run: node -p 'JSON.stringify({node:process.version,platform:process.platform,arch:process.arch})'
+      - name: Typecheck the standalone observer and custody tools
+        run: npx tsc --noEmit -p scripts/encounter-proxy/tsconfig.json
+      - name: Qualify raw encounters, model independence and durable fixture custody
+        run: npx vitest run scripts/encounter-proxy
