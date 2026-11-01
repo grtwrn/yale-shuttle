@@ -1613,6 +1613,7 @@ type LiveBusStatus = "loading" | "unavailable" | "ready";
 
 const TripPlanner: FC<{
   active: boolean;
+  reminderHost: HTMLElement | null;
   buses: BusData[];
   reportingSnapshot: ReportingSnapshot | null;
   reportingAvailable: boolean;
@@ -1660,7 +1661,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ active, buses, reportingSnapshot, reportingAvailable, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ active, reminderHost, buses, reportingSnapshot, reportingAvailable, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [initialDraft] = useState(loadTripDraft);
   const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
   const [toText, setToText] = useState(initialDraft?.toText ?? "");
@@ -3312,10 +3313,9 @@ const TripPlanner: FC<{
           can't be shown (permission denied, or iOS Safari page context
           where the Notification API doesn't exist). The portal keeps it
           visible on Map and Issues too; it stays up until dismissed. */}
-      {reminderBanner && createPortal(
+      {reminderBanner && reminderHost && createPortal(
         <div role="alert" style={{
-          position: "fixed", top: 12, left: 12, right: 12, zIndex: 3000,
-          maxWidth: 536, margin: "0 auto",
+          position: "relative", maxWidth: 536, margin: "8px 12px",
           display: "flex", alignItems: "center", gap: 10,
           background: "#1a73e8", color: "#fff", borderRadius: 12,
           padding: "10px 6px 10px 14px",
@@ -3333,7 +3333,7 @@ const TripPlanner: FC<{
               fontSize: 18, cursor: "pointer", fontFamily: "inherit",
             }}
           >✕</button>
-        </div>, document.body)}
+        </div>, reminderHost)}
       {/* Remove the inactive UI, including its Leaflet maps, while the
           controller, live reporting monitor and reminder timer stay mounted. */}
       {active && <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
@@ -6562,6 +6562,7 @@ const TransitMap: FC = () => {
   }, []);
   const rideFinishRef = useRef<HTMLElement | null>(null);
   const mainNavRef = useRef<HTMLElement | null>(null);
+  const [reminderHost, setReminderHost] = useState<HTMLDivElement | null>(null);
   const finishReturnFocusRef = useRef(false);
   useEffect(() => {
     // Ending/removing a ride view removes its controls. Keep the next step
@@ -7641,6 +7642,14 @@ const TransitMap: FC = () => {
         </div>
       </nav>
 
+      {/* The fallback occupies normal flow below navigation, so both the tabs
+          and the first content controls stay reachable. flow-root contains
+          the banner's margins; without a banner this host has zero height. */}
+      <div ref={setReminderHost} style={{
+        position: "sticky", top: 12, zIndex: 3000,
+        width: "100%", maxWidth: 560, display: "flow-root",
+      }} />
+
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
       {busUpdateNotice && (
@@ -7743,7 +7752,7 @@ const TransitMap: FC = () => {
             routeIds: ROUTE_LISTS.find(c => c.label === label)?.busRouteIds ?? [] }))} />} />}
 
       {!boardedRide && !transferHandoff && (tripControllerStarted || listView === "trip") && (
-        <TripPlanner active={listView === "trip"}
+        <TripPlanner active={listView === "trip"} reminderHost={reminderHost}
           reportingSnapshot={reportingSnapshot} reportingAvailable={busStatus === 'ready'}
           busStatus={busStatus}
           lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
