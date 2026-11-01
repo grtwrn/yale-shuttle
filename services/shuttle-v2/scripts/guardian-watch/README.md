@@ -8,6 +8,24 @@ once a minute; it uses the repository version without restarting riders or the
 learner. `YALE_SHUTTLE_ROOT` overrides the launcher repository. `GUARDIAN_STATE`
 and `GUARDIAN_WATCH` select isolated queue and rider locations for diagnostics.
 
+Independent Linux riders can opt in with `GUARDIAN_NAMESPACE` set to
+`linux-arm64-rider-red-guardian-v1` or `linux-arm64-rider-random-guardian-v1`.
+Both `GUARDIAN_STATE` and `GUARDIAN_WATCH` must then be explicit absolute paths.
+Use fresh private state; the bridge refuses legacy or foreign bridge, queue,
+and status records, malformed consumed state, and open incidents outside its
+own pending queue before rotating logs or writing state. Incident IDs are
+namespace-specific; records carry explicit namespace and Linux source labels.
+Leaving the variable unset
+preserves the legacy bridge behavior.
+
+The Linux Guardian must execute in the rider's own container and PID namespace
+(for example through its reviewed `docker exec` adapter): `storage.lock` stores
+guest PIDs. Give both roles the same `GUARDIAN_WATCH` base ending in `rider`, but
+mount only that role's rider output; the Red path is still derived as `rider-red`.
+Prime the fresh bridge before the rider emits its first records, and quiesce
+in-flight Guardian work before stopping the rider. The namespace option does
+not activate a job or attest physical arrivals or a qualified runtime.
+
 An incident's original pointers to rotating logs remain as provenance. Each
 new rider-event occurrence also receives a private, atomic evidence bundle
 under the guardian state's `evidence-bundles/<incident>/<event>/`. It contains
