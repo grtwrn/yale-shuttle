@@ -167,8 +167,12 @@ try {
       const serviceCountBefore = await buzzes();
       await armTiming('stops', '2'); await advance(1100); await waiting.waitFor();
       const servicePickup = page.getByTestId('route-timing-table').locator('tbody[data-route="Blue Day"][data-pickup="100"]');
-      const livePickupButton = servicePickup.getByRole('button', { name: /^Blue Day arrival details: Arrives in / });
-      await livePickupButton.waitFor(); await servicePickup.getByTestId('pickup-range').waitFor();
+      // The table renders pickup timing as text; tapping its row opens the
+      // route. An arrival-chart button belongs to the separate card variant.
+      const livePickup = servicePickup.getByTestId('route-pickup');
+      await livePickup.waitFor(); await servicePickup.getByTestId('pickup-range').waitFor();
+      const retainedPickupText = await livePickup.innerText();
+      assert.match(retainedPickupText, /~?\d.*\(\d.*\d\)/, 'unknown count retains a numeric pickup estimate and range');
       assert.equal((await servicePickup.getAttribute('data-board-bus'))?.replace(/^#/, ''), '44');
       assert.equal(await servicePickup.getAttribute('data-board-stops-ahead'), null, 'unknown count must not display four traversal hops as four stops');
       assert.match(await waiting.innerText(), /2 stops before pickup/);
@@ -179,7 +183,9 @@ try {
       await advance(6500);
       await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).waitFor();
       assert.equal(await waiting.count(), 0);
-      await livePickupButton.waitFor();
+      await livePickup.waitFor();
+      assert.equal(await livePickup.innerText(), retainedPickupText, 'count recovery retains the same pickup estimate and range');
+      assert.equal((await servicePickup.getAttribute('data-board-bus'))?.replace(/^#/, ''), '44');
       assert.equal(await servicePickup.getAttribute('data-board-stops-ahead'), '2');
       assert.equal(row[5], 4, 'delivery must use service calls without renumbering raw occurrence hops');
       assert.match(await page.locator('body').innerText(), /Blue Day #44 is 2 stops before your pickup/);
