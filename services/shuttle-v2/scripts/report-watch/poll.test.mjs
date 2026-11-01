@@ -1,10 +1,11 @@
-import { describe, expect, it, afterEach } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { reconcileReports, pollReports, loadOpenReports } from './poll.mjs';
 import { riderFacingNote } from '../../src/server/reports.ts';
+import * as evidence from './evidence.mjs';
 const now = Date.parse('2026-10-15T13:00:00-04:00');
 const report = (id, change = {}) => ({ id, status: 'open', body: 'Red has the wrong stop count',
   createdAt: '2026-10-15T12:43:38Z', priority: 'normal', context: '{}', note: null, ...change });
@@ -21,7 +22,7 @@ const legacyState = r => ({ version: 1, seen: { [r.id]: { lastSeenAt: now,
     JSON.parse(r.context).followups ?? []])).digest('hex') } },
   pending: [{ id: r.id, kind: 'report-submitted', detectedAt: new Date(now).toISOString(),
     createdAt: r.createdAt, priority: r.priority, body: r.body, followupCount: 0 }], recent: [] });
-afterEach(async () => { for (const dir of dirs.splice(0)) await fs.rm(dir, { recursive: true, force: true }); });
+afterEach(async () => { vi.restoreAllMocks(); for (const dir of dirs.splice(0)) await fs.rm(dir, { recursive: true, force: true }); });
 
 describe('persistent submitted-report watcher', () => {
   it('keeps a small queue to one request and exposes verified coverage', async () => {
@@ -60,6 +61,12 @@ describe('persistent submitted-report watcher', () => {
   });
   it('keeps a full 1000 response unhealthy, preserves observed work and alerts once across restarts', async () => {
     const options = await pollFixture(), alerts = []; let count = 1000;
+    // This control exercises real queue persistence and coverage health across
+    // restarts. Evidence's actual filesystem work and retention are exercised
+    // independently; creating 1,000 diagnostic manifests is not its oracle.
+    const capture = vi.spyOn(evidence, 'preserveReportEvidence').mockResolvedValue({
+      ok: true, captured: [], unavailable: [], bytes: 0, maxBytes: 256 * 1024 * 1024, cleanupUncertain: false,
+    });
     const fetcher = async url => jsonResponse(batch(Math.min(count, Number(new URL(url).searchParams.get('limit')))));
     for (let n = 0; n < 4; n++) {
       await expect(pollReports({ ...options, now: now + n * 60000, fetcher,
@@ -68,6 +75,7 @@ describe('persistent submitted-report watcher', () => {
       expect(status.ok).toBe(false); expect(status.saturated).toBe(true);
       expect(status.coverage).toEqual({ complete: false, limit: 1000, observedReports: 1000, reason: 'response-limit' });
       expect(status.pending).toBe(1000);
+      expect(capture).toHaveBeenLastCalledWith(expect.objectContaining({ complete: false, reports: batch(1000) }));
       expect(JSON.parse(await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8')).pending).toHaveLength(1000);
     }
     expect(alerts).toEqual([['failed', 'coverage']]);
@@ -75,6 +83,8 @@ describe('persistent submitted-report watcher', () => {
     const recovered = await pollReports({ ...options, now: now + 300000, fetcher,
       healthNotifier: async (kind, cause) => alerts.push([kind, cause]) });
     expect(recovered.ok).toBe(true); expect(recovered.pending).toBe(999);
+    expect(capture).toHaveBeenLastCalledWith(expect.objectContaining({ complete: true, reports: batch(999) }));
+    expect(capture).toHaveBeenCalledTimes(5);
     expect(alerts).toEqual([['failed', 'coverage'], ['recovered', undefined]]);
   });
   it('refuses pending overflow before replacing any protected state or queue', async () => {

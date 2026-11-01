@@ -187,7 +187,7 @@ describe('report source and client asset preservation',()=>{
   expect(result.work.objectHashes).toBe(1);expect(result.work.objectCacheHits).toBe(15);expect(opens).toBe(16);
   expect(result.work.readBytes).toBeLessThan(f.bytes.length+128*1024);
   expect(result.work.limits).toEqual({readBytes:256*1024*1024,operations:64_000,milliseconds:30_000});
-  expect(await fs.readFile(f.objectFile)).toEqual(f.bytes);
+  expect((await fs.readFile(f.objectFile)).equals(f.bytes)).toBe(true);
   for(const receipt of f.receipts)expect(await fs.readFile(receipt.file)).toEqual(receipt.raw);
  });
  it('compares each manifest expectation even after the same object was positively cached',async()=>{
@@ -197,7 +197,7 @@ describe('report source and client asset preservation',()=>{
    await fs.writeFile(receipt.index,JSON.stringify({v:1,file:path.basename(receipt.file),sha256:hash(raw)})+'\n');
    const result=await preserveReportEvidence(f.options);
    expect(result.ok).toBe(false);expect(result.verified).toEqual([1000]);expect(result.retrying).toEqual([1001]);
-   expect(await fs.readFile(receipt.file)).toEqual(raw);expect(await fs.readFile(f.objectFile)).toEqual(f.bytes);
+   expect(await fs.readFile(receipt.file)).toEqual(raw);expect((await fs.readFile(f.objectFile)).equals(f.bytes)).toBe(true);
   }
  });
  it('detects atomic replacement between cached references and preserves the corrupt retained bytes for investigation',async()=>{
@@ -209,7 +209,7 @@ describe('report source and client asset preservation',()=>{
   });
   const result=await preserveReportEvidence(f.options);
   expect(result.ok).toBe(false);expect(result.verified).toEqual([1000]);expect(result.retrying).toEqual([1001]);
-  expect(result.work.objectCacheHits).toBe(0);expect(await fs.readFile(f.objectFile)).toEqual(corrupt);
+  expect(result.work.objectCacheHits).toBe(0);expect((await fs.readFile(f.objectFile)).equals(corrupt)).toBe(true);
   for(const receipt of f.receipts)expect(await fs.readFile(receipt.file)).toEqual(receipt.raw);
  });
  it('defers before unchanged validation on deadline and rotates the next poll beyond the attempted prefix',async()=>{
