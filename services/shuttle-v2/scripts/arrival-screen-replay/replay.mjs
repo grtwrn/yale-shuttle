@@ -18,8 +18,10 @@ const PRODUCTION_PIN=Object.freeze({build:'6aed223edaec',indexBytes:1177,
   rootCaptureReceiptSHA256:'5b2cd54b8b9efbc2e3472510bc1aacea65dccfd3a3049816c1f5e82df73f5653',
   scope:'Root paired health/index/health DATA capture; observed-build checks are not an atomic deployment lock or ABA proof.'});
 const PROTOCOL=Object.freeze({
-  id:'arrival-screen-replay-v1', widths:[390,1280], route:'Orange East', bus:'50', pickup:157, destination:165,
-  recorded:'All three complete retained frame.json byte strings unchanged, in receipt order. Observational: no flicker/stability assertion.',
+  id:'arrival-screen-replay-v2', widths:[390,1280], route:'Orange East', bus:'50', diagnosticPickup:157, destination:165,
+  recorded:'All three complete retained frame.json byte strings unchanged, in receipt order. Observational: diagnostic pickup157 is not forced on the app; no flicker/stability assertion.',
+  observationSelection:'Capture all initially visible Orange East overview rows; expand the sole explicit closest-stop row, or a single unambiguous route row. Multiple choices without one unique closest attribute refuse. Preserve that one expanded watch across polls, without navigation or reselection. Later capture all CURRENTLY VISIBLE Orange East rows only; hidden/unmounted overview alternatives are outside scope.',
+  observationIdentity:'Retain requested diagnostic157, presence and coverage separately from initial app-chosen pickup/alight and each current actual visible identity. An empty/ambiguous expanded view is retained with a reason and refuses feedback capture; no fallback or fabricated identity. Attempt01 selected158 in the east context and failed the invalid forced157 locator assumption.',
   contexts:[{id:'pickup',eastLongitudeOffset:0},{id:'east-0.0025',eastLongitudeOffset:0.0025}],
   contextScope:'Constructed diagnostic origins and destination; never recovered reporter state or report113 reproduction.',
   protocolHeaderScope:'X-Shuttle-Snapshot is constructed by this harness to bind exact response bytes to the rendered screen; original HTTP headers and journal-record bytes are unavailable.',
@@ -248,12 +250,13 @@ try{
   const scenarios=[...PROTOCOL.contexts.map(context=>({id:`recorded-${context.id}`,recorded:true,context,steps:frames.map(f=>({id:`seq-${f.metadata.seq}`,at:f.metadata.originalReceiptAt,bytes:f.bytes,sha256:f.metadata.sha256,feed:f.value,metadata:f.metadata}))})),...controls.map(c=>({...c,recorded:false,context:PROTOCOL.contexts[0]}))];
   for(const width of PROTOCOL.widths)for(const scenario of scenarios){
     check();let active=scenario.steps[0],expanded=false,routeFailure;
-    const run={id:`${width}-${scenario.id}`,width,scenario:scenario.id,recorded:scenario.recorded,context:scenario.context,requests:[],pageErrors:[],snapshots:[]};result.runs.push(run);
+    const run={id:`${width}-${scenario.id}`,width,scenario:scenario.id,recorded:scenario.recorded,context:scenario.context,requests:[],pageErrors:[],snapshots:[],
+      requestedDiagnosticPickupStopId:157,diagnostic157Coverage:{initialOverviewPresent:false,visibleFrames:0,selectedFrames:0},observations:[]};result.runs.push(run);
     const ctx=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,timezoneId:'America/New_York',serviceWorkers:'block'});
     try{
       await seedTestId(ctx);
       const from={...baseline.stop_coords[157],lon:baseline.stop_coords[157].lon+scenario.context.eastLongitudeOffset},to=baseline.stop_coords[165];
-      run.constructedTrip={from,to,pickup:157,destination:165,scope:PROTOCOL.contextScope};
+      run.constructedTrip={from,to,requestedDiagnosticPickupStopId:157,destination:165,scope:PROTOCOL.contextScope};
       await ctx.addInitScript(({from,to,now})=>{
         localStorage.setItem('listView','trip');
         sessionStorage.setItem('shuttle-trip-draft',JSON.stringify({fromText:'Replay diagnostic origin',fromLL:from,toText:'Replay destination stop165',toLL:to,tripTime:'',expandedKey:null,savedAt:now}));
@@ -287,8 +290,16 @@ try{
         }catch(error){routeFailure??=error;await route.abort().catch(()=>{});}
       });
       await page.goto(`https://${host}/`,{waitUntil:'domcontentloaded'});
-      const row=page.locator('tbody[data-route="Orange East"][data-pickup="157"]');await row.first().waitFor();
-      assert.equal(await row.count(),1,'Constructed trip must expose one unambiguous Orange East pickup157 row');
+      const actualRows=()=>page.locator('tbody[data-route="Orange East"]').evaluateAll(rows=>rows.filter(el=>el.getClientRects().length>0).map(el=>({
+        html:el.outerHTML,text:el.innerText,attributes:Object.fromEntries([...el.attributes].map(a=>[a.name,a.value])),
+        pickup:el.querySelector('[data-testid="route-pickup"]')?.textContent??null,range:el.querySelector('[data-testid="pickup-range"]')?.textContent??null,
+        firstCells:[...el.querySelectorAll(':scope > tr:first-child > td')].map(td=>td.innerText)})));
+      const rowIdentity=row=>{
+        const pickup=Number(row.attributes['data-pickup']),alight=Number(row.attributes['data-alight']);
+        assert(Number.isInteger(pickup)&&pickup>0&&Number.isInteger(alight)&&alight>0,'Visible row has no valid actual trip identity');
+        return {pickupStopId:pickup,alightStopId:alight};
+      };
+      let initialChoice;
       for(let i=0;i<scenario.steps.length;i++){
         active=scenario.steps[i];
         if(i){
@@ -300,20 +311,44 @@ try{
           const raw=document.querySelector('[data-feedback-source]')?.getAttribute('data-feedback-source');
           try{return JSON.parse(raw??'null')?.sha256===expected;}catch{return false;}
         },active.sha256??sha(active.bytes));
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         if(!expanded){
-          run.initialOverview=await json(`screens/${run.id}-initial-overview.json`,await row.evaluate(el=>({html:el.outerHTML,text:el.innerText})));
+          const overview=await actualRows(),closest=overview.filter(row=>row.attributes['data-pickup-choice']==='closest-stop');
+          run.diagnostic157Coverage.initialOverviewPresent=overview.some(row=>row.attributes['data-pickup']==='157');
+          const refusal=scenario.recorded?(closest.length>1?'multiple-explicit-closest-rows':closest.length===0&&overview.length!==1?'no-unique-app-chosen-overview-row':null):null;
+          run.initialOverview=await json(`screens/${run.id}-initial-overview.json`,{scope:'All initially visible Orange East overview rows; no hidden/unmounted rows claimed',
+            requestedDiagnosticPickupStopId:157,diagnostic157Present:run.diagnostic157Coverage.initialOverviewPresent,rows:overview,refusalReason:refusal});
+          assert(!refusal,`Recorded overview capture refused: ${refusal}`);
+          if(!scenario.recorded)assert.equal(overview.filter(row=>row.attributes['data-pickup']==='157').length,1,'Controls require one unambiguous strict pickup157 row');
+          const selected=scenario.recorded?(closest[0]??overview[0]):overview.find(row=>row.attributes['data-pickup']==='157');
+          assert(selected,scenario.recorded?'No actual recorded trip row available':'Control must retain strict pickup157');
+          initialChoice={...rowIdentity(selected),method:scenario.recorded?(closest.length===1?'explicit-closest-stop':'single-unambiguous-route-row'):'strict-control-pickup157'};
+          run.initialAppChosenTrip=initialChoice;
+          const row=page.locator(`tbody[data-route="Orange East"][data-pickup="${initialChoice.pickupStopId}"][data-alight="${initialChoice.alightStopId}"]`);
+          assert.equal(await row.count(),1,'Initial chosen trip must have one exact UI row');
           await row.getByRole('button',{name:/^View Orange East trip details/}).click();
           await page.getByTestId('trip-detail-panel').waitFor();expanded=true;
         }
         await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         assert(!routeFailure,routeFailure?.stack);assert.equal(await page.evaluate(()=>Date.now()),active.at);
         const dom=await page.content();
-        const rendered=await row.evaluate(el=>({html:el.outerHTML,text:el.innerText,attributes:Object.fromEntries([...el.attributes].map(a=>[a.name,a.value])),
-          pickup:el.querySelector('[data-testid="route-pickup"]')?.textContent??null,range:el.querySelector('[data-testid="pickup-range"]')?.textContent??null,
-          firstCells:[...el.querySelectorAll(':scope > tr:first-child > td')].map(td=>td.innerText)}));
-        const expandedDOM=await page.getByTestId('trip-detail-panel').evaluate(el=>({html:el.outerHTML,text:el.innerText,
+        const visibleRows=await actualRows(),diagnostic157Present=visibleRows.some(row=>row.attributes['data-pickup']==='157');
+        let refusal=visibleRows.length===0?'expanded-route-row-empty':visibleRows.length>1?'expanded-route-rows-ambiguous':null,currentChoice=null;
+        if(!refusal){try{currentChoice=rowIdentity(visibleRows[0]);}catch{refusal='expanded-route-identity-invalid';}}
+        const observation={step:active.id,scope:'All currently visible Orange East rows in the existing expanded watch; hidden/unmounted overview rows are not captured',
+          browserClock:active.at,payloadSHA256:active.sha256??sha(active.bytes),initialAppChosenTrip:initialChoice,currentActualTrip:currentChoice,
+          watchIdentityChanged:currentChoice?currentChoice.pickupStopId!==initialChoice.pickupStopId||currentChoice.alightStopId!==initialChoice.alightStopId:null,requestedDiagnosticPickupStopId:157,
+          diagnostic157Present,rows:visibleRows,refusalReason:refusal};
+        const observationPin=await json(`observations/${run.id}-${active.id}.json`,observation);run.observations.push(observationPin);
+        if(refusal){await write(`screens/${run.id}-${active.id}-unbound.html`,dom);assert.fail(`Actual expanded feedback capture refused: ${refusal}`);}
+        const rendered=visibleRows[0];
+        if(!scenario.recorded){assert.equal(currentChoice.pickupStopId,157,'Controls always require strict pickup157');assert.deepEqual(currentChoice,{pickupStopId:initialChoice.pickupStopId,alightStopId:initialChoice.alightStopId},'Control selected trip identity must remain fixed');}
+        if(diagnostic157Present)run.diagnostic157Coverage.visibleFrames++;
+        if(currentChoice.pickupStopId===157)run.diagnostic157Coverage.selectedFrames++;
+        const actionsDOM=await page.getByTestId('trip-detail-panel').evaluate(el=>({html:el.outerHTML,text:el.innerText}));
+        const mapPanels=await page.getByTestId('map-trip-panel').evaluateAll(elements=>elements.filter(el=>el.getClientRects().length>0).map(el=>({html:el.outerHTML,text:el.innerText,
           approach:[...el.querySelectorAll('[data-testid="trip-approach-stops"] [data-stop-id]')].map(e=>({id:e.getAttribute('data-stop-id'),text:e.innerText})),
-          stopList:el.querySelector('[data-testid="trip-stop-list"]')?.textContent??null}));
+          stopList:el.querySelector('[data-testid="trip-stop-list"]')?.outerHTML??null,stopListText:el.querySelector('[data-testid="trip-stop-list"]')?.textContent??null})));
         const count=submissions.length,response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/report'&&r.request().method()==='POST');
         page.once('dialog',dialog=>dialog.accept(`Replay fixture ${run.id}/${active.id}; synthetic trip context.`));
         await page.getByRole('button',{name:'🚩 Report',exact:true}).click();await(await response).finished();
@@ -322,16 +357,22 @@ try{
         assert.equal(submitted.screen.source?.sha256,active.sha256??sha(active.bytes));
         assert.equal(submitted.screen.source?.receivedAt,active.at);assert.equal(submitted.screen.capturedAt,active.at);
         assert.equal(submitted.screen.truncated,false,'No silently truncated feedback evidence');
-        const screenRow=submitted.screen.rows.find(r=>r.route==='Orange East'&&r.boardStopId===157);assert(screenRow,'Submitted screen must contain pickup157');
+        const screenRows=submitted.screen.rows.filter(r=>r.route==='Orange East'&&r.boardStopId===currentChoice.pickupStopId&&r.alightStopId===currentChoice.alightStopId);
+        assert.equal(screenRows.length,1,'Submitted screen must bind one actual currently visible trip');const screenRow=screenRows[0];
+        assert.equal(submitted.option?.boardStopId,currentChoice.pickupStopId);assert.equal(submitted.option?.alightStopId,currentChoice.alightStopId);
         const normalize=text=>(text??'').replace(/\s+/g,' ').trim();assert.equal(screenRow.board,normalize(rendered.firstCells[0]));
         const snapshot={step:active.id,recorded:scenario.recorded,originalMetadata:active.metadata??null,browserClock:active.at,payloadSHA256:active.sha256??sha(active.bytes),
-          rendered,expanded:expandedDOM,submittedScreenRow:screenRow,submittedSource:submitted.screen.source,
+          rendered,allCurrentlyVisibleOrangeRows:visibleRows,viewScope:observation.scope,initialAppChosenTrip:initialChoice,currentActualTrip:currentChoice,
+          requestedDiagnosticPickupStopId:157,diagnostic157Present,diagnostic157Selected:currentChoice.pickupStopId===157,
+          expanded:{actions:actionsDOM,mapPanels,mapPanelCount:mapPanels.length,mapPanelScope:'All currently visible sibling map timing panels; an empty array records actual absence'},submittedScreenRow:screenRow,submittedSource:submitted.screen.source,
           actualSelection:{busName:submitted.option?.busName,busBoardHops:submitted.option?.busBoardHops,livePickupSelection:submitted.option?.livePickupSelection,
             boardStopId:submitted.option?.boardStopId,alightStopId:submitted.option?.alightStopId,etaUnavailable:submitted.option?.etaUnavailable},
-          allSourcePickupRows:active.feed.server_eta.rows.filter(r=>r[1]===157),
+          allSourceDiagnosticPickup157Rows:active.feed.server_eta.rows.filter(r=>r[1]===157),
+          allSourceCurrentActualPickupRows:active.feed.server_eta.rows.filter(r=>r[1]===currentChoice.pickupStopId),
           noHorizontalOverflow:await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)};
         const domPin=await write(`screens/${run.id}-${active.id}.html`,dom),capturePin=await json(`screens/${run.id}-${active.id}.json`,{snapshot,submission:submitted});
-        run.snapshots.push({step:active.id,browserClock:active.at,payloadSHA256:snapshot.payloadSHA256,dom:domPin,capture:capturePin});
+        run.snapshots.push({step:active.id,browserClock:active.at,payloadSHA256:snapshot.payloadSHA256,initialAppChosenTrip:initialChoice,currentActualTrip:currentChoice,
+          diagnostic157Present,diagnostic157Selected:currentChoice.pickupStopId===157,observation:observationPin,dom:domPin,capture:capturePin});
         if(scenario.recorded||i===scenario.steps.length-1)await write(`screens/${run.id}-${active.id}.png`,await page.screenshot({fullPage:true,timeout:5000}));
         // Recorded cases are observations. Only deliberately constructed controls have presentation oracles.
         if(!scenario.recorded){
@@ -395,7 +436,8 @@ try{
     result.inputAccounting={fixtureAndRuntimePayloadBytes:fixtureReadBytes,fixtureEOFProbes,fixtureEOFBytes,assetPayloadBytes:assetReadBytes,assetEOFProbes,assetEOFBytes,
       fixtureAdmittedReadBytes,assetAdmittedReadBytes};
     result.assetPins=assetPins;result.outputBytesBeforeResult=outputBytes;result.files=[...writes];
-    result.runs=result.runs.map(run=>({id:run.id,width:run.width,scenario:run.scenario,recorded:run.recorded,requestCount:run.requestCount,snapshotCount:run.snapshotCount,error:run.error,receipt:run.receipt}));
+    result.runs=result.runs.map(run=>({id:run.id,width:run.width,scenario:run.scenario,recorded:run.recorded,initialAppChosenTrip:run.initialAppChosenTrip,
+      requestedDiagnosticPickupStopId:157,diagnostic157Coverage:run.diagnostic157Coverage,requestCount:run.requestCount,snapshotCount:run.snapshotCount,error:run.error,receipt:run.receipt}));
     await json('result.json',result,{final:true});
   }finally{clearTimeout(timer);}
 }
