@@ -41,7 +41,8 @@ import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes, type Upcom
 import type { AnchorStore } from './eta';
 import { applyModelParams } from './eta/params';
 import type { LatLon } from './geo';
-import { observedAtStop, rideApproach, tripApproach } from './liveAnchor';
+import { observedAtStop, rideApproach, serviceCallAllowed, tripApproach } from './liveAnchor';
+import { serviceStopCount } from './serviceStopCount';
 import type { BusData } from './map-data';
 import { boardHops, rideBoardArrivals } from './planner';
 import { mergedRouteStops, ROUTE_LISTS, type RouteListConfig } from './routes';
@@ -81,7 +82,7 @@ const PINK: Line = {
 
 afterEach(() => { registerRoutePaths(null); applyModelParams(undefined); });
 
-interface Read { at: string; window: number; bus: string; board: number; alight: number; pinned: UpcomingArrival | undefined; before: number | null; after: number | null; atStop: boolean; first: number | undefined }
+interface Read { at: string; window: number; bus: string; board: number; alight: number; pinned: UpcomingArrival | undefined; before: number | null; after: number | null; atStop: boolean; first: number | undefined; approach: number[] | null; allowed: boolean }
 
 /**
  * Every poll of `windows`, every ride in `rides` ([board, alight]) on every
@@ -110,7 +111,8 @@ function replay(line: Line, rides: readonly (readonly [number, number])[], windo
         const atStop = observedAtStop(b, board, line.stopCoords);
         const was = atStop ? [] : tripApproach(b, line.cfg, line.routeStops, line.stopCoords, board, now, store);
         const is = rideApproach(b, line.cfg, line.routeStops, line.stopCoords, board, pinned && boardHops(pinned, visits, board, alight), now, store);
-        out.push({ at: p.at, window: p.window, bus: b.bus_name, board, alight, pinned, before: was?.length ?? null, after: is?.length ?? null, atStop, first: is?.[0] });
+        out.push({ at: p.at, window: p.window, bus: b.bus_name, board, alight, pinned, before: was?.length ?? null, after: is?.length ?? null, atStop, first: is?.[0], approach: is,
+          allowed: serviceCallAllowed(b, board, line.cfg.label, mergedRouteStops(line.cfg, line.routeStops), line.stopCoords, now, store) });
       }
     }
   }
@@ -199,15 +201,15 @@ describe('Purple, Building 900, back up the spur (2026-10-01 #119, 2026-10-03 #3
     // card read "3 stops away", counted to the return pass just ahead.
     // Counted from Building 400, where the countdown has the bus and the
     // collector's visits put it (Building 400 at 14:49:50Z, Building 600 at
-    // 14:54:15Z), that is 11: the 12 hops less the station's return call,
-    // which the card does not list. The lead had gone on to Building 600's leg
+    // 14:54:15Z), that is 12 including the real return station call
+    // 26→127→72. The lead had gone on to Building 600's leg
     // and was held there, so the card read 10 (anchorfarorigin20261004).
     const ex = reads.find(r => r.at === '2026-10-01T14:53:42.272Z')!;
     expect({ pinned: ex.pinned!.stopsAhead, min: Math.round(ex.pinned!.eta / 60), after: ex.after })
-      .toEqual({ pinned: 12, min: 58, after: 11 });
+      .toEqual({ pinned: 12, min: 58, after: 12 });
     // The countdown went back from 11 hops to 12 for five polls, and the card with it.
-    expect(steps(reads.map(r => r.after))).toEqual([13, 12, 11, 10, 11, 10, 9]);
-    for (const r of reads) expect({ at: r.at, after: r.after }).toEqual({ at: r.at, after: r.pinned!.stopsAhead - 1 });
+    expect(steps(reads.map(r => r.after))).toEqual([14, 13, 12, 11, 12, 11, 10]);
+    for (const r of reads) expect({ at: r.at, after: r.after }).toEqual({ at: r.at, after: r.pinned!.stopsAhead });
     // Downtown, the same poll: the return pass 4 out, which the card counted
     // a lap on ("10 stops away").
     const down = ride(PURPLE_900, 26, 9, [0], '#119').find(r => r.at === ex.at)!;
@@ -217,7 +219,7 @@ describe('Purple, Building 900, back up the spur (2026-10-01 #119, 2026-10-03 #3
   it('#330: for Building 800, never the return pass', () => {
     const reads = ride(PURPLE_900, 26, 25, [1], '#330').filter(r => r.pinned);
     expect(reads.length).toBe(65);
-    expect(steps(reads.map(r => r.after))).toEqual([14, 13, 12, 11, 10, 11]);
+    expect(steps(reads.map(r => r.after))).toEqual([15, 14, 13, 12, 11, 12]);
   });
 
   it('every Purple bus, every destination, both windows: on the countdown\'s pass', () => {
@@ -233,42 +235,65 @@ describe('Purple, Building 900, back up the spur (2026-10-01 #119, 2026-10-03 #3
   });
 });
 
-describe('reads as before', () => {
+describe('every recorded pickup follows its service calls and selected visit', () => {
   const stopsOf = (line: Line) => [...new Set(mergedRouteStops(line.cfg, line.routeStops))];
   const pairs = (boards: number[], alights: number[]) =>
     boards.flatMap(b => alights.filter(a => a !== b).map(a => [b, a] as const));
 
-  /**
-   * Every read as before but one kind, `n` of them: a bus that has just left a
-   * pickup the ring passes once, with the countdown a lap on, counted the whole
-   * lap from that pickup. Before, "0 stops away" beside the next lap's
-   * countdown (purpleatstop20261005, stopCountJustLeft.test.ts).
-   */
-  const asBefore = (line: Line, reads: Read[], n: number) => {
-    const lap = mergedRouteStops(line.cfg, line.routeStops).length;
-    const changed = reads.filter(r => r.after !== r.before);
-    for (const r of changed) {
-      expect({ at: r.at, bus: r.bus, board: r.board, alight: r.alight, read: [r.before, r.atStop, r.after, r.first, r.pinned!.stopsAhead >= lap - 1] })
-        .toEqual({ at: r.at, bus: r.bus, board: r.board, alight: r.alight, read: [0, false, lap, r.board, true] });
+  // Independent service order from the published fixture and documented
+  // station edges. Green adds outbound 81→127→26 and restores return
+  // 26→127→80; Purple adds return 26→127→72. Pink's four geometry-only
+  // twins are absent, leaving each published service curb exactly once.
+  const serviceLaps: Record<string, number[]> = {
+    Pink: [149, 72, 43, 44, 60, 109, 123, 125, 124, 110, 59, 46],
+    Green: [78, 84, 89, 77, 94, 143, 144, 133, 88, 92, 81, 127, 26, 25, 23, 22, 23, 24, 25, 26, 127, 80, 91, 87],
+    Purple: [10, 9, 1, 122, 127, 26, 25, 24, 23, 22, 23, 24, 25, 26, 127, 72],
+  };
+  const servicePaths = (line: Line, reads: Read[]) => {
+    const lap = serviceLaps[line.cfg.label]!;
+    const traversalN = line === PINK ? 16 : lap.length;
+    for (const r of reads) {
+      const where = `${r.at} ${r.bus} ${r.board}→${r.alight}`;
+      const count = serviceStopCount(r.pinned!);
+      expect(count, where).not.toBeNull();
+      expect(lap.filter(id => id === r.board), where).toHaveLength(1);
+      if (r.approach === null) {
+        // Unknown current occurrence must withhold the legacy empty/zero
+        // override; the positive South/North controls live in recovery tests.
+        expect([r.allowed, r.before], where).toEqual([false, 0]);
+      } else if (r.approach.length === 0) {
+        expect(r.allowed, where).toBe(true);
+        expect(r.atStop || count === 0 || (r.before === 0 && 2 * r.pinned!.stopsAhead < traversalN), where).toBe(true);
+      } else {
+        // Check every listed stop, including the station SPUR, against a
+        // literal service path ending immediately before this pickup.
+        const end = lap.indexOf(r.board);
+        const path = Array.from({ length: r.approach.length }, (_, i) =>
+          lap[((end - r.approach!.length + i) % lap.length + lap.length) % lap.length]);
+        expect(r.approach, where).toEqual(path);
+        if (r.after !== count) {
+          // A held anchor still on a just-departed unique pickup counts its
+          // whole next lap. This is a future pickup, never current arrival.
+          expect([r.before, r.atStop, r.after, r.first], where).toEqual([0, false, lap.length, r.board]);
+          expect(2 * r.pinned!.stopsAhead >= traversalN, where).toBe(true);
+        }
+      }
     }
-    expect(changed.length).toBe(n);
   };
 
   it('every Pink pickup, the repair\'s twins included, to every destination', () => {
     const reads = replay(PINK, pairs(stopsOf(PINK), stopsOf(PINK))).filter(r => r.pinned);
     expect(reads.length).toBeGreaterThan(5000);
-    asBefore(PINK, reads, 352);
+    servicePaths(PINK, reads);
   });
 
   it('every Green and Purple pickup the line passes once, to every destination', () => {
-    // Deterministic movement buckets move one Purple boundary poll onto the
-    // next lap for ten destinations; all per-read pass invariants still apply.
-    for (const [line, n] of [[GREEN, 893], [PURPLE, 1290]] as const) {
+    for (const line of [GREEN, PURPLE]) {
       const seq = mergedRouteStops(line.cfg, line.routeStops);
       const once = stopsOf(line).filter(s => seq.indexOf(s) === seq.lastIndexOf(s) && s !== 127);
       const reads = replay(line, pairs(once, stopsOf(line))).filter(r => r.pinned);
       expect(reads.length).toBeGreaterThan(5000);
-      asBefore(line, reads, n);
+      servicePaths(line, reads);
     }
   });
 

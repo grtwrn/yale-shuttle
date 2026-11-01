@@ -27,7 +27,7 @@ export function isUnambiguousRideArrival(
   serviceCallAllowed = true,
 ): boolean {
   if (!serviceCallAllowed || alightIndex < 0 || busIndex !== alightIndex || !rawRoute) return false;
-  // Inspect the upstream sequence, before the ride list deduplicates it.
+  // Inspect all service calls, before the ride list deduplicates them.
   return rawRoute.filter((id) => id === alightStopId).length === 1;
 }
 
@@ -85,10 +85,12 @@ export function rideEvidence(
   alightIndex: number,
   stopCount: number,
   exitServiceCallAllowed = true,
+  boardServiceCallAllowed = true,
 ): RideEvidence {
   if (prev === "reached" || busIndex < 0) return prev;
   if (busIndex === alightIndex) return exitServiceCallAllowed && prev === "rode" ? "reached" : prev;
-  return busIndex === boardIndex || rideInWindow(busIndex, boardIndex, alightIndex, stopCount) ? "rode" : prev;
+  if (busIndex === boardIndex) return boardServiceCallAllowed ? "rode" : prev;
+  return rideInWindow(busIndex, boardIndex, alightIndex, stopCount) ? "rode" : prev;
 }
 
 /**

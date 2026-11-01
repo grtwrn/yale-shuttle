@@ -5,7 +5,7 @@ import recovery from './__fixtures__/pink-service-pass-recovery-20261101.json';
 import { registerRoutePaths } from './anchor';
 import { ringForBus, type AnchorStore } from './eta';
 import { attachServerEta, serverArrivals, type ServerEtaWire } from './etaSource';
-import { observedAtStop, observedServiceAtStop, rideApproach, rideStopsToExit, serviceCallAllowed } from './liveAnchor';
+import { observedAtStop, observedServiceAtStop, rideApproach, rideCallIndex, rideStopsToExit, serviceCallAllowed } from './liveAnchor';
 import { isUnambiguousRideArrival, rideEvidence } from './rideArrival';
 import { planTrip, rawAtStopBoardable } from './planner';
 import { ROUTE_LISTS } from './routes';
@@ -77,6 +77,9 @@ describe('raw curb evidence cannot reopen a traversal-only pass', () => {
       serviceCallAllowed(bus, 110, cfg.label, pinkStops, coords, now))).toBe(false);
     expect(rideEvidence('rode', 9, 0, 9, pinkStops.length,
       serviceCallAllowed(bus, 110, cfg.label, pinkStops, coords, now))).toBe('rode');
+    expect(rideEvidence('none', 9, 9, 10, pinkStops.length, true,
+      serviceCallAllowed(bus, 110, cfg.label, pinkStops, coords, now))).toBe('none');
+    expect(rideCallIndex(bus, cfg, routes, coords, [110, 59], 1, now)).toBe(-1);
     // The planner may retain an unavailable option; it cannot manufacture
     // a raw-current pickup from a marker the served pass does not serve.
     const plans = planTrip(coords[110]!, coords[59]!, buses, routes, coords, {}, {}, null, now);
@@ -95,6 +98,11 @@ describe('raw curb evidence cannot reopen a traversal-only pass', () => {
       serviceCallAllowed(bus, 110, cfg.label, pinkStops, coords, now))).toBe(true);
     expect(rideEvidence('rode', 9, 0, 9, pinkStops.length,
       serviceCallAllowed(bus, 110, cfg.label, pinkStops, coords, now))).toBe('reached');
+    expect(rideEvidence('none', 9, 9, 10, pinkStops.length, true,
+      serviceCallAllowed(bus, 110, cfg.label, pinkStops, coords, now))).toBe('rode');
+    // Raw curb recovery does not fabricate a boarded row: the published
+    // anchor still names 124, outside this ride's [110, 59] calls.
+    expect(rideCallIndex(bus, cfg, routes, coords, [110, 59], 1, now)).toBe(-1);
   });
 
   it('keeps the ordinary future forecast when the raw South shortcut is rejected', () => {

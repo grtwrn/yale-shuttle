@@ -139,11 +139,20 @@ describe("the reported ride: Green #321 run 1791116282719, Building 400 -> West 
 describe("Red #308 run 1791197575974, Division / Prospect -> LEPH / 60 College, started 40 min before boarding", () => {
   const polls = replay(redEarly);
 
-  it("without the guard, said 'Get off here' with the bus calling at the exit on its way round, 33 min before boarding", () => {
+  it("without the guard, alerts on the previous lap before boarding", () => {
     const a = firstAlert(polls, false)!;
-    expect(a.at).toBe("2026-10-05T11:00:31.443Z");
-    expect(a.count).toBe(0);
-    expect((Date.parse(redEarly.boardedAt) - Date.parse(a.at)) / 60_000).toBeGreaterThan(33);
+    // The source bus is at 38; its remaining service calls are 39 then 72.
+    // The shared service path now correctly exposes this earlier warning.
+    expect(red.stops['3']!.slice(red.stops['3']!.indexOf(38), red.stops['3']!.indexOf(72) + 1)).toEqual([38, 39, 72]);
+    expect(a.at).toBe("2026-10-05T10:57:41.416Z");
+    expect(a.count).toBe(2);
+    expect(a.boarded).toBe(false);
+    // Preserve the historical bad zero at the exit as a separate control:
+    // either warning is on a previous lap, over 33 minutes before boarding.
+    const atExit = polls.find(p => p.at === '2026-10-05T11:00:31.443Z')!;
+    expect(atExit.count).toBe(0);
+    expect(atExit.boarded).toBe(false);
+    expect((Date.parse(redEarly.boardedAt) - Date.parse(atExit.at)) / 60_000).toBeGreaterThan(33);
   });
   it("now alerts on the ride, at the poll a ride started at boarding does", () => {
     const a = firstAlert(polls)!;

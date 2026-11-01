@@ -18,7 +18,7 @@ import { computeUpcomingArrivals } from "./liveArrivals";
 import { attachServerEta, liveEtaAvailable, liveBusAvailable, liveRouteTracked, serverArrivalsForServiceWarning } from "./etaSource";
 import { serviceStopCount } from './serviceStopCount';
 import { liveAnchorStore } from "./eta";
-import { anchorIndexOnList, observedServiceAtStop, resolveStandingStop, rideApproach, rideCallIndex, rideCalls, rideStopsToExit, serviceCallAllowed } from "./liveAnchor";
+import { anchorIndexOnList, observedServiceAtStop, resolveStandingStop, rideApproach, rideCallIndex, rideCalls, rideStopsToExit, serviceCallAllowed, serviceCallSequence } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import { nextArrivalForPickup } from './followingPickup';
@@ -6109,7 +6109,8 @@ const RideStopList: FC<{
     exitArrivals = arr.filter(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     // Once this ride reaches its exit, the next arrival is another lap, not
     // the time remaining for the passenger who is getting off here.
-    if (isUnambiguousRideArrival(routeStops[String(bus.route_id)], ride.alightStopId, busIdx, alightIdx,
+    const serviceCalls = cfg ? serviceCallSequence(bus, mergedRouteStops(cfg, routeStops), stopCoords) : null;
+    if (isUnambiguousRideArrival(serviceCalls ?? undefined, ride.alightStopId, busIdx, alightIdx,
       !!cfg && serviceCallAllowed(bus, ride.alightStopId, cfg.label, mergedRouteStops(cfg, routeStops), stopCoords, Date.now(), liveAnchorStore))) {
       etaSec = 0;
     } else {
@@ -6278,18 +6279,6 @@ const OnBusBanner: FC<{
     );
   }
 
-  // The bus has gone PAST the rider's exit and is looping back around — but
-  // only once it has been seen carrying this ride and then at the exit, or a
-  // bus still coming to the pickup, or still driving to the exit on a stop the
-  // line passes twice, would read as having passed it (rideArrival.ts).
-  const evidence = rideEvidence(rideEvidenceSeen(ride), anchorIdx, boardIdx, alightIdx, allStops.length,
-    !!bus && !!cfg && serviceCallAllowed(bus, ride.alightStopId, cfg.label, mergedRouteStops(cfg, routeStops), stopCoords, Date.now(), liveAnchorStore));
-  useEffect(() => { noteRideEvidence(ride, evidence); }, [evidence, ride]);
-  const alightPassed = bus ? rideLappedExit({
-    busIndex: anchorIdx, boardIndex: boardIdx, alightIndex: alightIdx, stopCount: allStops.length,
-    reachedExit: evidence === "reached", rawRoute: routeStops[String(bus.route_id)], alightStopId: ride.alightStopId,
-  }) : false;
-
   // A hold at a named stop explains a countdown that cannot rise while the
   // bus stands (#119) — the hold, named, where the stalled number used to sit.
   // The priced stand, not the payload's flag: `at_stop_id` is withheld for a
@@ -6325,6 +6314,20 @@ const OnBusBanner: FC<{
   const stopsRemaining = bus && cfg && anchorIdx >= 0 && alightIdx >= 0
     ? rideStopsToExit(bus, cfg, routeStops, stopCoords, ride.alightStopId, exitArrivals, Date.now(), liveAnchorStore)
     : null;
+
+  // A physical stop index can be another call of the station or an unserved
+  // twin pass. Reached-exit evidence belongs to the selected current service
+  // visit; a pickup seen before boarding needs the same service-pass proof.
+  const evidence = rideEvidence(rideEvidenceSeen(ride), anchorIdx, boardIdx, alightIdx, allStops.length,
+    stopsRemaining === 0 && !!bus && !!cfg
+      && serviceCallAllowed(bus, ride.alightStopId, cfg.label, mergedRouteStops(cfg, routeStops), stopCoords, Date.now(), liveAnchorStore),
+    !!bus && !!cfg
+      && serviceCallAllowed(bus, ride.boardStopId, cfg.label, mergedRouteStops(cfg, routeStops), stopCoords, Date.now(), liveAnchorStore));
+  useEffect(() => { noteRideEvidence(ride, evidence); }, [evidence, ride]);
+  const alightPassed = bus ? rideLappedExit({
+    busIndex: anchorIdx, boardIndex: boardIdx, alightIndex: alightIdx, stopCount: allStops.length,
+    reachedExit: evidence === "reached", rawRoute: routeStops[String(bus.route_id)], alightStopId: ride.alightStopId,
+  }) : false;
 
   const arriving = stopsRemaining !== null && stopsRemaining <= 2;
 
