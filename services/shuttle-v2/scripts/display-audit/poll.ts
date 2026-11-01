@@ -9,10 +9,11 @@ import { monitorFetch, monitorNetworkSummary } from '../monitor-fetch.mjs';
 
 type Observation = { firstAt: number; lastAt: number; firstPoll: number; reported: boolean; finding: Finding };
 interface State { build: string; observations: Record<string, Observation>; queue: { at: string; build: string; findings: Finding[] }[] }
-const atomic = async (file: string, data: unknown) => {
-  await fs.writeFile(file + '.tmp', JSON.stringify(data, null, 2) + '\n', { mode: 0o600 });
+const atomicSerialized = async (file: string, serialized: string) => {
+  await fs.writeFile(file + '.tmp', serialized, { mode: 0o600 });
   await fs.rename(file + '.tmp', file);
 };
+const atomic = async (file: string, data: unknown) => atomicSerialized(file, JSON.stringify(data, null, 2) + '\n');
 const readState = async (file: string): Promise<State | null> => {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
@@ -70,10 +71,11 @@ async function retainUnavailable(directory: string, checkedAt: string, revision:
   checks.push(record);
   let evictedChecks = 0;
   const history = { v: 1, checks, scope: 'Rolling availability diagnostics from parsed check inputs; not original HTTP bytes or an ETA accuracy result.' };
-  while (checks.length > FAILURE_HISTORY_CHECKS || Buffer.byteLength(JSON.stringify(history, null, 2) + '\n') > FAILURE_HISTORY_BYTES) {
+  let serialized = '';
+  while (checks.length > FAILURE_HISTORY_CHECKS || Buffer.byteLength(serialized = JSON.stringify(history, null, 2) + '\n') > FAILURE_HISTORY_BYTES) {
     checks.shift(); evictedChecks++;
   }
-  await atomic(file, history);
+  await atomicSerialized(file, serialized);
   return { file, checkedAt, bytes: record.bytes, sha256: record.sha256, retainedChecks: checks.length, evictedChecks };
 }
 export async function rotateLog(file: string, limit = 1024 * 1024) {
