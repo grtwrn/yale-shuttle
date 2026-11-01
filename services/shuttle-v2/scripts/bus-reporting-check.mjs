@@ -118,7 +118,7 @@ try {
         // These display preferences leave Red in the monitoring scope. A
         // known loss must survive even though #317 cannot be enrolled anew.
         const blue = page.getByRole('button', { name: 'Blue Day', exact: true });
-        const red = page.getByRole('button', { name: 'Red', exact: true });
+        const red = page.getByRole('button', { name: 'Red', exact: true }).and(page.locator('button[aria-pressed]'));
         assert.equal(await blue.getAttribute('aria-pressed'), 'true');
         assert.equal(await red.getAttribute('aria-pressed'), 'true', 'the watched route stays enabled');
         for (const pressed of ['false', 'true']) {
