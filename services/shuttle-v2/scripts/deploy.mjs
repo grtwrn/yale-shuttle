@@ -247,6 +247,7 @@ await browserRegression("pickup service observer browser regression", "scripts/s
 await browserRegression("map pause wording browser regression", "scripts/map-pause-label-check.mjs", { env: { ...process.env, OUT: path.join(stageDir, "map-pause-labels") } });
 await browserRegression("route label readability browser regression", "scripts/route-readability-check.mjs", { env: { ...process.env, ROUTE_READABILITY_OUT: path.join(stageDir, "route-readability"), ROUTE_READABILITY_PRODUCTION_ASSETS: "0" } });
 await browserRegression("Blue pickup transition browser regression", "scripts/blue-pickup-fallback-check.mjs");
+await browserRegression("new live route admission browser regression", "scripts/new-route-admission-check.mjs", { env: { ...process.env, BOT_BASE_URL: STAGE_URL, BOT_OUT: path.join(stageDir, "new-route-admission") } });
 await browserRegression("missing pickup evidence browser regression", "scripts/pickup-evidence-check.mjs", { env: { ...process.env, PICKUP_EVIDENCE_OUT: path.join(stageDir, "pickup-evidence") } });
 await browserRegression("approaching pickup time browser regression", "scripts/early-pickup-check.mjs", { env: { ...process.env, EARLY_PICKUP_OUT: path.join(stageDir, "early-pickup"), EARLY_PICKUP_PRODUCTION_ASSETS: "0" } });
 await browserRegression("following pickup visit browser regression", "scripts/following-pickup-check.mjs", { env: { ...process.env, FOLLOWING_PICKUP_OUT: path.join(stageDir, "following-pickup"), FOLLOWING_PICKUP_PRODUCTION_ASSETS: "0" } });
