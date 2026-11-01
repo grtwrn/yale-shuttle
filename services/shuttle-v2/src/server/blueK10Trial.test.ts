@@ -77,7 +77,10 @@ it('returns the full group to live when even a different target lacks support or
 it('sorts competing arrivals and keeps the matching distribution with each row', () => {
   const base=wire();base.buses.push(['other','Green',0,null]);
   base.rows.push([1,fixture.target,1,0,2,1,0,0,0]);base.distributions!.push(Array(50).fill(1));
+  base.serviceStopsAhead = [fixture.stopsAhead, null];
   const trial=applyBlueK10Trial(base,evidence(),routes);
   expect(trial.rows[0]![0]).toBe(1);expect(trial.distributions![0]).toEqual(Array(50).fill(1));
+  expect(trial.serviceStopsAhead).toEqual([null, fixture.stopsAhead]);
+  expect(trial.rows.map(r => r[5])).toEqual([1, fixture.stopsAhead]);
   expect(trial.trial!.byRoute!['Blue West']).toBe(1);
 });

@@ -194,26 +194,16 @@ export type UpcomingArrival = {
   lowFloor: number;
   routeLabel: string; color: string; busName: string; stopId: number;
   /**
-   * Hops from the bus's anchor to this stop, 1-based — the loop walks twice,
-   * so the same vehicle a lap later is `stopsAhead > totalStops`.
-   *
-   * ⚠️ **It counts hops on the CANONICAL sequence**, `mergedRouteStops`, which
-   * keeps the primary route's stops VERBATIM — repeats and all, because Green
-   * and Purple pass West Campus twice. It is emphatically NOT an index into
-   * the de-duplicated lists TransitMap's render sites build (Green 23 → 20,
-   * Purple 15 → 11), which is the distinction `anchorIndexOnList` exists to
-   * keep straight (liveAnchor.ts). The right reading is "how many stops of the
-   * real ride are between the bus and this stop", which is the quantity a
-   * distance bucket wants; translating it to a render list would silently mean
-   * something else on exactly the two routes where the estimator is worst.
-   *
-   * Purely descriptive: nothing in the estimator reads it. It exists so a
-   * logged reading can say how far away the bus was when the number was shown
-   * (`predictions_log.stops_ahead`, and the by-distance buckets both accuracy
-   * readers roll up), which is the difference between "our 1-stop numbers are
-   * fine and our 8-stop ones are not" and one undifferentiated median.
+   * Unwrapped traversal-ring hops from the bus's anchor to this occurrence.
+   * The repaired ring preserves published repeats and intermediate passes;
+   * this is the identity used by history, planner joins and evaluation.
+   * It is not a count of boarding opportunities or an index into a deduplicated
+   * display list. Rider-facing stop thresholds use serviceStopsAhead instead.
    */
   stopsAhead: number;
+  /** Count of service calls to this same occurrence; raw traversal hops stay
+   * in stopsAhead. Omitted by legacy producers, null when unavailable. */
+  serviceStopsAhead?: number | null;
   /** Repeat of the same canonical call, not another visit to a folded stop ID.
    * Older/hypothetical producers may omit this diagnostic. */
   occurrence?: number;
@@ -295,6 +285,7 @@ export function computeUpcomingArrivals(
           routeLabel: cfg.label, color: cfg.color,
           busName: bus.bus_name.replace("#", ""),
           stopId: row.stopId, stopsAhead: row.stopsAhead, estimated: row.estimated,
+          ...(row.serviceStopsAhead !== undefined ? { serviceStopsAhead: row.serviceStopsAhead } : {}),
           occurrence: row.occurrence,
         });
       }

@@ -135,6 +135,15 @@ describe('live reminder boarding identity and feed age', () => {
     expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe('heads_up');
     expect(leaveAlertMessage('heads_up', 'Red', s)).toContain('Red #309 could arrive in 4–7 min');
   });
+  it('retains the selected boarding service count and explicit unknown separately from raw hops', () => {
+    const o = option();
+    const boarding = { source: 'forecast' as const,
+      busName: '309', stopId: 48, stopsAhead: 4, serviceStopsAhead: 2, etaSec: 300, lowSec: 280, highSec: 380 };
+    o.livePickupSelection!.boarding = boarding;
+    expect(liveReminderInput([o], 'Red', context())).toMatchObject({ stopsAhead: 4, serviceStopsAhead: 2 });
+    o.livePickupSelection!.boarding = { ...boarding, serviceStopsAhead: null };
+    expect(liveReminderInput([o], 'Red', context())).toMatchObject({ stopsAhead: 4, serviceStopsAhead: null });
+  });
 
   it('uses the same-visit forecast when the countdown bus is also the trip bus', () => {
     expect(liveReminderInput([option(first)], 'Red', context()))

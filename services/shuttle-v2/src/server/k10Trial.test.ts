@@ -54,11 +54,14 @@ describe('K10 trial prior and hybrid', () => {
       [1,sample.target,other,100,3000,base.rows[0]![5],0,200,50]];
     const dots = Array.from({length:50},(_,i)=>other+i);
     base.distributions = [Array(50).fill(2000),dots];
+    base.serviceStopsAhead = [base.rows[0]![5], null];
     // Put the usual faster bus first, as the live API does.
-    base.rows.reverse(); base.distributions.reverse();
+    base.rows.reverse(); base.distributions.reverse(); base.serviceStopsAhead.reverse();
     const trial = applyK10Trial(base,new Map([['309',sample]]),K10_MODEL.sequence);
     expect(trial.rows.map(r=>r[0])).toEqual([0,1]);
     expect(trial.distributions![1]).toEqual(dots);
+    expect(trial.serviceStopsAhead).toEqual([base.rows[1]![5], null]);
+    expect(trial.rows.map(r => r[5])).toEqual([base.rows[1]![5], base.rows[0]![5]]);
   });
   it('falls back before the upstream countdown could reach now during snapshot freshness', () => {
     const expired = fixtures.filter(f => !f.released && f.expected.eta <= 60);

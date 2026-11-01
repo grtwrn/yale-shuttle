@@ -27,7 +27,7 @@ export function OnwardTransfer({ handoff, buses, available, origin, stopNames, s
   const boardPoint = stopCoords[path.boardStopId], exitPoint = stopCoords[path.alightStopId];
   const walkM = origin && boardPoint ? haversineMeters(origin, boardPoint) : null;
   const walkToSec = walkM === null ? null : walkM < AT_PLACE_M ? 0 : walkSecFromMeters(walkM);
-  const now = Date.now(), pickup = transferPickup(path, buses, walkToSec ?? 0, now, available && served, pinned, dwellTimes);
+  const now = Date.now(), pickup = transferPickup(path, buses, walkToSec ?? 0, now, available && served, pinned, dwellTimes, { routeStops, stopCoords });
   useEffect(() => { if (pickup.boardingBusName && pickup.boardingBusName !== pinned) setPinned(pickup.boardingBusName); }, [pickup.boardingBusName]);
   useEffect(() => { if (ready) nextHeading.current?.focus(); }, [ready]);
   const explanation = reason === 'bus-gone' ? `Tracking stopped after ${onward.firstRouteLabel} disappeared from live updates. You may still be on board.`

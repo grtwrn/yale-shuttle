@@ -185,13 +185,19 @@ export class ServerEta {
       for (const [key, bus] of saved.observed) if (typeof key !== 'string' || !bus || typeof bus.bus_name !== 'string'
         || !Number.isFinite(bus.route_id) || !Number.isFinite(bus.lat) || !Number.isFinite(bus.lon)
         || (bus.observed_at !== undefined && !Number.isFinite(bus.observed_at))) return false;
+      const serviceCountValid = (count: unknown, hops: number) => count === null
+        || (Number.isSafeInteger(count) && (count as number) >= 0 && (count as number) <= hops
+          && (hops === 0 ? count === 0 : (count as number) > 0));
       const wireValid = (w: any) => w === null || Boolean(w && w.v === 2 && Number.isFinite(w.at) && Number.isFinite(w.servedAt)
         && Array.isArray(w.buses) && w.buses.length <= 200 && Array.isArray(w.rows) && w.rows.length <= 30000
-        && w.rows.every((r: any) => Array.isArray(r) && r.length === 9 && r.every(Number.isFinite)));
+        && w.rows.every((r: any) => Array.isArray(r) && r.length === 9 && r.every(Number.isFinite))
+        && (w.serviceStopsAhead === undefined || (Array.isArray(w.serviceStopsAhead) && w.serviceStopsAhead.length === w.rows.length
+          && w.serviceStopsAhead.every((count: unknown, i: number) => serviceCountValid(count, w.rows[i][5])))));
       const cache = saved.cache;
       const evaluationRowsValid = (rows: any) => rows === null || (Array.isArray(rows) && rows.length <= 30000
         && rows.every(r => r && typeof r.busName === 'string' && typeof r.routeLabel === 'string'
           && [r.stopId, r.stopsAhead].every(Number.isSafeInteger) && [r.eta, r.low, r.high].every(Number.isFinite)
+          && (r.serviceStopsAhead === undefined || serviceCountValid(r.serviceStopsAhead, r.stopsAhead))
           && typeof r.conformalBounds?.low === 'boolean' && typeof r.conformalBounds?.high === 'boolean'
           && (r.forecastSource === 'base' || (r.forecastSource === 'fixed-k10' && !r.conformalBounds.low && !r.conformalBounds.high))));
       if (kind === 'runtime' && (!cache || !Number.isFinite(cache.lastVersion) || !wireValid(cache.wire) || !wireValid(cache.trialWire)
@@ -412,6 +418,7 @@ export class ServerEta {
     const travel: number[] = [];
     const rows: ServerEtaRow[] = [];
     const distributions: number[][] = [];
+    const serviceStopsAhead: (number | null)[] = [];
     const repeatVisits: ServerEtaRepeatVisit[] = [];
     for (const a of arrivals) {
       if (!this.served.has(a.routeLabel)) continue;
@@ -430,11 +437,12 @@ export class ServerEta {
         travel.push(anchorIndexOnList(bus, cfg, payload.routes, payload.stop_coords, seq, now, this.store, true));
       }
       distributions.push((a.distribution ?? []).map(Math.round));
+      serviceStopsAhead.push(a.serviceStopsAhead ?? null);
       rows.push([i, a.stopId, Math.round(a.eta), Math.round(a.low), Math.round(a.high), a.stopsAhead, a.estimated ? 1 : 0, Math.round(a.departNow), Math.round(a.lowFloor)]);
       if (a.occurrence === 1) repeatVisits.push([i, a.stopId, a.stopsAhead]);
     }
     if (rows.length === 0) return null;
-    return { v: 2, at: now, servedAt: now, buses, rows, distributions, travel, repeatVisits };
+    return { v: 2, at: now, servedAt: now, buses, rows, distributions, serviceStopsAhead, travel, repeatVisits };
   }
 
   /**
@@ -469,10 +477,12 @@ export class ServerEta {
       .filter((r) => remap.has(r[0]))
       .map((r) => [remap.get(r[0])!, ...r.slice(1)] as unknown as ServerEtaRow);
     const distributions = wire.distributions?.filter((_, i) => remap.has(wire.rows[i]![0]));
+    const serviceStopsAhead = wire.serviceStopsAhead?.filter((_, i) => remap.has(wire.rows[i]![0]));
     const travel = wire.travel?.filter((_, i) => remap.has(i));
     const repeatVisits = wire.repeatVisits?.filter(r => remap.has(r[0]))
       .map(r => [remap.get(r[0])!, r[1], r[2]] as ServerEtaRepeatVisit);
     return { ...wire, buses, rows, ...(distributions ? { distributions } : {}), ...(travel ? { travel } : {}),
+      ...(serviceStopsAhead ? { serviceStopsAhead } : {}),
       ...(repeatVisits ? { repeatVisits } : {}) };
   }
 

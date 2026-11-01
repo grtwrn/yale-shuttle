@@ -438,6 +438,26 @@ describe("the page's engine asks the ONE estimator (source-level — TransitMap 
 });
 
 describe('stop-count lead alerts', () => {
+  it('uses service calls for the threshold while preserving raw hops for visit matching', () => {
+    const a = alert({ leadStops: 2 });
+    const row = { routeLabel: 'Pink', stopId: 110, busName: '326', eta: 600,
+      stopsAhead: 4, serviceStopsAhead: 2 };
+    const pink = { ...a, routeLabel: 'Pink', stopId: 110 };
+    expect(stepStopAlerts([pink], [row], T0).pings.map(p => p.kind)).toEqual(['lead']);
+    expect(stepStopAlerts([pink], [{ ...row, serviceStopsAhead: null }], T0).pings).toEqual([]);
+    expect(stepStopAlerts([pink], [{ ...row, serviceStopsAhead: 3 }], T0).pings).toEqual([]);
+  });
+
+  it('estimates the chosen service-stop threshold without subtracting raw traversal hops', () => {
+    const rows = [
+      { routeLabel: 'Pink', stopId: 110, busName: '326', eta: 900, stopsAhead: 6, serviceStopsAhead: 4 },
+      { routeLabel: 'Pink', stopId: 123, busName: '326', eta: 480, stopsAhead: 3, serviceStopsAhead: 2 },
+      { routeLabel: 'Pink', stopId: 123, busName: 'other', eta: 10, stopsAhead: 3, serviceStopsAhead: 2 },
+    ];
+    expect(stopAlertEstimateSec(rows, 'Pink', 110, 2)).toBe(480);
+    expect(stopAlertEstimateSec([{ ...rows[0]!, serviceStopsAhead: null }, ...rows.slice(1)], 'Pink', 110, 2)).toBeNull();
+    expect(stopAlertEstimateSec([rows[0]!, { ...rows[1]!, serviceStopsAhead: undefined }], 'Pink', 110, 2)).toBeNull();
+  });
   it('fires at the requested count once per bus and still sends arrival', () => {
     const a = alert({leadStops: 2});
     const rows = (stopsAhead: number, eta = 600) => [{routeLabel: 'Red', stopId: 11, busName: '317', eta, stopsAhead}];

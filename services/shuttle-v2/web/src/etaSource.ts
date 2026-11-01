@@ -24,6 +24,9 @@ export interface ServerEtaWire {
   repeatVisits?: ServerEtaRepeatVisit[];
   /** Optional row-aligned 50-point quantile distributions; old readers ignore it. */
   distributions?: number[][];
+  /** Optional row-aligned service-call counts. Traversal hops remain in row[5].
+   * Null means unavailable; older producers omit this field. */
+  serviceStopsAhead?: (number | null)[];
   /** Optional, aligned with `buses`: the same anchor in TRAVEL order (liveAnchor.ts
    * `travelSlot`), which differs from `buses[i][2]` only on a pass upstream's list
    * has no slot for. Old readers ignore it; a reader without it counts from `buses[i][2]`. */
@@ -32,7 +35,7 @@ export interface ServerEtaWire {
   trial?: { model: string; changedRows: number; validUntil: number; byRoute?: Record<string, number> };
 }
 interface Snapshot { at: number; rows: UpcomingArrival[]; outsideService: Set<UpcomingArrival>; valid: boolean }
-interface Track { snapshot: Snapshot; index: number; travel: number; standing: StandingAnswer | null }
+interface Track { snapshot: Snapshot; index: number; travel: number; travelKnown: boolean; standing: StandingAnswer | null }
 const snapshots = new WeakMap<readonly BusData[], Snapshot>();
 const tracks = new WeakMap<object, Map<string, Track>>();
 const colours = new Map(ROUTE_LISTS.map(c => [c.label, c.color]));
@@ -73,7 +76,8 @@ export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Dat
     // The server may include lines the frontend's service-hours filter hides.
     if (!live.length) continue;
     busIndex.set(i, { name: norm(b[0]), label: b[1], colour: colours.get(b[1])! });
-    for (const bus of live) tracks.get(bus)!.set(b[1], { snapshot, index: b[2], travel: travel?.[i] ?? b[2], standing: rest });
+    for (const bus of live) tracks.get(bus)!.set(b[1], { snapshot, index: b[2], travel: travel?.[i] ?? b[2],
+      travelKnown: travel?.[i] !== undefined, standing: rest });
   }
   for (const [ri, row] of w.rows.entries()) {
     if (!Array.isArray(row) || row.length !== 9 || !row.every(finite)
@@ -94,8 +98,15 @@ export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Dat
     const dots = w.distributions?.length === w.rows.length ? w.distributions[ri] : undefined;
     const distribution = Array.isArray(dots) && dots.length === 50
       && dots.every((v, i) => finite(v) && v >= 0 && (i === 0 || v >= dots[i - 1]!)) ? dots : undefined;
+    // Invalid optional counts do not discard an otherwise valid ETA, but they
+    // cannot fall back to counting traversal-only passes for a stop reminder.
+    const count = Array.isArray(w.serviceStopsAhead) && w.serviceStopsAhead.length === w.rows.length
+      ? w.serviceStopsAhead[ri] : null;
+    const serviceStopsAhead = Number.isSafeInteger(count) && count! >= 0 && count! <= row[5]
+      && (row[5] === 0 ? count === 0 : count! > 0) ? count! : null;
     const arrival: UpcomingArrival = { ...(distribution ? { distribution } : {}), busName: b.name, routeLabel: b.label, color: b.colour, stopId: row[1],
       eta: row[2], low: row[3], high: row[4], stopsAhead: row[5], estimated: row[6] === 1,
+      ...(w.serviceStopsAhead !== undefined ? { serviceStopsAhead } : {}),
       departNow: row[7], lowFloor: row[8] };
     snapshot.rows.push(arrival);
     if (outsideService) snapshot.outsideService.add(arrival);
@@ -141,6 +152,14 @@ export function serverTrack(bus: object, label: string, now: number): { index: n
   if (!t || !fresh(t.snapshot, now)) return null;
   return { index: t.index, travel: t.travel, standing: t.standing ? { ...t.standing,
     standingSec: t.standing.standingSec + Math.max(0, (now - t.snapshot.at) / 1000) } : null };
+}
+
+/** Whether the current source supplied a usable travel occurrence. The
+ * legacy serverTrack fallback remains useful for ordinary route displays,
+ * but an inferred travel=index is not evidence for a directional curb. */
+export function serverTravelAvailable(bus: object, label: string, now: number): boolean {
+  const track = tracks.get(bus)?.get(label);
+  return Boolean(track && fresh(track.snapshot, now) && track.travelKnown && track.travel >= 0);
 }
 
 /** Reject raw at-stop overrides for a bus the server cannot currently price. */

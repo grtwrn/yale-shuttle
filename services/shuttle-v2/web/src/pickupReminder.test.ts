@@ -31,6 +31,18 @@ describe('chosen pickup reminder timing', () => {
     expect(computePickupReminder(s, NO_PINGS_FIRED, { mode: 'stops', value: 2 })).toBeNull();
     expect(computePickupReminder({ ...s, stopsAhead: 2 }, NO_PINGS_FIRED, { mode: 'stops', value: 2 })).toBe('heads_up');
   });
+  it('counts service calls rather than intermediate traversal passes for the selected visit', () => {
+    const s = input({ stopsAhead: 4, serviceStopsAhead: 2 });
+    expect(computePickupReminder(s, NO_PINGS_FIRED, { mode: 'stops', value: 2 })).toBe('heads_up');
+    expect(pickupReminderMessage('heads_up', { mode: 'stops', value: 2 }, 'Pink', s))
+      .toBe('Pink #307 is 2 stops before your pickup');
+    expect(computePickupReminder({ ...s, serviceStopsAhead: 3 }, NO_PINGS_FIRED, { mode: 'stops', value: 2 })).toBeNull();
+  });
+  it.each([null, NaN, -1, 1.5, 5, 0])('waits instead of guessing an explicit invalid service count (%s)', serviceStopsAhead => {
+    const s = input({ stopsAhead: 4, serviceStopsAhead });
+    expect(computePickupReminder(s, NO_PINGS_FIRED, { mode: 'stops', value: 5 })).toBeNull();
+    expect(computePickupReminder(s, NO_PINGS_FIRED, { mode: 'minutes', value: 10 })).toBe('heads_up');
+  });
   it.each([undefined, NaN, -1, 1.5])('does not guess a missing or invalid stop count (%s)', stopsAhead => {
     expect(computePickupReminder(input({ stopsAhead }), NO_PINGS_FIRED, { mode: 'stops', value: 2 })).toBeNull();
   });

@@ -78,6 +78,8 @@ export interface Ring {
   stops: number[];
   /** Ring position -> index into the stop list the ring was built from. Identity unless repaired. */
   order: number[];
+  /** Per traversal slot: published and spur calls, excluding geometry-only twin passes. */
+  serviceEligible: boolean[];
   /** True when the published order had to be repaired against the published line. */
   repaired: boolean;
   /**
@@ -193,8 +195,9 @@ export function buildRing(
   // not one the published line can supply — Green), or a long fold (the route
   // doubles back, so a marker the line drives past twice can be named once —
   // Pink). A route with neither never reaches the aligner and its ring is
-  // byte-identical. See src/network/alignStops.ts.
+  // unchanged geometrically. See src/network/alignStops.ts.
   let order = Array.from({ length: published }, (_, i) => i);
+  let serviceEligible = new Array<boolean>(published).fill(true);
   let repaired = false;
   if (alignmentWarranted(path, legs.some((l) => l.bridged))) {
     const aligned = alignStopsToPath(path, coords.slice(0, published));
@@ -208,6 +211,9 @@ export function buildRing(
       if (drawn <= loop * 1.02) {
         legs = cand;
         order = aligned.order;
+        // Keep every drive leg in the ring. A geometric twin pass can be
+        // beside the opposite directional curb without serving that curb.
+        serviceEligible = aligned.origins.map((origin) => origin !== "twin");
         repaired = true;
       }
     }
@@ -280,7 +286,7 @@ export function buildRing(
     stopCell: Int32Array.from(stopCell), legM: Float64Array.from(legM),
     stopCoords: ringCoords.slice(0, N),
     nearStop, approachOf, bridged: legs.some((l) => l.bridged),
-    stops: ringStops, order, repaired,
+    stops: ringStops, order, serviceEligible, repaired,
     legSpeed: new Float64Array(N).fill(DEFAULT_DRIVE_M_S),
     pStop: new Float64Array(N).fill(DEFAULT_P_STOP),
     stand: new Array<Dist | null>(N).fill(null),

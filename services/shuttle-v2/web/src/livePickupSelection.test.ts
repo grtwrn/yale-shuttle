@@ -52,6 +52,15 @@ describe('projection of the actual selected pickup', () => {
     expect(forecastPickupSelection({ match: first, boardable: { ...first, busName: '307', eta: 999 }, departed: false }, 1000)?.relation)
       .toBe('same-visit');
   });
+  it('keeps each selected occurrence service count without changing its raw-hop identity', () => {
+    const selection = forecastPickupSelection({ match: { ...first, serviceStopsAhead: 1 },
+      boardable: { ...later, serviceStopsAhead: 22 }, departed: false }, 1000)!;
+    expect(selection.relation).toBe('same-bus-later-visit');
+    expect(selection.countdown).toMatchObject({ stopsAhead: 1, serviceStopsAhead: 1 });
+    expect(selection.boarding).toMatchObject({ stopsAhead: 30, serviceStopsAhead: 22 });
+    expect(forecastPickupSelection({ match: first, boardable: { ...later, serviceStopsAhead: null }, departed: false }, 1000)?.boarding)
+      .toMatchObject({ stopsAhead: 30, serviceStopsAhead: null });
+  });
   it('keeps raw-current evidence free of an invented forecast occurrence', () => {
     const raw = { source: 'raw-at-stop', busName: '307', stopId: 48 };
     expect(rawPickupSelection('#307', 48, 1000)).toEqual({ selectedAtMs: 1000, countdown: raw, boarding: raw, relation: 'raw-current' });

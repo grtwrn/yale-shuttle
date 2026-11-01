@@ -43,6 +43,10 @@ describe("the evidence: Green's published order does not describe Green's publis
     // the line makes 9.4 km into the 11.7 km hop from Bradley (S).
     expect(aligned.added).toBe(1);
     expect(aligned.order).toEqual(green.repairedOrder);
+    expect(aligned.origins.filter((origin) => origin === "published")).toHaveLength(greenStops.length);
+    const spur = aligned.order.filter((_, i) => aligned.origins[i] === "spur");
+    expect(spur.map((i) => greenStops[i])).toEqual([127]);
+    expect(aligned.origins).not.toContain("twin");
   });
 
   it("puts every stop on a pass the line really makes", () => {
@@ -125,6 +129,8 @@ describe("the mechanism, on geometry small enough to check by hand", () => {
     expect(aligned).not.toBeNull();
     expect(aligned.skips).toBeGreaterThan(0);
     expect(aligned.order).toEqual([0, 2, 1, 3]);
+    // Moving an existing published occurrence does not remove its service.
+    expect(aligned.origins).toEqual(["published", "published", "published", "published"]);
   });
 
   it("finds one pass per side and no more", () => {
@@ -267,6 +273,22 @@ describe("Pink: twelve published stops for a lap of eighteen passes", () => {
     expect(aligned.order).toEqual(pink.repairedOrder);
   });
 
+  it("keeps traversal-only twins distinct from the original directional calls", () => {
+    const aligned = alignStopsToPath(pinkPath, pinkCoords)!;
+    expect(aligned.origins).toEqual([
+      "published", "published", "published", "published", "published", "published",
+      "twin", "twin", "published", "published", "twin", "published", "published", "twin",
+      "published", "published",
+    ]);
+    expect(aligned.order.filter((_, i) => aligned.origins[i] === "published").sort((a, b) => a - b))
+      .toEqual(pinkStops.map((_, i) => i));
+    // The first 110 is an opposite-direction pass; the published 110 is later.
+    expect(pinkStops[aligned.order[6]!]).toBe(110);
+    expect(aligned.origins[6]).toBe("twin");
+    expect(pinkStops[aligned.order[12]!]).toBe(110);
+    expect(aligned.origins[12]).toBe("published");
+  });
+
   it("is the order the buses drive, pass for pass", () => {
     const ids = repairedStopOrder(pinkPath, pinkCoords)!.map((i) => pinkStops[i]!);
     // 862 laps of arrivals in the 9/4 snapshot reconstruct exactly this
@@ -298,6 +320,10 @@ describe("Purple: the outbound station call, reached now that the trigger is wid
     expect(aligned.skips).toBe(0);
     expect(aligned.added).toBe(1);
     expect(aligned.order).toEqual(purple.repairedOrder);
+    expect(aligned.origins.filter((origin) => origin === "published")).toHaveLength(purple.stops.length);
+    expect(aligned.order.filter((_, i) => aligned.origins[i] === "spur").map((i) => purple.stops[i]))
+      .toEqual([127]);
+    expect(aligned.origins).not.toContain("twin");
     const ids = aligned.order.map((i) => (purple.stops as number[])[i]!);
     expect(ids.slice(-3)).toEqual([26, 127, 72]);
   });
@@ -328,6 +354,17 @@ describe("what the twin rule refuses", () => {
     // B's outbound pass and A's inbound one — the two the list left out.
     expect(aligned.added).toBe(2);
     expect(aligned.order).toEqual([0, 1, 3, 2, 3, 1]);
+    expect(aligned.origins).toEqual(["published", "published", "twin", "published", "published", "twin"]);
+  });
+
+  it("keeps provenance through seam rotation when the first slot is an added pass", () => {
+    // Starting the published list at B does not make its earlier outbound
+    // pass a published service call. Rotation must carry each pass's origin.
+    const aligned = alignStopsToPath(spur, [b, far, a, apex])!;
+    expect(aligned.order).toEqual([0, 3, 0, 2, 1, 2]);
+    expect(aligned.origins).toEqual(["twin", "published", "published", "twin", "published", "published"]);
+    expect(aligned.order.filter((_, i) => aligned.origins[i] === "published").sort((a, b) => a - b))
+      .toEqual([0, 1, 2, 3]);
   });
 
   it("does not fire on the same stops when the line does not double back", () => {

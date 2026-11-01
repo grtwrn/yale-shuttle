@@ -9,29 +9,38 @@ import { computePickupReminder, pickupReminderMessage, type ReminderTiming } fro
 import { deliverPing, ensureNotifyPermission, liveReminderInput, markFired, NO_PINGS_FIRED, vibrateAlert } from './leaveAlert';
 import { ArrivalDetails } from './ArrivalDetails';
 import { noteShown } from './shownLog';
+import type { LatLon } from './geo';
+import { serviceStopCount } from './serviceStopCount';
 
-export function TransferPickupControls({ path, buses, available, walkToSec, stopName, pinnedBusName = '', dwellTimes, onBoard }: {
+export function TransferPickupControls({ path, buses, available, walkToSec, stopName, pinnedBusName = '', dwellTimes, routeStops, stopCoords, onBoard }: {
   path: TransferRidePath; buses: BusData[]; available: boolean; walkToSec: number | null;
   stopName: string; pinnedBusName?: string; dwellTimes: DwellTimes; onBoard: (busName: string) => void;
+  routeStops: Record<string, number[]>; stopCoords: Record<number, LatLon>;
 }) {
   const [reminder, setReminder] = useState<ReminderTiming | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const fired = useRef({ ...NO_PINGS_FIRED }), armGeneration = useRef(0), mounted = useRef(true);
-  const latest = useRef({ path, buses, available, walkToSec, pinnedBusName, dwellTimes });
-  latest.current = { path, buses, available, walkToSec, pinnedBusName, dwellTimes };
+  const latest = useRef({ path, buses, available, walkToSec, pinnedBusName, dwellTimes, routeStops, stopCoords });
+  latest.current = { path, buses, available, walkToSec, pinnedBusName, dwellTimes, routeStops, stopCoords };
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; armGeneration.current++; }; }, []);
   useEffect(() => { armGeneration.current++; setReminder(null); setBanner(null); }, [path.routeLabel, path.boardStopId, path.alightStopId]);
   const now = Date.now();
-  const pickup = transferPickup(path, buses, walkToSec ?? 0, now, available, pinnedBusName, dwellTimes);
+  const pickup = transferPickup(path, buses, walkToSec ?? 0, now, available, pinnedBusName, dwellTimes, { routeStops, stopCoords });
   useEffect(() => {
     if (!reminder) return;
     const check = () => {
       const p = latest.current, at = Date.now();
-      const live = transferPickup(p.path, p.buses, p.walkToSec ?? 0, at, p.available, p.pinnedBusName, p.dwellTimes);
+      const live = transferPickup(p.path, p.buses, p.walkToSec ?? 0, at, p.available, p.pinnedBusName, p.dwellTimes,
+        { routeStops: p.routeStops, stopCoords: p.stopCoords });
       const input = live.option && (reminder.mode !== 'leave' || p.walkToSec !== null)
         ? liveReminderInput([live.option], p.path.routeLabel, { buses: p.buses, busUpdateFailed: !p.available, nowMs: at,
           boardStopId: p.path.boardStopId, alightStopId: p.path.alightStopId }) : null;
       if (!input) { setReminder(null); setBanner('Reminder stopped: live pickup timing is unavailable.'); return; }
+      if (reminder.mode === 'stops' && serviceStopCount(input) === null) {
+        setBanner('Reminder waiting for a live stop count.');
+        return;
+      }
+      setBanner(previous => previous === 'Reminder waiting for a live stop count.' ? null : previous);
       const ping = computePickupReminder(input, fired.current, reminder);
       if (!ping) return;
       fired.current = markFired(fired.current, ping);

@@ -24,8 +24,9 @@ export function isUnambiguousRideArrival(
   alightStopId: number,
   busIndex: number,
   alightIndex: number,
+  serviceCallAllowed = true,
 ): boolean {
-  if (alightIndex < 0 || busIndex !== alightIndex || !rawRoute) return false;
+  if (!serviceCallAllowed || alightIndex < 0 || busIndex !== alightIndex || !rawRoute) return false;
   // Inspect the upstream sequence, before the ride list deduplicates it.
   return rawRoute.filter((id) => id === alightStopId).length === 1;
 }
@@ -83,9 +84,10 @@ export function rideEvidence(
   boardIndex: number,
   alightIndex: number,
   stopCount: number,
+  exitServiceCallAllowed = true,
 ): RideEvidence {
   if (prev === "reached" || busIndex < 0) return prev;
-  if (busIndex === alightIndex) return prev === "rode" ? "reached" : prev;
+  if (busIndex === alightIndex) return exitServiceCallAllowed && prev === "rode" ? "reached" : prev;
   return busIndex === boardIndex || rideInWindow(busIndex, boardIndex, alightIndex, stopCount) ? "rode" : prev;
 }
 
@@ -123,11 +125,13 @@ export function rideHeadline(s: {
   alightPassed: boolean;
   exitMeters?: number | null;
 }): string {
-  if ((!s.busFound || s.stopsRemaining === null) && s.positionAvailable) {
-    return "Bus location available · arrival estimate unavailable";
+  if (!s.busFound) return s.positionAvailable
+    ? "Bus location available · arrival estimate unavailable" : "Looking for your bus…";
+  if (s.stopsRemaining === null) {
+    const timing = s.holdText ?? s.etaStr;
+    if (timing) return `Tracking your ride · ${timing}`;
+    return s.positionAvailable ? "Bus location available · arrival estimate unavailable" : "Tracking your ride";
   }
-  if (!s.busFound) return "Looking for your bus…";
-  if (s.stopsRemaining === null) return "Tracking your ride";
   if (s.alightPassed) return `May have passed ${s.alightName}${s.etaStr ? ` · back in ${s.etaStr}` : ""}`;
   if (s.stopsRemaining <= 0) return rideExitNearby(s.exitMeters)
     ? `Arriving at ${s.alightName}` : `Watch for ${s.alightName}`;

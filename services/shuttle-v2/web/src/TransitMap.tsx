@@ -16,8 +16,9 @@ import {
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { computeUpcomingArrivals } from "./liveArrivals";
 import { attachServerEta, liveEtaAvailable, liveBusAvailable, liveRouteTracked, serverArrivalsForServiceWarning } from "./etaSource";
+import { serviceStopCount } from './serviceStopCount';
 import { liveAnchorStore } from "./eta";
-import { anchorIndexOnList, observedAtStop, resolveStandingStop, rideApproach, rideCallIndex, rideCalls, rideStopsToExit } from "./liveAnchor";
+import { anchorIndexOnList, observedServiceAtStop, resolveStandingStop, rideApproach, rideCallIndex, rideCalls, rideStopsToExit, serviceCallAllowed } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, isGroceryTransitionAnnouncement, type ServiceAnnouncement } from "./announcements";
 import { nextArrivalForPickup } from './followingPickup';
@@ -2179,7 +2180,7 @@ const TripPlanner: FC<{
       const norm = (s: string) => s.replace(/^#/, "");
       const busesAtBoard = cfg
         ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && liveBusAvailable(b, cfg.label, nowMs) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, visits,
-          { bus: b, routeLabel: cfg.label, stops: mergedRouteStops(cfg, routeStops), now: nowMs }))
+          { bus: b, routeLabel: cfg.label, stops: mergedRouteStops(cfg, routeStops), stopCoords, now: nowMs, anchorStore: liveAnchorStore }))
         : [];
       const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
       if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {
@@ -2326,7 +2327,7 @@ const TripPlanner: FC<{
       }
       const input = liveReminderInput(optionsRef.current, routeLabel,
         { ...reminderContextRef.current, boardStopId, alightStopId, nowMs: Date.now() });
-      if (!input) {
+      if (!input || (reminder.timing.mode === 'stops' && serviceStopCount(input) === null)) {
         // Missing live evidence pauses delivery, not the rider's request.
         // Keep the same timing and fired-ping history until fresh input
         // returns or the rider changes the trip or cancels the reminder.
@@ -2421,7 +2422,7 @@ const TripPlanner: FC<{
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
         && liveBusAvailable(b, cfg.label, Date.now()) && rawAtStopBoardable(b.bus_name, o.boardStopId, o.alightStopId, arrivals,
-          { bus: b, routeLabel: cfg.label, stops: mergedRouteStops(cfg, routeStops), now: Date.now() })
+          { bus: b, routeLabel: cfg.label, stops: mergedRouteStops(cfg, routeStops), stopCoords, now: Date.now(), anchorStore: liveAnchorStore })
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
@@ -2696,6 +2697,9 @@ const TripPlanner: FC<{
           busMatch, cfg, routeStops, stopCoords, o.boardStopId, o.busBoardHops, Date.now(), liveAnchorStore,
         );
         if (approach) stopsAway = approach.length;
+        const selected = o.livePickupSelection?.countdown;
+        if (selected?.source === 'forecast') stopsAway = serviceStopCount(selected);
+        else if (selected?.source === 'raw-at-stop') stopsAway = 0;
       }
       // How many buses are really on this line — the same on-route
       // test the pin uses, so a depot ghost cannot make "2 buses out"
@@ -2711,7 +2715,7 @@ const TripPlanner: FC<{
     // beat the rider to the stop, which froze the readout at the
     // constant walk time ("in 1:49" for a full minute) while the bus
     // visibly closed in — report #48.
-    const busEtaLive = o.mode === "shuttle" && !o.etaUnavailable && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
+    const busEtaLive = o.mode === "shuttle" && !o.etaUnavailable && shuttleCtx?.busMatch
       ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
       : null;
     // Strictly follow the pinned arrival; a previous, uncatchable bus
@@ -2868,8 +2872,10 @@ const TripPlanner: FC<{
     // not evidence the rider is already aboard (report #121: Phelps Gate
     // before a Mansfield / Division pickup hid the rest of Blue West's loop).
     // A watched bus explicitly marked departed still belongs on the ride.
-    const stopsAway = approach?.length ?? 0;
-    const approachStops = approach && stopsAway > 0 && !o.departed ? approach : [];
+    const selectedCall = o.livePickupSelection?.countdown;
+    const stopsAway = selectedCall?.source === 'forecast' ? serviceStopCount(selectedCall)
+      : selectedCall?.source === 'raw-at-stop' ? 0 : approach?.length ?? null;
+    const approachStops = approach && (stopsAway === null || stopsAway > 0) && !o.departed ? approach : [];
     // Same point + complete window as the card and mini-map,
     // without the legacy rounded-width switch (reports 113/114).
     const boardArrival = approachStops.length > 0 && busEtaLive !== null && !o.departed
@@ -2962,7 +2968,7 @@ const TripPlanner: FC<{
           // the rider (or us) to tell whether the anchor was wrong
           // or they were simply watching a different shuttle.
           <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>
-            🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} away
+            🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway === null ? "Stop count unavailable" : `${stopsAway} ${stopsAway === 1 ? "stop" : "stops"} away`}
           </div>
         )}
         {recentSpeed && busMatch && (
@@ -4163,6 +4169,9 @@ const TripPlanner: FC<{
             const timingRows: TimingRow[] = _mapOpts.flatMap(o => detailOpen ? [o]
               : [o, ...(o.pickupAlternatives ?? [])].sort((a, b) => a.walkToSec - b.walkToSec)).map(o => {
               const { shuttleCtx, boarding, boardingEtaLive, boardingNext, lastBus, earlyPickup } = getTripTiming(o);
+              const selectedBoarding = o.livePickupSelection?.boarding;
+              const serviceStopsAway = selectedBoarding?.source === 'forecast' ? serviceStopCount(selectedBoarding)
+                : selectedBoarding?.source === 'raw-at-stop' ? 0 : shuttleCtx?.stopsAway;
               return {
                 option: o,
                 earlyPickup,
@@ -4172,11 +4181,12 @@ const TripPlanner: FC<{
                   etaSec: boardingEtaLive, lowSec: boarding?.lowSec ?? o.busLowSec, highSec: boarding?.highSec ?? o.busHighSec,
                   distributionSec: boarding ? undefined : o.busDistribution, stopId: o.boardStopId,
                   computedAtMs: boarding ? o.livePickupSelection?.selectedAtMs : o.computedAtMs, nextSec: boardingNext?.eta,
-                  nextBusName: boardingNext?.busName, stopsAway: boarding?.stopsAhead ?? shuttleCtx?.stopsAway,
+                  nextBusName: boardingNext?.busName, stopsAway: serviceStopsAway,
                   // Standing at the pickup on the pass the countdown is pinned to,
                   // not at one it passed over for a later one (`rideApproach`).
                   atPickup: !boarding && !!shuttleCtx?.busMatch && shuttleCtx.stopsAway === 0
-                    && observedAtStop(shuttleCtx.busMatch, o.boardStopId, stopCoords),
+                    && observedServiceAtStop(shuttleCtx.busMatch, o.boardStopId, shuttleCtx.cfg.label,
+                      mergedRouteStops(shuttleCtx.cfg, routeStops), stopCoords, Date.now(), liveAnchorStore),
                   holdingAt: shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
                     ? stopNames[shuttleCtx.busMatch.at_stop_id] : undefined,
                 } : undefined,
@@ -6099,7 +6109,8 @@ const RideStopList: FC<{
     exitArrivals = arr.filter(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     // Once this ride reaches its exit, the next arrival is another lap, not
     // the time remaining for the passenger who is getting off here.
-    if (isUnambiguousRideArrival(routeStops[String(bus.route_id)], ride.alightStopId, busIdx, alightIdx)) {
+    if (isUnambiguousRideArrival(routeStops[String(bus.route_id)], ride.alightStopId, busIdx, alightIdx,
+      !!cfg && serviceCallAllowed(bus, ride.alightStopId, cfg.label, mergedRouteStops(cfg, routeStops), stopCoords, Date.now(), liveAnchorStore))) {
       etaSec = 0;
     } else {
       // The ride page's countdown to the alight stop. Same estimator, different
@@ -6271,7 +6282,8 @@ const OnBusBanner: FC<{
   // only once it has been seen carrying this ride and then at the exit, or a
   // bus still coming to the pickup, or still driving to the exit on a stop the
   // line passes twice, would read as having passed it (rideArrival.ts).
-  const evidence = rideEvidence(rideEvidenceSeen(ride), anchorIdx, boardIdx, alightIdx, allStops.length);
+  const evidence = rideEvidence(rideEvidenceSeen(ride), anchorIdx, boardIdx, alightIdx, allStops.length,
+    !!bus && !!cfg && serviceCallAllowed(bus, ride.alightStopId, cfg.label, mergedRouteStops(cfg, routeStops), stopCoords, Date.now(), liveAnchorStore));
   useEffect(() => { noteRideEvidence(ride, evidence); }, [evidence, ride]);
   const alightPassed = bus ? rideLappedExit({
     busIndex: anchorIdx, boardIndex: boardIdx, alightIndex: alightIdx, stopCount: allStops.length,
