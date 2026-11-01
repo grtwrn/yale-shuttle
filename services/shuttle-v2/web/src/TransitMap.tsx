@@ -78,6 +78,7 @@ import { alightComparison, allShuttlesSlowerThanWalk, topVisibleOptions, keptThi
   boardHops, directPromotion, rawAtStopBoardable, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, sameTripPickup, type TripOption,
 } from "./planner";
 import { stableTripOrder, type TripOrderState } from './tripRanking';
+import { admitTripRoutes, retainedTripRoutes, type TripRouteAdmissions } from './tripRouteAdmissions';
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 // "Tell me when Red gets to 344 Winchester" — every rule (arm, expire, the fire
@@ -2084,6 +2085,10 @@ const TripPlanner: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey, futureHoursKey],
   );
+  const [routeAdmissions, setRouteAdmissions] = useState<TripRouteAdmissions | null>(null);
+  // A fresh feed can introduce a line without replacing the original plan
+  // identity, selected pickups or the rows whose reporting loss we monitor.
+  const routeCatalog = useMemo(() => retainedTripRoutes(stableOptions, routeAdmissions), [stableOptions, routeAdmissions]);
 
   // Choices are scoped to the initial plan. Once a fallback is selected it
   // remains the pickup when its card opens; opening cannot revert to the old stop.
@@ -2092,12 +2097,8 @@ const TripPlanner: FC<{
   // Collapse the "show more" list whenever a new trip is planned.
   useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
 
-  // A shuttle-less plan is a snapshot of an empty feed: planTrip ran at
-  // 07:02 before the first bus reported and nothing re-ran it when the bus
-  // appeared, so the rider kept reading "not running now" while it drove
-  // past. Re-plan when the roster of in-service buses changes and the
-  // current plan has no shuttle in it. Rosters change a few times an hour;
-  // plans with a shuttle already re-derive their waits live and are left alone.
+  // Future plans can start before route metadata arrives. Retain their empty
+  // plan retry; live plans admit new routes below without clearing old rows.
   const busRoster = useMemo(
     () => buses.map((b) => `${b.route_id}:${b.bus_name}`).sort().join(",") + `:${liveEtaAvailable(buses)}`,
     [buses],
@@ -2106,10 +2107,11 @@ const TripPlanner: FC<{
   useEffect(() => {
     if (prevRosterRef.current === busRoster) return;
     prevRosterRef.current = busRoster;
-    if (stableOptions && !stableOptions.some((o) => o.mode === "shuttle")) {
+    if (targetDate && targetDate.getTime() - Date.now() > 60_000
+      && stableOptions && !stableOptions.some((o) => o.mode === "shuttle")) {
       setRefreshKey((k) => k + 1);
     }
-  }, [busRoster, stableOptions]);
+  }, [busRoster, stableOptions, targetDate]);
 
   // Which lines have a bus out right now — the live half of the weekend
   // alternation (schedule.ts ROUTE_CALENDAR). Keyed as a string so the
@@ -2132,7 +2134,7 @@ const TripPlanner: FC<{
   }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, routeActive, refreshKey, liveLabelsKey]);
   const etaFresh = !busUpdateFailed && liveEtaAvailable(buses);
   const options: TripOption[] | null = useMemo(() => {
-    if (tripTimeError || !stableOptions) return null;
+    if (tripTimeError || !stableOptions || !routeCatalog) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
@@ -2257,7 +2259,7 @@ const TripPlanner: FC<{
         busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, busBoardHops: boardHops(match, visits, o.boardStopId, o.alightStopId), computedAtMs: nowMs,
       };
     };
-    return stableOptions.map(initial => {
+    return routeCatalog.map(initial => {
       const selected = pickupChoices?.plan === stableOptions ? pickupChoices.byRoute.get(initial.routeLabel) ?? initial : initial;
       const catalog = (pickupChoices?.plan === stableOptions ? pickupChoices.catalogs?.get(initial.routeLabel) : undefined)
         ?? [initial, ...(initial.pickupAlternatives ?? [])];
@@ -2268,20 +2270,21 @@ const TripPlanner: FC<{
       return { ...primary!, pickupAlternatives: alternatives };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, routeCatalog, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
 
   useEffect(() => {
-    if (!stableOptions || !options || !etaFresh || !effectiveFromLL || !toLL
+    if (!stableOptions || !routeCatalog || !options || !etaFresh || !effectiveFromLL || !toLL
       || (targetDate && targetDate.getTime() - Date.now() > 60_000)) return;
     const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
     const fresh = planTrip(from, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), liveAnchorStore, routeHours);
+    setRouteAdmissions(previous => admitTripRoutes(stableOptions, previous, fresh));
     const replacements = options.flatMap(current => {
       const candidate = fresh.find(o => o.routeLabel === current.routeLabel);
       const replacement = pickupFallback(current, candidate, expandedKey === current.routeLabel || reminder?.routeLabel === current.routeLabel
         || (pickupChoices?.plan === stableOptions && !!pickupChoices.selectedByRider?.has(current.routeLabel)));
       return replacement ? [replacement] : [];
     });
-    const recoveries = stableOptions.flatMap(initial => {
+    const recoveries = routeCatalog.flatMap(initial => {
       if (pickupChoices?.plan === stableOptions && pickupChoices.catalogs?.has(initial.routeLabel)) return [];
       const catalog = recoveredPickupCatalog(initial, fresh.find(o => o.routeLabel === initial.routeLabel),
         options.find(o => o.routeLabel === initial.routeLabel));
@@ -2295,7 +2298,7 @@ const TripPlanner: FC<{
       for (const [label, catalog] of recoveries) catalogs.set(label, catalog);
       return { plan: stableOptions, byRoute, catalogs, selectedByRider: prev?.plan === stableOptions ? prev.selectedByRider : undefined };
     });
-  }, [options, stableOptions, etaFresh, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, effectiveFromLL, toLL, fromText, userLatLon, expandedKey, reminder, pickupChoices]);
+  }, [options, stableOptions, routeCatalog, etaFresh, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, effectiveFromLL, toLL, fromText, userLatLon, expandedKey, reminder, pickupChoices]);
 
   const selectTripPickup = (o: TripOption) => {
     if (!stableOptions) return;
@@ -3292,7 +3295,7 @@ const TripPlanner: FC<{
         .map(busName => ({ busName, routeLabel: o.routeLabel, routeIds: cfg.busRouteIds }));
     });
   const reportingScope = isFuture || alreadyThere ? [] : expandedKey ? [expandedKey]
-    : (stableOptions ?? []).filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
+    : (routeCatalog ?? []).filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {<BusReportingAlerts key={`trip:${tripKey}`} viewKey={expandedKey ?? ''} snapshot={reportingSnapshot}
@@ -7758,7 +7761,7 @@ const TransitMap: FC = () => {
         </>
       ) : transferHandoff && listView === "trip" ? null : listView === "map" ? (
         <>
-          <BusReportingAlerts key={`map:${[...mapHidden].sort().join(',')}:${activeOnly}`} snapshot={reportingSnapshot}
+          <BusReportingAlerts key="map" viewKey={`${[...mapHidden].sort().join(',')}:${activeOnly}`} snapshot={reportingSnapshot}
             available={busStatus === 'ready'}
             scope={ROUTE_LISTS.filter(c => !c.busRouteIds.some(id => mapHidden.has(ROUTE_ID_TO_TOGGLE[id])))
               .map(c => c.label)}

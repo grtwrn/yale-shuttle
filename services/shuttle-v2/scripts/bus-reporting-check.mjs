@@ -114,6 +114,27 @@ try {
         assert.equal(await notices.getByRole('alert').count(), 1, 'same-route details retain exactly one active loss');
         await page.getByRole('button', { name: '← All routes', exact: true }).click();
       }
+      if (mode === 'map') {
+        // These display preferences leave Red in the monitoring scope. A
+        // known loss must survive even though #317 cannot be enrolled anew.
+        const blue = page.getByRole('button', { name: 'Blue Day', exact: true });
+        const red = page.getByRole('button', { name: 'Red', exact: true }).and(page.locator('button[aria-pressed]'));
+        assert.equal(await blue.getAttribute('aria-pressed'), 'true');
+        assert.equal(await red.getAttribute('aria-pressed'), 'true', 'the watched route stays enabled');
+        for (const pressed of ['false', 'true']) {
+          await blue.click();
+          assert.equal(await blue.getAttribute('aria-pressed'), pressed);
+          assert.equal(await red.getAttribute('aria-pressed'), 'true');
+          assert.match(await notices.innerText(), /Red #317 stopped reporting/);
+          assert.equal(await notices.getByRole('alert').count(), 1, 'unrelated map route filter preserves the known Red loss');
+        }
+        await page.getByRole('button', { name: 'Running now', exact: true }).click();
+        await page.getByRole('button', { name: 'Every route', exact: true }).waitFor();
+        assert.equal(await notices.getByRole('alert').count(), 1, 'Every route preserves the known Red loss');
+        await page.getByRole('button', { name: 'Every route', exact: true }).click();
+        await page.getByRole('button', { name: 'Running now', exact: true }).waitFor();
+        assert.equal(await notices.getByRole('alert').count(), 1, 'Running now preserves the known Red loss');
+      }
       const dismiss = notices.getByRole('button', { name: 'Dismiss tracking update for Red #317', exact: true });
       const box = await dismiss.boundingBox(); assert(box.width >= 44 && box.height >= 44);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no horizontal overflow');
@@ -125,6 +146,18 @@ try {
         await page.getByRole('button', { name: '← All routes', exact: true }).click();
         assert.equal(await notices.count(), 0, 'dismissed episode stays dismissed in the overview');
       }
+      if (mode === 'map') {
+        const blue = page.getByRole('button', { name: 'Blue Day', exact: true });
+        await blue.click(); assert.equal(await blue.getAttribute('aria-pressed'), 'false');
+        assert.equal(await notices.count(), 0, 'unrelated route toggle preserves explicit dismissal');
+        await blue.click(); assert.equal(await blue.getAttribute('aria-pressed'), 'true');
+        await page.getByRole('button', { name: 'Running now', exact: true }).click();
+        await page.getByRole('button', { name: 'Every route', exact: true }).waitFor();
+        assert.equal(await notices.count(), 0, 'map display mode preserves explicit dismissal');
+        await page.getByRole('button', { name: 'Every route', exact: true }).click();
+        await page.getByRole('button', { name: 'Running now', exact: true }).waitFor();
+        assert.equal(await notices.count(), 0, 'dismissed loss stays quiet after restoring map filters');
+      }
       await advance(); assert.equal(await notices.count(), 0, 'dismissed loss does not repeat');
       phase = 'returned'; await advance(); await notices.waitFor();
       assert.match(await notices.innerText(), /Red #317 is reporting again/);
@@ -134,6 +167,13 @@ try {
       if (mode === 'trip') {
         await page.getByRole('button', { name: 'View Red trip details', exact: true }).click();
         assert.equal(await notices.count(), 0, 'opening a different viewing scope clears old notice');
+      }
+      if (mode === 'map') {
+        const blue = page.getByRole('button', { name: 'Blue Day', exact: true });
+        await blue.click(); assert.equal(await blue.getAttribute('aria-pressed'), 'false');
+        assert.equal(await notices.count(), 0, 'changing map filters clears completed recovery notices');
+        await blue.click(); assert.equal(await blue.getAttribute('aria-pressed'), 'true');
+        assert.equal(await notices.count(), 0, 'completed recovery does not reappear when the filter is restored');
       }
       report.runs.push({ mode, width, polls, passed: true });
       console.log(`PASS ${mode} ${width}px: short drop, connection failure, sustained loss, dismissal, new-ID return`);
