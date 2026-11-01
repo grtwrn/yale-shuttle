@@ -171,8 +171,8 @@ try {
       // route. An arrival-chart button belongs to the separate card variant.
       const livePickup = servicePickup.getByTestId('route-pickup');
       await livePickup.waitFor(); await servicePickup.getByTestId('pickup-range').waitFor();
-      const retainedPickupText = await livePickup.innerText();
-      assert.match(retainedPickupText, /~?\d.*\(\d.*\d\)/, 'unknown count retains a numeric pickup estimate and range');
+      const retainedEtaValues = row.slice(2, 5);
+      assert.match(await livePickup.innerText(), /~?\d.*\(\d.*\d\)/, 'unknown count retains a numeric pickup estimate and range');
       assert.equal((await servicePickup.getAttribute('data-board-bus'))?.replace(/^#/, ''), '44');
       assert.equal(await servicePickup.getAttribute('data-board-stops-ahead'), null, 'unknown count must not display four traversal hops as four stops');
       assert.match(await waiting.innerText(), /2 stops before pickup/);
@@ -184,7 +184,11 @@ try {
       await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).waitFor();
       assert.equal(await waiting.count(), 0);
       await livePickup.waitFor();
-      assert.equal(await livePickup.innerText(), retainedPickupText, 'count recovery retains the same pickup estimate and range');
+      await servicePickup.getByTestId('pickup-range').waitFor();
+      // The displayed range ages between polls. Its rounding can change
+      // while the underlying forecast stays the same across count recovery.
+      assert.match(await livePickup.innerText(), /~?\d.*\(\d.*\d\)/, 'count recovery retains a numeric pickup estimate and range');
+      assert.deepEqual(row.slice(2, 5), retainedEtaValues, 'count recovery leaves the forecast values unchanged');
       assert.equal((await servicePickup.getAttribute('data-board-bus'))?.replace(/^#/, ''), '44');
       assert.equal(await servicePickup.getAttribute('data-board-stops-ahead'), '2');
       assert.equal(row[5], 4, 'delivery must use service calls without renumbering raw occurrence hops');
