@@ -7,7 +7,7 @@ import './BusReportingAlerts.css';
 /** In-page notices need no notification permission; the monitor only advances
  * on a new successful poll while the page is visible. Keep the monitor mounted
  * while opening details for a route already in the current trip's scope. */
-export function BusReportingAlerts({ snapshot, watched, scope, available, replacements = [], watchForecasts = false, viewKey = '' }: {
+export function BusReportingAlerts({ snapshot, watched, scope, available, replacements = [], watchForecasts = false, viewKey = '', presented = true }: {
   snapshot: ReportingSnapshot | null;
   watched: readonly ReportingWatch[];
   scope: readonly string[];
@@ -15,6 +15,8 @@ export function BusReportingAlerts({ snapshot, watched, scope, available, replac
   replacements?: readonly ReportingWatch[];
   watchForecasts?: boolean;
   viewKey?: string;
+  /** Hide this view's notices without discarding its live monitor state. */
+  presented?: boolean;
 }) {
   const [state, setState] = useState(emptyReportingState);
   const [forecastState, setForecastState] = useState(emptyForecastReportingState);
@@ -50,7 +52,7 @@ export function BusReportingAlerts({ snapshot, watched, scope, available, replac
   const forecastNotices = watchForecasts ? forecastState.records.filter(r => r.status !== 'watching' && !r.dismissed
     && scope.includes(r.routeLabel) && (!viewChanged || r.status !== 'restored')
     && !notices.some(n => n.status === 'lost' && reportingKey(n) === reportingKey(r))) : [];
-  if (!visible || (!notices.length && !forecastNotices.length)) return null;
+  if (!presented || !visible || (!notices.length && !forecastNotices.length)) return null;
   return <div className="bus-reporting-alerts" data-testid="bus-reporting-alerts" aria-label="Bus tracking updates">
     {notices.map(record => {
       const key = reportingKey(record);
