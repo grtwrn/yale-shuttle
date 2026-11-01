@@ -1,0 +1,58 @@
+{
+  "schema": "independent-catalog-embedding-protocol/v2",
+  "revision": 2,
+  "proposalSHA256": "d25af26c9470fac2d90bc4c7a400f25db53d51ea2a802dde1e634e9801a6c615",
+  "r3ProtocolSHA256": "fc773c29e476375a115a7e885a966eed53a1c94246da86af8b0b46d0d319aa20",
+  "publicationCapability": false,
+  "liveAdmissionCapability": false,
+  "caps": {
+    "maxSourceFiles": 16,
+    "maxSourceFileBytes": 262144,
+    "maxAggregateSourceBytes": 2097152,
+    "maxVertices": 4096,
+    "maxCalls": 2048,
+    "maxAdmittedSourceVariants": 16,
+    "maxTypedInterpretations": 16384,
+    "maxCandidateComponents": 65536,
+    "maxExpandedStates": 1000000,
+    "maxFeasibleAssignments": 50000,
+    "maxDiagnosticOutputBytes": 67108864,
+    "reservedRefusalOutputBytes": 1048576,
+    "internalMonotonicBudgetMs": 90000,
+    "externalOwnerWallMs": 120000,
+    "linuxMemoryBytes": 536870912,
+    "nodeMaxOldSpaceMiB": 256,
+    "linuxCPUCount": 1,
+    "maxPids": 64
+  },
+  "rules": {
+    "scope": "One plan cycle equals one closed raw path loop only with explicit reviewed evidence or a fixture-only assumption. Real-reference unqualified scope refuses before geometry. No output is a live catalog admission.",
+    "interpretations": "Keep every declared source variant, all injective token-to-original-occurrence crosswalks retaining all published slots, every admitted orientation and every cyclic token rotation. Excluded orientations require independent evidence. A zero-solution admitted variant refuses the full scope.",
+    "regions": "Use frozen R3 raw geometry at150m. Every maximal circular preimage component is a candidate, retaining original segment fractions. No nearest, mask repair or predictor input. Unselected/unresolved/extra curb components remain unknown, never automatically traversal-only.",
+    "lifts": "First token component uses lift0. For later tokens enumerate lifts-1,0,1,2; complete for components with0<=lo<L andlo<=hi<=lo+L, with strict token order and final position strictly before first+L. Keep every source witness; physical alias hashes annotate but never discard solutions.",
+    "strictOrder": "Exact dyadic rational comparison of the finite binary64 arc endpoints proves existence of strictly increasing token positions and closure within one loop. No chosen nearest points, epsilon, fitted cost or equality relaxation. Degenerate non-identifiable components remain ambiguous.",
+    "search": "Deterministic DFS visits variant, crosswalk option, orientation, rotation and component/lift candidates in explicit source order. Every attempted prefix emits accepted/rejected evidence with a constraint certificate. Any cap/clock/output/unhandled numerical case yields incomplete refusal and retained frontier, never exhaustion.",
+    "invariance": "Only complete enumeration with a feasible set for every admitted variant can report an invariant subset. Compare original occurrence, component and orientation across all worlds; repeated/shared components and unsupported SPUR stay unknown. R3 current/next and ordinal rules remain separate; no runtime ensemble activation.",
+    "custody": "Read bounded immutable regular-file inputs by owned FD through EOF; pin exact bytes and canonical input. Canonical JSONL channels have sequence/prefix hashes, clock transcript and final external inventory. Replay regenerates all deterministic search artifacts and the final result; missing/partial/extra artifacts refuse. R2 explicitly separates admitted source payload bytes from the separately bounded EOF probes described in io; v1 and the original proposal remain immutable history.",
+    "capability": "Fixture and reference-analysis modes only. qualificationPending always true, liveQualified always false, no publication, actor, current-loop import, production request or original-label mutation."
+  },
+  "previousProtocolSHA256": "2bb9bf555da436ae24a804b7c8f402fc569f7eb1cd2fe50d9d142b7c43a5e846",
+  "io": {
+    "admittedPayloadExtentUnchanged": true,
+    "inputPassMaxPayloadBytes": 2097152,
+    "inputFileMaxPayloadBytes": 262144,
+    "inputPassMaxFiles": 16,
+    "eofProbeMaxAttemptsPerFD": 1,
+    "eofProbeRequestedBytes": 1,
+    "inputPassMaxEOFProbeAttempts": 16,
+    "inputPassMaxActualEOFProbeBytes": 16,
+    "inputPassMaxTotalActualIOBytes": 2097168,
+    "rules": [
+      "Exact admitted payload equality is accepted. After consuming the fixed admitted extent, at most one separately budgeted one-byte EOF probe is attempted on that same descriptor.",
+      "Any nonzero EOF probe refuses changed input. Probe bytes never become accepted/pinned payload. Record payload bytes, attempted EOF probes and actual EOF-probe bytes separately.",
+      "Each complete input/control pass and independently bounded static-runtime-source pass has its own16-file/2MiB payload plus16-probe ceiling. Source file counts and scientific thresholds do not increase.",
+      "Artifact verification retains its existing independently bounded large read budget; no source/probe allowance silently raises artifact or total-output caps.",
+      "Before/after source passes are individually bounded. A missing/failed EOF or identity check cannot authorize admission."
+    ]
+  }
+}
