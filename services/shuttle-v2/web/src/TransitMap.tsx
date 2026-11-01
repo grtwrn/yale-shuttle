@@ -3,6 +3,7 @@ import { pickupRequestFor } from './pickupService';
 import { PickupRequestNotice } from './PickupRequestNotice';
 import { REPORT_IMAGE_MAX_COUNT, REPORT_IMAGES_MAX_DATA_URL_LENGTH } from "./reportAttachments";
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
+import { createPortal } from "react-dom";
 import L from "leaflet";
 import { cancelMapTouchZoom } from "./mapLifecycle";
 import { recentSpeedStatus } from "./recentSpeed";
@@ -1611,6 +1612,7 @@ const AllRoutesMap: FC<{
 type LiveBusStatus = "loading" | "unavailable" | "ready";
 
 const TripPlanner: FC<{
+  active: boolean;
   buses: BusData[];
   reportingSnapshot: ReportingSnapshot | null;
   reportingAvailable: boolean;
@@ -1658,7 +1660,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, reportingSnapshot, reportingAvailable, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ active, buses, reportingSnapshot, reportingAvailable, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [initialDraft] = useState(loadTripDraft);
   const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
   const [toText, setToText] = useState(initialDraft?.toText ?? "");
@@ -1785,15 +1787,16 @@ const TripPlanner: FC<{
   };
   useEffect(() => {
     const intent = departureFocusIntentRef.current;
+    if (!active) { departureFocusIntentRef.current = null; return; }
     if (!intent) return;
     departureFocusIntentRef.current = null;
     const target = intent.target === 'input' ? departureTimeInputRef.current : planLaterButtonRef.current;
     // Only explicit picker transitions move focus. Respect a rider who
     // has already moved to another control before this commit completes.
-    const active = document.activeElement;
-    if (active !== document.body && active !== intent.source && active !== target) return;
+    const focused = document.activeElement;
+    if (focused !== document.body && focused !== intent.source && focused !== target) return;
     target?.focus();
-  }, [tripTime]);
+  }, [active, tripTime]);
   useEffect(() => {
     // Preserve the last committed selection while either field is being edited.
     if (fromExpanded || toExpanded) return;
@@ -2191,7 +2194,7 @@ const TripPlanner: FC<{
       // THE countdown — the number every accuracy and stability finding is
       // about, and until now the one nothing recorded. Sampled and dedup'd
       // inside noteShown; this call allocates nothing on an unsampled load.
-      noteShown(live, "trip", nowMs);
+      if (active) noteShown(live, "trip", nowMs);
       // Prefer the planned dwelling bus only when the estimator agrees this
       // is its current boarding visit, not another pass by the same curb.
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
@@ -2270,7 +2273,7 @@ const TripPlanner: FC<{
       return { ...primary!, pickupAlternatives: alternatives };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, routeCatalog, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [active, stableOptions, routeCatalog, pickupChoices, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
 
   useEffect(() => {
     if (!stableOptions || !routeCatalog || !options || !etaFresh || !effectiveFromLL || !toLL
@@ -2362,6 +2365,7 @@ const TripPlanner: FC<{
       // works backgrounded on Android); otherwise the in-app banner +
       // vibration. deliverPing never throws.
       void deliverPing(msg).then((shown) => {
+        if (reminderContextRef.current.tripKey !== reminder.tripKey) return;
         if (!shown) {
           setReminderBanner(msg);
           vibrateAlert();
@@ -2555,11 +2559,11 @@ const TripPlanner: FC<{
   // If the user sets a destination while From is still "use current
   // location" but we don't have GPS yet, kick off a locate request.
   useEffect(() => {
-    if (toLL && !fromText && !fromLL && !locating && !userLatLon) {
+    if (active && toLL && !fromText && !fromLL && !locating && !userLatLon) {
       onRequestLocate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toLL]);
+  }, [active, toLL]);
 
   const applyDestination = (t: SavedTrip) => {
     setToText(t.toText);
@@ -2674,6 +2678,9 @@ const TripPlanner: FC<{
   if (tripKeyRef.current !== tripKey) {
     tripKeyRef.current = tripKey;
     if (expandedKey !== null) setExpandedKey(null);
+    if (reminder) setReminder(null);
+    if (reminderBanner) setReminderBanner(null);
+    reminderFiredRef.current = NO_PINGS_FIRED;
   }
 
 
@@ -3297,29 +3304,15 @@ const TripPlanner: FC<{
   const reportingScope = isFuture || alreadyThere ? [] : expandedKey ? [expandedKey]
     : (routeCatalog ?? []).filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
   return (
-    <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {<BusReportingAlerts key={`trip:${tripKey}`} viewKey={expandedKey ?? ''} snapshot={reportingSnapshot}
+    <>
+      <BusReportingAlerts key={`trip:${tripKey}`} viewKey={expandedKey ?? ''} snapshot={reportingSnapshot}
         available={reportingAvailable} watched={watchedTripBuses} scope={reportingScope}
-        replacements={watchedTripBuses} watchForecasts />}
-      {reminder && reminderWaiting && (
-        <div role="status" aria-label="Pickup reminder waiting for live updates" style={{
-          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8,
-          border: '1px solid #dadce0', borderRadius: 8, padding: 10, marginBottom: 8,
-          background: '#f8f9fa', color: '#37474f', fontSize: 14, lineHeight: 1.4,
-        }}>
-          <span style={{ flex: '1 1 180px' }}>
-            {reminder.routeLabel}: {reminderTimingLabel(reminder.timing)}.
-            {' '}Waiting for live pickup updates. Keep this page open.
-          </span>
-          <button className="trip-action-button" style={{ width: 'auto' }}
-            aria-label="Cancel pickup reminder" onClick={() => setReminder(null)}>Cancel reminder</button>
-        </div>
-      )}
+        replacements={watchedTripBuses} watchForecasts presented={active} />
       {/* In-app fallback for a leave-time ping when a system notification
           can't be shown (permission denied, or iOS Safari page context
-          where the Notification API doesn't exist). Fixed so it's seen
-          regardless of scroll; stays up until dismissed. */}
-      {reminderBanner && (
+          where the Notification API doesn't exist). The portal keeps it
+          visible on Map and Issues too; it stays up until dismissed. */}
+      {reminderBanner && createPortal(
         <div role="alert" style={{
           position: "fixed", top: 12, left: 12, right: 12, zIndex: 3000,
           maxWidth: 536, margin: "0 auto",
@@ -3340,6 +3333,22 @@ const TripPlanner: FC<{
               fontSize: 18, cursor: "pointer", fontFamily: "inherit",
             }}
           >✕</button>
+        </div>, document.body)}
+      {/* Remove the inactive UI, including its Leaflet maps, while the
+          controller, live reporting monitor and reminder timer stay mounted. */}
+      {active && <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
+      {reminder && reminderWaiting && (
+        <div role="status" aria-label="Pickup reminder waiting for live updates" style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+          border: '1px solid #dadce0', borderRadius: 8, padding: 10, marginBottom: 8,
+          background: '#f8f9fa', color: '#37474f', fontSize: 14, lineHeight: 1.4,
+        }}>
+          <span style={{ flex: '1 1 180px' }}>
+            {reminder.routeLabel}: {reminderTimingLabel(reminder.timing)}.
+            {' '}Waiting for live pickup updates. Keep this page open.
+          </span>
+          <button className="trip-action-button" style={{ width: 'auto' }}
+            aria-label="Cancel pickup reminder" onClick={() => setReminder(null)}>Cancel reminder</button>
         </div>
       )}
       {/* Details view: search/plan chrome is hidden (not unmounted — its
@@ -4801,7 +4810,8 @@ const TripPlanner: FC<{
           </div>
         </div>
       )}
-    </div>
+      </div>}
+    </>
   );
 };
 
@@ -6601,6 +6611,13 @@ const TransitMap: FC = () => {
   useEffect(() => {
     try { localStorage.setItem("listView", listView); } catch { /* storage blocked */ }
   }, [listView]);
+  // Main navigation hides the planner UI, not the active trip's choices or
+  // reminder timer. Boarding/handoff still ends that planner session.
+  const [tripControllerStarted, setTripControllerStarted] = useState(listView === "trip");
+  useEffect(() => {
+    if (boardedRide || transferHandoff) setTripControllerStarted(false);
+    else if (listView === "trip") setTripControllerStarted(true);
+  }, [listView, boardedRide, transferHandoff]);
   // "Issues" tab notification: did the operator change the status of one of
   // this rider's reports since they last opened the tab? Checked ONCE at load
   // (not on the 5 s poll — status changes are rare, and the poll must stay
@@ -7725,6 +7742,32 @@ const TransitMap: FC = () => {
           scope={[label]} watched={names.map(busName => ({ busName, routeLabel: label,
             routeIds: ROUTE_LISTS.find(c => c.label === label)?.busRouteIds ?? [] }))} />} />}
 
+      {!boardedRide && !transferHandoff && (tripControllerStarted || listView === "trip") && (
+        <TripPlanner active={listView === "trip"}
+          reportingSnapshot={reportingSnapshot} reportingAvailable={busStatus === 'ready'}
+          busStatus={busStatus}
+          lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
+          buses={buses} stopNames={stopNames} stopCoords={stopCoords}
+          routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
+          routeHours={routeHours} routeActive={routeActive}
+          userLatLon={userLatLon} onRequestLocate={startLocating}
+          locating={locating} locateError={locateError}
+          savedTrips={savedTrips}
+          onSaveTrip={(t) => saveSavedTrips([...savedTrips, t])}
+          onDeleteSaved={(id) => saveSavedTrips(savedTrips.filter((x) => x.id !== id))}
+          onRenameSaved={(id, toText) => saveSavedTrips(savedTrips.map((x) => x.id === id ? { ...x, toText, name: toText } : x))}
+          recentTrips={recentTrips}
+          onRecordRecent={saveRecentTrips}
+          onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
+          onClearRecents={() => saveRecentTrips([])}
+          announcements={announcements}
+          stopSkips={stopSkips}
+          onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
+          pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
+          onBoard={(ride) => { saveTransferSelection(null); saveBoardedRide(ride); saveTripDraft(null); saveTransferHandoff(null); setTransferHandoff(null); setFinishedRide(null); setBoardedRide(ride); }}
+        />
+      )}
+
       {/* Ride page — once on a bus this is the whole view (its own page): a map
           of just your route + your location, then the stop list. Tabs are hidden
           above; "Done" in the banner ends the ride and returns to the tabs. */}
@@ -7985,29 +8028,7 @@ const TransitMap: FC = () => {
       ) : listView === "issues" ? (
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
-        <TripPlanner
-          reportingSnapshot={reportingSnapshot} reportingAvailable={busStatus === 'ready'}
-          busStatus={busStatus}
-          lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
-          buses={buses} stopNames={stopNames} stopCoords={stopCoords}
-          routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
-          routeHours={routeHours} routeActive={routeActive}
-          userLatLon={userLatLon} onRequestLocate={startLocating}
-          locating={locating} locateError={locateError}
-          savedTrips={savedTrips}
-          onSaveTrip={(t) => saveSavedTrips([...savedTrips, t])}
-          onDeleteSaved={(id) => saveSavedTrips(savedTrips.filter((x) => x.id !== id))}
-          onRenameSaved={(id, toText) => saveSavedTrips(savedTrips.map((x) => x.id === id ? { ...x, toText, name: toText } : x))}
-          recentTrips={recentTrips}
-          onRecordRecent={saveRecentTrips}
-          onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
-          onClearRecents={() => saveRecentTrips([])}
-          announcements={announcements}
-          stopSkips={stopSkips}
-          onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
-          pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
-          onBoard={(ride) => { saveTransferSelection(null); saveBoardedRide(ride); saveTripDraft(null); saveTransferHandoff(null); setTransferHandoff(null); setFinishedRide(null); setBoardedRide(ride); }}
-        />
+        null
       ) : (
       // Unreachable: the tab bar offers trip/map/issues only, and a stored
       // "all" is migrated to "map" above. Kept as the favourites/accuracy
