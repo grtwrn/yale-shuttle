@@ -4436,8 +4436,12 @@ const TripPlanner: FC<{
                   const leaveInput = liveReminderInput([o], o.routeLabel,
                     { ...reminderContextRef.current, nowMs: Date.now() });
                   const reminderActive = reminder?.routeLabel === o.routeLabel
+                    && reminder.tripKey === tripKey
                     && reminder.boardStopId === o.boardStopId && reminder.alightStopId === o.alightStopId;
-                  const reminderBus = leaveInput?.laterVisit ? `#${leaveInput.busName}'s return` : `#${leaveInput?.busName}`;
+                  const reminderBus = leaveInput
+                    ? leaveInput.laterVisit ? `#${leaveInput.busName}'s return` : `#${leaveInput.busName}`
+                    : o.routeLabel;
+                  const reportButtonId = `trip-report-${encodeURIComponent(o.routeLabel)}-${o.boardStopId}-${o.alightStopId}`;
                   const boardCoord = stopCoords[o.boardStopId];
                   const navHref = boardCoord
                     ? `https://www.google.com/maps/dir/?api=1&destination=${boardCoord.lat},${boardCoord.lon}&travelmode=walking`
@@ -4536,19 +4540,19 @@ const TripPlanner: FC<{
                             startedAt: Date.now(),
                             ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),
                           })} />}
-                          {leaveInput && (
-                            <PickupReminderControls bus={reminderBus} stopName={boardName} walkToSec={o.walkToSec}
-                              activeTiming={reminderActive ? reminder!.timing : undefined}
-                              onCancel={() => setReminder(null)}
-                              onArm={timing => {
-                                reminderFiredRef.current = NO_PINGS_FIRED;
-                                setReminderBanner(null);
-                                void ensureNotifyPermission();
-                                setReminder({ routeLabel: o.routeLabel, boardStopId: o.boardStopId, alightStopId: o.alightStopId, timing, tripKey });
-                              }}
-                            />
-                          )}
+                          <PickupReminderControls bus={reminderBus} stopName={boardName} walkToSec={o.walkToSec}
+                            activeTiming={reminderActive ? reminder!.timing : undefined} liveAvailable={!!leaveInput}
+                            fallbackFocusId={reportButtonId}
+                            onCancel={() => setReminder(null)}
+                            onArm={timing => {
+                              reminderFiredRef.current = NO_PINGS_FIRED;
+                              setReminderBanner(null);
+                              if (!reminderActive) void ensureNotifyPermission();
+                              setReminder({ routeLabel: o.routeLabel, boardStopId: o.boardStopId, alightStopId: o.alightStopId, timing, tripKey });
+                            }}
+                          />
                           <button
+                            id={reportButtonId}
                             className="trip-action-button"
                             onClick={(e) => { e.stopPropagation(); reportOption(o); }}
                             title="Report that this route is wrong or confusing"

@@ -5,8 +5,10 @@ import {
   DEFAULT_REMINDER_TIMING, REMINDER_MINUTES, REMINDER_STOPS, reminderTimingLabel, type ReminderTiming,
 } from './pickupReminder';
 
-export function PickupReminderControls({ bus, stopName, walkToSec, activeTiming, onArm, onCancel }: {
+export function PickupReminderControls({ bus, stopName, walkToSec, activeTiming, liveAvailable = true, fallbackFocusId, onArm, onCancel }: {
   bus: string; stopName: string; walkToSec: number; activeTiming?: ReminderTiming;
+  liveAvailable?: boolean;
+  fallbackFocusId?: string;
   onArm: (timing: ReminderTiming) => void; onCancel: () => void;
 }) {
   const id = useId(), trigger = useRef<HTMLButtonElement>(null);
@@ -15,16 +17,24 @@ export function PickupReminderControls({ bus, stopName, walkToSec, activeTiming,
   // Live walking progress can remove the leave-time option while editing.
   // Use the same available choice for the controls, explanation and saved arm.
   const timing = draftTiming.mode === 'leave' && walkToSec < AT_STOP_WALK_SEC ? DEFAULT_REMINDER_TIMING : draftTiming;
-  const close = () => { setOpen(false); trigger.current?.focus(); };
+  const close = (cancelingArm = false) => {
+    const focusTarget = !liveAvailable && (!activeTiming || cancelingArm) && fallbackFocusId
+      ? document.getElementById(fallbackFocusId) : trigger.current;
+    setOpen(false); focusTarget?.focus();
+  };
   const edit = () => { setTiming(activeTiming ?? timing); setOpen(true); };
   const controlStyle = { boxSizing: 'border-box' as const, minWidth: 0, minHeight: 44, fontSize: 16, fontFamily: 'inherit', border: '1px solid #dadce0', borderRadius: 6, padding: '0 8px', width: '100%' };
+  // Stay mounted through missing live evidence so an open draft survives.
+  // An existing arm can change preferences while delivery keeps waiting.
+  const canSetReminder = liveAvailable || !!activeTiming;
+  if (!liveAvailable && !activeTiming && !open) return null;
   return <div style={{ gridColumn: '1 / -1' }} onClick={e => e.stopPropagation()} onKeyDown={e => {
     if (e.key === 'Escape' && open) { e.preventDefault(); e.stopPropagation(); close(); }
   }}>
     <button ref={trigger} className="trip-action-button" style={{ width: '100%' }}
       aria-pressed={!!activeTiming} aria-expanded={open} aria-controls={open ? id : undefined}
       title={activeTiming ? `${reminderTimingLabel(activeTiming)} — tap to cancel` : 'Choose when to remind you before pickup'}
-      onClick={() => { if (activeTiming) { onCancel(); close(); } else if (open) close(); else edit(); }}>
+      onClick={() => { if (activeTiming) { onCancel(); close(true); } else if (open) close(); else edit(); }}>
       {activeTiming ? `🔔 Reminding you for ${bus}` : `🔔 Remind me for ${bus}`}
     </button>
     {activeTiming && !open && <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
@@ -56,11 +66,15 @@ export function PickupReminderControls({ bus, stopName, walkToSec, activeTiming,
           : timing.mode === 'minutes' ? 'Uses the early end of the live pickup window. ' : 'Follows the bus and pickup shown in this trip. '}
         {walkToSec >= AT_STOP_WALK_SEC && `Allow ${fmtWalk(walkToSec)} to walk to pickup. `}
         {timing.mode === 'minutes' && timing.value * 60 < walkToSec + 30 && 'This reminder may be too late to walk. '}
+        {!liveAvailable && (activeTiming
+          ? 'Waiting for live pickup updates. You can save these settings while waiting. '
+          : 'Waiting for live pickup updates before you can set this reminder. ')}
         Keep this page open for your reminder.
       </p>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="trip-action-button" onClick={() => { onArm(timing); close(); }}>Set reminder</button>
-        <button className="trip-action-button" onClick={close}>Cancel reminder setup</button>
+        <button className="trip-action-button" disabled={!canSetReminder}
+          onClick={() => { if (canSetReminder) { onArm(timing); close(); } }}>Set reminder</button>
+        <button className="trip-action-button" onClick={() => close()}>Cancel reminder setup</button>
       </div>
     </div>}
   </div>;
