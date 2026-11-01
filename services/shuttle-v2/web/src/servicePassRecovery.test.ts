@@ -20,6 +20,8 @@ const coordsOf = (fixture: { stopCoords: Record<string, number[]> }): Record<num
   Object.fromEntries(Object.entries(fixture.stopCoords).map(([id, c]) => [id, { lat: c[0]!, lon: c[1]! }]));
 const coords: Record<number, LatLon> = recovery.stopCoords;
 const routes = recovery.routeStops;
+const paths: Record<string, [number, number][]> = Object.fromEntries(Object.entries(recovery.routePaths)
+  .map(([id, points]) => [id, points.map(point => [point[0]!, point[1]!] as [number, number])]));
 const pinkStops = routes['8'];
 const cfg = ROUTE_LISTS.find(route => route.label === 'Pink')!;
 
@@ -28,7 +30,7 @@ const cfg = ROUTE_LISTS.find(route => route.label === 'Pink')!;
 const southFix = recovery.south.bus as BusData;
 const northFix = recovery.north.bus as BusData;
 function setup(fix: BusData, index: number, travel: number) {
-  registerRoutePaths(recovery.routePaths as Record<string, [number, number][]>);
+  registerRoutePaths(paths);
   const source = fix === southFix ? recovery.south : recovery.north;
   const buses = [{ ...fix }], bus = buses[0]!, now = source.receivedAt;
   const original = source.wire as unknown as ServerEtaWire;
@@ -107,7 +109,7 @@ describe('raw curb evidence cannot reopen a traversal-only pass', () => {
   });
 
   it('requires fresh occurrence evidence without creating or advancing a local belief', () => {
-    registerRoutePaths(recovery.routePaths as Record<string, [number, number][]>);
+    registerRoutePaths(paths);
     const bus = { ...northFix }, now = northFix.observed_at! + 2000, store: AnchorStore = new Map();
     expect(observedAtStop(bus, 110, coords)).toBe(true);
     expect(serviceCallAllowed(bus, 110, cfg.label, pinkStops, coords, now, store)).toBe(false);
