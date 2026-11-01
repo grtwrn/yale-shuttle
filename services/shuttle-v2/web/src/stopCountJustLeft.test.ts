@@ -81,15 +81,16 @@ function replay(): Card[] {
 const steps = (xs: (number | undefined)[]) => xs.filter((x, i) => i === 0 || x !== xs[i - 1]);
 
 describe('purpleatstop20261005: the card counts a lap for a bus that has just left the pickup', () => {
-  it('Purple #317 through 100 Church Street South: 3, 2, 1, then 15 and 14, never 0', () => {
+  it('Purple #317 through 100 Church Street South: 3, 2, 1, then 16 and 15, never 0', () => {
     // Purple's list from 100 Church Street South round to 300 George St: Union Station (S), West Haven,
-    // West Campus out and back, LEPH / 60 College, 333 Cedar. (The station's added return call is not listed.)
-    const lap = [1, 122, 127, 26, 25, 24, 23, 22, 23, 24, 25, 26, 72, 10, 9];
-    expect(lap.length).toBe(mergedRouteStops(ROUTE_LISTS.find(c => c.label === 'Purple')!, S.routes).length);
+    // West Campus out and back, its real return station call 26→127→72,
+    // LEPH / 60 College, 333 Cedar. SPUR is a service call on this lap.
+    const lap = [1, 122, 127, 26, 25, 24, 23, 22, 23, 24, 25, 26, 127, 72, 10, 9];
+    expect(lap.length).toBe(mergedRouteStops(ROUTE_LISTS.find(c => c.label === 'Purple')!, S.routes).length + 1);
     const cards = replay().filter(c => c.window === 0 && c.at >= '2026-10-05T00:38:30');
     expect(cards.length).toBe(15);
     expect(cards.every(c => c.bus === '#317' && !c.atStop)).toBe(true);
-    expect(steps(cards.map(c => c.approach?.length))).toEqual([3, 2, 1, 15, 14]);
+    expect(steps(cards.map(c => c.approach?.length))).toEqual([3, 2, 1, 16, 15]);
     // The six polls the card read "0 stops away" beside ~65 min (00:39:34-00:40:24Z).
     const gone = cards.filter(c => c.at >= '2026-10-05T00:39:34' && c.at <= '2026-10-05T00:40:25');
     expect(gone.length).toBe(6);
@@ -102,15 +103,19 @@ describe('purpleatstop20261005: the card counts a lap for a bus that has just le
     for (const c of cards.filter(x => x.at > '2026-10-05T00:40:30')) expect(c.approach?.slice(0, 2)).toEqual([122, 127]);
   });
 
-  it('Green #321 off Building 750: 1, then 23 and 22, never 0', () => {
+  it('Green #321 off Building 750: 1, then 24 and 23, never 0', () => {
+    // This service lap includes both station calls, including outbound
+    // Bradley(S)→station→Building900 (81→127→26), absent from published slots.
+    const lap = [24, 25, 26, 127, 80, 91, 87, 78, 84, 89, 77, 94, 143, 144, 133, 88, 92, 81, 127, 26, 25, 23, 22, 23];
     for (const [w, from] of [[1, '2026-10-03T17:09:00'], [2, '2026-10-03T21:04:30']] as const) {
       const cards = replay().filter(c => c.window === w && c.at >= from);
       expect(cards.length).toBeGreaterThanOrEqual(8);
       expect(cards.every(c => c.bus === '#321' && !c.atStop)).toBe(true);
-      expect(steps(cards.map(c => c.approach?.length))).toEqual([1, 23, 22]);
+      expect(steps(cards.map(c => c.approach?.length))).toEqual([1, 24, 23]);
       for (const c of cards.filter(x => x.stopsAhead > 1)) {
         // A lap on (~56 min), counted from Building 750 while the anchor is on its leg, then from Building 800.
-        expect({ at: c.at, min: Math.round(c.eta / 60) >= 55, first: c.approach?.[0] }).toEqual({ at: c.at, min: true, first: c.approach?.length === 23 ? 24 : 25 });
+        expect({ at: c.at, min: Math.round(c.eta / 60) >= 55, approach: c.approach })
+          .toEqual({ at: c.at, min: true, approach: c.approach?.[0] === 24 ? lap : lap.slice(1) });
       }
     }
   });

@@ -2,6 +2,7 @@ import {
   computeLeaveAlert, leaveAlertMessage, reminderArrival, reminderArrivalDescription, RAIN_PREFIX,
   type FiredPings, type LeaveAlertInput, type LeavePing,
 } from './leaveAlert';
+import { serviceStopCount } from './serviceStopCount';
 
 export type ReminderTiming = { mode: 'leave' } | { mode: 'minutes' | 'stops'; value: number };
 export const REMINDER_MINUTES = [1, 3, 5, 10, 15] as const;
@@ -24,7 +25,8 @@ export function computePickupReminder(
     || !Number.isFinite(input.nowMs) || (input.computedAtMs != null && !Number.isFinite(input.computedAtMs))
     || !Number.isInteger(timing.value) || timing.value <= 0) return null;
   if (timing.mode === 'minutes') return reminderArrival(input).sec <= timing.value * 60 ? 'heads_up' : null;
-  return Number.isInteger(input.stopsAhead) && input.stopsAhead! >= 0 && input.stopsAhead! <= timing.value
+  const stops = serviceStopCount(input);
+  return stops !== null && stops <= timing.value
     ? 'heads_up' : null;
 }
 
@@ -33,9 +35,10 @@ export function pickupReminderMessage(
 ): string {
   if (timing.mode === 'leave') return leaveAlertMessage(ping, routeLabel, input, rain);
   const prefix = rain ? RAIN_PREFIX : '';
-  if (timing.mode === 'stops' && !input.atPickup && input.stopsAhead! > 0) {
+  const stops = serviceStopCount(input);
+  if (timing.mode === 'stops' && !input.atPickup && stops !== null && stops > 0) {
     const bus = input.busName ? `${routeLabel} #${input.busName.replace(/^#/, '')}` : routeLabel;
-    return `${prefix}${bus} is ${input.stopsAhead} stop${input.stopsAhead === 1 ? '' : 's'} before your pickup`;
+    return `${prefix}${bus} is ${stops} stop${stops === 1 ? '' : 's'} before your pickup`;
   }
   return `${prefix}${reminderArrivalDescription(routeLabel, input)} — your pickup reminder`;
 }

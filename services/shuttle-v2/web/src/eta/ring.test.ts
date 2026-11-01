@@ -33,6 +33,15 @@ describe("the ring repairs a stop order its own line cannot supply", () => {
   it("puts Building 900 before the station on the return, and gives the station its outbound pass", () => {
     expect(Array.from(ring.order)).toEqual(green.repairedOrder);
     expect(ring.stops).toEqual((green.repairedOrder as number[]).map((i) => greenStops[i]));
+    expect(ring.serviceEligible).toEqual(new Array(ring.N).fill(true));
+    // The added outbound station call is service, as are the original
+    // repeated building calls; repeated IDs must not be deduplicated.
+    expect(ring.stops.filter((id, i) => id === 127 && ring.serviceEligible[i])).toHaveLength(2);
+    for (const id of new Set(greenStops)) {
+      const publishedCalls = greenStops.filter((sid) => sid === id).length;
+      expect(ring.order.filter((p, i) => greenStops[p] === id && ring.serviceEligible[i]).length)
+        .toBeGreaterThanOrEqual(publishedCalls);
+    }
   });
 
   it("lays its cells on the published line and nowhere else", () => {
@@ -84,6 +93,21 @@ describe("the ring adds the passes an out-and-back's list flattens", () => {
     expect(pinkRing.stops).toEqual([149, 72, 43, 44, 60, 109, 110, 124, 123, 125, 123, 124, 110, 109, 59, 46]);
   });
 
+  it("offers twelve service calls without removing the four intermediate drive passes", () => {
+    expect(pinkRing.serviceEligible).toEqual([
+      true, true, true, true, true, true, false, false,
+      true, true, false, true, true, false, true, true,
+    ]);
+    expect(pinkRing.stops.filter((_, i) => pinkRing.serviceEligible[i])).toEqual(pink.stops);
+    expect(pinkRing.stops[6]).toBe(110);
+    expect(pinkRing.serviceEligible[6]).toBe(false);
+    expect(pinkRing.stops[12]).toBe(110);
+    expect(pinkRing.serviceEligible[12]).toBe(true);
+    expect(pinkRing.legM).toHaveLength(16);
+    expect(pinkRing.stopCell).toHaveLength(16);
+    expect(pinkRing.pStop).toHaveLength(16);
+  });
+
   it("splits the hop the model priced at a quarter of its real time", () => {
     // Published, 109 -> 123 is one 1,755 m leg that the calibrator could only
     // sample on the laps where the detector missed Quigley Outbound and VA
@@ -105,6 +129,13 @@ describe("the ring adds the passes an out-and-back's list flattens", () => {
     expect(ring.repaired).toBe(true);
     expect(ring.N).toBe((purple.stops as number[]).length + 1);
     expect(ring.stops.slice(-3)).toEqual([26, 127, 72]);
+    expect(ring.serviceEligible).toEqual(new Array(ring.N).fill(true));
+    expect(ring.stops.filter((id, i) => id === 127 && ring.serviceEligible[i])).toHaveLength(2);
+    for (const id of new Set(purple.stops)) {
+      const publishedCalls = purple.stops.filter((sid) => sid === id).length;
+      expect(ring.order.filter((p, i) => purple.stops[p] === id && ring.serviceEligible[i]).length)
+        .toBeGreaterThanOrEqual(publishedCalls);
+    }
     const loop = polylineMeters(purple.path as [number, number][]);
     expect(Math.abs(ring.loopM - loop) / loop).toBeLessThan(0.005);
   });
@@ -120,6 +151,7 @@ describe("a route whose published order its line supports is built exactly as be
       expect(ring.repaired).toBe(false);
       expect(Array.from(ring.order)).toEqual(stops.map((_, i) => i));
       expect(ring.stops).toEqual(stops);
+      expect(ring.serviceEligible).toEqual(new Array(stops.length).fill(true));
 
       // The trigger is the evidence and only the evidence: with no bridged leg
       // and no fold, the ring's legs are the tracer's own, so the cells are
@@ -131,4 +163,27 @@ describe("a route whose published order its line supports is built exactly as be
       expect(Array.from(ring.legM).map((m) => Math.round(m))).toEqual(traced.map((m) => Math.round(Math.max(1, m))));
     });
   }
+});
+
+it("keeps service eligibility attached to passes on a generic folded route", () => {
+  const south = 41.29, north = 41.2902, west = -72.99, east = -72.95;
+  const path: [number, number][] = [
+    [south, west], [south, east], [north, east], [north, west], [south, west],
+  ];
+  // Start at the inbound twin, so the sorted/rotated traversal begins with
+  // that marker's unserved outbound pass rather than its published call.
+  const stops = [1004, 1001, 1002, 1003];
+  const coords: Record<number, LatLon> = {
+    1001: { lat: 41.2901, lon: -72.9890 },
+    1002: { lat: south, lon: -72.9700 },
+    1003: { lat: 41.2901, lon: -72.9505 },
+    1004: { lat: north, lon: -72.9695 },
+  };
+  const ring = buildRing("generic-fold", path, stops, coords)!;
+  expect(ring.repaired).toBe(true);
+  expect(ring.stops).toEqual([1004, 1003, 1004, 1002, 1001, 1002]);
+  expect(ring.serviceEligible).toEqual([false, true, true, false, true, true]);
+  expect(ring.order.filter((_, i) => ring.serviceEligible[i]).sort((a, b) => a - b)).toEqual([0, 1, 2, 3]);
+  expect(ring.N).toBe(6);
+  expect(ring.legM).toHaveLength(6);
 });

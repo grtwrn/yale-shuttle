@@ -33,7 +33,8 @@ import { incomingAtPublishedCurb, lastStopReading, LEAD_FOLLOW_LEGS, LEAD_SWITCH
 import type { Ring } from "./eta/ring";
 import { haversineMeters, type LatLon } from "./geo";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
-import { serverTrack } from './etaSource';
+import { ETA_MAX_AGE_MS, serverTrack, serverTravelAvailable } from './etaSource';
+import { serviceStopCount } from './serviceStopCount';
 
 /** What the anchor needs of a bus: a fix, the clocks, and the route whose line it is measured against. */
 export type AnchorBus = FilterBus & { route_id: number | string };
@@ -49,6 +50,99 @@ export function observedAtStop(
   const stop = stopCoords[stopId];
   return bus.stationary === true && bus.at_stop_id === stopId && !!stop
     && haversineMeters(bus, stop) <= 75;
+}
+
+/** Current geometry, independently of an older ring already held in cache. */
+function currentServiceRing(
+  bus: { route_id: number | string },
+  stops: readonly number[],
+  stopCoords: Record<number, LatLon>,
+): Ring | null {
+  if (!stopCoords || !Array.isArray(stops) || stops.length < 2) return null;
+  const validPoint = (point: LatLon | undefined) => !!point
+    && Number.isFinite(point.lat) && Math.abs(point.lat) <= 90
+    && Number.isFinite(point.lon) && Math.abs(point.lon) <= 180;
+  // The ring cache can outlive a partially refreshed geometry payload.
+  // Current service proof needs every current route coordinate, even when
+  // an earlier payload already supplied a valid cached ring for this key.
+  if (!stops.every((id) => validPoint(stopCoords[id]))) return null;
+  const ring = ringForBus(bus, stops, stopCoords);
+  if (!ring || ring.stops.length !== ring.N || !Array.isArray(ring.serviceEligible)
+    || ring.serviceEligible.length !== ring.N
+    || !Array.from(ring.serviceEligible).every((eligible) => typeof eligible === 'boolean')) return null;
+  return ring;
+}
+
+/** All actual service calls, retaining genuine repeated and SPUR calls. */
+export function serviceCallSequence(
+  bus: { route_id: number | string }, stops: readonly number[], stopCoords: Record<number, LatLon>,
+): number[] | null {
+  const ring = currentServiceRing(bus, stops, stopCoords);
+  return ring ? ring.stops.filter((_, p) => ring.serviceEligible[p]) : null;
+}
+
+/** A physical marker can be passed on an unserved directional traversal.
+ * Ordinary calls keep their raw-GPS recovery. Only a marker with an excluded
+ * traversal needs a current occurrence from the served track or a belief
+ * already observed for this exact bus object; this query never steps one. */
+export function serviceCallAllowed(
+  bus: AnchorBus & { bus_name: string },
+  stopId: number,
+  routeLabel: string,
+  stops: readonly number[],
+  stopCoords: Record<number, LatLon>,
+  now: number,
+  store?: AnchorStore | undefined,
+): boolean {
+  const ring = currentServiceRing(bus, stops, stopCoords);
+  if (!ring) return false;
+  const passes: number[] = [];
+  for (let p = 0; p < ring.N; p++) if (ring.stops[p] === stopId) passes.push(p);
+  if (passes.length === 0) return false;
+  if (!passes.some((p) => !ring.serviceEligible[p])) return true;
+  const served = serverTrack(bus, routeLabel, now);
+  const positions: number[] = [];
+  if (served !== undefined) {
+    if (!served || !serverTravelAvailable(bus, routeLabel, now)) return false;
+    for (let p = 0; p < ring.N; p++) {
+      if (ring.order[p] === served.index && travelSlot(ring.order, p) === served.travel) positions.push(p);
+    }
+  } else {
+    const belief = store?.get(anchorKeyFor(routeLabel, bus.bus_name))?.belief;
+    if (!belief || belief.ringKey !== ring.key || belief.lastObs !== bus
+      || !Number.isFinite(now) || !Number.isFinite(belief.seenAt)
+      || now < belief.seenAt || now - belief.seenAt >= ETA_MAX_AGE_MS) return false;
+    positions.push(anchorLeg(belief, ring));
+  }
+  if (positions.length === 0) return false;
+  let selected = -1;
+  for (const from of positions) {
+    if (!Number.isInteger(from) || from < 0 || from >= ring.N) return false;
+    const distance = (p: number) => Math.min((p - from + ring.N) % ring.N, (from - p + ring.N) % ring.N);
+    const nearestDistance = Math.min(...passes.map(distance));
+    const nearest = passes.filter((p) => distance(p) === nearestDistance);
+    // Permit the existing local lead-follow neighborhood, including a bus
+    // whose primary call is one stop ahead. Never skip a nearer twin pass
+    // to authorize a more distant service call at the same physical marker.
+    if (nearestDistance > LEAD_FOLLOW_LEGS || nearest.length !== 1 || !ring.serviceEligible[nearest[0]!]) return false;
+    if (selected >= 0 && selected !== nearest[0]) return false;
+    selected = nearest[0]!;
+  }
+  return selected >= 0;
+}
+
+/** Direct curb evidence, restricted to a call this traversal can serve. */
+export function observedServiceAtStop(
+  bus: AnchorBus & { bus_name: string; at_stop_id?: number | null; stationary?: boolean },
+  stopId: number,
+  routeLabel: string,
+  stops: readonly number[],
+  stopCoords: Record<number, LatLon>,
+  now: number,
+  store?: AnchorStore | undefined,
+): boolean {
+  return observedAtStop(bus, stopId, stopCoords)
+    && serviceCallAllowed(bus, stopId, routeLabel, stops, stopCoords, now, store);
 }
 
 /**
@@ -430,29 +524,46 @@ export function rideApproach(
   store?: AnchorStore | undefined,
   lapPastPickup = true,
 ): number[] | null {
-  const atStop = observedAtStop(bus, boardStopId, stopCoords);
-  const before = () => atStop ? [] : tripApproach(bus, cfg, routeStops, stopCoords, boardStopId, now, store);
+  const seq = mergedRouteStops(cfg, routeStops);
+  const serviceAllowed = serviceCallAllowed(bus, boardStopId, cfg.label, seq, stopCoords, now, store);
+  const atStop = observedAtStop(bus, boardStopId, stopCoords) && serviceAllowed;
+  const before = () => {
+    if (atStop) return [];
+    const approach = tripApproach(bus, cfg, routeStops, stopCoords, boardStopId, now, store);
+    // A legacy/malformed travel answer can name the same physical marker
+    // without proving this is its service pass. It cannot establish zero.
+    return approach?.length === 0 && !serviceAllowed ? null : approach;
+  };
   if (!boardHops?.length || !boardHops.every(([h]) => Number.isInteger(h) && h >= 0)) return before();
   const pinned = boardHops[0]![0];
-  const seq = mergedRouteStops(cfg, routeStops);
-  const ring = ringForBus(bus, seq, stopCoords);
+  const ring = currentServiceRing(bus, seq, stopCoords);
   const N = ring?.N ?? 0;
   if (!ring || ring.stops.length !== N) return before();
   const passes: number[] = [];
   for (let p = 0; p < N; p++) if (ring.stops[p] === boardStopId) passes.push(p);
-  if (passes.length === 1 && lapPastPickup) {
+  const servicePasses = passes.filter((p) => ring.serviceEligible[p]);
+  if (servicePasses.length === 0) return null;
+  const mixedPasses = servicePasses.length !== passes.length;
+  const served = serverTrack(bus, cfg.label, now);
+  if (mixedPasses && served !== undefined && (!served || !serverTravelAvailable(bus, cfg.label, now))) return before();
+  if (servicePasses.length === 1 && (!mixedPasses || atStop)) {
     // Empty is the anchor on the pickup's leg: at the stop, or just past it.
     // The pickup comes round once a lap, so a countdown more than half a lap
-    // out is for the next visit, and this one is over.
+    // out is for the next visit. An on-bus exit keeps the current-call
+    // reading; a future pickup counts the whole service lap, including SPUR.
     const approach = before();
-    if (atStop || approach?.length !== 0 || 2 * pinned < N) return approach;
-    const bi = seq.indexOf(boardStopId);
-    return [...seq.slice(bi), ...seq.slice(0, bi)];
+    if (!approach) return approach;
+    if (approach.length === 0) {
+      if (!lapPastPickup || atStop || 2 * pinned < N) return approach;
+      const start = servicePasses[0]!;
+      return Array.from({ length: N }, (_, h) => (start + h) % N)
+        .filter((p) => ring.serviceEligible[p]).map((p) => ring.stops[p]!);
+    }
   }
-  if (new Set(seq).size === seq.length) return before();
-  if (passes.length < 2) return before();
+  if (!ring.repaired && new Set(seq).size === seq.length) return before();
+  if (passes.length === 0 || (!ring.repaired && passes.length < 2)) return before();
   // The countdown's bus is standing at the pickup: boarding now.
-  if (pinned === 0) return [];
+  if (pinned === 0) return serviceCallAllowed(bus, boardStopId, cfg.label, seq, stopCoords, now, store) ? [] : before();
   const slot = (p: number) => ring.repaired ? travelSlot(ring.order, p) : p;
   const named = (p: number) => ring.order[p] === slot(p);
   // Ring positions from the anchor's two answers: the lead is the pass in the
@@ -469,21 +580,30 @@ export function rideApproach(
   const near = (q: number) => Math.min(ahead(lead, q), ahead(from, q));
   let origin = -1;
   for (let o = 0; o < N; o++) {
-    if (!boardHops.every(([h, stopId]) => h === 0 || ring.stops[(o + h) % N] === stopId)) continue;
+    if (!boardHops.every(([h, stopId]) => h === 0
+      || (ring.stops[(o + h) % N] === stopId && ring.serviceEligible[(o + h) % N]))) continue;
     if (origin < 0 || near(o) < near(origin)) origin = o;
   }
   if (origin < 0) return before();
   const target = (origin + pinned) % N;
+  if (!ring.serviceEligible[target]) return before();
   if (atStop) {
     const apart = (p: number) => Math.min(ahead(from, p), ahead(p, from));
-    from = passes.reduce((best, p) => (apart(p) < apart(best) ? p : best));
-  }
+    from = servicePasses.reduce((best, p) => (apart(p) < apart(best) ? p : best));
+  } else from = origin;
   // On the pinned pass already: standing there, or the anchors disagree about
   // the pass (short of a lap), which reads as before. Off it with the
   // countdown a lap on, the bus has just left it: the count is the whole lap.
   if (target === from && (atStop || pinned < N)) return before();
-  const approach = [seq[slot(from)]!];
-  for (let p = (from + 1) % N; p !== target; p = (p + 1) % N) if (named(p)) approach.push(seq[ring.order[p]!]!);
+  let previous = from;
+  for (let k = 0; k < N && !ring.serviceEligible[previous]; k++) previous = (previous - 1 + N) % N;
+  const approach = [ring.stops[previous]!];
+  let remaining = pinned - ahead(origin, from);
+  while (remaining <= 0) remaining += N;
+  for (let h = 1; h < remaining; h++) {
+    const p = (from + h) % N;
+    if (ring.serviceEligible[p]) approach.push(ring.stops[p]!);
+  }
   return approach;
 }
 
@@ -528,22 +648,41 @@ export function rideStopsToExit(
   routeStops: Record<string, number[]>,
   stopCoords: Record<number, LatLon>,
   alightStopId: number,
-  exitArrivals: readonly { stopsAhead: number; stopId: number }[],
+  exitArrivals: readonly { stopsAhead: number; stopId: number; serviceStopsAhead?: number | null }[],
   now: number,
   store?: AnchorStore | undefined,
 ): number | null {
   const hops = exitArrivals.map((a): [number, number] => [a.stopsAhead, a.stopId]);
   const seq = mergedRouteStops(cfg, routeStops);
   const pinned = hops[0]?.[0];
+  const allowed = serviceCallAllowed(bus, alightStopId, cfg.label, seq, stopCoords, now, store);
+  const observed = observedAtStop(bus, alightStopId, stopCoords) && allowed;
+  const ring = currentServiceRing(bus, seq, stopCoords);
+  const unique = !!ring
+    && ring.stops.filter((id, p) => id === alightStopId && ring.serviceEligible[p]).length === 1;
+  if (pinned === 0 && !allowed) return null;
+  // The passenger has reached this unambiguous service curb even when the
+  // forecast now prices its next visit. Keep current arrival separate from
+  // the future pickup's full-lap count; mixed TWIN passes still require proof.
+  if (allowed && unique) {
+    const idx = anchorIndexOnList(bus, cfg, routeStops, stopCoords, seq, now, store);
+    if (idx >= 0 && seq[idx] === alightStopId) return 0;
+  }
+  // The producer's service count excludes traversal-only passes. A direct
+  // legitimate current curb remains arrival zero while its model catches up.
+  if (exitArrivals[0]?.serviceStopsAhead !== undefined) {
+    if (observed && (unique || pinned === 1)) return 0;
+    return serviceStopCount(exitArrivals[0]);
+  }
   if (new Set(seq).size !== seq.length && pinned !== undefined && Number.isInteger(pinned) && pinned >= 0) {
     // One hop out, at the exit's kerb: the pass the countdown is for (a stop's
     // two passes are never one hop apart).
-    if (pinned === 1 && observedAtStop(bus, alightStopId, stopCoords)) return 0;
+    if (pinned === 1 && observed) return 0;
     // At an exit the list names once, the bus is there, as on the ride page
     // (rideArrival.ts `isUnambiguousRideArrival`), even once the countdown has
     // moved on to the next call there, a lap on.
     const idx = anchorIndexOnList(bus, cfg, routeStops, stopCoords, seq, now, store);
-    if (idx >= 0 && seq[idx] === alightStopId && seq.indexOf(alightStopId) === seq.lastIndexOf(alightStopId)) return 0;
+    if (allowed && idx >= 0 && seq[idx] === alightStopId && unique) return 0;
     return pinned;
   }
   // At the exit the bus is there, as above, even with the countdown a lap on:
@@ -585,10 +724,8 @@ export function rideCalls(
 ): number[] {
   const seq = mergedRouteStops(cfg, routeStops);
   const busRouteId = cfg.busRouteIds[0];
-  const ring = new Set(seq).size !== seq.length && busRouteId !== undefined
-    ? ringForBus({ route_id: busRouteId }, seq, stopCoords)
-    : null;
-  const calls = ring && ring.stops.length === ring.N ? ring.stops : seq;
+  const calls = busRouteId === undefined ? seq
+    : serviceCallSequence({ route_id: busRouteId }, seq, stopCoords) ?? seq;
   if (!calls.includes(alightStopId)) return [];
   if (boardStopId === alightStopId) return [boardStopId];
   const N = calls.length;
@@ -631,6 +768,10 @@ export function rideCallIndex(
 ): number {
   if (stopsToExit === null || !Number.isInteger(stopsToExit) || stopsToExit < 0 || stopsToExit >= calls.length) return -1;
   const seq = mergedRouteStops(cfg, routeStops);
+  // A physical pickup marker on a traversal-only pass is not evidence that
+  // a ride started in advance has boarded, even if its count puts it on row 0.
+  const physical = seq[anchorIndexOnList(bus, cfg, routeStops, stopCoords, seq, now, store)];
+  if (physical === calls[0] && !serviceCallAllowed(bus, calls[0]!, cfg.label, seq, stopCoords, now, store)) return -1;
   const onRide = [false, true].some((travel) => {
     const stopId = seq[anchorIndexOnList(bus, cfg, routeStops, stopCoords, seq, now, store, travel)];
     return stopId !== undefined && calls.includes(stopId);

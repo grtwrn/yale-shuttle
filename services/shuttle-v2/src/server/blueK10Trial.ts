@@ -75,8 +75,8 @@ export function applyBlueK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<str
   const changedByRoute: Record<string,number> = { ...(wire.trial?.byRoute ?? { Red:wire.trial?.changedRows ?? 0 }) };
   for (const m of models) changedByRoute[m.label]=0;
   let changed=0;
-  const ordered = wire.rows.map((r,i): { row: ServerEtaRow; distribution: number[] } => {
-    const old={row:r,distribution:wire.distributions?.[i]??[]};
+  const ordered = wire.rows.map((r,i): { row: ServerEtaRow; distribution: number[]; serviceStopsAhead: number | null } => {
+    const old={row:r,distribution:wire.distributions?.[i]??[],serviceStopsAhead:wire.serviceStopsAhead?.[i]??null};
     const bus=wire.buses[r[0]], model=bus&&byLabel.get(bus[1]), e=bus&&evidence.get(bus[0]);
     if (!model || routes[String(model.routeId)]?.join(',')!==model.sequence.join(',') || !e
       || e.routeId!==model.routeId || e.released || e.observedAt>wire.at || wire.at-e.observedAt>15_000
@@ -93,9 +93,10 @@ export function applyBlueK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<str
     onReplace?.(r, p);
     changed++; changedByRoute[model.label]=(changedByRoute[model.label]??0)+1;
     return {row:[r[0],r[1],Math.round(p.eta),Math.round(p.low),Math.round(p.high),r[5],r[6],r[7],r[8]],
-      distribution:p.distribution.map(Math.round)};
+      distribution:p.distribution.map(Math.round),serviceStopsAhead:old.serviceStopsAhead};
   }).sort((a,b)=>a.row[2]-b.row[2]);
   return {...wire,rows:ordered.map(o=>o.row),distributions:ordered.map(o=>o.distribution),
+    ...(wire.serviceStopsAhead !== undefined ? {serviceStopsAhead:ordered.map(o=>o.serviceStopsAhead)} : {}),
     trial:{model:wire.trial?.model??'blue-k10-20260921',changedRows:(wire.trial?.changedRows??0)+changed,
       validUntil:Math.min(wire.trial?.validUntil??Infinity,...models.map(m=>m.validUntil)),byRoute:changedByRoute}};
 }

@@ -76,6 +76,9 @@ export interface StopArrival {
   occurrence: number;
   /** Hops from the lead situation's leg. */
   stopsAhead: number;
+  /** Service calls before this occurrence, including the target. Traversal
+   * slots that only pass another curb do not count; raw hops stay separate. */
+  serviceStopsAhead?: number;
   /** Seconds, quantile tau of the lead cluster. */
   eta: number;
   low: number;
@@ -724,6 +727,11 @@ export function priceRoute(
   const sits = situations(belief, ring);
   if (sits.length === 0) return [];
   const N = ring.N;
+  const serviceEligible = ring.serviceEligible;
+  // Geometry can contain passes of an opposite-direction curb. Unknown
+  // service provenance cannot authorize a boarding offer at those passes.
+  if (!Array.isArray(serviceEligible) || serviceEligible.length !== N
+    || serviceEligible.some(value => typeof value !== 'boolean')) return [];
   const r = standingSec(belief, now);
   const pre = chainPrefix(tables);
   const restStop = belief.rested ? belief.restStop : -1;
@@ -805,20 +813,24 @@ export function priceRoute(
     && haversineMeters(restPoint, belief.leftPoint) <= NEAR_STOP_M
     && haversineMeters(restPoint, belief.lastFix) > NEAR_STOP_M;
   const closedCurb = curb >= 0 && !tables.stops[curb]?.layover
-    && stops.filter(id => id === stops[curb]).length === 1
+    && stops.filter((id, index) => id === stops[curb] && serviceEligible[index]).length === 1
     && (passedCurrentRest || passedDepartedRest);
   // Standing at the target supplies its current arrival now, whichever
   // conditional state is selected as the lead. Price it with the same
   // mixture as every other visit; a different state may still be incoming
   // or may have departed and need another circuit.
+  let serviceStopsAhead = 0;
   for (let h = lead.standingAt >= 0 ? 0 : 1; h <= 2 * N; h++) {
-    if (h === 0 && closedCurb) continue;
     const cur = (lead.leg + h) % N;
+    if (h > 0 && serviceEligible[cur]) serviceStopsAhead++;
+    if (h === 0 && closedCurb) continue;
     const o = occ.get(cur) ?? 0;
     if (o >= MAX_OCCURRENCES) continue;
     occ.set(cur, o + 1);
     const sid = stops[cur]!;
-    if (!targetStopIds.has(sid)) continue;
+    // Retain every traversal slot in the drive/stand chain, but publish
+    // arrivals only at occurrences that serve this curb.
+    if (!serviceEligible[cur] || !targetStopIds.has(sid)) continue;
     chainAt(lead, pre, h, leadBuf, lap);
     leadBuf.sort();
     const leadMedian = leadBuf[K >> 1]!;
@@ -1043,6 +1055,7 @@ export function priceRoute(
       stopId: sid,
       occurrence: o,
       stopsAhead: h,
+      serviceStopsAhead,
       eta, low: lowOut, high: Math.max(wHigh, eta),
       departNow,
       lowFloor: floor,

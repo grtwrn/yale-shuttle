@@ -86,7 +86,9 @@ export function applyK10Trial(wire: ServerEtaWire, evidence: ReadonlyMap<string,
   // Callers select the first arrival for a stop. A changed Red forecast can
   // overtake another bus, so keep the shared API's ETA ordering and carry its
   // distribution along with the row when it moves.
-  const ordered = rows.map((row, i) => ({ row, distribution: distributions[i]! })).sort((a,b) => a.row[2] - b.row[2]);
+  const ordered = rows.map((row, i) => ({ row, distribution: distributions[i]!,
+    serviceStopsAhead: wire.serviceStopsAhead?.[i] ?? null })).sort((a,b) => a.row[2] - b.row[2]);
   return { ...wire, rows: ordered.map(x => x.row), distributions: ordered.map(x => x.distribution),
+    ...(wire.serviceStopsAhead !== undefined ? { serviceStopsAhead: ordered.map(x => x.serviceStopsAhead) } : {}),
     trial: { model: model.version, changedRows: changed, validUntil: model.validUntil } };
 }

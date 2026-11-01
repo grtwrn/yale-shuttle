@@ -11,6 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { gunzipSync } from 'node:zlib';
+import { deserialize, serialize } from 'node:v8';
 
 import { Collector } from "../collector/collector.js";
 import type { RawBus, UpstreamClient } from "../collector/upstream.js";
@@ -210,10 +211,35 @@ describe("the served answer", () => {
     expect(engine.evaluationForecasts()).toHaveLength(raw.length);
     expect(engine.evaluationForecasts().filter(r=>r.occurrence===1)).toHaveLength(expected.length);
     expect(wire.rows).toHaveLength(raw.length);
+    expect(wire.serviceStopsAhead).toEqual(raw.map(r => r.serviceStopsAhead ?? null));
+    expect(raw.every(r => Number.isSafeInteger(r.serviceStopsAhead) && r.serviceStopsAhead! >= 0
+      && r.serviceStopsAhead! <= r.stopsAhead)).toBe(true);
     // Two different calls to a folded stop on the first traversal remain firsts.
     const firsts=raw.filter(r=>r.occurrence===0),counts=new Map<string,number>();
     for(const r of firsts){const key=`${r.routeLabel}|${r.busName}|${r.stopId}`;counts.set(key,(counts.get(key)??0)+1);}
     expect([...counts.values()].some(n=>n>1)).toBe(true);
+  });
+
+  it('preserves service counts across runtime recovery and rejects corrupt count metadata', () => {
+    const now = CAP.frames[0]!.t, payload = payloadFor(0);
+    const engine = new ServerEta({ routes: ALL_ROUTES, onServedForecasts: () => {} });
+    const original = engine.contribute(payload, 1, now)!;
+    const captured = engine.captureEvaluation('runtime')!;
+    expect(captured).not.toBeNull();
+    const restored = new ServerEta({ routes: ALL_ROUTES, onServedForecasts: () => {} });
+    expect(restored.restoreEvaluation(captured.bytes, 'runtime', now + 1000)).toBe(true);
+    expect(restored.evaluationWire(payload.buses, now + 1000)?.serviceStopsAhead).toEqual(original.serviceStopsAhead);
+    const corrupt = deserialize(Buffer.from(captured.bytes));
+    corrupt.cache.wire.serviceStopsAhead = [-1];
+    const refused = new ServerEta({ routes: ALL_ROUTES, onServedForecasts: () => {} });
+    expect(refused.restoreEvaluation(serialize(corrupt), 'runtime', now + 1000)).toBe(false);
+    expect(refused.stats().beliefs).toBe(0);
+    const legacy = deserialize(Buffer.from(captured.bytes));
+    delete legacy.cache.wire.serviceStopsAhead;
+    delete legacy.cache.trialWire.serviceStopsAhead;
+    const compatible = new ServerEta({ routes: ALL_ROUTES, onServedForecasts: () => {} });
+    expect(compatible.restoreEvaluation(serialize(legacy), 'runtime', now + 1000)).toBe(true);
+    expect(compatible.evaluationWire(payload.buses, now + 1000)?.serviceStopsAhead).toBeUndefined();
   });
 
   it("carries only the allowlisted lines", () => {
@@ -243,6 +269,8 @@ describe("the served answer", () => {
     expect(full.distributions).toHaveLength(full.rows.length);
     expect(full.distributions!.every(d => d.length === 50 && d.every(Number.isFinite))).toBe(true);
     expect(thinned.distributions).toEqual(full.distributions!.filter((_, i) =>
+      full.buses[full.rows[i]![0]]![0] === one.bus_name.replace('#', '')));
+    expect(thinned.serviceStopsAhead).toEqual(full.serviceStopsAhead!.filter((_, i) =>
       full.buses[full.rows[i]![0]]![0] === one.bus_name.replace('#', '')));
 
 

@@ -184,14 +184,13 @@ describe("the reported rides", () => {
     expect(kerb.map((x) => x.count)).toEqual(kerb.map(() => 0));
   });
 
-  // Why the out-and-back lines count the countdown's hops rather than the trip
-  // card's approach: the card lists only upstream's slots, so Purple's return
-  // call at West Haven Train Station is not a stop to it, and its anchor's pass
-  // can run ahead of the bus. On Green that pass was the lead held on Building
-  // 800's return call (greenb800switch20261004), and the card's count is no
-  // longer early there.
-  it("the trip card's count would still be early on Purple's return", () => {
-    expect(early(ride("1790971678692"), replay(ride("1790971678692")), "card").length).toBeGreaterThan(0);
+  it("the service-aware trip card preserves the real station call on Purple's return", () => {
+    const purpleRide = ride("1790971678692");
+    // Recorded ride calls independently include the return station edge.
+    expect(purpleRide.rideStops.slice(-3)).toEqual([26, 127, 72]);
+    // The deduplicated legacy banner remains the historical negative control.
+    expect(early(purpleRide, replay(purpleRide), "master").length).toBeGreaterThan(0);
+    expect(early(purpleRide, replay(purpleRide), "card")).toEqual([]);
     expect(early(ride("1791021569319"), replay(ride("1791021569319")), "card")).toEqual([]);
   });
 });

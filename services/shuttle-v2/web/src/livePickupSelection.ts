@@ -4,6 +4,7 @@ import type { LiveArrivalPick } from './planner';
 /** Evidence within one live selection, not a durable physical visit ID. */
 export type PickupEvidence =
   | { source: 'forecast'; busName: string; stopId: number; stopsAhead: number;
+      serviceStopsAhead?: number | null;
       etaSec: number; lowSec: number; highSec: number }
   | { source: 'raw-at-stop'; busName: string; stopId: number };
 
@@ -15,12 +16,14 @@ export type LivePickupSelection = {
   relation: 'same-visit' | 'different-bus' | 'same-bus-later-visit' | 'raw-current';
 };
 
-type PickupRow = Pick<UpcomingArrival, 'busName' | 'stopId' | 'stopsAhead' | 'eta' | 'low' | 'high'>;
+type PickupRow = Pick<UpcomingArrival, 'busName' | 'stopId' | 'stopsAhead' | 'serviceStopsAhead' | 'eta' | 'low' | 'high'>;
 const normalize = (name: string) => name.replace(/^#/, '');
 
 function forecast(row: PickupRow): Extract<PickupEvidence, { source: 'forecast' }> {
   return { source: 'forecast', busName: normalize(row.busName), stopId: row.stopId,
-    stopsAhead: row.stopsAhead, etaSec: row.eta, lowSec: row.low, highSec: row.high };
+    stopsAhead: row.stopsAhead,
+    ...(row.serviceStopsAhead !== undefined ? { serviceStopsAhead: row.serviceStopsAhead } : {}),
+    etaSec: row.eta, lowSec: row.low, highSec: row.high };
 }
 
 /** Project the exact current selector result. Never choose or re-price a bus.

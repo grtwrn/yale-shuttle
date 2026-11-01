@@ -63,7 +63,7 @@ export function TransferTrips({ query, from, to, liveOrigin, buses, available, r
     walkFromSec: finalExit ? walkSecFromMeters(haversineMeters(finalExit, to)) : selectedPath.walkFromSec } : null;
   const stillServed = currentPath && transferRideStillServed(currentPath.first, routeStops) && transferRideStillServed(currentPath.second, routeStops);
   const firstPickup = currentPath && !future && stillServed
-    ? transferPickup(currentPath.first, buses, currentPath.walkToSec, now, available, selected?.firstBusName, dwellTimes) : null;
+    ? transferPickup(currentPath.first, buses, currentPath.walkToSec, now, available, selected?.firstBusName, dwellTimes, { routeStops, stopCoords }) : null;
   const preferred = firstPickup?.boardingBusName || selected?.firstBusName || '';
   const currentTimings = currentPath && stillServed && (!future || paths.some(p => p.key === currentPath.key)) ? future
     ? planScheduledTransfers([currentPath], targetAtMs!, now, routeHours)

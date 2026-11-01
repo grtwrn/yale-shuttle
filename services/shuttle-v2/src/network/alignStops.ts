@@ -72,7 +72,13 @@
  * occurrences are added to Pink and the ring becomes the order the detector
  * itself reconstructs from three months of arrivals, pass for pass:
  *
- *   149 72 43 44 60 109 [110] [124] 123 125 [123] [124] 110 [109] 59 46
+ *   149 72 43 44 60 109 [110] [124] 123 125 [123] 124 110 [109] 59 46
+ *
+ * This is a traversal order, not a list of boardable calls: a twin pass can
+ * be beside the opposite directional curb. Preserve each slot's construction
+ * origin so the arrival layer can keep the whole drive chain while offering
+ * published and spur calls, without offering geometry-only twin passes.
+ * Original published occurrences stay distinct even when their IDs repeat.
  *
  * See {@link FOLD_M} for why this cannot be let loose on every route, and
  * {@link TWIN_LEG_M} for what it admits.
@@ -131,6 +137,9 @@ export interface Pass {
   d: number;
 }
 
+/** Why a traversal slot exists. Geometry-only twin passes are not service calls. */
+export type AlignmentOrigin = "published" | "spur" | "twin";
+
 export interface Alignment {
   /**
    * Ring position -> index into the published stop list. Starts at published
@@ -139,6 +148,8 @@ export interface Alignment {
    * slot.
    */
   order: number[];
+  /** Ring position -> construction provenance, independent of repeated stop IDs. */
+  origins: AlignmentOrigin[];
   /** Ring position -> the pass the line makes there. */
   passes: Pass[];
   /** How many occurrences the published order could not supply. */
@@ -401,6 +412,7 @@ function sliceBetween(segs: readonly [number, number][][], from: Pass, to: Pass)
 }
 
 interface State { skips: number; cost: number; m: number; pick: (Pass | null)[] }
+interface AlignedPass { i: number; p: Pass; origin: AlignmentOrigin }
 
 /**
  * The repaired ring order, or null when the published order already is the
@@ -487,13 +499,14 @@ function solve(
     pass[i] = pick ?? cands[i]![0]!;
   }
 
-  let ring = Array.from({ length: N }, (_, i) => ({ i, p: pass[i]! })).sort((a, b) => a.p.m - b.p.m);
+  let ring: AlignedPass[] = Array.from({ length: N }, (_, i) => ({ i, p: pass[i]!, origin: "published" as const }))
+    .sort((a, b) => a.p.m - b.p.m);
 
   // A stop the line drives past for kilometres inside one leg, that the list
   // gave no occurrence there (SPUR_LEG_M).
   const used = ring.map((x) => x.p.m);
   const apart = (a: number, b: number) => { const d = Math.abs(a - b); return Math.min(d, loopM - d); };
-  const extra: { i: number; p: Pass }[] = [];
+  const extra: AlignedPass[] = [];
   for (let k = 0; k < ring.length; k++) {
     const from = ring[k]!.p, to = ring[(k + 1) % ring.length]!.p;
     let span = to.m - from.m;
@@ -506,7 +519,7 @@ function solve(
         if (d <= 0 || d >= span) continue;
         if (used.some((u) => apart(u, c.m) < SPUR_SEPARATION_M)) continue;
         if (extra.some((e) => apart(e.p.m, c.m) < SPUR_SEPARATION_M)) continue;
-        extra.push({ i, p: c });
+        extra.push({ i, p: c, origin: "spur" });
       }
     }
   }
@@ -520,7 +533,7 @@ function solve(
     const same = (a: number, b: number) =>
       a === b || (stops[a]!.lat === stops[b]!.lat && stops[a]!.lon === stops[b]!.lon);
     for (let guard = 0; guard < N; guard++) {
-      let admitted: { i: number; p: Pass } | null = null;
+      let admitted: AlignedPass | null = null;
       for (let k = 0; k < ring.length && !admitted; k++) {
         const from = ring[k]!.p, to = ring[(k + 1) % ring.length]!.p;
         let span = to.m - from.m;
@@ -528,14 +541,14 @@ function solve(
         if (span < TWIN_LEG_M) continue;
         // Candidates in travel order, so the answer does not depend on the
         // order the published list happens to be written in.
-        const here: { i: number; p: Pass }[] = [];
+        const here: AlignedPass[] = [];
         for (let i = 0; i < N; i++) for (const c of cands[i]!) {
           if (c.d > TWIN_OFFSET_M) continue;
           let d = c.m - from.m;
           if (d <= 0) d += loopM;
           if (d <= 0 || d >= span) continue;
           if (ring.some((r) => apart(r.p.m, c.m) < TWIN_SEPARATION_M)) continue;
-          here.push({ i, p: c });
+          here.push({ i, p: c, origin: "twin" });
         }
         here.sort((a, b) => (a.p.m - b.p.m) || (a.p.d - b.p.d));
         for (const cand of here) {
@@ -563,12 +576,13 @@ function solve(
   const zero = ring.findIndex((x) => x.i === 0);
   ring = ring.slice(zero).concat(ring.slice(0, zero));
   const order = ring.map((x) => x.i);
+  const origins = ring.map((x) => x.origin);
   const passes = ring.map((x) => x.p);
   const legs: [number, number][][] = [];
   for (let k = 0; k < ring.length; k++) {
     legs.push(sliceBetween(segs, passes[k]!, passes[(k + 1) % ring.length]!));
   }
-  return { order, passes, skips: best.skips, added, legs };
+  return { order, origins, passes, skips: best.skips, added, legs };
 }
 
 /**

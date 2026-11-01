@@ -6,18 +6,26 @@ import { atStopJourneyBoard, journeyArrival } from './journeyArrival';
 import { dwellBoardWindowSec, pickLiveArrival, rawAtStopBoardable } from './planner';
 import { forecastPickupSelection, rawPickupSelection } from './livePickupSelection';
 import { serverTrack } from './etaSource';
-import { ROUTE_LISTS } from './routes';
+import { mergedRouteStops, ROUTE_LISTS } from './routes';
+import type { LatLon } from './geo';
+
+export interface TransferPickupGeometry {
+  routeStops: Record<string, number[]>;
+  stopCoords: Record<number, LatLon>;
+}
 
 /** The current leg's pickup is independent of the previous leg and of a
  * temporarily missing destination/connection estimate. */
 export function transferPickup(path: TransferRidePath, buses: readonly BusData[], walkToSec: number,
-  now: number, available: boolean, pinnedBusName = '', dwellTimes: DwellTimes = {}) {
+  now: number, available: boolean, pinnedBusName = '', dwellTimes: DwellTimes = {}, geometry?: TransferPickupGeometry) {
   const source = liveTransferRideForecasts(path, buses, now, available);
   const cfg = ROUTE_LISTS.find(c => c.label === path.routeLabel);
   const norm = (name: string) => name.replace(/^#/, '');
-  const here = available && cfg ? buses.filter(b => cfg.busRouteIds.includes(b.route_id)
+  const here = available && cfg && geometry ? buses.filter(b => cfg.busRouteIds.includes(b.route_id)
     && b.at_stop_id === path.boardStopId && serverTrack(b, cfg.label, now) != null
-    && rawAtStopBoardable(b.bus_name, path.boardStopId, path.alightStopId, source.visits)) : [];
+    && rawAtStopBoardable(b.bus_name, path.boardStopId, path.alightStopId, source.visits,
+      { bus: b, routeLabel: cfg.label, stops: mergedRouteStops(cfg, geometry.routeStops),
+        stopCoords: geometry.stopCoords, now })) : [];
   const atStop = here.find(b => norm(b.bus_name) === norm(pinnedBusName)) ?? here[0];
   if (atStop && walkToSec <= dwellBoardWindowSec(atStop, path.routeId, path.boardStopId, dwellTimes, now)) {
     const selection = rawPickupSelection(atStop.bus_name, path.boardStopId, now);

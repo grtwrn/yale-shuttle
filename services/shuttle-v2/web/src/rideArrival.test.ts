@@ -161,7 +161,7 @@ describe("rideHeadline — the on-bus banner", () => {
   it("distinguishes a reporting position from an unavailable route estimate", () => {
     const message = "Bus location available · arrival estimate unavailable";
     expect(h({ busFound: false, positionAvailable: true, stopsRemaining: null })).toBe(message);
-    expect(h({ positionAvailable: true, stopsRemaining: null })).toBe(message);
+    expect(h({ positionAvailable: true, stopsRemaining: null, etaStr: null })).toBe(message);
     expect(h({ busFound: false, positionAvailable: false })).toBe("Looking for your bus…");
     expect(h({ positionAvailable: true, stopsRemaining: 2 })).toBe("Get off in 2 stops! · 7 min");
   });
@@ -178,7 +178,15 @@ describe("rideHeadline — the on-bus banner", () => {
     expect(h({ stopsRemaining: 0 })).toBe("Arriving at Rosenkranz Hall");
     expect(h({ etaStr: null })).toBe("5 stops until your stop");
     expect(h({ busFound: false })).toBe("Looking for your bus…");
-    expect(h({ stopsRemaining: null })).toBe("Tracking your ride");
+    expect(h({ stopsRemaining: null, etaStr: null })).toBe("Tracking your ride");
+  });
+  it("retains valid timing when only the service-stop count is unknown", () => {
+    expect(h({ positionAvailable: true, stopsRemaining: null, etaStr: "8 min" }))
+      .toBe("Tracking your ride · 8 min");
+    expect(h({ positionAvailable: true, stopsRemaining: null, holdText: "holding at Prospect/Hillside" }))
+      .toBe("Tracking your ride · holding at Prospect/Hillside");
+    expect(h({ positionAvailable: true, stopsRemaining: null, etaStr: "8 min", exitMeters: 12 }))
+      .not.toMatch(/Get off|Arriving|unavailable/);
   });
   it("names the hold where a countdown that cannot rise used to sit", () => {
     // #119: the countdown may not rise while the bus stands, so through a

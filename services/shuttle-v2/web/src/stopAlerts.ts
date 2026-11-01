@@ -30,6 +30,7 @@
 
 import { fmtMin } from "./format";
 import { isRouteScheduledAt } from "./schedule";
+import { serviceStopCount } from './serviceStopCount';
 
 /** localStorage key. Guarded on both sides; blocked storage means the arm simply does not survive a reload. */
 export const STOP_ALERTS_KEY = "shuttle.stopAlerts";
@@ -255,7 +256,8 @@ export function stopAlertTag(alert: StopAlert): string {
 }
 
 /** The fields of an `UpcomingArrival` (arrivals.ts) this module reads — nothing else. */
-export type AlertArrival = { eta: number; routeLabel: string; stopId: number; busName: string; stopsAhead?: number };
+export type AlertArrival = { eta: number; routeLabel: string; stopId: number; busName: string; stopsAhead?: number;
+  serviceStopsAhead?: number | null };
 
 export type StopAlertPing = {
   alert: StopAlert;
@@ -297,7 +299,7 @@ export function stepStopAlerts(
   const pings: StopAlertPing[] = [];
   for (const alert of alerts) {
     const a = soonest.get(alertKey(alert.routeLabel, alert.stopId));
-    const kind = decide(alert, a?.eta ?? null, a?.busName ?? null, nowMs, a?.stopsAhead);
+    const kind = decide(alert, a?.eta ?? null, a?.busName ?? null, nowMs, a ? serviceStopCount(a) ?? undefined : undefined);
     if (!kind || !a) continue;
     pings.push({
       alert, kind, message: stopAlertMessage(kind, alert, a.eta), tag: stopAlertTag(alert),
@@ -395,10 +397,15 @@ export function saveStopAlerts(alerts: readonly StopAlert[]): void {
  * bus's soonest upstream ETA or a typical-per-stop multiplication. */
 export function stopAlertEstimateSec(arrivals: readonly AlertArrival[], routeLabel: string, stopId: number, leadStops: number): number | null {
   const destination = arrivals.find(a => a.routeLabel === routeLabel && a.stopId === stopId);
-  if (!destination || !Number.isFinite(destination.eta) || destination.eta < 0 || !Number.isInteger(destination.stopsAhead) || destination.stopsAhead! < 0) return null;
-  if (destination.stopsAhead! <= leadStops) return 0;
+  if (!destination || !Number.isFinite(destination.eta) || destination.eta < 0) return null;
+  const stops = serviceStopCount(destination);
+  if (stops === null) return null;
+  if (stops <= leadStops) return 0;
   const upstream = arrivals.find(a => a.routeLabel === routeLabel && a.busName === destination.busName
-    && a.stopsAhead === destination.stopsAhead! - leadStops);
+    && (a.serviceStopsAhead === undefined) === (destination.serviceStopsAhead === undefined)
+    && serviceStopCount(a) === stops - leadStops
+    && Number.isInteger(a.stopsAhead) && Number.isInteger(destination.stopsAhead)
+    && a.stopsAhead! < destination.stopsAhead!);
   return upstream && Number.isFinite(upstream.eta) && upstream.eta >= 0 && upstream.eta <= destination.eta ? upstream.eta : null;
 }
 

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { attachServerEta, ETA_MAX_AGE_MS, liveEtaAvailable, serverArrivals, serverTrack, type ServerEtaWire } from './etaSource';
+import { attachServerEta, ETA_MAX_AGE_MS, liveEtaAvailable, serverArrivals, serverTrack, serverTravelAvailable, type ServerEtaWire } from './etaSource';
 import { computeUpcomingArrivals } from './liveArrivals';
 import type { BusData } from './map-data';
 import { ROUTE_LISTS } from './routes';
+import { computePickupReminder } from './pickupReminder';
+import { NO_PINGS_FIRED } from './leaveAlert';
 
 const cfg = ROUTE_LISTS.find(c => c.label === 'Red')!;
 const buses = (): BusData[] => [{ bus_id: 123, bus_name: '#12', route_id: cfg.busRouteIds[0]!, lat: 41.3, lon: -72.9, heading: 0, last_stop_id: 48 }];
@@ -21,6 +23,7 @@ describe('authoritative live forecast', () => {
       .toEqual([[105, 75, 165, 45, 55], [1185, 885, 1485, 1085, 785]]);
     // No `travel` on this wire: the travel slot is the stop index.
     expect(serverTrack(a[0]!, 'Red', 55_000)).toEqual({ index: 2, travel: 2, standing: { stopId: 48, standingSec: 45, approach: false } });
+    expect(serverTravelAvailable(a[0]!, 'Red', 55_000)).toBe(false);
     expect(serverArrivals(a, [99], 55_000)).toEqual([]);
   });
 
@@ -31,6 +34,33 @@ describe('authoritative live forecast', () => {
     expect(computeUpcomingArrivals([48], live, {}, {}, {}, 50_000, {}, new Map()))
       .toEqual(serverArrivals(live, [48], 50_000));
   });
+
+  it('distinguishes a supplied travel occurrence from the legacy index fallback', () => {
+    const live = buses(), w = wire();
+    w.travel = [1];
+    expect(attachServerEta(live, w, 50_000)).toBe(true);
+    expect(serverTrack(live[0]!, 'Red', 50_000)).toEqual({ index: 2, travel: 1,
+      standing: { stopId: 48, standingSec: 40, approach: false } });
+    expect(serverTravelAvailable(live[0]!, 'Red', 50_000)).toBe(true);
+    expect(serverTravelAvailable(live[0]!, 'Red', 85_000)).toBe(false);
+    expect(serverTravelAvailable(live[0]!, 'Pink', 50_000)).toBe(false);
+    expect(serverTravelAvailable(buses()[0]!, 'Red', 50_000)).toBe(false);
+    const unknown = buses();
+    w.travel = [-1];
+    expect(attachServerEta(unknown, w, 50_000)).toBe(true);
+    expect(serverTrack(unknown[0]!, 'Red', 50_000)?.travel).toBe(-1);
+    expect(serverTravelAvailable(unknown[0]!, 'Red', 50_000)).toBe(false);
+  });
+
+  it.each([undefined, null, {}, [], [0, 1], [NaN], [1.5], [-2], new Array<number>(1)].map(travel => ({ travel })))
+    ('does not treat absent or malformed travel as supplied occurrence proof (%j)', ({ travel }) => {
+      const live = buses();
+      expect(attachServerEta(live, { ...wire(), travel }, 50_000)).toBe(true);
+      expect(serverTrack(live[0]!, 'Red', 50_000)).toEqual({ index: 2, travel: 2,
+        standing: { stopId: 48, standingSec: 40, approach: false } });
+      expect(serverTravelAvailable(live[0]!, 'Red', 50_000)).toBe(false);
+      expect(serverArrivals(live, [48], 50_000)?.[0]?.eta).toBe(110);
+    });
 
   it('advances across fresh snapshots but permits genuine new-rest and new-stop resets', () => {
     const read = (at: number, standingSec: number, stopId = 48) => {
@@ -79,6 +109,41 @@ describe('authoritative live forecast', () => {
     const offline = buses();
     expect(serverArrivals(offline, [48], 50_000)).toBeNull();
     expect(serverTrack(offline[0]!, 'Red', 50_000)).toBeUndefined();
+  });
+
+  it('carries service counts for the same raw occurrence without aging or replacing hops', () => {
+    const live = buses(), w = wire();
+    w.serviceStopsAhead = [1, 12];
+    expect(attachServerEta(live, w, 50_000)).toBe(true);
+    expect(serverArrivals(live, [48], 55_000)?.map(a => [a.stopsAhead, a.serviceStopsAhead]))
+      .toEqual([[2, 1], [20, 12]]);
+    const legacy = buses();
+    expect(attachServerEta(legacy, wire(), 50_000)).toBe(true);
+    expect(serverArrivals(legacy, [48], 50_000)?.[0]?.serviceStopsAhead).toBeUndefined();
+  });
+
+  it('keeps ETAs available but waits for a stop reminder when optional counts are malformed', () => {
+    const live = buses();
+    expect(attachServerEta(live, { ...wire(), serviceStopsAhead: [1] }, 50_000)).toBe(true);
+    const a = serverArrivals(live, [48], 50_000)![0]!;
+    expect(a).toMatchObject({ eta: 110, stopsAhead: 2, serviceStopsAhead: null });
+    const input = { busEtaSec: a.eta, stopsAhead: a.stopsAhead, serviceStopsAhead: a.serviceStopsAhead,
+      walkToSec: 0, nowMs: 50_000 };
+    expect(computePickupReminder(input, NO_PINGS_FIRED, { mode: 'stops', value: 2 })).toBeNull();
+    expect(computePickupReminder(input, NO_PINGS_FIRED, { mode: 'minutes', value: 5 })).toBe('heads_up');
+  });
+
+  it.each([null, {}, [], [3, 12], [0, 12], [-1, 12], [1.5, 12], [Infinity, 12]].map(serviceStopsAhead => ({ serviceStopsAhead })))
+    ('does not trust invalid service metadata (%j)', ({ serviceStopsAhead }) => {
+      const live = buses();
+      expect(attachServerEta(live, { ...wire(), serviceStopsAhead }, 50_000)).toBe(true);
+      expect(serverArrivals(live, [48], 50_000)?.[0]?.serviceStopsAhead).toBeNull();
+    });
+
+  it('isolates one invalid count from other valid row-aligned counts', () => {
+    const live = buses();
+    attachServerEta(live, { ...wire(), serviceStopsAhead: [1, null] }, 50_000);
+    expect(serverArrivals(live, [48], 50_000)?.map(a => a.serviceStopsAhead)).toEqual([1, null]);
   });
 });
 

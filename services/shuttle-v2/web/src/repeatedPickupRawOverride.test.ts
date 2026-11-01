@@ -20,7 +20,8 @@ const setup = (frame: typeof fixture.frames[number]) => {
   expect(bus.at_stop_id).toBe(23);
   const stops = mergedRouteStops(cfg, p.routes);
   const visits = serverArrivals(buses, [23, 26], frame.at)!.filter(a => a.routeLabel === frame.route);
-  return { p, buses, bus, stops, visits, context: { bus, routeLabel: frame.route, stops, now: frame.at } };
+  return { p, buses, bus, stops, visits, context: { bus, routeLabel: frame.route, stops,
+    stopCoords: p.stop_coords as Record<number, LatLon>, now: frame.at } };
 };
 
 describe('a short return to a repeated pickup is a different visit', () => {

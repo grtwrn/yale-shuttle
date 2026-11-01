@@ -130,9 +130,9 @@ try {
       };
       const waiting = page.getByRole('status', { name: 'Pickup reminder waiting for live updates', exact: true });
       const buzzes = () => page.evaluate(() => window.reminderBuzzes);
-      const armTiming = async timing => {
+      const armTiming = async (timing, value = timing === 'stops' ? '3' : '1') => {
         await trigger.click(); await mode.selectOption(timing);
-        await settings.getByLabel(timing === 'stops' ? 'Stops before pickup' : 'Minutes before pickup', { exact: true }).selectOption(timing === 'stops' ? '3' : '1');
+        await settings.getByLabel(timing === 'stops' ? 'Stops before pickup' : 'Minutes before pickup', { exact: true }).selectOption(value);
         await settings.getByRole('button', { name: 'Set reminder', exact: true }).click(); await armed.waitFor();
       };
       const resetThreshold = async () => { row[5] = 11; row[3] = 480; feedMode = 'fresh'; await advance(6500); };
@@ -154,6 +154,50 @@ try {
         await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
         recoveryCases.push({ failure, timing, heldWithoutAlert: true, resumedOnceOnFreshData: true, cancelAvailableWhileWaiting: true });
       }
+      // Keep the selected pickup and ETA usable while only its service-call
+      // count is unknown. These are constructed transport states, not a claim
+      // that this Blue fixture has traversal-only stops or measured accuracy.
+      await resetThreshold();
+      row[5] = 4;
+      const serviceRowIndex = feed.server_eta.rows.indexOf(row);
+      assert(serviceRowIndex >= 0);
+      feed.server_eta.serviceStopsAhead = feed.server_eta.rows.map(r => r[5]);
+      feed.server_eta.serviceStopsAhead[serviceRowIndex] = null;
+      await advance(6500);
+      const serviceCountBefore = await buzzes();
+      await armTiming('stops', '2'); await advance(1100); await waiting.waitFor();
+      const servicePickup = page.getByTestId('route-timing-table').locator('tbody[data-route="Blue Day"][data-pickup="100"]');
+      // The table renders pickup timing as text; tapping its row opens the
+      // route. An arrival-chart button belongs to the separate card variant.
+      const livePickup = servicePickup.getByTestId('route-pickup');
+      await livePickup.waitFor(); await servicePickup.getByTestId('pickup-range').waitFor();
+      const retainedEtaValues = row.slice(2, 5);
+      assert.match(await livePickup.innerText(), /~?\d.*\(\d.*\d\)/, 'unknown count retains a numeric pickup estimate and range');
+      assert.equal((await servicePickup.getAttribute('data-board-bus'))?.replace(/^#/, ''), '44');
+      assert.equal(await servicePickup.getAttribute('data-board-stops-ahead'), null, 'unknown count must not display four traversal hops as four stops');
+      assert.match(await waiting.innerText(), /2 stops before pickup/);
+      assert.equal(await buzzes(), serviceCountBefore, 'a healthy ETA without a service count must wait silently');
+      await page.screenshot({ path: `${out}/service-count-waiting-${width}.png`, fullPage: true });
+      // Change only the count: raw occurrence identity and all ETA values stay.
+      feed.server_eta.serviceStopsAhead[serviceRowIndex] = 2;
+      await advance(6500);
+      await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).waitFor();
+      assert.equal(await waiting.count(), 0);
+      await livePickup.waitFor();
+      await servicePickup.getByTestId('pickup-range').waitFor();
+      // The displayed range ages between polls. Its rounding can change
+      // while the underlying forecast stays the same across count recovery.
+      assert.match(await livePickup.innerText(), /~?\d.*\(\d.*\d\)/, 'count recovery retains a numeric pickup estimate and range');
+      assert.deepEqual(row.slice(2, 5), retainedEtaValues, 'count recovery leaves the forecast values unchanged');
+      assert.equal((await servicePickup.getAttribute('data-board-bus'))?.replace(/^#/, ''), '44');
+      assert.equal(await servicePickup.getAttribute('data-board-stops-ahead'), '2');
+      assert.equal(row[5], 4, 'delivery must use service calls without renumbering raw occurrence hops');
+      assert.match(await page.locator('body').innerText(), /Blue Day #44 is 2 stops before your pickup/);
+      assert.equal(await buzzes(), serviceCountBefore + 1);
+      await advance(1100); assert.equal(await buzzes(), serviceCountBefore + 1, 'service-count recovery must notify once');
+      await page.screenshot({ path: `${out}/service-count-resumed-${width}.png`, fullPage: true });
+      await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
+      delete feed.server_eta.serviceStopsAhead;
       await resetThreshold(); const leaveBefore = await buzzes(); row[3] = 300; await advance(6500);
       await trigger.click(); await mode.selectOption('leave');
       await settings.getByRole('button', { name: 'Set reminder', exact: true }).click(); await advance(1100);
@@ -195,7 +239,7 @@ try {
       await page.getByRole('button', { name: 'Swap start and destination', exact: true }).click(); await advance(1100);
       assert.equal(await waiting.count(), 0, 'changing the trip must cancel the old reminder');
       row[5] = 3; feedMode = 'fresh'; await advance(6500); assert.equal(await buzzes(), before, 'the old trip must not notify after recovery');
-      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false, recoveryCases, leavePingHistoryPreserved: true, canceledPendingNeverResumed: true, changedTripNeverResumed: true, arrivalDuringEditingSavesDisplayedTiming: true });
+      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false, recoveryCases, serviceCountRecovery: { rawHops: 4, unknownCountWaited: true, etaAndPickupRetained: true, recoveredServiceCount: 2, displayedServiceCount: 2, notifiedOnce: true }, leavePingHistoryPreserved: true, canceledPendingNeverResumed: true, changedTripNeverResumed: true, arrivalDuringEditingSavesDisplayedTiming: true });
     } catch (error) {
       const page = ctx.pages()[0];
       report.failure = { width, message: error.message, body: await page.locator('body').ariaSnapshot().catch(() => null) };

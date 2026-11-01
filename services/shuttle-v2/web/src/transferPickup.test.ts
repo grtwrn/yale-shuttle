@@ -6,6 +6,9 @@ import type { BusData } from './map-data';
 const now = Date.UTC(2026, 9, 19, 16);
 const path: TransferRidePath = { routeLabel: 'Red', color: '#c00', routeId: '3', boardStopId: 11, alightStopId: 113,
   stops: [11, 48, 113], plannedRideSec: 300 };
+const geometry = { routeStops: { '3': [11, 48, 113] }, stopCoords: {
+  11: { lat: 41.32, lon: -72.92 }, 48: { lat: 41.319, lon: -72.919 }, 113: { lat: 41.319, lon: -72.921 },
+} };
 function live() {
   const buses: BusData[] = [{ bus_id: 1, bus_name: '#317', route_id: 3, lat: 41.32, lon: -72.92, heading: 180, last_stop_id: 1, observed_at: now }];
   const wire: ServerEtaWire = { v: 2, at: now, servedAt: now, buses: [['317', 'Red', 0, null]],
@@ -24,7 +27,7 @@ describe('current transfer-leg pickup', () => {
   });
   it('keeps boarding/reminders when the destination estimate disappears, without inventing an arrival', () => {
     const { buses, wire } = live(); wire.rows = wire.rows.filter(r => r[1] !== 113); attachServerEta(buses, wire, now);
-    const pickup = transferPickup(path, buses, 0, now, true);
+    const pickup = transferPickup(path, buses, 0, now, true, '', {}, geometry);
     expect(pickup.boardingBusName).toBe('317'); expect(pickup.option).toBeDefined(); expect(pickup.destination).toBeUndefined();
   });
   it('retains no current-leg timing after a successful empty publication', () => {
@@ -36,18 +39,26 @@ describe('current transfer-leg pickup', () => {
     const { buses, wire } = live(); buses[0]!.at_stop_id = 11;
     expect(transferPickup(path, buses, 0, now, true).selection).toBeUndefined();
     attachServerEta(buses, { ...wire, rows: [] }, now);
-    const pickup = transferPickup(path, buses, 0, now, true);
+    const pickup = transferPickup(path, buses, 0, now, true, '', {}, geometry);
     expect(pickup.selection?.countdown).toEqual({ source: 'raw-at-stop', busName: '317', stopId: 11 });
     expect(pickup.destination).toBeUndefined(); expect(pickup.option?.busEtaSec).toBe(0);
-    expect(transferPickup(path, buses, 0, now, false).selection).toBeUndefined();
-    expect(transferPickup(path, buses, 0, now + 120_000, true).selection).toBeUndefined();
+    expect(transferPickup(path, buses, 0, now, false, '', {}, geometry).selection).toBeUndefined();
+    expect(transferPickup(path, buses, 0, now + 120_000, true, '', {}, geometry).selection).toBeUndefined();
+  });
+  it('keeps unknown geometry forecast-only instead of restoring a raw current pickup', () => {
+    const { buses, wire } = live(); buses[0]!.at_stop_id = 11;
+    attachServerEta(buses, { ...wire, rows: [] }, now);
+    expect(transferPickup(path, buses, 0, now, true).selection).toBeUndefined();
+    expect(transferPickup(path, buses, 0, now, true, '', {}, geometry).selection?.boarding.source).toBe('raw-at-stop');
+    attachServerEta(buses, wire, now);
+    expect(transferPickup(path, buses, 0, now, true).selection?.boarding.source).toBe('forecast');
   });
   it('does not borrow a later same-bus lap as a raw-current pickup or an earlier destination', () => {
     const { buses, wire } = live(); buses[0]!.at_stop_id = 11;
     wire.rows = [[0, 11, 600, 500, 700, 5, 0, 600, 0], [0, 48, 700, 600, 800, 6, 0, 700, 0], [0, 113, 800, 700, 900, 7, 0, 800, 0]];
     attachServerEta(buses, wire, now);
-    expect(transferPickup(path, buses, 0, now, true).selection?.countdown.source).toBe('forecast');
-    expect(transferPickup(path, buses, 0, now, true).destination?.pointMs).toBe(now + 800_000);
+    expect(transferPickup(path, buses, 0, now, true, '', {}, geometry).selection?.countdown.source).toBe('forecast');
+    expect(transferPickup(path, buses, 0, now, true, '', {}, geometry).destination?.pointMs).toBe(now + 800_000);
   });
   it('keeps approaching and boardable buses distinct when the rider cannot walk to the early bus', () => {
     const { buses, wire } = live();

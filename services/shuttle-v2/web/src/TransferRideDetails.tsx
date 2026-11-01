@@ -11,6 +11,7 @@ import { liveAnchorStore } from './eta';
 import { liveBusAvailable } from './etaSource';
 import { transferPickup } from './transferPickup';
 import { TransferPickupControls } from './TransferPickupControls';
+import { serviceStopCount } from './serviceStopCount';
 
 export const transferStopName = (id: number, names: Record<number, string>) => (names[id] ?? `Stop ${id}`).replace(/\s*\/\s*/g, '/');
 export function walkingLink(destination: LatLon, origin?: LatLon): string {
@@ -22,7 +23,7 @@ export function TransferRideDetails({ title, path, buses, available, walkToSec, 
   stopNames: Record<number, string>; stopCoords: Record<number, LatLon>; routeStops: Record<string, number[]>;
   dwellTimes: DwellTimes; pinnedBusName?: string; preview?: boolean; previewArrival?: UpcomingArrival; routeHours?: Record<string, PublishedWindow>; atMs?: number; controls?: { onBoard: (busName: string) => void }; children?: ReactNode;
 }) {
-  const now = Date.now(), pickup = transferPickup(path, buses, walkToSec ?? 0, now, available, pinnedBusName, dwellTimes);
+  const now = Date.now(), pickup = transferPickup(path, buses, walkToSec ?? 0, now, available, pinnedBusName, dwellTimes, { routeStops, stopCoords });
   const cfg = ROUTE_LISTS.find(c => c.label === path.routeLabel);
   const evidence = pickup.selection?.countdown;
   const row = preview ? previewArrival : evidence?.source === 'forecast'
@@ -34,6 +35,7 @@ export function TransferRideDetails({ title, path, buses, available, walkToSec, 
   const approach = bus && cfg && (preview ? !!row : !!evidence)
     ? rideApproach(bus, cfg, routeStops, stopCoords, path.boardStopId,
       row ? boardHops(row, pickup.source.visits, path.boardStopId, path.alightStopId) : undefined, now, liveAnchorStore) : null;
+  const stopsAway = row ? serviceStopCount(row) : evidence?.source === 'raw-at-stop' ? 0 : approach?.length ?? null;
   const hours = cfg ? routeHoursCaption(cfg, routeHours, new Date(atMs ?? now)) : null;
   const published = cfg ? publishedWindowFor(cfg, routeHours) : null;
   const pickupAt = preview ? row ? now + row.eta * 1000 : null
@@ -51,10 +53,11 @@ export function TransferRideDetails({ title, path, buses, available, walkToSec, 
     {stopCoords[path.boardStopId] && <a className="trip-action-button" style={{ marginTop: 8, textDecoration: 'none', color: '#1a73e8' }}
       href={walkingLink(stopCoords[path.boardStopId]!)} target="_blank" rel="noopener noreferrer">Walking directions to pickup</a>}
     {controls && <TransferPickupControls path={path} buses={buses} available={available} walkToSec={walkToSec}
-      stopName={transferStopName(path.boardStopId, stopNames)} pinnedBusName={pinnedBusName} dwellTimes={dwellTimes} onBoard={controls.onBoard} />}
+      stopName={transferStopName(path.boardStopId, stopNames)} pinnedBusName={pinnedBusName} dwellTimes={dwellTimes}
+      routeStops={routeStops} stopCoords={stopCoords} onBoard={controls.onBoard} />}
     {children}
     {approach && approach.length > 0 && <details style={{ marginTop: 10, fontSize: 13 }}>
-      <summary>#{name} · {approach.length} {approach.length === 1 ? 'stop' : 'stops'} before pickup</summary>
+      <summary>#{name} · {stopsAway === null ? 'Stop count unavailable' : `${stopsAway} ${stopsAway === 1 ? 'stop' : 'stops'} before pickup`}</summary>
       <ol aria-label="Stops before transfer pickup" style={{ paddingLeft: 22, margin: '8px 0' }}>
         {approach.map((id, index) => <li key={`${index}/${id}`} style={{ margin: '4px 0' }}>{transferStopName(id, stopNames)}</li>)}
       </ol>

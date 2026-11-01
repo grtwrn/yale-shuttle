@@ -17,6 +17,7 @@ import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalk
 import { atStopJourneyBoard, journeyArrival, type JourneyArrival } from './journeyArrival';
 import type { LivePickupSelection } from './livePickupSelection';
 import { pickupRequestFor, type PickupRequest } from './pickupService';
+import { serviceCallAllowed } from './liveAnchor';
 
 export type TripOption = {
   mode: "shuttle" | "walk";
@@ -423,12 +424,16 @@ export interface RawAtStopContext {
   routeLabel: string;
   /** Canonical published calls, including repeated stops. */
   stops: readonly number[];
+  stopCoords: Record<number, LatLon>;
   now: number;
+  anchorStore?: AnchorStore | undefined;
 }
 
 /** Whether a bus flagged at the board stop may be offered as boardable now. */
 export function rawAtStopBoardable(busName: string, boardStopId: number, alightStopId: number, arrivals: readonly UpcomingArrival[], current?: RawAtStopContext): boolean {
   const norm = (name: string) => name.replace(/^#/, '');
+  if (current && !serviceCallAllowed(current.bus, boardStopId, current.routeLabel,
+    current.stops, current.stopCoords, current.now, current.anchorStore)) return false;
   const track = current && serverTrack(current.bus, current.routeLabel, current.now);
   // On a folded route a moving conditional state may omit the current-call
   // forecast. The raw override still names that current visit, not the first
@@ -567,7 +572,7 @@ export function planTrip(
           // board stop, every pair boarding there discarded).
           const arrivals = rideBoardArrivals(boardArrivals, b, cur);
           if (hereBus && rawAtStopBoardable(hereBus.bus_name, b, cur, boardArrivals,
-            { bus: hereBus, routeLabel: cfg.label, stops, now }) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
+            { bus: hereBus, routeLabel: cfg.label, stops, stopCoords, now, anchorStore }) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
             waitSec = 0;
             busEtaSec = 0; // it is AT the stop
             busDepartNowSec = 0;

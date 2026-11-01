@@ -40,8 +40,10 @@ export type LeaveAlertInput = {
   busName?: string;
   laterVisit?: boolean;
   atPickup?: boolean;
-  /** Stops to the same selected boarding visit, not the countdown bus. */
+  /** Raw traversal hops to the selected boarding visit, not the countdown bus. */
   stopsAhead?: number;
+  /** Service-call count for that visit; null is explicitly unavailable. */
+  serviceStopsAhead?: number | null;
   /** When busEtaSec was computed (ms epoch); undefined = treat as fresh. */
   computedAtMs?: number;
   /** Rider's walk to the board stop, seconds. */
@@ -207,6 +209,8 @@ export function liveReminderInput(
     busName: board.busName.replace(/^#/, ''), laterVisit: selected.relation === 'same-bus-later-visit',
     atPickup: board.source === 'raw-at-stop',
     stopsAhead: board.source === 'forecast' ? board.stopsAhead : 0,
+    ...(board.source === 'forecast' && board.serviceStopsAhead !== undefined
+      ? { serviceStopsAhead: board.serviceStopsAhead } : {}),
     computedAtMs: selected.selectedAtMs, walkToSec: o.walkToSec, nowMs };
 }
 
