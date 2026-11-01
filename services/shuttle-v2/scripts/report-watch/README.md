@@ -21,12 +21,34 @@ pending item. A change not yet seen by version 1 remains actionable on upgrade,
 because its digest cannot establish which field changed.
 
 Fingerprints are capped at 1,000 reports, recent changes at 100, and pending at
-1,000. The launchd log retains 1 MiB plus one previous tail. IPs, browser IDs,
+1,000. If an incomplete scan would exceed the pending limit, the check fails
+before replacing either the saved state or review queue; unresolved work is
+never evicted to admit newer entries. The launchd log retains 1 MiB plus one previous tail. IPs, browser IDs,
 full contexts, and device locations are not saved. Credentials stay in
 `~/.config/yale-shuttle/admin-token`; status/errors never print credentials.
 API failures preserve the queue and produce an unhealthy status until a later
-poll succeeds. A full 200-report response sets `saturated` and cannot remove
-unseen queued reports on the assumption they were resolved.
+poll succeeds. The watcher first requests 200 open reports. A full response
+triggers one request for the API's existing maximum of 1,000. The final response
+alone supplies the observed reports; fewer than its requested limit proves the
+open queue complete at that observation. Every row must have a unique positive
+ID, open status, and valid fields needed for change detection. Malformed or
+duplicate rows fail the check before saved work can be pruned. Both requests and their bodies share
+one 20-second fetch budget, and each decoded JSON body is limited to 16 MiB.
+
+A full 1,000-report response cannot prove completeness, even when the actual
+queue happens to contain exactly 1,000. Its observed changes are saved and
+notified, but the status is unhealthy with `coverage.complete=false` and
+`saturated=true`. Unseen pending reports and diagnostic evidence remain
+protected. `coverage` records the effective limit, observed count and reason;
+these are bounded observations, not a total count when coverage is incomplete.
+Pending-capacity and oversized-response failures are explicit too. Repeated
+coverage failures use the existing three-check health alert and recovery path.
+
+This improves coverage beyond the former 200-report window; it does not supply
+general pagination or durable event replay. The current API has neither. Its
+live report stream emits IDs without a replay cursor, and per-report evidence
+contains forecast inputs rather than the report thread. Full coverage beyond
+the supported batch limit needs a server protocol change and separate review.
 
 Three consecutive failed checks produce a local desktop health alert. The
 counter and delivery receipt persist in private `health.json`, so scheduled
@@ -84,6 +106,18 @@ each request is bounded to ten seconds. A failed report bundle does not prevent
 other reports from being attempted. The review queue is persisted and notified
 before capture, so an evidence outage cannot swallow a submission. Consecutive
 capture failures use the existing watcher health alerts.
+
+The same 30-second evidence work window now includes local maintenance,
+manifest discovery and unchanged-object validation. A poll admits at most
+256 MiB of reads and 64,000 filesystem operations. Shared verified objects can
+reuse their checksum within that poll, with fresh file-identity checks for each
+reference and comparison against each manifest's expectations. Deferred checks
+remain unhealthy and explicit; a bounded continuation in `evidence-status.json`
+lets later polls resume beyond an attempted prefix. Incomplete reference scans
+protect shared objects from collection. Committed attempt references protect
+their objects; an object saved before its attempt commits can be reclaimed and
+fetched again after a deferred poll. These are software/data checks, not
+historical ETA replays.
 
 Local evidence has a 256 MiB cap and seven-day rolling retention. Resolved
 reports can be retired to leave space; open reports and all earlier attempts

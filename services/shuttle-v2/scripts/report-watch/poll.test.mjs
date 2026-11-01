@@ -3,12 +3,19 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { reconcileReports, pollReports } from './poll.mjs';
+import { reconcileReports, pollReports, loadOpenReports } from './poll.mjs';
 import { riderFacingNote } from '../../src/server/reports.ts';
 const now = Date.parse('2026-10-15T13:00:00-04:00');
 const report = (id, change = {}) => ({ id, status: 'open', body: 'Red has the wrong stop count',
   createdAt: '2026-10-15T12:43:38Z', priority: 'normal', context: '{}', note: null, ...change });
 const dirs = [];
+const batch = (count, first = 1) => Array.from({ length: count }, (_, n) => report(first + n));
+const jsonResponse = reports => ({ ok: true, json: async () => ({ reports }) });
+async function pollFixture() {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shuttle-report-capacity-')); dirs.push(dir);
+  const tokenFile = path.join(dir, 'token'); await fs.writeFile(tokenFile, 'test-only-token');
+  return { dir, tokenFile, notifier: async () => {}, healthNotifier: async () => {} };
+}
 const legacyState = r => ({ version: 1, seen: { [r.id]: { lastSeenAt: now,
   digest: createHash('sha256').update(JSON.stringify([r.body, r.note, r.priority,
     JSON.parse(r.context).followups ?? []])).digest('hex') } },
@@ -17,6 +24,148 @@ const legacyState = r => ({ version: 1, seen: { [r.id]: { lastSeenAt: now,
 afterEach(async () => { for (const dir of dirs.splice(0)) await fs.rm(dir, { recursive: true, force: true }); });
 
 describe('persistent submitted-report watcher', () => {
+  it('keeps a small queue to one request and exposes verified coverage', async () => {
+    const requests = [];
+    const loaded = await loadOpenReports({ base: 'https://reports.test', token: 'test-only-token',
+      fetcher: async (url, options) => { requests.push([String(url), options]); return jsonResponse(batch(17)); } });
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0][0]).searchParams.get('limit')).toBe('200');
+    expect(requests[0][1].headers).toEqual({ 'x-admin-token': 'test-only-token' });
+    expect(loaded.coverage).toEqual({ complete: true, limit: 200, observedReports: 17, reason: 'complete' });
+  });
+  it('detects an older follow-up beyond the first 200 and reconciles the final complete set', async () => {
+    const options = await pollFixture(), old = report(1), resolved = report(999);
+    await pollReports({ ...options, now, fetcher: async () => jsonResponse([old, resolved]) });
+    const reports = batch(201);
+    reports[0] = report(1, { context: JSON.stringify({ followups: [{ at: now, text: 'Still happening' }] }) });
+    const limits = [];
+    const next = await pollReports({ ...options, now: now + 60000, fetcher: async url => {
+      const limit = Number(new URL(url).searchParams.get('limit')); limits.push(limit);
+      return jsonResponse(limit === 200 ? reports.slice(1) : reports);
+    } });
+    expect(limits).toEqual([200, 1000]);
+    expect(next.ok).toBe(true); expect(next.coverage).toEqual({ complete: true, limit: 1000, observedReports: 201, reason: 'complete' });
+    const state = JSON.parse(await fs.readFile(path.join(options.dir, 'state.json'), 'utf8'));
+    expect(state.events.find(e => e.id === 1)?.kind).toBe('report-updated');
+    expect(state.pending.some(e => e.id === 999)).toBe(false);
+    expect(state.pending.some(e => e.id === 1)).toBe(true);
+  });
+  it('can prove an exactly 200-report queue complete with the larger request', async () => {
+    const options = await pollFixture(), limits = [];
+    const status = await pollReports({ ...options, now, fetcher: async url => {
+      limits.push(Number(new URL(url).searchParams.get('limit'))); return jsonResponse(batch(200));
+    } });
+    expect(limits).toEqual([200, 1000]); expect(status.ok).toBe(true);
+    expect(status.saturated).toBe(false); expect(status.coverage.complete).toBe(true);
+  });
+  it('keeps a full 1000 response unhealthy, preserves observed work and alerts once across restarts', async () => {
+    const options = await pollFixture(), alerts = []; let count = 1000;
+    const fetcher = async url => jsonResponse(batch(Math.min(count, Number(new URL(url).searchParams.get('limit')))));
+    for (let n = 0; n < 4; n++) {
+      await expect(pollReports({ ...options, now: now + n * 60000, fetcher,
+        healthNotifier: async (kind, cause) => alerts.push([kind, cause]) })).rejects.toThrow('Report check failed');
+      const status = JSON.parse(await fs.readFile(path.join(options.dir, 'status.json'), 'utf8'));
+      expect(status.ok).toBe(false); expect(status.saturated).toBe(true);
+      expect(status.coverage).toEqual({ complete: false, limit: 1000, observedReports: 1000, reason: 'response-limit' });
+      expect(status.pending).toBe(1000);
+      expect(JSON.parse(await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8')).pending).toHaveLength(1000);
+    }
+    expect(alerts).toEqual([['failed', 'coverage']]);
+    count = 999;
+    const recovered = await pollReports({ ...options, now: now + 300000, fetcher,
+      healthNotifier: async (kind, cause) => alerts.push([kind, cause]) });
+    expect(recovered.ok).toBe(true); expect(recovered.pending).toBe(999);
+    expect(alerts).toEqual([['failed', 'coverage'], ['recovered', undefined]]);
+  });
+  it('refuses pending overflow before replacing any protected state or queue', async () => {
+    const options = await pollFixture();
+    const prior = reconcileReports(null, batch(1000), now, false);
+    const stateBytes = JSON.stringify(prior), queueBytes = JSON.stringify({ pending: prior.pending });
+    await fs.writeFile(path.join(options.dir, 'state.json'), stateBytes);
+    await fs.writeFile(path.join(options.dir, 'queue.json'), queueBytes);
+    let notifications = 0;
+    await expect(pollReports({ ...options, now: now + 60000,
+      notifier: async () => { notifications++; }, fetcher: async url =>
+        jsonResponse(batch(Number(new URL(url).searchParams.get('limit')), 1001)) })).rejects.toThrow('Report check failed');
+    expect(await fs.readFile(path.join(options.dir, 'state.json'), 'utf8')).toBe(stateBytes);
+    expect(await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8')).toBe(queueBytes);
+    expect(notifications).toBe(0);
+    const status = JSON.parse(await fs.readFile(path.join(options.dir, 'status.json'), 'utf8'));
+    expect(status.pending).toBe(1000); expect(status.coverage.reason).toBe('pending-capacity');
+    expect(status.ok).toBe(false); expect(status.saturated).toBe(true);
+  });
+  it('preserves prior state when the larger request fails', async () => {
+    const options = await pollFixture();
+    await pollReports({ ...options, now, fetcher: async () => jsonResponse([report(1)]) });
+    const state = await fs.readFile(path.join(options.dir, 'state.json'), 'utf8');
+    const queue = await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8');
+    const limits = [];
+    await expect(pollReports({ ...options, now: now + 60000, fetcher: async url => {
+      const limit = Number(new URL(url).searchParams.get('limit')); limits.push(limit);
+      return limit === 200 ? jsonResponse(batch(200)) : { ok: false, status: 503 };
+    } })).rejects.toThrow('Report check failed');
+    expect(limits).toEqual([200, 1000]);
+    expect(await fs.readFile(path.join(options.dir, 'state.json'), 'utf8')).toBe(state);
+    expect(await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8')).toBe(queue);
+  });
+  it('shares one deadline across escalation and aborts a stalled larger request', async () => {
+    const signals = [];
+    await expect(loadOpenReports({ base: 'https://reports.test', token: 'test-only-token', budgetMs: 30,
+      fetcher: async (_url, options) => {
+        signals.push(options.signal);
+        return signals.length === 1 ? jsonResponse(batch(200)) : new Promise(() => {});
+      } })).rejects.toThrow('Report fetch budget exceeded');
+    expect(signals).toHaveLength(2); expect(signals[0]).toBe(signals[1]); expect(signals[1].aborted).toBe(true);
+  });
+  it('bounds a stalled response body with the same request deadline and cancels it', async () => {
+    let canceled = false;
+    const response = new Response(new ReadableStream({ pull: () => new Promise(() => {}), cancel() { canceled = true; } }));
+    await expect(loadOpenReports({ base: 'https://reports.test', token: 'test-only-token', budgetMs: 30,
+      fetcher: async () => response })).rejects.toThrow('Report fetch budget exceeded');
+    expect(canceled).toBe(true);
+  });
+  it('enforces the decoded byte cap before JSON parsing and preserves saved work', async () => {
+    const options = await pollFixture();
+    await pollReports({ ...options, now, fetcher: async () => jsonResponse([report(1)]) });
+    const state = await fs.readFile(path.join(options.dir, 'state.json'), 'utf8');
+    const queue = await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8');
+    let canceled = false;
+    await expect(pollReports({ ...options, now: now + 60000, fetcher: async () => new Response(new ReadableStream({
+      start(controller) { controller.enqueue(new Uint8Array(16 * 1024 * 1024 + 1)); },
+      cancel() { canceled = true; },
+    })) })).rejects.toThrow('Report check failed');
+    expect(canceled).toBe(true);
+    expect(await fs.readFile(path.join(options.dir, 'state.json'), 'utf8')).toBe(state);
+    expect(await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8')).toBe(queue);
+    const status = JSON.parse(await fs.readFile(path.join(options.dir, 'status.json'), 'utf8'));
+    expect(status.ok).toBe(false); expect(status.coverage.reason).toBe('response-bytes');
+    expect(JSON.stringify(status)).not.toContain('test-only-token');
+  });
+  it('rejects a server result beyond the requested row limit', async () => {
+    await expect(loadOpenReports({ base: 'https://reports.test', token: 'test-only-token',
+      fetcher: async () => jsonResponse(batch(201)) })).rejects.toMatchObject({ reason: 'invalid-response' });
+  });
+  it('cannot turn malformed or duplicate rows into a complete empty queue', async () => {
+    const options = await pollFixture();
+    await pollReports({ ...options, now, fetcher: async () => jsonResponse([report(1)]) });
+    const state = await fs.readFile(path.join(options.dir, 'state.json'), 'utf8');
+    const queue = await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8');
+    for (const rows of [[{}], [report(0)], [report(1), report(1)], [report(1, { status: 'addressed' })],
+      [report(1, { body: null })], [report(1, { priority: 'unknown' })], [report(1, { note: {} })],
+      [report(1, { context: [] })], [report(1, { createdAt: 'invalid' })]]) {
+      await expect(pollReports({ ...options, now: now + 60000,
+        fetcher: async () => jsonResponse(rows) })).rejects.toThrow('Report check failed');
+      expect(await fs.readFile(path.join(options.dir, 'state.json'), 'utf8')).toBe(state);
+      expect(await fs.readFile(path.join(options.dir, 'queue.json'), 'utf8')).toBe(queue);
+      const status = JSON.parse(await fs.readFile(path.join(options.dir, 'status.json'), 'utf8'));
+      expect(status.ok).toBe(false); expect(status.coverage).toMatchObject({ complete: false, reason: 'invalid-response' });
+    }
+  });
+  it('also protects direct reconciliation from malformed complete observations', () => {
+    const prior = reconcileReports(null, [report(1)], now);
+    expect(() => reconcileReports(prior, [{}], now + 60000, true)).toThrow('Report coverage is incomplete');
+    expect(prior.pending.map(item => item.id)).toEqual([1]);
+  });
   it('finds today on startup, baselines the older backlog, and deduplicates restart polls', () => {
     const state = reconcileReports(null, [report(142), report(139, { createdAt: '2026-10-05T12:00:00Z' })], now);
     expect(state.events.map(r => r.id)).toEqual([142]);

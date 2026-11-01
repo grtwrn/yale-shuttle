@@ -13,6 +13,85 @@ const exec = promisify(execFile);
 const service = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const day = at => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(at));
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const INITIAL_REPORT_LIMIT = 200, EXPANDED_REPORT_LIMIT = 1000, PENDING_LIMIT = 1000;
+const REPORT_BODY_BYTES = 16 * 1024 * 1024;
+
+class ReportWatchCoverageError extends Error {
+  constructor(reason) { super('Report coverage is incomplete'); this.reason = reason; }
+}
+
+function within(promise, signal) {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => { signal.removeEventListener('abort', abort); reject(signal.reason); };
+    signal.addEventListener('abort', abort, { once: true });
+    Promise.resolve(promise).then(value => { signal.removeEventListener('abort', abort); resolve(value); },
+      error => { signal.removeEventListener('abort', abort); reject(error); });
+  });
+}
+
+async function boundedReportJson(response, signal, maxBytes) {
+  // Native fetch and the monitor DNS fallback expose the decoded body here.
+  // Apply the byte limit before parsing, even for a compressed HTTP response.
+  if (response.body?.getReader) {
+    const reader = response.body.getReader();
+    const chunks = []; let bytes = 0, ended = false;
+    try {
+      for (;;) {
+        const next = await within(reader.read(), signal);
+        if (next.done) { ended = true; break; }
+        bytes += next.value.byteLength;
+        if (bytes > maxBytes) throw new ReportWatchCoverageError('response-bytes');
+        chunks.push(Buffer.from(next.value));
+      }
+      return JSON.parse(Buffer.concat(chunks, bytes).toString('utf8'));
+    } finally {
+      if (!ended) void reader.cancel().catch(() => {});
+      reader.releaseLock();
+    }
+  }
+  // Dependency-injected JSON-only fetchers retain the same admission. Real
+  // network responses always use the bounded stream above.
+  const data = await within(response.json(), signal);
+  if (Buffer.byteLength(JSON.stringify(data)) > maxBytes) throw new ReportWatchCoverageError('response-bytes');
+  return data;
+}
+
+function validOpenRows(rows, limit) {
+  if (!Array.isArray(rows) || rows.length > limit) return false;
+  const ids = new Set();
+  for (const row of rows) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)
+      || !Number.isSafeInteger(row.id) || row.id <= 0 || ids.has(row.id) || row.status !== 'open'
+      || typeof row.body !== 'string' || !['urgent', 'normal', 'nice_to_have'].includes(row.priority)
+      || !(row.note === null || typeof row.note === 'string')
+      || !(row.context === null || typeof row.context === 'string')
+      || typeof row.createdAt !== 'string' || !Number.isFinite(Date.parse(row.createdAt))) return false;
+    ids.add(row.id);
+  }
+  return true;
+}
+
+/** Escalate only a full first batch. The final observed set determines
+ * completeness; this API has no pagination or durable update cursor. */
+export async function loadOpenReports({ fetcher, base, token, budgetMs = 20000, maxBytes = REPORT_BODY_BYTES }) {
+  const controller = new AbortController(), began = performance.now();
+  const timeout = setTimeout(() => controller.abort(new Error('Report fetch budget exceeded')), budgetMs);
+  try {
+    for (const limit of [INITIAL_REPORT_LIMIT, EXPANDED_REPORT_LIMIT]) {
+      const res = await within(fetcher(new URL(`/api/reports?status=open&limit=${limit}`, base),
+        { headers: { 'x-admin-token': token }, signal: controller.signal }), controller.signal);
+      if (!res.ok) throw new Error('Reports endpoint check failed');
+      const data = await boundedReportJson(res, controller.signal, maxBytes);
+      controller.signal.throwIfAborted();
+      if (performance.now() - began >= budgetMs) throw new Error('Report fetch budget exceeded');
+      if (!data || !validOpenRows(data.reports, limit)) throw new ReportWatchCoverageError('invalid-response');
+      if (data.reports.length < limit || limit === EXPANDED_REPORT_LIMIT) return { reports: data.reports,
+        coverage: { complete: data.reports.length < limit, limit, observedReports: data.reports.length,
+          reason: data.reports.length < limit ? 'complete' : 'response-limit' } };
+    }
+  } finally { clearTimeout(timeout); controller.abort(); }
+}
 // The same projection as server/reports.ts riderFacingNote, with a parity
 // test. Keep this dependency-free scheduled Node process out of the TS server
 // module graph. Internal investigations must not become new rider work.
@@ -42,10 +121,10 @@ async function write(file, value) {
 /** Reports are untrusted descriptions. Keep only review data locally, never
  * execute their contents, post replies, alter report status, or start agents. */
 export function reconcileReports(prior, reports, now = Date.now(), complete = reports.length < 200) {
+  if (!validOpenRows(reports, EXPANDED_REPORT_LIMIT)) throw new ReportWatchCoverageError('invalid-response');
   const seen = { ...prior?.seen }, pending = new Map((prior?.pending ?? []).map(r => [r.id, r]));
   const events = [], openIds = new Set();
   for (const report of reports) {
-    if (!Number.isSafeInteger(report.id) || report.status !== 'open') continue;
     openIds.add(report.id);
     let followups = [];
     try { followups = JSON.parse(report.context ?? '{}').followups ?? []; } catch { /* no thread */ }
@@ -66,9 +145,13 @@ export function reconcileReports(prior, reports, now = Date.now(), complete = re
     seen[report.id] = { digest, fingerprintVersion: 2, lastSeenAt: now };
   }
   if (complete) for (const id of pending.keys()) if (!openIds.has(id)) pending.delete(id);
+  // Unseen pending reports remain protected when a response is incomplete.
+  // Refuse a new state before either saved file is replaced; slicing would
+  // silently discard the oldest unresolved work.
+  if (pending.size > PENDING_LIMIT) throw new ReportWatchCoverageError('pending-capacity');
   return { version: 2, checkedAt: new Date(now).toISOString(),
     seen: Object.fromEntries(Object.entries(seen).sort((a, b) => b[1].lastSeenAt - a[1].lastSeenAt).slice(0, 1000)),
-    pending: [...pending.values()].sort((a, b) => b.id - a.id).slice(0, 1000),
+    pending: [...pending.values()].sort((a, b) => b.id - a.id),
     recent: [...events, ...(prior?.recent ?? [])].slice(0, 100), events, saturated: !complete };
 }
 
@@ -83,9 +166,11 @@ async function notify(events) {
   // Only numeric report IDs enter the OS notification. No report prose is code.
   await desktopNotification(`${events.length} new or updated report${events.length === 1 ? '' : 's'}: ${ids}`);
 }
-async function notifyHealth(kind) {
+async function notifyHealth(kind, cause) {
   // Fixed operator text only: endpoint errors and credentials never enter alerts.
-  await desktopNotification(kind === 'failed'
+  await desktopNotification(kind === 'failed' && cause === 'coverage'
+    ? 'Report watcher coverage was incomplete for three checks. The saved review queue is preserved; older reports may need review.'
+    : kind === 'failed'
     ? 'Report watcher failed three consecutive checks. The saved review queue is preserved; checks will retry.'
     : 'Report watcher recovered and is checking submitted reports again.');
 }
@@ -111,28 +196,27 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
   // are never discarded to make a failed check appear successful.
   const savedHealth = await read(healthFile, {}).catch(() => ({}));
   const health = savedHealth && typeof savedHealth === 'object' && !Array.isArray(savedHealth) ? savedHealth : {};
-  let prior = null, persisted = null;
+  let prior = null, persisted = null, notificationError = null;
+  let coverage = { complete: null, limit: INITIAL_REPORT_LIMIT, observedReports: null, reason: 'unavailable' };
   try {
     prior = await read(path.join(dir, 'state.json'), null);
     const token = (await fs.readFile(tokenFile, 'utf8')).trim();
-    const res = await fetcher(new URL('/api/reports?status=open&limit=200', base),
-      { headers: { 'x-admin-token': token }, signal: AbortSignal.timeout(20000) });
-    if (!res.ok) throw new Error(`Reports endpoint returned HTTP ${res.status}`);
-    const data = await res.json();
-    if (!data || !Array.isArray(data.reports)) throw new Error('Reports endpoint returned an invalid queue');
-    const state = reconcileReports(prior, data.reports, now);
+    const loaded = await loadOpenReports({ fetcher, base, token });
+    coverage = loaded.coverage;
+    const reports = loaded.reports;
+    const state = reconcileReports(prior, reports, now, coverage.complete);
     // Persist before notifying so restarting cannot repeat the same alert.
     await write(path.join(dir, 'state.json'), state);
     await write(path.join(dir, 'queue.json'), { checkedAt: state.checkedAt, pending: state.pending });
     persisted = state;
-    let notificationError = null;
     try { await notifier(state.events); } catch { notificationError = 'Local notification could not be delivered'; }
     // The review queue and its notification survive evidence failures. Every
     // later poll retries incomplete bundles even after event deduplication.
-    const evidence = await preserveReportEvidence({dir,reports:data.reports,base,token,fetcher,now,
+    const evidence = await preserveReportEvidence({dir,reports,base,token,fetcher,now,
       complete:!state.saturated});
     await write(path.join(dir,'evidence-status.json'),{checkedAt:state.checkedAt,...evidence});
     if (!evidence.ok) throw new Error('Report diagnostic evidence capture is incomplete');
+    if (!coverage.complete) throw new ReportWatchCoverageError('response-limit');
     let failureNotified = health.failureNotified === true;
     if (failureNotified) {
       try { await healthNotifier('recovered'); failureNotified = false; }
@@ -140,19 +224,20 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
     }
     await write(healthFile, { consecutiveFailures: 0, failureNotified,
       lastSuccessAt: state.checkedAt, lastKnownPending: state.pending.length });
-    const status = { checkedAt: state.checkedAt, ok: true, openReports: data.reports.length, pending: state.pending.length,
-      latestReportId: Math.max(0, ...data.reports.map(r => r.id)), newOrUpdated: state.events.map(e => e.id),
+    const status = { checkedAt: state.checkedAt, ok: true, openReports: reports.length, pending: state.pending.length,
+      latestReportId: Math.max(0, ...reports.map(r => r.id)), newOrUpdated: state.events.map(e => e.id), coverage,
       saturated: state.saturated, consecutiveFailures: 0, notificationError,
       ...(fetcher === monitorFetch ? { transport: monitorNetworkSummary() } : {}),
       evidence:{ok:evidence.ok,newlyRetained:evidence.captured.length,newlyUnavailable:evidence.unavailable.length,
         bytes:evidence.bytes,maxBytes:evidence.maxBytes,cleanupUncertain:evidence.cleanupUncertain} };
     await write(path.join(dir, 'status.json'), status); return status;
   } catch (error) {
+    if (error instanceof ReportWatchCoverageError) coverage = { ...coverage, complete: false, reason: error.reason };
     const consecutiveFailures = Math.min(1000,
       (Number.isSafeInteger(health.consecutiveFailures) && health.consecutiveFailures >= 0 ? health.consecutiveFailures : 0) + 1);
-    let failureNotified = health.failureNotified === true, notificationError = null;
+    let failureNotified = health.failureNotified === true;
     if (consecutiveFailures >= 3 && !failureNotified) {
-      try { await healthNotifier('failed'); failureNotified = true; }
+      try { await healthNotifier('failed', coverage.complete === false ? 'coverage' : undefined); failureNotified = true; }
       catch { notificationError = 'Local notification could not be delivered'; }
     }
     const pending = persisted?.pending?.length ?? prior?.pending?.length ?? health.lastKnownPending ?? null;
@@ -160,9 +245,13 @@ export async function pollReports({ dir = process.env.REPORT_WATCH_DIR ?? path.j
       lastSuccessAt: health.lastSuccessAt ?? null, lastKnownPending: pending });
     // Do not print exception details: credentials and report contents stay local.
     await write(path.join(dir, 'status.json'), { checkedAt: new Date(now).toISOString(), ok: false,
-      pending, consecutiveFailures, failureNotified, notificationError,
+      pending, consecutiveFailures, failureNotified, notificationError, coverage,
+      saturated: coverage.reason === 'response-limit' || coverage.reason === 'pending-capacity',
+      ...(persisted ? { observedOpenReports: coverage.observedReports,
+        newOrUpdated: persisted.events.map(event => event.id) } : {}),
       ...(fetcher === monitorFetch ? { transport: monitorNetworkSummary() } : {}),
-      error: 'Report check failed; retrying on the next scheduled poll' });
+      error: coverage.complete === false ? 'Report coverage is incomplete; the saved review queue is preserved'
+        : 'Report check failed; retrying on the next scheduled poll' });
     throw new Error('Report check failed; retrying on the next scheduled poll');
   }
 }
