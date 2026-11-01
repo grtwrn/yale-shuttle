@@ -1,4 +1,4 @@
-import {afterEach,describe,expect,it} from 'vitest';
+import {afterEach,describe,expect,it,vi} from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,14 +10,14 @@ import {pollReports} from './poll.mjs';
 const dirs=[];
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const makeDir=async()=>{const dir=await fs.mkdtemp(path.join(os.tmpdir(),'shuttle-report-inputs-'));dirs.push(dir);return dir;};
-afterEach(async()=>{for(const dir of dirs.splice(0))await fs.rm(dir,{recursive:true,force:true});});
+afterEach(async()=>{vi.restoreAllMocks();for(const dir of dirs.splice(0))await fs.rm(dir,{recursive:true,force:true});});
 function fixture(id=142,assets=['/assets/rider-fixture.js']){
  const now=Date.now(),raw=JSON.stringify({buses:[{bus_name:'317',route_id:16}],server_eta:{v:2,at:now,servedAt:now+500}}),
   sha256=hash(raw),build='fixture-server',snapshotId=hash(JSON.stringify({sha256,build,evaluation:null})),
   source={v:1,snapshotId,sha256,build,bytes:Buffer.byteLength(raw),modelAt:now,servedAt:now+500},gzip=gzipSync(raw);
  const bundle={v:1,source,capturedAt:now,retainedAt:now+1000,gzipSha256:hash(gzip),gzipBytes:gzip.length,gzipBase64:gzip.toString('base64')};
  const bytes=Buffer.from(JSON.stringify(bundle)+'\n'),receipt={v:1,status:'retained',snapshotId,sha256,bundleSha256:hash(bytes),bytes:bytes.length};
- const report={id,status:'open',createdAt:new Date(now).toISOString(),body:'The shuttle time changed',priority:'normal',
+ const report={id,status:'open',createdAt:new Date(now).toISOString(),body:'The shuttle time changed',priority:'normal',note:null,
   context:JSON.stringify({client:{userLatLon:{lat:41.31123,lon:-72.91234},privateAddress:'Private house'},
    screen:{v:1,capturedAt:now+700,build:'fixture-bundle',view:'trip',source:{...source,receivedAt:now+600},assets,
     rows:[{mode:'shuttle',route:'Blue West',boardStopId:156,board:'20 (13–40)',userLatLon:'private'}]},serverEvidence:receipt})};
@@ -34,6 +34,22 @@ async function manifest(dir,id){
  const directory=path.join(dir,'evidence','reports',String(id)),index=JSON.parse(await fs.readFile(path.join(directory,'latest.json'),'utf8'));
  const bytes=await fs.readFile(path.join(directory,index.file));expect(hash(bytes)).toBe(index.sha256);
  return {value:JSON.parse(bytes.toString()),bytes,file:path.join(directory,index.file)};
+}
+// Synthetic immutable receipts share one exact-cap public asset. No live report
+// or scientific input is used; each pointer/manifest has an independent digest.
+async function retainedRows(dir,count=16){
+ const bytes=Buffer.alloc(6*1024*1024,65),sha256=hash(bytes),name=sha256+'.js',objectFile=path.join(dir,'evidence/objects',name);
+ await fs.mkdir(path.dirname(objectFile),{recursive:true});await fs.writeFile(objectFile,bytes);
+ const reports=[],receipts=[];
+ for(let i=0;i<count;i++){
+  const report={id:1000+i,status:'open',context:JSON.stringify({screen:{v:1,view:'trip',assets:[]}})},screen=reportScreenFacts(JSON.parse(report.context).screen),saved={status:'unavailable',reason:'source-not-supplied'};
+  const value={v:1,id:report.id,version:hash(JSON.stringify({screen,saved})),capturedAt:'2026-11-01T00:00:00.000Z',screen,source:saved,assets:[],
+   artifacts:[{name,sha256,bytes:bytes.length}],retryable:false},directory=path.join(dir,'evidence/reports',String(report.id)),file='attempt-1-'+'a'.repeat(16)+'.json';
+  await fs.mkdir(directory,{recursive:true});const raw=Buffer.from(JSON.stringify(value)+'\n');await fs.writeFile(path.join(directory,file),raw);
+  await fs.writeFile(path.join(directory,'latest.json'),JSON.stringify({v:1,file,sha256:hash(raw)})+'\n');
+  reports.push(report);receipts.push({value,raw,file:path.join(directory,file),index:path.join(directory,'latest.json')});
+ }
+ return {reports,receipts,bytes,objectFile,options:{dir,reports,base:'https://shuttle.test',token:'test-only',fetcher:async()=>{throw Error('unchanged evidence must not fetch');}}};
 }
 
 describe('report source and client asset preservation',()=>{
@@ -157,6 +173,91 @@ describe('report source and client asset preservation',()=>{
   const result=await preserveReportEvidence({dir,reports:[f.report],base:'https://shuttle.test',token:'test-only',fetcher:f.fetcher,now:f.now+60000});
   expect(result.cleanupUncertain).toBe(true);expect(await fs.readFile(orphan,'utf8')).toContain('possible');
   expect(await fs.readFile(tmp,'utf8')).toBe('partial receipt');
+  // An empty unknown directory is also uncertain, even without a file to enter
+  // the byte inventory. Its presence cannot authorize orphan collection.
+  await fs.unlink(tmp);await fs.mkdir(path.join(dir,'evidence/objects/unknown-directory'));
+  const unknown=await preserveReportEvidence({dir,reports:[f.report],base:'https://shuttle.test',token:'test-only',fetcher:f.fetcher,now:f.now+120000});
+  expect(unknown.cleanupUncertain).toBe(true);expect(await fs.readFile(orphan,'utf8')).toContain('possible');
+ });
+ it('hashes one shared exact-cap object once for sixteen unchanged reports, with fresh identity checks for every reference',async()=>{
+  const dir=await makeDir(),f=await retainedRows(dir),originalOpen=fs.open.bind(fs);let opens=0;
+  vi.spyOn(fs,'open').mockImplementation(async(file,...args)=>{if(file===f.objectFile)opens++;return originalOpen(file,...args);});
+  const result=await preserveReportEvidence(f.options);
+  expect(result.ok).toBe(true);expect(result.verified).toEqual(f.reports.map(report=>report.id));
+  expect(result.work.objectHashes).toBe(1);expect(result.work.objectCacheHits).toBe(15);expect(opens).toBe(16);
+  expect(result.work.readBytes).toBeLessThan(f.bytes.length+128*1024);
+  expect(result.work.limits).toEqual({readBytes:256*1024*1024,operations:64_000,milliseconds:30_000});
+  expect((await fs.readFile(f.objectFile)).equals(f.bytes)).toBe(true);
+  for(const receipt of f.receipts)expect(await fs.readFile(receipt.file)).toEqual(receipt.raw);
+ });
+ it('compares each manifest expectation even after the same object was positively cached',async()=>{
+  for(const conflict of [{sha256:'0'.repeat(64)},{bytes:1}]){
+   const dir=await makeDir(),f=await retainedRows(dir,2),receipt=f.receipts[1];Object.assign(receipt.value.artifacts[0],conflict);
+   const raw=Buffer.from(JSON.stringify(receipt.value)+'\n');await fs.writeFile(receipt.file,raw);
+   await fs.writeFile(receipt.index,JSON.stringify({v:1,file:path.basename(receipt.file),sha256:hash(raw)})+'\n');
+   const result=await preserveReportEvidence(f.options);
+   expect(result.ok).toBe(false);expect(result.verified).toEqual([1000]);expect(result.retrying).toEqual([1001]);
+   expect(await fs.readFile(receipt.file)).toEqual(raw);expect((await fs.readFile(f.objectFile)).equals(f.bytes)).toBe(true);
+  }
+ });
+ it('detects atomic replacement between cached references and preserves the corrupt retained bytes for investigation',async()=>{
+  const dir=await makeDir(),f=await retainedRows(dir,2),originalOpen=fs.open.bind(fs);let opens=0;
+  const corrupt=Buffer.alloc(f.bytes.length,66);
+  vi.spyOn(fs,'open').mockImplementation(async(file,...args)=>{
+   if(file===f.objectFile&&++opens===2){const replacement=file+'.replacement';await fs.writeFile(replacement,corrupt);await fs.rename(replacement,file);}
+   return originalOpen(file,...args);
+  });
+  const result=await preserveReportEvidence(f.options);
+  expect(result.ok).toBe(false);expect(result.verified).toEqual([1000]);expect(result.retrying).toEqual([1001]);
+  expect(result.work.objectCacheHits).toBe(0);expect((await fs.readFile(f.objectFile)).equals(corrupt)).toBe(true);
+  for(const receipt of f.receipts)expect(await fs.readFile(receipt.file)).toEqual(receipt.raw);
+ });
+ it('defers before unchanged validation on deadline and rotates the next poll beyond the attempted prefix',async()=>{
+  const dir=await makeDir(),f=await retainedRows(dir),originalOpen=fs.open.bind(fs);let at=0,opens=0;
+  vi.spyOn(fs,'open').mockImplementation(async(file,...args)=>{if(file===f.objectFile&&++opens===2)at=30_000;return originalOpen(file,...args);});
+  const first=await preserveReportEvidence({...f.options,clock:()=>at});
+  expect(first.ok).toBe(false);expect(first.verified).toEqual([1000]);expect(first.deferred).toContain(1001);expect(first.deferred).toContain(1015);
+  expect(first.work.cursor).toBe(1001);expect(opens).toBe(2);
+  // pollReports persists this same returned continuation before rejecting !ok.
+  await fs.writeFile(path.join(dir,'evidence-status.json'),JSON.stringify(first));at=0;opens=0;
+  const second=await preserveReportEvidence({...f.options,clock:()=>at});
+  expect(second.verified).toEqual([1002]);expect(second.ok).toBe(false);expect(second.work.cursor).toBe(1003);
+  vi.restoreAllMocks();await fs.writeFile(path.join(dir,'evidence-status.json'),JSON.stringify(second));
+  const resumed=await preserveReportEvidence(f.options);expect(resumed.ok).toBe(true);expect(resumed.verified).toHaveLength(16);
+  for(const receipt of f.receipts)expect(await fs.readFile(receipt.file)).toEqual(receipt.raw);
+ });
+ it('reserves remaining work for validation when bounded maintenance used more than half the time window',async()=>{
+  const dir=await makeDir(),f=await retainedRows(dir,2),originalOpen=fs.open.bind(fs);let at=0;
+  vi.spyOn(fs,'open').mockImplementation(async(file,...args)=>{if(file===f.receipts[0].file)at=16_000;return originalOpen(file,...args);});
+  const result=await preserveReportEvidence({...f.options,clock:()=>at});
+  expect(result.ok).toBe(true);expect(result.verified).toEqual([1000,1001]);expect(result.work.objectHashes).toBe(1);
+ });
+ it('advances beyond an oldest incomplete capture deferred before committing a new attempt',async()=>{
+  const dir=await makeDir(),f=await retainedRows(dir,2);let at=0,defer=true;const requests=[];
+  for(let i=0;i<f.reports.length;i++){
+   const report=f.reports[i],receipt=f.receipts[i];report.context=JSON.stringify({screen:{v:1,view:'trip',assets:[`/assets/retry-${report.id}.js`]}});
+   receipt.value.retryable=true;receipt.value.capturedAt=new Date(1000+i).toISOString();receipt.raw=Buffer.from(JSON.stringify(receipt.value)+'\n');
+   await fs.writeFile(receipt.file,receipt.raw);await fs.writeFile(receipt.index,JSON.stringify({v:1,file:path.basename(receipt.file),sha256:hash(receipt.raw)})+'\n');
+  }
+  const options={...f.options,clock:()=>at,fetcher:async url=>{requests.push(new URL(url).pathname);if(defer)at=30_000;
+   return new Response('controlled retry asset',{headers:{'content-type':'text/javascript'}});}};
+  const first=await preserveReportEvidence(options);expect(first.ok).toBe(false);expect(first.work.cursor).toBe(1000);
+  expect(first.deferred).toEqual([1000,1001]);expect(requests).toEqual(['/assets/retry-1000.js']);
+  for(const receipt of f.receipts)expect(await fs.readFile(receipt.file)).toEqual(receipt.raw);
+  await fs.writeFile(path.join(dir,'evidence-status.json'),JSON.stringify(first));at=0;defer=false;requests.length=0;
+  const resumed=await preserveReportEvidence(options);expect(resumed.ok).toBe(true);
+  expect(requests).toEqual(['/assets/retry-1001.js','/assets/retry-1000.js']);
+  expect((await manifest(dir,1001)).value.retryable).toBe(false);
+  for(const receipt of f.receipts)expect(await fs.readFile(receipt.file)).toEqual(receipt.raw);
+ });
+ it('leaves incomplete maintenance and all unverified rows explicit under a lower read budget, then resumes without deleting possible inputs',async()=>{
+  const dir=await makeDir(),f=await retainedRows(dir,2),orphan=path.join(dir,'evidence/objects','f'.repeat(64)+'.json');await fs.writeFile(orphan,'possibly referenced input');
+  const limited=await preserveReportEvidence({...f.options,workLimits:{readBytes:1}});
+  expect(limited.ok).toBe(false);expect(limited.cleanupUncertain).toBe(true);expect(limited.maintenanceDeferred).toBe(true);
+  expect(limited.deferred).toEqual([1000,1001]);expect(limited.verified).toEqual([]);expect(limited.work.readBytes).toBeLessThanOrEqual(1);
+  expect(await fs.readFile(orphan,'utf8')).toBe('possibly referenced input');
+  for(const receipt of f.receipts)expect(await fs.readFile(receipt.file)).toEqual(receipt.raw);
+  const resumed=await preserveReportEvidence(f.options);expect(resumed.ok).toBe(true);expect(resumed.verified).toEqual([1000,1001]);
  });
  it('saves and notifies the report queue before a source outage and retries after event deduplication',async()=>{
   const dir=await makeDir(),f=fixture(142,[]),tokenFile=path.join(dir,'token');await fs.writeFile(tokenFile,'test-only-admin');
