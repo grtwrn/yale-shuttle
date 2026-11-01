@@ -12,6 +12,35 @@ const number=value=>Number.isSafeInteger(value)&&value>=0?value:undefined;
 const artifactName=/^[a-f0-9]{64}\.(?:json|js|css)$/;
 const attemptName=/^attempt-\d+-[a-f0-9]{16}\.json$/;
 
+// Match feedbackScreen.ts's public click metadata; never retain a navigation URL,
+// planner object, address or rider fix. This receipt does not request source bytes.
+function navigationSourceFacts(input){
+ if(!object(input)||input.v!==1||!sha(input.snapshotId)||!sha(input.sha256)
+  ||number(input.bytes)===undefined||input.bytes>2*1024*1024||typeof input.build!=='string'
+  ||!/^[A-Za-z0-9_-]{1,80}$/.test(input.build)||!(input.modelAt===null||number(input.modelAt)!==undefined)
+  ||!(input.servedAt===null||number(input.servedAt)!==undefined)
+  ||(input.modelAt!==null&&input.servedAt!==null&&input.modelAt>input.servedAt))return undefined;
+ const result={v:1,snapshotId:input.snapshotId,sha256:input.sha256,bytes:input.bytes,
+  build:input.build,modelAt:input.modelAt,servedAt:input.servedAt};
+ if(input.evaluation!==undefined){
+  const e=input.evaluation;
+  if(!object(e)||typeof e.epoch!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(e.epoch)
+   ||number(e.cursor)===undefined||e.cursor===0||number(e.at)===undefined||e.at!==result.modelAt||!sha(e.sha256))return undefined;
+  result.evaluation={epoch:e.epoch,cursor:e.cursor,at:e.at,sha256:e.sha256};
+ }
+ return result;
+}
+function navigationIntentFacts(input){
+ if(!object(input)||input.provider!=='google-maps'||input.mode!=='walking'||number(input.requestedAt)===undefined
+  ||number(input.publicStopId)===undefined||input.publicStopId<1||input.publicStopId>2_147_483_647
+  ||typeof input.walkLabel!=='string')return undefined;
+ const walkLabel=input.walkLabel.replace(/\s+/g,' ').trim().slice(0,24);
+ if(!/^(?:[1-9]\d{0,4} min)?$/.test(walkLabel))return undefined;
+ const source=navigationSourceFacts(input.source);
+ return {provider:'google-maps',mode:'walking',publicStopId:input.publicStopId,walkLabel,requestedAt:input.requestedAt,
+  ...(source?{source}:{})};
+}
+
 /** Keep public screen facts, never whole planner/client objects or credentials. */
 export function reportScreenFacts(input){
  if(!object(input))return null;
@@ -25,11 +54,13 @@ export function reportScreenFacts(input){
   sha256:sha(s.sha256)?s.sha256:undefined,bytes:number(s.bytes),build:text(s.build,80),
   modelAt:s.modelAt===null?null:number(s.modelAt),servedAt:s.servedAt===null?null:number(s.servedAt),receivedAt:number(s.receivedAt),
   ...(e?{evaluation:{epoch:text(e.epoch,100),cursor:number(e.cursor),at:number(e.at),sha256:sha(e.sha256)?e.sha256:undefined}}:{})}:undefined;
+ const navigationIntent=navigationIntentFacts(input.navigationIntent);
  return {v:1,capturedAt:number(input.capturedAt),build:text(input.build,24),view:text(input.view,24),
   tripDetail:input.tripDetail===true,rows,truncated:input.truncated===true,source,
   sourceScope:input.sourceScope==='public-input-for-render'?input.sourceScope:undefined,
   sourceUnavailable:['not-supplied','invalid'].includes(input.sourceUnavailable)?input.sourceUnavailable:undefined,
-  assets:[...new Set((Array.isArray(input.assets)?input.assets:[]).filter(asset))].slice(0,8)};
+  assets:[...new Set((Array.isArray(input.assets)?input.assets:[]).filter(asset))].slice(0,8),
+  ...(navigationIntent?{navigationIntent}:{})};
 }
 
 async function readLimited(response,max){
