@@ -156,6 +156,24 @@ describe('observed current curb joins only its existing forward destination', ()
     expect(board([destination, conflictingPickup], f.context)).toBeUndefined();
   });
 
+  it('does not infer a missing pickup across the published sequence wrap', () => {
+    const f = fixture(), destination = f.visits[0]!, firstReturn = f.visits.find(a => a.stopId === 157)!;
+    // A constructed two-call onward destination is still joinable within the
+    // published order: the restriction is the sequence seam, not one hop.
+    const within = { ...f.context, stops: stops.map((id, i) => i === 3 ? 903 : i === 4 ? 165 : id) };
+    expect(board([{ ...destination, stopsAhead: 2 }, firstReturn], within)).toBeDefined();
+    // This remains a positive sub-lap hop count with an ordered later pickup.
+    // Fresh curb proof alone cannot infer the omitted pickup across the seam.
+    const wrapped = { ...f.context, stops: stops.map((id, i) => i === 1 ? 165 : i === 3 ? 903 : id) };
+    const visits = [{ ...destination, stopsAhead: 11 }, firstReturn];
+    expect(rawAtStopBoardable('#50', 157, 165, visits, wrapped)).toBe(true);
+    expect(board(visits, wrapped)).toBeUndefined();
+    // An explicit current visit retains the existing cross-seam join behavior.
+    const current = { ...destination, stopId: 157, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0 };
+    expect(board([current, ...visits], wrapped)).toBe(current);
+    expect(journeyArrival(current, visits, 165, 0, 0, now, 'at-stop')).toBeDefined();
+  });
+
   it('keeps invalid or too-early destination times unavailable instead of constructing an ETA', () => {
     const f = fixture(), destination = f.visits[0]!;
     for (const patch of [{ eta: NaN }, { high: NaN }, { low: 700, high: 600 }, { eta: 0 }]) {

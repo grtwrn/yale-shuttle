@@ -42,7 +42,10 @@ export function atStopJourneyBoard(
     || current.stops.filter(id => id === boardStopId).length !== 1
     || !Number.isInteger(firstDestination.stopsAhead) || firstDestination.stopsAhead <= 0
     || firstDestination.stopsAhead >= cycleLength
-    || current.stops[(track.index + firstDestination.stopsAhead) % cycleLength] !== alightStopId) return undefined;
+    // Without an explicit pickup visit, do not infer across the published
+    // sequence wrap. This is an inference limit, not a service/day boundary.
+    || track.index + firstDestination.stopsAhead >= cycleLength
+    || current.stops[track.index + firstDestination.stopsAhead] !== alightStopId) return undefined;
   const firstReturn = sameBus.find(a => a.stopId === boardStopId && a.stopsAhead > 0);
   if (firstReturn && firstReturn.stopsAhead <= firstDestination.stopsAhead) return undefined;
   // This is a UI join for an accepted current pickup, not an extra server forecast.
