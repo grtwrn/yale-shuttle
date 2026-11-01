@@ -1776,6 +1776,23 @@ const TripPlanner: FC<{
     setTripTimeValue(value);
     setTripTimeSetAt(Date.now());
   };
+  const departureTimeInputRef = useRef<HTMLInputElement>(null);
+  const planLaterButtonRef = useRef<HTMLButtonElement>(null);
+  const departureFocusIntentRef = useRef<{ target: 'input' | 'later'; source: Element | null } | null>(null);
+  const requestDepartureFocus = (target: 'input' | 'later') => {
+    departureFocusIntentRef.current = { target, source: document.activeElement };
+  };
+  useEffect(() => {
+    const intent = departureFocusIntentRef.current;
+    if (!intent) return;
+    departureFocusIntentRef.current = null;
+    const target = intent.target === 'input' ? departureTimeInputRef.current : planLaterButtonRef.current;
+    // Only explicit picker transitions move focus. Respect a rider who
+    // has already moved to another control before this commit completes.
+    const active = document.activeElement;
+    if (active !== document.body && active !== intent.source && active !== target) return;
+    target?.focus();
+  }, [tripTime]);
   useEffect(() => {
     // Preserve the last committed selection while either field is being edited.
     if (fromExpanded || toExpanded) return;
@@ -3278,7 +3295,7 @@ const TripPlanner: FC<{
     : (stableOptions ?? []).filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {<BusReportingAlerts key={`trip:${tripKey}:${expandedKey ?? ''}`} snapshot={reportingSnapshot}
+      {<BusReportingAlerts key={`trip:${tripKey}`} viewKey={expandedKey ?? ''} snapshot={reportingSnapshot}
         available={reportingAvailable} watched={watchedTripBuses} scope={reportingScope}
         replacements={watchedTripBuses} watchForecasts />}
       {reminder && reminderWaiting && (
@@ -3686,12 +3703,16 @@ const TripPlanner: FC<{
           {tripTime ? (
             <>
               <input
+                ref={departureTimeInputRef}
                 type="datetime-local"
                 aria-label="Departure time"
                 aria-invalid={!!tripTimeError}
                 aria-describedby={tripTimeError ? "trip-time-error" : undefined}
                 value={tripTime}
-                onChange={(e) => setTripTime(e.target.value)}
+                onChange={(e) => {
+                  if (!e.target.value) requestDepartureFocus('later');
+                  setTripTime(e.target.value);
+                }}
                 style={{
                   fontSize: 16, padding: "8px 10px", borderRadius: 6, // ≥16 px: no iOS zoom-on-focus
                   border: "1px solid #cfd8dc", background: "#fff",
@@ -3699,7 +3720,10 @@ const TripPlanner: FC<{
                   minHeight: 44,
                 }}
               />
-              <button onClick={() => setTripTime("")} style={{
+              <button onClick={() => {
+                requestDepartureFocus('later');
+                setTripTime("");
+              }} style={{
                 fontSize: 14, padding: "8px 14px", border: "1px solid #bbb",
                 background: "#fff", color: "#546e7a", borderRadius: 6,
                 fontFamily: "inherit", cursor: "pointer", minHeight: 44,
@@ -3708,7 +3732,8 @@ const TripPlanner: FC<{
           ) : (
             <>
               <span style={{ fontSize: 15, color: "#263238", fontWeight: 600, flex: 1 }}>Now</span>
-              <button onClick={() => {
+              <button ref={planLaterButtonRef} onClick={() => {
+                requestDepartureFocus('input');
                 // Pre-fill with current local time so the picker opens on a
                 // sensible starting point; user can bump it forward.
                 const d = new Date();

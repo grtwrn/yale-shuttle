@@ -1,21 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { emptyReportingState, reportingKey, reportingNotice, stepBusReporting,
   type ReportingSnapshot, type ReportingWatch } from './busReporting';
 import { emptyForecastReportingState, forecastReportingNotice, stepForecastReporting } from './busForecastReporting';
 import './BusReportingAlerts.css';
 
 /** In-page notices need no notification permission; the monitor only advances
- * on a new successful poll while the page is visible. Mount per viewing scope. */
-export function BusReportingAlerts({ snapshot, watched, scope, available, replacements = [], watchForecasts = false }: {
+ * on a new successful poll while the page is visible. Keep the monitor mounted
+ * while opening details for a route already in the current trip's scope. */
+export function BusReportingAlerts({ snapshot, watched, scope, available, replacements = [], watchForecasts = false, viewKey = '' }: {
   snapshot: ReportingSnapshot | null;
   watched: readonly ReportingWatch[];
   scope: readonly string[];
   available: boolean;
   replacements?: readonly ReportingWatch[];
   watchForecasts?: boolean;
+  viewKey?: string;
 }) {
   const [state, setState] = useState(emptyReportingState);
   const [forecastState, setForecastState] = useState(emptyForecastReportingState);
+  const previousViewRef = useRef(viewKey);
   const [visible, setVisible] = useState(() => !document.hidden);
   useEffect(() => {
     const update = () => setVisible(!document.hidden);
@@ -24,13 +27,21 @@ export function BusReportingAlerts({ snapshot, watched, scope, available, replac
   }, []);
   const watchesKey = JSON.stringify(watched), scopeKey = JSON.stringify(scope);
   useEffect(() => {
-    setState(prior => stepBusReporting(prior, snapshot, JSON.parse(watchesKey), JSON.parse(scopeKey), available, visible));
-  }, [snapshot, watchesKey, scopeKey, available, visible]);
-  useEffect(() => {
+    const viewChanged = previousViewRef.current !== viewKey;
+    previousViewRef.current = viewKey;
+    const currentWatches = JSON.parse(watchesKey), currentScope = JSON.parse(scopeKey);
+    // Navigation clears completed recovery notices, not an active loss that
+    // the rider may be opening this route to investigate. The reducers still
+    // remove records outside the new route scope and preserve dismissal.
+    setState(prior => stepBusReporting(viewChanged
+      ? { ...prior, records: prior.records.filter(r => r.status !== 'returned') } : prior,
+    snapshot, currentWatches, currentScope, available, visible));
     setForecastState(prior => watchForecasts
-      ? stepForecastReporting(prior, snapshot, JSON.parse(watchesKey), JSON.parse(scopeKey), available, visible)
+      ? stepForecastReporting(viewChanged
+        ? { ...prior, records: prior.records.filter(r => r.status !== 'restored') } : prior,
+      snapshot, currentWatches, currentScope, available, visible)
       : emptyForecastReportingState());
-  }, [snapshot, watchesKey, scopeKey, available, visible, watchForecasts]);
+  }, [snapshot, watchesKey, scopeKey, available, visible, watchForecasts, viewKey]);
   const notices = state.records.filter(r => r.status !== 'watching' && !r.dismissed && scope.includes(r.routeLabel));
   const forecastNotices = watchForecasts ? forecastState.records.filter(r => r.status !== 'watching' && !r.dismissed
     && scope.includes(r.routeLabel) && !notices.some(n => n.status === 'lost' && reportingKey(n) === reportingKey(r))) : [];
