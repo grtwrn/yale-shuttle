@@ -33,7 +33,7 @@ export function stepBusReporting(
   let records = prior.records.filter(r => scope.includes(r.routeLabel));
   if (!available || !visible) return { lastPollAt: snapshot?.at ?? prior.lastPollAt,
     records: records.map(r => ({ ...r, missingSince: undefined, missingPolls: 0 })) };
-  if (!snapshot || (prior.lastPollAt !== null && snapshot.at <= prior.lastPollAt)) {
+  if (!snapshot || (prior.lastPollAt !== null && snapshot.at < prior.lastPollAt)) {
     return records.length === prior.records.length ? prior : { ...prior, records };
   }
   const current = new Map(watched.filter(w => reportingName(w.busName) && scope.includes(w.routeLabel))
@@ -43,9 +43,17 @@ export function stepBusReporting(
     && (b.observed_at === undefined || (Number.isFinite(b.observed_at)
       && snapshot.serverAt - b.observed_at < LIVE_UPDATE_STALE_MS)));
   const forecastKeys = snapshot.forecasts ? new Set(snapshot.forecasts.watches.map(reportingKey)) : null;
+  let enrolled = false;
   for (const [key, watch] of current) {
-    if (!records.some(r => reportingKey(r) === key) && fresh(watch)) records.push({ ...watch,
-      busName: reportingName(watch.busName), status: 'watching', missingPolls: 0, changedAt: snapshot.at });
+    if (!records.some(r => reportingKey(r) === key) && fresh(watch)) {
+      records.push({ ...watch, busName: reportingName(watch.busName), status: 'watching', missingPolls: 0, changedAt: snapshot.at });
+      enrolled = true;
+    }
+  }
+  // Opening details can reveal another watched bus on the current snapshot.
+  // Enroll its fresh identity without counting this poll or any recovery twice.
+  if (snapshot.at === prior.lastPollAt) {
+    return !enrolled && records.length === prior.records.length ? prior : { ...prior, records };
   }
   records = records.flatMap<ReportingRecord>(r => {
     r = { ...r, forecastWithheld: forecastKeys ? !forecastKeys.has(reportingKey(r)) : r.forecastWithheld };

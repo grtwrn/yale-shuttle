@@ -15,6 +15,57 @@ const watching = () => step(emptyReportingState(), 0, [bus(start)]);
 const lost = () => step(step(watching(), 5000, []), 10000, []);
 
 describe('individual bus reporting notices', () => {
+  it('enrolls a newly visible fresh bus on the current poll without counting that poll twice', () => {
+    const initial = step(emptyReportingState(), 0, [bus(start)], []);
+    expect(initial.records).toEqual([]);
+    const enrolled = step(initial, 0, [bus(start)]);
+    expect(enrolled.lastPollAt).toBe(start);
+    expect(enrolled.records).toMatchObject([{ busName: '317', status: 'watching', missingPolls: 0 }]);
+    expect(step(enrolled, 0, [bus(start)])).toBe(enrolled);
+    const missing = step(enrolled, 5000, []);
+    expect(missing.records[0]).toMatchObject({ status: 'watching', missingPolls: 1, missingSince: start + 5000 });
+    expect(step(missing, 10000, []).records[0]?.status).toBe('lost');
+  });
+
+  it('adds a newly watched bus without advancing an existing missing episode on the same poll', () => {
+    const replacement = bus(start + 5000, { bus_name: '#126' });
+    const missing = step(watching(), 5000, [replacement]);
+    const changed = step(missing, 5000, [replacement], [next]);
+    expect(changed.lastPollAt).toBe(missing.lastPollAt);
+    expect(changed.records.find(r => r.busName === '317')).toBe(missing.records[0]);
+    expect(changed.records.find(r => r.busName === '126')).toMatchObject({ status: 'watching', missingPolls: 0 });
+    expect(step(changed, 10000, [bus(start + 10000, { bus_name: '#126' })], [next]).records
+      .find(r => r.busName === '317')?.status).toBe('lost');
+  });
+
+  it('preserves a dismissed loss when another fresh watch joins the same poll', () => {
+    const state = lost(); state.records[0]!.dismissed = true;
+    const changed = step(state, 10000, [bus(start + 10000, { bus_name: '#126' })], [next]);
+    expect(changed.records.find(r => r.busName === '317')).toBe(state.records[0]);
+    expect(changed.records.find(r => r.busName === '317')).toMatchObject({ status: 'lost', dismissed: true, missingPolls: 2 });
+    expect(changed.records.find(r => r.busName === '126')?.status).toBe('watching');
+  });
+
+  it('replaces an out-of-scope record on the same poll even when the record count is unchanged', () => {
+    const blue: ReportingWatch = { busName: '126', routeLabel: 'Blue Day', routeIds: [1] };
+    const snapshot = { at: start, serverAt: start, buses: [bus(start), bus(start, { bus_name: '#126', route_id: 1 })] };
+    const initial = stepBusReporting(emptyReportingState(), snapshot, [watch], ['Red', 'Blue Day'], true, true);
+    const changed = stepBusReporting(initial, snapshot, [blue], ['Blue Day'], true, true);
+    expect(changed).not.toBe(initial);
+    expect(changed.lastPollAt).toBe(start);
+    expect(changed.records).toMatchObject([{ busName: '126', routeLabel: 'Blue Day', status: 'watching' }]);
+    expect(changed.records).toHaveLength(initial.records.length);
+  });
+
+  for (const reason of ['older poll', 'missing snapshot', 'missing bus', 'stale bus', 'failed connection', 'hidden tab'] as const) {
+    it(`does not enroll a new watch from ${reason}`, () => {
+      const initial = step(emptyReportingState(), 0, [bus(start)], []);
+      const snapshot = reason === 'missing snapshot' ? null : { at: reason === 'older poll' ? start - 1 : start,
+        serverAt: start, buses: reason === 'missing bus' ? [] : [bus(reason === 'stale bus' ? start - 45000 : start)] };
+      expect(stepBusReporting(initial, snapshot, [watch], ['Red'], reason !== 'failed connection', reason !== 'hidden tab').records).toEqual([]);
+    });
+  }
+
   it('waits for two distinct successful polls and a short grace, keeping the missing bus after an ETA replacement', () => {
     const missing = step(watching(), 5000, [bus(start + 5000, { bus_name: '#126' })], [next]);
     expect(missing.records.find(r => r.busName === '317')?.status).toBe('watching');

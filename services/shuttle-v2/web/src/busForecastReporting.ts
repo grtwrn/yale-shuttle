@@ -35,7 +35,7 @@ export function stepForecastReporting(prior: ForecastReportingState, snapshot: R
   const model = snapshot?.forecasts;
   if (!available || !visible || !model) return { lastModelAt: model?.at ?? prior.lastModelAt,
     records: records.map(r => ({ ...r, missingSince: undefined, missingModels: 0 })) };
-  if (prior.lastModelAt !== null && model.at <= prior.lastModelAt) {
+  if (prior.lastModelAt !== null && model.at < prior.lastModelAt) {
     return records.length === prior.records.length ? prior : { ...prior, records };
   }
   const current = new Map(watched.filter(w => reportingName(w.busName) && scope.includes(w.routeLabel))
@@ -44,9 +44,17 @@ export function stepForecastReporting(prior: ForecastReportingState, snapshot: R
   const freshGps = (w: ReportingWatch) => snapshot.buses.some(b => reportingName(b.bus_name) === reportingName(w.busName)
     && w.routeIds.includes(b.route_id) && Number.isFinite(b.observed_at)
     && snapshot.serverAt - b.observed_at! >= -5000 && snapshot.serverAt - b.observed_at! < LIVE_UPDATE_STALE_MS);
+  let enrolled = false;
   for (const [key, watch] of current) {
-    if (present.has(key) && freshGps(watch) && !records.some(r => reportingKey(r) === key)) records.push({ ...watch,
-      busName: reportingName(watch.busName), status: 'watching', missingModels: 0, changedAt: model.at });
+    if (present.has(key) && freshGps(watch) && !records.some(r => reportingKey(r) === key)) {
+      records.push({ ...watch, busName: reportingName(watch.busName), status: 'watching', missingModels: 0, changedAt: model.at });
+      enrolled = true;
+    }
+  }
+  // A newly visible watch may use the current validated model. Existing loss,
+  // recovery and dismissal state still advances only on a distinct new model.
+  if (model.at === prior.lastModelAt) {
+    return !enrolled && records.length === prior.records.length ? prior : { ...prior, records };
   }
   records = records.flatMap<ForecastReportingRecord>(record => {
     let r = record;
