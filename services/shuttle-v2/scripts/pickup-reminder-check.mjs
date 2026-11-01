@@ -24,6 +24,7 @@ try {
         localStorage.setItem('listView', 'trip');
         sessionStorage.setItem('shuttle-trip-draft', JSON.stringify({ fromText: 'Current location', fromLL: feed.from, toText: 'Rosenkranz Hall', toLL: feed.to, tripTime: '', expandedKey: null, savedAt: now }));
         window.permissionRequests = 0; window.reminderBuzzes = 0;
+        window.__pickupReminderPermissionResult = 'denied';
         let position = feed.from, nextWatch = 0;
         const watches = new Map();
         const fix = () => ({ coords: { latitude: position.lat, longitude: position.lon, accuracy: 10,
@@ -36,8 +37,13 @@ try {
         window.__pickupReminderMove = next => { position = next; for (const ok of watches.values()) ok(fix()); };
         Object.defineProperty(window, 'Notification', { configurable: true, value: class {
           static permission = 'default';
-          static async requestPermission() { window.permissionRequests++; this.permission = 'denied'; return 'denied'; }
+          static async requestPermission() {
+            window.permissionRequests++; this.permission = window.__pickupReminderPermissionResult; return this.permission;
+          }
         } });
+        window.__pickupReminderSetMockPermission = ({ permission, result }) => {
+          window.Notification.permission = permission; window.__pickupReminderPermissionResult = result;
+        };
         Object.defineProperty(navigator, 'vibrate', { configurable: true, value: () => { window.reminderBuzzes++; return true; } });
       }, { feed, now });
       const page = await ctx.newPage(); page.setDefaultTimeout(10000);
@@ -69,6 +75,11 @@ try {
       const actions = page.getByRole('group', { name: 'Trip actions', exact: true });
       const trigger = actions.getByRole('button', { name: '🔔 Remind me for #44', exact: true });
       const settings = actions.getByRole('group', { name: 'Pickup reminder settings', exact: true });
+      const reportAction = actions.getByRole('button', { name: '🚩 Report', exact: true });
+      const reportHasFocus = async () => {
+        const id = await reportAction.getAttribute('id'); assert(id, 'Report has a stable fallback focus target');
+        await page.waitForFunction(id => document.activeElement?.id === id, id);
+      };
       await trigger.focus(); await page.keyboard.press('Enter');
       await settings.waitFor();
       assert.equal(await page.evaluate(() => window.permissionRequests), 0, 'opening settings must not ask for notification permission');
@@ -154,6 +165,141 @@ try {
         await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
         recoveryCases.push({ failure, timing, heldWithoutAlert: true, resumedOnceOnFreshData: true, cancelAvailableWhileWaiting: true });
       }
+      // These additional API/clock transitions are synthetic controls over
+      // the unchanged fixture. Editing settings is independent of permission
+      // and fresh delivery evidence; this does not establish shuttle accuracy.
+      const draftRecoveryCases = [], waitingEditorCases = [];
+      const checkWaitingEditor = async () => {
+        const labels = await actions.locator('button').evaluateAll(es => es.map(e => [e.textContent, e.getAttribute('aria-label')].filter(Boolean).join(' ')).join('\n'));
+        assert.match(labels, /Blue Day/, 'missing bus input uses the route context');
+        assert(!labels.includes('#undefined'), 'waiting controls must not invent a visible or accessible bus label');
+        for (const control of await settings.locator('button,select').all()) {
+          const box = await control.boundingBox(); assert(box && box.width >= 44 && box.height >= 44, 'waiting editor touch targets');
+        }
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'waiting editor overflow');
+        if (width === 307) {
+          await mode.focus();
+          assert(await mode.evaluate(el => el === document.activeElement), 'compact waiting editor remains keyboard reachable');
+        }
+      };
+      for (const failure of ['http-failed', 'missing-forecast', 'stale-forecast']) {
+        await resetThreshold();
+        const permissionsBefore = await page.evaluate(() => window.permissionRequests), before = await buzzes();
+        await trigger.click(); await mode.selectOption('minutes'); await minutes().selectOption('10');
+        feedMode = failure; await advance(6500); await settings.waitFor();
+        assert.equal(await mode.inputValue(), 'minutes'); assert.equal(await minutes().inputValue(), '10');
+        assert(await settings.getByRole('button', { name: 'Set reminder', exact: true }).isDisabled(), 'an unarmed waiting draft cannot be set');
+        assert.match(await settings.innerText(), /Waiting for live pickup updates before you can set this reminder/);
+        await checkWaitingEditor();
+        assert.equal(await page.evaluate(() => window.permissionRequests), permissionsBefore, 'waiting draft never requests permission');
+        assert.equal(await buzzes(), before);
+        await settings.screenshot({ path: out + '/draft-waiting-' + failure + '-' + width + '.png' });
+        feedMode = 'fresh'; await advance(6500); await settings.waitFor();
+        assert.equal(await mode.inputValue(), 'minutes'); assert.equal(await minutes().inputValue(), '10');
+        assert(await settings.getByRole('button', { name: 'Set reminder', exact: true }).isEnabled(), 'fresh recovery reenables the preserved draft');
+        await trigger.waitFor();
+        assert.equal(await page.evaluate(() => window.permissionRequests), permissionsBefore);
+        assert.equal(await buzzes(), before);
+        await settings.getByRole('button', { name: 'Cancel reminder setup', exact: true }).click();
+        draftRecoveryCases.push({ failure, mode: 'minutes', value: 10, draftPreserved: true, setDisabledUntilFresh: true, permissionUnchanged: true });
+      }
+      // Closing an unarmed editor during an outage removes its trigger. Focus
+      // must return to the existing Report action instead of a detached node.
+      await resetThreshold(); const draftCloseBefore = await buzzes();
+      const draftClosePermissions = await page.evaluate(() => window.permissionRequests);
+      await trigger.click(); await mode.selectOption('minutes'); await minutes().selectOption('10');
+      feedMode = 'http-failed'; await advance(6500); await settings.waitFor();
+      assert.equal(await mode.inputValue(), 'minutes'); assert.equal(await minutes().inputValue(), '10');
+      assert(await settings.getByRole('button', { name: 'Set reminder', exact: true }).isDisabled());
+      await mode.focus(); await page.keyboard.press('Escape');
+      await settings.waitFor({ state: 'hidden' }); await reportHasFocus();
+      assert.equal(await buzzes(), draftCloseBefore);
+      assert.equal(await page.evaluate(() => window.permissionRequests), draftClosePermissions);
+      feedMode = 'fresh'; await advance(6500); await trigger.waitFor(); await trigger.click(); await settings.waitFor();
+      assert(await settings.getByRole('button', { name: 'Set reminder', exact: true }).isEnabled());
+      assert.equal(await page.evaluate(() => window.permissionRequests), draftClosePermissions);
+      await settings.getByRole('button', { name: 'Cancel reminder setup', exact: true }).click();
+      for (const [failure, fromTiming, toTiming, value] of [
+        ['http-failed', 'stops', 'minutes', '5'],
+        ['missing-forecast', 'stops', 'minutes', '5'],
+        ['stale-forecast', 'stops', 'minutes', '5'],
+        ['missing-forecast', 'minutes', 'stops', '3'],
+      ]) {
+        await resetThreshold(); const before = await buzzes(); await armTiming(fromTiming); await advance(1100);
+        const permissionsBefore = await page.evaluate(() => window.permissionRequests);
+        feedMode = failure; await advance(6500); await waiting.waitFor();
+        await actions.getByRole('button', { name: 'Change reminder', exact: true }).click();
+        assert.equal(await mode.inputValue(), fromTiming);
+        if (failure === 'http-failed') {
+          await mode.selectOption(toTiming); await minutes().selectOption(value);
+          await settings.getByRole('button', { name: 'Cancel reminder setup', exact: true }).click();
+          await waiting.waitFor(); assert.match(await waiting.innerText(), /3 stops before pickup/, 'canceling a waiting edit preserves the armed settings');
+          assert.equal(await buzzes(), before);
+          await actions.getByRole('button', { name: 'Change reminder', exact: true }).click();
+          assert.equal(await mode.inputValue(), 'stops');
+        }
+        await mode.selectOption(toTiming);
+        const amount = settings.getByLabel(toTiming === 'stops' ? 'Stops before pickup' : 'Minutes before pickup', { exact: true });
+        await amount.selectOption(value);
+        assert(await settings.getByRole('button', { name: 'Set reminder', exact: true }).isEnabled(), 'an existing arm can save new settings while waiting');
+        assert.match(await settings.innerText(), /You can save these settings while waiting/);
+        await checkWaitingEditor();
+        await settings.screenshot({ path: out + '/edit-waiting-' + failure + '-' + fromTiming + '-to-' + toTiming + '-' + width + '.png' });
+        await settings.getByRole('button', { name: 'Set reminder', exact: true }).click();
+        await waiting.waitFor(); assert.match(await waiting.innerText(), toTiming === 'stops' ? /3 stops before pickup/ : /5 min before pickup/);
+        assert.equal(await buzzes(), before, 'saving a waiting edit must not notify');
+        assert.equal(await page.evaluate(() => window.permissionRequests), permissionsBefore, 'editing an existing arm does not request permission');
+        feedMode = 'fresh'; await advance(6500); await armed.waitFor();
+        assert.equal(await waiting.count(), 0); assert.equal(await buzzes(), before, 'fresh data outside the edited threshold must not notify');
+        assert.match(await actions.innerText(), toTiming === 'stops' ? /3 stops before pickup/ : /5 min before pickup/);
+        if (toTiming === 'stops') row[5] = 3; else row[3] = 240;
+        await advance(6500); await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).waitFor();
+        assert.match(await page.locator('body').innerText(), toTiming === 'stops' ? /Blue Day #44 is 3 stops before your pickup/ : /Blue Day #44 could arrive in .*pickup reminder/);
+        assert.equal(await buzzes(), before + 1, 'the edited threshold notifies exactly once');
+        await advance(1100); assert.equal(await buzzes(), before + 1);
+        await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
+        waitingEditorCases.push({ failure, fromTiming, toTiming, value: Number(value), savedWhileWaiting: true, permissionUnchanged: true, freshOutsideThresholdSilent: true, crossedThresholdOnce: true });
+      }
+      // Exercise the reminder control's own newly visible waiting Cancel, not
+      // the separate parent waiting banner whose existing behavior is retained.
+      await resetThreshold(); const mainCancelBefore = await buzzes(); await armTiming('stops');
+      feedMode = 'http-failed'; await advance(6500); await waiting.waitFor();
+      const waitingArmed = actions.getByRole('button', { name: '🔔 Reminding you for Blue Day', exact: true });
+      await waitingArmed.focus(); await page.keyboard.press('Enter');
+      await waiting.waitFor({ state: 'hidden' }); await reportHasFocus();
+      assert.equal(await buzzes(), mainCancelBefore);
+      row[5] = 3; feedMode = 'fresh'; await advance(6500); await trigger.waitFor();
+      assert.equal(await buzzes(), mainCancelBefore, 'the main waiting Cancel must not resume on recovery');
+      // A dismissed permission request leaves the browser at default. Editing
+      // the existing arm must not ask again, unlike a genuinely new arm.
+      await resetThreshold(); const dismissedBefore = await buzzes();
+      const dismissedRequestsBefore = await page.evaluate(() => window.permissionRequests);
+      await page.evaluate(() => window.__pickupReminderSetMockPermission({ permission: 'default', result: 'default' }));
+      try {
+        await armTiming('stops'); await advance(1100);
+        assert.equal(await page.evaluate(() => window.permissionRequests), dismissedRequestsBefore + 1, 'a new arm asks once when permission is default');
+        assert.equal(await page.evaluate(() => window.Notification.permission), 'default', 'the controlled request was dismissed');
+        feedMode = 'missing-forecast'; await advance(6500); await waiting.waitFor();
+        await actions.getByRole('button', { name: 'Change reminder', exact: true }).click();
+        await mode.selectOption('minutes'); await minutes().selectOption('5');
+        await settings.getByRole('button', { name: 'Set reminder', exact: true }).click();
+        await waiting.waitFor(); assert.match(await waiting.innerText(), /5 min before pickup/);
+        assert.equal(await page.evaluate(() => window.permissionRequests), dismissedRequestsBefore + 1, 'saving an existing waiting arm never repeats a dismissed permission request');
+        assert.equal(await buzzes(), dismissedBefore, 'a dismissed permission does not authorize stale delivery');
+        feedMode = 'fresh'; await advance(6500); await armed.waitFor();
+        assert.equal(await waiting.count(), 0); assert.equal(await buzzes(), dismissedBefore, 'fresh recovery outside five minutes stays silent');
+        row[3] = 240; await advance(6500);
+        await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).waitFor();
+        assert.match(await page.locator('body').innerText(), /Blue Day #44 could arrive in .*pickup reminder/);
+        assert.equal(await buzzes(), dismissedBefore + 1);
+        assert.equal(await page.evaluate(() => window.permissionRequests), dismissedRequestsBefore + 1, 'delivery does not prompt again');
+        await advance(1100); assert.equal(await buzzes(), dismissedBefore + 1, 'the edited arm still completes once');
+        await page.getByRole('button', { name: 'Dismiss reminder', exact: true }).click();
+      } finally {
+        await page.evaluate(() => window.__pickupReminderSetMockPermission({ permission: 'denied', result: 'denied' }));
+      }
+      const dismissedDefaultPermissionCase = { name: 'dismissed-default-permission-while-editing', newArmRequests: 1,
+        waitingEditRequests: 0, savedWhileMissing: true, freshOutsideThresholdSilent: true, crossedThresholdOnce: true, restoredOriginalDeniedMock: true };
       await resetThreshold(); const leaveBefore = await buzzes(); row[3] = 300; await advance(6500);
       await trigger.click(); await mode.selectOption('leave');
       await settings.getByRole('button', { name: 'Set reminder', exact: true }).click(); await advance(1100);
@@ -195,7 +341,7 @@ try {
       await page.getByRole('button', { name: 'Swap start and destination', exact: true }).click(); await advance(1100);
       assert.equal(await waiting.count(), 0, 'changing the trip must cancel the old reminder');
       row[5] = 3; feedMode = 'fresh'; await advance(6500); assert.equal(await buzzes(), before, 'the old trip must not notify after recovery');
-      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false, recoveryCases, leavePingHistoryPreserved: true, canceledPendingNeverResumed: true, changedTripNeverResumed: true, arrivalDuringEditingSavesDisplayedTiming: true });
+      report.runs.push({ width, androidCompact: await page.evaluate(() => document.documentElement.dataset.androidCompact === 'true'), settings: ['1/3/5/10/15 min', '1–5 stops', 'time to leave'], permissionAskedOnlyOnSet: true, keyboardFocus: true, wrongBusIgnored: true, stopAndMinuteDelivery: true, repeatedPing: false, overflow: false, recoveryCases, draftRecoveryCases, waitingEditorCases, dismissedDefaultPermissionCase, offlineDraftEscapeFocusesReport: true, recoveredDraftReopens: true, mainWaitingCancelFocusesReport: true, mainWaitingCancelNeverResumed: true, leavePingHistoryPreserved: true, canceledPendingNeverResumed: true, changedTripNeverResumed: true, arrivalDuringEditingSavesDisplayedTiming: true });
     } catch (error) {
       const page = ctx.pages()[0];
       report.failure = { width, message: error.message, body: await page.locator('body').ariaSnapshot().catch(() => null) };

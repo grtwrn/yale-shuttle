@@ -31,6 +31,10 @@ const STAGE_PORT = 8093;
 const STAGE_URL = `http://127.0.0.1:${STAGE_PORT}`;
 const PROD_URL = "https://yale-shuttle.fly.dev";
 const STAGE_ONLY = process.argv.includes("--stage-only");
+const DEPLOY_IMAGE = process.env.SHUTTLE_DEPLOY_IMAGE;
+if (DEPLOY_IMAGE && !/^registry\.fly\.io\/yale-shuttle@sha256:[a-f0-9]{64}(?![\s\S])/.test(DEPLOY_IMAGE)) {
+  throw new Error("SHUTTLE_DEPLOY_IMAGE must be registry.fly.io/yale-shuttle@sha256:<64 lowercase hex digits>");
+}
 
 let stagingProc = null;
 const stageDir = fs.mkdtempSync(path.join(os.tmpdir(), "shuttle-stage-"));
@@ -268,15 +272,22 @@ if (STAGE_ONLY) {
   process.exit(0);
 }
 
-// Stamp the image with the commit it was built from, so /healthz and the
+// A prebuilt release uses its exact digest after the same gates. Otherwise
+// stamp the image with the commit it was built from, so /healthz and the
 // scorecard (docs/closed-loop.md) can name the build. Deploys come from
 // committed history, so HEAD is the truth here; "dev" is the Dockerfile's
 // default when this is not passed.
-const buildSha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" });
-const buildArgs = buildSha.status === 0 && /^[0-9a-f]{40}\s*$/.test(buildSha.stdout)
-  ? ["--build-arg", `SHUTTLE_BUILD_SHA=${buildSha.stdout.trim()}`]
-  : [];
-run("stage 5/6: deploy to Fly", FLYCTL, ["deploy", "--remote-only", ...buildArgs]);
+let flyArgs;
+if (DEPLOY_IMAGE) {
+  flyArgs = ["deploy", "--image", DEPLOY_IMAGE];
+} else {
+  const buildSha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" });
+  const buildArgs = buildSha.status === 0 && /^[0-9a-f]{40}\s*$/.test(buildSha.stdout)
+    ? ["--build-arg", `SHUTTLE_BUILD_SHA=${buildSha.stdout.trim()}`]
+    : [];
+  flyArgs = ["deploy", "--remote-only", ...buildArgs];
+}
+run("stage 5/6: deploy to Fly", FLYCTL, flyArgs);
 
 log("stage 6/6: verify production");
 await waitForHealthy(PROD_URL, 120_000);
