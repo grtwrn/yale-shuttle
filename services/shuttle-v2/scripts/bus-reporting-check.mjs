@@ -88,7 +88,14 @@ try {
       phase = 'fail'; await advance(); await advance();
       assert.equal(await notices.count(), 0, 'connection errors are not individual bus losses');
       phase = 'live'; await advance();
-      phase = 'missing'; await advance(); await advance();
+      phase = 'missing'; await advance();
+      if (mode === 'trip') {
+        assert.equal(await notices.count(), 0, 'first missing poll stays pending before opening details');
+        await page.getByRole('button', { name: 'View Red trip details', exact: true }).click();
+        await page.getByTestId('trip-detail-panel').waitFor();
+        assert.equal(await notices.count(), 0, 'opening the same route does not invent a loss');
+      }
+      await advance();
       if (!await notices.count()) {
         await fs.writeFile(`${out}/${mode}-debug-${width}.txt`, await page.locator('body').innerText());
         await page.screenshot({ path: `${out}/${mode}-debug-${width}.png`, fullPage: true });
@@ -97,11 +104,27 @@ try {
       assert.equal(await notices.getByRole('alert').count(), 1);
       assert.match(await notices.innerText(), /arrival time is unavailable/);
       if (mode === 'trip') assert.match(await notices.innerText(), /trip now shows #/);
+      if (mode === 'trip') {
+        // Investigating an active loss must not acknowledge it or lose the
+        // original identity, even after the trip selected a replacement bus.
+        await page.getByRole('button', { name: '← All routes', exact: true }).click();
+        assert.equal(await notices.getByRole('alert').count(), 1, 'active loss survives returning to the overview');
+        await page.getByRole('button', { name: 'View Red trip details', exact: true }).click();
+        assert.match(await notices.innerText(), /Red #317 stopped reporting/);
+        assert.equal(await notices.getByRole('alert').count(), 1, 'same-route details retain exactly one active loss');
+        await page.getByRole('button', { name: '← All routes', exact: true }).click();
+      }
       const dismiss = notices.getByRole('button', { name: 'Dismiss tracking update for Red #317', exact: true });
       const box = await dismiss.boundingBox(); assert(box.width >= 44 && box.height >= 44);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no horizontal overflow');
       await page.screenshot({ path: `${out}/${mode}-lost-${width}.png` });
       await dismiss.focus(); await page.keyboard.press('Enter'); assert.equal(await notices.count(), 0);
+      if (mode === 'trip') {
+        await page.getByRole('button', { name: 'View Red trip details', exact: true }).click();
+        assert.equal(await notices.count(), 0, 'same-route navigation preserves explicit dismissal');
+        await page.getByRole('button', { name: '← All routes', exact: true }).click();
+        assert.equal(await notices.count(), 0, 'dismissed episode stays dismissed in the overview');
+      }
       await advance(); assert.equal(await notices.count(), 0, 'dismissed loss does not repeat');
       phase = 'returned'; await advance(); await notices.waitFor();
       assert.match(await notices.innerText(), /Red #317 is reporting again/);

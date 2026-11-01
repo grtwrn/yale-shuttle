@@ -1,21 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { emptyReportingState, reportingKey, reportingNotice, stepBusReporting,
   type ReportingSnapshot, type ReportingWatch } from './busReporting';
 import { emptyForecastReportingState, forecastReportingNotice, stepForecastReporting } from './busForecastReporting';
 import './BusReportingAlerts.css';
 
 /** In-page notices need no notification permission; the monitor only advances
- * on a new successful poll while the page is visible. Mount per viewing scope. */
-export function BusReportingAlerts({ snapshot, watched, scope, available, replacements = [], watchForecasts = false }: {
+ * on a new successful poll while the page is visible. Keep the monitor mounted
+ * while opening details for a route already in the current trip's scope. */
+export function BusReportingAlerts({ snapshot, watched, scope, available, replacements = [], watchForecasts = false, viewKey = '' }: {
   snapshot: ReportingSnapshot | null;
   watched: readonly ReportingWatch[];
   scope: readonly string[];
   available: boolean;
   replacements?: readonly ReportingWatch[];
   watchForecasts?: boolean;
+  viewKey?: string;
 }) {
   const [state, setState] = useState(emptyReportingState);
   const [forecastState, setForecastState] = useState(emptyForecastReportingState);
+  const previousViewRef = useRef(viewKey);
+  const viewChanged = previousViewRef.current !== viewKey;
   const [visible, setVisible] = useState(() => !document.hidden);
   useEffect(() => {
     const update = () => setVisible(!document.hidden);
@@ -24,16 +28,28 @@ export function BusReportingAlerts({ snapshot, watched, scope, available, replac
   }, []);
   const watchesKey = JSON.stringify(watched), scopeKey = JSON.stringify(scope);
   useEffect(() => {
-    setState(prior => stepBusReporting(prior, snapshot, JSON.parse(watchesKey), JSON.parse(scopeKey), available, visible));
-  }, [snapshot, watchesKey, scopeKey, available, visible]);
-  useEffect(() => {
+    const changedView = previousViewRef.current !== viewKey;
+    previousViewRef.current = viewKey;
+    const currentWatches = JSON.parse(watchesKey), currentScope = JSON.parse(scopeKey);
+    // Navigation clears completed recovery notices, not an active loss that
+    // the rider may be opening this route to investigate. The reducers still
+    // remove records outside the new route scope and preserve dismissal.
+    setState(prior => stepBusReporting(changedView
+      ? { ...prior, records: prior.records.filter(r => r.status !== 'returned') } : prior,
+    snapshot, currentWatches, currentScope, available, visible));
     setForecastState(prior => watchForecasts
-      ? stepForecastReporting(prior, snapshot, JSON.parse(watchesKey), JSON.parse(scopeKey), available, visible)
+      ? stepForecastReporting(changedView
+        ? { ...prior, records: prior.records.filter(r => r.status !== 'restored') } : prior,
+      snapshot, currentWatches, currentScope, available, visible)
       : emptyForecastReportingState());
-  }, [snapshot, watchesKey, scopeKey, available, visible, watchForecasts]);
-  const notices = state.records.filter(r => r.status !== 'watching' && !r.dismissed && scope.includes(r.routeLabel));
+  }, [snapshot, watchesKey, scopeKey, available, visible, watchForecasts, viewKey]);
+  // The first render of a new view must also omit completed notices while
+  // the effect's cleanup has not committed yet. Active losses stay visible.
+  const notices = state.records.filter(r => r.status !== 'watching' && !r.dismissed && scope.includes(r.routeLabel)
+    && (!viewChanged || r.status !== 'returned'));
   const forecastNotices = watchForecasts ? forecastState.records.filter(r => r.status !== 'watching' && !r.dismissed
-    && scope.includes(r.routeLabel) && !notices.some(n => n.status === 'lost' && reportingKey(n) === reportingKey(r))) : [];
+    && scope.includes(r.routeLabel) && (!viewChanged || r.status !== 'restored')
+    && !notices.some(n => n.status === 'lost' && reportingKey(n) === reportingKey(r))) : [];
   if (!visible || (!notices.length && !forecastNotices.length)) return null;
   return <div className="bus-reporting-alerts" data-testid="bus-reporting-alerts" aria-label="Bus tracking updates">
     {notices.map(record => {
