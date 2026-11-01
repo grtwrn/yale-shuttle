@@ -1,0 +1,722 @@
+{
+  "schema": "independent-catalog-embedding-input/v1",
+  "mode": "reference-analysis",
+  "routeId": 8,
+  "sources": [
+    {
+      "id": "official-routes.json",
+      "file": "official-routes.json",
+      "bytes": 47082,
+      "sha256": "358eb44cb002ee96e2804386960e052edc8266488fd474fad191c204a2b8c0cd"
+    },
+    {
+      "id": "official-stops.json",
+      "file": "official-stops.json",
+      "bytes": 14956,
+      "sha256": "94ed13f586209f02b8834b920b5ecdfd20805447b5fbb4364226cd96885eeb02"
+    },
+    {
+      "id": "official-pink-stop-order.pdf",
+      "file": "official-pink-stop-order.pdf",
+      "bytes": 88207,
+      "sha256": "aee586850e3bacc22ad819d3714121e4d59ec99a502e7e6a244f7b67538f9923"
+    },
+    {
+      "id": "official-pink-stop-order.DATA.txt",
+      "file": "official-pink-stop-order.DATA.txt",
+      "bytes": 8547,
+      "sha256": "1b9aaa93a818d12b9061d99acb122b446bebdd8d3abd5a5de60cda4c7523e53e"
+    }
+  ],
+  "path": [
+    {
+      "lat": 41.30378,
+      "lon": -72.93509
+    },
+    {
+      "lat": 41.30489,
+      "lon": -72.93427
+    },
+    {
+      "lat": 41.30396,
+      "lon": -72.93215
+    },
+    {
+      "lat": 41.3036,
+      "lon": -72.93143
+    },
+    {
+      "lat": 41.30221,
+      "lon": -72.93241
+    },
+    {
+      "lat": 41.30034,
+      "lon": -72.93871
+    },
+    {
+      "lat": 41.29902,
+      "lon": -72.94338
+    },
+    {
+      "lat": 41.29806,
+      "lon": -72.94292
+    },
+    {
+      "lat": 41.29761,
+      "lon": -72.9429
+    },
+    {
+      "lat": 41.29748,
+      "lon": -72.94887
+    },
+    {
+      "lat": 41.29704,
+      "lon": -72.95366
+    },
+    {
+      "lat": 41.29694,
+      "lon": -72.95428
+    },
+    {
+      "lat": 41.29638,
+      "lon": -72.95596
+    },
+    {
+      "lat": 41.29129,
+      "lon": -72.95329
+    },
+    {
+      "lat": 41.29091,
+      "lon": -72.95318
+    },
+    {
+      "lat": 41.28744,
+      "lon": -72.95137
+    },
+    {
+      "lat": 41.28681,
+      "lon": -72.95058
+    },
+    {
+      "lat": 41.28553,
+      "lon": -72.95347
+    },
+    {
+      "lat": 41.28359,
+      "lon": -72.95699
+    },
+    {
+      "lat": 41.28511,
+      "lon": -72.95756
+    },
+    {
+      "lat": 41.28496,
+      "lon": -72.95803
+    },
+    {
+      "lat": 41.2849,
+      "lon": -72.95808
+    },
+    {
+      "lat": 41.28482,
+      "lon": -72.95848
+    },
+    {
+      "lat": 41.28405,
+      "lon": -72.96037
+    },
+    {
+      "lat": 41.28363,
+      "lon": -72.96089
+    },
+    {
+      "lat": 41.28308,
+      "lon": -72.96212
+    },
+    {
+      "lat": 41.28283,
+      "lon": -72.9624
+    },
+    {
+      "lat": 41.28254,
+      "lon": -72.96304
+    },
+    {
+      "lat": 41.28238,
+      "lon": -72.96303
+    },
+    {
+      "lat": 41.28171,
+      "lon": -72.96252
+    },
+    {
+      "lat": 41.28188,
+      "lon": -72.96214
+    },
+    {
+      "lat": 41.28195,
+      "lon": -72.96209
+    },
+    {
+      "lat": 41.28194,
+      "lon": -72.96192
+    },
+    {
+      "lat": 41.28203,
+      "lon": -72.96182
+    },
+    {
+      "lat": 41.28214,
+      "lon": -72.96184
+    },
+    {
+      "lat": 41.28226,
+      "lon": -72.96202
+    },
+    {
+      "lat": 41.28281,
+      "lon": -72.96245
+    },
+    {
+      "lat": 41.28308,
+      "lon": -72.96212
+    },
+    {
+      "lat": 41.28363,
+      "lon": -72.96089
+    },
+    {
+      "lat": 41.28405,
+      "lon": -72.96037
+    },
+    {
+      "lat": 41.28482,
+      "lon": -72.95848
+    },
+    {
+      "lat": 41.28497,
+      "lon": -72.95752
+    },
+    {
+      "lat": 41.28359,
+      "lon": -72.95699
+    },
+    {
+      "lat": 41.28553,
+      "lon": -72.95347
+    },
+    {
+      "lat": 41.28681,
+      "lon": -72.95058
+    },
+    {
+      "lat": 41.28744,
+      "lon": -72.95137
+    },
+    {
+      "lat": 41.29091,
+      "lon": -72.95318
+    },
+    {
+      "lat": 41.29129,
+      "lon": -72.95329
+    },
+    {
+      "lat": 41.29638,
+      "lon": -72.95596
+    },
+    {
+      "lat": 41.29673,
+      "lon": -72.95496
+    },
+    {
+      "lat": 41.297,
+      "lon": -72.95398
+    },
+    {
+      "lat": 41.29748,
+      "lon": -72.94887
+    },
+    {
+      "lat": 41.2975,
+      "lon": -72.94788
+    },
+    {
+      "lat": 41.29782,
+      "lon": -72.94776
+    },
+    {
+      "lat": 41.29809,
+      "lon": -72.94746
+    },
+    {
+      "lat": 41.30135,
+      "lon": -72.9417
+    },
+    {
+      "lat": 41.30238,
+      "lon": -72.93888
+    },
+    {
+      "lat": 41.30353,
+      "lon": -72.93547
+    },
+    {
+      "lat": 41.30378,
+      "lon": -72.93509
+    }
+  ],
+  "curbs": [
+    {
+      "stopId": 149,
+      "coord": {
+        "lat": 41.303784,
+        "lon": -72.935017
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 72,
+      "coord": {
+        "lat": 41.303422,
+        "lon": -72.931698
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 43,
+      "coord": {
+        "lat": 41.30199,
+        "lon": -72.933299
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 44,
+      "coord": {
+        "lat": 41.301495,
+        "lon": -72.935029
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 60,
+      "coord": {
+        "lat": 41.296071,
+        "lon": -72.955927
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 109,
+      "coord": {
+        "lat": 41.293932,
+        "lon": -72.955238
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 123,
+      "coord": {
+        "lat": 41.284966,
+        "lon": -72.958144
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 125,
+      "coord": {
+        "lat": 41.281934,
+        "lon": -72.96194
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 124,
+      "coord": {
+        "lat": 41.284845,
+        "lon": -72.957845
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 110,
+      "coord": {
+        "lat": 41.293438,
+        "lon": -72.954994
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 59,
+      "coord": {
+        "lat": 41.296105,
+        "lon": -72.955812
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    },
+    {
+      "stopId": 46,
+      "coord": {
+        "lat": 41.303096,
+        "lon": -72.936589
+      },
+      "sourceIds": [
+        "official-stops.json"
+      ]
+    }
+  ],
+  "published": [
+    {
+      "id": "published:0:149",
+      "publishedIndex": 0,
+      "stopId": 149
+    },
+    {
+      "id": "published:1:72",
+      "publishedIndex": 1,
+      "stopId": 72
+    },
+    {
+      "id": "published:2:43",
+      "publishedIndex": 2,
+      "stopId": 43
+    },
+    {
+      "id": "published:3:44",
+      "publishedIndex": 3,
+      "stopId": 44
+    },
+    {
+      "id": "published:4:60",
+      "publishedIndex": 4,
+      "stopId": 60
+    },
+    {
+      "id": "published:5:109",
+      "publishedIndex": 5,
+      "stopId": 109
+    },
+    {
+      "id": "published:6:123",
+      "publishedIndex": 6,
+      "stopId": 123
+    },
+    {
+      "id": "published:7:125",
+      "publishedIndex": 7,
+      "stopId": 125
+    },
+    {
+      "id": "published:8:124",
+      "publishedIndex": 8,
+      "stopId": 124
+    },
+    {
+      "id": "published:9:110",
+      "publishedIndex": 9,
+      "stopId": 110
+    },
+    {
+      "id": "published:10:59",
+      "publishedIndex": 10,
+      "stopId": 59
+    },
+    {
+      "id": "published:11:46",
+      "publishedIndex": 11,
+      "stopId": 46
+    }
+  ],
+  "spurs": [],
+  "variants": [
+    {
+      "id": "API",
+      "sourceIds": [
+        "official-routes.json"
+      ],
+      "tokens": [
+        {
+          "id": "API:token:0",
+          "occurrenceOptions": [
+            "published:0:149"
+          ]
+        },
+        {
+          "id": "API:token:1",
+          "occurrenceOptions": [
+            "published:1:72"
+          ]
+        },
+        {
+          "id": "API:token:2",
+          "occurrenceOptions": [
+            "published:2:43"
+          ]
+        },
+        {
+          "id": "API:token:3",
+          "occurrenceOptions": [
+            "published:3:44"
+          ]
+        },
+        {
+          "id": "API:token:4",
+          "occurrenceOptions": [
+            "published:4:60"
+          ]
+        },
+        {
+          "id": "API:token:5",
+          "occurrenceOptions": [
+            "published:5:109"
+          ]
+        },
+        {
+          "id": "API:token:6",
+          "occurrenceOptions": [
+            "published:6:123"
+          ]
+        },
+        {
+          "id": "API:token:7",
+          "occurrenceOptions": [
+            "published:7:125"
+          ]
+        },
+        {
+          "id": "API:token:8",
+          "occurrenceOptions": [
+            "published:8:124"
+          ]
+        },
+        {
+          "id": "API:token:9",
+          "occurrenceOptions": [
+            "published:9:110"
+          ]
+        },
+        {
+          "id": "API:token:10",
+          "occurrenceOptions": [
+            "published:10:59"
+          ]
+        },
+        {
+          "id": "API:token:11",
+          "occurrenceOptions": [
+            "published:11:46"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "PDF-Shuttle1",
+      "sourceIds": [
+        "official-pink-stop-order.pdf",
+        "official-pink-stop-order.DATA.txt"
+      ],
+      "tokens": [
+        {
+          "id": "PDF-Shuttle1:token:0",
+          "occurrenceOptions": [
+            "published:0:149"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:1",
+          "occurrenceOptions": [
+            "published:1:72"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:2",
+          "occurrenceOptions": [
+            "published:2:43"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:3",
+          "occurrenceOptions": [
+            "published:3:44"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:4",
+          "occurrenceOptions": [
+            "published:4:60",
+            "published:10:59"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:5",
+          "occurrenceOptions": [
+            "published:5:109",
+            "published:9:110"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:6",
+          "occurrenceOptions": [
+            "published:6:123",
+            "published:8:124"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:7",
+          "occurrenceOptions": [
+            "published:7:125"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:8",
+          "occurrenceOptions": [
+            "published:6:123",
+            "published:8:124"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:9",
+          "occurrenceOptions": [
+            "published:5:109",
+            "published:9:110"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:10",
+          "occurrenceOptions": [
+            "published:4:60",
+            "published:10:59"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle1:token:11",
+          "occurrenceOptions": [
+            "published:11:46"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "PDF-Shuttle2",
+      "sourceIds": [
+        "official-pink-stop-order.pdf",
+        "official-pink-stop-order.DATA.txt"
+      ],
+      "tokens": [
+        {
+          "id": "PDF-Shuttle2:token:0",
+          "occurrenceOptions": [
+            "published:7:125"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:1",
+          "occurrenceOptions": [
+            "published:6:123",
+            "published:8:124"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:2",
+          "occurrenceOptions": [
+            "published:4:60",
+            "published:10:59"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:3",
+          "occurrenceOptions": [
+            "published:5:109",
+            "published:9:110"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:4",
+          "occurrenceOptions": [
+            "published:11:46"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:5",
+          "occurrenceOptions": [
+            "published:0:149"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:6",
+          "occurrenceOptions": [
+            "published:1:72"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:7",
+          "occurrenceOptions": [
+            "published:2:43"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:8",
+          "occurrenceOptions": [
+            "published:3:44"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:9",
+          "occurrenceOptions": [
+            "published:4:60",
+            "published:10:59"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:10",
+          "occurrenceOptions": [
+            "published:5:109",
+            "published:9:110"
+          ]
+        },
+        {
+          "id": "PDF-Shuttle2:token:11",
+          "occurrenceOptions": [
+            "published:6:123",
+            "published:8:124"
+          ]
+        }
+      ]
+    }
+  ],
+  "scope": {
+    "onePlanCycleOneRawLoop": {
+      "status": "unqualified",
+      "sourceIds": []
+    },
+    "orientations": [
+      "forward",
+      "reverse"
+    ],
+    "orientationExclusions": [],
+    "qualificationPending": true
+  }
+}

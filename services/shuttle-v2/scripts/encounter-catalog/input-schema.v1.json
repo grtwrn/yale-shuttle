@@ -1,0 +1,336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "independent-catalog-embedding-input/v1",
+  "title": "Frozen finite analyzer input; not live catalog admission",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "mode",
+    "routeId",
+    "sources",
+    "path",
+    "curbs",
+    "published",
+    "spurs",
+    "variants",
+    "scope"
+  ],
+  "properties": {
+    "schema": {
+      "const": "independent-catalog-embedding-input/v1"
+    },
+    "mode": {
+      "enum": [
+        "fixture",
+        "reference-analysis"
+      ]
+    },
+    "routeId": {
+      "type": "integer"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "path": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 4096,
+      "items": {
+        "$ref": "#/$defs/point"
+      }
+    },
+    "curbs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": {
+        "$ref": "#/$defs/curb"
+      }
+    },
+    "published": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": {
+        "$ref": "#/$defs/published"
+      }
+    },
+    "spurs": {
+      "type": "array",
+      "maxItems": 2048,
+      "items": {
+        "$ref": "#/$defs/spur"
+      }
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/variant"
+      }
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/id"
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "sourceIds"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "reviewed",
+            "fixture-assumption",
+            "unqualified"
+          ]
+        },
+        "sourceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "file",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 262144
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "curb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stopId",
+        "coord",
+        "sourceIds"
+      ],
+      "properties": {
+        "stopId": {
+          "type": "integer"
+        },
+        "coord": {
+          "$ref": "#/$defs/point"
+        },
+        "sourceIds": {
+          "$ref": "#/$defs/sourceIds"
+        }
+      }
+    },
+    "published": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "publishedIndex",
+        "stopId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "publishedIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stopId": {
+          "type": "integer"
+        }
+      }
+    },
+    "spur": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "stopId",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "stopId": {
+          "type": "integer"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        }
+      }
+    },
+    "token": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "occurrenceOptions"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "occurrenceOptions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceIds",
+        "tokens"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "sourceIds": {
+          "$ref": "#/$defs/sourceIds"
+        },
+        "tokens": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2048,
+          "items": {
+            "$ref": "#/$defs/token"
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "onePlanCycleOneRawLoop",
+        "orientations",
+        "orientationExclusions",
+        "qualificationPending"
+      ],
+      "properties": {
+        "onePlanCycleOneRawLoop": {
+          "$ref": "#/$defs/evidence"
+        },
+        "orientations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "forward",
+              "reverse"
+            ]
+          }
+        },
+        "orientationExclusions": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "orientation",
+              "evidence"
+            ],
+            "properties": {
+              "orientation": {
+                "enum": [
+                  "forward",
+                  "reverse"
+                ]
+              },
+              "evidence": {
+                "$ref": "#/$defs/evidence"
+              }
+            }
+          }
+        },
+        "qualificationPending": {
+          "const": true
+        }
+      }
+    }
+  },
+  "x-relational-validation": [
+    "All numeric values finite; integers safe. Closed path exact first/last equality. Sources/curbs/occurrences/variants/tokens unique in their explicit namespaces; arbitrary nonempty occurrence IDs permitted.",
+    "Published indices must be complete contiguous original array indices. Every occurrence references a retained curb; every evidence/source reference resolves.",
+    "Every published occurrence must be available in every variant token crosswalk; each completed crosswalk is injective and retains every original published occurrence. Supplemental SPUR inclusion remains variant-dependent and separately evidenced.",
+    "One-loop and orientation-exclusion evidence must be reviewed for reference-analysis, or reviewed/fixture-assumption for fixture mode. Unqualified real scope returns refused-source-scope before geometric analysis.",
+    "QualificationPending remains true and outputs never live-admit a catalog."
+  ]
+}
