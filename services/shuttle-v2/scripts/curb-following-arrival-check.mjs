@@ -6,6 +6,13 @@ import {gunzipSync} from 'node:zlib';
 import {seedTestId} from './testId.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const diagnosticText = (value, maximum) => {
+  const bytes=Buffer.from(String(value??''),'utf8');let end=Math.min(bytes.length,maximum);
+  // Keep a complete UTF8 prefix, including when the cap lands inside an emoji.
+  while(end>0&&end<bytes.length&&(bytes[end]&0xc0)===0x80)end--;
+  return {text:bytes.subarray(0,end).toString('utf8'),fullUtf8Bytes:bytes.length,
+    retainedUtf8Bytes:end,truncated:end<bytes.length};
+};
 
 /** A raw current curb is visit zero even when only its next lap is forecast.
  * Keep real following buses between that curb and the modeled next lap. */
@@ -96,8 +103,45 @@ export async function checkCurbFollowingArrival({browser, production = false, ou
               pickup,next,screen,summary:await row.innerText(),pageErrors:[...errors]});
           }
         } catch(error) {
+          const body=page?await page.locator('body').innerText().catch(()=>''):'';
+          const view=page?await page.evaluate(()=>{
+            const rows=[...document.querySelectorAll('[data-testid="route-timing-table"] tbody[data-route]')]
+              .filter(row=>row.getClientRects().length>0);
+            return {visibleRowCount:rows.length,rows:rows.slice(0,12).map(row=>({
+              route:row.getAttribute('data-route'),mode:row.getAttribute('data-mode'),
+              pickup:row.getAttribute('data-pickup'),alight:row.getAttribute('data-alight'),
+              boardBus:row.getAttribute('data-board-bus'),countdownBus:row.getAttribute('data-countdown-bus'),
+              stopsAhead:row.getAttribute('data-board-stops-ahead'),
+              board:row.querySelector(':scope > tr:first-child > td')?.innerText??'',
+            })),renderedSource:document.querySelector('[data-feedback-source]')?.getAttribute('data-feedback-source')??null};
+          }).catch(captureError=>({visibleRowCount:null,rows:[],captureError:String(captureError)}))
+            :{visibleRowCount:null,rows:[],captureError:'page-not-created'};
+          const diagnostic={kind:'curb-following-arrival-failure',v:1,
+            route:diagnosticText(scenario.route,128),bus:diagnosticText(scenario.bus,48),mode,width,
+            active:{seq:active.seq,at:active.at,bodySHA256:active.sha256},receiptCount:receipts.length,
+            activeReceipt:receipts.findLast(r=>r.seq===active.seq)??null,lastReceipt:receipts.at(-1)??null,
+            error:diagnosticText(error.stack??error,2048),pageErrorCount:errors.length,
+            pageErrors:errors.slice(0,4).map(value=>diagnosticText(value,512)),pageErrorsTruncated:errors.length>4,
+            visibleRowCount:view.visibleRowCount,visibleTripRows:view.rows.map(row=>Object.fromEntries(
+              Object.entries(row).map(([key,value])=>[key,diagnosticText(value,key==='board'?512:128)]))),
+            visibleTripRowsTruncated:view.visibleRowCount!==null&&view.visibleRowCount>view.rows.length,
+            renderedSource:diagnosticText(view.renderedSource,2048),captureError:diagnosticText(view.captureError,512),
+            body:diagnosticText(body,32*1024),stderrJsonLimitUtf8Bytes:64*1024,jsonForLogTruncated:false};
+          let line=JSON.stringify(diagnostic);
+          // JSON escaping can exceed the raw UTF8 budget. Preserve explicit
+          // counts/flags while shrinking only this stderr copy; the full file
+          // below retains the original failure evidence as before.
+          while(Buffer.byteLength(line,'utf8')>diagnostic.stderrJsonLimitUtf8Bytes){
+            diagnostic.jsonForLogTruncated=true;
+            if(diagnostic.body.retainedUtf8Bytes)diagnostic.body=diagnosticText(body,Math.floor(diagnostic.body.retainedUtf8Bytes/2));
+            else if(diagnostic.visibleTripRows.length){diagnostic.visibleTripRows.pop();diagnostic.visibleTripRowsTruncated=true;}
+            else if(diagnostic.pageErrors.length){diagnostic.pageErrors.pop();diagnostic.pageErrorsTruncated=true;}
+            else diagnostic.error=diagnosticText(error.stack??error,0);
+            line=JSON.stringify(diagnostic);
+          }
+          console.error(line);
           if(page)await fs.writeFile(path.join(out,`failure-${scenario.bus}-${mode}-${active.seq}-${width}.json`),JSON.stringify({
-            error:String(error.stack??error),receipts,errors,body:await page.locator('body').innerText().catch(()=>'')},null,2));
+            error:String(error.stack??error),receipts,errors,body},null,2));
           throw error;
         } finally {await ctx.unrouteAll({behavior:'wait'});await ctx.close();}
       }
