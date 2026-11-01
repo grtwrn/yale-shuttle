@@ -6,6 +6,14 @@ import type {
   PassedEncounter, PhaseReason, ProgressResult, ProgressState, RawObservation,
 } from './types.js';
 
+function ownValue(values: Readonly<Record<string, number>>, key: string): number | undefined {
+  return Object.hasOwn(values, key) ? values[key] : undefined;
+}
+
+function setOwnValue(values: Record<string, number>, key: string, value: number): void {
+  Object.defineProperty(values, key, { value, enumerable: true, writable: true, configurable: true });
+}
+
 function evidenceCore(o: RawObservation) {
   const e = o.evidence;
   return { receiptHash: e.receiptHash, observationHash: e.observationHash, observedAt: e.observedAt,
@@ -93,7 +101,7 @@ function moduloIntervals(intervals: readonly ArcInterval[], loopM: number): ArcI
 
 function proofReference(state: ProgressState, call: CompiledCall, cycle: number): EncounterRef {
   return { generationId: state.generation!.id, occurrenceId: call.id,
-    ordinal: cycle - state.seedGateBaselines[call.id]! };
+    ordinal: cycle - ownValue(state.seedGateBaselines, call.id)! };
 }
 
 function finishPassages(state: ProgressState, catalog: CompiledCatalog, protocol: Readonly<Protocol>): PassedEncounter[] | null {
@@ -103,17 +111,17 @@ function finishPassages(state: ProgressState, catalog: CompiledCatalog, protocol
   const min = Math.min(...state.intervals.map(i => i.lo));
   for (const call of catalog.calls) {
     if (call.components.length !== 1) continue;
-    const component = call.components[0]!, base = state.seedGateBaselines[call.id];
+    const component = call.components[0]!, base = ownValue(state.seedGateBaselines, call.id);
     if (base === undefined || distanceMeters(state.lastRawPoint, call.coord) <= protocol.departureRearmM) continue;
     // Strictly beyond the region exit; equality has not proved passage.
     const lastCycle = Math.ceil((min - component.hi) / catalog.loopM) - 1;
-    const lastOrdinal = lastCycle - base, previous = passed[call.id] ?? -1;
+    const lastOrdinal = lastCycle - base, previous = ownValue(passed, call.id) ?? -1;
     if (lastOrdinal - previous > protocol.maxProgressIntervals) return null;
     for (let ordinal = previous + 1; ordinal <= lastOrdinal; ordinal++) {
       events.push({ kind: 'passed', encounter: { generationId: state.generation!.id, occurrenceId: call.id, ordinal },
         service: call.service, stopId: call.stopId, availableAt: state.availableAt, evidenceChainHash: state.evidenceChainHash });
     }
-    if (lastOrdinal > previous) passed[call.id] = lastOrdinal;
+    if (lastOrdinal > previous) setOwnValue(passed, call.id, lastOrdinal);
   }
   state.passedThrough = passed;
   return events;
@@ -169,7 +177,7 @@ export function advanceProgress(
         seedIntervals: intervals.map(i => ({ ...i })) };
       baselines = {};
       for (const call of catalog.calls) if (call.components.length === 1)
-        baselines[call.id] = Math.ceil((intervals[0]!.lo - call.components[0]!.hi) / catalog.loopM);
+        setOwnValue(baselines, call.id, Math.ceil((intervals[0]!.lo - call.components[0]!.hi) / catalog.loopM));
     }
   }
   const evidenceChainHash = sha256(canonicalJSON({ previous: previous?.evidenceChainHash ?? null,
@@ -218,9 +226,9 @@ export function queryCurrentEncounter(
       if (last - first + 1 > protocol.maxProgressIntervals) return unknown(state, 'phase-capacity');
       for (let cycle = first; cycle <= last; cycle++) {
         const encounter = proofReference(state, call, cycle);
-        if (encounter.ordinal < 0 || encounter.ordinal <= (state.passedThrough[call.id] ?? -1)) continue;
+        if (encounter.ordinal < 0 || encounter.ordinal <= (ownValue(state.passedThrough, call.id) ?? -1)) continue;
         overlaps.push(encounter);
-        if (encounter.ordinal !== (state.passedThrough[call.id] ?? -1) + 1)
+        if (encounter.ordinal !== (ownValue(state.passedThrough, call.id) ?? -1) + 1)
           return unknown(state, 'ordinal-ambiguity', overlaps);
         if (interval.lo >= region.lo + cycle * catalog.loopM && interval.hi <= region.hi + cycle * catalog.loopM)
           matches.push({ call, encounter });
@@ -268,11 +276,11 @@ export function queryNextEncounter(
       let nearest: { call: CompiledCall; encounter: EncounterRef; enter: number; exit: number } | null = null;
       const candidates: { call: CompiledCall; encounter: EncounterRef; enter: number; exit: number }[] = [];
       for (const call of calls) {
-        const region = call.components[0]!, baseline = state.seedGateBaselines[call.id]!;
-        const cycle = Math.max(Math.ceil((position - region.hi) / catalog.loopM), baseline + (state.passedThrough[call.id] ?? -1) + 1);
+        const region = call.components[0]!, baseline = ownValue(state.seedGateBaselines, call.id)!;
+        const cycle = Math.max(Math.ceil((position - region.hi) / catalog.loopM), baseline + (ownValue(state.passedThrough, call.id) ?? -1) + 1);
         const exit = region.hi + cycle * catalog.loopM, enter = Math.max(position, region.lo + cycle * catalog.loopM);
         const encounter = proofReference(state, call, cycle);
-        if (encounter.ordinal !== (state.passedThrough[call.id] ?? -1) + 1)
+        if (encounter.ordinal !== (ownValue(state.passedThrough, call.id) ?? -1) + 1)
           return unknown(state, 'ordinal-ambiguity', [...possible, encounter]);
         const candidate = { call, encounter, enter, exit };
         candidates.push(candidate);

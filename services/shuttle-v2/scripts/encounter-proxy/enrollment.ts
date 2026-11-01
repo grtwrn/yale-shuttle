@@ -77,7 +77,8 @@ export function bindOpportunity(previous: EnrollmentLedger, opportunity: Forecas
     || !Number.isSafeInteger(opportunity.stopId) || !Number.isSafeInteger(opportunity.vehicle.routeId)
     || !Number.isSafeInteger(opportunity.vehicle.busId) || !opportunity.vehicle.busName
     || !/^[a-f0-9]{64}$/.test(opportunity.receiptHash)) throw new Error('Malformed forecast opportunity');
-  const opportunityHash = sha256(canonicalJSON(opportunity)), existing = ledger.records[opportunity.id];
+  const opportunityHash = sha256(canonicalJSON(opportunity));
+  const existing = Object.hasOwn(ledger.records, opportunity.id) ? ledger.records[opportunity.id] : undefined;
   if (existing) {
     if (existing.opportunityHash !== opportunityHash) throw new Error('Conflicting forecast opportunity identity');
     return { ...expired, enrollment: existing };

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { canonicalJSON } from './canonical.js';
 import { compileCatalog } from './catalog.js';
 import { advanceProgress, queryCurrentEncounter, queryNextEncounter, refreshProgressReceipt } from './progress.js';
-import { APEX, FOLD_STOP, fix, foldCatalog, squareSpec } from './test-fixtures.js';
-import type { ProgressState, RawObservation } from './types.js';
+import { APEX, FOLD_STOP, fix, foldCatalog, foldSpec, squareSpec } from './test-fixtures.js';
+import type { CurrentEncounter, EncounterRef, NextEncounter, ProgressState, RawObservation } from './types.js';
 
 const T = 1_000_000;
 
@@ -60,6 +61,96 @@ describe('all-branch raw phase without predictor state', () => {
     expect(state!.passedThrough.south).toBe(0);
     expect(queryCurrentEncounter(state, catalog, 100).kind).toBe('unknown');
     expect(queryNextEncounter(state, catalog, 100)).toMatchObject({ kind: 'bound', encounter: { occurrenceId: 'south', ordinal: 1 } });
+  });
+
+  it('preserves folded passage and encounter ordinals for every valid call ID, including Object prototype names', () => {
+    const renames = new Map([['south', '__proto__'], ['apex', 'constructor'], ['north', 'toString']]);
+    const originalNames = new Map([...renames].map(([ordinary, renamed]) => [renamed, ordinary] as const));
+    const semanticId = (id: string) => originalNames.get(id) ?? id;
+    const points = [APEX,
+      ...[-72.965, -72.97, -72.975, -72.98, -72.985, -72.99, -72.995, -73]
+        .map(lon => ({ lat: 41.0002, lon })),
+      ...[-72.995, -72.99, -72.985, -72.98, -72.975, -72.97, -72.965, -72.96]
+        .map(lon => ({ lat: 41, lon })),
+      ...[-72.965, -72.97, -72.975, -72.98, -72.985]
+        .map(lon => ({ lat: 41.0002, lon })),
+    ];
+    const run = (rename: boolean) => {
+      const spec = foldSpec();
+      const catalog = compileCatalog({ ...spec, calls: spec.calls.map(call => ({ ...call,
+        id: rename ? renames.get(call.id)! : call.id })) });
+      let state: ProgressState | null = null;
+      let generationId: string | null = null;
+      const evidenceChainHashes: string[] = [];
+      const encounter = (value: EncounterRef) => {
+        expect(value.generationId).toBe(generationId);
+        return { occurrenceId: semanticId(value.occurrenceId), ordinal: value.ordinal };
+      };
+      const query = (value: CurrentEncounter | NextEncounter) => value.kind === 'unknown'
+        ? { kind: value.kind, reason: value.reason, possible: value.possible.map(encounter), availableAt: value.availableAt }
+        : { kind: value.kind, encounter: encounter(value.encounter), service: value.service,
+          stopId: value.stopId, availableAt: value.availableAt };
+      const dictionary = (values: Readonly<Record<string, number>>) =>
+        Object.fromEntries(Object.entries(values).map(([id, value]) => [semanticId(id), value]));
+      const trace = points.map((point, index) => {
+        const result = advanceProgress(state, fix(point, T + index * 15000), catalog);
+        expect(result.status).toBe('seeded');
+        state = result.state!;
+        generationId ??= state.generation!.id;
+        expect(state.generation!.id).toBe(generationId);
+        evidenceChainHashes.push(state.evidenceChainHash);
+        for (const call of catalog.calls) {
+          expect(Object.hasOwn(state.seedGateBaselines, call.id)).toBe(true);
+          expect(Number.isFinite(state.seedGateBaselines[call.id])).toBe(true);
+        }
+        // Both maps remain ordinary canonical JSON objects. Even __proto__
+        // must be an own enumerable numeric property across JSON custody.
+        for (const values of [state.seedGateBaselines, state.passedThrough]) {
+          expect(Object.getPrototypeOf(values)).toBe(Object.prototype);
+          const restored = JSON.parse(JSON.stringify(values)) as Record<string, number>;
+          expect(Object.keys(restored).sort()).toEqual(Object.keys(values).sort());
+          for (const key of Object.keys(values)) expect(Object.hasOwn(restored, key)).toBe(true);
+          expect(canonicalJSON(restored)).toBe(canonicalJSON(values));
+        }
+        return { status: result.status, intervals: state.intervals, seedIntervals: state.generation!.seedIntervals,
+          lastRawPoint: state.lastRawPoint, lastObservedAt: state.lastObservedAt,
+          lastAvailableAt: state.lastAvailableAt, lastObservationHash: state.lastObservationHash,
+          lastEvidence: state.lastEvidence, availableAt: state.availableAt,
+          baselines: dictionary(state.seedGateBaselines), passed: dictionary(state.passedThrough),
+          events: result.events.map(event => {
+            if (event.kind !== 'passed') throw new Error('Controlled continuous route must retain its generation');
+            return { kind: event.kind, encounter: encounter(event.encounter), service: event.service,
+              stopId: event.stopId, availableAt: event.availableAt };
+          }),
+          current: query(queryCurrentEncounter(state, catalog, 100)),
+          next: query(queryNextEncounter(state, catalog, 100)),
+          currentTurn: query(queryCurrentEncounter(state, catalog, 200)),
+        };
+      });
+      return { catalogHash: catalog.catalogHash, generationId, evidenceChainHashes, trace };
+    };
+    const ordinary = run(false), reserved = run(true);
+    // Catalog/generation/evidence-chain digests include literal call IDs and
+    // must differ. Only explicit occurrence names are renamed in this raw
+    // phase/encounter comparison; geometry, clocks and ordinal values are exact.
+    expect(reserved.catalogHash).not.toBe(ordinary.catalogHash);
+    expect(reserved.generationId).not.toBe(ordinary.generationId);
+    reserved.evidenceChainHashes.forEach((hash, index) => expect(hash).not.toBe(ordinary.evidenceChainHashes[index]));
+    expect(reserved.trace).toEqual(ordinary.trace);
+    expect(ordinary.trace[0]!.currentTurn).toMatchObject({ kind: 'current', encounter: { occurrenceId: 'apex', ordinal: 0 } });
+    expect(ordinary.trace[0]!.next).toMatchObject({ kind: 'bound', encounter: { occurrenceId: 'north', ordinal: 0 } });
+    expect(ordinary.trace[4]!.current).toMatchObject({ kind: 'current', encounter: { occurrenceId: 'north', ordinal: 0 } });
+    expect(ordinary.trace[5]!.passed).toMatchObject({ north: 0 });
+    expect(ordinary.trace[12]!.current).toMatchObject({ kind: 'current', encounter: { occurrenceId: 'south', ordinal: 0 } });
+    expect(ordinary.trace[13]!.passed).toMatchObject({ south: 0 });
+    expect(ordinary.trace[20]!.current).toMatchObject({ kind: 'current', encounter: { occurrenceId: 'north', ordinal: 1 } });
+    expect(ordinary.trace[21]!.passed).toMatchObject({ north: 1, south: 0 });
+    expect(ordinary.trace[21]!.next).toMatchObject({ kind: 'bound', encounter: { occurrenceId: 'south', ordinal: 1 } });
+    expect(ordinary.trace.flatMap(step => step.events)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'passed', encounter: { occurrenceId: 'north', ordinal: 0 } }),
+      expect.objectContaining({ kind: 'passed', encounter: { occurrenceId: 'south', ordinal: 0 } }),
+      expect.objectContaining({ kind: 'passed', encounter: { occurrenceId: 'north', ordinal: 1 } }),
+    ]));
   });
 
   it('canonicalizes only initial seam aliases and keeps real post-seed lap alternatives distinct', () => {

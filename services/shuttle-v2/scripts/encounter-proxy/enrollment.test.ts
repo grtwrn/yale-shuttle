@@ -175,4 +175,23 @@ describe('prospective immutable encounter enrollment', () => {
     expect(() => bindOpportunity(same.ledger, { ...opportunity(), horizon: '2-5' }, proof(), ledgerPrefix(), at + 1))
       .toThrow('Conflicting forecast opportunity');
   });
+
+  it('retains prototype-named opportunity IDs as own records with immutable retry identities', () => {
+    let ledger = emptyEnrollmentLedger();
+    const cases: [string, Horizon][] = [['constructor', '0-2'], ['toString', '2-5'], ['__proto__', '5-10']];
+    for (const [id, horizon] of cases) {
+      const input = opportunity(id, horizon);
+      const first = bindOpportunity(ledger, input, proof(), ledgerPrefix(), at);
+      expect(Object.hasOwn(first.ledger.records, id)).toBe(true);
+      expect(first.ledger.records[id]).toMatchObject({ id, status: 'open' });
+      const same = bindOpportunity(first.ledger, input, proof(), ledgerPrefix(), at);
+      expect(same.enrollment).toEqual(first.enrollment);
+      expect(same.events).toEqual([]);
+      expect(() => bindOpportunity(same.ledger, { ...input, receiptHash: sha256(`changed-${id}`) },
+        proof(), ledgerPrefix(), at)).toThrow('Conflicting forecast opportunity');
+      ledger = same.ledger;
+    }
+    expect(Object.keys(ledger.records)).toEqual(['constructor', 'toString', '__proto__']);
+    expect(Object.getPrototypeOf(ledger.records)).toBe(Object.prototype);
+  });
 });
