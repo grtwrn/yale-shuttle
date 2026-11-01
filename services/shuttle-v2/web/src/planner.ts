@@ -573,7 +573,8 @@ export function planTrip(
             busDepartNowSec = 0;
             busLowSec = 0; busHighSec = 0;
             busName = hereBus.bus_name.replace(/^#/, "");
-            destination = journeyArrival(atStopJourneyBoard(boardArrivals, cfg.label, busName, b, cur), boardArrivals, cur, walkToSec, walkFromSec, now, 'at-stop');
+            destination = journeyArrival(atStopJourneyBoard(boardArrivals, cfg.label, busName, b, cur,
+              { bus: hereBus, routeLabel: cfg.label, stops, now }), boardArrivals, cur, walkToSec, walkFromSec, now, 'at-stop');
           } else if (arrivals.length === 0) {
             if (!tracked) continue;
             // Missing forecast rows say nothing about whether the bus passed

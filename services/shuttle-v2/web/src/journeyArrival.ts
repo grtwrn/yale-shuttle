@@ -1,4 +1,6 @@
 import type { UpcomingArrival } from './arrivals';
+import { ETA_MAX_AGE_MS, serverTrack } from './etaSource';
+import type { RawAtStopContext } from './planner';
 
 /** Join a raw at-stop observation to an existing forecast visit. GPS can report
  * the curb while the estimator still has an approaching pickup. Only accept a
@@ -11,6 +13,7 @@ export function atStopJourneyBoard(
   busName: string,
   boardStopId: number,
   alightStopId: number,
+  current?: RawAtStopContext,
 ): UpcomingArrival | undefined {
   const norm = (name: string) => name.replace(/^#/, '');
   const sameBus = visits.filter(a => a.routeLabel === routeLabel && norm(a.busName) === norm(busName))
@@ -18,7 +21,35 @@ export function atStopJourneyBoard(
   const arrived = sameBus.find(a => a.stopId === boardStopId && a.stopsAhead === 0 && a.eta === 0);
   if (arrived) return arrived;
   const firstDestination = sameBus.find(a => a.stopId === alightStopId);
-  return firstDestination && sameBus.find(a => a.stopId === boardStopId && a.stopsAhead < firstDestination.stopsAhead);
+  const forecastBoard = firstDestination && sameBus.find(a => a.stopId === boardStopId && a.stopsAhead < firstDestination.stopsAhead);
+  if (forecastBoard) return forecastBoard;
+
+  // Only callers that already accepted raw boarding and the walk/dwell gate
+  // supply this context. Their visits come from the same published payload.
+  // A missing current pickup row need not hide an existing onward forecast,
+  // but a raw flag alone cannot establish which pass of a folded curb it is.
+  if (!current || !firstDestination || current.routeLabel !== routeLabel
+    || norm(current.bus.bus_name) !== norm(busName) || !Number.isFinite(current.now)
+    || !Number.isFinite(current.bus.observed_at)
+    || current.now - current.bus.observed_at! < 0
+    || current.now - current.bus.observed_at! >= ETA_MAX_AGE_MS
+    || current.bus.stationary !== true || current.bus.at_stop_id !== boardStopId) return undefined;
+  const track = serverTrack(current.bus, routeLabel, current.now);
+  const cycleLength = current.stops.length;
+  if (!track || !track.standing || track.standing.stopId !== boardStopId || track.standing.approach
+    || !Number.isInteger(track.index) || track.index < 0 || track.index >= cycleLength
+    || track.index !== track.travel || current.stops[track.index] !== boardStopId
+    || current.stops.filter(id => id === boardStopId).length !== 1
+    || !Number.isInteger(firstDestination.stopsAhead) || firstDestination.stopsAhead <= 0
+    || firstDestination.stopsAhead >= cycleLength
+    || current.stops[(track.index + firstDestination.stopsAhead) % cycleLength] !== alightStopId) return undefined;
+  const firstReturn = sameBus.find(a => a.stopId === boardStopId && a.stopsAhead > 0);
+  if (firstReturn && firstReturn.stopsAhead <= firstDestination.stopsAhead) return undefined;
+  // This is a UI join for an accepted current pickup, not an extra server forecast.
+  // In particular it carries no destination distribution or estimated wait.
+  return { busName: firstDestination.busName, routeLabel, color: firstDestination.color,
+    stopId: boardStopId, stopsAhead: 0, eta: 0, low: 0, high: 0,
+    departNow: 0, lowFloor: 0, estimated: false };
 }
 
 export interface JourneyArrival {
