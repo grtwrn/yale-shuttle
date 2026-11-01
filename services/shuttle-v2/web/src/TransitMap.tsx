@@ -7758,7 +7758,7 @@ const TransitMap: FC = () => {
         </>
       ) : transferHandoff && listView === "trip" ? null : listView === "map" ? (
         <>
-          <BusReportingAlerts key={`map:${[...mapHidden].sort().join(',')}:${activeOnly}`} snapshot={reportingSnapshot}
+          <BusReportingAlerts key="map" viewKey={`${[...mapHidden].sort().join(',')}:${activeOnly}`} snapshot={reportingSnapshot}
             available={busStatus === 'ready'}
             scope={ROUTE_LISTS.filter(c => !c.busRouteIds.some(id => mapHidden.has(ROUTE_ID_TO_TOGGLE[id])))
               .map(c => c.label)}
