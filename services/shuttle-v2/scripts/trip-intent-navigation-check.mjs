@@ -162,3 +162,6 @@ try {
   await browser.close();
   await fs.writeFile(`${out}/results.json`, JSON.stringify(report, null, 2) + '\n');
 }
+
+// The original navigation cases complete before these location controls.
+await import('./reminder-location-check.mjs');

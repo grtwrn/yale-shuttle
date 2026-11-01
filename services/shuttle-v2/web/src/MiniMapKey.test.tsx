@@ -77,6 +77,32 @@ describe('route option arrival times', () => {
     expect(html).not.toContain('aria-haspopup');
     expect([...html.matchAll(/<button\b[^>]*aria-label="([^"]*)"/g)].map(m => m[1])).toEqual(['View Red trip details']);
   });
+  it('shows same-bus waiting context across the full timing row without changing the closest pickup or estimate', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const waiting: TimingRow = { ...rows[0]!, option: { ...option, pickupPreference: 'closest-stop' },
+      pickupName: 'Union Station', pickup: { ...rows[0]!.pickup!, busName: '#307', holdingAt: '333 Cedar' } };
+    const html = renderToStaticMarkup(<MiniMapKey rows={[waiting]} destination="Union Station" onSelectOption={() => {}} />);
+    const ordinary = renderToStaticMarkup(<MiniMapKey rows={[{ ...waiting, pickup: { ...waiting.pickup!, holdingAt: undefined } }]}
+      destination="Union Station" onSelectOption={() => {}} />);
+    expect(html).toMatch(/<td colSpan="4"[^>]*><span role="note" data-testid="bus-hold-caption"/);
+    expect(html).toContain('Shuttle #307 is waiting at 333 Cedar. Arrival timing depends on when it leaves.');
+    expect(html).toContain('Closest stop');
+    expect(html).toContain('data-pickup="48"');
+    expect(html.match(/data-testid="pickup-range">([^<]*)/)?.[1]).toBe(ordinary.match(/data-testid="pickup-range">([^<]*)/)?.[1]);
+    expect(html.match(/data-testid="route-next-arrival">([^<]*)/)?.[1]).toBe(ordinary.match(/data-testid="route-next-arrival">([^<]*)/)?.[1]);
+    expect(html).not.toContain('<dialog');
+  });
+  it.each(['different-bus', 'different-route', 'different-pickup', 'no-context', 'at-pickup', 'departed', 'unavailable', 'future', 'request-only'])
+    ('does not attach waiting context to an unsupported timing row: %s', state => {
+      vi.spyOn(Date, 'now').mockReturnValue(now);
+      const waiting: TimingRow = { ...rows[0]!, option: { ...option, departed: state === 'departed', etaUnavailable: state === 'unavailable',
+        ...(state === 'request-only' ? { pickupRequest: { kind: 'call-dispatch' as const, stopName: 'Union Station', message: 'Call Dispatch to request this stop.' } } : {}) },
+        pickup: { ...rows[0]!.pickup!, holdingAt: state === 'no-context' ? undefined : '333 Cedar', atPickup: state === 'at-pickup',
+          busName: state === 'different-bus' ? '309' : '307', routeLabel: state === 'different-route' ? 'Blue Weekend' : 'Red',
+          stopId: state === 'different-pickup' ? 129 : 48 } };
+      const html = renderToStaticMarkup(<MiniMapKey rows={[waiting]} destination="Union Station" departureMs={state === 'future' ? now : undefined} />);
+      expect(html).not.toContain('bus-hold-caption');
+    });
   it('puts a skipped-stop warning on its own full-width line, and nothing when there is none', () => {
     vi.spyOn(Date, 'now').mockReturnValue(now);
     const warning = '⚠️ 2 of the last 3 Red buses skipped Union Station (S). Try 100 Church Street South (4 min walk).';

@@ -93,6 +93,9 @@ export interface GeoWatchCallbacks {
    * fire on EVERY terminal path or the spinner runs forever (#54, #65).
    */
   onSettled?: () => void;
+  /** A watch error, stall rescue or failed registration interrupts tracking.
+   * Called once until the next successful fix, never for an ordinary settle. */
+  onInterrupted?: () => void;
   stallMs?: number;
 }
 
@@ -106,6 +109,7 @@ export function startGeoWatch(geo: GeoLike, cb: GeoWatchCallbacks): GeoWatchHand
   let stopped = false;
   let gotFix = false;
   let rescued = false;
+  let interrupted = false;
   let stallTimer: ReturnType<typeof setTimeout> | null = null;
 
   const cancelStallTimer = () => {
@@ -120,9 +124,16 @@ export function startGeoWatch(geo: GeoLike, cb: GeoWatchCallbacks): GeoWatchHand
     onSettled?.();
   };
 
+  const interrupt = () => {
+    if (stopped || interrupted) return;
+    interrupted = true;
+    cb.onInterrupted?.();
+  };
+
   const accept = (pos: GeolocationPosition) => {
     if (stopped) return;
     gotFix = true;
+    interrupted = false;
     settle();
     onFix(pos);
   };
@@ -131,6 +142,7 @@ export function startGeoWatch(geo: GeoLike, cb: GeoWatchCallbacks): GeoWatchHand
   // retry storm is how you flatten a phone battery.
   const rescue = () => {
     if (stopped || gotFix || rescued) return;
+    interrupt();
     rescued = true;
     geo.getCurrentPosition(accept, () => { if (!stopped) settle(); }, RESCUE_OPTIONS);
   };
@@ -141,6 +153,7 @@ export function startGeoWatch(geo: GeoLike, cb: GeoWatchCallbacks): GeoWatchHand
       accept,
       (err) => {
         if (stopped) return;
+        interrupt();
         settle();
         // Asking a browser that already said no cannot help.
         if (err.code === PERMISSION_DENIED) return;
@@ -151,6 +164,7 @@ export function startGeoWatch(geo: GeoLike, cb: GeoWatchCallbacks): GeoWatchHand
   } catch {
     // A browser that refuses to register a watch at all should still not
     // leave the rider staring at a spinner.
+    interrupt();
     settle();
     rescue();
   }

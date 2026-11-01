@@ -1,4 +1,4 @@
-import { ArrivalDetails, type ArrivalDetailsProps } from './ArrivalDetails';
+import { ArrivalDetails, BusHoldCaption, type ArrivalDetailsProps } from './ArrivalDetails';
 import { DestinationArrival, destinationArrivalView } from './DestinationArrival';
 import type { TripOption } from './planner';
 import { fmtMin, fmtWalk } from './format';
@@ -103,6 +103,13 @@ export function MiniMapKey({ rows, destination, departureMs, onSelectRoute, onSe
         <span id={`pickup-${option.routeLabel.replace(/\s/g, '-')}-${option.boardStopId}-${option.alightStopId}`} data-testid="pickup-choice-name" style={{ fontWeight: 600 }}>{pickupName}</span>
         {option.pickupPreference && <span style={{ color: '#5f6368' }}> · {option.pickupPreference === 'closest-stop' ? 'Closest stop' : option.pickupPreference === 'arrive-sooner' ? 'Arrive sooner' : 'More walking'}</span>}
       </td></tr>}
+      {departureMs === undefined && option.mode === 'shuttle' && !option.pickupRequest && !option.departed && !option.etaUnavailable
+        && pickup?.holdingAt?.trim() && !pickup.atPickup && pickup.routeLabel === option.routeLabel && pickup.stopId === option.boardStopId
+        && pickup.busName.replace(/^#/, '').trim() !== ''
+        && pickup.busName.replace(/^#/, '').trim() === option.busName.replace(/^#/, '').trim()
+        && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
+          <BusHoldCaption busName={pickup.busName} holdingAt={pickup.holdingAt} />
+        </td></tr>}
       {earlyPickup && !option.pickupRequest && <tr><td colSpan={4} style={{ padding: '0 6px 6px' }}>
         <EarlyPickupNotice arrival={earlyPickup} walkSec={option.walkToSec} />
       </td></tr>}
