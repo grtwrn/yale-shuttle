@@ -28,13 +28,14 @@ function feedFor(phase, at) {
   if (wire.travel) wire.travel = indexes.map(index => wire.travel[index]);
   wire.buses = indexes.map(index => wire.buses[index]);
   wire.at = at; wire.servedAt = at;
+  if (phase === 'tracks-only') { wire.rows = []; wire.distributions = []; }
   return feed;
 }
 
 try {
-  for (const scenario of [{ width: 307 }, { width: 390 }, { width: 1280 }, { width: 390, future: true }]) {
-    const { width, future = false } = scenario;
-    let phase = future ? 'unavailable' : 'red', servedNow = now, polls = 0;
+  for (const scenario of [{ width: 307 }, { width: 390 }, { width: 1280 }, { width: 390, future: true }, { width: 390, tracksOnly: true }]) {
+    const { width, future = false, tracksOnly = false } = scenario;
+    let phase = future || tracksOnly ? 'unavailable' : 'red', servedNow = now, polls = 0;
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 600,
       hasTouch: width < 600, timezoneId: 'America/New_York', serviceWorkers: 'block' });
     let page;
@@ -46,7 +47,7 @@ try {
           toText: 'Rosenkranz Hall', toLL: to, tripTime: future ? '2026-10-12T10:00' : '', expandedKey: null, savedAt: now }));
       }, { from: capture.from, to: capture.to, now, future });
       page = await ctx.newPage(); page.setDefaultTimeout(10000);
-      page.on('pageerror', error => report.errors.push(`${width}/${future}: ${error.message}`));
+      page.on('pageerror', error => report.errors.push(`${width}/${future}/${tracksOnly}: ${error.message}`));
       await page.clock.install({ time: new Date(now) });
       await page.route('**/*', async route => {
         const request = route.request(), url = new URL(request.url());
@@ -83,8 +84,21 @@ try {
       await page.goto(base, { waitUntil: 'domcontentloaded' });
       const initial = await initialResponse;
       await waitForResponseBody(page, initial);
-      assert.equal(initial.status(), future ? 503 : 200, 'controlled initial service state');
-      if (future) {
+      assert.equal(initial.status(), future || tracksOnly ? 503 : 200, 'controlled initial service state');
+      if (tracksOnly) {
+        assert.equal(await blue.count(), 0, 'no tracked service is available before the first successful poll');
+        phase = 'tracks-only'; await advance();
+        await nearRow.waitFor(); await red.waitFor();
+        assert.match(await nearRow.innerText(), /Closest stop/);
+        assert.match(await nearRow.innerText(), /Unavailable/);
+        assert.equal(await nearRow.getByTestId('pickup-range').count(), 0, 'a track alone supplies no pickup forecast');
+        assert.equal(await nearRow.getByTestId('route-next-arrival').count(), 0, 'a track alone supplies no next-bus time');
+        await page.screenshot({ path: `${out}/tracks-only-${width}.png`, fullPage: true });
+        phase = 'both'; await advance();
+        await nearRow.getByTestId('pickup-range').waitFor(); await farRow.waitFor();
+        assert.match(await nearRow.innerText(), /Closest stop/);
+        assert.match(await farRow.innerText(), /Arrive sooner/);
+      } else if (future) {
         const when = page.locator('input[type="datetime-local"]');
         await when.waitFor();
         assert.equal(await when.inputValue(), '2026-10-12T10:00');
@@ -128,21 +142,21 @@ try {
       assert.deepEqual(draft.fromLL, capture.from, 'manual origin stays locked');
       assert.deepEqual(draft.toLL, capture.to, 'destination stays locked');
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no horizontal overflow');
-      await page.screenshot({ path: `${out}/${future ? 'future-bootstrap' : 'blue-restored'}-${width}.png`, fullPage: true });
-      report.runs.push({ width, future, polls, passed: true });
-      console.log(`PASS new route admission ${width}px ${future ? 'future metadata bootstrap' : 'Red → Blue closest/alternative → loss → return'}`);
+      await page.screenshot({ path: `${out}/${future ? 'future-bootstrap' : tracksOnly ? 'tracks-priced' : 'blue-restored'}-${width}.png`, fullPage: true });
+      report.runs.push({ width, future, tracksOnly, polls, passed: true });
+      console.log(`PASS new route admission ${width}px ${future ? 'future metadata bootstrap' : tracksOnly ? 'tracking-only bootstrap → priced pickups' : 'Red → Blue closest/alternative → loss → return'}`);
     } catch (error) {
-      report.errors.push(`${width}/${future}: ${error.message}`);
+      report.errors.push(`${width}/${future}/${tracksOnly}: ${error.message}`);
       if (page && !page.isClosed()) {
         try {
           const body = Buffer.from(await page.locator('body').innerText());
-          await fs.writeFile(`${out}/failure-${width}-${future}.json`, JSON.stringify({ phase, polls,
+          await fs.writeFile(`${out}/failure-${width}-${future}-${tracksOnly}.json`, JSON.stringify({ phase, polls,
             message: error.message, bodyBytes: body.length, truncated: body.length > 65536,
             body: body.subarray(0, 65536).toString() }, null, 2));
-          console.error('[new-route-admission failure]', JSON.stringify({ width, future, phase, polls,
+          console.error('[new-route-admission failure]', JSON.stringify({ width, future, tracksOnly, phase, polls,
             message: error.message, bodyBytes: body.length, truncated: body.length > 8192,
             body: body.subarray(0, 8192).toString() }));
-          await page.screenshot({ path: `${out}/failure-${width}-${future}.png`, fullPage: true });
+          await page.screenshot({ path: `${out}/failure-${width}-${future}-${tracksOnly}.png`, fullPage: true });
         } catch (diagnosticError) { report.errors.push(`Failure diagnostic: ${diagnosticError.message}`); }
       }
       throw error;
