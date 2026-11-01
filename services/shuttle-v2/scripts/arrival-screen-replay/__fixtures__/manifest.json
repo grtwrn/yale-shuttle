@@ -1,5 +1,6 @@
 {
-  "v": 2,
+  "v": 3,
+  "replayProtocol": "arrival-screen-replay-v2",
   "scope": "Exact retained public-frame JSON values; related Orange offer switch, not original report113 or physical arrival truth",
   "sourceBuild": "6aed223edaec",
   "sourceBundleSHA256": "29223a98ff8bb1354175c9c4ae7105ce19e3af721856fba20c626dc529e405de",
@@ -39,14 +40,18 @@
     "source": "constructed diagnostic context; never recovered reporter state",
     "routeLabel": "Orange East",
     "busName": "50",
-    "pickupStopId": 157,
+    "diagnosticPickupStopId": 157,
     "destinationStopId": 165,
     "originVariants": [
       "pickup-coordinate",
       "pickup-coordinate shifted east +0.0025 longitude"
-    ]
+    ],
+    "recordedSelection": "Observe all initially visible Orange East overview rows. Expand the unique explicit closest-stop row or a single unambiguous route row; refuse ambiguity. Preserve one expanded watch across all polls without navigation or reselection. Record current visible actual pickup/alight separately from diagnostic157; hidden/unmounted overview alternatives are outside later-frame coverage.",
+    "diagnosticCoverage": "Record157 presence and selected-frame counts. An app-chosen158 context is never relabelled as157; if157 is absent it supplies zero157 coverage. Empty/ambiguous expanded views are retained with a reason and refuse feedback capture."
   },
   "controls": {
+    "strictPickupStopId": 157,
+    "oracleRevision": "Unchanged from attempt01; recorded-context observation changes do not relax any synthetic assertion",
     "pointSec": 330,
     "lowSec": 300,
     "highSecSequence": [
@@ -79,5 +84,13 @@
     "local candidate assets",
     "production static assets (cache once, health/index/hashed assets GET only)"
   ],
-  "protocolRevisionScope": "Pre-execution fixture metadata correction; initial manifest84c1a043\u2026 preserved outside worktree. No numerical/browser execution has occurred."
+  "previousAttempt": {
+    "head": "6c2896f32c2771323bb4b79f04c5d542267bff72",
+    "run": 41280697566,
+    "conclusion": "Both roles failed; preserved unchanged",
+    "cause": "The walking origin actually rendered pickup158; attempt01 incorrectly required diagnosticpickup157 and timed out before advancing that context",
+    "recordedCoverage": "Both roles rendered390px pickup157 context through all3frames; no walking snapshots, desktop1280 or synthetic controls completed",
+    "reviewSHA256": "e4517c0631c9e15b9575b80635818dec70af4bfaef6d48a688f6cd18ec5791cb"
+  },
+  "protocolRevisionScope": "R2 SOURCE-only observation/capture correction after preserved failedattempt01. Original3response bytes, origin coordinates, destination, synthetic inputs and all control oracles remain unchanged. No R2 execution before Root source review and new frozen admission."
 }
