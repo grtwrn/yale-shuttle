@@ -28,7 +28,7 @@ function payload(at: number, q = SMALL, point = COORDS[9101]!, restSince: number
     segments: { '4': Object.fromEntries(STOPS.map((id, i) => [id + '-' + STOPS[(i + 1) % STOPS.length],
       { avg: 60, sd: 5, n: 10000, dq: [50, 52, 54, 56, 58, 60, 62, 64, 66, 68], dqn: 10000 }])) },
     dwells: { '4': Object.fromEntries(STOPS.map((id, i) => [String(id), {
-      med: i === 0 ? 120 : 5, n: 10000, qn: 10000, q: i === 0 ? q : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+      med: i === 0 ? 120 : 5, sd: 5, n: 10000, qn: 10000, q: i === 0 ? q : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     }])) },
   };
 }
