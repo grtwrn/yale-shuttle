@@ -68,6 +68,7 @@ import { loadRecents, recordRecent, samePlace, saveRecents, type SavedTrip } fro
 import { PlaceList, type PlaceRow } from "./PlaceList";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
 import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
+import { acceptRiderLocation, EMPTY_RIDER_LOCATION, hydrateRiderLocation, markRiderTrackingInterrupted, riderLocationCacheValue, type RiderLocationState } from "./riderLocation";
 import {
   deliverPing, ensureNotifyPermission,
   liveReminderInput, markFired, NO_PINGS_FIRED,
@@ -1614,6 +1615,8 @@ type LiveBusStatus = "loading" | "unavailable" | "ready";
 const TripPlanner: FC<{
   active: boolean;
   reminderHost: HTMLElement | null;
+  riderLocationTrackingQualified: boolean;
+  onPickupLocationTracking: (needed: boolean) => void;
   buses: BusData[];
   reportingSnapshot: ReportingSnapshot | null;
   reportingAvailable: boolean;
@@ -1661,7 +1664,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ active, reminderHost, buses, reportingSnapshot, reportingAvailable, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ active, reminderHost, riderLocationTrackingQualified, onPickupLocationTracking, buses, reportingSnapshot, reportingAvailable, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, stopSkips, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [initialDraft] = useState(loadTripDraft);
   const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
   const [toText, setToText] = useState(initialDraft?.toText ?? "");
@@ -1713,7 +1716,13 @@ const TripPlanner: FC<{
   // Declared HERE, before any hook that references it — see the TDZ
   // warning at the top of this file's conventions.
   const [reminder, setReminder] = useState<{ routeLabel: string; boardStopId: number; alightStopId: number; timing: ReminderTiming; tripKey: string } | null>(null);
-  const [reminderWaiting, setReminderWaiting] = useState(false);
+  const [reminderWaiting, setReminderWaiting] = useState<'live' | 'location' | null>(null);
+  const reminderUsesLiveLocation = reminder !== null && isCurrentLocationText(fromText);
+  // Keep the retained controller's intent separate from the visible tab. A
+  // manual starting place needs no GPS; all Current-location timing modes
+  // still use walking-based pickup selection upstream.
+  useEffect(() => { onPickupLocationTracking(reminderUsesLiveLocation); }, [reminderUsesLiveLocation, onPickupLocationTracking]);
+  useEffect(() => () => onPickupLocationTracking(false), [onPickupLocationTracking]);
   // In-app fallback banner when a system notification can't be shown
   // (permission denied, or iOS Safari where the page-context
   // Notification API doesn't exist at all).
@@ -2334,18 +2343,30 @@ const TripPlanner: FC<{
   const tripKey = `${fromLL?.lat}|${fromLL?.lon}|${toLL?.lat}|${toLL?.lon}|${targetDate?.getTime() ?? ""}`;
   const optionsRef = useRef(options);
   optionsRef.current = options;
-  const reminderContextRef = useRef({ buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null, tripKey });
-  reminderContextRef.current = { buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null, tripKey };
+  // Location authority and options come from the same render snapshot.
+  // Provider callbacks cannot pair a new fix's metadata with the prior walk.
+  const reminderContext = { buses, busUpdateFailed, targetDateMs: targetDate?.getTime() ?? null, tripKey,
+    usesLiveLocation: isCurrentLocationText(fromText), riderLocationTrackingQualified };
+  const reminderContextRef = useRef(reminderContext);
+  reminderContextRef.current = reminderContext;
 
   // The reminder engine: once armed, check every second (piggybacking on
   // selected boarding window, using the table's rounding and clock). computePickupReminder
   // decides IF a ping fires; this effect only delivers it.
   useEffect(() => {
-    if (!reminder) { setReminderWaiting(false); return; }
+    if (!reminder) { setReminderWaiting(null); return; }
     const { routeLabel, boardStopId, alightStopId } = reminder;
     const check = () => {
       if (reminderContextRef.current.tripKey !== reminder.tripKey) {
         setReminder(null);
+        return;
+      }
+      // Leave timing needs the walk. A stationary healthy watch need not
+      // emit periodic fixes, so sensor age alone never expires its authority.
+      // Minutes/stops remain bus-based and keep working without new GPS ticks.
+      if (reminder.timing.mode === 'leave' && reminderContextRef.current.usesLiveLocation
+        && !reminderContextRef.current.riderLocationTrackingQualified) {
+        setReminderWaiting('location');
         return;
       }
       const input = liveReminderInput(optionsRef.current, routeLabel,
@@ -2354,10 +2375,10 @@ const TripPlanner: FC<{
         // Missing live evidence pauses delivery, not the rider's request.
         // Keep the same timing and fired-ping history until fresh input
         // returns or the rider changes the trip or cancels the reminder.
-        setReminderWaiting(true);
+        setReminderWaiting('live');
         return;
       }
-      setReminderWaiting(false);
+      setReminderWaiting(null);
       const ping = computePickupReminder(input, reminderFiredRef.current, reminder.timing);
       if (!ping) return;
       reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
@@ -3304,6 +3325,24 @@ const TripPlanner: FC<{
     });
   const reportingScope = isFuture || alreadyThere ? [] : expandedKey ? [expandedKey]
     : (routeCatalog ?? []).filter(o => o.mode === 'shuttle').map(o => o.routeLabel);
+  const reminderWaitingNotice = reminder && reminderWaiting ? (
+    <div role="status" aria-label={reminderWaiting === 'location' ? 'Pickup reminder waiting for location' : 'Pickup reminder waiting for live updates'} style={{
+      display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+      border: '1px solid #dadce0', borderRadius: 8, padding: 10, marginBottom: 8,
+      background: '#f8f9fa', color: '#37474f', fontSize: 14, lineHeight: 1.4,
+    }}>
+      <span style={{ flex: '1 1 180px' }}>
+        {reminder.routeLabel}: {reminderTimingLabel(reminder.timing)}.
+        {' '}{reminderWaiting === 'location'
+          ? 'Leave-time reminder paused until your location is precise again.'
+          : 'Waiting for live pickup updates. Keep this page open.'}
+      </span>
+      {reminderWaiting === 'location' && <button className="trip-action-button" style={{ width: 'auto' }}
+        onClick={onRequestLocate}>Update location</button>}
+      <button className="trip-action-button" style={{ width: 'auto' }}
+        aria-label="Cancel pickup reminder" onClick={() => setReminder(null)}>Cancel reminder</button>
+    </div>
+  ) : null;
   return (
     <>
       <BusReportingAlerts key={`trip:${tripKey}`} viewKey={expandedKey ?? ''} snapshot={reportingSnapshot}
@@ -3334,23 +3373,12 @@ const TripPlanner: FC<{
             }}
           >✕</button>
         </div>, reminderHost)}
+      {!active && reminderWaitingNotice && reminderHost && createPortal(
+        <div style={{ maxWidth: 536, margin: '8px 12px' }}>{reminderWaitingNotice}</div>, reminderHost)}
       {/* Remove the inactive UI, including its Leaflet maps, while the
           controller, live reporting monitor and reminder timer stay mounted. */}
       {active && <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {reminder && reminderWaiting && (
-        <div role="status" aria-label="Pickup reminder waiting for live updates" style={{
-          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8,
-          border: '1px solid #dadce0', borderRadius: 8, padding: 10, marginBottom: 8,
-          background: '#f8f9fa', color: '#37474f', fontSize: 14, lineHeight: 1.4,
-        }}>
-          <span style={{ flex: '1 1 180px' }}>
-            {reminder.routeLabel}: {reminderTimingLabel(reminder.timing)}.
-            {' '}Waiting for live pickup updates. Keep this page open.
-          </span>
-          <button className="trip-action-button" style={{ width: 'auto' }}
-            aria-label="Cancel pickup reminder" onClick={() => setReminder(null)}>Cancel reminder</button>
-        </div>
-      )}
+      {reminderWaitingNotice}
       {/* Details view: search/plan chrome is hidden (not unmounted — its
           state must survive so ← back restores the same plan). */}
       <div style={{ display: detailOpen ? "none" : undefined }}>
@@ -4214,7 +4242,9 @@ const TripPlanner: FC<{
                   // not at one it passed over for a later one (`rideApproach`).
                   atPickup: !boarding && !!shuttleCtx?.busMatch && shuttleCtx.stopsAway === 0
                     && observedAtStop(shuttleCtx.busMatch, o.boardStopId, stopCoords),
-                  holdingAt: shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
+                  holdingAt: etaFresh && shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
+                    && ridePositionAvailable(reportingSnapshot, shuttleCtx.busMatch.bus_name, shuttleCtx.cfg.busRouteIds, Date.now())
+                    && liveBusAvailable(shuttleCtx.busMatch, shuttleCtx.cfg.label, Date.now())
                     ? stopNames[shuttleCtx.busMatch.at_stop_id] : undefined,
                 } : undefined,
                 status: o.mode === 'walk' ? '—' : o.departed ? 'Missed' : o.etaUnavailable ? 'Unavailable' : isFuture ? 'Scheduled' : 'Unavailable',
@@ -4582,6 +4612,9 @@ const TripPlanner: FC<{
                             fallbackFocusId={reportButtonId}
                             onCancel={() => setReminder(null)}
                             onArm={timing => {
+                              // Protect the position in this gesture, before a
+                              // provider callback can run ahead of the effect.
+                              onPickupLocationTracking(isCurrentLocationText(fromText));
                               reminderFiredRef.current = NO_PINGS_FIRED;
                               setReminderBanner(null);
                               if (!reminderActive) void ensureNotifyPermission();
@@ -6615,6 +6648,12 @@ const TransitMap: FC = () => {
   // Main navigation hides the planner UI, not the active trip's choices or
   // reminder timer. Boarding/handoff still ends that planner session.
   const [tripControllerStarted, setTripControllerStarted] = useState(listView === "trip");
+  const [pickupLocationTracking, setPickupLocationTracking] = useState(false);
+  const pickupLocationTrackingRef = useRef(false);
+  const onPickupLocationTracking = useCallback((needed: boolean) => {
+    pickupLocationTrackingRef.current = needed;
+    setPickupLocationTracking(needed);
+  }, []);
   useEffect(() => {
     if (boardedRide || transferHandoff) setTripControllerStarted(false);
     else if (listView === "trip") setTripControllerStarted(true);
@@ -6937,63 +6976,37 @@ const TransitMap: FC = () => {
   // garbage — the bug we hit when a wife's search from Trumbull
   // St → 517 Prospect returned no results because the cached coord
   // was "already at 517 Prospect."
-  const LOCATION_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
-  const [userLatLon, setUserLatLon] = useState<{ lat: number; lon: number } | null>(() => {
-    try {
-      const raw = localStorage.getItem("lastUserLatLon");
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      const { lat, lon, t } = parsed ?? {};
-      if (typeof lat !== "number" || typeof lon !== "number") return null;
-      if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
-      // Reject anything without a timestamp or older than the cap.
-      if (typeof t !== "number" || Date.now() - t > LOCATION_CACHE_MAX_AGE_MS) {
-        return null;
-      }
-      return { lat, lon };
-    } catch { /* ignore corrupt storage */ }
-    return null;
+  const [riderLocation, setRiderLocation] = useState<RiderLocationState>(() => {
+    try { return hydrateRiderLocation(JSON.parse(localStorage.getItem('lastUserLatLon') ?? 'null'), Date.now()); }
+    catch { return EMPTY_RIDER_LOCATION; }
   });
-  // Persist whenever we get a fresh fix — timestamped so the next
-  // session can tell how stale the cache is.
+  const userLatLon = riderLocation.point;
+  // Cache the sensor's actual time and uncertainty, never the time React
+  // happens to render it. A cached point remains display-only on reload.
   useEffect(() => {
-    if (userLatLon) {
-      try {
-        localStorage.setItem("lastUserLatLon", JSON.stringify({
-          lat: userLatLon.lat, lon: userLatLon.lon, t: Date.now(),
-        }));
-      } catch { /* quota or private mode — non-critical */ }
-    }
-  }, [userLatLon]);
-  // Start in "locating" mode whenever we don't have a fresh cached
-  // location — the watchPosition effect below takes over on mount.
-  // Initializing from state (rather than flipping to true in the
-  // effect) avoids a single-frame flash of "Tap to set start".
-  const [locating, setLocating] = useState(() => {
     try {
-      const raw = localStorage.getItem("lastUserLatLon");
-      if (!raw) return true;
-      const parsed = JSON.parse(raw);
-      const { t } = parsed ?? {};
-      return !(typeof t === "number" && Date.now() - t <= LOCATION_CACHE_MAX_AGE_MS);
-    } catch { return true; }
-  });
+      const value = riderLocationCacheValue(riderLocation);
+      if (value) localStorage.setItem('lastUserLatLon', JSON.stringify(value));
+      else localStorage.removeItem('lastUserLatLon');
+    } catch { /* storage unavailable */ }
+  }, [riderLocation.point?.lat, riderLocation.point?.lon, riderLocation.observedAt, riderLocation.accuracy]);
+  const [locating, setLocating] = useState(() => !userLatLon);
   const [locateError, setLocateError] = useState<string | null>(null);
-  // WHEN the last fix was taken, so a check can tell a live position from a
-  // frozen one (report #96 — see rideEnd.ts). The browser's own timestamp is
-  // preferred, since the rescue one-shot will hand back a fix up to two
-  // minutes old, but it is only trusted when it reads as a sane epoch: a few
-  // engines have shipped a different clock here, and a bogus one must not be
-  // able to make a stale fix look fresh (or a fresh one look stale).
-  const fixAtRef = React.useRef<number | null>(null);
-  const noteFixAge = (timestamp?: number) => {
-    const now = Date.now();
-    const t = typeof timestamp === "number" && Number.isFinite(timestamp)
-      && timestamp <= now + 60_000 && now - timestamp < 24 * 3600_000
-      ? Math.min(timestamp, now)
-      : now;
-    fixAtRef.current = t;
-  };
+  // Ride completion/handoff must not promote a display-only cache or an
+  // interrupted/approximate provider state into fresh location evidence.
+  const qualifiedFixAt = riderLocation.trackingQualified ? riderLocation.observedAt : null;
+  const fixAtRef = React.useRef<number | null>(qualifiedFixAt);
+  fixAtRef.current = qualifiedFixAt;
+  const trackingInterruptedRef = useRef(true);
+  const interruptRiderTracking = useCallback(() => {
+    trackingInterruptedRef.current = true;
+    setRiderLocation(previous => markRiderTrackingInterrupted(previous));
+  }, []);
+  const applyRiderFix = useCallback((position: GeolocationPosition) => {
+    const now = Date.now(), trackingVisible = !document.hidden && !trackingInterruptedRef.current;
+    const protectArmedPosition = pickupLocationTrackingRef.current;
+    setRiderLocation(previous => acceptRiderLocation(previous, position, now, { trackingVisible, protectArmedPosition }));
+  }, []);
   const geoWatchRef = React.useRef<GeoWatchHandle | null>(null);
   // Accuracy tier the live watch is currently running at (null = none yet).
   // Every watch registration below records its tier here so the
@@ -7008,18 +7021,20 @@ const TransitMap: FC = () => {
   // open long enough to hit one lost the report-#54 hardening and went back
   // to spinning on "Locating…" forever. startGeoWatch keeps them identical.
   const startGpsWatch = (precise: boolean) => {
+    interruptRiderTracking();
     geoWatchRef.current?.stop();
     gpsPreciseRef.current = precise;
     geoWatchRef.current = startGeoWatch(navigator.geolocation, {
       precise,
       onFix: (p) => {
-        noteFixAge(p.timestamp);
-        setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
+        trackingInterruptedRef.current = false;
+        applyRiderFix(p);
         setLocating(false);
         setLocateError(null);
       },
       // Whatever happened, stop claiming we are still looking.
       onSettled: () => setLocating(false),
+      onInterrupted: interruptRiderTracking,
     });
   };
 
@@ -7037,10 +7052,9 @@ const TransitMap: FC = () => {
     setLocateError(null);
     const applyFix = (pos: GeolocationPosition) => {
       console.log("[locate] got position", pos.coords);
-      noteFixAge(pos.timestamp);
-      setUserLatLon({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      applyRiderFix(pos);
       setLocating(false);
-      if (geoWatchRef.current == null) {
+      if (geoWatchRef.current == null || trackingInterruptedRef.current) {
         // The LIVE WATCH stays high-accuracy regardless of how the first fix
         // was obtained — gps-tier-check.mjs asserts exactly this (one watch,
         // no downgrade). Only the one-shots are ever allowed to be coarse.
@@ -7132,7 +7146,7 @@ const TransitMap: FC = () => {
   // names the condition instead of the tab, and the map tab is precise only
   // once the rider asks to be located.
   const tripActiveForGps =
-    !!boardedRide || listView === "trip" || (listView === "map" && (locating || userLatLon !== null));
+    pickupLocationTracking || !!boardedRide || listView === "trip" || (listView === "map" && (locating || userLatLon !== null));
   useEffect(() => {
     if (!navigator.geolocation || !window.isSecureContext) return;
     if (geoWatchRef.current == null) return; // nothing running yet — mount effect owns the first start
@@ -7150,6 +7164,7 @@ const TransitMap: FC = () => {
     if (!navigator.geolocation || !window.isSecureContext) return;
     const onVisibility = () => {
       if (document.hidden) {
+        interruptRiderTracking();
         if (geoWatchRef.current != null) {
           geoWatchRef.current.stop();
           geoWatchRef.current = null;
@@ -7753,6 +7768,8 @@ const TransitMap: FC = () => {
 
       {!boardedRide && !transferHandoff && (tripControllerStarted || listView === "trip") && (
         <TripPlanner active={listView === "trip"} reminderHost={reminderHost}
+          riderLocationTrackingQualified={riderLocation.trackingQualified}
+          onPickupLocationTracking={onPickupLocationTracking}
           reportingSnapshot={reportingSnapshot} reportingAvailable={busStatus === 'ready'}
           busStatus={busStatus}
           lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}

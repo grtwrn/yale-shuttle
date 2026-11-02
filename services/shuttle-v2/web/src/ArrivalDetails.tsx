@@ -19,9 +19,20 @@ export interface ArrivalDetailsProps {
   nextSec?: number | null;
   nextBusName?: string;
   stopsAway?: number | null;
+  /** Fresh waiting location for this displayed pickup bus; omit when unverified. */
   holdingAt?: string;
   atPickup?: boolean;
   variant?: 'card' | 'table';
+}
+
+/** Keep the waiting context visible even when the arrival dialog is closed. */
+export function BusHoldCaption({ busName, holdingAt, atPickup }: Pick<ArrivalDetailsProps, 'busName' | 'holdingAt' | 'atPickup'>) {
+  const name = busName.replace(/^#/, '').trim();
+  if (!name || !holdingAt?.trim() || atPickup) return null;
+  return <span role="note" data-testid="bus-hold-caption" style={{ display: 'block', padding: '6px 8px',
+    borderRadius: 6, background: '#fff8e1', color: '#795000', fontSize: 12, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+    Shuttle #{name} is waiting at {holdingAt}. Arrival timing depends on when it leaves.
+  </span>;
 }
 
 export function ArrivalDetails(props: ArrivalDetailsProps) {
@@ -60,6 +71,7 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
       </span>
       {!table && next && <span style={{ display: 'block', fontSize: 12, color: '#5f6368' }}>Next in {next.startsWith('<') ? next : `~${next}`}</span>}
     </button>
+    <BusHoldCaption busName={busName} holdingAt={holdingAt} atPickup={atPickup} />
     {createPortal(<dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)} onKeyDown={e => e.stopPropagation()} onClick={e => {
       e.stopPropagation();
       if (e.target === e.currentTarget) {

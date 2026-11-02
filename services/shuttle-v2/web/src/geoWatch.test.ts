@@ -209,4 +209,73 @@ describe("startGeoWatch", () => {
     expect(onSettled).toHaveBeenCalledTimes(1);
     expect(oneShots).toHaveLength(1);
   });
+
+  it("does not interrupt tracking on an ordinary successful fix or settle", () => {
+    const { geo, watches } = fakeGeo();
+    const onInterrupted = vi.fn(), onSettled = vi.fn(), onFix = vi.fn();
+    startGeoWatch(geo, { precise: true, onFix, onSettled, onInterrupted });
+    watches[0].ok(fix());
+    watches[0].ok(fix(41.32));
+    expect(onFix).toHaveBeenCalledTimes(2);
+    expect(onSettled).toHaveBeenCalledTimes(2);
+    expect(onInterrupted).not.toHaveBeenCalled();
+  });
+
+  it("reports one interruption per error episode and permits a new episode after recovery", () => {
+    const { geo, watches, oneShots } = fakeGeo();
+    const events: string[] = [];
+    startGeoWatch(geo, { precise: true, onFix: () => events.push('fix'),
+      onInterrupted: () => events.push('interrupted') });
+    watches[0].err?.(failure(TIMEOUT));
+    watches[0].err?.(failure(POSITION_UNAVAILABLE));
+    expect(events).toEqual(['interrupted']);
+    expect(oneShots).toHaveLength(1);
+    watches[0].ok(fix());
+    watches[0].err?.(failure(TIMEOUT));
+    expect(events).toEqual(['interrupted', 'fix', 'interrupted']);
+    expect(oneShots).toHaveLength(1); // existing one-rescue-per-watch policy
+  });
+
+  it("reports a silent stall before rescue, without duplicating the rescue failure", () => {
+    const { geo, oneShots } = fakeGeo();
+    const onInterrupted = vi.fn(), onFix = vi.fn();
+    startGeoWatch(geo, { precise: true, onFix, onInterrupted });
+    vi.advanceTimersByTime(WATCH_STALL_MS - 1);
+    expect(onInterrupted).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(onInterrupted).toHaveBeenCalledTimes(1);
+    expect(oneShots).toHaveLength(1);
+    oneShots[0].err?.(failure(TIMEOUT));
+    expect(onInterrupted).toHaveBeenCalledTimes(1);
+    oneShots[0].ok(fix());
+    expect(onFix).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let a late failed rescue interrupt a watch that has recovered", () => {
+    const { geo, watches, oneShots } = fakeGeo();
+    const onInterrupted = vi.fn(), onFix = vi.fn();
+    startGeoWatch(geo, { precise: true, onFix, onInterrupted });
+    watches[0].err?.(failure(TIMEOUT));
+    watches[0].ok(fix());
+    oneShots[0].err?.(failure(TIMEOUT));
+    expect(onFix).toHaveBeenCalledTimes(1);
+    expect(onInterrupted).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports failed registration once, and ignores callbacks after stop", () => {
+    const { geo, watches } = fakeGeo();
+    const onInterrupted = vi.fn();
+    const handle = startGeoWatch(geo, { precise: true, onFix: vi.fn(), onInterrupted });
+    handle.stop();
+    watches[0].err?.(failure(TIMEOUT));
+    expect(onInterrupted).not.toHaveBeenCalled();
+
+    const failed = fakeGeo();
+    failed.geo.watchPosition = () => { throw new Error('unavailable'); };
+    startGeoWatch(failed.geo, { precise: true, onFix: vi.fn(), onInterrupted });
+    expect(onInterrupted).toHaveBeenCalledTimes(1);
+    expect(failed.oneShots).toHaveLength(1);
+    failed.oneShots[0].err?.(failure(TIMEOUT));
+    expect(onInterrupted).toHaveBeenCalledTimes(1);
+  });
 });
