@@ -1,0 +1,219 @@
+{
+  "v": 1,
+  "purpose": "Test-only legacy scientific-domain verifier; never current producer compatibility or accuracy qualification.",
+  "sourceCommit": "ae3ad3ba9fa5ba219b787a5dab185821d5981397",
+  "runtimeEntry": "src/server/serverEta.ts",
+  "fileCount": 41,
+  "totalBytes": 939668,
+  "files": [
+    {
+      "relative": "src/calibrator/provenance.ts",
+      "bytes": 2912,
+      "sha256": "5984bc30e28dc0996fa39bc4f4addbf02c7e74b32658af1c2fdb60ee969bebfa"
+    },
+    {
+      "relative": "src/collector/departure.ts",
+      "bytes": 36929,
+      "sha256": "3a6c948a3befdbb3e92185dc13482d27cda73bb4f12df964848c59854cc0ccb1"
+    },
+    {
+      "relative": "src/collector/detector.ts",
+      "bytes": 53192,
+      "sha256": "9d7c40c21abaf277c502f11ddabac6bf5b66a94fbb6c87293a2f3f540511b795"
+    },
+    {
+      "relative": "src/collector/k10Clock.ts",
+      "bytes": 5040,
+      "sha256": "ddf23ed5a357c41fc927b784aac9f34c9418256b9ec9439c50ed219b980ea9f9"
+    },
+    {
+      "relative": "src/collector/k10Scopes.ts",
+      "bytes": 650,
+      "sha256": "f9a0c8833c15a16227f86236cb219de804cdc95d6abb28d7427a4068767a0140"
+    },
+    {
+      "relative": "src/collector/witnessCapture.ts",
+      "bytes": 9147,
+      "sha256": "33ebb113ee5aef6fb8b1e46b5d8f812d6430203eb845462714efceebaec7d427"
+    },
+    {
+      "relative": "src/collector/witnessCodec.ts",
+      "bytes": 1776,
+      "sha256": "8ee81242fda18280faf0a71a5725c290d3bca6c807bf06f6ae60f4a43fd7fe64"
+    },
+    {
+      "relative": "src/collector/witnessJournal.ts",
+      "bytes": 7019,
+      "sha256": "803db86a54b057473d61f39a1fbc95eac15eb13e89c4c85f31aab03bd4cbcb22"
+    },
+    {
+      "relative": "src/db/calibrationSnapshot.ts",
+      "bytes": 3513,
+      "sha256": "a74d20c829cc0b4d45381043fa1879d3b3149e810fdd12f6ba0b530e3c91a50e"
+    },
+    {
+      "relative": "src/network/TransitNetwork.ts",
+      "bytes": 33765,
+      "sha256": "edc9aa70eb59f6434ef272a19b3ec672bdf7fd483d9745f18ec4c20e63adf7fc"
+    },
+    {
+      "relative": "src/network/alignStops.ts",
+      "bytes": 32132,
+      "sha256": "7933bf134ce010ebceb33d1ea9afe77ff36361e0b4cab0cc4228b7af8bc412da"
+    },
+    {
+      "relative": "src/network/geo.ts",
+      "bytes": 1171,
+      "sha256": "cc88428f2d09c4b66462109a0b3472ff9c7308891c849ebe9173394c20bf2a18"
+    },
+    {
+      "relative": "src/network/legs.ts",
+      "bytes": 8047,
+      "sha256": "93c4515396bdb3a2a2ee8aacea7b649631ecaeea69977991c1422fc34d1959fe"
+    },
+    {
+      "relative": "src/schema/api.ts",
+      "bytes": 8703,
+      "sha256": "407750ceaee371f1dc7c4db32bd50706c6d6361ae3df507e8a906fa901e77c46"
+    },
+    {
+      "relative": "src/server/blueK10Trial.ts",
+      "bytes": 6303,
+      "sha256": "0d379f69918d314d017a996b3776e3e6e6e50da73165c9c7bceddb8b3ce7f42e"
+    },
+    {
+      "relative": "src/server/data/blue-k10-models.json",
+      "bytes": 113416,
+      "sha256": "704da0047363218f22ce4062fb134adbe2e9aabbcfc7a8a5951dbd19b5e778cf"
+    },
+    {
+      "relative": "src/server/data/k10-model.json",
+      "bytes": 85618,
+      "sha256": "6460914a5a8c17c8fa5704a85b85c7b22c1c7753aa51d6fa562d74e5aade17c7"
+    },
+    {
+      "relative": "src/server/data/route-k10-models.json",
+      "bytes": 120788,
+      "sha256": "f51a65df2e64d61d3f9452fe2d5f1a833833cbe19882270253b884591b0c635a"
+    },
+    {
+      "relative": "src/server/etaEvaluationContext.ts",
+      "bytes": 3033,
+      "sha256": "b0695f3f65108173371633ea5a85ab0423620121146d0f151dc011ce1f8e4d9e"
+    },
+    {
+      "relative": "src/server/k10Trial.ts",
+      "bytes": 5503,
+      "sha256": "080b3e667d900adaad0eead9baca3950752abd3e12754039516f5419433fe79d"
+    },
+    {
+      "relative": "src/server/routeK10Trial.ts",
+      "bytes": 1114,
+      "sha256": "ad03f975e962eb796e14d2bc45673f1861d9220e60e8a9b8fc734ef0b6827128"
+    },
+    {
+      "relative": "src/server/serverEta.ts",
+      "bytes": 27254,
+      "sha256": "f17928007788b7b7547cf6a8ae2cdcc0a329850ec62dafd003d386dd161f16a0"
+    },
+    {
+      "relative": "web/src/anchor.ts",
+      "bytes": 3973,
+      "sha256": "92f7eaf315f17e9e123d3ce92296901ffdfefd0cc43723c45f9a146e35bdd11b"
+    },
+    {
+      "relative": "web/src/arrivals.ts",
+      "bytes": 17776,
+      "sha256": "b82586d9e704dbd6680018f9ff7265ea6cfcc866b8e0ec9a0b5c134bbd4b0081"
+    },
+    {
+      "relative": "web/src/eta/arrival.ts",
+      "bytes": 54725,
+      "sha256": "e689f011fe042aa7f9d7cbf173372fda4f1cc3b4230388ffb33e8306e129a87f"
+    },
+    {
+      "relative": "web/src/eta/conformal.d.mts",
+      "bytes": 111,
+      "sha256": "22615e4b01af2cc925d83998b48a75af77efc13b2f070dddb24c19599a3fb8ec"
+    },
+    {
+      "relative": "web/src/eta/conformal.mjs",
+      "bytes": 752,
+      "sha256": "b15639fbcf1bf7826e2860057a77749d4ee393c259dcb4040ee91ff2bb68de7d"
+    },
+    {
+      "relative": "web/src/eta/dist.ts",
+      "bytes": 10928,
+      "sha256": "bdca7acfe2b8d8b56d5dc4fc853c02b7009ed8534422c7b7647640d70b64e6a4"
+    },
+    {
+      "relative": "web/src/eta/filter.ts",
+      "bytes": 76459,
+      "sha256": "28b5fb0a10a8764d3d60d2b62a34808daee9dd035cf269a13fdb0cdd6e5b7d2f"
+    },
+    {
+      "relative": "web/src/eta/index.ts",
+      "bytes": 13783,
+      "sha256": "8ee05196a0bfd1de935d25b534854c896fe3e1d4754acd690737e4ec6c1af071"
+    },
+    {
+      "relative": "web/src/eta/lap.ts",
+      "bytes": 7371,
+      "sha256": "dd4f89623a4e99c570e558c3520be078af3976d0348881caeb2396e2d16e48e0"
+    },
+    {
+      "relative": "web/src/eta/params.ts",
+      "bytes": 19204,
+      "sha256": "4563ed758686ae3dd78ca9aec167ac424539e1de99a2dc234315a82e1163ed2c"
+    },
+    {
+      "relative": "web/src/eta/release.ts",
+      "bytes": 4256,
+      "sha256": "29046e91cd297d59e8275e23c52a035120db21a221ff99756d33d7cafb9022da"
+    },
+    {
+      "relative": "web/src/eta/ring.ts",
+      "bytes": 12730,
+      "sha256": "7635f943527cd29b295e1101e6e48d4fb2d5aa47cb53bf574c33f5ed90fac225"
+    },
+    {
+      "relative": "web/src/eta/tables.ts",
+      "bytes": 18160,
+      "sha256": "9ef38d7982b6f600950bce9afab133dbda0a9273ccbf0f90ed3c0fa4bf3a4f13"
+    },
+    {
+      "relative": "web/src/etaSource.ts",
+      "bytes": 9458,
+      "sha256": "42ee367ef729bfe21c38dcff96fcb9a90faf82ae198e3b6b674d3216a82cd629"
+    },
+    {
+      "relative": "web/src/geo.ts",
+      "bytes": 13285,
+      "sha256": "54043d0fc76260c756c20a62d7dabf2ecce5059b8e67ff1b2b44e52ba5a67c9b"
+    },
+    {
+      "relative": "web/src/liveAnchor.ts",
+      "bytes": 37511,
+      "sha256": "0ca4073d897f1cc5d010d50f4adba31da4c7dc61b459ed06f109597763f07127"
+    },
+    {
+      "relative": "web/src/map-data.ts",
+      "bytes": 36784,
+      "sha256": "0114ea86f67a534259ed12c7b1464ad70615ff0593fb9d3c16c947f5c0f2733d"
+    },
+    {
+      "relative": "web/src/routes.ts",
+      "bytes": 8982,
+      "sha256": "df13eed4a1d70391ccb7788e915a4ad20dc22d491e07b63ea172d63d74c2fa13"
+    },
+    {
+      "relative": "web/src/schedule.ts",
+      "bytes": 26395,
+      "sha256": "6ebed33a514b95b55fa7275c76ba01c58fa39ecaf36d41d6769059f5023ae525"
+    }
+  ],
+  "exactSourceBytes": true,
+  "relativeLayoutPreserved": true,
+  "runtimeClosure": "25 runtime modules +3 committed program bundles; remaining files preserve erased types and declaration resolution.",
+  "noCurrentEtaImports": true
+}

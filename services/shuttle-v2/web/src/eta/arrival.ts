@@ -643,6 +643,8 @@ export function mixedQuantiles(parts: { s: Float64Array; w: number }[], ps: read
 }
 
 export interface Floors {
+  /** Exact pre-ceiling pricing law. Older checkpoints have no key. */
+  pricingLawKey?: string;
   /**
    * Per (stopIdx, occurrence): the remaining seconds last SHOWN while the bus
    * stood, and the stand it was shown under. The shown remainder may pause but
@@ -658,6 +660,44 @@ export interface Floors {
    * armed (an entry written by hand, or by a client that predates the flag).
    */
   map: Map<number, { eta: number; standingAt: number; since: number; armed?: boolean }>;
+}
+
+/** Runtime snapshots must not reuse wire output from a different ceiling recipe. */
+export const PRICING_LAW_SCHEMA = "resolved-pre-ceiling-v1";
+
+/**
+ * Value identity of the law whose uncorrected seconds a ceiling remembers.
+ * Fresh payload/table objects do not change it. An hourly stand, class-pool,
+ * drive, lap or release update does. No rounded cache fingerprint is used.
+ *
+ * Elapsed time, belief mass and lap-age observations are conditioning under
+ * the law, not a new law. Route/horizon corrections and interval widening run
+ * AFTER the ceiling; keeping their inputs out preserves that stage boundary.
+ * Resolve this before reusing caller-owned Floors. The low-level priceRoute
+ * API still leaves explicit floor ownership to its caller.
+ */
+export function pricingLawKey(ring: Ring, tables: RouteTables, stops: readonly number[], tau: number): string {
+  const values = (v: ArrayLike<number>) => Array.from(v);
+  const distribution = (d: Dist | null) => d === null ? null
+    : [values(d.xs), values(d.ps), d.tailHazard];
+  return JSON.stringify([
+    PRICING_LAW_SCHEMA,
+    // Include actual topology, not just the ring's rounded geometry cache key.
+    [ring.key, ring.routeId, ring.N, ring.C, ring.loopM, [...stops], [...ring.stops], [...ring.order],
+      values(ring.lat), values(ring.lon), values(ring.metre), values(ring.leg), values(ring.frac),
+      values(ring.stopCell), values(ring.legM), values(ring.nearStop), values(ring.approachOf),
+      ring.stopCoords?.map(p => [p.lat, p.lon]) ?? null, ring.repaired, ring.bridged],
+    tables.stops.map(s => [distribution(s.stand), s.layover, s.pStop,
+      s.lap ? [s.lap.b, s.lap.m, s.lap.n] : null,
+      // Release support gates the resolved fit, but does not price an accepted
+      // fit. Lap n above is different: lapFactor uses n / (n + K).
+      s.release ? [s.release.stopId, s.release.referenceLap, [...s.release.coefficients]] : null]),
+    tables.hops.map(h => [distribution(h.drive), h.includesStand, distribution(h.hidden), distribution(h.free)]),
+    tau, sampledFutureLap, releaseModelEnabled(), armOnStanding,
+  ], (_key, value: unknown) => {
+    if (typeof value === "number" && !Number.isFinite(value)) throw Error("Non-finite pricing law");
+    return value;
+  });
 }
 
 /**

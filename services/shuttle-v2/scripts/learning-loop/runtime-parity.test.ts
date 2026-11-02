@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { ServerEta } from '../../src/server/serverEta';
-import { ROUTE_LISTS } from '../../web/src/routes';
+import { deserialize } from 'node:v8';
+// These unchanged recorded oracles belong to the pinned historical ae3 domain.
+import { LegacyRecordedServerEta as ServerEta, LEGACY_ROUTE_LISTS as ROUTE_LISTS } from './__fixtures__/legacyRecordedEta';
 
 const fixture=JSON.parse(gunzipSync(fs.readFileSync(new URL('./__fixtures__/runtime-parity-20261027.json.gz',import.meta.url))).toString());
 const frame=fixture.sourceFrame,payload=JSON.parse(frame.json);
@@ -15,6 +16,8 @@ const purple=(wire:any)=>(wire?.rows??[]).flatMap((r:any,i:number)=>{
 function replay(arm:'linux'|'mac'){
  expect(hash(frame.json)).toBe(frame.sha256);expect(hash(frame.contextJson)).toBe(frame.contextSha256);
  const receipt=fixture.runtimes[arm],bytes=Buffer.from(receipt.data,'base64');expect(hash(bytes)).toBe(receipt.sha256);
+ const saved=deserialize(gunzipSync(bytes));
+ expect(saved.at).toBeLessThan(frame.at);expect(saved.cache.lastVersion).toBeLessThan(frame.at);
  const engine=new ServerEta({routes:ROUTE_LISTS.map(r=>r.label)});
  expect(engine.restoreEvaluation(gunzipSync(bytes),'runtime',frame.at)).toBe(true);
  expect(engine.useEvaluationContext(JSON.parse(frame.contextJson))).toBe(true);

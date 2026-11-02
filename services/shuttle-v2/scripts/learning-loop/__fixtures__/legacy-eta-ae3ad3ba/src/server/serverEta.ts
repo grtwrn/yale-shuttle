@@ -1,0 +1,510 @@
+/** Shared live forecasts: one stateful estimator, stepped by collector GPS polls.
+ * Browsers consume its arrivals, route position and standing state together.
+ * A local checkpoint preserves tracking across short service restarts.
+ * Missing/stale output is unavailable to riders; requests never advance belief.
+ */
+
+import { anchorKeyFor, anchorIndexOnList, resolveStandingStop } from "../../web/src/liveAnchor.js";
+import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes, type UpcomingArrival } from "../../web/src/arrivals.js";
+import { registerRoutePaths } from "../../web/src/anchor.js";
+import { BELIEF_STALE_MS } from "../../web/src/eta/filter.js";
+import { applyModelParams } from "../../web/src/eta/params.js";
+import type { AnchorStore } from "../../web/src/eta/index.js";
+import type { BusData } from "../../web/src/map-data.js";
+import type { LatLon } from "../../web/src/geo.js";
+import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes.js";
+import { ETA_MAX_AGE_MS } from '../../web/src/etaSource.js';
+import { serialize, deserialize } from 'node:v8';
+import { applyK10Trial } from './k10Trial.js';
+import { applyBlueK10Trial } from './blueK10Trial.js';
+import { applyRouteK10Trial } from './routeK10Trial.js';
+import type { K10Evidence } from '../collector/k10Clock.js';
+import { validEvaluationContext, type EtaEvaluationContext } from './etaEvaluationContext.js';
+
+export interface EvaluationForecast extends UpcomingArrival {
+  forecastSource: 'base' | 'fixed-k10';
+  conformalBounds: { low: boolean; high: boolean };
+}
+
+export const RECOVERY_MAX_AGE_MS = 120_000;
+export interface EtaCheckpointStore { load(): Uint8Array | null; save(value: Uint8Array): void }
+
+/** Serve the network by default; an explicit allowlist can withhold routes. */
+export const DEFAULT_SERVER_ETA_ROUTES: readonly string[] = ROUTE_LISTS.map(c => c.label);
+
+/** How long a bus may be absent before its belief is dropped. */
+export const BELIEF_EVICT_MS = BELIEF_STALE_MS;
+
+/** The `/api/buses` fields the estimator reads. Structurally what the client gets. */
+export interface EtaPayloadView {
+  buses: BusData[];
+  routes: Record<string, number[]>;
+  stop_coords: Record<number, LatLon>;
+  segments: SegmentTimes;
+  dwells: DwellTimes;
+  route_paths?: Record<string, readonly (readonly [number, number])[]>;
+  model_params?: unknown;
+}
+
+/**
+ * The served answer, ADDITIVE and compact.
+ *
+ * A row per (bus, stop) as a fixed-shape array rather than an object: the
+ * estimator returns up to two entries per bus per stop on its route (this lap
+ * and the next, which is what lets a single-bus line answer "next in 54 min"),
+ * so an object-per-row shape spends more bytes on repeated keys than on
+ * numbers. `buses` is the index space the rows point into.
+ *
+ * `[busIndex, stopId, etaSec, lowSec, highSec, stopsAhead, estimated, departNow, lowFloor]`
+ */
+export type { ServerEtaRow, ServerEtaWire } from "../../web/src/etaSource.js";
+import type { ServerEtaRow, ServerEtaWire, ServerEtaBus, ServerEtaRepeatVisit } from "../../web/src/etaSource.js";
+
+export interface ServerEtaStats {
+  restored: number;
+  forecastAt: number | null;
+  checkpointAt: number | null;
+  /** Beliefs currently held, one per (route label, bus name). */
+  beliefs: number;
+  /** Collector observation versions stepped. */
+  steps: number;
+  /** Exceptions swallowed. Non-zero means the field is absent, never that the poll broke. */
+  failures: number;
+  /** Wall-clock of the last full step, ms. */
+  lastStepMs: number;
+  /** Rows in the last served answer. */
+  rows: number;
+}
+
+type Log = (event: string, fields: Record<string, unknown>) => void;
+
+/** Enabled by default. Setting 0 withholds live ETAs without stopping GPS. */
+export function serverEtaFromEnv(env: NodeJS.ProcessEnv = process.env, log?: Log): ServerEta | null {
+  if (env.SHUTTLE_SERVER_ETA === "0") return null;
+  const raw = env.SHUTTLE_SERVER_ETA_ROUTES?.trim();
+  const routes = !raw
+    ? DEFAULT_SERVER_ETA_ROUTES
+    : raw === "*"
+      ? ROUTE_LISTS.map((c) => c.label)
+      : raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const opts: { routes: readonly string[]; log?: Log } = { routes };
+  if (log) opts.log = log;
+  return new ServerEta(opts);
+}
+
+export class ServerEta {
+  /** One belief per bus, keyed exactly as the client keys it: `anchorKeyFor(label, busName)`. */
+  private readonly store: AnchorStore = new Map();
+  /** Last poll each key was present in, for eviction. */
+  private readonly seenAt = new Map<string, number>();
+  private readonly served: ReadonlySet<string>;
+  private readonly log: Log;
+
+  private lastVersion = -1;
+  private wire: ServerEtaWire | null = null;
+  private trialWire: ServerEtaWire | null = null;
+  private trialEvidence: ((now: number) => ReadonlyMap<string, K10Evidence>) | undefined;
+  private steps = 0;
+  private failures = 0;
+  private lastStepMs = 0;
+  private restored = 0;
+  private checkpoint: EtaCheckpointStore | undefined;
+  private lastSavedAt = -Infinity;
+  private readonly observed = new Map<string, BusData>();
+  private routeStops: Record<string, number[]> = {};
+  private currentBuses: readonly BusData[] = [];
+  private readonly onBaseForecasts: ((rows: readonly UpcomingArrival[]) => void) | undefined;
+  private computedAt: number | null = null;
+  private stepReady = false;
+  private lastModelParams: unknown = null;
+  private context: EtaEvaluationContext | null = null;
+  private replayContext: EtaEvaluationContext | null = null;
+  private evaluationRows: EvaluationForecast[] | null = null;
+  private readonly onServedForecasts: ((rows: readonly EvaluationForecast[]) => void) | undefined;
+
+  constructor(opts: { routes: readonly string[]; log?: Log; onBaseForecasts?: (rows: readonly UpcomingArrival[]) => void;
+    onServedForecasts?: (rows: readonly EvaluationForecast[]) => void }) {
+    this.served = new Set(opts.routes);
+    this.log = opts.log ?? (() => {});
+    this.onBaseForecasts = opts.onBaseForecasts;
+    this.onServedForecasts = opts.onServedForecasts;
+  }
+
+  evaluationClock(): number | null { return this.stepReady ? this.computedAt : null; }
+  evaluationContext(): EtaEvaluationContext | null { return this.context ? structuredClone(this.context) : null; }
+  evaluationForecasts(): readonly EvaluationForecast[] { return this.evaluationRows ?? []; }
+  evaluationWire(buses: readonly BusData[], now: number): ServerEtaWire | null {
+    const wire = this.filterToLive(this.trialWire, buses, now);
+    return wire ? { ...wire, servedAt: now } : null;
+  }
+
+  /** Replay configuration belongs to this engine, never to process.env or
+   * another arm. The next observation must use this context's exact clock. */
+  useEvaluationContext(context: EtaEvaluationContext): boolean {
+    if (!validEvaluationContext(context, context?.at)) return false;
+    this.replayContext = structuredClone(context); return true;
+  }
+
+  /** Read-only history for a new fork, or this engine's own complete cache for
+   * restart recovery. One serialization preserves lastObs/observed identity. */
+  captureEvaluation(kind: 'history' | 'runtime' = 'history'):
+    { at: number; modelParams: unknown; bytes: Uint8Array } | null {
+    if (!this.stepReady || this.computedAt === null || !validEvaluationContext(this.context, this.computedAt)) return null;
+    try {
+      const bytes = serialize({ v: 1, kind, at: this.computedAt, modelParams: this.lastModelParams,
+        served: [...this.served], store: this.store, seen: this.seenAt, observed: this.observed, context: this.context,
+        ...(kind === 'runtime' ? { cache: { lastVersion: this.lastVersion, wire: this.wire, trialWire: this.trialWire,
+          routeStops: this.routeStops, currentBuses: this.currentBuses, steps: this.steps, failures: this.failures,
+          evaluationRows: this.evaluationRows } } : {}) });
+      if (bytes.byteLength > 4 * 1024 * 1024) return null;
+      return { at: this.computedAt, modelParams: structuredClone(this.lastModelParams), bytes };
+    } catch { return null; }
+  }
+
+  /** A fork inherits only information available before its first forecast.
+   * Resume restores that arm's own forecasts, never the other arm's output. */
+  restoreEvaluation(bytes: Uint8Array, kind: 'history' | 'runtime', now = Date.now(),
+    maxAgeMs = kind === 'history' ? RECOVERY_MAX_AGE_MS : 600000): boolean {
+    try {
+      if (!bytes.byteLength || bytes.byteLength > 4 * 1024 * 1024 || !Number.isFinite(now)
+        || !Number.isFinite(maxAgeMs) || maxAgeMs < 0) return false;
+      const saved = deserialize(Buffer.from(bytes));
+      if (saved.v !== 1 || saved.kind !== kind || !Number.isFinite(saved.at) || saved.at > now + 5000
+        || now - saved.at > maxAgeMs || !(saved.store instanceof Map) || saved.store.size > 200
+        || !(saved.seen instanceof Map) || saved.seen.size > 400
+        || !(saved.observed instanceof Map) || saved.observed.size > 200
+        || !validEvaluationContext(saved.context, saved.at)
+        || !Array.isArray(saved.served) || JSON.stringify([...saved.served].sort()) !== JSON.stringify([...this.served].sort())) return false;
+      for (const [key, entry] of saved.store) {
+        const b = entry?.belief;
+        if (typeof key !== 'string' || !b || typeof b.ringKey !== 'string'
+          || !(b.p instanceof Float64Array) || !(b.restMask instanceof Uint8Array)
+          || !(b.standLeg instanceof Int32Array) || !(b.zoneKey instanceof Int32Array)
+          || !Number.isFinite(b.seenAt) || !Number.isFinite(saved.seen.get(key))) return false;
+      }
+      for (const [key, bus] of saved.observed) if (typeof key !== 'string' || !bus || typeof bus.bus_name !== 'string'
+        || !Number.isFinite(bus.route_id) || !Number.isFinite(bus.lat) || !Number.isFinite(bus.lon)
+        || (bus.observed_at !== undefined && !Number.isFinite(bus.observed_at))) return false;
+      const wireValid = (w: any) => w === null || Boolean(w && w.v === 2 && Number.isFinite(w.at) && Number.isFinite(w.servedAt)
+        && Array.isArray(w.buses) && w.buses.length <= 200 && Array.isArray(w.rows) && w.rows.length <= 30000
+        && w.rows.every((r: any) => Array.isArray(r) && r.length === 9 && r.every(Number.isFinite)));
+      const cache = saved.cache;
+      const evaluationRowsValid = (rows: any) => rows === null || (Array.isArray(rows) && rows.length <= 30000
+        && rows.every(r => r && typeof r.busName === 'string' && typeof r.routeLabel === 'string'
+          && [r.stopId, r.stopsAhead].every(Number.isSafeInteger) && [r.eta, r.low, r.high].every(Number.isFinite)
+          && typeof r.conformalBounds?.low === 'boolean' && typeof r.conformalBounds?.high === 'boolean'
+          && (r.forecastSource === 'base' || (r.forecastSource === 'fixed-k10' && !r.conformalBounds.low && !r.conformalBounds.high))));
+      if (kind === 'runtime' && (!cache || !Number.isFinite(cache.lastVersion) || !wireValid(cache.wire) || !wireValid(cache.trialWire)
+        || !cache.routeStops || typeof cache.routeStops !== 'object' || !Array.isArray(cache.currentBuses)
+        || !Number.isSafeInteger(cache.steps) || cache.steps < 0 || !Number.isSafeInteger(cache.failures) || cache.failures < 0
+        || !evaluationRowsValid(cache.evaluationRows))) return false;
+      // Validate the entire snapshot before replacing any live memory.
+      this.store.clear(); this.seenAt.clear(); this.observed.clear();
+      for (const [key, entry] of saved.store) this.store.set(key, entry);
+      for (const [key, at] of saved.seen) this.seenAt.set(key, at);
+      for (const [key, bus] of saved.observed) this.observed.set(key, bus);
+      this.computedAt = saved.at; this.lastModelParams = saved.modelParams; this.stepReady = true;
+      this.context = saved.context; this.replayContext = null;
+      this.restored = saved.store.size;
+      if (kind === 'runtime') {
+        this.lastVersion = cache.lastVersion; this.wire = cache.wire; this.trialWire = cache.trialWire;
+        this.routeStops = cache.routeStops; this.currentBuses = cache.currentBuses;
+        this.steps = cache.steps; this.failures = cache.failures;
+        this.evaluationRows = cache.evaluationRows;
+      } else {
+        // The local replay uses model timestamps as its observation version.
+        this.lastVersion = saved.at; this.wire = null; this.trialWire = null;
+        this.routeStops = {}; this.currentBuses = [];
+        this.evaluationRows = null;
+      }
+      return true;
+    } catch { return false; }
+  }
+
+  /** Versioned local checkpoint preserves the posterior and display history
+   * across a short deploy. An old/corrupt checkpoint is discarded atomically. */
+  useCheckpoint(checkpoint: EtaCheckpointStore, now = Date.now()): void {
+    this.checkpoint = checkpoint;
+    try {
+      const bytes = checkpoint.load();
+      if (!bytes) return;
+      const saved = deserialize(Buffer.from(bytes)) as { v: number; at: number; store: AnchorStore; seen: Map<string, number> };
+      if (saved.v !== 1 || !Number.isFinite(saved.at) || saved.at > now
+        || now - saved.at > RECOVERY_MAX_AGE_MS || !(saved.store instanceof Map) || !(saved.seen instanceof Map)
+        || saved.store.size > 200) return;
+      for (const [key, entry] of saved.store) {
+        const b = entry.belief;
+        if (typeof key !== 'string' || !b || typeof b.ringKey !== 'string'
+          || !(b.p instanceof Float64Array) || !(b.restMask instanceof Uint8Array)
+          || !(b.standLeg instanceof Int32Array) || !(b.zoneKey instanceof Int32Array)
+          || !Number.isFinite(b.seenAt) || !Number.isFinite(saved.seen.get(key))) return;
+      }
+      for (const [key, entry] of saved.store) this.store.set(key, entry);
+      for (const [key, at] of saved.seen) this.seenAt.set(key, at);
+      this.restored = saved.store.size;
+    } catch (err) { this.log('server_eta.checkpoint_load_failed', { error: String(err) }); }
+  }
+
+  private saveCheckpoint(now: number): void {
+    if (!this.checkpoint || now - this.lastSavedAt < 30_000) return;
+    try {
+      this.checkpoint.save(serialize({ v: 1, at: now, store: this.store, seen: this.seenAt }));
+      this.lastSavedAt = now;
+    } catch (err) { this.log('server_eta.checkpoint_save_failed', { error: String(err) }); }
+  }
+
+  /**
+   * Step the beliefs for this collector observation version and return the field to
+   * attach to `/api/buses`, or null when there is nothing to say.
+   *
+   * Never throws. A same-`version` call re-serves the rows already computed,
+   * filtered to buses still in the payload — see constraint 2 in the header.
+   */
+  useK10Trial(source: (now: number) => ReadonlyMap<string, K10Evidence>): void { this.trialEvidence = source; }
+
+  contribute(payload: EtaPayloadView, version: number, now: number, trial = false): ServerEtaWire | null {
+    this.currentBuses = payload.buses;
+    try {
+      if (version !== this.lastVersion) {
+        this.lastVersion = version;
+        this.stepReady = false;
+        this.wire = this.recompute(payload, now);
+        this.computedAt = now;
+        this.lastModelParams = structuredClone(payload.model_params ?? null);
+        this.trialWire = this.wire;
+        if (this.replayContext && this.replayContext.at !== now) throw Error('Replay context clock differs from model observation');
+        const policy = this.replayContext?.trial;
+        const source = policy ? (policy.enabled ? () => new Map(policy.evidence) : undefined) : this.trialEvidence;
+        const route = policy?.route ?? (process.env.SHUTTLE_ROUTE_K10 !== '0');
+        const blue = policy?.blue ?? (process.env.SHUTTLE_BLUE_K10 !== '0');
+        this.context = { v: 1, at: now, trial: { enabled: Boolean(source), route, blue, evidence: [] } };
+        if (this.wire && source) {
+          try {
+            const evidence = source(now);
+            try {
+              this.context.trial.evidence = structuredClone([...evidence]);
+              if (!validEvaluationContext(this.context, now)) this.context = null;
+            } catch { this.context = null; }
+            const forecastKey = (label: string, name: string, stop: number, hops: number) => `${label}|${name.replace(/^#/, '')}|${stop}|${hops}`;
+            const raw = this.evaluationRows && new Map(this.evaluationRows.map(r => [forecastKey(r.routeLabel, r.busName, r.stopId, r.stopsAhead), r]));
+            const onReplace = raw ? (row: ServerEtaRow, p: { eta: number; low: number; high: number; distribution: number[] }) => {
+              const bus = this.wire!.buses[row[0]]!;
+              const target = raw.get(forecastKey(bus[1], bus[0], row[1], row[5]));
+              if (!target) throw Error('Missing raw row for served route adjustment');
+              Object.assign(target, p, { conformalBounds: { low: false, high: false },
+                intervalConformal: { low: false, high: false }, forecastSource: 'fixed-k10' });
+            } : undefined;
+            this.trialWire = applyK10Trial(this.wire, evidence, payload.routes['3'], undefined, onReplace);
+            if (route) this.trialWire = applyRouteK10Trial(this.trialWire, evidence, payload.routes, blue, onReplace);
+            else if (blue) this.trialWire = applyBlueK10Trial(this.trialWire, evidence, payload.routes, undefined, onReplace);
+          }
+          catch (err) { this.context = null; this.log('server_eta.k10_failed', { error: String(err) }); }
+        }
+        this.onServedForecasts?.(this.evaluationRows ?? []);
+        this.stepReady = true;
+        this.saveCheckpoint(now);
+      }
+      const wire = this.filterToLive(trial ? this.trialWire : this.wire, payload.buses, now);
+      return wire ? { ...wire, servedAt: now } : null;
+    } catch (err) {
+      this.failures++;
+      this.wire = null;
+      this.trialWire = null;
+      this.log("server_eta.step_failed", {
+        error: err instanceof Error ? err.message : String(err),
+        failures: this.failures,
+      });
+      return null;
+    }
+  }
+
+  stats(): ServerEtaStats {
+    return {
+      restored: this.restored,
+      forecastAt: this.wire?.at ?? null,
+      checkpointAt: Number.isFinite(this.lastSavedAt) ? this.lastSavedAt : null,
+      beliefs: this.store.size,
+      steps: this.steps,
+      failures: this.failures,
+      lastStepMs: this.lastStepMs,
+      rows: this.wire?.rows.length ?? 0,
+    };
+  }
+
+  /** The lines this engine serves. Exposed for the tests and for /healthz-style reporting. */
+  servedRoutes(): string[] {
+    return [...this.served];
+  }
+
+  /** Read the same source occurrence as the displayed ETA, without stepping
+   * the estimator. Used only to anchor historical fleet comparisons. */
+  historyPosition(label: string, busName: string, stopId: number, etaSec: number, now: number, trial = false) {
+    const wire = this.filterToLive(trial ? this.trialWire : this.wire, this.currentBuses, now);
+    if (!wire || now < wire.at || now - wire.at >= ETA_MAX_AGE_MS) return null;
+    const name = busName.replace(/^#/, '');
+    const bi = wire.buses.findIndex(b => b[0] === name && b[1] === label);
+    const tracked = wire.buses[bi];
+    const cfg = ROUTE_LISTS.find(c => c.label === label);
+    if (!tracked || !cfg || tracked[2] < 0) return null;
+    const bus = [...this.observed.values()].find(b => b.bus_name.replace(/^#/, '') === name && cfg.busRouteIds.includes(b.route_id));
+    if (!bus || (bus.observed_at !== undefined && now - bus.observed_at >= ETA_MAX_AGE_MS)) return null;
+    const rows = wire.rows.filter(r => r[0] === bi && r[1] === stopId);
+    const elapsed = (now - wire.at) / 1000;
+    rows.sort((a, b) => Math.abs(Math.max(0, a[2] - elapsed) - etaSec) - Math.abs(Math.max(0, b[2] - elapsed) - etaSec));
+    const row = rows[0];
+    if (!row || Math.abs(Math.max(0, row[2] - elapsed) - etaSec) > 90) return null;
+    return { bus, sequence: mergedRouteStops(cfg, this.routeStops), index: tracked[2], standing: tracked[3], stopsAhead: row[5] };
+  }
+
+  private recompute(payload: EtaPayloadView, now: number): ServerEtaWire | null {
+    const t0 = Date.now();
+    this.routeStops = payload.routes;
+    // The published polylines are a module-level registration on the client
+    // (the shell calls this once per poll before anything reads a bus); the
+    // server has one process and does the same, before anything is priced.
+    registerRoutePaths(payload.route_paths ?? {});
+    // The published parameter set, applied exactly where the client applies it
+    // (TransitMap's poll handler). Without this a published fit would move
+    // every browser and leave the server on its compiled constants.
+    applyModelParams(payload.model_params);
+
+    // EVERY stop on EVERY route is a target, not just the served ones: the
+    // belief is what has to stay warm, and a route left unstepped until it is
+    // allowlisted would start cold on the day it is widened to.
+    const targets: number[] = [];
+    const seen = new Set<number>();
+    for (const rid in payload.routes) {
+      for (const sid of payload.routes[rid]!) {
+        if (!seen.has(sid)) { seen.add(sid); targets.push(sid); }
+      }
+    }
+
+    // An absent bus can remain on the map during the collector's 120 s TTL.
+    // It must not gain fresh evidence from other vehicles' successful polls.
+    const current = payload.buses.filter(b => b.observed_at === undefined || now - b.observed_at < ETA_MAX_AGE_MS);
+    const tracked = current.map(bus => {
+      const key = `${bus.route_id}|${bus.bus_name}`;
+      const old = this.observed.get(key);
+      if (old && bus.observed_at !== undefined && old.observed_at === bus.observed_at) return old;
+      this.observed.set(key, bus);
+      return bus;
+    });
+    for (const [key, bus] of this.observed) {
+      if (bus.observed_at !== undefined && now - bus.observed_at > BELIEF_EVICT_MS) this.observed.delete(key);
+    }
+    const arrivals = computeUpcomingArrivals(
+      targets, tracked, payload.routes, payload.stop_coords,
+      payload.segments, now, payload.dwells, this.store, true,
+    );
+    // Shadow evaluation needs the same caller semantics without rounding the
+    // quantiles before interval fitting. Production has no observer installed.
+    this.onBaseForecasts?.(arrivals);
+    this.evaluationRows = this.onServedForecasts
+      ? arrivals.map(row => ({ ...row, conformalBounds: row.intervalConformal ?? { low: true, high: true }, forecastSource: 'base' })) : null;
+
+    this.markSeen(current, now);
+    this.evict(now);
+    this.steps++;
+    this.lastStepMs = Date.now() - t0;
+
+    const index = new Map<string, number>();
+    const buses: ServerEtaBus[] = [];
+    const travel: number[] = [];
+    const rows: ServerEtaRow[] = [];
+    const distributions: number[][] = [];
+    const repeatVisits: ServerEtaRepeatVisit[] = [];
+    for (const a of arrivals) {
+      if (!this.served.has(a.routeLabel)) continue;
+      const k = `${a.routeLabel}|${a.busName}`;
+      let i = index.get(k);
+      if (i === undefined) {
+        i = buses.length;
+        index.set(k, i);
+        const cfg = ROUTE_LISTS.find(c => c.label === a.routeLabel)!;
+        const bus = tracked.find(b => b.bus_name.replace(/^#/, '') === a.busName && cfg.busRouteIds.includes(b.route_id))!;
+        const seq = mergedRouteStops(cfg, payload.routes);
+        buses.push([a.busName, a.routeLabel,
+          anchorIndexOnList(bus, cfg, payload.routes, payload.stop_coords, seq, now, this.store),
+          resolveStandingStop(bus, cfg, payload.routes, payload.stop_coords, now, this.store)]);
+        // The same belief, queried again this poll: read in travel order.
+        travel.push(anchorIndexOnList(bus, cfg, payload.routes, payload.stop_coords, seq, now, this.store, true));
+      }
+      distributions.push((a.distribution ?? []).map(Math.round));
+      rows.push([i, a.stopId, Math.round(a.eta), Math.round(a.low), Math.round(a.high), a.stopsAhead, a.estimated ? 1 : 0, Math.round(a.departNow), Math.round(a.lowFloor)]);
+      if (a.occurrence === 1) repeatVisits.push([i, a.stopId, a.stopsAhead]);
+    }
+    if (rows.length === 0) return null;
+    return { v: 2, at: now, servedAt: now, buses, rows, distributions, travel, repeatVisits };
+  }
+
+  /**
+   * Drop rows for buses that have aged off the live list since the step.
+   *
+   * `getLiveBuses()` applies its 120 s TTL at READ time, so during an upstream
+   * outage the payload's bus array empties while the collector's data version
+   * never moves. Without this the field would keep naming a bus the same
+   * payload no longer carries.
+   */
+  private filterToLive(wire: ServerEtaWire | null, live: readonly BusData[], now: number): ServerEtaWire | null {
+    if (!wire) return null;
+    const names = new Set<string>();
+    for (const b of live) {
+      if (b.observed_at !== undefined && now - b.observed_at >= ETA_MAX_AGE_MS) continue;
+      for (const cfg of ROUTE_LISTS) {
+        if (cfg.busRouteIds.includes(b.route_id)) names.add(`${cfg.label}|${b.bus_name.replace(/^#/, '')}`);
+      }
+    }
+    if (wire.buses.every((b) => names.has(`${b[1]}|${b[0]}`))) return wire;
+    const keep = new Set<number>();
+    wire.buses.forEach((b, i) => { if (names.has(`${b[1]}|${b[0]}`)) keep.add(i); });
+    if (keep.size === 0) return null;
+    // Reindex rather than leave holes, so `buses` stays the row index space.
+    const remap = new Map<number, number>();
+    const buses: ServerEtaBus[] = [];
+    for (const i of [...keep].sort((a, b) => a - b)) {
+      remap.set(i, buses.length);
+      buses.push(wire.buses[i]!);
+    }
+    const rows = wire.rows
+      .filter((r) => remap.has(r[0]))
+      .map((r) => [remap.get(r[0])!, ...r.slice(1)] as unknown as ServerEtaRow);
+    const distributions = wire.distributions?.filter((_, i) => remap.has(wire.rows[i]![0]));
+    const travel = wire.travel?.filter((_, i) => remap.has(i));
+    const repeatVisits = wire.repeatVisits?.filter(r => remap.has(r[0]))
+      .map(r => [remap.get(r[0])!, r[1], r[2]] as ServerEtaRepeatVisit);
+    return { ...wire, buses, rows, ...(distributions ? { distributions } : {}), ...(travel ? { travel } : {}),
+      ...(repeatVisits ? { repeatVisits } : {}) };
+  }
+
+  /**
+   * `bus_name` is the identity, never `bus_id` — TransLoc reissues the id per
+   * service block (~1,000 ids for 50 buses in 30 days). The key is built by
+   * the same rule `computeUpcomingArrivals` uses internally, so what is marked
+   * seen here is exactly what was stepped there, including a bus temporarily
+   * off its route (which `isBusOnRoute` skips but which must not be evicted).
+   */
+  private markSeen(buses: readonly BusData[], now: number): void {
+    for (const bus of buses) {
+      for (const cfg of ROUTE_LISTS) {
+        if (cfg.busRouteIds.includes(bus.route_id)) {
+          this.seenAt.set(anchorKeyFor(cfg.label, bus.bus_name), now);
+        }
+      }
+    }
+  }
+
+  private evict(now: number): void {
+    const cutoff = now - BELIEF_EVICT_MS;
+    for (const [key, at] of this.seenAt) {
+      if (at >= cutoff) continue;
+      this.seenAt.delete(key);
+      this.store.delete(key);
+    }
+    // A key in the store that was never marked seen cannot happen through
+    // `contribute`, but a store that outlives a topology change could strand
+    // one; drop anything the seen map has no record of at all.
+    for (const key of this.store.keys()) {
+      if (!this.seenAt.has(key)) this.store.delete(key);
+    }
+  }
+}

@@ -29,7 +29,7 @@
 import { routePathFor } from "../anchor";
 import type { LatLon } from "../geo";
 import type { BusData } from "../map-data";
-import { priceRoute, type Floors, type StopArrival } from "./arrival";
+import { priceRoute, pricingLawKey, type Floors, type StopArrival } from "./arrival";
 import { stepBelief, type Belief, type FilterBus } from "./filter";
 import { ringFor, setRingProfile, type Ring } from "./ring";
 import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
@@ -203,7 +203,10 @@ export function arrivalsForBus(
       }
     }
     releasePin = e.releasePin;
-    if (!e.floors) e.floors = { map: new Map() };
+    const law = pricingLawKey(ring, tables, ring.stops, tau);
+    // A ceiling is history under one resolved law, not a cap on later laws.
+    // Drop legacy lawless floors once, retaining the posterior/rest/history.
+    if (e.floors?.pricingLawKey !== law) e.floors = { pricingLawKey: law, map: new Map() };
     floors = e.floors;
   }
   const rows = priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, lapAgesOf(bus), includeDistribution, releasePin);

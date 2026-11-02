@@ -1,0 +1,155 @@
+// Server snapshots belong to a specific payload, never to hypothetical/replay
+// inputs. No estimator code runs here. Empty/stale live snapshots fail closed.
+import type { UpcomingArrival } from './arrivals';
+import type { StandingAnswer } from './liveAnchor';
+import type { BusData } from './map-data';
+import { ROUTE_LISTS } from './routes';
+import { isRouteScheduledAt } from './schedule';
+
+export const ETA_MAX_AGE_MS = 45_000;
+export type ServerEtaRow = readonly [number, number, number, number, number, number, 0 | 1, number, number];
+export type ServerEtaBus = readonly [string, string, number, StandingAnswer | null];
+/** Identity of a repeat canonical call: [busIndex, stopId, stopsAhead].
+ * Independent of row order, including K10's ETA sorting. */
+export type ServerEtaRepeatVisit = readonly [number, number, number];
+export interface ServerEtaWire {
+  v: 2;
+  at: number;
+  servedAt: number;
+  buses: ServerEtaBus[];
+  rows: ServerEtaRow[];
+  /** Raw rows stay intact for evaluation. Live readers withhold only these
+   * speculative return visits when their arrival is outside service hours.
+   * Absence means unknown; never infer a repeat from a duplicated stop ID. */
+  repeatVisits?: ServerEtaRepeatVisit[];
+  /** Optional row-aligned 50-point quantile distributions; old readers ignore it. */
+  distributions?: number[][];
+  /** Optional, aligned with `buses`: the same anchor in TRAVEL order (liveAnchor.ts
+   * `travelSlot`), which differs from `buses[i][2]` only on a pass upstream's list
+   * has no slot for. Old readers ignore it; a reader without it counts from `buses[i][2]`. */
+  travel?: number[];
+  /** Present when K10 is selected (the Red default), including live fallbacks. */
+  trial?: { model: string; changedRows: number; validUntil: number; byRoute?: Record<string, number> };
+}
+interface Snapshot { at: number; rows: UpcomingArrival[]; outsideService: Set<UpcomingArrival>; valid: boolean }
+interface Track { snapshot: Snapshot; index: number; travel: number; standing: StandingAnswer | null }
+const snapshots = new WeakMap<readonly BusData[], Snapshot>();
+const tracks = new WeakMap<object, Map<string, Track>>();
+const colours = new Map(ROUTE_LISTS.map(c => [c.label, c.color]));
+const norm = (s: string) => s.replace(/^#/, '');
+const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+const fresh = (s: Snapshot, now: number) => s.valid && now >= s.at - 5000 && now - s.at < ETA_MAX_AGE_MS;
+
+/** Called before publishing the new bus array to React. Missing/invalid server
+ * output is an unavailable forecast, not permission to invent a local one. */
+export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Date.now()): boolean {
+  const snapshot: Snapshot = { at: receivedAt, rows: [], outsideService: new Set(), valid: false };
+  snapshots.set(buses, snapshot);
+  for (const bus of buses) tracks.set(bus, new Map());
+  const w = raw as ServerEtaWire | null;
+  if (!w || w.v !== 2 || !finite(w.at) || !finite(w.servedAt) || w.at > w.servedAt
+    || !Array.isArray(w.buses) || !Array.isArray(w.rows) || w.buses.length > 200 || w.rows.length > 30_000) return false;
+  // Server observation age plus elapsed client time: no dependency on the
+  // rider's phone clock agreeing with the server clock.
+  snapshot.at = receivedAt - (w.servedAt - w.at);
+  // Malformed travel indices cost only themselves: the anchor is still served.
+  const travel = Array.isArray(w.travel) && w.travel.length === w.buses.length
+    && w.travel.every(n => Number.isInteger(n) && n >= -1) ? w.travel : undefined;
+  const busIndex = new Map<number, { name: string; label: string; colour: string }>();
+  // Optional metadata cannot invalidate the current bus's first pickup.
+  const repeatVisits = Array.isArray(w.repeatVisits) && w.repeatVisits.length <= w.rows.length
+    && w.repeatVisits.every(r => Array.isArray(r) && r.length === 3 && r.every(Number.isInteger)
+      && r[0] >= 0 && r[0] < w.buses.length && r[2] >= 0)
+    ? new Set(w.repeatVisits.map(r => r.join('|'))) : new Set<string>();
+  for (let i = 0; i < w.buses.length; i++) {
+    const b = w.buses[i];
+    if (!Array.isArray(b) || b.length !== 4 || typeof b[0] !== 'string' || typeof b[1] !== 'string'
+      || !Number.isInteger(b[2]) || b[2] < -1 || !colours.has(b[1])) return false;
+    const rest = b[3];
+    if (rest !== null && (!rest || !Number.isInteger(rest.stopId) || !finite(rest.standingSec)
+      || rest.standingSec < 0 || typeof rest.approach !== 'boolean')) return false;
+    const cfg = ROUTE_LISTS.find(c => c.label === b[1])!;
+    const live = buses.filter(x => norm(x.bus_name) === norm(b[0]) && cfg.busRouteIds.includes(x.route_id));
+    // The server may include lines the frontend's service-hours filter hides.
+    if (!live.length) continue;
+    busIndex.set(i, { name: norm(b[0]), label: b[1], colour: colours.get(b[1])! });
+    for (const bus of live) tracks.get(bus)!.set(b[1], { snapshot, index: b[2], travel: travel?.[i] ?? b[2], standing: rest });
+  }
+  for (const [ri, row] of w.rows.entries()) {
+    if (!Array.isArray(row) || row.length !== 9 || !row.every(finite)
+      || !Number.isInteger(row[0]) || row[0] < 0 || row[0] >= w.buses.length
+      || !Number.isInteger(row[1]) || !Number.isInteger(row[5]) || row[5] < 0
+      || (row[6] !== 0 && row[6] !== 1) || row[2] < 0 || row[4] < row[3]
+      || row[7] < 0) return false;
+    const b = busIndex.get(row[0]);
+    if (!b) continue;
+    // Use the server's arrival instant, independent of the phone clock. The
+    // first modeled call stays available even after closing; a visible bus
+    // can still finish its run. No model/scoring rows are removed upstream.
+    let outsideService = false;
+    if (repeatVisits.has([row[0], row[1], row[5]].join('|'))) {
+      const arrival = new Date(w.at + row[2] * 1000);
+      outsideService = finite(arrival.getTime()) && !isRouteScheduledAt(b.label, arrival);
+    }
+    const dots = w.distributions?.length === w.rows.length ? w.distributions[ri] : undefined;
+    const distribution = Array.isArray(dots) && dots.length === 50
+      && dots.every((v, i) => finite(v) && v >= 0 && (i === 0 || v >= dots[i - 1]!)) ? dots : undefined;
+    const arrival: UpcomingArrival = { ...(distribution ? { distribution } : {}), busName: b.name, routeLabel: b.label, color: b.colour, stopId: row[1],
+      eta: row[2], low: row[3], high: row[4], stopsAhead: row[5], estimated: row[6] === 1,
+      departNow: row[7], lowFloor: row[8] };
+    snapshot.rows.push(arrival);
+    if (outsideService) snapshot.outsideService.add(arrival);
+  }
+  snapshot.valid = true;
+  return fresh(snapshot, receivedAt);
+}
+
+/** null means an offline/hypothetical caller, [] means live but unavailable. */
+function readServerArrivals(buses: readonly BusData[], targets: readonly number[], now: number, forServiceWarning: boolean): UpcomingArrival[] | null {
+  const s = snapshots.get(buses);
+  if (!s) return null;
+  if (!fresh(s, now)) return [];
+  const elapsed = Math.max(0, (now - s.at) / 1000);
+  const remaining = (n: number) => Math.max(0, n - elapsed);
+  const ids = new Set(targets);
+  return s.rows.filter(a => ids.has(a.stopId) && (forServiceWarning || !s.outsideService.has(a))).map(a => ({ ...a, eta: remaining(a.eta),
+    ...(a.distribution ? { distribution: a.distribution.map(remaining) } : {}),
+    low: remaining(a.low), high: remaining(a.high), departNow: remaining(a.departNow), lowFloor: remaining(a.lowFloor) }));
+}
+
+export function serverArrivals(buses: readonly BusData[], targets: readonly number[], now: number): UpcomingArrival[] | null {
+  return readServerArrivals(buses, targets, now, false);
+}
+
+/** Retain the caution that the modeled next visit is beyond closing, even
+ * when that speculative return is unavailable for boarding. Warning input
+ * only: never use these rows for pickup selection or an advertised time. */
+export function serverArrivalsForServiceWarning(buses: readonly BusData[], targets: readonly number[], now: number): UpcomingArrival[] | null {
+  return readServerArrivals(buses, targets, now, true);
+}
+
+export function liveEtaAvailable(buses: readonly BusData[], now = Date.now(), routeLabel?: string): boolean {
+  const s = snapshots.get(buses);
+  return !s || (fresh(s, now) && (!routeLabel || s.rows.some(a => a.routeLabel === routeLabel && !s.outsideService.has(a))));
+}
+
+/** undefined means no server source registered; null means no usable track. */
+export function serverTrack(bus: object, label: string, now: number): { index: number; travel: number; standing: StandingAnswer | null } | null | undefined {
+  const m = tracks.get(bus);
+  if (!m) return undefined;
+  const t = m.get(label);
+  if (!t || !fresh(t.snapshot, now)) return null;
+  return { index: t.index, travel: t.travel, standing: t.standing ? { ...t.standing,
+    standingSec: t.standing.standingSec + Math.max(0, (now - t.snapshot.at) / 1000) } : null };
+}
+
+/** Reject raw at-stop overrides for a bus the server cannot currently price. */
+export function liveBusAvailable(bus: BusData, label: string, now: number): boolean {
+  return serverTrack(bus, label, now) !== null;
+}
+
+/** A fresh published track can retain route geometry without promising any
+ * stop forecast. Offline callers and expired/invalid sources supply no proof. */
+export function liveRouteTracked(buses: readonly BusData[], label: string, now = Date.now()): boolean {
+  return buses.some(bus => serverTrack(bus, label, now) != null);
+}
