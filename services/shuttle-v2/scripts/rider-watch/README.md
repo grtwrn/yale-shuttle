@@ -324,3 +324,20 @@ required an explicit arrival instruction beyond 75 m and therefore did not
 cover this far-away count near the target. Source-bound reconstructed inputs
 and the saved screenshot reproduce the discrepancy; the original browser HTTP
 body predates response retention and remains unavailable.
+
+## Waiting identity evidence
+
+Waiting samples include `sampleId` and `waitingIdentity`: the runner binding
+before that sample, the visible expanded itinerary's route/stops/countdown bus
+and boardable bus, and feed-read stability. A unique visible `map-trip-panel`
+must contain the route's `trip-stop-list` and exactly one matching timing-table
+row. Overview rows, hidden/ambiguous panels and missing bus identity stay
+`unknown`. Countdown and boardable buses are recorded separately.
+
+An appended `sample-binding-observed` event joins by `detail.sampleId` and records
+the actual binding applied later in the tick. `after: null` means that path was
+not reached; it is not an unchanged or successful binding. These records reuse
+the existing rolling `events` policy and are not forecast samples or completed
+journeys. Rotation or a missing join leaves coverage unknown. Final journey
+fields and existing boarding/scoring decisions remain unchanged; this evidence
+does not retroactively qualify legacy identity-mixed runs or physical arrivals.
