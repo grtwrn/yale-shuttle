@@ -59,6 +59,21 @@ test('another route request notice cannot exclude the current scheduled pickup',
  await current.poll(approaching,[near126]);
  assert.equal(current.watcher.status().run.phase,'waiting');assert.deepEqual(current.clicks,[]);
 });
+test('waiting samples join before and applied-after bindings in rolling events without extra forecast samples',async()=>{
+ current=await harness(feedWith([near126]));
+ const read=async name=>`🚌 20 min\n🚌 ${name} · 1 stop away\nBOARDUnion Station (S)\nGET OFFBuilding 400`;
+ await current.poll(await read('#127'),[{...near126,bus_name:'#127'}]);
+ const samples=(await fs.readFile(path.join(current.dir,'samples.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ const events=(await fs.readFile(path.join(current.dir,'events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ const sample=samples.at(-1),observation=events.find(e=>e.kind==='sample-binding-observed'&&e.detail.sampleId===sample.sampleId);
+ assert.equal(samples.length,2);assert.equal(samples.filter(s=>s.kind==='sample-binding-observed').length,0);
+ assert.equal(sample.waitingIdentity.runnerBindingBefore.busName,'126');
+ assert.equal(sample.waitingIdentity.selection.state,'unknown');
+ assert.equal(observation.detail.before.busName,'126');assert.equal(observation.detail.after.busName,'127');
+ assert.equal(observation.detail.changed,true);assert.deepEqual(observation.detail.feedResponse,sample.feedResponse);
+ assert.equal(current.watcher.status().run.busName,'#127');
+ assert.equal((await current.journeys()).length,0);
+});
 afterEach(async()=>{await current?.watcher.stop();vi.useRealTimers();if(current)await fs.rm(current.dir,{recursive:true,force:true});current=undefined;});
 
 function rawResponse(raw){return {url:()=> 'https://example.test/api/buses',ok:()=>true,status:()=>200,

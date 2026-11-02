@@ -10,6 +10,7 @@ import path from 'node:path';
 import { appendRolling, maintainImages, saveImage } from '../retention/storage.mjs';
 import { saveCheckpoint } from './checkpoint.mjs';
 import { captureFeedResponse } from './feed-evidence.mjs';
+import { bindingObservation, readWaitingSelection, runnerBinding } from './selection-identity.mjs';
 import * as metrics from '../canary-metrics.mjs';
 import * as rotation from '../canary-rotation.mjs';
 import {BOARD_M,cardBoardsBus,followedBusName,labeledStopId,observedAtStop,oppositePickupCurb,otherPickupOccurrence,pastPickup,quotedRideMin,quotedWaitMin,rideCapMin,selectDestination,WAIT_CAP_MIN,waitCapMin} from './inputs.mjs';
@@ -265,6 +266,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
  };
  const tick=async()=>{
   if(busy||stopped)return;busy=true;
+  let bindingRecord=null;
   try{
    if(!run){
     if(pendingInitialTrip){
@@ -284,6 +286,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    }
    const text=await page.locator('body').innerText();
    const maps=run.phase==='waiting'?await readPauseMaps(page):[];
+   const selectionIdentity=run.phase==='waiting'?await readWaitingSelection(page,run.line.label):null;
    const transferRead=run.transfer&&run.phase==='waiting'?transferWaitingContext(await readTransferSections(page),run.transfer.legs[run.transfer.stage],sampledFeed):null;
    const now=clockNow();
    const feedStable=feed===sampledFeed&&feedAt===sampledFeedAt;
@@ -292,7 +295,10 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    const pauses=confirmPauseMaps(run.mapPauseConflicts,mapPause?.findings??[],now);
    run.mapPauseConflicts=pauses.state;
    run.mapPauseAudit=mapPause?{checked:mapPause.checked,skipped:mapPause.skipped,reason:mapPause.reason,renderWaitMs,sampledAt:new Date(now).toISOString()}:null;
-   const sample={at:new Date(now).toISOString(),runId:run.id,phase:run.phase,feedAgeMs:now-sampledFeedAt,text,buses:sampledFeed.buses,
+   const sampleId=run.id+':'+(run.samples+1);
+   const sample={at:new Date(now).toISOString(),sampleId,runId:run.id,phase:run.phase,feedAgeMs:now-sampledFeedAt,text,buses:sampledFeed.buses,
+    ...(run.phase==='waiting'?{waitingIdentity:{v:1,selection:selectionIdentity,
+     runnerBindingBefore:runnerBinding(run),bindingObservationId:sampleId,feedStableDuringRead:feedStable}}:{}),
     ...(run.transfer?{transfer:{stage:run.transfer.stage+1,leg:run.transfer.legs[run.transfer.stage],ui:transferRead,oneSeatAccuracyExcluded:true}}:{}),
     ...(mapPause?{mapPauseAudit:{...mapPause,maps,renderWaitMs,feedStableDuringRead:feedStable}}:{}),
     ...(run.phase==='riding'?{rideContext:{busName:run.busName,routeLabel:run.line.label,
@@ -300,6 +306,9 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
      exitCoords:sampledFeed.stop_coords?.[run.exitStopId],feedStableDuringTextRead:feedStable}}:{}),
     ...(wire?{server_eta:{v:wire.v,at:wire.at,servedAt:wire.servedAt,buses:wire.buses}}:{}),
     feedResponse:await retainFeed(sampledFeed,run.id)};
+   if(run.phase==='waiting')bindingRecord={runId:run.id,line:run.line.label,sampleId,sampledAt:sample.at,
+    stage:'binding-not-reached',before:sample.waitingIdentity.runnerBindingBefore,after:null,
+    selection:selectionIdentity,feedResponse:sample.feedResponse,feedStableDuringRead:feedStable};
    await appendRolling(ROOT,'samples',sample);run.samples++;
    for(const alert of pauses.alerts){await event('candidate-map-pause',alert);await capture('candidate-map-pause');}
    if(now-feedAt>MAX_FEED_AGE_MS){run.exitInstructionConflict=null;run.rideTrackingConflict=null;if(!run.stale){run.stale=true;await event('candidate-stale-feed',{ageMs:now-feedAt,text});await capture('stale-feed');}await status();return;}run.stale=false;
@@ -360,6 +369,7 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     const name=transferRead?transferRead.busName:followedBusName(text,board,feed.buses,run.line.busRouteIds,run.busName,feed.stop_coords);
     // Do not reuse yesterday's/last poll's stop identity after a parse failure.
     if(board===null || exit===null){
+     if(bindingRecord)bindingRecord.stage='invalid-stop-label';
      run.invalidStopSamples=(run.invalidStopSamples??0)+1;run.excludeAccuracy=true;
      if(!run.invalidStopReported){run.invalidStopReported=true;await event('measurement-invalid-stop-label',{boardLabel,exitLabel});}
      if(now-Date.parse(run.startedAt)>waitCapMs)await finish('invalid-stop-label-excluded');
@@ -368,12 +378,14 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
     // No followed bus (e.g. "Unavailable" with no prediction) only skips this
     // poll: nothing stale is reused, so it does not taint the run.
     if(!name){
+     if(bindingRecord)bindingRecord.stage='followed-bus-unavailable';
      run.unnamedBusSamples=(run.unnamedBusSamples??0)+1;
      if(!run.unnamedBusReported){run.unnamedBusReported=true;await event('waiting-bus-unnamed',{boardLabel,exitLabel});}
      if(now-Date.parse(run.startedAt)>waitCapMs)await finish('waiting-timeout-needs-review');
      await status();return;
     }
     run.boardStopId=board;run.exitStopId=exit;run.busName=name;
+    if(bindingRecord){bindingRecord.stage='binding-applied';bindingRecord.after=runnerBinding(run);}
     const pickupFeed=feed,pickupFeedAt=feedAt;
     const bus=pickupFeed.buses.find(b=>b.bus_name===name&&run.line.busRouteIds.includes(b.route_id));
     const coord=pickupFeed.stop_coords[run.boardStopId];
@@ -572,7 +584,11 @@ export async function attach({page,ctx,clockNow=()=>Date.now(),autoTick=true,ini
    if(run&&(lastPhase!==run.phase||now-lastImage>=60000)){await capture(run.phase+'-'+run.line.label);lastPhase=run.phase;}
    await status();
   }catch(e){await event('harness-error',{message:e.message,stack:e.stack});if(run){run.harnessErrors=(run.harnessErrors??0)+1;if(run.harnessErrors>=3)await finish('harness-failed-excluded');}await status({error:e.message});}
-  finally{busy=false;schedulePickup();}
+  finally{
+   try{if(bindingRecord)await appendRolling(ROOT,'events',bindingObservation(bindingRecord,new Date(clockNow()).toISOString()));}
+   catch(error){console.error('rider-binding-evidence-unavailable',String(error?.message??error).slice(0,256));}
+   finally{busy=false;schedulePickup();}
+  }
  };
  if(initialRun){run={...initialRun,instrumentVersion:initialRun.transfer?'transfer-v1':'inputs-v2',instrumentHandoverAt:new Date(clockNow()).toISOString(),excludeAccuracy:true};await event('harness-resumed','Browser process restored; resumed journey excluded from accuracy scoring');await status();}
  ready=true;if(autoTick)timer=setInterval(()=>tick(),10000);await tick();
