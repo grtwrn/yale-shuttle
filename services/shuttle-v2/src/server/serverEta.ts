@@ -10,6 +10,7 @@ import { registerRoutePaths } from "../../web/src/anchor.js";
 import { BELIEF_STALE_MS } from "../../web/src/eta/filter.js";
 import { applyModelParams } from "../../web/src/eta/params.js";
 import type { AnchorStore } from "../../web/src/eta/index.js";
+import { PRICING_LAW_SCHEMA } from "../../web/src/eta/arrival.js";
 import type { BusData } from "../../web/src/map-data.js";
 import type { LatLon } from "../../web/src/geo.js";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes.js";
@@ -151,7 +152,7 @@ export class ServerEta {
     { at: number; modelParams: unknown; bytes: Uint8Array } | null {
     if (!this.stepReady || this.computedAt === null || !validEvaluationContext(this.context, this.computedAt)) return null;
     try {
-      const bytes = serialize({ v: 1, kind, at: this.computedAt, modelParams: this.lastModelParams,
+      const bytes = serialize({ v: 1, kind, pricingLawSchema: PRICING_LAW_SCHEMA, at: this.computedAt, modelParams: this.lastModelParams,
         served: [...this.served], store: this.store, seen: this.seenAt, observed: this.observed, context: this.context,
         ...(kind === 'runtime' ? { cache: { lastVersion: this.lastVersion, wire: this.wire, trialWire: this.trialWire,
           routeStops: this.routeStops, currentBuses: this.currentBuses, steps: this.steps, failures: this.failures,
@@ -169,7 +170,9 @@ export class ServerEta {
       if (!bytes.byteLength || bytes.byteLength > 4 * 1024 * 1024 || !Number.isFinite(now)
         || !Number.isFinite(maxAgeMs) || maxAgeMs < 0) return false;
       const saved = deserialize(Buffer.from(bytes));
-      if (saved.v !== 1 || saved.kind !== kind || !Number.isFinite(saved.at) || saved.at > now + 5000
+      if (saved.v !== 1 || saved.kind !== kind
+        || kind === 'runtime' && saved.pricingLawSchema !== PRICING_LAW_SCHEMA
+        || !Number.isFinite(saved.at) || saved.at > now + 5000
         || now - saved.at > maxAgeMs || !(saved.store instanceof Map) || saved.store.size > 200
         || !(saved.seen instanceof Map) || saved.seen.size > 400
         || !(saved.observed instanceof Map) || saved.observed.size > 200
