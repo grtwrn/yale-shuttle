@@ -69,7 +69,7 @@ export function unpackAnchorStore(snapshot: {
       throw new Error('Incompatible snapshot packing');
     for (const entry of snapshot.store.values()) {
       if (!object(entry) || (entry.floors !== undefined && (!object(entry.floors)
-        || !(entry.floors.map instanceof Map) || Object.hasOwn(entry.floors, 'lawRef'))))
+        || !(entry.floors.map instanceof Map) || Object.prototype.hasOwnProperty.call(entry.floors, 'lawRef'))))
         throw new Error('Invalid legacy snapshot floors');
     }
     return snapshot.store;
@@ -92,13 +92,13 @@ export function unpackAnchorStore(snapshot: {
       const { floors: source, ...rest } = entry;
       copy = rest;
       if (source !== undefined) {
-        if (!object(source) || !(source.map instanceof Map) || Object.hasOwn(source, 'pricingLawKey'))
+        if (!object(source) || !(source.map instanceof Map) || Object.prototype.hasOwnProperty.call(source, 'pricingLawKey'))
           throw new Error('Invalid packed floors');
         let floor = floors.get(source);
         if (!floor) {
           const { lawRef, ...values } = source;
           floor = values as Floors;
-          if (Object.hasOwn(source, 'lawRef')) {
+          if (Object.prototype.hasOwnProperty.call(source, 'lawRef')) {
             if (!Number.isSafeInteger(lawRef) || lawRef < 0 || lawRef >= laws.length) throw new Error('Invalid law reference');
             floor.pricingLawKey = laws[lawRef]!; used.add(lawRef);
           }
