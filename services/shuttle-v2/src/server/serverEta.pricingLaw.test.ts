@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ServerEta, type EtaPayloadView } from './serverEta';
 import { PRICING_LAW_SCHEMA } from '../../web/src/eta/arrival';
 import { resetModelParams } from '../../web/src/eta/params';
+import { ETA_SNAPSHOT_MAX_BYTES, SNAPSHOT_PACKING_SCHEMA, unpackAnchorStore } from './etaSnapshot';
+import type { AnchorStore } from '../../web/src/eta/index';
 
 const STOPS = [9101, 9102, 9103, 9104];
 const COORDS = { 9101: { lat: 41.31, lon: -72.93 }, 9102: { lat: 41.31, lon: -72.928 },
@@ -21,6 +23,13 @@ function payload(at: number, q = SMALL): EtaPayloadView {
       q: i === 0 ? q : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }])) } };
 }
 function engine() { return new ServerEta({ routes: ['Blue Weekend'], onServedForecasts: () => {} }); }
+/** Existing legacy-history controls use the unpacked tracking format. */
+function unpackedHistory(bytes: Uint8Array) {
+  const saved = deserialize(Buffer.from(bytes));
+  saved.store = unpackAnchorStore(saved, true);
+  delete saved.snapshotPackingSchema; delete saved.pricingLaws;
+  return saved;
+}
 function warm() {
   const e = engine();
   let at = START;
@@ -56,12 +65,12 @@ describe('pricing-law state custody', () => {
   });
 
   it('retains legacy history posterior and rest, then discards only its lawless floor at pricing', () => {
-    const { e, at } = warm(), saved = deserialize(Buffer.from(e.captureEvaluation('history')!.bytes));
+    const { e, at } = warm(), saved = unpackedHistory(e.captureEvaluation('history')!.bytes);
     delete saved.pricingLawSchema;
     for (const entry of saved.store.values()) delete entry.floors.pricingLawKey;
     const history = serialize(saved), restored = engine();
     expect(restored.restoreEvaluation(history, 'history', at)).toBe(true);
-    const before = deserialize(Buffer.from(restored.captureEvaluation('history')!.bytes));
+    const before = unpackedHistory(restored.captureEvaluation('history')!.bytes);
     expect(before.store).toEqual(saved.store);
     const current = structuredClone(saved);
     for (const entry of current.store.values()) delete entry.floors;
@@ -70,7 +79,7 @@ describe('pricing-law state custody', () => {
     const next = payload(at + 5000, HEAVY);
     expect(restored.contribute(next, at + 5000, at + 5000))
       .toEqual(reference.contribute(structuredClone(next), at + 5000, at + 5000));
-    const after = deserialize(Buffer.from(restored.captureEvaluation('history')!.bytes));
+    const after = unpackedHistory(restored.captureEvaluation('history')!.bytes);
     for (const [key, entry] of after.store) {
       expect(entry.belief.restSince).toBe(saved.store.get(key).belief.restSince);
       expect(entry.floors.pricingLawKey).toContain(PRICING_LAW_SCHEMA);
@@ -78,7 +87,7 @@ describe('pricing-law state custody', () => {
   });
 
   it('migrates an old local checkpoint without discarding its tracking history', () => {
-    const { e, at } = warm(), saved = deserialize(Buffer.from(e.captureEvaluation('history')!.bytes));
+    const { e, at } = warm(), saved = unpackedHistory(e.captureEvaluation('history')!.bytes);
     for (const entry of saved.store.values()) delete entry.floors.pricingLawKey;
     const local = { v: 1, at, store: saved.store, seen: saved.seen };
     const referenceLocal = structuredClone(local);
@@ -89,10 +98,61 @@ describe('pricing-law state custody', () => {
     expect(restored.stats().restored).toBeGreaterThan(0);
     const next = payload(at + 5000, HEAVY);
     expect(restored.contribute(next, 21, at + 5000)).toEqual(reference.contribute(structuredClone(next), 21, at + 5000));
-    const after = deserialize(Buffer.from(restored.captureEvaluation('history')!.bytes));
+    const after = unpackedHistory(restored.captureEvaluation('history')!.bytes);
     for (const [key, entry] of after.store) {
       expect(entry.belief.restSince).toBe(saved.store.get(key).belief.restSince);
       expect(entry.floors.pricingLawKey).toContain(PRICING_LAW_SCHEMA);
     }
+  });
+
+  it('replays fresh future observations after a packed history fork with shared observation identity', () => {
+    const { e, at } = warm(), fork = engine();
+    expect(fork.restoreEvaluation(e.captureEvaluation('history')!.bytes, 'history', at)).toBe(true);
+    for (let i = 1; i <= 4; i++) {
+      const now = at + i * 5000, p = payload(now, i > 1 ? HEAVY : SMALL);
+      expect(fork.contribute(structuredClone(p), now, now)).toEqual(e.contribute(p, now, now));
+    }
+    const state = deserialize(Buffer.from(fork.captureEvaluation('history')!.bytes));
+    expect(state.snapshotPackingSchema).toBe(SNAPSHOT_PACKING_SCHEMA);
+    for (const entry of state.store.values()) expect([...state.observed.values()]).toContain(entry.belief.lastObs);
+  });
+
+  it.each(['missing-schema', 'future-schema', 'invalid-reference', 'duplicate-law', 'mixed-key', 'unused-law'])
+  ('refuses packed runtime %s atomically instead of accepting its cached wire', fault => {
+    const { e, at } = warm(), original = Buffer.from(e.captureEvaluation('runtime')!.bytes);
+    const bad = deserialize(original), floor = [...bad.store.values()][0].floors;
+    if (fault === 'missing-schema') delete bad.snapshotPackingSchema;
+    if (fault === 'future-schema') bad.snapshotPackingSchema = 'future-packing';
+    if (fault === 'invalid-reference') floor.lawRef = bad.pricingLaws.length;
+    if (fault === 'duplicate-law') bad.pricingLaws.push(bad.pricingLaws[0]);
+    if (fault === 'mixed-key') floor.pricingLawKey = 'untrusted override';
+    if (fault === 'unused-law') bad.pricingLaws.push('unused law');
+    expect(e.restoreEvaluation(serialize(bad), 'runtime', at)).toBe(false);
+    expect(Buffer.from(e.captureEvaluation('runtime')!.bytes).equals(original)).toBe(true);
+  });
+
+  it('preserves the last good local checkpoint and live wire when serialized tracking state exceeds the cap', () => {
+    const { e, at } = warm(), writes: Uint8Array[] = [];
+    e.useCheckpoint({ load: () => null, save: bytes => { writes.push(bytes); } }, at);
+    const internal = e as unknown as { store: AnchorStore; saveCheckpoint(now: number): void };
+    internal.saveCheckpoint(at);
+    expect(writes).toHaveLength(1);
+    const good = Buffer.from(writes[0]!), wire = e.evaluationWire(payload(at).buses, at);
+    const entry = [...internal.store.values()][0]!, original = entry.belief!.p;
+    // Exercise serialization volume only; this injected posterior is never priced.
+    entry.belief!.p = new Float64Array(ETA_SNAPSHOT_MAX_BYTES / 8 + 1);
+    internal.saveCheckpoint(at + 30_000);
+    expect(writes).toHaveLength(1);
+    expect(Buffer.from(writes[0]!).equals(good)).toBe(true);
+    expect(e.stats().checkpointAt).toBe(at);
+    expect(e.stats().failures).toBe(0);
+    expect(e.evaluationWire(payload(at).buses, at)).toEqual(wire);
+    expect(e.captureEvaluation('runtime')).toBeNull();
+    entry.belief!.p = original;
+    internal.saveCheckpoint(at + 35_000);
+    expect(writes).toHaveLength(1);
+    internal.saveCheckpoint(at + 60_000);
+    expect(writes).toHaveLength(2);
+    expect(e.stats().checkpointAt).toBe(at + 60_000);
   });
 });

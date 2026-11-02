@@ -21,6 +21,7 @@ import { applyBlueK10Trial } from './blueK10Trial.js';
 import { applyRouteK10Trial } from './routeK10Trial.js';
 import type { K10Evidence } from '../collector/k10Clock.js';
 import { validEvaluationContext, type EtaEvaluationContext } from './etaEvaluationContext.js';
+import { ETA_SNAPSHOT_MAX_BYTES, SNAPSHOT_PACKING_SCHEMA, packAnchorStore, unpackAnchorStore } from './etaSnapshot.js';
 
 export interface EvaluationForecast extends UpcomingArrival {
   forecastSource: 'base' | 'fixed-k10';
@@ -111,6 +112,7 @@ export class ServerEta {
   private restored = 0;
   private checkpoint: EtaCheckpointStore | undefined;
   private lastSavedAt = -Infinity;
+  private lastCheckpointAttemptAt = -Infinity;
   private readonly observed = new Map<string, BusData>();
   private routeStops: Record<string, number[]> = {};
   private currentBuses: readonly BusData[] = [];
@@ -153,11 +155,11 @@ export class ServerEta {
     if (!this.stepReady || this.computedAt === null || !validEvaluationContext(this.context, this.computedAt)) return null;
     try {
       const bytes = serialize({ v: 1, kind, pricingLawSchema: PRICING_LAW_SCHEMA, at: this.computedAt, modelParams: this.lastModelParams,
-        served: [...this.served], store: this.store, seen: this.seenAt, observed: this.observed, context: this.context,
+        served: [...this.served], ...packAnchorStore(this.store), seen: this.seenAt, observed: this.observed, context: this.context,
         ...(kind === 'runtime' ? { cache: { lastVersion: this.lastVersion, wire: this.wire, trialWire: this.trialWire,
           routeStops: this.routeStops, currentBuses: this.currentBuses, steps: this.steps, failures: this.failures,
           evaluationRows: this.evaluationRows } } : {}) });
-      if (bytes.byteLength > 4 * 1024 * 1024) return null;
+      if (bytes.byteLength > ETA_SNAPSHOT_MAX_BYTES) return null;
       return { at: this.computedAt, modelParams: structuredClone(this.lastModelParams), bytes };
     } catch { return null; }
   }
@@ -167,18 +169,20 @@ export class ServerEta {
   restoreEvaluation(bytes: Uint8Array, kind: 'history' | 'runtime', now = Date.now(),
     maxAgeMs = kind === 'history' ? RECOVERY_MAX_AGE_MS : 600000): boolean {
     try {
-      if (!bytes.byteLength || bytes.byteLength > 4 * 1024 * 1024 || !Number.isFinite(now)
+      if (!bytes.byteLength || bytes.byteLength > ETA_SNAPSHOT_MAX_BYTES || !Number.isFinite(now)
         || !Number.isFinite(maxAgeMs) || maxAgeMs < 0) return false;
       const saved = deserialize(Buffer.from(bytes));
       if (saved.v !== 1 || saved.kind !== kind
-        || kind === 'runtime' && saved.pricingLawSchema !== PRICING_LAW_SCHEMA
+        || kind === 'runtime' && (saved.pricingLawSchema !== PRICING_LAW_SCHEMA
+          || saved.snapshotPackingSchema !== SNAPSHOT_PACKING_SCHEMA)
         || !Number.isFinite(saved.at) || saved.at > now + 5000
         || now - saved.at > maxAgeMs || !(saved.store instanceof Map) || saved.store.size > 200
         || !(saved.seen instanceof Map) || saved.seen.size > 400
         || !(saved.observed instanceof Map) || saved.observed.size > 200
         || !validEvaluationContext(saved.context, saved.at)
         || !Array.isArray(saved.served) || JSON.stringify([...saved.served].sort()) !== JSON.stringify([...this.served].sort())) return false;
-      for (const [key, entry] of saved.store) {
+      const store = unpackAnchorStore(saved, kind === 'history');
+      for (const [key, entry] of store) {
         const b = entry?.belief;
         if (typeof key !== 'string' || !b || typeof b.ringKey !== 'string'
           || !(b.p instanceof Float64Array) || !(b.restMask instanceof Uint8Array)
@@ -203,12 +207,12 @@ export class ServerEta {
         || !evaluationRowsValid(cache.evaluationRows))) return false;
       // Validate the entire snapshot before replacing any live memory.
       this.store.clear(); this.seenAt.clear(); this.observed.clear();
-      for (const [key, entry] of saved.store) this.store.set(key, entry);
+      for (const [key, entry] of store) this.store.set(key, entry);
       for (const [key, at] of saved.seen) this.seenAt.set(key, at);
       for (const [key, bus] of saved.observed) this.observed.set(key, bus);
       this.computedAt = saved.at; this.lastModelParams = saved.modelParams; this.stepReady = true;
       this.context = saved.context; this.replayContext = null;
-      this.restored = saved.store.size;
+      this.restored = store.size;
       if (kind === 'runtime') {
         this.lastVersion = cache.lastVersion; this.wire = cache.wire; this.trialWire = cache.trialWire;
         this.routeStops = cache.routeStops; this.currentBuses = cache.currentBuses;
@@ -231,27 +235,32 @@ export class ServerEta {
     try {
       const bytes = checkpoint.load();
       if (!bytes) return;
-      const saved = deserialize(Buffer.from(bytes)) as { v: number; at: number; store: AnchorStore; seen: Map<string, number> };
+      if (!bytes.byteLength || bytes.byteLength > ETA_SNAPSHOT_MAX_BYTES) return;
+      const saved = deserialize(Buffer.from(bytes));
       if (saved.v !== 1 || !Number.isFinite(saved.at) || saved.at > now
         || now - saved.at > RECOVERY_MAX_AGE_MS || !(saved.store instanceof Map) || !(saved.seen instanceof Map)
-        || saved.store.size > 200) return;
-      for (const [key, entry] of saved.store) {
+        || saved.store.size > 200 || saved.seen.size > 400) return;
+      const store = unpackAnchorStore(saved, true);
+      for (const [key, entry] of store) {
         const b = entry.belief;
         if (typeof key !== 'string' || !b || typeof b.ringKey !== 'string'
           || !(b.p instanceof Float64Array) || !(b.restMask instanceof Uint8Array)
           || !(b.standLeg instanceof Int32Array) || !(b.zoneKey instanceof Int32Array)
           || !Number.isFinite(b.seenAt) || !Number.isFinite(saved.seen.get(key))) return;
       }
-      for (const [key, entry] of saved.store) this.store.set(key, entry);
+      for (const [key, entry] of store) this.store.set(key, entry);
       for (const [key, at] of saved.seen) this.seenAt.set(key, at);
-      this.restored = saved.store.size;
+      this.restored = store.size;
     } catch (err) { this.log('server_eta.checkpoint_load_failed', { error: String(err) }); }
   }
 
   private saveCheckpoint(now: number): void {
-    if (!this.checkpoint || now - this.lastSavedAt < 30_000) return;
+    if (!this.checkpoint || now - this.lastCheckpointAttemptAt < 30_000) return;
+    this.lastCheckpointAttemptAt = now;
     try {
-      this.checkpoint.save(serialize({ v: 1, at: now, store: this.store, seen: this.seenAt }));
+      const bytes = serialize({ v: 1, at: now, ...packAnchorStore(this.store), seen: this.seenAt });
+      if (bytes.byteLength > ETA_SNAPSHOT_MAX_BYTES) throw new Error('Checkpoint exceeds byte cap');
+      this.checkpoint.save(bytes);
       this.lastSavedAt = now;
     } catch (err) { this.log('server_eta.checkpoint_save_failed', { error: String(err) }); }
   }

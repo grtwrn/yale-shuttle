@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { deserialize } from 'node:v8';
 import { gunzipSync } from 'node:zlib';
 import { expect, it } from 'vitest';
-import { ServerEta } from './serverEta';
+// Recorded numeric oracles run in their exact historical ae3 source domain.
+import { LegacyRecordedServerEta as ServerEta } from '../../scripts/learning-loop/__fixtures__/legacyRecordedEta';
 import recorded from '../../web/src/__fixtures__/green-west-haven-near-curb-20261024.json';
 
 const hash = (b: string | Uint8Array) => createHash('sha256').update(b).digest('hex');
@@ -21,6 +22,8 @@ it('keeps the West Haven approach current across the projected marker and the fi
   expect(engine.restoreEvaluation(history, 'runtime', recorded.runtime.at, 120000)).toBe(true);
   const originalPoints: number[] = [], points: number[] = [];
   for (const frame of frames) {
+    expect(saved.at).toBeLessThan(frame.at);
+    expect(saved.cache.lastVersion).toBeLessThan(frame.at);
     expect(hash(frame.json)).toBe(frame.sha256); expect(hash(frame.contextJson)).toBe(frame.contextSha256);
     const payload = JSON.parse(frame.json), original = payload.server_eta;
     expect(engine.useEvaluationContext(JSON.parse(frame.contextJson))).toBe(true);
