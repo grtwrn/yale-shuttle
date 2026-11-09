@@ -233,7 +233,10 @@ export function standChipFor(
   if (!view) return null;
   return {
     clock: mmss(standing.standingSec),
-    text: `If still paused: ${view.leftText}`,
+    // This chip is rendered only while the live anchor says the bus is
+    // standing. The neighbouring status already names that state; avoid
+    // making the departure estimate sound hypothetical.
+    text: view.leftText,
     title: (standing.approach
       ? "Waiting for this stop, holding just short of the marker. "
       : "") + view.chipTitle,

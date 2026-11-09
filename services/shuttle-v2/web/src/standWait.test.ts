@@ -198,7 +198,7 @@ describe("the 2026-09-11 Red card — historical ranges, four surfaces", () => {
     expect(stopEtaText(rest, arrival(), CASE.dwells, undefined)).toBe(CASE.shown.bubble);
     expect(standChipFor(rest, CASE.dwells, undefined)!.clock).toBe("3:10");
     // The words the chip carries NOW. The reported string was "<1-8 min left".
-    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe(`If still paused: ${CASE.shown.chip}`);
+    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe(CASE.shown.chip);
     // What the operator actually read, kept so the report is legible from here.
     expect(CASE.shown.reportedChip).toBe("<1-8 min left");
     expect(Math.round(v.soonSec)).toBe(56);
@@ -220,7 +220,7 @@ describe("the 2026-09-11 Red card — historical ranges, four surfaces", () => {
     const chip = standChipFor(rest, CASE.dwells, undefined)!;
     // The one word that separates them. "left" was read as "left until it gets
     // here", which is the row's quantity, not this one.
-    expect(chip.text).toMatch(/^If still paused: (leaves in |leaving )/);
+    expect(chip.text).toMatch(/^(leaves in |leaving )/);
     expect(chip.text).not.toMatch(/left$/);
     // ...and no surface that means ARRIVAL borrows the departure's words.
     for (const s of [
@@ -241,7 +241,7 @@ describe("the 2026-09-11 Red card — historical ranges, four surfaces", () => {
     // the trip card's row builds its view WITH a countdown and a drive floor,
     // the chip builds one without, and the two must still say the same thing.
     const withEta = standWaitFor(rest, CASE.dwells, undefined)!;
-    expect(trip.text).toBe(`If still paused: ${withEta.leftText}`);
+    expect(trip.text).toBe(withEta.leftText);
     expect(trip.overdue).toBe(withEta.overdue);
     expect(trip.title).toBe(withEta.chipTitle);
   });
@@ -307,7 +307,7 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
   const busEtaLive = CASE.etaSec;
 
   it("reads, top to bottom, as a departure and then an arrival", () => {
-    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe("If still paused: leaves in <1-8 min");
+    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe("leaves in <1-8 min");
     expect(boardArrivalText(leadBand, busEtaLive)).toBe("arrives in 2-9 min");
     expect(fmtBusLine({ leadSec: busEtaLive, leadBand })).toBe(CASE.shown.row);
   });
