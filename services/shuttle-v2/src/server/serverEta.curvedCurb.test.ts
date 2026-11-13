@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { deserialize } from 'node:v8';
 import { gunzipSync } from 'node:zlib';
 import { expect, it } from 'vitest';
-import { ServerEta } from './serverEta';
+// Recorded numeric oracles run in their exact historical ae3 source domain.
+import { LegacyRecordedServerEta as ServerEta } from '../../scripts/learning-loop/__fixtures__/legacyRecordedEta';
 import recorded from '../../web/src/__fixtures__/green-west-haven-curved-curb-20261024.json';
 
 const hash = (b: string | Uint8Array) => createHash('sha256').update(b).digest('hex');
@@ -22,6 +23,8 @@ it('keeps Green308 current as its final GPS chord curves around the West Haven c
   expect(engine.restoreEvaluation(history, 'runtime', recorded.runtime.at, 120000)).toBe(true);
   const originalPoints: number[] = [], points: number[] = [], hops: number[] = [];
   for (const frame of frames) {
+    expect(saved.at).toBeLessThan(frame.at);
+    expect(saved.cache.lastVersion).toBeLessThan(frame.at);
     expect(hash(frame.json)).toBe(frame.sha256);
     expect(hash(frame.contextJson)).toBe(frame.contextSha256);
     const payload = JSON.parse(frame.json), original = payload.server_eta;
@@ -65,8 +68,10 @@ it('preserves the consecutive-fix approach evidence across an engine checkpoint'
     expect(engine.useEvaluationContext(JSON.parse(frame.contextJson))).toBe(true);
     return engine.contribute(payload, frame.at, frame.at, true)!;
   };
+  expect(saved.cache.lastVersion).toBeLessThan(frames[0].at);
   step(continuous, frames[0]);
   const checkpoint = continuous.captureEvaluation('runtime')!;
+  expect(deserialize(Buffer.from(checkpoint.bytes)).cache.lastVersion).toBeLessThan(frames[1].at);
   const restored = new ServerEta({ routes: saved.served, onServedForecasts: () => {} });
   expect(restored.restoreEvaluation(checkpoint.bytes, 'runtime', frames[0].at, 120000)).toBe(true);
   for (const frame of frames.slice(1)) {
