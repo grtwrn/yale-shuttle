@@ -678,7 +678,29 @@ function isRequestedAddress(query: string, hit: GeocodeV1Hit): boolean {
   const suffixes = new Set(["st", "street", "ave", "avenue", "rd", "road", "dr", "drive", "ln", "lane", "blvd", "boulevard", "pl", "place", "ct", "court"]);
   const words = parts[2]!.split(" ");
   const suffixAt = words.findIndex((word, index) => index > 0 && suffixes.has(word));
-  const street = suffixAt < 0 ? words : words.slice(0, suffixAt);
+  let street = suffixAt < 0 ? words : words.slice(0, suffixAt);
+  // Without a comma, "71 Ivy Circle West Haven" carries its town after
+  // Circle. Match the provider's full street first so names such as Circle
+  // Way remain intact, then match any town as a whole locality component.
+  const circleAt = words.findIndex((word, index) => index > 0 && longStreetWord(word) === "circle");
+  if (suffixAt < 0 && circleAt > 0 && circleAt < words.length - 1) {
+    const lines = hit.display_name.split(",").map(normalizeName);
+    const numberAt = lines.findIndex((line, index) => index < 2
+      && (line === parts[1]! || line.startsWith(`${parts[1]} `)));
+    if (numberAt < 0) return false;
+    // Nominatim separates the number and street; Photon keeps them together.
+    const localityAt = numberAt + (lines[numberAt] === parts[1] ? 2 : 1);
+    const streetLine = lines[numberAt] === parts[1]
+      ? lines[numberAt + 1] : lines[numberAt]!.slice(parts[1]!.length).trim();
+    if (!streetLine) return false;
+    const providerStreet = streetLine.split(" ").map(longStreetWord);
+    const requested = words.map(longStreetWord);
+    if (providerStreet.some((word, index) => requested[index] !== word)) return false;
+    const town = requested.slice(providerStreet.length).join(" ");
+    // "New Haven County" does not establish that a house is in New Haven.
+    if (town && !lines.slice(localityAt).includes(town)) return false;
+    street = words.slice(0, providerStreet.length);
+  }
   if (street.length === 0) return false;
   // Nominatim starts with "517, Prospect Street"; Photon usually starts
   // with "517 Prospect Street". Named buildings may put the address second.
