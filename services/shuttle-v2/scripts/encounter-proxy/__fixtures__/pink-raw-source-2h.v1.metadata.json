@@ -1,0 +1,32 @@
+{
+  "v": 1,
+  "scope": "Authenticated target-bus raw DATA projection for fixture-mode qualification only; no prospective support or physical service truth",
+  "sourceProjectionBytes": 12150763,
+  "sourceProjectionSHA256": "020a79420eb4785268fe2d2e4a11c54766fb984d5d5aacaadd6130af044deaf9",
+  "strippedFixtureBytes": 2413072,
+  "strippedFixtureSHA256": "4ced7df2c040897ca70e5b28fec176b08e6e56973336b188984ffe50fa266236",
+  "publicRecords": 2874,
+  "historicalFrameRecords": 1440,
+  "rawBusOccurrences": 4314,
+  "internedRawBusValues": 1441,
+  "observationDeduplicationDuringExtraction": false,
+  "originalSourceClocksAndGPSValuesRetained": true,
+  "fullPacketHashesAndOriginalLineCustodyLocation": "External owned fixtures-preparation-attempt01/external-provenance.jsonl; excluded from core outcome inputs",
+  "extractionReceiptSHA256": "f5e70de9542301ce90b6634f5ae4365495d652887d3fe00bc70957807570b346",
+  "originalForecastAt": "2026-10-30T13:56:02.218Z",
+  "south109FirstObservedAt": 1793369458818,
+  "south109SecondObservedAt": 1793369463853,
+  "north110FirstObservedAt": 1793370708942,
+  "north110FirstOriginalReceivedAt": 1793370710877,
+  "north110ConfirmationObservedAt": 1793370718996,
+  "north110ConfirmationOriginalReceivedAt": 1793370722131,
+  "north109FirstObservedAt": 1793370769168,
+  "laterSouth109FirstObservedAt": 1793371944084,
+  "limitations": [
+    "The raw fixture is the complete captured target-bus projection, not a census of the original full fleet.",
+    "Original projection serialization places public-feed before that exchange's frame records; actual consumer availability for a new actor is not invented.",
+    "Heading, provider last_stop and recent_speed remain raw audit values and cannot select outcome phase.",
+    "Both recorded South109 episodes are short/unconfirmed; the later episode is also after the original forecast's matching/settlement limits.",
+    "Actual Pink catalog primary/counterpart masks are conditional fixture assumptions with qualificationPending=true."
+  ]
+}
